@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>스트로보스코프 — 운동 영상 다중섬광 분석기</title>
+<style>
+  :root {
+    --bg: #f4f6fa; --panel: #ffffff; --ink: #1c2733; --sub: #5a6b7d;
+    --accent: #1f6fd6; --accent2: #d64545; --ok: #1e8f4e; --warn: #c07c00;
+    --border: #d7dee8; --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", "Malgun Gothic", sans-serif; background: var(--bg); color: var(--ink); padding: 12px; font-size: 15px; }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  header h1 { font-size: 1.25em; }
+  .layout { display: flex; flex-direction: column; gap: 12px; max-width: 1100px; margin: 0 auto; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+  .stepTitle { font-weight: 700; font-size: 1.05em; margin-bottom: 8px; }
+  .stepTitle .num { display: inline-block; background: var(--accent); color: #fff; border-radius: 50%; width: 24px; height: 24px; text-align: center; line-height: 24px; margin-right: 6px; font-size: 0.9em; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .hint { color: var(--sub); font-size: 0.85em; margin-top: 4px; }
+  button { font-size: 1em; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.toggled { background: var(--warn); border-color: var(--warn); color: #fff; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  input[type=number], select { font-size: 1em; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border); width: 90px; }
+  input[type=file] { font-size: 0.95em; max-width: 100%; }
+  video { max-width: 100%; max-height: 260px; background: #000; border-radius: 6px; }
+  canvas { max-width: 100%; display: block; }
+  #compositeCanvas, #stepCanvas { border: 1px solid var(--border); border-radius: 6px; cursor: crosshair; background: #222; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88em; }
+  th, td { border: 1px solid var(--border); padding: 4px 6px; text-align: center; font-variant-numeric: tabular-nums; }
+  th { background: #eef3fa; }
+  .graphs { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
+  .graphs figure { flex: 1 1 240px; }
+  .graphs figcaption { text-align: center; font-size: 0.9em; color: var(--sub); margin-top: 3px; }
+  .graphs canvas { background: #fff; border: 1px solid var(--border); border-radius: 6px; width: 100%; }
+  .fitBox { background: #f5f9f2; border: 1px solid #cfe3c8; border-radius: 8px; padding: 10px; margin-top: 10px; font-variant-numeric: tabular-nums; }
+  .tableWrap { max-height: 240px; overflow-y: auto; margin-top: 8px; }
+  details { margin-top: 6px; }
+  summary { cursor: pointer; font-weight: 700; }
+  @media (max-width: 640px) {
+    body { font-size: 16px; padding: 8px; }
+    button { padding: 12px 16px; }
+    input[type=number], select { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📸 스트로보스코프 — 운동 영상 다중섬광 분석기</h1>
+</header>
+
+<div class="layout">
+
+  <!-- ═════ 1단계: 영상 불러오기 ═════ -->
+  <div class="panel">
+    <div class="stepTitle"><span class="num">1</span>영상 불러오기</div>
+    <p class="hint" style="margin-bottom:8px">
+      스마트폰으로 찍은 운동 영상(자유낙하, 진자 등)을 선택하세요.
+      배경은 고정(삼각대·벽에 기대기), 화면에는 <b>길이를 아는 물체(자, 미터자 등)</b>가 함께 나와야 나중에 보정할 수 있습니다.
+      빠른 운동은 <b>슬로모션 모드(120/240fps)</b>로 찍는 것이 좋습니다.</p>
+    <input type="file" id="videoFile" accept="video/*">
+    <div class="row" style="margin-top:10px">
+      <video id="video" controls muted playsinline></video>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label>분석 시작 <input type="number" id="tStart" step="0.01" min="0" value="0"> s</label>
+      <label>끝 <input type="number" id="tEnd" step="0.01" min="0"> s</label>
+      <label>섬광 간격 Δt
+        <select id="dtSel">
+          <option value="0.0333">1/30 s</option>
+          <option value="0.0667">1/15 s</option>
+          <option value="0.1" selected>1/10 s</option>
+          <option value="0.2">1/5 s</option>
+          <option value="custom">직접 입력</option>
+        </select>
+      </label>
+      <input type="number" id="dtCustom" step="0.001" min="0.001" value="0.1" style="display:none">
+      <label title="슬로모션으로 찍었다면: 240fps 촬영→30fps 재생 = 8배">슬로모션 배율
+        <input type="number" id="slowmo" step="1" min="1" value="1">
+      </label>
+    </div>
+    <p class="hint">슬로모션 배율: 일반 영상은 1. 240fps로 찍어 30fps로 재생되는 영상은 8 (영상 속 1초 = 실제 1/8초).</p>
+    <div class="row" style="margin-top:10px">
+      <button id="extractBtn" class="primary" disabled>📸 프레임 추출 (섬광 찍기)</button>
+      <span id="extractStatus" class="hint"></span>
+    </div>
+  </div>
+
+  <!-- ═════ 2단계: 다중섬광사진 ═════ -->
+  <div class="panel" id="compositePanel" hidden>
+    <div class="stepTitle"><span class="num">2</span>다중섬광사진</div>
+    <div class="row" style="margin-bottom:8px">
+      <label>합성 방식
+        <select id="blendSel">
+          <option value="darken" selected>어둡게 (어두운 물체 + 밝은 배경)</option>
+          <option value="lighten">밝게 (밝은 물체 + 어두운 배경)</option>
+          <option value="diff">배경 차이 (움직인 부분만)</option>
+        </select>
+      </label>
+      <button id="savePngBtn">🖼 PNG 저장</button>
+    </div>
+    <canvas id="compositeCanvas"></canvas>
+    <p class="hint">물체가 잘 안 보이면 합성 방식을 바꿔 보세요. 간격이 넓은 곳일수록 빠르게 움직인 구간입니다 — 왜 그럴까요?</p>
+  </div>
+
+  <!-- ═════ 3단계: 보정 + 위치 찍기 ═════ -->
+  <div class="panel" id="markPanel" hidden>
+    <div class="stepTitle"><span class="num">3</span>기준 거리 보정 → 위치 찍기</div>
+    <div class="row" style="margin-bottom:8px">
+      <button id="calibBtn">📏 기준 거리 보정 시작</button>
+      <span id="calibStatus" class="hint">아직 보정 안 됨 — 그래프가 픽셀 단위로 표시됩니다</span>
+    </div>
+    <div class="row" id="calibInputRow" hidden>
+      <label>두 점 사이 실제 거리 <input type="number" id="calibDist" step="0.001" min="0.001" placeholder="m"> m</label>
+      <button id="calibApplyBtn" class="primary">보정 적용</button>
+    </div>
+    <div class="row" style="margin:8px 0">
+      <button id="prevFrameBtn">◀ 이전</button>
+      <span id="frameInfo" style="font-variant-numeric:tabular-nums">프레임 –/–</span>
+      <button id="nextFrameBtn">다음 ▶</button>
+      <button id="unmarkBtn">이 프레임 다시 찍기</button>
+      <span class="hint">물체의 같은 지점(공의 중심 등)을 클릭하면 자동으로 다음 프레임으로 넘어갑니다.</span>
+    </div>
+    <canvas id="stepCanvas"></canvas>
+  </div>
+
+  <!-- ═════ 4단계: 결과 분석 ═════ -->
+  <div class="panel" id="resultPanel" hidden>
+    <div class="stepTitle"><span class="num">4</span>결과 분석</div>
+    <div class="row">
+      <span id="unitBadge" class="hint">단위: px (보정 전)</span>
+      <button id="csvBtn">⬇ CSV 저장</button>
+    </div>
+    <div class="graphs">
+      <figure><canvas id="graphX" width="280" height="170"></canvas><figcaption>x–t (수평 위치)</figcaption></figure>
+      <figure><canvas id="graphY" width="280" height="170"></canvas><figcaption>y–t (수직 위치, 아래 = +)</figcaption></figure>
+      <figure><canvas id="graphV" width="280" height="170"></canvas><figcaption>v<sub>y</sub>–t (수직 속도)</figcaption></figure>
+    </div>
+    <div class="fitBox" id="fitBox"></div>
+    <div class="tableWrap">
+      <table id="dataTable">
+        <thead><tr><th>#</th><th>t (s)</th><th>x</th><th>y</th><th>vₓ</th><th>v_y</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <details>
+      <summary>📖 분석 원리</summary>
+      <div style="padding:8px 4px; line-height:1.7">
+        <p>· 각 위치는 Δt 간격의 "섬광 사진"입니다. 속도는 이웃한 두 위치로 계산합니다:
+        v(tₖ) ≈ (rₖ₊₁ − rₖ₋₁) / 2Δt (중앙차분).</p>
+        <p>· <b>자유낙하 영상:</b> y–t가 포물선, v_y–t가 직선이 되고 그 기울기가 중력가속도 g입니다.
+        피팅 결과의 a_y를 9.8 m/s²와 비교해 보세요.</p>
+        <p>· <b>단진자 영상:</b> x–t가 사인 곡선이 됩니다. 이웃한 마루 사이 시간이 주기 T입니다.</p>
+        <p>· 화면 좌표는 <b>아래 방향이 +y</b>입니다 (낙하 분석에 편리).</p>
+        <p style="color:var(--sub)">· 시간 정밀도는 영상 프레임레이트가 한계입니다 (30fps → 1/30 s).
+        더 정밀하려면 슬로모션으로 촬영하세요.</p>
+      </div>
+    </details>
+  </div>
+
+</div>
+
+<script>
+"use strict";
+/* ════════════════════════ 상수 ════════════════════════ */
+const MAX_FRAMES = 60;             // 추출 프레임 상한
+const WORK_WIDTH_PX = 960;         // 처리 해상도 (성능/화질 균형)
+const DIFF_THRESHOLD = 60;         // 배경 차이 합성 임계값 (RGB 합)
+const MARK_COLORS = ["#ff5252", "#ffd740"];
+
+/* ════════════════════════ 상태 ════════════════════════ */
+const app = {
+  frames: [],          // {tVideo_s, canvas}
+  dtVideo_s: 0.1,      // 영상 시간 기준 섬광 간격
+  slowmo: 1,           // 실제 시간 = 영상 시간 / slowmo
+  scale_mPerPx: null,  // 보정 결과
+  calibPts: [],        // 보정용 클릭 2점
+  calibMode: false,
+  marks: [],           // 프레임별 {x,y} (작업 해상도 px) 또는 null
+  curFrame: 0,
+};
+
+const $ = (id) => document.getElementById(id);
+const video = $("video");
+
+/* ════════════════════════ 1단계: 영상 · 프레임 추출 ════════════════════════ */
+$("videoFile").addEventListener("change", (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  video.src = URL.createObjectURL(f);
+  video.addEventListener("loadedmetadata", () => {
+    $("tEnd").value = Math.min(video.duration, 5).toFixed(2);
+    $("extractBtn").disabled = false;
+  }, { once: true });
+});
+
+$("dtSel").addEventListener("change", () => {
+  $("dtCustom").style.display = $("dtSel").value === "custom" ? "" : "none";
+});
+
+function seekTo(t_s) {
+  return new Promise((res) => {
+    video.addEventListener("seeked", () => res(), { once: true });
+    video.currentTime = t_s;
+  });
+}
+
+$("extractBtn").addEventListener("click", async () => {
+  const t0 = parseFloat($("tStart").value) || 0;
+  const t1 = parseFloat($("tEnd").value) || video.duration;
+  const dt = $("dtSel").value === "custom" ? parseFloat($("dtCustom").value) : parseFloat($("dtSel").value);
+  app.slowmo = Math.max(1, parseFloat($("slowmo").value) || 1);
+  if (!(dt > 0) || t1 <= t0) { alert("구간과 간격을 확인하세요."); return; }
+  const n = Math.floor((t1 - t0) / dt) + 1;
+  if (n > MAX_FRAMES) {
+    alert(`프레임이 ${n}개나 됩니다 (최대 ${MAX_FRAMES}). 간격을 넓히거나 구간을 줄이세요.`);
+    return;
+  }
+  app.dtVideo_s = dt;
+  app.frames = []; app.marks = []; app.curFrame = 0;
+  app.calibPts = []; app.scale_mPerPx = null;
+  $("extractBtn").disabled = true;
+  const scale = Math.min(1, WORK_WIDTH_PX / video.videoWidth);
+  const w = Math.round(video.videoWidth * scale), h = Math.round(video.videoHeight * scale);
+  video.pause();
+  for (let i = 0; i < n; i++) {
+    const t = t0 + i * dt;
+    await seekTo(Math.min(t, video.duration - 0.001));
+    const cv = document.createElement("canvas");
+    cv.width = w; cv.height = h;
+    cv.getContext("2d").drawImage(video, 0, 0, w, h);
+    app.frames.push({ tVideo_s: t, canvas: cv });
+    app.marks.push(null);
+    $("extractStatus").textContent = `추출 중… ${i + 1}/${n}`;
+  }
+  $("extractStatus").textContent = `✔ ${n}개 프레임 추출 완료 (Δt = ${dt} s${app.slowmo > 1 ? `, 실제 Δt = ${(dt / app.slowmo).toFixed(4)} s` : ""})`;
+  $("extractBtn").disabled = false;
+  $("compositePanel").hidden = false;
+  $("markPanel").hidden = false;
+  $("resultPanel").hidden = false;
+  renderComposite();
+  renderStep();
+  renderResults();
+});
+
+/* ════════════════════════ 2단계: 다중섬광 합성 ════════════════════════ */
+function renderComposite() {
+  if (!app.frames.length) return;
+  const cv = $("compositeCanvas");
+  const w = app.frames[0].canvas.width, h = app.frames[0].canvas.height;
+  cv.width = w; cv.height = h;
+  const ctx = cv.getContext("2d");
+  const mode = $("blendSel").value;
+  if (mode === "diff") {
+    // 배경(첫 프레임) 대비 달라진 픽셀만 겹치기
+    ctx.drawImage(app.frames[0].canvas, 0, 0);
+    const out = ctx.getImageData(0, 0, w, h);
+    const bg = app.frames[0].canvas.getContext("2d").getImageData(0, 0, w, h).data;
+    for (let f = 1; f < app.frames.length; f++) {
+      const d = app.frames[f].canvas.getContext("2d").getImageData(0, 0, w, h).data;
+      for (let p = 0; p < d.length; p += 4) {
+        const diff = Math.abs(d[p] - bg[p]) + Math.abs(d[p + 1] - bg[p + 1]) + Math.abs(d[p + 2] - bg[p + 2]);
+        if (diff > DIFF_THRESHOLD) {
+          out.data[p] = d[p]; out.data[p + 1] = d[p + 1]; out.data[p + 2] = d[p + 2];
+        }
+      }
+    }
+    ctx.putImageData(out, 0, 0);
+  } else {
+    ctx.drawImage(app.frames[0].canvas, 0, 0);
+    ctx.globalCompositeOperation = mode;   // 'darken' | 'lighten'
+    for (let f = 1; f < app.frames.length; f++) ctx.drawImage(app.frames[f].canvas, 0, 0);
+    ctx.globalCompositeOperation = "source-over";
+  }
+}
+$("blendSel").addEventListener("change", renderComposite);
+$("savePngBtn").addEventListener("click", () => {
+  const a = document.createElement("a");
+  a.href = $("compositeCanvas").toDataURL("image/png");
+  a.download = "다중섬광사진.png";
+  a.click();
+});
+
+/* ════════════════════════ 3단계: 보정 + 위치 찍기 ════════════════════════ */
+function canvasPos(cv, ev) {
+  const r = cv.getBoundingClientRect();
+  return {
+    x: (ev.clientX - r.left) * (cv.width / r.width),
+    y: (ev.clientY - r.top) * (cv.height / r.height),
+  };
+}
+
+function renderStep() {
+  if (!app.frames.length) return;
+  const cv = $("stepCanvas");
+  const fr = app.frames[app.curFrame];
+  cv.width = fr.canvas.width; cv.height = fr.canvas.height;
+  const ctx = cv.getContext("2d");
+  ctx.drawImage(fr.canvas, 0, 0);
+  // 이미 찍은 위치들 (지난 프레임은 흐리게)
+  app.marks.forEach((m, i) => {
+    if (!m) return;
+    ctx.beginPath(); ctx.arc(m.x, m.y, 6, 0, Math.PI * 2);
+    ctx.strokeStyle = i === app.curFrame ? "#ff5252" : "rgba(255,215,64,0.7)";
+    ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = ctx.strokeStyle; ctx.font = "11px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(i + 1, m.x, m.y - 9);
+  });
+  // 보정선
+  if (app.calibPts.length) {
+    ctx.strokeStyle = "#40c4ff"; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(app.calibPts[0].x, app.calibPts[0].y, 5, 0, Math.PI * 2); ctx.stroke();
+    if (app.calibPts[1]) {
+      ctx.beginPath(); ctx.moveTo(app.calibPts[0].x, app.calibPts[0].y);
+      ctx.lineTo(app.calibPts[1].x, app.calibPts[1].y); ctx.stroke();
+      ctx.beginPath(); ctx.arc(app.calibPts[1].x, app.calibPts[1].y, 5, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+  ctx.lineWidth = 1;
+  $("frameInfo").textContent = `프레임 ${app.curFrame + 1}/${app.frames.length}  (t = ${(app.frames[app.curFrame].tVideo_s / app.slowmo).toFixed(3)} s)`;
+}
+
+$("stepCanvas").addEventListener("click", (ev) => {
+  const p = canvasPos($("stepCanvas"), ev);
+  if (app.calibMode) {
+    app.calibPts.push(p);
+    if (app.calibPts.length === 2) {
+      app.calibMode = false;
+      $("calibBtn").classList.remove("toggled");
+      $("calibInputRow").hidden = false;
+      $("calibStatus").textContent = "두 점 선택됨 — 실제 거리를 입력하세요";
+    }
+    renderStep();
+    return;
+  }
+  app.marks[app.curFrame] = p;
+  if (app.curFrame < app.frames.length - 1) app.curFrame++;
+  renderStep(); renderResults();
+});
+
+$("calibBtn").addEventListener("click", () => {
+  app.calibMode = true; app.calibPts = [];
+  $("calibBtn").classList.add("toggled");
+  $("calibInputRow").hidden = true;
+  $("calibStatus").textContent = "길이를 아는 물체의 양 끝을 화면에서 차례로 클릭하세요 (2점)";
+  renderStep();
+});
+$("calibApplyBtn").addEventListener("click", () => {
+  const d = parseFloat($("calibDist").value);
+  if (!(d > 0) || app.calibPts.length < 2) { alert("실제 거리(m)를 입력하세요."); return; }
+  const dx = app.calibPts[1].x - app.calibPts[0].x, dy = app.calibPts[1].y - app.calibPts[0].y;
+  const px = Math.hypot(dx, dy);
+  app.scale_mPerPx = d / px;
+  $("calibStatus").innerHTML = `✔ 보정 완료: ${px.toFixed(1)} px = ${d} m → <b>${(app.scale_mPerPx * 1000).toFixed(3)} mm/px</b>`;
+  $("calibInputRow").hidden = true;
+  renderResults();
+});
+$("prevFrameBtn").addEventListener("click", () => { if (app.curFrame > 0) app.curFrame--; renderStep(); });
+$("nextFrameBtn").addEventListener("click", () => { if (app.curFrame < app.frames.length - 1) app.curFrame++; renderStep(); });
+$("unmarkBtn").addEventListener("click", () => { app.marks[app.curFrame] = null; renderStep(); renderResults(); });
+
+/* ════════════════════════ 4단계: 데이터 · 피팅 ════════════════════════ */
+// 실제 시간 간격
+function dtReal_s() { return app.dtVideo_s / app.slowmo; }
+
+// 마크 → 데이터 행 (첫 마크 기준 원점, 아래 = +y)
+function buildData() {
+  const s = app.scale_mPerPx ?? 1;      // 보정 전에는 px 단위
+  const rows = [];
+  let origin = null;
+  app.marks.forEach((m, i) => {
+    if (!m) return;
+    if (!origin) origin = m;
+    rows.push({
+      i, t: i * dtReal_s(),
+      x: (m.x - origin.x) * s,
+      y: (m.y - origin.y) * s,   // 화면 아래 = +
+    });
+  });
+  // 중앙차분 속도 (연속 프레임에서만)
+  for (let k = 0; k < rows.length; k++) {
+    const prev = rows[k - 1], next = rows[k + 1];
+    if (prev && next && next.i - prev.i === 2) {
+      rows[k].vx = (next.x - prev.x) / (2 * dtReal_s());
+      rows[k].vy = (next.y - prev.y) / (2 * dtReal_s());
+    }
+  }
+  return rows;
+}
+
+// 최소제곱 2차 피팅 y = c0 + c1·t + c2·t² → 가속도 = 2·c2
+function quadFit(pts) {
+  const n = pts.length;
+  if (n < 3) return null;
+  let s0 = n, s1 = 0, s2 = 0, s3 = 0, s4 = 0, b0 = 0, b1 = 0, b2 = 0;
+  for (const p of pts) {
+    const t = p.t, t2 = t * t;
+    s1 += t; s2 += t2; s3 += t2 * t; s4 += t2 * t2;
+    b0 += p.v; b1 += p.v * t; b2 += p.v * t2;
+  }
+  // 3x3 크래머 공식
+  const det = (A) => A[0] * (A[4] * A[8] - A[5] * A[7]) - A[1] * (A[3] * A[8] - A[5] * A[6]) + A[2] * (A[3] * A[7] - A[4] * A[6]);
+  const M = [s0, s1, s2, s1, s2, s3, s2, s3, s4];
+  const D = det(M);
+  if (Math.abs(D) < 1e-12) return null;
+  const c2 = det([s0, s1, b0, s1, s2, b1, s2, s3, b2]) / D;
+  return { accel: 2 * c2 };
+}
+
+// 이웃 마루 간격으로 주기 추정 (진자 x-t 용)
+function estimatePeriod(rows) {
+  const peaks = [];
+  for (let k = 1; k < rows.length - 1; k++) {
+    if (rows[k].x > rows[k - 1].x && rows[k].x > rows[k + 1].x) peaks.push(rows[k].t);
+  }
+  if (peaks.length < 2) return null;
+  let sum = 0;
+  for (let k = 1; k < peaks.length; k++) sum += peaks[k] - peaks[k - 1];
+  return sum / (peaks.length - 1);
+}
+
+function renderResults() {
+  const rows = buildData();
+  const unit = app.scale_mPerPx ? "m" : "px";
+  $("unitBadge").textContent = app.scale_mPerPx
+    ? "단위: m, m/s (보정 완료)" : "⚠ 단위: px (기준 거리 보정을 하면 m로 바뀝니다)";
+  // 표
+  const tbody = $("dataTable").querySelector("tbody");
+  tbody.innerHTML = "";
+  rows.forEach((r, k) => {
+    const tr = document.createElement("tr");
+    const f = (v) => v === undefined ? "–" : v.toFixed(app.scale_mPerPx ? 3 : 1);
+    tr.innerHTML = `<td>${r.i + 1}</td><td>${r.t.toFixed(3)}</td><td>${f(r.x)}</td><td>${f(r.y)}</td><td>${f(r.vx)}</td><td>${f(r.vy)}</td>`;
+    tbody.appendChild(tr);
+  });
+  // 그래프
+  drawScatter($("graphX"), rows.map((r) => ({ t: r.t, v: r.x })), `x (${unit})`);
+  drawScatter($("graphY"), rows.map((r) => ({ t: r.t, v: r.y })), `y (${unit})`);
+  drawScatter($("graphV"), rows.filter((r) => r.vy !== undefined).map((r) => ({ t: r.t, v: r.vy })), `v_y (${unit}/s)`);
+  // 피팅
+  const fitY = quadFit(rows.map((r) => ({ t: r.t, v: r.y })));
+  const T = estimatePeriod(rows);
+  let html = "";
+  if (fitY) {
+    html += `<b>등가속도 피팅 (y–t 포물선):</b> a_y = ${fitY.accel.toFixed(app.scale_mPerPx ? 2 : 0)} ${unit}/s²`;
+    if (app.scale_mPerPx) html += ` <span class="hint">— 자유낙하 영상이라면 9.8 m/s²와 비교해 보세요 (아래 방향 +)</span>`;
+    else html += ` <span class="hint">— 보정 후 m/s² 단위로 바뀝니다</span>`;
+  }
+  if (T) html += `<br><b>진동 주기 추정 (x–t 마루 간격):</b> T ≈ ${T.toFixed(3)} s`;
+  if (!html) html = `<span class="hint">위치를 3개 이상 찍으면 피팅 결과가 나옵니다.</span>`;
+  $("fitBox").innerHTML = html;
+}
+
+function drawScatter(cv, pts, yLabel) {
+  const ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height, L = 44, B = 24, T = 8, R = 8;
+  ctx.clearRect(0, 0, W, H);
+  ctx.strokeStyle = "#b9c6d6"; ctx.beginPath();
+  ctx.moveTo(L, T); ctx.lineTo(L, H - B); ctx.lineTo(W - R, H - B); ctx.stroke();
+  ctx.fillStyle = "#5a6b7d"; ctx.font = "11px sans-serif";
+  ctx.textAlign = "left"; ctx.fillText(yLabel, L + 6, T + 10);
+  ctx.textAlign = "center"; ctx.fillText("t (s)", (L + W - R) / 2, H - 6);
+  if (!pts.length) return;
+  const xMax = Math.max(...pts.map((p) => p.t), 0.001);
+  const yMin = Math.min(...pts.map((p) => p.v), 0), yMax = Math.max(...pts.map((p) => p.v), 0.001);
+  const span = (yMax - yMin) || 1;
+  const px = (t) => L + (t / xMax) * (W - L - R);
+  const py = (v) => H - B - ((v - yMin) / span) * (H - B - T);
+  ctx.textAlign = "right";
+  ctx.fillText(yMax.toFixed(1), L - 3, T + 10);
+  ctx.fillText(yMin.toFixed(1), L - 3, H - B + 4);
+  ctx.fillText(xMax.toFixed(2), W - R, H - B + 14);
+  ctx.strokeStyle = "#1f6fd6";
+  ctx.beginPath();
+  pts.forEach((p, i) => i === 0 ? ctx.moveTo(px(p.t), py(p.v)) : ctx.lineTo(px(p.t), py(p.v)));
+  ctx.stroke();
+  for (const p of pts) {
+    ctx.beginPath(); ctx.arc(px(p.t), py(p.v), 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = "#1f6fd6"; ctx.fill();
+  }
+}
+
+$("csvBtn").addEventListener("click", () => {
+  const rows = buildData();
+  if (!rows.length) { alert("찍은 위치가 없습니다."); return; }
+  const unit = app.scale_mPerPx ? "m" : "px";
+  const out = [["프레임", "t(s)", `x(${unit})`, `y(${unit})`, `vx(${unit}/s)`, `vy(${unit}/s)`]];
+  rows.forEach((r) => out.push([r.i + 1, r.t.toFixed(4), r.x.toFixed(4), r.y.toFixed(4),
+    r.vx !== undefined ? r.vx.toFixed(4) : "", r.vy !== undefined ? r.vy.toFixed(4) : ""]));
+  const csv = "﻿" + out.map((r) => r.join(",")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = "스트로보_분석.csv";
+  a.click(); URL.revokeObjectURL(a.href);
+});
+</script>
+</body>
+</html>

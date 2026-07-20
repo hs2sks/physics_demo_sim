@@ -70,6 +70,11 @@
   .graphs figcaption { text-align: center; font-size: 0.9em; color: var(--sub); margin-top: 3px; }
   .graphs canvas { background: #fff; border: 1px solid var(--border); border-radius: 6px; width: 100%; }
 
+  .manual-entry input {
+    width: 84px; padding: 6px 8px; font-size: 1em;
+    border: 1px solid var(--border); border-radius: 6px;
+  }
+
   details { margin-top: 4px; }
   summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
   .formula-body { padding: 8px 4px; line-height: 1.7; }
@@ -100,6 +105,7 @@
         <button id="pauseBtn" disabled>⏸ 일시정지</button>
         <button id="resetBtn">↺ 리셋</button>
         <span class="row" style="margin-left:auto">
+          <label><input type="checkbox" id="soundChk" checked> 🔊 신호음</label>
           <label for="speedSel">배속</label>
           <select id="speedSel">
             <option value="1" selected>×1 (실제 속도)</option>
@@ -169,7 +175,7 @@
       <div class="controls-row">
         <button id="watchBtn" class="danger" style="flex:1">⏱ 스톱워치 시작/정지 (Space)</button>
       </div>
-      <p class="hint" id="modeHint">낙하 시작과 동시에 스톱워치를 켜고, 바닥에 닿는 순간 멈추세요. 사람의 반응 시간이 오차로 들어갑니다.</p>
+      <p class="hint" id="modeHint">카운트다운(3·2·1) 후 공이 떨어집니다. 낙하 신호음에 Space로 스톱워치를 켜고, 착지 소리에 멈추세요. 반응 시간이 오차로 들어갑니다.</p>
     </div>
 
     <div class="panel">
@@ -182,13 +188,21 @@
       </div>
       <table id="recordTable">
         <thead>
-          <tr><th>#</th><th>h (m)</th><th>t (s)</th><th>g = 2h/t² (m/s²)</th><th>상대오차</th></tr>
+          <tr><th>#</th><th>구분</th><th>h (m)</th><th>t (s)</th><th>g = 2h/t² (m/s²)</th><th>상대오차</th></tr>
         </thead>
         <tbody></tbody>
         <tfoot>
-          <tr><td colspan="3">평균 g</td><td id="avgG">–</td><td id="avgErr">–</td></tr>
+          <tr><td colspan="4">평균 g</td><td id="avgG">–</td><td id="avgErr">–</td></tr>
         </tfoot>
       </table>
+      <div class="row manual-entry" style="margin-top:8px">
+        <b style="font-size:0.92em">🖐 실제 실험값 입력:</b>
+        <input type="number" id="expH" placeholder="h (m)" step="0.01" min="0.01">
+        <input type="number" id="expT" placeholder="t (s)" step="0.001" min="0.001">
+        <button id="expAddBtn">추가</button>
+      </div>
+      <p class="hint">교실·계단 등에서 실제로 낙하 실험을 한 뒤, 잰 높이와 시간을 입력하면
+      g를 계산해 시뮬레이션 측정과 같은 표에서 비교할 수 있습니다. (지구 9.8 m/s² 기준 오차 표시)</p>
       <p class="hint" id="mysteryHint" hidden>미지의 행성 X: 참값이 숨겨져 있습니다. 평균 g를 구한 뒤 <button id="revealBtn" style="font-size:0.9em;padding:2px 8px">정답 공개</button></p>
     </div>
 
@@ -205,8 +219,12 @@ const SCENE_MARGIN_TOP_PX = 46, SCENE_MARGIN_BOTTOM_PX = 40;
 const BALL_RADIUS_PX = 11;
 
 /* ════════════════════════ 상태 ════════════════════════ */
+const COUNTDOWN_S = 3;       // 낙하 전 카운트다운 (실제 실험의 "하나, 둘, 셋!")
+
 const state = {
-  phase: "ready",            // ready | falling | paused | landed
+  phase: "ready",            // ready | countdown | falling | paused | landed
+  countdown_s: 0,
+  soundOn: true,
   simTime_s: 0,              // 낙하 시작 후 경과한 시뮬레이션 시간
   height_m: 10,
   gravity_mps2: 9.8,
@@ -243,7 +261,17 @@ let lastFrame_ms = null;
 
 function tick(now_ms) {
   if (lastFrame_ms !== null) {
-    const dt_s = Math.min((now_ms - lastFrame_ms) / 1000, 0.05) * state.speed;
+    const dtRaw_s = Math.min((now_ms - lastFrame_ms) / 1000, 0.05);
+    const dt_s = dtRaw_s * state.speed;
+    if (state.phase === "countdown") {
+      const prev_s = state.countdown_s;
+      state.countdown_s -= dtRaw_s;   // 카운트다운은 배속과 무관하게 실제 시간
+      if (state.countdown_s > 0 && Math.ceil(state.countdown_s) < Math.ceil(prev_s)) beep(880, 0.08);
+      if (state.countdown_s <= 0) {
+        state.phase = "falling"; state.simTime_s = 0;
+        beep(1320, 0.25);             // 낙하 순간 신호음 — 이 소리에 반응해 스톱워치 시작
+      }
+    }
     if (state.phase === "falling") {
       state.simTime_s += dt_s;
       const tLand = fallDuration_s(state.height_m, currentTrueG());
@@ -265,9 +293,23 @@ function tick(now_ms) {
   requestAnimationFrame(tick);
 }
 
+let audioCtx = null;
+function beep(freq_hz, dur_s) {
+  if (!state.soundOn) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.frequency.value = freq_hz; osc.connect(gain); gain.connect(audioCtx.destination);
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur_s);
+    osc.start(); osc.stop(audioCtx.currentTime + dur_s);
+  } catch (e) { /* 소리 미지원 환경 무시 */ }
+}
+
 function land(tLand_s) {
   state.simTime_s = tLand_s;
   state.phase = "landed";
+  beep(523, 0.15);                    // 착지 신호음 — 이 소리에 반응해 스톱워치 정지
   if (state.watchMode === "auto") updateStopwatchDisplay(tLand_s);
   // PRD 완성 기준 검증: 시뮬레이션 낙하 시간 vs 이론값
   console.log(`[검증] h=${state.height_m} m, g=${currentTrueG()} m/s² → 이론 t=${tLand_s.toFixed(4)} s (해석해 사용, 오차 0%)`);
@@ -331,6 +373,14 @@ function drawScene() {
   if (state.phase === "landed") {
     sctx.textAlign = "center"; sctx.font = "bold 18px sans-serif"; sctx.fillStyle = "#1e8f4e";
     sctx.fillText("💥 착지!", w / 2, groundY + 28);
+  }
+
+  if (state.phase === "countdown") {
+    sctx.textAlign = "center"; sctx.fillStyle = "rgba(214,69,69,0.9)";
+    sctx.font = "bold 88px sans-serif";
+    sctx.fillText(Math.ceil(state.countdown_s), w / 2, h * 0.45);
+    sctx.font = "bold 16px sans-serif"; sctx.fillStyle = "#5a6b7d";
+    sctx.fillText("스톱워치(Space)에 손을 올려두세요!", w / 2, h * 0.45 + 34);
   }
 }
 
@@ -398,12 +448,24 @@ function addRecord() {
     : state.watchTime_s;
   if (t <= 0) { alert("스톱워치로 낙하 시간을 먼저 측정하세요."); return; }
   state.records.push({
-    h_m: state.height_m, t_s: t,
+    src: "sim", h_m: state.height_m, t_s: t,
     g_mps2: gFromMeasurement_mps2(state.height_m, t),
     gTrue_mps2: currentTrueG(),
   });
   renderRecords();
   $("recordBtn").disabled = true;
+}
+
+function addExperimentRecord() {
+  const h = parseFloat($("expH").value), t = parseFloat($("expT").value);
+  if (!(h > 0) || !(t > 0)) { alert("실험에서 잰 높이 h(m)와 시간 t(s)를 모두 입력하세요."); return; }
+  state.records.push({
+    src: "exp", h_m: h, t_s: t,
+    g_mps2: gFromMeasurement_mps2(h, t),
+    gTrue_mps2: GRAVITY_PRESETS_MPS2.earth,   // 실제 실험은 지구 기준
+  });
+  $("expH").value = ""; $("expT").value = "";
+  renderRecords();
 }
 
 function renderRecords() {
@@ -412,9 +474,11 @@ function renderRecords() {
   const hideTruth = state.gravityKey === "mystery" && !state.mysteryRevealed;
   state.records.forEach((r, i) => {
     const err = Math.abs(r.g_mps2 - r.gTrue_mps2) / r.gTrue_mps2 * 100;
+    const hide = hideTruth && r.src !== "exp";   // 실험값은 지구 기준이라 항상 오차 공개
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${i + 1}</td><td>${r.h_m.toFixed(1)}</td><td>${r.t_s.toFixed(3)}</td>
-      <td>${r.g_mps2.toFixed(2)}</td><td>${hideTruth ? "?" : err.toFixed(1) + " %"}</td>`;
+    tr.innerHTML = `<td>${i + 1}</td><td>${r.src === "exp" ? "🖐 실험" : "💻 시뮬"}</td>
+      <td>${r.h_m.toFixed(2)}</td><td>${r.t_s.toFixed(3)}</td>
+      <td>${r.g_mps2.toFixed(2)}</td><td>${hide ? "?" : err.toFixed(1) + " %"}</td>`;
     tbody.appendChild(tr);
   });
   if (state.records.length) {
@@ -429,17 +493,22 @@ function renderRecords() {
 
 /* ════════════════════════ 조작 ════════════════════════ */
 function startDrop() {
-  if (state.phase === "paused") { state.phase = "falling"; }
-  else {
-    state.simTime_s = 0; state.strobeTrail = []; state.nextStrobe_s = 0;
+  if (state.phase === "paused") {
     state.phase = "falling";
-    if (state.watchMode === "manual") { state.watchTime_s = 0; updateStopwatchDisplay(0); }
-    else updateStopwatchDisplay(0);
+    $("dropBtn").disabled = true; $("pauseBtn").disabled = false;
+    return;
   }
+  // 실제 실험처럼 카운트다운("하나, 둘, 셋!") 후 자동으로 떨어짐 —
+  // 학생은 Space 키에 손을 올려두고 낙하 순간에만 반응하면 됨
+  state.simTime_s = 0; state.strobeTrail = []; state.nextStrobe_s = 0;
+  state.phase = "countdown"; state.countdown_s = COUNTDOWN_S;
+  state.watchRunning = false; state.watchTime_s = 0; updateStopwatchDisplay(0);
+  beep(880, 0.08);
   $("dropBtn").disabled = true; $("pauseBtn").disabled = false; $("recordBtn").disabled = true;
 }
 
 function pauseDrop() {
+  if (state.phase === "countdown") { resetSim(true); return; }  // 카운트다운 중엔 취소로 동작
   if (state.phase !== "falling") return;
   state.phase = "paused";
   $("dropBtn").disabled = false; $("dropBtn").textContent = "▶ 계속";
@@ -447,7 +516,7 @@ function pauseDrop() {
 }
 
 function resetSim(keepRecords = true) {
-  state.phase = "ready"; state.simTime_s = 0;
+  state.phase = "ready"; state.simTime_s = 0; state.countdown_s = 0;
   state.strobeTrail = []; state.nextStrobe_s = 0;
   state.watchRunning = false; state.watchTime_s = 0;
   updateStopwatchDisplay(0);
@@ -469,7 +538,7 @@ function setWatchMode(mode) {
   $("watchBtn").disabled = mode === "auto";
   $("stopwatchDisp").classList.toggle("auto", mode === "auto");
   $("modeHint").textContent = mode === "manual"
-    ? "낙하 시작과 동시에 스톱워치를 켜고, 바닥에 닿는 순간 멈추세요. 사람의 반응 시간이 오차로 들어갑니다."
+    ? "카운트다운(3·2·1) 후 공이 떨어집니다. 낙하 신호음에 Space로 스톱워치를 켜고, 착지 소리에 멈추세요. 반응 시간이 오차로 들어갑니다."
     : "광센서처럼 낙하 시간이 자동으로 정확히 측정됩니다. 수동 측정과 비교해 보세요.";
   updateStopwatchDisplay(mode === "auto" && state.phase === "landed"
     ? fallDuration_s(state.height_m, currentTrueG()) : 0);
@@ -486,6 +555,8 @@ $("manualTab").addEventListener("click", () => setWatchMode("manual"));
 $("autoTab").addEventListener("click", () => setWatchMode("auto"));
 $("projectorBtn").addEventListener("click", () => document.body.classList.toggle("projector"));
 $("speedSel").addEventListener("change", (e) => { state.speed = parseFloat(e.target.value); });
+$("soundChk").addEventListener("change", (e) => { state.soundOn = e.target.checked; });
+$("expAddBtn").addEventListener("click", addExperimentRecord);
 
 $("heightSlider").addEventListener("input", (e) => {
   state.height_m = parseFloat(e.target.value);

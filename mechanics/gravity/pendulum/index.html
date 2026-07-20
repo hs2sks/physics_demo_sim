@@ -112,7 +112,9 @@
           </select>
         </span>
       </div>
-      <p class="hint">신호음은 진자가 출발점으로 돌아올 때(1왕복 완료)마다 울립니다 — 왕복 횟수 세기에 활용하세요.</p>
+      <p class="hint">신호음: 진자가 <b>최하점 O를 처음 지날 때</b> 높은 소리(측정 시작 기준),
+      이후 <b>같은 방향으로 O를 지날 때마다</b>(=1주기 완료) 짧은 소리가 울립니다.
+      반대 방향 통과는 소리가 없습니다 — A→B 갔다가 B→A로 돌아와 O를 지나야 1주기입니다.</p>
     </div>
 
     <div class="panel graphs">
@@ -121,8 +123,18 @@
         <figcaption>각도–시간 (θ–t)</figcaption>
       </figure>
       <figure>
+        <div class="row" style="justify-content:center; gap:6px; margin-bottom:4px; font-size:0.9em">
+          세로축 <select id="axisYSel">
+            <option value="T" selected>T</option><option value="T2">T²</option>
+            <option value="L">L</option><option value="sqrtL">√L</option>
+          </select>
+          – 가로축 <select id="axisXSel">
+            <option value="L" selected>L</option><option value="sqrtL">√L</option>
+            <option value="T">T</option><option value="T2">T²</option>
+          </select>
+        </div>
         <canvas id="graphT2L" width="280" height="170"></canvas>
-        <figcaption>T²–L 그래프 (기울기 → g)</figcaption>
+        <figcaption>축을 바꿔 가며 <b>직선이 되는 조합</b>을 찾아 기울기에서 g를 구하세요</figcaption>
       </figure>
     </div>
 
@@ -135,10 +147,18 @@
           <p class="eq">T = 2π√(L/g)</p>
           <p>주기 T와 줄 길이 L을 측정하면 g를 거꾸로 구할 수 있습니다:</p>
           <p class="eq">g = 4π²L / T²</p>
+          <p><b>왜 최하점(O)에서 잴까?</b> 최하점에서는 추의 속력이 가장 빨라
+          "지나는 순간"이 또렷하게 보입니다. 반대로 진폭 끝에서는 추가 거의 멈춰 있어
+          언제가 끝인지 애매합니다. 그래서 O점 통과 순간을 기준으로 재면 시간 오차가 가장 작습니다.</p>
+          <p><b>주의:</b> A→B로 가며 O를 지나고, 다시 B→A로 돌아오며 O를 지나는 것은
+          <b>반 주기</b>입니다. 같은 방향으로 O를 다시 지날 때가 1주기 — 시뮬레이션 신호음도
+          같은 방향 통과에서만 울립니다.</p>
           <p><b>왜 10회 왕복을 잴까?</b> 1회 왕복(약 1~3초)을 재면 반응 시간 오차(±0.2초)가
           주기의 10%나 됩니다. 10회 왕복 시간을 재서 10으로 나누면 같은 오차가 1%로 줄어듭니다.</p>
-          <p><b>T²–L 그래프:</b> 여러 길이에서 주기를 재고 T²을 L에 대해 그리면
-          원점을 지나는 직선이 되고, 기울기 = 4π²/g 입니다.</p>
+          <p><b>관계 그래프:</b> 여러 길이에서 주기를 잰 뒤 축을 골라 그려 보세요.
+          T²–L 또는 T–√L로 그리면 원점을 지나는 직선이 되고, 기울기에서 g가 나옵니다
+          (T²–L: 기울기 = 4π²/g, T–√L: 기울기 K = 2π/√g). T–L처럼 직선이 아닌 조합과
+          비교해 보면 "왜 축을 바꾸는지" 알 수 있습니다.</p>
           <p style="color:var(--sub)">※ 주기 공식은 sinθ ≈ θ 근사(소각 근사)에서 나옵니다.
           진폭이 15°를 넘으면 실제 주기가 공식보다 길어집니다 — 시뮬레이션은 근사 없이
           실제 운동방정식을 풀기 때문에 이 차이를 직접 확인할 수 있습니다. 공기저항·줄 질량은 무시합니다.</p>
@@ -182,12 +202,13 @@
         <button id="autoTab">📡 자동 측정</button>
       </div>
       <div class="stopwatch" id="stopwatchDisp">0.000 s</div>
-      <p class="oscCount">왕복 <b id="oscCountDisp">0</b> 회 <span id="autoTDisp"></span></p>
+      <p class="oscCount">주기 <b id="oscCountDisp">0</b> 회 완료 <span class="hint">(같은 방향으로 O점 통과)</span><span id="autoTDisp"></span></p>
+      <p class="hint" id="pendingDisp" style="color:var(--accent2)"></p>
       <div class="controls-row">
         <button id="watchBtn" class="danger" style="flex:1">⏱ 스톱워치 시작/정지 (Space)</button>
         <label>왕복 <select id="divN"><option value="1">1</option><option value="5">5</option><option value="10" selected>10</option></select> 회 측정</label>
       </div>
-      <p class="hint" id="modeHint">진자가 출발점에 온 순간 스톱워치를 켜고, 선택한 왕복 횟수만큼 지나면 멈추세요. 시간 ÷ 횟수 = 주기 T.</p>
+      <p class="hint" id="modeHint">진자가 <b>최하점(O)을 지나는 순간</b>(높은 신호음) 스톱워치를 켜고, 같은 방향으로 O를 선택한 횟수만큼 지나면 멈추세요. 시간 ÷ 횟수 = 주기 T. (최하점은 속력이 가장 빨라 통과 순간이 명확 → 시간 오차 최소)</p>
     </div>
 
     <div class="panel">
@@ -208,7 +229,8 @@
           <tr><td colspan="4">평균 g</td><td id="avgG">–</td><td id="avgErr">–</td></tr>
         </tfoot>
       </table>
-      <p class="hint">💡 줄 길이를 바꿔 가며 여러 번 기록하면 T²–L 그래프에 점이 찍히고, 직선의 기울기로 g를 구할 수 있습니다.</p>
+      <p class="hint">💡 줄 길이를 바꿔 가며 여러 번 기록하면 아래 관계 그래프에 점이 찍힙니다.
+      실험지처럼 축을 직접 골라(T–√L, T²–L 등) 직선이 되는 조합을 찾고, 기울기에서 g를 구하세요.</p>
       <p class="hint" id="mysteryHint" hidden>미지의 행성 X: 참값이 숨겨져 있습니다. 평균 g를 구한 뒤 <button id="revealBtn" style="font-size:0.9em;padding:2px 8px">정답 공개</button></p>
     </div>
 
@@ -216,7 +238,8 @@
     <div class="panel" id="expPanel">
       <b>🖐 실제 실험 — 교실에서 진자로 g 측정</b>
       <p class="hint" style="margin:6px 0">실·낚싯줄에 추(너트, 쇠구슬 등)를 매달아 만드세요.
-      길이는 <b>고정점에서 추의 중심까지</b> 줄자로 잽니다. 각도는 15° 이하로 작게!</p>
+      진자 길이 = <b>실 길이 + 추 반지름</b> (l = l₀ + d/2, 추 지름 d는 버니어 캘리퍼스로 측정).
+      각도는 15° 이하로 작게! 시간은 <b>최하점 통과 순간</b> 기준으로 재세요.</p>
       <div class="row">
         <label for="expL">진자 길이 L</label>
         <input type="number" id="expL" step="0.001" min="0.01" placeholder="m">
@@ -261,8 +284,12 @@ const state = {
   length_m: 1.0, theta0_deg: 10, mass_kg: 0.2,
   gravityKey: "earth", mysteryG_mps2: null, mysteryRevealed: false,
   speed: 1, soundOn: true,
-  halfSwings: 0,             // 반 왕복 횟수 (부호 반전 감지)
-  autoT10_s: null,           // 10왕복 자동 측정 결과
+  // 최하점(O점) 통과 기준 측정 — 실험지 방식: O를 같은 방향으로 지날 때가 1주기
+  oRefSign: null,            // 기준 통과 방향 (첫 통과에서 결정)
+  oFirstT_s: null,           // 첫 O 통과 시각
+  oCount: 0,                 // 같은 방향 O 통과 횟수 (= 완료된 주기 수)
+  autoT10_s: null,           // 10주기 자동 측정 결과
+  pendingMeasure: null,      // {L_m, t_s, nFixed} — 아직 기록표에 안 넣은 측정값
   thetaSamples: [],          // {t, deg} — θ-t 그래프용
   physRemainder_s: 0,
   watchMode: "manual", watchRunning: false, watchTime_s: 0,
@@ -294,21 +321,25 @@ function advancePhysics(dt_s) {
   const g = currentTrueG(), L = state.length_m;
   state.physRemainder_s += dt_s;
   while (state.physRemainder_s >= PHYS_DT_S) {
-    const prevOmega = state.omega_radps;
+    const prevTheta = state.theta_rad;
     [state.theta_rad, state.omega_radps] = rk4Step(state.theta_rad, state.omega_radps, g, L, PHYS_DT_S);
     state.simTime_s += PHYS_DT_S;
     state.physRemainder_s -= PHYS_DT_S;
-    // 극점(속도 부호 반전) 감지 → 반 왕복 카운트
-    if (prevOmega !== 0 && Math.sign(state.omega_radps) !== Math.sign(prevOmega)) {
-      state.halfSwings++;
-      if (state.halfSwings % 2 === 0) {          // 출발점 복귀 = 1왕복 완료
-        beep(660, 0.05);
-        const osc = state.halfSwings / 2;
-        if (osc === AUTO_OSC_COUNT && state.autoT10_s === null) {
-          state.autoT10_s = state.simTime_s;
+    // 최하점(θ=0) 통과 감지 — 실험지 방식: 같은 방향 통과만 주기로 카운트
+    if (prevTheta !== 0 && Math.sign(state.theta_rad) !== Math.sign(prevTheta)) {
+      const dir = Math.sign(state.omega_radps);
+      if (state.oRefSign === null) {
+        state.oRefSign = dir; state.oFirstT_s = state.simTime_s; state.oCount = 0;
+        beep(1050, 0.12);      // 측정 시작 신호 (높은 소리)
+      } else if (dir === state.oRefSign) {
+        state.oCount++;
+        beep(660, 0.05);       // 1주기 완료 (같은 방향 통과)
+        if (state.oCount === AUTO_OSC_COUNT && state.autoT10_s === null) {
+          state.autoT10_s = state.simTime_s - state.oFirstT_s;
           onAutoMeasured();
         }
       }
+      // 반대 방향 통과는 무음 — "A→B→A로 다시 O를 지나야 1주기" 훈련
     }
   }
   // θ-t 그래프 샘플 (프레임당 1개면 충분)
@@ -346,7 +377,7 @@ function tick(now_ms) {
     }
   }
   lastFrame_ms = now_ms;
-  $("oscCountDisp").textContent = Math.floor(state.halfSwings / 2);
+  $("oscCountDisp").textContent = state.oCount;
   drawScene();
   drawThetaGraph();
   drawT2LGraph();
@@ -357,7 +388,10 @@ function onAutoMeasured() {
   const T = state.autoT10_s / AUTO_OSC_COUNT;
   const Tformula = smallAnglePeriod_s(state.length_m, currentTrueG());
   $("autoTDisp").innerHTML = ` — 자동: t₁₀ = ${state.autoT10_s.toFixed(3)} s → <b>T = ${T.toFixed(4)} s</b>`;
-  if (state.watchMode === "auto") { updateStopwatchDisplay(state.autoT10_s); $("recordBtn").disabled = false; }
+  if (state.watchMode === "auto") {
+    updateStopwatchDisplay(state.autoT10_s);
+    setPending({ L_m: state.length_m, t_s: state.autoT10_s, nFixed: AUTO_OSC_COUNT });
+  }
   beep(1320, 0.2);
   // PRD 완성 기준 검증 로그
   console.log(`[검증] θ₀=${state.theta0_deg}°, L=${state.length_m} m: T(시뮬)=${T.toFixed(4)} s, `
@@ -392,7 +426,15 @@ function drawScene() {
     sctx.beginPath(); sctx.moveTo(px, py);
     sctx.lineTo(px + len_px * Math.sin(s * t0), py + len_px * Math.cos(s * t0)); sctx.stroke();
   }
+  // 연직선(실험지의 "백지에 그린 연직선") + 최하점 O 표시
+  sctx.strokeStyle = "#8a99ab"; sctx.setLineDash([5, 5]);
+  sctx.beginPath(); sctx.moveTo(px, py); sctx.lineTo(px, py + len_px + 8); sctx.stroke();
   sctx.setLineDash([]);
+  const passingO = Math.abs(state.theta_rad) < 0.05 && state.phase === "swinging";
+  sctx.beginPath(); sctx.arc(px, py + len_px, passingO ? 8 : 5, 0, Math.PI * 2);
+  sctx.fillStyle = passingO ? "#d64545" : "#8a99ab"; sctx.fill();
+  sctx.fillStyle = "#5a6b7d"; sctx.font = "bold 12px sans-serif"; sctx.textAlign = "center";
+  sctx.fillText("O (최하점 — 여기서 측정 시작!)", px, py + len_px + 34);
   // 줄 + 추 (반지름은 질량 ∝ 부피 가정)
   sctx.strokeStyle = "#5a6b7d"; sctx.lineWidth = 2;
   sctx.beginPath(); sctx.moveTo(px, py); sctx.lineTo(bx, by); sctx.stroke(); sctx.lineWidth = 1;
@@ -445,30 +487,55 @@ function drawThetaGraph() {
   }
 }
 
+// 학생이 축을 직접 고르는 관계 그래프 — 직선(원점 통과)이 되는 조합에서만 g 산출
+const AXIS_DEFS = {
+  L:     { label: "L (m)",   fn: (r) => r.L_m },
+  sqrtL: { label: "√L (√m)", fn: (r) => Math.sqrt(r.L_m) },
+  T:     { label: "T (s)",   fn: (r) => r.T_s },
+  T2:    { label: "T² (s²)", fn: (r) => r.T_s * r.T_s },
+};
+// 기울기 → g 환산이 가능한 (직선이 되는) 조합
+function gFromSlope(xKey, yKey, slope) {
+  const PI2 = Math.PI * Math.PI;
+  if (xKey === "L" && yKey === "T2") return 4 * PI2 / slope;        // T² = (4π²/g)·L
+  if (xKey === "T2" && yKey === "L") return 4 * PI2 * slope;
+  if (xKey === "sqrtL" && yKey === "T") return (2 * Math.PI / slope) ** 2;  // T = (2π/√g)·√L
+  if (xKey === "T" && yKey === "sqrtL") return (2 * Math.PI * slope) ** 2;
+  return null;
+}
+
 function drawT2LGraph() {
   const cv = $("graphT2L"), ctx = cv.getContext("2d");
   const W = cv.width, H = cv.height, Lm = 40, B = 24, T = 8, R = 8;
   ctx.clearRect(0, 0, W, H);
-  const pts = state.records.map((r) => ({ x: r.L_m, y: r.T_s * r.T_s, src: r.src }));
-  const xMax = 3.2, yMax = Math.max(4, ...pts.map((p) => p.y * 1.15));
+  const xKey = $("axisXSel").value, yKey = $("axisYSel").value;
+  const ax = AXIS_DEFS[xKey], ay = AXIS_DEFS[yKey];
+  const pts = state.records.map((r) => ({ x: ax.fn(r), y: ay.fn(r), src: r.src }));
+  const xMax = Math.max(1, ...pts.map((p) => p.x)) * 1.2;
+  const yMax = Math.max(1, ...pts.map((p) => p.y)) * 1.2;
   const px = (x) => Lm + (x / xMax) * (W - Lm - R);
   const py = (y) => H - B - (y / yMax) * (H - B - T);
   ctx.strokeStyle = "#b9c6d6"; ctx.beginPath();
   ctx.moveTo(Lm, T); ctx.lineTo(Lm, H - B); ctx.lineTo(W - R, H - B); ctx.stroke();
   ctx.fillStyle = "#5a6b7d"; ctx.font = "11px sans-serif";
-  ctx.textAlign = "left"; ctx.fillText("T² (s²)", Lm + 6, T + 10);
-  ctx.textAlign = "center"; ctx.fillText("L (m)", (Lm + W - R) / 2, H - 6);
+  ctx.textAlign = "left"; ctx.fillText(ay.label, Lm + 6, T + 10);
+  ctx.textAlign = "center"; ctx.fillText(ax.label, (Lm + W - R) / 2, H - 6);
   ctx.textAlign = "right"; ctx.fillText(yMax.toFixed(1), Lm - 3, T + 10);
   ctx.fillText("0", Lm - 3, H - B + 4); ctx.fillText(xMax.toFixed(1), W - R, H - B + 14);
-  // 원점 통과 최소제곱 직선: 기울기 = Σ(L·T²)/Σ(L²) = 4π²/g
   if (pts.length >= 2) {
+    // 원점 통과 최소제곱 직선: 기울기 = Σxy/Σx²
     const slope = pts.reduce((s, p) => s + p.x * p.y, 0) / pts.reduce((s, p) => s + p.x * p.x, 0);
-    const gFit = 4 * Math.PI * Math.PI / slope;
     ctx.setLineDash([5, 4]); ctx.strokeStyle = "#d64545"; ctx.beginPath();
     ctx.moveTo(px(0), py(0)); ctx.lineTo(px(xMax), py(slope * xMax)); ctx.stroke(); ctx.setLineDash([]);
     ctx.fillStyle = "#d64545"; ctx.textAlign = "left"; ctx.font = "bold 12px sans-serif";
-    const hideTruth = state.gravityKey === "mystery" && !state.mysteryRevealed;
-    ctx.fillText(`기울기 → g = ${gFit.toFixed(2)} m/s²`, Lm + 8, T + 26);
+    const gFit = gFromSlope(xKey, yKey, slope);
+    if (gFit !== null) {
+      ctx.fillText(`기울기 ${slope.toFixed(3)} → g = ${gFit.toFixed(2)} m/s²`, Lm + 8, T + 26);
+    } else {
+      ctx.fillText(`기울기 ${slope.toFixed(3)}`, Lm + 8, T + 26);
+      ctx.font = "11px sans-serif"; ctx.fillStyle = "#c07c00";
+      ctx.fillText("점들이 직선 위에 있나요? 축을 바꿔 보세요", Lm + 8, T + 42);
+    }
   }
   for (const p of pts) {
     if (p.x > xMax || p.y > yMax) continue;
@@ -480,23 +547,33 @@ function drawT2LGraph() {
 /* ════════════════════════ 측정 · 기록 ════════════════════════ */
 function updateStopwatchDisplay(t_s) { $("stopwatchDisp").textContent = t_s.toFixed(3) + " s"; }
 
+// 측정 완료값을 "미기록 측정"으로 보관 — 이후 줄 길이를 바꾸거나 리셋해도
+// 측정 당시의 L과 시간으로 기록됨
+function setPending(p) {
+  state.pendingMeasure = p;
+  $("recordBtn").disabled = false;
+  const n = p.nFixed ?? parseInt($("divN").value, 10);
+  $("pendingDisp").innerHTML =
+    `📌 미기록 측정: L = ${p.L_m.toFixed(2)} m, t = ${p.t_s.toFixed(3)} s (${n}주기) → "기록 추가"를 누르세요`;
+}
+function clearPending() {
+  state.pendingMeasure = null;
+  $("recordBtn").disabled = true;
+  $("pendingDisp").textContent = "";
+}
+
 function addRecord() {
-  let T_s, n;
-  if (state.watchMode === "auto") {
-    if (state.autoT10_s === null) { alert("아직 10회 왕복이 끝나지 않았습니다."); return; }
-    T_s = state.autoT10_s / AUTO_OSC_COUNT; n = AUTO_OSC_COUNT;
-  } else {
-    const div = parseInt($("divN").value, 10);
-    if (state.watchTime_s <= 0) { alert("스톱워치로 왕복 시간을 먼저 측정하세요."); return; }
-    T_s = state.watchTime_s / div; n = div;
-  }
+  const p = state.pendingMeasure;
+  if (!p) { alert("먼저 주기를 측정하세요."); return; }
+  const n = p.nFixed ?? parseInt($("divN").value, 10);
+  const T_s = p.t_s / n;
   state.records.push({
-    src: "sim", L_m: state.length_m, T_s, n,
-    g_mps2: gFromPeriod_mps2(state.length_m, T_s),
+    src: "sim", L_m: p.L_m, T_s, n,
+    g_mps2: gFromPeriod_mps2(p.L_m, T_s),
     gTrue_mps2: currentTrueG(),
   });
   renderRecords();
-  $("recordBtn").disabled = true;
+  clearPending();
 }
 
 function renderRecords() {
@@ -575,12 +652,13 @@ function startSwing() {
   state.simTime_s = 0; state.physRemainder_s = 0;
   state.theta_rad = state.theta0_deg * Math.PI / 180;
   state.omega_radps = 0;
-  state.halfSwings = 0; state.autoT10_s = null;
+  state.oRefSign = null; state.oFirstT_s = null; state.oCount = 0; state.autoT10_s = null;
   state.thetaSamples = [{ t: 0, deg: state.theta0_deg }];
   $("autoTDisp").textContent = "";
   state.watchRunning = false; state.watchTime_s = 0; updateStopwatchDisplay(0);
   state.phase = "swinging";
-  $("swingBtn").disabled = true; $("pauseBtn").disabled = false; $("recordBtn").disabled = true;
+  $("swingBtn").disabled = true; $("pauseBtn").disabled = false;
+  // 미기록 측정(pendingMeasure)은 지우지 않음 — 새 측정이 끝나면 그때 덮어씀
 }
 
 function pauseSwing() {
@@ -593,18 +671,22 @@ function pauseSwing() {
 function resetSim(keepRecords = true) {
   state.phase = "ready"; state.simTime_s = 0; state.physRemainder_s = 0;
   state.theta_rad = state.theta0_deg * Math.PI / 180; state.omega_radps = 0;
-  state.halfSwings = 0; state.autoT10_s = null; state.thetaSamples = [];
+  state.oRefSign = null; state.oFirstT_s = null; state.oCount = 0;
+  state.autoT10_s = null; state.thetaSamples = [];
   state.watchRunning = false; state.watchTime_s = 0;
   updateStopwatchDisplay(0); $("autoTDisp").textContent = "";
   $("swingBtn").disabled = false; $("swingBtn").textContent = "▶ 진동 시작";
-  $("pauseBtn").disabled = true; $("recordBtn").disabled = true;
-  if (!keepRecords) { state.records = []; renderRecords(); }
+  $("pauseBtn").disabled = true;
+  if (!keepRecords) { state.records = []; renderRecords(); clearPending(); }
 }
 
 function toggleWatch() {
   if (state.watchMode !== "manual") return;
   if (!state.watchRunning) { state.watchTime_s = 0; state.watchRunning = true; }
-  else { state.watchRunning = false; $("recordBtn").disabled = false; }
+  else {
+    state.watchRunning = false;
+    setPending({ L_m: state.length_m, t_s: state.watchTime_s, nFixed: null });
+  }
 }
 
 function setWatchMode(mode) {
@@ -613,13 +695,12 @@ function setWatchMode(mode) {
   $("autoTab").classList.toggle("active", mode === "auto");
   $("watchBtn").disabled = mode === "auto";
   $("stopwatchDisp").classList.toggle("auto", mode === "auto");
-  $("modeHint").textContent = mode === "manual"
-    ? "진자가 출발점에 온 순간 스톱워치를 켜고, 선택한 왕복 횟수만큼 지나면 멈추세요. 시간 ÷ 횟수 = 주기 T."
-    : `광센서처럼 ${AUTO_OSC_COUNT}회 왕복 시간을 자동으로 정확히 측정합니다. 수동 측정과 비교해 보세요.`;
-  if (mode === "auto") {
-    updateStopwatchDisplay(state.autoT10_s ?? 0);
-    $("recordBtn").disabled = state.autoT10_s === null;
-  } else { updateStopwatchDisplay(state.watchTime_s); $("recordBtn").disabled = state.watchTime_s <= 0; }
+  $("modeHint").innerHTML = mode === "manual"
+    ? "진자가 <b>최하점(O)을 지나는 순간</b>(높은 신호음) 스톱워치를 켜고, 같은 방향으로 O를 선택한 횟수만큼 지나면 멈추세요. 시간 ÷ 횟수 = 주기 T. (최하점은 속력이 가장 빨라 통과 순간이 명확 → 시간 오차 최소)"
+    : `광센서처럼 최하점 통과 기준으로 ${AUTO_OSC_COUNT}주기 시간을 자동 측정합니다. 수동 측정과 비교해 보세요.`;
+  if (mode === "auto") updateStopwatchDisplay(state.autoT10_s ?? 0);
+  else updateStopwatchDisplay(state.watchTime_s);
+  $("recordBtn").disabled = !state.pendingMeasure;
 }
 
 /* ════════════════════════ 이벤트 연결 ════════════════════════ */
@@ -635,6 +716,9 @@ $("autoTab").addEventListener("click", () => setWatchMode("auto"));
 $("projectorBtn").addEventListener("click", () => document.body.classList.toggle("projector"));
 $("speedSel").addEventListener("change", (e) => { state.speed = parseFloat(e.target.value); });
 $("soundChk").addEventListener("change", (e) => { state.soundOn = e.target.checked; });
+$("divN").addEventListener("change", () => {   // 왕복 횟수 변경 시 미기록 측정 표시 갱신
+  if (state.pendingMeasure && state.pendingMeasure.nFixed === null) setPending(state.pendingMeasure);
+});
 
 $("lenSlider").addEventListener("input", (e) => {
   state.length_m = parseFloat(e.target.value);

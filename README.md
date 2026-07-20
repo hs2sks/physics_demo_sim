@@ -3,12 +3,25 @@
 고등학교 물리 수업(물리학I)용 인터랙티브 시뮬레이션과 실험 분석 도구 모음입니다.
 모두 설치 없이 브라우저에서 실행되며 스마트폰에 대응합니다.
 
-## 🌐 바로 사용하기 (GitHub Pages)
+## 🌐 바로 사용하기
 
-Pages 배포 후: **https://hs2sks.github.io/physics_demo_sim/**
+배포하면 아래 주소로 접속합니다. 둘 중 하나만 설정해도 되고, 둘 다 써도 됩니다.
 
-> 아직 링크가 열리지 않는다면 GitHub 저장소 **Settings → Pages**에서
-> Source를 **Deploy from a branch**, Branch를 **main / (root)**로 설정하세요.
+- **Vercel**: `https://physics-demo-sim.vercel.app` (저장소 import 후 자동 배포)
+- **GitHub Pages**: `https://hs2sks.github.io/physics_demo_sim/`
+
+### Vercel 연동 (권장 — push할 때마다 자동 반영)
+
+1. https://vercel.com 에 GitHub 계정으로 로그인
+2. **Add New… → Project → Import Git Repository → `physics_demo_sim`**
+3. Framework Preset은 **Other**(정적 사이트), 설정은 기본값 그대로 **Deploy**
+4. 이후 `main`에 push하면 Vercel이 자동으로 다시 배포합니다.
+
+> 이 저장소에는 정적 사이트용 `vercel.json`이 포함되어 있어 별도 빌드 설정이 필요 없습니다.
+
+### GitHub Pages (대안)
+
+저장소 **Settings → Pages** → Source **Deploy from a branch** → Branch **main / (root)** → Save
 
 ## 구성
 

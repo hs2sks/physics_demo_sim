@@ -70,10 +70,17 @@
   .graphs figcaption { text-align: center; font-size: 0.9em; color: var(--sub); margin-top: 3px; }
   .graphs canvas { background: #fff; border: 1px solid var(--border); border-radius: 6px; width: 100%; }
 
-  .manual-entry input {
+  #expPanel input[type=number] {
     width: 84px; padding: 6px 8px; font-size: 1em;
     border: 1px solid var(--border); border-radius: 6px;
   }
+  .hintBox {
+    border: 1px dashed var(--border); border-radius: 6px;
+    padding: 4px 8px; margin: 6px 0;
+  }
+  .hintBox summary { font-weight: 600; font-size: 0.95em; }
+  .calc { padding: 6px 0 2px; }
+  .calc .row { row-gap: 6px; }
 
   details { margin-top: 4px; }
   summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
@@ -84,6 +91,19 @@
   body.projector { font-size: 19px; }
   body.projector .stopwatch { font-size: 2.6em; }
   body.projector button { padding: 12px 18px; }
+
+  /* 스마트폰 세로 화면 — 실험 현장용 레이아웃 */
+  @media (max-width: 640px) {
+    body { font-size: 16px; padding: 8px; }
+    .layout { flex-direction: column; }
+    .side-col { order: -1; }              /* 실험 도구(스톱워치·기록)를 위로 */
+    .sim-col, .side-col { flex: 1 1 100%; }
+    button { padding: 12px 16px; }        /* 손가락 터치 크기 */
+    input[type=number], select { font-size: 16px; }  /* iOS 자동 확대 방지 */
+    .stopwatch { font-size: 2.6em; padding: 12px 0; }
+    #watchBtn { padding: 18px 16px; font-size: 1.1em; }
+    th, td { padding: 4px 3px; font-size: 0.85em; }
+  }
 </style>
 </head>
 <body>
@@ -183,6 +203,7 @@
         <b>측정 기록</b>
         <span>
           <button id="recordBtn" disabled>＋ 기록 추가</button>
+          <button id="csvBtn">⬇ CSV 저장</button>
           <button id="clearBtn">기록 지우기</button>
         </span>
       </div>
@@ -195,15 +216,76 @@
           <tr><td colspan="4">평균 g</td><td id="avgG">–</td><td id="avgErr">–</td></tr>
         </tfoot>
       </table>
-      <div class="row manual-entry" style="margin-top:8px">
-        <b style="font-size:0.92em">🖐 실제 실험값 입력:</b>
-        <input type="number" id="expH" placeholder="h (m)" step="0.01" min="0.01">
-        <input type="number" id="expT" placeholder="t (s)" step="0.001" min="0.001">
-        <button id="expAddBtn">추가</button>
-      </div>
-      <p class="hint">교실·계단 등에서 실제로 낙하 실험을 한 뒤, 잰 높이와 시간을 입력하면
-      g를 계산해 시뮬레이션 측정과 같은 표에서 비교할 수 있습니다. (지구 9.8 m/s² 기준 오차 표시)</p>
       <p class="hint" id="mysteryHint" hidden>미지의 행성 X: 참값이 숨겨져 있습니다. 평균 g를 구한 뒤 <button id="revealBtn" style="font-size:0.9em;padding:2px 8px">정답 공개</button></p>
+    </div>
+
+    <!-- ═════ 실제 실험 (학교 건물) ═════ -->
+    <div class="panel" id="expPanel">
+      <b>🖐 실제 실험 — 학교 건물에서 g 측정</b>
+      <div class="row" style="margin:8px 0 6px">
+        <label><input type="radio" name="place" value="indoor" checked> 🏠 건물 내부</label>
+        <label><input type="radio" name="place" value="outdoor"> 🏢 건물 외부</label>
+      </div>
+
+      <div id="indoorBox">
+        <div class="row">
+          <label for="inH">줄자로 잰 높이</label>
+          <input type="number" id="inH" step="0.01" min="0.01" placeholder="h (m)">
+          <button id="applyInH">높이 확정</button>
+        </div>
+        <p class="hint">계단·난간에서 바닥까지 줄자로 직접 측정하세요. 물체를 놓는 손의 위치가 기준! 안전에 유의하세요.</p>
+      </div>
+
+      <div id="outdoorBox" hidden>
+        <p class="hint" style="margin-bottom:6px">건물 밖에서는 줄자가 닿지 않습니다.
+        <b>힌트를 열기 전에, 높이를 잴 방법을 모둠에서 먼저 토의해 보세요.</b>
+        방법을 정했다면 힌트의 계산 도우미로 확인하면 됩니다.</p>
+        <details class="hintBox"><summary>힌트 ① 층수 이용하기</summary>
+          <div class="calc">
+            <div class="row">한 층 높이 <input type="number" id="floorH" value="3.0" step="0.1"> m ×
+            층수 <input type="number" id="floorN" step="0.5" min="0.5" placeholder="층">
+            <button id="applyFloor">계산·확정</button></div>
+            <p class="hint">계단 한 층 높이를 줄자로 직접 재면 "한 층 높이"의 근거가 생깁니다. 창턱에서 떨어뜨리면 창턱 높이 보정도 잊지 마세요.</p>
+          </div>
+        </details>
+        <details class="hintBox"><summary>힌트 ② 삼각법 (올려본각 측정)</summary>
+          <div class="calc">
+            <div class="row">수평거리 d <input id="triD" type="number" step="0.1" placeholder="m"> m,
+            올려본각 θ <input id="triA" type="number" step="0.5" placeholder="°" max="89"> °,
+            눈높이 <input id="triE" type="number" value="1.50" step="0.05"> m
+            <button id="applyTri">계산·확정</button></div>
+            <p class="hint">h = d·tanθ + 눈높이. 스마트폰 각도계 앱이나 각도기를 이용하세요.</p>
+          </div>
+        </details>
+        <details class="hintBox"><summary>힌트 ③ 사진 비례 이용하기</summary>
+          <div class="calc">
+            <div class="row">기준 물체 실제 길이 <input id="phL" type="number" step="0.01" placeholder="m"> m,
+            사진 속 기준 <input id="phA" type="number" step="1" placeholder="px"> px,
+            사진 속 낙하 높이 <input id="phB" type="number" step="1" placeholder="px"> px
+            <button id="applyPhoto">계산·확정</button></div>
+            <p class="hint">낙하 지점 옆에 길이를 아는 물체(1 m 자, 키를 아는 친구)를 세우고 한 장에 찍은 뒤, 사진에서 픽셀 길이를 비교하세요.</p>
+          </div>
+        </details>
+      </div>
+
+      <p style="margin:8px 0"><b>실험 높이 h:</b> <span id="expHDisp" style="color:var(--accent)">아직 미정</span></p>
+
+      <div class="row">
+        <label for="trialT">낙하 시간 t</label>
+        <input type="number" id="trialT" step="0.001" min="0.001" placeholder="s">
+        <button id="addTrialBtn">＋ 측정 추가</button>
+        <button id="fromWatchBtn" title="위 스톱워치로 잰 값을 가져옵니다">⏱ 스톱워치 값</button>
+      </div>
+      <p class="hint">같은 높이에서 <b>여러 번(3회 이상 권장)</b> 떨어뜨려 시간을 재세요. 평균으로 g를 계산해야 오차가 줄어듭니다.
+      위 스톱워치를 실제 실험용으로 써도 됩니다 (잰 뒤 "⏱ 스톱워치 값" 클릭).</p>
+      <p id="trialList" class="hint" style="font-variant-numeric:tabular-nums"></p>
+      <div class="row" style="justify-content:space-between">
+        <span id="trialStats" style="font-variant-numeric:tabular-nums"></span>
+        <span>
+          <button id="clearTrialsBtn">측정 지우기</button>
+          <button id="expToTableBtn" class="primary" disabled>기록표에 추가</button>
+        </span>
+      </div>
     </div>
 
   </div>
@@ -237,8 +319,9 @@ const state = {
   watchMode: "manual",       // manual | auto
   watchRunning: false,
   watchTime_s: 0,            // 수동 스톱워치 누적(시뮬레이션 시간 기준)
-  records: [],               // {h_m, t_s, g_mps2, gTrue_mps2}
+  records: [],               // {src, h_m, t_s, n, g_mps2, gTrue_mps2}
   mysteryRevealed: false,
+  exp: { place: "indoor", h_m: null, trials_s: [] },   // 실제 실험 세션
 };
 
 /* ════════════════════════ 물리 (렌더링과 분리) ════════════════════════ */
@@ -448,7 +531,7 @@ function addRecord() {
     : state.watchTime_s;
   if (t <= 0) { alert("스톱워치로 낙하 시간을 먼저 측정하세요."); return; }
   state.records.push({
-    src: "sim", h_m: state.height_m, t_s: t,
+    src: "sim", h_m: state.height_m, t_s: t, n: 1,
     g_mps2: gFromMeasurement_mps2(state.height_m, t),
     gTrue_mps2: currentTrueG(),
   });
@@ -456,16 +539,61 @@ function addRecord() {
   $("recordBtn").disabled = true;
 }
 
-function addExperimentRecord() {
-  const h = parseFloat($("expH").value), t = parseFloat($("expT").value);
-  if (!(h > 0) || !(t > 0)) { alert("실험에서 잰 높이 h(m)와 시간 t(s)를 모두 입력하세요."); return; }
+/* ── 실제 실험 (학교 건물) ── */
+function setExpHeight(h_m, label) {
+  if (!(h_m > 0)) { alert("올바른 값을 입력하세요."); return; }
+  state.exp.h_m = h_m;
+  $("expHDisp").textContent = `${h_m.toFixed(2)} m` + (label ? ` (${label})` : "");
+  renderExpTrials();
+}
+
+function addTrial(t_s) {
+  if (!(t_s > 0)) { alert("낙하 시간 t(s)를 입력하세요."); return; }
+  state.exp.trials_s.push(t_s);
+  $("trialT").value = "";
+  renderExpTrials();
+}
+
+function meanOf(arr) { return arr.reduce((s, v) => s + v, 0) / arr.length; }
+
+function renderExpTrials() {
+  const tr = state.exp.trials_s;
+  $("trialList").textContent = tr.map((t, i) => `t${i + 1} = ${t.toFixed(3)} s`).join(",  ");
+  $("trialStats").innerHTML = tr.length
+    ? `평균 t = <b>${meanOf(tr).toFixed(3)} s</b> (${tr.length}회)` : "";
+  $("expToTableBtn").disabled = !(state.exp.h_m && tr.length);
+}
+
+function expToTable() {
+  const h = state.exp.h_m, tr = state.exp.trials_s;
+  if (!h || !tr.length) return;
+  const tMean = meanOf(tr);
   state.records.push({
-    src: "exp", h_m: h, t_s: t,
-    g_mps2: gFromMeasurement_mps2(h, t),
+    src: "exp", h_m: h, t_s: tMean, n: tr.length,
+    g_mps2: gFromMeasurement_mps2(h, tMean),
     gTrue_mps2: GRAVITY_PRESETS_MPS2.earth,   // 실제 실험은 지구 기준
   });
-  $("expH").value = ""; $("expT").value = "";
-  renderRecords();
+  state.exp.trials_s = [];
+  renderExpTrials(); renderRecords();
+}
+
+function exportCSV() {
+  if (!state.records.length) { alert("저장할 기록이 없습니다."); return; }
+  const hideTruth = state.gravityKey === "mystery" && !state.mysteryRevealed;
+  const rows = [["번호", "구분", "h(m)", "t(s)", "측정횟수", "g(m/s2)", "상대오차(%)"]];
+  state.records.forEach((r, i) => {
+    const hide = hideTruth && r.src !== "exp";
+    const err = Math.abs(r.g_mps2 - r.gTrue_mps2) / r.gTrue_mps2 * 100;
+    rows.push([i + 1, r.src === "exp" ? "실험" : "시뮬레이션", r.h_m.toFixed(2),
+      r.t_s.toFixed(3), r.n, r.g_mps2.toFixed(3), hide ? "?" : err.toFixed(1)]);
+  });
+  const avg = meanOf(state.records.map(r => r.g_mps2));
+  rows.push(["", "평균", "", "", "", avg.toFixed(3), ""]);
+  const csv = "﻿" + rows.map(r => r.join(",")).join("\r\n");  // BOM: 엑셀 한글 호환
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = "자유낙하_g측정_기록.csv";
+  a.click(); URL.revokeObjectURL(a.href);
 }
 
 function renderRecords() {
@@ -477,7 +605,7 @@ function renderRecords() {
     const hide = hideTruth && r.src !== "exp";   // 실험값은 지구 기준이라 항상 오차 공개
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${i + 1}</td><td>${r.src === "exp" ? "🖐 실험" : "💻 시뮬"}</td>
-      <td>${r.h_m.toFixed(2)}</td><td>${r.t_s.toFixed(3)}</td>
+      <td>${r.h_m.toFixed(2)}</td><td>${r.t_s.toFixed(3)}${r.n > 1 ? `<br><span style="color:var(--sub);font-size:0.85em">(${r.n}회 평균)</span>` : ""}</td>
       <td>${r.g_mps2.toFixed(2)}</td><td>${hide ? "?" : err.toFixed(1) + " %"}</td>`;
     tbody.appendChild(tr);
   });
@@ -556,7 +684,36 @@ $("autoTab").addEventListener("click", () => setWatchMode("auto"));
 $("projectorBtn").addEventListener("click", () => document.body.classList.toggle("projector"));
 $("speedSel").addEventListener("change", (e) => { state.speed = parseFloat(e.target.value); });
 $("soundChk").addEventListener("change", (e) => { state.soundOn = e.target.checked; });
-$("expAddBtn").addEventListener("click", addExperimentRecord);
+$("csvBtn").addEventListener("click", exportCSV);
+
+/* 실제 실험 패널 */
+document.querySelectorAll('input[name="place"]').forEach((r) =>
+  r.addEventListener("change", (e) => {
+    state.exp.place = e.target.value;
+    $("indoorBox").hidden = state.exp.place !== "indoor";
+    $("outdoorBox").hidden = state.exp.place !== "outdoor";
+  }));
+$("applyInH").addEventListener("click", () =>
+  setExpHeight(parseFloat($("inH").value), "줄자"));
+$("applyFloor").addEventListener("click", () =>
+  setExpHeight(parseFloat($("floorH").value) * parseFloat($("floorN").value), "층수법"));
+$("applyTri").addEventListener("click", () => {
+  const d = parseFloat($("triD").value), a_deg = parseFloat($("triA").value), e = parseFloat($("triE").value);
+  if (!(d > 0) || !(a_deg > 0) || a_deg >= 90) { alert("수평거리와 올려본각(0~89°)을 입력하세요."); return; }
+  setExpHeight(d * Math.tan(a_deg * Math.PI / 180) + (e > 0 ? e : 0), "삼각법");
+});
+$("applyPhoto").addEventListener("click", () => {
+  const L = parseFloat($("phL").value), a = parseFloat($("phA").value), b = parseFloat($("phB").value);
+  if (!(L > 0) || !(a > 0) || !(b > 0)) { alert("기준 길이와 사진 픽셀 값을 모두 입력하세요."); return; }
+  setExpHeight(L * b / a, "사진 비례");
+});
+$("addTrialBtn").addEventListener("click", () => addTrial(parseFloat($("trialT").value)));
+$("fromWatchBtn").addEventListener("click", () => {
+  if (state.watchTime_s <= 0) { alert("먼저 스톱워치로 시간을 재세요."); return; }
+  $("trialT").value = state.watchTime_s.toFixed(3);
+});
+$("clearTrialsBtn").addEventListener("click", () => { state.exp.trials_s = []; renderExpTrials(); });
+$("expToTableBtn").addEventListener("click", expToTable);
 
 $("heightSlider").addEventListener("input", (e) => {
   state.height_m = parseFloat(e.target.value);

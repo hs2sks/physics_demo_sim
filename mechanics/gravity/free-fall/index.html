@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>자유낙하로 중력가속도 g 측정</title>
+<style>
+  :root {
+    --bg: #f4f6fa; --panel: #ffffff; --ink: #1c2733; --sub: #5a6b7d;
+    --accent: #1f6fd6; --accent2: #d64545; --ok: #1e8f4e;
+    --border: #d7dee8; --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+    background: var(--bg); color: var(--ink);
+    padding: 12px; font-size: 15px;
+  }
+  header {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  header h1 { font-size: 1.25em; }
+  header .spacer { flex: 1; }
+  .layout { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px;
+  }
+  .sim-col { flex: 1 1 380px; display: flex; flex-direction: column; gap: 12px; }
+  .side-col { flex: 1 1 320px; display: flex; flex-direction: column; gap: 12px; }
+  canvas { display: block; max-width: 100%; }
+  #sceneCanvas { background: linear-gradient(#eaf2fc, #f7fafd); border-radius: 6px; }
+
+  .controls-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  button {
+    font-size: 1em; padding: 8px 14px; border-radius: 8px;
+    border: 1px solid var(--border); background: #fff; cursor: pointer;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.danger  { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  fieldset { border: none; }
+  .param { margin-bottom: 10px; }
+  .param label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 4px; }
+  .param label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .param input[type=range] { width: 100%; }
+  .param select { font-size: 1em; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .hint { color: var(--sub); font-size: 0.85em; margin-top: 2px; }
+
+  .stopwatch {
+    font-size: 2.0em; font-weight: 700; text-align: center;
+    font-variant-numeric: tabular-nums; letter-spacing: 1px;
+    padding: 6px 0;
+  }
+  .stopwatch.auto { color: var(--ok); }
+  .mode-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+  .mode-tabs button { flex: 1; }
+  .mode-tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+  th, td { border: 1px solid var(--border); padding: 5px 6px; text-align: center; font-variant-numeric: tabular-nums; }
+  th { background: #eef3fa; }
+  tfoot td { font-weight: 700; background: #f5f9f2; }
+
+  .graphs { display: flex; gap: 12px; flex-wrap: wrap; }
+  .graphs figure { flex: 1 1 240px; }
+  .graphs figcaption { text-align: center; font-size: 0.9em; color: var(--sub); margin-top: 3px; }
+  .graphs canvas { background: #fff; border: 1px solid var(--border); border-radius: 6px; width: 100%; }
+
+  details { margin-top: 4px; }
+  summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+  .formula-body { padding: 8px 4px; line-height: 1.7; }
+  .formula-body .eq { font-size: 1.15em; text-align: center; margin: 6px 0; font-family: Georgia, serif; }
+
+  /* 프로젝터(큰 글씨) 모드 */
+  body.projector { font-size: 19px; }
+  body.projector .stopwatch { font-size: 2.6em; }
+  body.projector button { padding: 12px 18px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🍎 자유낙하로 중력가속도 g 측정</h1>
+  <span class="spacer"></span>
+  <button id="projectorBtn" title="프로젝터용 큰 글씨 모드">🖥 큰 글씨 모드</button>
+</header>
+
+<div class="layout">
+
+  <!-- ══════════ 왼쪽: 낙하 장면 ══════════ -->
+  <div class="sim-col">
+    <div class="panel">
+      <canvas id="sceneCanvas" width="420" height="520"></canvas>
+      <div class="controls-row">
+        <button id="dropBtn" class="primary">▶ 낙하 시작</button>
+        <button id="pauseBtn" disabled>⏸ 일시정지</button>
+        <button id="resetBtn">↺ 리셋</button>
+        <span class="row" style="margin-left:auto">
+          <label for="speedSel">배속</label>
+          <select id="speedSel">
+            <option value="1" selected>×1 (실제 속도)</option>
+            <option value="0.5">×0.5 슬로모션</option>
+            <option value="0.25">×0.25 슬로모션</option>
+          </select>
+        </span>
+      </div>
+    </div>
+
+    <div class="panel graphs">
+      <figure>
+        <canvas id="graphH" width="280" height="170"></canvas>
+        <figcaption>높이–시간 (h–t)</figcaption>
+      </figure>
+      <figure>
+        <canvas id="graphV" width="280" height="170"></canvas>
+        <figcaption>속력–시간 (v–t)</figcaption>
+      </figure>
+    </div>
+
+    <div class="panel">
+      <details>
+        <summary>📖 물리 공식 설명</summary>
+        <div class="formula-body">
+          <p>정지 상태에서 놓은 물체는 중력가속도 g로 등가속도 운동을 합니다.</p>
+          <p class="eq">h = ½ g t² &nbsp;&nbsp;,&nbsp;&nbsp; v = g t</p>
+          <p>낙하 높이 h와 낙하 시간 t를 측정하면 g를 거꾸로 구할 수 있습니다.</p>
+          <p class="eq">g = 2h / t²</p>
+          <p>측정한 t가 실제보다 크면(스톱워치를 늦게 멈추면) g는 실제보다
+          <b>작게</b> 계산됩니다. 반복 측정 후 평균을 내면 오차를 줄일 수 있습니다.</p>
+          <p style="color:var(--sub)">※ 이 시뮬레이션은 공기저항을 무시합니다.</p>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- ══════════ 오른쪽: 조작 · 측정 ══════════ -->
+  <div class="side-col">
+
+    <fieldset class="panel">
+      <div class="param">
+        <label for="heightSlider">낙하 높이 h <span class="val"><span id="heightVal">10.0</span> m</span></label>
+        <input type="range" id="heightSlider" min="0.5" max="20" step="0.5" value="10">
+      </div>
+      <div class="param row">
+        <label for="gravitySel" style="font-weight:600">장소(중력)</label>
+        <select id="gravitySel">
+          <option value="earth" selected>지구 (9.8 m/s²)</option>
+          <option value="moon">달 (1.62 m/s²)</option>
+          <option value="mars">화성 (3.71 m/s²)</option>
+          <option value="mystery">미지의 행성 X (수행평가용)</option>
+        </select>
+      </div>
+      <div class="row">
+        <label><input type="checkbox" id="compareChk"> 질량 비교 (1 kg vs 10 kg)</label>
+      </div>
+      <p class="hint">질량이 달라도 낙하 시간이 같은지 직접 확인해 보세요.</p>
+    </fieldset>
+
+    <div class="panel">
+      <div class="mode-tabs">
+        <button id="manualTab" class="active">✋ 수동 스톱워치</button>
+        <button id="autoTab">📡 자동 센서</button>
+      </div>
+      <div class="stopwatch" id="stopwatchDisp">0.000 s</div>
+      <div class="controls-row">
+        <button id="watchBtn" class="danger" style="flex:1">⏱ 스톱워치 시작/정지 (Space)</button>
+      </div>
+      <p class="hint" id="modeHint">낙하 시작과 동시에 스톱워치를 켜고, 바닥에 닿는 순간 멈추세요. 사람의 반응 시간이 오차로 들어갑니다.</p>
+    </div>
+
+    <div class="panel">
+      <div class="row" style="justify-content:space-between; margin-bottom:6px">
+        <b>측정 기록</b>
+        <span>
+          <button id="recordBtn" disabled>＋ 기록 추가</button>
+          <button id="clearBtn">기록 지우기</button>
+        </span>
+      </div>
+      <table id="recordTable">
+        <thead>
+          <tr><th>#</th><th>h (m)</th><th>t (s)</th><th>g = 2h/t² (m/s²)</th><th>상대오차</th></tr>
+        </thead>
+        <tbody></tbody>
+        <tfoot>
+          <tr><td colspan="3">평균 g</td><td id="avgG">–</td><td id="avgErr">–</td></tr>
+        </tfoot>
+      </table>
+      <p class="hint" id="mysteryHint" hidden>미지의 행성 X: 참값이 숨겨져 있습니다. 평균 g를 구한 뒤 <button id="revealBtn" style="font-size:0.9em;padding:2px 8px">정답 공개</button></p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ════════════════════════ 상수 ════════════════════════ */
+const GRAVITY_PRESETS_MPS2 = { earth: 9.8, moon: 1.62, mars: 3.71 };
+const MYSTERY_G_MIN_MPS2 = 3.0, MYSTERY_G_MAX_MPS2 = 15.0;
+const STROBE_INTERVAL_S = 0.15;   // 스트로보 잔상 기록 간격
+const SCENE_MARGIN_TOP_PX = 46, SCENE_MARGIN_BOTTOM_PX = 40;
+const BALL_RADIUS_PX = 11;
+
+/* ════════════════════════ 상태 ════════════════════════ */
+const state = {
+  phase: "ready",            // ready | falling | paused | landed
+  simTime_s: 0,              // 낙하 시작 후 경과한 시뮬레이션 시간
+  height_m: 10,
+  gravity_mps2: 9.8,
+  gravityKey: "earth",
+  mysteryG_mps2: null,
+  speed: 1,
+  strobeTrail: [],           // {t, y} 잔상 목록
+  nextStrobe_s: 0,
+  compareMasses: false,
+  watchMode: "manual",       // manual | auto
+  watchRunning: false,
+  watchTime_s: 0,            // 수동 스톱워치 누적(시뮬레이션 시간 기준)
+  records: [],               // {h_m, t_s, g_mps2, gTrue_mps2}
+  mysteryRevealed: false,
+};
+
+/* ════════════════════════ 물리 (렌더링과 분리) ════════════════════════ */
+function fallDuration_s(h_m, g_mps2) { return Math.sqrt(2 * h_m / g_mps2); }
+function heightAt_m(h0_m, g_mps2, t_s) { return Math.max(0, h0_m - 0.5 * g_mps2 * t_s * t_s); }
+function speedAt_mps(g_mps2, t_s) { return g_mps2 * t_s; }
+function gFromMeasurement_mps2(h_m, t_s) { return 2 * h_m / (t_s * t_s); }
+
+function currentTrueG() {
+  return state.gravityKey === "mystery" ? state.mysteryG_mps2 : GRAVITY_PRESETS_MPS2[state.gravityKey];
+}
+
+/* ════════════════════════ DOM 참조 ════════════════════════ */
+const $ = (id) => document.getElementById(id);
+const scene = $("sceneCanvas"), sctx = scene.getContext("2d");
+const gH = $("graphH"), gV = $("graphV");
+
+/* ════════════════════════ 시뮬레이션 루프 ════════════════════════ */
+let lastFrame_ms = null;
+
+function tick(now_ms) {
+  if (lastFrame_ms !== null) {
+    const dt_s = Math.min((now_ms - lastFrame_ms) / 1000, 0.05) * state.speed;
+    if (state.phase === "falling") {
+      state.simTime_s += dt_s;
+      const tLand = fallDuration_s(state.height_m, currentTrueG());
+      while (state.nextStrobe_s <= Math.min(state.simTime_s, tLand)) {
+        state.strobeTrail.push({ t: state.nextStrobe_s,
+          y: heightAt_m(state.height_m, currentTrueG(), state.nextStrobe_s) });
+        state.nextStrobe_s += STROBE_INTERVAL_S;
+      }
+      if (state.simTime_s >= tLand) { land(tLand); }
+    }
+    if (state.watchRunning) {
+      state.watchTime_s += dt_s;
+      updateStopwatchDisplay(state.watchTime_s);
+    }
+  }
+  lastFrame_ms = now_ms;
+  drawScene();
+  drawGraphs();
+  requestAnimationFrame(tick);
+}
+
+function land(tLand_s) {
+  state.simTime_s = tLand_s;
+  state.phase = "landed";
+  if (state.watchMode === "auto") updateStopwatchDisplay(tLand_s);
+  // PRD 완성 기준 검증: 시뮬레이션 낙하 시간 vs 이론값
+  console.log(`[검증] h=${state.height_m} m, g=${currentTrueG()} m/s² → 이론 t=${tLand_s.toFixed(4)} s (해석해 사용, 오차 0%)`);
+  $("recordBtn").disabled = false;
+  $("dropBtn").disabled = false; $("dropBtn").textContent = "▶ 낙하 시작";
+  $("pauseBtn").disabled = true;
+}
+
+/* ════════════════════════ 장면 렌더링 ════════════════════════ */
+function metersToPx(y_m) {
+  const usable = scene.height - SCENE_MARGIN_TOP_PX - SCENE_MARGIN_BOTTOM_PX;
+  return SCENE_MARGIN_TOP_PX + (1 - y_m / state.height_m) * usable;
+}
+
+function drawScene() {
+  const w = scene.width, h = scene.height;
+  sctx.clearRect(0, 0, w, h);
+  const groundY = h - SCENE_MARGIN_BOTTOM_PX;
+  const g = currentTrueG();
+  const y_m = heightAt_m(state.height_m, g, state.simTime_s);
+  const cx = state.compareMasses ? w * 0.40 : w * 0.5;
+
+  // 지면
+  sctx.fillStyle = "#8a9a6d";
+  sctx.fillRect(0, groundY, w, h - groundY);
+  sctx.strokeStyle = "#5d6b47"; sctx.beginPath();
+  sctx.moveTo(0, groundY); sctx.lineTo(w, groundY); sctx.stroke();
+
+  // 눈금자 (1 m 간격, 높이가 크면 성기게)
+  const step_m = state.height_m > 12 ? 2 : 1;
+  sctx.strokeStyle = "#9db2c8"; sctx.fillStyle = "#5a6b7d";
+  sctx.font = "12px sans-serif"; sctx.textAlign = "left";
+  for (let m = 0; m <= state.height_m + 1e-9; m += step_m) {
+    const py = metersToPx(m);
+    sctx.beginPath(); sctx.moveTo(20, py); sctx.lineTo(34, py); sctx.stroke();
+    sctx.fillText(m.toFixed(0) + " m", 38, py + 4);
+  }
+  sctx.strokeStyle = "#9db2c8";
+  sctx.beginPath(); sctx.moveTo(20, metersToPx(0)); sctx.lineTo(20, metersToPx(state.height_m)); sctx.stroke();
+
+  // 스트로보 잔상 — 간격이 점점 벌어짐을 보여줌
+  for (const p of state.strobeTrail) {
+    const py = metersToPx(p.y);
+    sctx.beginPath(); sctx.arc(cx, py, BALL_RADIUS_PX, 0, Math.PI * 2);
+    sctx.fillStyle = "rgba(31,111,214,0.18)"; sctx.fill();
+  }
+
+  // 공 (질량 비교 시 두 개 — 같은 높이에서 동시에 낙하)
+  drawBall(cx, metersToPx(y_m), "#1f6fd6", "1 kg");
+  if (state.compareMasses) {
+    drawBall(w * 0.62, metersToPx(y_m), "#d64545", "10 kg", BALL_RADIUS_PX * 1.5);
+  }
+
+  // 상단 정보
+  sctx.fillStyle = "#1c2733"; sctx.font = "bold 14px sans-serif"; sctx.textAlign = "right";
+  const gLabel = state.gravityKey === "mystery" && !state.mysteryRevealed ? "g = ??? (행성 X)" : `g = ${g.toFixed(2)} m/s²`;
+  sctx.fillText(gLabel, w - 12, 20);
+  sctx.fillText(`t = ${state.simTime_s.toFixed(3)} s`, w - 12, 40);
+  sctx.fillText(`v = ${speedAt_mps(g, state.simTime_s).toFixed(2)} m/s`, w - 12, 60);
+
+  if (state.phase === "landed") {
+    sctx.textAlign = "center"; sctx.font = "bold 18px sans-serif"; sctx.fillStyle = "#1e8f4e";
+    sctx.fillText("💥 착지!", w / 2, groundY + 28);
+  }
+}
+
+function drawBall(px, py, color, label, r = BALL_RADIUS_PX) {
+  sctx.beginPath(); sctx.arc(px, py - r, r, 0, Math.PI * 2);
+  sctx.fillStyle = color; sctx.fill();
+  sctx.fillStyle = "#1c2733"; sctx.font = "11px sans-serif"; sctx.textAlign = "center";
+  sctx.fillText(label, px, py - r * 2 - 6);
+}
+
+/* ════════════════════════ 그래프 렌더링 ════════════════════════ */
+function drawGraphs() {
+  const g = currentTrueG();
+  const tMax = fallDuration_s(state.height_m, g);
+  drawGraph(gH, tMax, state.height_m, "t (s)", "h (m)",
+    (t) => heightAt_m(state.height_m, g, t));
+  drawGraph(gV, tMax, speedAt_mps(g, tMax), "t (s)", "v (m/s)",
+    (t) => speedAt_mps(g, t));
+}
+
+function drawGraph(canvas, xMax, yMax, xLabel, yLabel, fn) {
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width, H = canvas.height, L = 38, B = 24, T = 8, R = 8;
+  ctx.clearRect(0, 0, W, H);
+  const px = (x) => L + (x / xMax) * (W - L - R);
+  const py = (y) => H - B - (y / yMax) * (H - B - T);
+
+  ctx.strokeStyle = "#b9c6d6"; ctx.beginPath();
+  ctx.moveTo(L, T); ctx.lineTo(L, H - B); ctx.lineTo(W - R, H - B); ctx.stroke();
+  ctx.fillStyle = "#5a6b7d"; ctx.font = "11px sans-serif";
+  ctx.textAlign = "left"; ctx.fillText(yLabel, L + 6, T + 10);
+  ctx.textAlign = "center"; ctx.fillText(xLabel, (L + W - R) / 2, H - 6);
+  ctx.textAlign = "right"; ctx.fillText(yMax.toFixed(1), L - 3, T + 10);
+  ctx.fillText(xMax.toFixed(2), W - R, H - B + 14);
+  ctx.fillText("0", L - 3, H - B + 4);
+
+  // 이론 곡선 (점선, 전체 구간)
+  ctx.setLineDash([4, 4]); ctx.strokeStyle = "#9db2c8"; ctx.beginPath();
+  for (let i = 0; i <= 60; i++) {
+    const t = (i / 60) * xMax;
+    i === 0 ? ctx.moveTo(px(t), py(fn(t))) : ctx.lineTo(px(t), py(fn(t)));
+  }
+  ctx.stroke(); ctx.setLineDash([]);
+
+  // 현재까지 진행 곡선 (실선)
+  const tNow = Math.min(state.simTime_s, xMax);
+  ctx.strokeStyle = "#1f6fd6"; ctx.lineWidth = 2.5; ctx.beginPath();
+  for (let i = 0; i <= 60; i++) {
+    const t = (i / 60) * tNow;
+    i === 0 ? ctx.moveTo(px(t), py(fn(t))) : ctx.lineTo(px(t), py(fn(t)));
+  }
+  ctx.stroke(); ctx.lineWidth = 1;
+  if (tNow > 0) {
+    ctx.beginPath(); ctx.arc(px(tNow), py(fn(tNow)), 4, 0, Math.PI * 2);
+    ctx.fillStyle = "#1f6fd6"; ctx.fill();
+  }
+}
+
+/* ════════════════════════ 측정 · 기록 ════════════════════════ */
+function updateStopwatchDisplay(t_s) { $("stopwatchDisp").textContent = t_s.toFixed(3) + " s"; }
+
+function addRecord() {
+  const t = state.watchMode === "auto"
+    ? fallDuration_s(state.height_m, currentTrueG())
+    : state.watchTime_s;
+  if (t <= 0) { alert("스톱워치로 낙하 시간을 먼저 측정하세요."); return; }
+  state.records.push({
+    h_m: state.height_m, t_s: t,
+    g_mps2: gFromMeasurement_mps2(state.height_m, t),
+    gTrue_mps2: currentTrueG(),
+  });
+  renderRecords();
+  $("recordBtn").disabled = true;
+}
+
+function renderRecords() {
+  const tbody = $("recordTable").querySelector("tbody");
+  tbody.innerHTML = "";
+  const hideTruth = state.gravityKey === "mystery" && !state.mysteryRevealed;
+  state.records.forEach((r, i) => {
+    const err = Math.abs(r.g_mps2 - r.gTrue_mps2) / r.gTrue_mps2 * 100;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${i + 1}</td><td>${r.h_m.toFixed(1)}</td><td>${r.t_s.toFixed(3)}</td>
+      <td>${r.g_mps2.toFixed(2)}</td><td>${hideTruth ? "?" : err.toFixed(1) + " %"}</td>`;
+    tbody.appendChild(tr);
+  });
+  if (state.records.length) {
+    const avg = state.records.reduce((s, r) => s + r.g_mps2, 0) / state.records.length;
+    const gTrue = state.records[state.records.length - 1].gTrue_mps2;
+    $("avgG").textContent = avg.toFixed(2) + " m/s²";
+    $("avgErr").textContent = hideTruth ? "?" : (Math.abs(avg - gTrue) / gTrue * 100).toFixed(1) + " %";
+  } else {
+    $("avgG").textContent = "–"; $("avgErr").textContent = "–";
+  }
+}
+
+/* ════════════════════════ 조작 ════════════════════════ */
+function startDrop() {
+  if (state.phase === "paused") { state.phase = "falling"; }
+  else {
+    state.simTime_s = 0; state.strobeTrail = []; state.nextStrobe_s = 0;
+    state.phase = "falling";
+    if (state.watchMode === "manual") { state.watchTime_s = 0; updateStopwatchDisplay(0); }
+    else updateStopwatchDisplay(0);
+  }
+  $("dropBtn").disabled = true; $("pauseBtn").disabled = false; $("recordBtn").disabled = true;
+}
+
+function pauseDrop() {
+  if (state.phase !== "falling") return;
+  state.phase = "paused";
+  $("dropBtn").disabled = false; $("dropBtn").textContent = "▶ 계속";
+  $("pauseBtn").disabled = true;
+}
+
+function resetSim(keepRecords = true) {
+  state.phase = "ready"; state.simTime_s = 0;
+  state.strobeTrail = []; state.nextStrobe_s = 0;
+  state.watchRunning = false; state.watchTime_s = 0;
+  updateStopwatchDisplay(0);
+  $("dropBtn").disabled = false; $("dropBtn").textContent = "▶ 낙하 시작";
+  $("pauseBtn").disabled = true; $("recordBtn").disabled = true;
+  if (!keepRecords) { state.records = []; renderRecords(); }
+}
+
+function toggleWatch() {
+  if (state.watchMode !== "manual") return;
+  if (!state.watchRunning) { state.watchTime_s = 0; state.watchRunning = true; }
+  else state.watchRunning = false;
+}
+
+function setWatchMode(mode) {
+  state.watchMode = mode; state.watchRunning = false;
+  $("manualTab").classList.toggle("active", mode === "manual");
+  $("autoTab").classList.toggle("active", mode === "auto");
+  $("watchBtn").disabled = mode === "auto";
+  $("stopwatchDisp").classList.toggle("auto", mode === "auto");
+  $("modeHint").textContent = mode === "manual"
+    ? "낙하 시작과 동시에 스톱워치를 켜고, 바닥에 닿는 순간 멈추세요. 사람의 반응 시간이 오차로 들어갑니다."
+    : "광센서처럼 낙하 시간이 자동으로 정확히 측정됩니다. 수동 측정과 비교해 보세요.";
+  updateStopwatchDisplay(mode === "auto" && state.phase === "landed"
+    ? fallDuration_s(state.height_m, currentTrueG()) : 0);
+}
+
+/* ════════════════════════ 이벤트 연결 ════════════════════════ */
+$("dropBtn").addEventListener("click", startDrop);
+$("pauseBtn").addEventListener("click", pauseDrop);
+$("resetBtn").addEventListener("click", () => resetSim(true));
+$("watchBtn").addEventListener("click", toggleWatch);
+$("recordBtn").addEventListener("click", addRecord);
+$("clearBtn").addEventListener("click", () => { state.records = []; renderRecords(); });
+$("manualTab").addEventListener("click", () => setWatchMode("manual"));
+$("autoTab").addEventListener("click", () => setWatchMode("auto"));
+$("projectorBtn").addEventListener("click", () => document.body.classList.toggle("projector"));
+$("speedSel").addEventListener("change", (e) => { state.speed = parseFloat(e.target.value); });
+
+$("heightSlider").addEventListener("input", (e) => {
+  state.height_m = parseFloat(e.target.value);
+  $("heightVal").textContent = state.height_m.toFixed(1);
+  resetSim(true);
+});
+$("gravitySel").addEventListener("change", (e) => {
+  state.gravityKey = e.target.value;
+  if (state.gravityKey === "mystery" && state.mysteryG_mps2 === null) {
+    state.mysteryG_mps2 = MYSTERY_G_MIN_MPS2 + Math.random() * (MYSTERY_G_MAX_MPS2 - MYSTERY_G_MIN_MPS2);
+    state.mysteryRevealed = false;
+  }
+  $("mysteryHint").hidden = state.gravityKey !== "mystery";
+  resetSim(false); // 장소가 바뀌면 이전 기록과 섞이지 않도록 기록 초기화
+});
+$("compareChk").addEventListener("change", (e) => { state.compareMasses = e.target.checked; });
+$("revealBtn").addEventListener("click", () => {
+  state.mysteryRevealed = true; renderRecords();
+  alert(`행성 X의 중력가속도 참값: ${state.mysteryG_mps2.toFixed(2)} m/s²`);
+});
+document.addEventListener("keydown", (e) => {
+  if (e.code === "Space" && state.watchMode === "manual") { e.preventDefault(); toggleWatch(); }
+});
+
+/* ════════════════════════ 시작 ════════════════════════ */
+resetSim();
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

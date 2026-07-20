@@ -7,7 +7,7 @@
 | # | 측정 방법 | 핵심 원리 | 폴더 | 상태 |
 |---|---|---|---|---|
 | 1 | 자유낙하 | h = ½gt² → g = 2h/t² | [free-fall/](./free-fall/) | ✅ 구현 완료 |
-| 2 | 단진자 | T = 2π√(L/g) → g = 4π²L/T² | [pendulum/](./pendulum/) | PRD 초안 |
+| 2 | 단진자 | T = 2π√(L/g) → g = 4π²L/T² | [pendulum/](./pendulum/) | ✅ 구현 완료 |
 | 3 | 빗면(경사면) | a = g·sinθ → g = a/sinθ | [inclined-plane/](./inclined-plane/) | PRD 초안 |
 | 4 | 용수철 진자 | mg = kx → g = kx/m | [spring/](./spring/) | PRD 초안 |
 

@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>단진자로 중력가속도 g 측정</title>
+<style>
+  :root {
+    --bg: #f4f6fa; --panel: #ffffff; --ink: #1c2733; --sub: #5a6b7d;
+    --accent: #1f6fd6; --accent2: #d64545; --ok: #1e8f4e; --warn: #c07c00;
+    --border: #d7dee8; --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+    background: var(--bg); color: var(--ink);
+    padding: 12px; font-size: 15px;
+  }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  header h1 { font-size: 1.25em; }
+  header .spacer { flex: 1; }
+  .layout { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .sim-col { flex: 1 1 380px; display: flex; flex-direction: column; gap: 12px; }
+  .side-col { flex: 1 1 320px; display: flex; flex-direction: column; gap: 12px; }
+  canvas { display: block; max-width: 100%; }
+  #sceneCanvas { background: linear-gradient(#eaf2fc, #f7fafd); border-radius: 6px; }
+
+  .controls-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
+  button { font-size: 1em; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.danger  { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  fieldset { border: none; }
+  .param { margin-bottom: 10px; }
+  .param label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 4px; }
+  .param label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .param input[type=range] { width: 100%; }
+  .param select { font-size: 1em; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .hint { color: var(--sub); font-size: 0.85em; margin-top: 2px; }
+  .warnBadge { color: var(--warn); font-size: 0.85em; font-weight: 700; }
+
+  .stopwatch { font-size: 2.0em; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; letter-spacing: 1px; padding: 6px 0; }
+  .stopwatch.auto { color: var(--ok); }
+  .oscCount { text-align: center; font-size: 1.1em; font-variant-numeric: tabular-nums; color: var(--sub); }
+  .oscCount b { color: var(--accent2); font-size: 1.3em; }
+  .mode-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+  .mode-tabs button { flex: 1; }
+  .mode-tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+  th, td { border: 1px solid var(--border); padding: 5px 6px; text-align: center; font-variant-numeric: tabular-nums; }
+  th { background: #eef3fa; }
+  tfoot td { font-weight: 700; background: #f5f9f2; }
+
+  .graphs { display: flex; gap: 12px; flex-wrap: wrap; }
+  .graphs figure { flex: 1 1 240px; }
+  .graphs figcaption { text-align: center; font-size: 0.9em; color: var(--sub); margin-top: 3px; }
+  .graphs canvas { background: #fff; border: 1px solid var(--border); border-radius: 6px; width: 100%; }
+
+  #expPanel input[type=number] { width: 84px; padding: 6px 8px; font-size: 1em; border: 1px solid var(--border); border-radius: 6px; }
+  details { margin-top: 4px; }
+  summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+  .formula-body { padding: 8px 4px; line-height: 1.7; }
+  .formula-body .eq { font-size: 1.15em; text-align: center; margin: 6px 0; font-family: Georgia, serif; }
+
+  body.projector { font-size: 19px; }
+  body.projector .stopwatch { font-size: 2.6em; }
+  body.projector button { padding: 12px 18px; }
+
+  @media (max-width: 640px) {
+    body { font-size: 16px; padding: 8px; }
+    .layout { flex-direction: column; }
+    .side-col { order: -1; }
+    .sim-col, .side-col { flex: 1 1 100%; }
+    button { padding: 12px 16px; }
+    input[type=number], select { font-size: 16px; }
+    .stopwatch { font-size: 2.6em; padding: 12px 0; }
+    #watchBtn { padding: 18px 16px; font-size: 1.1em; }
+    th, td { padding: 4px 3px; font-size: 0.85em; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🕰 단진자로 중력가속도 g 측정</h1>
+  <span class="spacer"></span>
+  <button id="projectorBtn" title="프로젝터용 큰 글씨 모드">🖥 큰 글씨 모드</button>
+</header>
+
+<div class="layout">
+
+  <!-- ══════════ 왼쪽: 진자 장면 ══════════ -->
+  <div class="sim-col">
+    <div class="panel">
+      <canvas id="sceneCanvas" width="420" height="440"></canvas>
+      <div class="controls-row">
+        <button id="swingBtn" class="primary">▶ 진동 시작</button>
+        <button id="pauseBtn" disabled>⏸ 일시정지</button>
+        <button id="resetBtn">↺ 리셋</button>
+        <span class="row" style="margin-left:auto">
+          <label><input type="checkbox" id="soundChk" checked> 🔊 신호음</label>
+          <label for="speedSel">배속</label>
+          <select id="speedSel">
+            <option value="0.5">×0.5</option>
+            <option value="1" selected>×1</option>
+            <option value="2">×2</option>
+            <option value="4">×4</option>
+          </select>
+        </span>
+      </div>
+      <p class="hint">신호음은 진자가 출발점으로 돌아올 때(1왕복 완료)마다 울립니다 — 왕복 횟수 세기에 활용하세요.</p>
+    </div>
+
+    <div class="panel graphs">
+      <figure>
+        <canvas id="graphTheta" width="280" height="170"></canvas>
+        <figcaption>각도–시간 (θ–t)</figcaption>
+      </figure>
+      <figure>
+        <canvas id="graphT2L" width="280" height="170"></canvas>
+        <figcaption>T²–L 그래프 (기울기 → g)</figcaption>
+      </figure>
+    </div>
+
+    <div class="panel">
+      <details>
+        <summary>📖 물리 공식 설명</summary>
+        <div class="formula-body">
+          <p>진폭이 작을 때(약 15° 이하) 단진자의 주기는 다음 공식으로 주어집니다
+          (물리학I에서는 이 공식을 주어진 도구로 사용합니다):</p>
+          <p class="eq">T = 2π√(L/g)</p>
+          <p>주기 T와 줄 길이 L을 측정하면 g를 거꾸로 구할 수 있습니다:</p>
+          <p class="eq">g = 4π²L / T²</p>
+          <p><b>왜 10회 왕복을 잴까?</b> 1회 왕복(약 1~3초)을 재면 반응 시간 오차(±0.2초)가
+          주기의 10%나 됩니다. 10회 왕복 시간을 재서 10으로 나누면 같은 오차가 1%로 줄어듭니다.</p>
+          <p><b>T²–L 그래프:</b> 여러 길이에서 주기를 재고 T²을 L에 대해 그리면
+          원점을 지나는 직선이 되고, 기울기 = 4π²/g 입니다.</p>
+          <p style="color:var(--sub)">※ 주기 공식은 sinθ ≈ θ 근사(소각 근사)에서 나옵니다.
+          진폭이 15°를 넘으면 실제 주기가 공식보다 길어집니다 — 시뮬레이션은 근사 없이
+          실제 운동방정식을 풀기 때문에 이 차이를 직접 확인할 수 있습니다. 공기저항·줄 질량은 무시합니다.</p>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- ══════════ 오른쪽: 조작 · 측정 ══════════ -->
+  <div class="side-col">
+
+    <fieldset class="panel">
+      <div class="param">
+        <label for="lenSlider">줄 길이 L <span class="val"><span id="lenVal">1.00</span> m</span></label>
+        <input type="range" id="lenSlider" min="0.1" max="3" step="0.05" value="1">
+      </div>
+      <div class="param">
+        <label for="angSlider">처음 각도 θ₀ <span class="val"><span id="angVal">10</span>°
+          <span id="angWarn" class="warnBadge" hidden>⚠ 15° 초과 — 공식 오차 커짐</span></span></label>
+        <input type="range" id="angSlider" min="1" max="30" step="1" value="10">
+      </div>
+      <div class="param">
+        <label for="massSlider">추 질량 m <span class="val"><span id="massVal">0.20</span> kg</span></label>
+        <input type="range" id="massSlider" min="0.05" max="1" step="0.05" value="0.2">
+        <p class="hint">질량을 바꿔도 주기가 변하는지 직접 확인해 보세요.</p>
+      </div>
+      <div class="param row">
+        <label for="gravitySel" style="font-weight:600">장소(중력)</label>
+        <select id="gravitySel">
+          <option value="earth" selected>지구 (9.8 m/s²)</option>
+          <option value="moon">달 (1.62 m/s²)</option>
+          <option value="mars">화성 (3.71 m/s²)</option>
+          <option value="mystery">미지의 행성 X (수행평가용)</option>
+        </select>
+      </div>
+    </fieldset>
+
+    <div class="panel">
+      <div class="mode-tabs">
+        <button id="manualTab" class="active">✋ 수동 스톱워치</button>
+        <button id="autoTab">📡 자동 측정</button>
+      </div>
+      <div class="stopwatch" id="stopwatchDisp">0.000 s</div>
+      <p class="oscCount">왕복 <b id="oscCountDisp">0</b> 회 <span id="autoTDisp"></span></p>
+      <div class="controls-row">
+        <button id="watchBtn" class="danger" style="flex:1">⏱ 스톱워치 시작/정지 (Space)</button>
+        <label>왕복 <select id="divN"><option value="1">1</option><option value="5">5</option><option value="10" selected>10</option></select> 회 측정</label>
+      </div>
+      <p class="hint" id="modeHint">진자가 출발점에 온 순간 스톱워치를 켜고, 선택한 왕복 횟수만큼 지나면 멈추세요. 시간 ÷ 횟수 = 주기 T.</p>
+    </div>
+
+    <div class="panel">
+      <div class="row" style="justify-content:space-between; margin-bottom:6px">
+        <b>측정 기록</b>
+        <span>
+          <button id="recordBtn" disabled>＋ 기록 추가</button>
+          <button id="csvBtn">⬇ CSV 저장</button>
+          <button id="clearBtn">기록 지우기</button>
+        </span>
+      </div>
+      <table id="recordTable">
+        <thead>
+          <tr><th>#</th><th>구분</th><th>L (m)</th><th>T (s)</th><th>g = 4π²L/T² (m/s²)</th><th>상대오차</th></tr>
+        </thead>
+        <tbody></tbody>
+        <tfoot>
+          <tr><td colspan="4">평균 g</td><td id="avgG">–</td><td id="avgErr">–</td></tr>
+        </tfoot>
+      </table>
+      <p class="hint">💡 줄 길이를 바꿔 가며 여러 번 기록하면 T²–L 그래프에 점이 찍히고, 직선의 기울기로 g를 구할 수 있습니다.</p>
+      <p class="hint" id="mysteryHint" hidden>미지의 행성 X: 참값이 숨겨져 있습니다. 평균 g를 구한 뒤 <button id="revealBtn" style="font-size:0.9em;padding:2px 8px">정답 공개</button></p>
+    </div>
+
+    <!-- ═════ 실제 실험 (교실 진자) ═════ -->
+    <div class="panel" id="expPanel">
+      <b>🖐 실제 실험 — 교실에서 진자로 g 측정</b>
+      <p class="hint" style="margin:6px 0">실·낚싯줄에 추(너트, 쇠구슬 등)를 매달아 만드세요.
+      길이는 <b>고정점에서 추의 중심까지</b> 줄자로 잽니다. 각도는 15° 이하로 작게!</p>
+      <div class="row">
+        <label for="expL">진자 길이 L</label>
+        <input type="number" id="expL" step="0.001" min="0.01" placeholder="m">
+        <button id="applyExpL">길이 확정</button>
+      </div>
+      <p style="margin:8px 0"><b>실험 길이 L:</b> <span id="expLDisp" style="color:var(--accent)">아직 미정</span></p>
+      <div class="row">
+        <label for="trialT">10회 왕복 시간 t₁₀</label>
+        <input type="number" id="trialT" step="0.01" min="0.01" placeholder="s">
+        <button id="addTrialBtn">＋ 측정 추가</button>
+        <button id="fromWatchBtn" title="위 스톱워치로 잰 값을 가져옵니다">⏱ 스톱워치 값</button>
+      </div>
+      <p class="hint">같은 길이에서 <b>여러 번(3회 이상 권장)</b> 10왕복 시간을 재세요. 평균 ÷ 10 = 주기 T.</p>
+      <p id="trialList" class="hint" style="font-variant-numeric:tabular-nums"></p>
+      <div class="row" style="justify-content:space-between">
+        <span id="trialStats" style="font-variant-numeric:tabular-nums"></span>
+        <span>
+          <button id="clearTrialsBtn">측정 지우기</button>
+          <button id="expToTableBtn" class="primary" disabled>기록표에 추가</button>
+        </span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ════════════════════════ 상수 ════════════════════════ */
+const GRAVITY_PRESETS_MPS2 = { earth: 9.8, moon: 1.62, mars: 3.71 };
+const MYSTERY_G_MIN_MPS2 = 3.0, MYSTERY_G_MAX_MPS2 = 15.0;
+const PHYS_DT_S = 1 / 240;          // RK4 고정 시간간격
+const LARGE_ANGLE_DEG = 15;         // 소각 근사 경고 기준
+const AUTO_OSC_COUNT = 10;          // 자동 측정 왕복 횟수
+const PIVOT_Y_PX = 56;
+
+/* ════════════════════════ 상태 ════════════════════════ */
+const state = {
+  phase: "ready",            // ready | swinging | paused
+  simTime_s: 0,
+  theta_rad: 0, omega_radps: 0,
+  length_m: 1.0, theta0_deg: 10, mass_kg: 0.2,
+  gravityKey: "earth", mysteryG_mps2: null, mysteryRevealed: false,
+  speed: 1, soundOn: true,
+  halfSwings: 0,             // 반 왕복 횟수 (부호 반전 감지)
+  autoT10_s: null,           // 10왕복 자동 측정 결과
+  thetaSamples: [],          // {t, deg} — θ-t 그래프용
+  physRemainder_s: 0,
+  watchMode: "manual", watchRunning: false, watchTime_s: 0,
+  records: [],               // {src, L_m, T_s, n, g_mps2, gTrue_mps2}
+  exp: { L_m: null, trials_s: [] },
+};
+
+/* ════════════════════════ 물리 (렌더링과 분리) ════════════════════════ */
+function currentTrueG() {
+  return state.gravityKey === "mystery" ? state.mysteryG_mps2 : GRAVITY_PRESETS_MPS2[state.gravityKey];
+}
+function smallAnglePeriod_s(L_m, g_mps2) { return 2 * Math.PI * Math.sqrt(L_m / g_mps2); }
+function gFromPeriod_mps2(L_m, T_s) { return 4 * Math.PI * Math.PI * L_m / (T_s * T_s); }
+
+// 비선형 진자 θ'' = -(g/L)·sinθ 를 RK4로 적분 (소각 근사 없음)
+function rk4Step(theta, omega, g, L, dt) {
+  const acc = (th) => -(g / L) * Math.sin(th);
+  const k1t = omega,               k1w = acc(theta);
+  const k2t = omega + k1w * dt / 2, k2w = acc(theta + k1t * dt / 2);
+  const k3t = omega + k2w * dt / 2, k3w = acc(theta + k2t * dt / 2);
+  const k4t = omega + k3w * dt,     k4w = acc(theta + k3t * dt);
+  return [
+    theta + dt / 6 * (k1t + 2 * k2t + 2 * k3t + k4t),
+    omega + dt / 6 * (k1w + 2 * k2w + 2 * k3w + k4w),
+  ];
+}
+
+function advancePhysics(dt_s) {
+  const g = currentTrueG(), L = state.length_m;
+  state.physRemainder_s += dt_s;
+  while (state.physRemainder_s >= PHYS_DT_S) {
+    const prevOmega = state.omega_radps;
+    [state.theta_rad, state.omega_radps] = rk4Step(state.theta_rad, state.omega_radps, g, L, PHYS_DT_S);
+    state.simTime_s += PHYS_DT_S;
+    state.physRemainder_s -= PHYS_DT_S;
+    // 극점(속도 부호 반전) 감지 → 반 왕복 카운트
+    if (prevOmega !== 0 && Math.sign(state.omega_radps) !== Math.sign(prevOmega)) {
+      state.halfSwings++;
+      if (state.halfSwings % 2 === 0) {          // 출발점 복귀 = 1왕복 완료
+        beep(660, 0.05);
+        const osc = state.halfSwings / 2;
+        if (osc === AUTO_OSC_COUNT && state.autoT10_s === null) {
+          state.autoT10_s = state.simTime_s;
+          onAutoMeasured();
+        }
+      }
+    }
+  }
+  // θ-t 그래프 샘플 (프레임당 1개면 충분)
+  state.thetaSamples.push({ t: state.simTime_s, deg: state.theta_rad * 180 / Math.PI });
+  if (state.thetaSamples.length > 4000) state.thetaSamples.splice(0, 1000);
+}
+
+/* ════════════════════════ 소리 ════════════════════════ */
+let audioCtx = null;
+function beep(freq_hz, dur_s) {
+  if (!state.soundOn) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.frequency.value = freq_hz; osc.connect(gain); gain.connect(audioCtx.destination);
+    gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur_s);
+    osc.start(); osc.stop(audioCtx.currentTime + dur_s);
+  } catch (e) { /* 무시 */ }
+}
+
+/* ════════════════════════ DOM · 루프 ════════════════════════ */
+const $ = (id) => document.getElementById(id);
+const scene = $("sceneCanvas"), sctx = scene.getContext("2d");
+let lastFrame_ms = null;
+
+function tick(now_ms) {
+  if (lastFrame_ms !== null) {
+    const dtRaw_s = Math.min((now_ms - lastFrame_ms) / 1000, 0.05);
+    const dt_s = dtRaw_s * state.speed;
+    if (state.phase === "swinging") advancePhysics(dt_s);
+    if (state.watchRunning) {
+      state.watchTime_s += dt_s;
+      updateStopwatchDisplay(state.watchTime_s);
+    }
+  }
+  lastFrame_ms = now_ms;
+  $("oscCountDisp").textContent = Math.floor(state.halfSwings / 2);
+  drawScene();
+  drawThetaGraph();
+  drawT2LGraph();
+  requestAnimationFrame(tick);
+}
+
+function onAutoMeasured() {
+  const T = state.autoT10_s / AUTO_OSC_COUNT;
+  const Tformula = smallAnglePeriod_s(state.length_m, currentTrueG());
+  $("autoTDisp").innerHTML = ` — 자동: t₁₀ = ${state.autoT10_s.toFixed(3)} s → <b>T = ${T.toFixed(4)} s</b>`;
+  if (state.watchMode === "auto") { updateStopwatchDisplay(state.autoT10_s); $("recordBtn").disabled = false; }
+  beep(1320, 0.2);
+  // PRD 완성 기준 검증 로그
+  console.log(`[검증] θ₀=${state.theta0_deg}°, L=${state.length_m} m: T(시뮬)=${T.toFixed(4)} s, `
+    + `T(공식)=${Tformula.toFixed(4)} s, 차이=${((T / Tformula - 1) * 100).toFixed(2)} %`);
+}
+
+/* ════════════════════════ 장면 렌더링 ════════════════════════ */
+function drawScene() {
+  const w = scene.width, h = scene.height;
+  sctx.clearRect(0, 0, w, h);
+  const px = w / 2, py = PIVOT_Y_PX;
+  const usable = h - PIVOT_Y_PX - 70;
+  const len_px = usable * (0.25 + 0.75 * state.length_m / 3);
+  const bx = px + len_px * Math.sin(state.theta_rad);
+  const by = py + len_px * Math.cos(state.theta_rad);
+
+  // 천장
+  sctx.fillStyle = "#c9d4e2"; sctx.fillRect(px - 70, py - 14, 140, 10);
+  // 각도기 눈금 (0, ±15, ±30°)
+  sctx.strokeStyle = "#b9c6d6"; sctx.fillStyle = "#8a99ab"; sctx.font = "10px sans-serif"; sctx.textAlign = "center";
+  for (const a of [-30, -15, 0, 15, 30]) {
+    const r = a === 0 ? 46 : 40, rad = a * Math.PI / 180;
+    const x1 = px + 34 * Math.sin(rad), y1 = py + 34 * Math.cos(rad);
+    const x2 = px + r * Math.sin(rad), y2 = py + r * Math.cos(rad);
+    sctx.beginPath(); sctx.moveTo(x1, y1); sctx.lineTo(x2, y2); sctx.stroke();
+    if (a !== 0) sctx.fillText(Math.abs(a) + "°", px + 58 * Math.sin(rad), py + 58 * Math.cos(rad));
+  }
+  // 진폭 범위 안내선
+  const t0 = state.theta0_deg * Math.PI / 180;
+  sctx.setLineDash([3, 4]); sctx.strokeStyle = "#d9c49a";
+  for (const s of [-1, 1]) {
+    sctx.beginPath(); sctx.moveTo(px, py);
+    sctx.lineTo(px + len_px * Math.sin(s * t0), py + len_px * Math.cos(s * t0)); sctx.stroke();
+  }
+  sctx.setLineDash([]);
+  // 줄 + 추 (반지름은 질량 ∝ 부피 가정)
+  sctx.strokeStyle = "#5a6b7d"; sctx.lineWidth = 2;
+  sctx.beginPath(); sctx.moveTo(px, py); sctx.lineTo(bx, by); sctx.stroke(); sctx.lineWidth = 1;
+  const bobR = 9 + 9 * Math.cbrt(state.mass_kg);
+  sctx.beginPath(); sctx.arc(bx, by, bobR, 0, Math.PI * 2);
+  sctx.fillStyle = "#1f6fd6"; sctx.fill();
+  sctx.fillStyle = "#fff"; sctx.font = "10px sans-serif";
+  sctx.fillText(state.mass_kg.toFixed(2) + "kg", bx, by + 3);
+  // 고정점
+  sctx.beginPath(); sctx.arc(px, py, 4, 0, Math.PI * 2); sctx.fillStyle = "#1c2733"; sctx.fill();
+
+  // 정보
+  sctx.fillStyle = "#1c2733"; sctx.font = "bold 14px sans-serif"; sctx.textAlign = "right";
+  const g = currentTrueG();
+  const gLabel = state.gravityKey === "mystery" && !state.mysteryRevealed ? "g = ??? (행성 X)" : `g = ${g.toFixed(2)} m/s²`;
+  sctx.fillText(gLabel, w - 12, 20);
+  sctx.fillText(`t = ${state.simTime_s.toFixed(2)} s`, w - 12, 40);
+  sctx.fillText(`θ = ${(state.theta_rad * 180 / Math.PI).toFixed(1)}°`, w - 12, 60);
+  sctx.textAlign = "left";
+  sctx.fillText(`L = ${state.length_m.toFixed(2)} m`, 12, 20);
+  const Tf = smallAnglePeriod_s(state.length_m, g);
+  if (!(state.gravityKey === "mystery" && !state.mysteryRevealed))
+    sctx.fillText(`공식 T = ${Tf.toFixed(3)} s`, 12, 40);
+}
+
+/* ════════════════════════ 그래프 ════════════════════════ */
+function drawThetaGraph() {
+  const cv = $("graphTheta"), ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height, L = 38, B = 24, T = 8, R = 8;
+  ctx.clearRect(0, 0, W, H);
+  const xMax = Math.max(6, state.simTime_s), yMax = Math.max(5, state.theta0_deg * 1.15);
+  const px = (x) => L + (x / xMax) * (W - L - R);
+  const py = (y) => (T + (H - B - T) / 2) - (y / yMax) * (H - B - T) / 2;
+  ctx.strokeStyle = "#b9c6d6"; ctx.beginPath();
+  ctx.moveTo(L, T); ctx.lineTo(L, H - B); ctx.lineTo(W - R, H - B); ctx.stroke();
+  ctx.strokeStyle = "#e3e9f1"; ctx.beginPath(); ctx.moveTo(L, py(0)); ctx.lineTo(W - R, py(0)); ctx.stroke();
+  ctx.fillStyle = "#5a6b7d"; ctx.font = "11px sans-serif";
+  ctx.textAlign = "left"; ctx.fillText("θ (°)", L + 6, T + 10);
+  ctx.textAlign = "center"; ctx.fillText("t (s)", (L + W - R) / 2, H - 6);
+  ctx.textAlign = "right";
+  ctx.fillText("+" + yMax.toFixed(0), L - 3, T + 10);
+  ctx.fillText("0", L - 3, py(0) + 4);
+  ctx.fillText(xMax.toFixed(1), W - R, H - B + 14);
+  const s = state.thetaSamples;
+  if (s.length > 1) {
+    ctx.strokeStyle = "#1f6fd6"; ctx.lineWidth = 2; ctx.beginPath();
+    for (let i = 0; i < s.length; i++)
+      i === 0 ? ctx.moveTo(px(s[i].t), py(s[i].deg)) : ctx.lineTo(px(s[i].t), py(s[i].deg));
+    ctx.stroke(); ctx.lineWidth = 1;
+  }
+}
+
+function drawT2LGraph() {
+  const cv = $("graphT2L"), ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height, Lm = 40, B = 24, T = 8, R = 8;
+  ctx.clearRect(0, 0, W, H);
+  const pts = state.records.map((r) => ({ x: r.L_m, y: r.T_s * r.T_s, src: r.src }));
+  const xMax = 3.2, yMax = Math.max(4, ...pts.map((p) => p.y * 1.15));
+  const px = (x) => Lm + (x / xMax) * (W - Lm - R);
+  const py = (y) => H - B - (y / yMax) * (H - B - T);
+  ctx.strokeStyle = "#b9c6d6"; ctx.beginPath();
+  ctx.moveTo(Lm, T); ctx.lineTo(Lm, H - B); ctx.lineTo(W - R, H - B); ctx.stroke();
+  ctx.fillStyle = "#5a6b7d"; ctx.font = "11px sans-serif";
+  ctx.textAlign = "left"; ctx.fillText("T² (s²)", Lm + 6, T + 10);
+  ctx.textAlign = "center"; ctx.fillText("L (m)", (Lm + W - R) / 2, H - 6);
+  ctx.textAlign = "right"; ctx.fillText(yMax.toFixed(1), Lm - 3, T + 10);
+  ctx.fillText("0", Lm - 3, H - B + 4); ctx.fillText(xMax.toFixed(1), W - R, H - B + 14);
+  // 원점 통과 최소제곱 직선: 기울기 = Σ(L·T²)/Σ(L²) = 4π²/g
+  if (pts.length >= 2) {
+    const slope = pts.reduce((s, p) => s + p.x * p.y, 0) / pts.reduce((s, p) => s + p.x * p.x, 0);
+    const gFit = 4 * Math.PI * Math.PI / slope;
+    ctx.setLineDash([5, 4]); ctx.strokeStyle = "#d64545"; ctx.beginPath();
+    ctx.moveTo(px(0), py(0)); ctx.lineTo(px(xMax), py(slope * xMax)); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = "#d64545"; ctx.textAlign = "left"; ctx.font = "bold 12px sans-serif";
+    const hideTruth = state.gravityKey === "mystery" && !state.mysteryRevealed;
+    ctx.fillText(`기울기 → g = ${gFit.toFixed(2)} m/s²`, Lm + 8, T + 26);
+  }
+  for (const p of pts) {
+    if (p.x > xMax || p.y > yMax) continue;
+    ctx.beginPath(); ctx.arc(px(p.x), py(p.y), 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = p.src === "exp" ? "#c07c00" : "#1f6fd6"; ctx.fill();
+  }
+}
+
+/* ════════════════════════ 측정 · 기록 ════════════════════════ */
+function updateStopwatchDisplay(t_s) { $("stopwatchDisp").textContent = t_s.toFixed(3) + " s"; }
+
+function addRecord() {
+  let T_s, n;
+  if (state.watchMode === "auto") {
+    if (state.autoT10_s === null) { alert("아직 10회 왕복이 끝나지 않았습니다."); return; }
+    T_s = state.autoT10_s / AUTO_OSC_COUNT; n = AUTO_OSC_COUNT;
+  } else {
+    const div = parseInt($("divN").value, 10);
+    if (state.watchTime_s <= 0) { alert("스톱워치로 왕복 시간을 먼저 측정하세요."); return; }
+    T_s = state.watchTime_s / div; n = div;
+  }
+  state.records.push({
+    src: "sim", L_m: state.length_m, T_s, n,
+    g_mps2: gFromPeriod_mps2(state.length_m, T_s),
+    gTrue_mps2: currentTrueG(),
+  });
+  renderRecords();
+  $("recordBtn").disabled = true;
+}
+
+function renderRecords() {
+  const tbody = $("recordTable").querySelector("tbody");
+  tbody.innerHTML = "";
+  const hideTruth = state.gravityKey === "mystery" && !state.mysteryRevealed;
+  state.records.forEach((r, i) => {
+    const err = Math.abs(r.g_mps2 - r.gTrue_mps2) / r.gTrue_mps2 * 100;
+    const hide = hideTruth && r.src !== "exp";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${i + 1}</td><td>${r.src === "exp" ? "🖐 실험" : "💻 시뮬"}</td>
+      <td>${r.L_m.toFixed(2)}</td><td>${r.T_s.toFixed(3)}<br><span style="color:var(--sub);font-size:0.85em">(${r.n}왕복)</span></td>
+      <td>${r.g_mps2.toFixed(2)}</td><td>${hide ? "?" : err.toFixed(1) + " %"}</td>`;
+    tbody.appendChild(tr);
+  });
+  if (state.records.length) {
+    const avg = state.records.reduce((s, r) => s + r.g_mps2, 0) / state.records.length;
+    const gTrue = state.records[state.records.length - 1].gTrue_mps2;
+    $("avgG").textContent = avg.toFixed(2) + " m/s²";
+    $("avgErr").textContent = hideTruth ? "?" : (Math.abs(avg - gTrue) / gTrue * 100).toFixed(1) + " %";
+  } else {
+    $("avgG").textContent = "–"; $("avgErr").textContent = "–";
+  }
+}
+
+function exportCSV() {
+  if (!state.records.length) { alert("저장할 기록이 없습니다."); return; }
+  const hideTruth = state.gravityKey === "mystery" && !state.mysteryRevealed;
+  const rows = [["번호", "구분", "L(m)", "T(s)", "왕복횟수", "g(m/s2)", "상대오차(%)"]];
+  state.records.forEach((r, i) => {
+    const hide = hideTruth && r.src !== "exp";
+    const err = Math.abs(r.g_mps2 - r.gTrue_mps2) / r.gTrue_mps2 * 100;
+    rows.push([i + 1, r.src === "exp" ? "실험" : "시뮬레이션", r.L_m.toFixed(3),
+      r.T_s.toFixed(4), r.n, r.g_mps2.toFixed(3), hide ? "?" : err.toFixed(1)]);
+  });
+  const avg = state.records.reduce((s, r) => s + r.g_mps2, 0) / state.records.length;
+  rows.push(["", "평균", "", "", "", avg.toFixed(3), ""]);
+  const csv = "﻿" + rows.map((r) => r.join(",")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = "단진자_g측정_기록.csv";
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+/* ── 실제 실험 패널 ── */
+function meanOf(arr) { return arr.reduce((s, v) => s + v, 0) / arr.length; }
+
+function renderExpTrials() {
+  const tr = state.exp.trials_s;
+  $("trialList").textContent = tr.map((t, i) => `t₁₀(${i + 1}) = ${t.toFixed(2)} s`).join(",  ");
+  $("trialStats").innerHTML = tr.length
+    ? `평균 t₁₀ = <b>${meanOf(tr).toFixed(2)} s</b> → T = <b>${(meanOf(tr) / 10).toFixed(3)} s</b> (${tr.length}회)` : "";
+  $("expToTableBtn").disabled = !(state.exp.L_m && tr.length);
+}
+
+function expToTable() {
+  const L = state.exp.L_m, tr = state.exp.trials_s;
+  if (!L || !tr.length) return;
+  const T = meanOf(tr) / 10;
+  state.records.push({
+    src: "exp", L_m: L, T_s: T, n: 10,
+    g_mps2: gFromPeriod_mps2(L, T),
+    gTrue_mps2: GRAVITY_PRESETS_MPS2.earth,   // 실제 실험은 지구 기준
+  });
+  state.exp.trials_s = [];
+  renderExpTrials(); renderRecords();
+}
+
+/* ════════════════════════ 조작 ════════════════════════ */
+function startSwing() {
+  if (state.phase === "paused") {
+    state.phase = "swinging";
+    $("swingBtn").disabled = true; $("pauseBtn").disabled = false;
+    return;
+  }
+  state.simTime_s = 0; state.physRemainder_s = 0;
+  state.theta_rad = state.theta0_deg * Math.PI / 180;
+  state.omega_radps = 0;
+  state.halfSwings = 0; state.autoT10_s = null;
+  state.thetaSamples = [{ t: 0, deg: state.theta0_deg }];
+  $("autoTDisp").textContent = "";
+  state.watchRunning = false; state.watchTime_s = 0; updateStopwatchDisplay(0);
+  state.phase = "swinging";
+  $("swingBtn").disabled = true; $("pauseBtn").disabled = false; $("recordBtn").disabled = true;
+}
+
+function pauseSwing() {
+  if (state.phase !== "swinging") return;
+  state.phase = "paused";
+  $("swingBtn").disabled = false; $("swingBtn").textContent = "▶ 계속";
+  $("pauseBtn").disabled = true;
+}
+
+function resetSim(keepRecords = true) {
+  state.phase = "ready"; state.simTime_s = 0; state.physRemainder_s = 0;
+  state.theta_rad = state.theta0_deg * Math.PI / 180; state.omega_radps = 0;
+  state.halfSwings = 0; state.autoT10_s = null; state.thetaSamples = [];
+  state.watchRunning = false; state.watchTime_s = 0;
+  updateStopwatchDisplay(0); $("autoTDisp").textContent = "";
+  $("swingBtn").disabled = false; $("swingBtn").textContent = "▶ 진동 시작";
+  $("pauseBtn").disabled = true; $("recordBtn").disabled = true;
+  if (!keepRecords) { state.records = []; renderRecords(); }
+}
+
+function toggleWatch() {
+  if (state.watchMode !== "manual") return;
+  if (!state.watchRunning) { state.watchTime_s = 0; state.watchRunning = true; }
+  else { state.watchRunning = false; $("recordBtn").disabled = false; }
+}
+
+function setWatchMode(mode) {
+  state.watchMode = mode; state.watchRunning = false;
+  $("manualTab").classList.toggle("active", mode === "manual");
+  $("autoTab").classList.toggle("active", mode === "auto");
+  $("watchBtn").disabled = mode === "auto";
+  $("stopwatchDisp").classList.toggle("auto", mode === "auto");
+  $("modeHint").textContent = mode === "manual"
+    ? "진자가 출발점에 온 순간 스톱워치를 켜고, 선택한 왕복 횟수만큼 지나면 멈추세요. 시간 ÷ 횟수 = 주기 T."
+    : `광센서처럼 ${AUTO_OSC_COUNT}회 왕복 시간을 자동으로 정확히 측정합니다. 수동 측정과 비교해 보세요.`;
+  if (mode === "auto") {
+    updateStopwatchDisplay(state.autoT10_s ?? 0);
+    $("recordBtn").disabled = state.autoT10_s === null;
+  } else { updateStopwatchDisplay(state.watchTime_s); $("recordBtn").disabled = state.watchTime_s <= 0; }
+}
+
+/* ════════════════════════ 이벤트 연결 ════════════════════════ */
+$("swingBtn").addEventListener("click", startSwing);
+$("pauseBtn").addEventListener("click", pauseSwing);
+$("resetBtn").addEventListener("click", () => resetSim(true));
+$("watchBtn").addEventListener("click", toggleWatch);
+$("recordBtn").addEventListener("click", addRecord);
+$("csvBtn").addEventListener("click", exportCSV);
+$("clearBtn").addEventListener("click", () => { state.records = []; renderRecords(); });
+$("manualTab").addEventListener("click", () => setWatchMode("manual"));
+$("autoTab").addEventListener("click", () => setWatchMode("auto"));
+$("projectorBtn").addEventListener("click", () => document.body.classList.toggle("projector"));
+$("speedSel").addEventListener("change", (e) => { state.speed = parseFloat(e.target.value); });
+$("soundChk").addEventListener("change", (e) => { state.soundOn = e.target.checked; });
+
+$("lenSlider").addEventListener("input", (e) => {
+  state.length_m = parseFloat(e.target.value);
+  $("lenVal").textContent = state.length_m.toFixed(2);
+  resetSim(true);
+});
+$("angSlider").addEventListener("input", (e) => {
+  state.theta0_deg = parseInt(e.target.value, 10);
+  $("angVal").textContent = state.theta0_deg;
+  $("angWarn").hidden = state.theta0_deg <= LARGE_ANGLE_DEG;
+  resetSim(true);
+});
+$("massSlider").addEventListener("input", (e) => {
+  state.mass_kg = parseFloat(e.target.value);
+  $("massVal").textContent = state.mass_kg.toFixed(2);
+  // 질량은 운동방정식에 등장하지 않음 — 주기 불변 (진동은 리셋하지 않고 계속)
+});
+$("gravitySel").addEventListener("change", (e) => {
+  state.gravityKey = e.target.value;
+  if (state.gravityKey === "mystery" && state.mysteryG_mps2 === null) {
+    state.mysteryG_mps2 = MYSTERY_G_MIN_MPS2 + Math.random() * (MYSTERY_G_MAX_MPS2 - MYSTERY_G_MIN_MPS2);
+    state.mysteryRevealed = false;
+  }
+  $("mysteryHint").hidden = state.gravityKey !== "mystery";
+  resetSim(false); // 장소가 바뀌면 이전 기록과 섞이지 않도록 기록 초기화
+});
+$("revealBtn").addEventListener("click", () => {
+  state.mysteryRevealed = true; renderRecords();
+  alert(`행성 X의 중력가속도 참값: ${state.mysteryG_mps2.toFixed(2)} m/s²`);
+});
+document.addEventListener("keydown", (e) => {
+  if (e.code === "Space" && state.watchMode === "manual" && document.activeElement.tagName !== "INPUT") {
+    e.preventDefault(); toggleWatch();
+  }
+});
+
+/* 실제 실험 패널 */
+$("applyExpL").addEventListener("click", () => {
+  const L = parseFloat($("expL").value);
+  if (!(L > 0)) { alert("진자 길이 L(m)을 입력하세요."); return; }
+  state.exp.L_m = L;
+  $("expLDisp").textContent = L.toFixed(3) + " m (줄자)";
+  renderExpTrials();
+});
+$("addTrialBtn").addEventListener("click", () => {
+  const t = parseFloat($("trialT").value);
+  if (!(t > 0)) { alert("10회 왕복 시간 t₁₀(s)를 입력하세요."); return; }
+  state.exp.trials_s.push(t);
+  $("trialT").value = "";
+  renderExpTrials();
+});
+$("fromWatchBtn").addEventListener("click", () => {
+  if (state.watchTime_s <= 0) { alert("먼저 스톱워치로 시간을 재세요."); return; }
+  $("trialT").value = state.watchTime_s.toFixed(2);
+});
+$("clearTrialsBtn").addEventListener("click", () => { state.exp.trials_s = []; renderExpTrials(); });
+$("expToTableBtn").addEventListener("click", expToTable);
+
+/* ════════════════════════ 시작 ════════════════════════ */
+resetSim();
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

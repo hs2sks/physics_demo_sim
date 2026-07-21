@@ -28,11 +28,16 @@
 ```
 index.html                     ← 전체 시뮬레이션 목록 (랜딩 페이지)
 mechanics/                     역학
-└── gravity/                   중력가속도(g) 측정
-    ├── free-fall/             🍎 자유낙하        ✔ 완료
-    ├── pendulum/              🕰 단진자          ✔ 완료
-    ├── inclined-plane/        📐 빗면            준비 중
-    └── spring/                🌀 용수철 진자      준비 중
+├── gravity/                   중력가속도(g) 측정
+│   ├── free-fall/             🍎 자유낙하        ✔ 완료
+│   ├── pendulum/              🕰 단진자          ✔ 완료
+│   ├── inclined-plane/        📐 빗면            준비 중
+│   └── spring/                🌀 용수철 진자      준비 중
+└── black-ice/                 🧊 블랙아이스(마찰·제동 R&E 실험실)  ✔ 완료
+electromagnetism/              전자기            준비 중
+optics/                        광학              준비 중
+modern-physics/                현대물리
+└── photoelectric-effect/      💡 광전효과        ✔ 완료
 tools/                         분석 도구
 └── stroboscope/              📸 스트로보스코프(운동 영상 분석)  ✔ 완료
 ```

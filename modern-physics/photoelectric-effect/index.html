@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>광전효과 인터랙티브 시뮬레이션</title>
+    <!-- Google Fonts: Inter & Outfit for modern look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar: Control Panel -->
+        <aside class="control-panel glass">
+            <div class="brand">
+                <span class="badge">현대 물리학</span>
+                <h2>광전효과</h2>
+                <p>Photoelectric Effect Simulation</p>
+            </div>
+
+            <div class="control-sections">
+                <!-- Section 1: Light Source Properties -->
+                <div class="control-group">
+                    <h3>1. 광원 설정 (Light Source)</h3>
+                    
+                    <div class="slider-wrapper">
+                        <div class="slider-label">
+                            <span>진동수 (Frequency, <span class="math">f</span>)</span>
+                            <span id="val-frequency" class="highlight-val">6.0 &times; 10<sup>14</sup> Hz</span>
+                        </div>
+                        <input type="range" id="input-frequency" min="3.5" max="12.0" step="0.1" value="6.5">
+                        <div class="wavelength-track">
+                            <span style="color: #ff3b30;">IR/Red</span>
+                            <span style="color: #ffcc00;">Green</span>
+                            <span style="color: #007aff;">Blue</span>
+                            <span style="color: #af52de;">UV</span>
+                        </div>
+                    </div>
+
+                    <div class="slider-wrapper">
+                        <div class="slider-label">
+                            <span>빛의 세기 (Intensity)</span>
+                            <span id="val-intensity" class="highlight-val">50%</span>
+                        </div>
+                        <input type="range" id="input-intensity" min="0" max="100" step="5" value="50">
+                    </div>
+                </div>
+
+                <!-- Section 2: Metal Target Work Function -->
+                <div class="control-group">
+                    <h3>2. 금속판 설정 (Target Metal)</h3>
+                    
+                    <div class="metal-presets">
+                        <button type="button" class="btn-preset active" data-workfunction="2.14" data-name="세슘 (Cs)">Cs (2.14 eV)</button>
+                        <button type="button" class="btn-preset" data-workfunction="2.36" data-name="나트륨 (Na)">Na (2.36 eV)</button>
+                        <button type="button" class="btn-preset" data-workfunction="4.30" data-name="아연 (Zn)">Zn (4.30 eV)</button>
+                        <button type="button" class="btn-preset" data-workfunction="5.64" data-name="백금 (Pt)">Pt (5.64 eV)</button>
+                    </div>
+
+                    <div class="slider-wrapper">
+                        <div class="slider-label">
+                            <span>한계 진동수 / 일함수 (<span class="math">&Phi;</span>)</span>
+                            <span id="val-workfunction" class="highlight-val">2.14 eV</span>
+                        </div>
+                        <input type="range" id="input-workfunction" min="1.5" max="6.5" step="0.05" value="2.14">
+                        <div class="limit-track">
+                            <span>낮은 일함수</span>
+                            <span>높은 일함수</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Voltage (Tab 2 only) -->
+                <div class="control-group" id="voltage-control-section" style="display: none;">
+                    <h3>3. 외부 전압 설정 (Voltage)</h3>
+                    <div class="slider-wrapper">
+                        <div class="slider-label">
+                            <span>외부 전압 (<span class="math">V</span>)</span>
+                            <span id="val-voltage" class="highlight-val">0.00 V</span>
+                        </div>
+                        <input type="range" id="input-voltage" min="-5.0" max="5.0" step="0.05" value="0">
+                        <div class="voltage-track">
+                            <span style="color: #ff453a;">역방향 (척력)</span>
+                            <span>0V</span>
+                            <span style="color: #30d158;">순방향 (인력)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Run/Pause button -->
+            <div class="action-buttons">
+                <button id="btn-play-pause" class="btn btn-primary">
+                    <span class="icon">⏸</span> 일시정지
+                </button>
+                <button id="btn-reset" class="btn btn-secondary">
+                    초기화
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Tabs Menu -->
+            <nav class="tab-navigation glass">
+                <button class="tab-btn active" data-tab="basic">
+                    <span class="tab-icon">💡</span> 기본 광전효과 시뮬레이션
+                </button>
+                <button class="tab-btn" data-tab="voltage">
+                    <span class="tab-icon">⚡</span> 확장: 저지 전압 측정 실험
+                </button>
+            </nav>
+
+            <!-- Simulation Viewport -->
+            <section class="simulation-section glass">
+                <div class="canvas-container">
+                    <canvas id="physics-canvas"></canvas>
+                    <div class="canvas-overlay" id="emission-status">
+                        전자가 방출되지 않는 상태 (f &lt; f₀)
+                    </div>
+                </div>
+            </section>
+
+            <!-- Bottom Section: Wave vs Particle Comparison Table -->
+            <section class="comparison-section glass">
+                <h3>고전 파동설 vs 아인슈타인 입자설 비교 (Wave vs. Particle)</h3>
+                <div class="comparison-grid">
+                    <div class="comparison-card" id="card-intensity">
+                        <div class="card-header">
+                            <span class="card-title">현상 1: 빛의 세기(Intensity) 증가</span>
+                            <span class="status-indicator">관련 설정 조정 중</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="theory wave">
+                                <strong>고전 파동설의 예측:</strong>
+                                <p>빛은 에너지 파동이므로 세기가 강해지면 전기장의 진폭이 커져 방출되는 전자의 <strong>최대 운동에너지($K_{max}$)가 증가</strong>해야 함.</p>
+                            </div>
+                            <div class="theory particle active">
+                                <strong>아인슈타인 입자설의 결과 (실제):</strong>
+                                <p>빛의 세기는 광자의 <strong>개수</strong>일 뿐이므로, 방출되는 <strong>전자 수(전류)는 늘어나지만</strong> 개별 전자의 <strong>최대 운동에너지는 전혀 변하지 않음</strong>.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="comparison-card" id="card-frequency">
+                        <div class="card-header">
+                            <span class="card-title">현상 2: 한계 진동수($f_0$) 이하의 빛</span>
+                            <span class="status-indicator">관련 설정 조정 중</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="theory wave">
+                                <strong>고전 파동설의 예측:</strong>
+                                <p>아무리 진동수가 낮은 빛이라도 빛을 세게 쬐거나 **충분한 시간 동안 에너지를 축적**하면 전자가 에너지를 흡수하여 방출되어야 함.</p>
+                            </div>
+                            <div class="theory particle active">
+                                <strong>아인슈타인 입자설의 결과 (실제):</strong>
+                                <p>광자 한 개의 에너지($E=hf$)가 금속 일함수($\Phi$)보다 작으면, 아무리 강한 빛을 오래 비추어도 **전자가 단 한 개도 방출되지 않음** (즉시 방출 여부 결정).</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Rightbar: Scientific Telemetry & Explanation -->
+        <aside class="telemetry-panel glass">
+            <!-- Telemetry & Math formulas -->
+            <div class="telemetry-section">
+                <h3>물리 데이터 & 공식 (Calculations)</h3>
+                
+                <div class="math-formulas">
+                    <div class="formula-row" id="row-photon-energy">
+                        <div class="formula-label">
+                            <span class="math">E = hf</span> (광자 에너지)
+                        </div>
+                        <div class="formula-value" id="val-photon-energy">
+                            2.69 eV
+                        </div>
+                    </div>
+                    <div class="formula-row" id="row-work-function">
+                        <div class="formula-label">
+                            <span class="math">&Phi; = hf<sub>0</sub></span> (금속 일함수)
+                        </div>
+                        <div class="formula-value" id="val-work-function-ev">
+                            2.14 eV
+                        </div>
+                    </div>
+                    <div class="formula-row" id="row-max-energy">
+                        <div class="formula-label">
+                            <span class="math">K<sub>max</sub> = E - &Phi;</span> (최대 운동에너지)
+                        </div>
+                        <div class="formula-value" id="val-max-energy">
+                            0.55 eV
+                        </div>
+                    </div>
+                    <div class="formula-row" id="row-stopping-potential" style="display: none;">
+                        <div class="formula-label">
+                            <span class="math">V<sub>0</sub> = K<sub>max</sub>/e</span> (저지 전압)
+                        </div>
+                        <div class="formula-value" id="val-stopping-potential">
+                            0.55 V
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dynamic Scientific Explanation -->
+            <div class="telemetry-section">
+                <h3>상황별 원리 설명 (Scientific Explanation)</h3>
+                <div class="explanation-box" id="explanation-text">
+                    빛의 진동수가 금속의 한계 진동수보다 크기 때문에 전자가 방출되고 있습니다. 금속 표면에서 튀어나온 전자는 충돌을 겪지 않아 최대 운동에너지를 가지며 빠르게 날아갑니다. 반면 금속 깊은 곳에서 방출된 전자는 원자들과 충돌하여 에너지를 잃고 느리게 방출됩니다.
+                </div>
+            </div>
+
+            <!-- I-V Graph (Tab 2 only) -->
+            <div class="telemetry-section" id="graph-section" style="display: none;">
+                <h3>실시간 전류-전압 (I-V) 곡선</h3>
+                <div class="graph-container">
+                    <svg id="iv-chart" viewBox="0 0 240 180">
+                        <!-- Grid lines -->
+                        <line x1="20" y1="90" x2="220" y2="90" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+                        <line x1="120" y1="10" x2="120" y2="170" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+                        
+                        <!-- Axes -->
+                        <line x1="20" y1="90" x2="220" y2="90" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" marker-end="url(#arrow)"/>
+                        <line x1="120" y1="170" x2="120" y2="10" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" marker-end="url(#arrow)"/>
+                        
+                        <!-- Axis Labels -->
+                        <text x="215" y="105" fill="rgba(255,255,255,0.7)" font-size="10" text-anchor="end">전압 V</text>
+                        <text x="128" y="20" fill="rgba(255,255,255,0.7)" font-size="10">전류 I</text>
+                        
+                        <!-- Dynamic Curves will be drawn here -->
+                        <path id="iv-curve-path" d="" fill="none" stroke="#00f0ff" stroke-width="2" opacity="0.6"/>
+                        
+                        <!-- Current Value Point -->
+                        <circle id="iv-current-point" cx="120" cy="90" r="4" fill="#ff453a" stroke="#fff" stroke-width="1"/>
+                        
+                        <!-- Markers definition -->
+                        <defs>
+                            <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                <path d="M 0 2 L 10 5 L 0 8 z" fill="rgba(255,255,255,0.7)"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                    <div class="graph-legend">
+                        <span class="legend-item"><span class="legend-dot current"></span>현재 상태</span>
+                        <span class="legend-item"><span class="legend-dot stopping"></span>저지 전압 (-V₀)</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Scripts -->
+    <script src="physics.js"></script>
+    <script src="gui.js"></script>
+</body>
+</html>

@@ -40,9 +40,19 @@ modern-physics/                현대물리
 └── photoelectric-effect/      💡 광전효과        ✔ 완료
 tools/                         분석 도구
 └── stroboscope/              📸 스트로보스코프(운동 영상 분석)  ✔ 완료
+students/                      🎓 학생 제출자료 (년도·학기별 누적)
+├── index.html                 학생 자료 허브 (목록)
+└── 2026-1/
+    └── physics2-mechanics.html   2026학년도 1학기 물리학2 역학 (31명)
 ```
 
-각 폴더에는 시뮬레이션(`index.html`)과 기획 문서(`PRD.md`)가 함께 있습니다.
+각 시뮬레이션 폴더에는 `index.html`과 기획 문서 `PRD.md`가 함께 있습니다.
+
+### 학생 자료 추가 방법
+
+1. `students/<년도>-<학기>/` 폴더에 갤러리 HTML 파일을 넣습니다
+   (예: `students/2026-2/physics2-waves.html`).
+2. `students/index.html`의 `submissions` 배열에 항목을 한 줄 추가합니다.
 
 ## 공통 특징
 

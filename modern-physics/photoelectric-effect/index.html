@@ -1,261 +1,877 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>광전효과 인터랙티브 시뮬레이션</title>
-    <!-- Google Fonts: Inter & Outfit for modern look -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>광전효과로 플랑크 상수 h 측정</title>
+<style>
+  :root {
+    --bg: #f4f6fa; --panel: #ffffff; --ink: #1c2733; --sub: #5a6b7d;
+    --accent: #1f6fd6; --accent2: #d64545; --ok: #1e8f4e; --warn: #c07c00;
+    --border: #d7dee8; --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+    background: var(--bg); color: var(--ink);
+    padding: 12px; font-size: 15px;
+  }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  header h1 { font-size: 1.25em; }
+  header .spacer { flex: 1; }
+  .layout { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .sim-col { flex: 1 1 460px; display: flex; flex-direction: column; gap: 12px; }
+  .side-col { flex: 1 1 330px; display: flex; flex-direction: column; gap: 12px; }
+  canvas { display: block; max-width: 100%; }
+  #tubeCanvas { background: #0c1119; border-radius: 6px; width: 100%; height: auto; }
+
+  .controls-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
+  button {
+    font-size: 1em; padding: 8px 14px; border-radius: 8px;
+    border: 1px solid var(--border); background: #fff; cursor: pointer;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.danger  { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .mode-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+  .mode-tabs button { flex: 1; }
+  .mode-tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  fieldset { border: none; }
+  h3.sec { font-size: 0.95em; color: var(--sub); margin-bottom: 8px; letter-spacing: .3px; }
+  .param { margin-bottom: 10px; }
+  .param label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 4px; }
+  .param label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .param input[type=range] { width: 100%; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .hint { color: var(--sub); font-size: 0.85em; margin-top: 4px; line-height: 1.5; }
+
+  .presets { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .presets button { flex: 1 1 auto; padding: 6px 8px; font-size: 0.9em; }
+  .presets button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .presets button.mystery { border-style: dashed; }
+  .presets button.mystery.active { background: #6b46c1; border-color: #6b46c1; }
+
+  /* 계산값 표 */
+  .calc-grid { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center; }
+  .calc-grid .k { color: var(--sub); font-size: 0.92em; }
+  .calc-grid .v { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+  .calc-grid .v.big { color: var(--accent); }
+  .calc-grid .v.zero { color: var(--accent2); }
+
+  /* 전류계 */
+  .ammeter { text-align: center; padding: 6px 0 2px; }
+  .ammeter .cur {
+    font-size: 1.8em; font-weight: 700; font-variant-numeric: tabular-nums;
+    color: var(--ok);
+  }
+  .ammeter .cur.zero { color: var(--accent2); }
+  .ammeter .bar { height: 10px; background: #e5ebf3; border-radius: 6px; overflow: hidden; margin-top: 6px; }
+  .ammeter .bar > i { display: block; height: 100%; width: 0; background: var(--ok); transition: width .08s linear; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+  th, td { border: 1px solid var(--border); padding: 5px 6px; text-align: center; font-variant-numeric: tabular-nums; }
+  th { background: #eef3fa; }
+  tfoot td { font-weight: 700; background: #f5f9f2; }
+
+  .graphs { display: flex; gap: 12px; flex-wrap: wrap; }
+  .graphs figure { flex: 1 1 240px; }
+  .graphs figcaption { text-align: center; font-size: 0.9em; color: var(--sub); margin-top: 3px; }
+  .graphs canvas { background: #fff; border: 1px solid var(--border); border-radius: 6px; width: 100%; }
+
+  details { margin-top: 4px; }
+  summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+  .formula-body { padding: 8px 4px; line-height: 1.75; }
+  .formula-body .eq { font-size: 1.12em; text-align: center; margin: 8px 0; font-family: Georgia, serif; }
+
+  /* 파동설 vs 입자설 */
+  .cmp { display: flex; flex-direction: column; gap: 8px; }
+  .cmp .card { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; transition: border-color .15s, box-shadow .15s; }
+  .cmp .card.on { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(31,111,214,.12); }
+  .cmp .card h4 { font-size: 0.92em; margin-bottom: 4px; }
+  .cmp .theory { font-size: 0.85em; margin-top: 4px; }
+  .cmp .wave { color: var(--sub); }
+  .cmp .wave b { color: var(--accent2); }
+  .cmp .part { color: var(--ink); }
+  .cmp .part b { color: var(--ok); }
+
+  .badge { display:inline-block; font-size:.72em; padding:2px 8px; border-radius:20px; background:#ede9fe; color:#6b46c1; }
+
+  body.projector { font-size: 19px; }
+  body.projector .ammeter .cur { font-size: 2.3em; }
+  body.projector button { padding: 11px 16px; }
+
+  @media (max-width: 720px) {
+    body { font-size: 16px; padding: 8px; }
+    .layout { flex-direction: column; }
+    .sim-col, .side-col { flex: 1 1 100%; }
+    button { padding: 11px 15px; }
+    input[type=number], select { font-size: 16px; }
+    th, td { padding: 4px 3px; font-size: 0.85em; }
+  }
+</style>
 </head>
 <body>
-    <div class="app-container">
-        <!-- Sidebar: Control Panel -->
-        <aside class="control-panel glass">
-            <div class="brand">
-                <span class="badge">현대 물리학</span>
-                <h2>광전효과</h2>
-                <p>Photoelectric Effect Simulation</p>
-                <a href="../../index.html" style="display:inline-block;margin-top:10px;text-decoration:none;color:inherit;border:1px solid rgba(128,128,128,.45);padding:6px 12px;border-radius:8px;font-size:0.85em">🏠 홈으로</a>
-            </div>
 
-            <div class="control-sections">
-                <!-- Section 1: Light Source Properties -->
-                <div class="control-group">
-                    <h3>1. 광원 설정 (Light Source)</h3>
-                    
-                    <div class="slider-wrapper">
-                        <div class="slider-label">
-                            <span>진동수 (Frequency, <span class="math">f</span>)</span>
-                            <span id="val-frequency" class="highlight-val">6.0 &times; 10<sup>14</sup> Hz</span>
-                        </div>
-                        <input type="range" id="input-frequency" min="3.5" max="12.0" step="0.1" value="6.5">
-                        <div class="wavelength-track">
-                            <span style="color: #ff3b30;">IR/Red</span>
-                            <span style="color: #ffcc00;">Green</span>
-                            <span style="color: #007aff;">Blue</span>
-                            <span style="color: #af52de;">UV</span>
-                        </div>
-                    </div>
+<header>
+  <a href="../../index.html" style="text-decoration:none;color:var(--sub);border:1px solid var(--border);padding:6px 12px;border-radius:8px;font-size:0.9em;white-space:nowrap">🏠 홈</a>
+  <h1>💡 광전효과로 플랑크 상수 h 측정</h1>
+  <span class="spacer"></span>
+  <button id="projectorBtn" title="프로젝터용 큰 글씨 모드">🖥 큰 글씨 모드</button>
+</header>
 
-                    <div class="slider-wrapper">
-                        <div class="slider-label">
-                            <span>빛의 세기 (Intensity)</span>
-                            <span id="val-intensity" class="highlight-val">50%</span>
-                        </div>
-                        <input type="range" id="input-intensity" min="0" max="100" step="5" value="50">
-                    </div>
-                </div>
+<div class="layout">
 
-                <!-- Section 2: Metal Target Work Function -->
-                <div class="control-group">
-                    <h3>2. 금속판 설정 (Target Metal)</h3>
-                    
-                    <div class="metal-presets">
-                        <button type="button" class="btn-preset active" data-workfunction="2.14" data-name="세슘 (Cs)">Cs (2.14 eV)</button>
-                        <button type="button" class="btn-preset" data-workfunction="2.36" data-name="나트륨 (Na)">Na (2.36 eV)</button>
-                        <button type="button" class="btn-preset" data-workfunction="4.30" data-name="아연 (Zn)">Zn (4.30 eV)</button>
-                        <button type="button" class="btn-preset" data-workfunction="5.64" data-name="백금 (Pt)">Pt (5.64 eV)</button>
-                    </div>
-
-                    <div class="slider-wrapper">
-                        <div class="slider-label">
-                            <span>한계 진동수 / 일함수 (<span class="math">&Phi;</span>)</span>
-                            <span id="val-workfunction" class="highlight-val">2.14 eV</span>
-                        </div>
-                        <input type="range" id="input-workfunction" min="1.5" max="6.5" step="0.05" value="2.14">
-                        <div class="limit-track">
-                            <span>낮은 일함수</span>
-                            <span>높은 일함수</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Section 3: Voltage (Tab 2 only) -->
-                <div class="control-group" id="voltage-control-section" style="display: none;">
-                    <h3>3. 외부 전압 설정 (Voltage)</h3>
-                    <div class="slider-wrapper">
-                        <div class="slider-label">
-                            <span>외부 전압 (<span class="math">V</span>)</span>
-                            <span id="val-voltage" class="highlight-val">0.00 V</span>
-                        </div>
-                        <input type="range" id="input-voltage" min="-5.0" max="5.0" step="0.05" value="0">
-                        <div class="voltage-track">
-                            <span style="color: #ff453a;">역방향 (척력)</span>
-                            <span>0V</span>
-                            <span style="color: #30d158;">순방향 (인력)</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Run/Pause button -->
-            <div class="action-buttons">
-                <button id="btn-play-pause" class="btn btn-primary">
-                    <span class="icon">⏸</span> 일시정지
-                </button>
-                <button id="btn-reset" class="btn btn-secondary">
-                    초기화
-                </button>
-            </div>
-        </aside>
-
-        <!-- Main Content Area -->
-        <main class="main-content">
-            <!-- Tabs Menu -->
-            <nav class="tab-navigation glass">
-                <button class="tab-btn active" data-tab="basic">
-                    <span class="tab-icon">💡</span> 기본 광전효과 시뮬레이션
-                </button>
-                <button class="tab-btn" data-tab="voltage">
-                    <span class="tab-icon">⚡</span> 확장: 저지 전압 측정 실험
-                </button>
-            </nav>
-
-            <!-- Simulation Viewport -->
-            <section class="simulation-section glass">
-                <div class="canvas-container">
-                    <canvas id="physics-canvas"></canvas>
-                    <div class="canvas-overlay" id="emission-status">
-                        전자가 방출되지 않는 상태 (f &lt; f₀)
-                    </div>
-                </div>
-            </section>
-
-            <!-- Bottom Section: Wave vs Particle Comparison Table -->
-            <section class="comparison-section glass">
-                <h3>고전 파동설 vs 아인슈타인 입자설 비교 (Wave vs. Particle)</h3>
-                <div class="comparison-grid">
-                    <div class="comparison-card" id="card-intensity">
-                        <div class="card-header">
-                            <span class="card-title">현상 1: 빛의 세기(Intensity) 증가</span>
-                            <span class="status-indicator">관련 설정 조정 중</span>
-                        </div>
-                        <div class="card-body">
-                            <div class="theory wave">
-                                <strong>고전 파동설의 예측:</strong>
-                                <p>빛은 에너지 파동이므로 세기가 강해지면 전기장의 진폭이 커져 방출되는 전자의 <strong>최대 운동에너지($K_{max}$)가 증가</strong>해야 함.</p>
-                            </div>
-                            <div class="theory particle active">
-                                <strong>아인슈타인 입자설의 결과 (실제):</strong>
-                                <p>빛의 세기는 광자의 <strong>개수</strong>일 뿐이므로, 방출되는 <strong>전자 수(전류)는 늘어나지만</strong> 개별 전자의 <strong>최대 운동에너지는 전혀 변하지 않음</strong>.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="comparison-card" id="card-frequency">
-                        <div class="card-header">
-                            <span class="card-title">현상 2: 한계 진동수($f_0$) 이하의 빛</span>
-                            <span class="status-indicator">관련 설정 조정 중</span>
-                        </div>
-                        <div class="card-body">
-                            <div class="theory wave">
-                                <strong>고전 파동설의 예측:</strong>
-                                <p>아무리 진동수가 낮은 빛이라도 빛을 세게 쬐거나 **충분한 시간 동안 에너지를 축적**하면 전자가 에너지를 흡수하여 방출되어야 함.</p>
-                            </div>
-                            <div class="theory particle active">
-                                <strong>아인슈타인 입자설의 결과 (실제):</strong>
-                                <p>광자 한 개의 에너지($E=hf$)가 금속 일함수($\Phi$)보다 작으면, 아무리 강한 빛을 오래 비추어도 **전자가 단 한 개도 방출되지 않음** (즉시 방출 여부 결정).</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </main>
-
-        <!-- Rightbar: Scientific Telemetry & Explanation -->
-        <aside class="telemetry-panel glass">
-            <!-- Telemetry & Math formulas -->
-            <div class="telemetry-section">
-                <h3>물리 데이터 & 공식 (Calculations)</h3>
-                
-                <div class="math-formulas">
-                    <div class="formula-row" id="row-photon-energy">
-                        <div class="formula-label">
-                            <span class="math">E = hf</span> (광자 에너지)
-                        </div>
-                        <div class="formula-value" id="val-photon-energy">
-                            2.69 eV
-                        </div>
-                    </div>
-                    <div class="formula-row" id="row-work-function">
-                        <div class="formula-label">
-                            <span class="math">&Phi; = hf<sub>0</sub></span> (금속 일함수)
-                        </div>
-                        <div class="formula-value" id="val-work-function-ev">
-                            2.14 eV
-                        </div>
-                    </div>
-                    <div class="formula-row" id="row-max-energy">
-                        <div class="formula-label">
-                            <span class="math">K<sub>max</sub> = E - &Phi;</span> (최대 운동에너지)
-                        </div>
-                        <div class="formula-value" id="val-max-energy">
-                            0.55 eV
-                        </div>
-                    </div>
-                    <div class="formula-row" id="row-stopping-potential" style="display: none;">
-                        <div class="formula-label">
-                            <span class="math">V<sub>0</sub> = K<sub>max</sub>/e</span> (저지 전압)
-                        </div>
-                        <div class="formula-value" id="val-stopping-potential">
-                            0.55 V
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Dynamic Scientific Explanation -->
-            <div class="telemetry-section">
-                <h3>상황별 원리 설명 (Scientific Explanation)</h3>
-                <div class="explanation-box" id="explanation-text">
-                    빛의 진동수가 금속의 한계 진동수보다 크기 때문에 전자가 방출되고 있습니다. 금속 표면에서 튀어나온 전자는 충돌을 겪지 않아 최대 운동에너지를 가지며 빠르게 날아갑니다. 반면 금속 깊은 곳에서 방출된 전자는 원자들과 충돌하여 에너지를 잃고 느리게 방출됩니다.
-                </div>
-            </div>
-
-            <!-- I-V Graph (Tab 2 only) -->
-            <div class="telemetry-section" id="graph-section" style="display: none;">
-                <h3>실시간 전류-전압 (I-V) 곡선</h3>
-                <div class="graph-container">
-                    <svg id="iv-chart" viewBox="0 0 240 180">
-                        <!-- Grid lines -->
-                        <line x1="20" y1="90" x2="220" y2="90" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
-                        <line x1="120" y1="10" x2="120" y2="170" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
-                        
-                        <!-- Axes -->
-                        <line x1="20" y1="90" x2="220" y2="90" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" marker-end="url(#arrow)"/>
-                        <line x1="120" y1="170" x2="120" y2="10" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" marker-end="url(#arrow)"/>
-                        
-                        <!-- Axis Labels -->
-                        <text x="215" y="105" fill="rgba(255,255,255,0.7)" font-size="10" text-anchor="end">전압 V</text>
-                        <text x="128" y="20" fill="rgba(255,255,255,0.7)" font-size="10">전류 I</text>
-                        
-                        <!-- Dynamic Curves will be drawn here -->
-                        <path id="iv-curve-path" d="" fill="none" stroke="#00f0ff" stroke-width="2" opacity="0.6"/>
-                        
-                        <!-- Current Value Point -->
-                        <circle id="iv-current-point" cx="120" cy="90" r="4" fill="#ff453a" stroke="#fff" stroke-width="1"/>
-                        
-                        <!-- Markers definition -->
-                        <defs>
-                            <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                                <path d="M 0 2 L 10 5 L 0 8 z" fill="rgba(255,255,255,0.7)"/>
-                            </marker>
-                        </defs>
-                    </svg>
-                    <div class="graph-legend">
-                        <span class="legend-item"><span class="legend-dot current"></span>현재 상태</span>
-                        <span class="legend-item"><span class="legend-dot stopping"></span>저지 전압 (-V₀)</span>
-                    </div>
-                </div>
-            </div>
-        </aside>
+  <!-- ══════════ 왼쪽: 광전관 장면 ══════════ -->
+  <div class="sim-col">
+    <div class="panel">
+      <div class="mode-tabs">
+        <button id="tabBasic" class="active">💡 기본 — 광전자 방출 관찰</button>
+        <button id="tabVolt">⚡ 저지전압 측정</button>
+      </div>
+      <canvas id="tubeCanvas" width="460" height="330"></canvas>
+      <div class="controls-row">
+        <button id="playBtn" class="primary">⏸ 일시정지</button>
+        <button id="resetBtn">↺ 리셋</button>
+        <span id="emitStatus" class="hint" style="margin-left:auto"></span>
+      </div>
     </div>
 
-    <!-- Scripts -->
-    <script src="physics.js"></script>
-    <script src="gui.js"></script>
+    <div class="panel graphs">
+      <figure id="figIV">
+        <canvas id="graphIV" width="280" height="180"></canvas>
+        <figcaption>광전류–전압 (I–V)</figcaption>
+      </figure>
+      <figure>
+        <canvas id="graphVf" width="280" height="180"></canvas>
+        <figcaption>저지전압–진동수 (V₀–f) · 기울기로 h 산출</figcaption>
+      </figure>
+    </div>
+
+    <div class="panel">
+      <details open>
+        <summary>🌊 고전 파동설 vs ⚛️ 아인슈타인 입자설</summary>
+        <div class="cmp" style="margin-top:8px">
+          <div class="card" id="cmpIntensity">
+            <h4>현상 ①: 빛의 세기를 키우면?</h4>
+            <p class="theory wave"><b>파동설 예측:</b> 진폭이 커져 전자의 최대 운동에너지 K<sub>max</sub>가 <b>커진다</b>.</p>
+            <p class="theory part"><b>실제(입자설):</b> 광자 <b>개수</b>만 늘어 전자 수(전류)는 늘지만 K<sub>max</sub>는 <b>변하지 않는다</b>.</p>
+          </div>
+          <div class="card" id="cmpFreq">
+            <h4>현상 ②: 한계진동수보다 낮은 빛은?</h4>
+            <p class="theory wave"><b>파동설 예측:</b> 약해도 <b>오래 쬐면</b> 에너지가 쌓여 전자가 나온다.</p>
+            <p class="theory part"><b>실제(입자설):</b> hf &lt; Φ면 아무리 세고 오래 쬐어도 <b>전자가 하나도 안 나온다</b>.</p>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="panel">
+      <details>
+        <summary>📖 물리 공식 설명</summary>
+        <div class="formula-body">
+          <p>금속에 진동수 f인 빛(광자 1개의 에너지 E = hf)을 비추면, 광자 하나가 전자 하나에 에너지를 준다.</p>
+          <p class="eq">E = hf,&nbsp;&nbsp; K<sub>max</sub> = hf − Φ&nbsp;&nbsp;(hf ≥ Φ일 때만 방출)</p>
+          <p>일함수 Φ는 전자를 금속 밖으로 꺼내는 데 필요한 최소 에너지이고, 한계진동수 f₀는 hf₀ = Φ를 만족한다.</p>
+          <p>방출된 전자를 역방향 전압으로 막으면, 가장 빠른 전자마저 멈추는 전압이 <b>저지전압 V₀</b>다.</p>
+          <p class="eq">eV₀ = K<sub>max</sub> = hf − Φ&nbsp;&nbsp;→&nbsp;&nbsp; V₀ = (h/e)·f − Φ/e</p>
+          <p>여러 진동수에서 V₀를 재어 <b>V₀–f 그래프</b>를 그리면 직선이 되고, 그 <b>기울기가 h/e</b>이므로 플랑크 상수 h를 구할 수 있다. x절편이 한계진동수 f₀다.</p>
+          <p style="color:var(--sub)">※ 진동수 단위는 ×10¹⁴ Hz, 에너지 단위는 eV로 표시한다.</p>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- ══════════ 오른쪽: 조작 · 측정 ══════════ -->
+  <div class="side-col">
+
+    <fieldset class="panel">
+      <h3 class="sec">1. 광원 설정</h3>
+      <div class="param">
+        <label for="freqSlider">진동수 f <span class="val"><span id="freqVal">6.50</span> ×10¹⁴ Hz</span></label>
+        <input type="range" id="freqSlider" min="3.5" max="12.0" step="0.05" value="6.5">
+        <div class="hint" id="colorHint" style="margin-top:2px">색: 초록</div>
+      </div>
+      <div class="param">
+        <label for="intenSlider">빛의 세기 <span class="val"><span id="intenVal">60</span> %</span></label>
+        <input type="range" id="intenSlider" min="0" max="100" step="5" value="60">
+      </div>
+    </fieldset>
+
+    <div class="panel">
+      <h3 class="sec">2. 금속판 설정 (일함수 Φ)</h3>
+      <div class="presets" id="presetBox">
+        <button data-wf="2.14" class="active">Cs 2.14</button>
+        <button data-wf="2.36">Na 2.36</button>
+        <button data-wf="4.30">Zn 4.30</button>
+        <button data-wf="5.64">Pt 5.64</button>
+        <button data-wf="mystery" class="mystery">❓ 미지 금속 X</button>
+      </div>
+      <div class="param" id="wfParam">
+        <label for="wfSlider">일함수 Φ <span class="val"><span id="wfVal">2.14</span> eV</span></label>
+        <input type="range" id="wfSlider" min="1.50" max="6.50" step="0.02" value="2.14">
+      </div>
+      <p class="hint" id="mysteryHint" hidden>미지 금속 X의 일함수는 숨겨져 있습니다. 여러 진동수에서 V₀를 측정해 h와 한계진동수 f₀를 구하고 Φ = h·f₀로 정체를 밝혀보세요.
+        <button id="revealBtn" style="font-size:.9em;padding:2px 8px">정답 공개</button></p>
+    </div>
+
+    <div class="panel" id="voltPanel" hidden>
+      <h3 class="sec">3. 외부 전압 & 전류계</h3>
+      <div class="param">
+        <label for="voltSlider">외부 전압 V <span class="val"><span id="voltVal">0.00</span> V</span></label>
+        <input type="range" id="voltSlider" min="-4.0" max="2.0" step="0.01" value="0">
+        <div class="hint">V &lt; 0 : 역방향(전자를 밀어냄) · V &gt; 0 : 순방향(전자를 끌어당김)</div>
+      </div>
+      <div class="ammeter">
+        <div class="cur" id="ammeterVal">0.0</div>
+        <div class="hint">광전류 (상대값, 포화 100)</div>
+        <div class="bar"><i id="ammeterBar"></i></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3 class="sec">실시간 계산값</h3>
+      <div class="calc-grid">
+        <span class="k">광자 에너지 E = hf</span><span class="v" id="cE">2.69 eV</span>
+        <span class="k">금속 일함수 Φ</span><span class="v" id="cPhi">2.14 eV</span>
+        <span class="k">최대 운동에너지 K<sub>max</sub></span><span class="v big" id="cK">0.55 eV</span>
+        <span class="k">저지전압 V₀ = K<sub>max</sub>/e</span><span class="v big" id="cV0">0.55 V</span>
+      </div>
+    </div>
+
+    <div class="panel" id="measurePanel" hidden>
+      <div class="row" style="justify-content:space-between; margin-bottom:6px">
+        <b>저지전압 측정 <span class="badge">h 산출</span></b>
+      </div>
+      <div class="mode-tabs">
+        <button id="mManual" class="active">✋ 수동</button>
+        <button id="mAuto">🎯 자동</button>
+      </div>
+      <p class="hint" id="measHint">전압을 낮춰 <b>전류가 0이 되는 순간의 전압</b>이 저지전압 V₀입니다. 그 지점에서 아래 버튼으로 기록하세요. (전류가 흐르면 아직 V₀가 아닙니다.)</p>
+      <div class="controls-row" style="margin-top:8px">
+        <button id="recordBtn" class="primary">＋ 현재 진동수의 (f, V₀) 기록</button>
+      </div>
+      <table id="measTable" style="margin-top:8px">
+        <thead><tr><th>#</th><th>f (×10¹⁴)</th><th>V₀ (V)</th><th>금속</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="calc-grid" style="margin-top:8px">
+        <span class="k">직선 기울기 (h/e)</span><span class="v" id="cSlope">–</span>
+        <span class="k">측정한 플랑크 상수 h</span><span class="v big" id="cH">–</span>
+        <span class="k">참값 대비 오차</span><span class="v" id="cHErr">–</span>
+        <span class="k">한계진동수 f₀ (x절편)</span><span class="v" id="cF0">–</span>
+      </div>
+      <div class="controls-row" style="margin-top:8px">
+        <button id="csvBtn">⬇ CSV 저장</button>
+        <button id="clearMeasBtn">기록 지우기</button>
+      </div>
+      <p class="hint">※ 한 금속(같은 Φ)으로 서로 다른 진동수 3점 이상을 측정해야 직선이 잘 나옵니다.</p>
+    </div>
+
+    <div class="panel">
+      <h3 class="sec">상황별 원리 설명</h3>
+      <div class="hint" id="explain" style="font-size:.9em; color:var(--ink)"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ════════════════════════ 상수 ════════════════════════ */
+// 진동수 단위: ×10^14 Hz, 에너지 단위: eV
+const PLANCK_TRUE_JS = 6.62607e-34;     // 플랑크 상수 참값 (J·s)
+const ELEC_CHARGE_C  = 1.602177e-19;    // 전자 전하량 (C)
+// E(eV) = HF_COEFF × f14  (h/e = 4.13567e-15 eV·s, ×10^14 → 0.413567)
+const HF_COEFF_EV = (PLANCK_TRUE_JS / ELEC_CHARGE_C) * 1e14;   // ≈ 0.413567 eV per (×10^14 Hz)
+const MYSTERY_WF_MIN = 2.0, MYSTERY_WF_MAX = 5.5;   // 미지 금속 X 일함수 범위 (eV)
+
+// 렌더링 상수 (캔버스 좌표계, 고정 크기 → DPR 문제 없음)
+const TUBE = { x: 40, y: 24, w: 380, h: 250 };       // 진공관 외곽
+const EMITTER_X = TUBE.x + 34;                        // 광음극(방출판) x
+const COLLECTOR_X = TUBE.x + TUBE.w - 34;             // 집전판 x
+const PLATE_TOP = TUBE.y + 22, PLATE_BOT = TUBE.y + TUBE.h - 22;
+const LAMP = { x: 20, y: 66 };
+const PHOTON_SPEED = 5.2;
+const ELECTRON_SPEED = 3.4;                           // K=1eV 기준 속도 계수
+
+/* ════════════════════════ 물리 (렌더링과 분리) ════════════════════════ */
+function photonEnergy_eV(f14) { return HF_COEFF_EV * f14; }
+function kMax_eV(f14, phi_eV) { return Math.max(0, photonEnergy_eV(f14) - phi_eV); }
+function stoppingVoltage_V(f14, phi_eV) { return kMax_eV(f14, phi_eV); }  // V₀ = K_max/e, 수치 동일
+function thresholdFreq_14(phi_eV) { return phi_eV / HF_COEFF_EV; }        // hf₀ = Φ
+
+// 광전류(상대값 0~100): 세기에 비례한 포화전류, 역방향 전압에서 감소해 |V|≥V₀에서 0
+function photocurrent(f14, phi_eV, inten, volt_V) {
+  if (inten <= 0) return 0;
+  const v0 = stoppingVoltage_V(f14, phi_eV);
+  if (v0 <= 0) return 0;                         // 방출 안 됨
+  const iSat = inten;                            // 포화전류 ∝ 세기
+  if (volt_V >= 0) return iSat;                  // 순방향: 포화
+  const frac = 1 - Math.min(1, (-volt_V) / v0);  // 운동에너지 분포(0~K_max) 균일 가정
+  return iSat * Math.max(0, frac);
+}
+
+// 최소제곱 직선 적합 → {slope, intercept} (points: [{x,y}])
+function linearFit(points) {
+  const n = points.length;
+  if (n < 2) return null;
+  let sx = 0, sy = 0, sxx = 0, sxy = 0;
+  for (const p of points) { sx += p.x; sy += p.y; sxx += p.x * p.x; sxy += p.x * p.y; }
+  const denom = n * sxx - sx * sx;
+  if (Math.abs(denom) < 1e-9) return null;
+  const slope = (n * sxy - sx * sy) / denom;
+  const intercept = (sy - slope * sx) / n;
+  return { slope, intercept };
+}
+
+// 기울기(V per ×10^14 Hz) → h (J·s)
+function slopeToPlanck_JS(slope_V_per_14) { return slope_V_per_14 * ELEC_CHARGE_C / 1e14; }
+
+/* ════════════════════════ 상태 ════════════════════════ */
+const state = {
+  freq14: 6.5,
+  inten: 60,
+  wf_eV: 2.14,
+  wfKey: "2.14",         // 프리셋 키 또는 "mystery"
+  mysteryWf: null,
+  mysteryRevealed: false,
+  volt_V: 0,
+  mode: "basic",         // basic | volt
+  measMode: "manual",    // manual | auto
+  paused: false,
+  photons: [],
+  electrons: [],
+  measurements: [],      // {f14, v0, metal}
+};
+
+/* ════════════════════════ DOM ════════════════════════ */
+const $ = (id) => document.getElementById(id);
+const tube = $("tubeCanvas"), tctx = tube.getContext("2d");
+const gIV = $("graphIV"), gVf = $("graphVf");
+
+/* ════════════════════════ 색 (진동수→가시광) ════════════════════════ */
+function freqColor(f14) {
+  // 가시광 대략 4.0(적)~7.9(자), 그 밖은 IR/UV
+  let r, g, b;
+  if (f14 < 4.0)      { r = 130; g = 20;  b = 20; }                       // IR
+  else if (f14 < 4.8) { const t = (f14 - 4.0) / 0.8; r = 255; g = 40 * t; b = 0; }         // red
+  else if (f14 < 5.2) { const t = (f14 - 4.8) / 0.4; r = 255; g = 120 + 135 * t; b = 0; }  // orange→yellow
+  else if (f14 < 5.6) { const t = (f14 - 5.2) / 0.4; r = 255 - 255 * t; g = 220; b = 0; }  // yellow→green
+  else if (f14 < 6.3) { const t = (f14 - 5.6) / 0.7; r = 0; g = 200; b = 80 * t; }         // green
+  else if (f14 < 7.0) { const t = (f14 - 6.3) / 0.7; r = 0; g = 200 - 120 * t; b = 80 + 175 * t; } // cyan→blue
+  else if (f14 < 7.9) { const t = (f14 - 7.0) / 0.9; r = 90 * t; g = 0; b = 255; }         // blue→violet
+  else                { const t = Math.min(1, (f14 - 7.9) / 4.1); r = 150 + 60 * t; g = 40 * t; b = 255; } // UV
+  return { r: Math.round(r), g: Math.round(g), b: Math.round(b) };
+}
+function colorLabel(f14) {
+  if (f14 < 4.0) return "적외선(IR)";
+  if (f14 < 4.8) return "빨강";
+  if (f14 < 5.2) return "주황";
+  if (f14 < 5.6) return "노랑";
+  if (f14 < 6.3) return "초록";
+  if (f14 < 7.0) return "청록";
+  if (f14 < 7.9) return "파랑~보라";
+  return "자외선(UV)";
+}
+const rgba = (c, a) => `rgba(${c.r},${c.g},${c.b},${a})`;
+
+/* ════════════════════════ 입자 생성/갱신 (시각화) ════════════════════════ */
+function spawnPhoton() {
+  if (state.inten <= 0) return;
+  if (Math.random() > state.inten / 100 * 0.22) return;
+  const ty = PLATE_TOP + Math.random() * (PLATE_BOT - PLATE_TOP);
+  const dx = EMITTER_X - LAMP.x, dy = ty - LAMP.y;
+  const d = Math.hypot(dx, dy);
+  state.photons.push({ x: LAMP.x, y: LAMP.y, vx: dx / d * PHOTON_SPEED, vy: dy / d * PHOTON_SPEED });
+}
+
+function spawnElectron() {
+  const k0 = kMax_eV(state.freq14, currentWf());
+  if (k0 <= 0) return;
+  // 표면 전자(40%)는 K_max, 심부 전자는 손실
+  const surface = Math.random() < 0.4;
+  const k = surface ? k0 : k0 * (0.1 + Math.random() * 0.7);
+  const y = PLATE_TOP + Math.random() * (PLATE_BOT - PLATE_TOP);
+  state.electrons.push({
+    x: EMITTER_X + 4, y,
+    vx: ELECTRON_SPEED * Math.sqrt(k),
+    vy: (Math.random() - 0.5) * 0.8,
+    k, kmax: surface, returned: false,
+  });
+}
+
+function updateParticles() {
+  const wf = currentWf();
+  const emits = kMax_eV(state.freq14, wf) > 0 && state.inten > 0;
+  // 전자를 순방향으로 끌거나 역방향으로 미는 가속도 (시각화용 근사)
+  const v0 = stoppingVoltage_V(state.freq14, wf);
+  // 광자
+  for (let i = state.photons.length - 1; i >= 0; i--) {
+    const p = state.photons[i];
+    p.x += p.vx; p.y += p.vy;
+    if (p.x >= EMITTER_X) {
+      state.photons.splice(i, 1);
+      if (emits && Math.random() < 0.9) spawnElectron();
+    } else if (p.x < -20 || p.y < -20 || p.y > tube.height + 20) {
+      state.photons.splice(i, 1);
+    }
+  }
+  // 전자
+  const field = state.mode === "volt" ? state.volt_V : 0;
+  for (let i = state.electrons.length - 1; i >= 0; i--) {
+    const e = state.electrons[i];
+    // 역방향 전압이면 감속, 순방향이면 가속 (에너지 기준 근사)
+    if (field < 0 && v0 > 0) {
+      // |V|/v0 비율만큼 감속: 전자의 초기 K 대비 통과 가능 여부를 부드럽게 표현
+      e.vx -= (-field) / v0 * 0.05 * ELECTRON_SPEED;
+    } else if (field > 0) {
+      e.vx += field * 0.02 * ELECTRON_SPEED;
+    }
+    e.x += e.vx; e.y += e.vy;
+    if (e.vx <= 0 && field < 0) { // 역방향 전압에 밀려 되돌아감
+      e.returned = true;
+      if (e.x <= EMITTER_X) { state.electrons.splice(i, 1); continue; }
+    }
+    if (e.x >= COLLECTOR_X) { state.electrons.splice(i, 1); continue; }
+    if (e.y < TUBE.y || e.y > TUBE.y + TUBE.h) { state.electrons.splice(i, 1); continue; }
+  }
+}
+
+/* ════════════════════════ 장면 렌더링 ════════════════════════ */
+function drawTube() {
+  const c = tctx, W = tube.width, H = tube.height;
+  c.clearRect(0, 0, W, H);
+  c.fillStyle = "#0c1119"; c.fillRect(0, 0, W, H);
+
+  // 진공관 외곽
+  c.strokeStyle = "rgba(180,205,230,0.35)"; c.lineWidth = 2;
+  roundRect(c, TUBE.x, TUBE.y, TUBE.w, TUBE.h, 18); c.stroke();
+
+  const wf = currentWf();
+  const col = freqColor(state.freq14);
+  const emitting = kMax_eV(state.freq14, wf) > 0 && state.inten > 0;
+
+  // 광원(램프) + 빛 다발
+  if (state.inten > 0) {
+    const beam = c.createLinearGradient(LAMP.x, LAMP.y, EMITTER_X, (PLATE_TOP + PLATE_BOT) / 2);
+    beam.addColorStop(0, rgba(col, 0.30 * state.inten / 100 + 0.05));
+    beam.addColorStop(1, rgba(col, 0));
+    c.fillStyle = beam;
+    c.beginPath();
+    c.moveTo(LAMP.x, LAMP.y);
+    c.lineTo(EMITTER_X, PLATE_TOP);
+    c.lineTo(EMITTER_X, PLATE_BOT);
+    c.closePath(); c.fill();
+  }
+  c.fillStyle = "#334155"; c.beginPath(); c.arc(LAMP.x, LAMP.y, 9, 0, 7); c.fill();
+  c.fillStyle = state.inten > 0 ? rgba(col, 1) : "#1e293b";
+  c.beginPath(); c.arc(LAMP.x, LAMP.y, 5, 0, 7); c.fill();
+  c.fillStyle = "rgba(200,215,230,0.6)"; c.font = "10px sans-serif"; c.textAlign = "center";
+  c.fillText("광원", LAMP.x, LAMP.y + 24);
+
+  // 광음극(방출판) & 집전판
+  drawPlate(EMITTER_X, "left");
+  drawPlate(COLLECTOR_X, "right");
+  c.fillStyle = "rgba(210,225,240,0.85)"; c.font = "11px sans-serif";
+  c.textAlign = "center";
+  c.fillText("광음극", EMITTER_X, TUBE.y + TUBE.h + 15);
+  c.fillText("집전판", COLLECTOR_X, TUBE.y + TUBE.h + 15);
+  c.fillStyle = "rgba(180,200,220,0.6)"; c.font = "10px sans-serif";
+  const wfLabel = (state.wfKey === "mystery" && !state.mysteryRevealed) ? "Φ = ???" : `Φ = ${wf.toFixed(2)} eV`;
+  c.fillText(wfLabel, EMITTER_X, TUBE.y - 8);
+
+  // 역방향/순방향 전기장 화살표 (측정 모드)
+  if (state.mode === "volt" && Math.abs(state.volt_V) > 0.02) {
+    const rev = state.volt_V < 0;
+    c.strokeStyle = rev ? "rgba(255,90,80,0.5)" : "rgba(70,220,120,0.5)";
+    c.fillStyle = c.strokeStyle; c.lineWidth = 1.2;
+    const midY = (PLATE_TOP + PLATE_BOT) / 2;
+    for (let k = 0; k < 3; k++) {
+      const y = PLATE_TOP + 40 + k * 60;
+      const x0 = EMITTER_X + 24, x1 = COLLECTOR_X - 24;
+      c.beginPath(); c.moveTo(x0, y); c.lineTo(x1, y); c.stroke();
+      const ax = rev ? x0 + 14 : x1 - 14, dir = rev ? -1 : 1;  // 전자에 작용하는 힘 방향
+      c.beginPath(); c.moveTo(ax, y); c.lineTo(ax + 7 * dir, y - 4); c.lineTo(ax + 7 * dir, y + 4); c.fill();
+    }
+    c.fillStyle = rev ? "rgba(255,120,110,0.85)" : "rgba(90,230,140,0.85)";
+    c.font = "10px sans-serif"; c.textAlign = "center";
+    c.fillText(rev ? "역방향: 전자를 밀어냄" : "순방향: 전자를 끌어당김", (EMITTER_X + COLLECTOR_X) / 2, midY);
+  }
+
+  // 광자
+  for (const p of state.photons) {
+    c.strokeStyle = rgba(col, 0.9); c.lineWidth = 2;
+    c.beginPath();
+    const ux = p.vx / PHOTON_SPEED, uy = p.vy / PHOTON_SPEED, ox = -uy, oy = ux;
+    for (let s = -6; s <= 6; s += 2) {
+      const amp = Math.sin(s * 0.9 + performance.now() * 0.02) * 3;
+      const wx = p.x + ux * s + ox * amp, wy = p.y + uy * s + oy * amp;
+      s === -6 ? c.moveTo(wx, wy) : c.lineTo(wx, wy);
+    }
+    c.stroke();
+  }
+
+  // 전자
+  for (const e of state.electrons) {
+    c.fillStyle = e.kmax ? "#22d3ee" : "#f59e0b";
+    c.shadowBlur = 6; c.shadowColor = c.fillStyle;
+    c.beginPath(); c.arc(e.x, e.y, e.kmax ? 4 : 3, 0, 7); c.fill();
+    c.shadowBlur = 0;
+  }
+
+  // 방출 안내 배지
+  if (!emitting) {
+    c.fillStyle = "rgba(255,90,80,0.15)"; roundRect(c, TUBE.x + TUBE.w / 2 - 92, TUBE.y + 8, 184, 22, 8); c.fill();
+    c.fillStyle = "rgba(255,150,140,0.95)"; c.font = "12px sans-serif"; c.textAlign = "center";
+    c.fillText(state.inten <= 0 ? "광원이 꺼져 있음" : "hf < Φ : 전자 방출 안 됨", TUBE.x + TUBE.w / 2, TUBE.y + 23);
+  }
+}
+
+function drawPlate(x, side) {
+  const c = tctx;
+  const g = c.createLinearGradient(x - 6, 0, x + 6, 0);
+  g.addColorStop(0, "#2b3648"); g.addColorStop(0.5, "#4a5a72"); g.addColorStop(1, "#2b3648");
+  c.fillStyle = g;
+  c.fillRect(x - 4, PLATE_TOP, 8, PLATE_BOT - PLATE_TOP);
+  c.strokeStyle = "rgba(255,255,255,0.15)"; c.lineWidth = 1;
+  c.strokeRect(x - 4, PLATE_TOP, 8, PLATE_BOT - PLATE_TOP);
+}
+
+function roundRect(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r);
+  c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r);
+  c.arcTo(x, y, x + w, y, r);
+  c.closePath();
+}
+
+/* ════════════════════════ 그래프 ════════════════════════ */
+function drawGraphAxes(ctx, W, H, L, B, T, R, xLabel, yLabel) {
+  ctx.clearRect(0, 0, W, H);
+  ctx.strokeStyle = "#b9c6d6"; ctx.lineWidth = 1; ctx.beginPath();
+  ctx.moveTo(L, T); ctx.lineTo(L, H - B); ctx.lineTo(W - R, H - B); ctx.stroke();
+  ctx.fillStyle = "#5a6b7d"; ctx.font = "11px sans-serif";
+  ctx.textAlign = "left"; ctx.fillText(yLabel, L + 4, T + 9);
+  ctx.textAlign = "right"; ctx.fillText(xLabel, W - R, H - 6);
+}
+
+// I–V 곡선
+function drawIVGraph() {
+  const ctx = gIV.getContext("2d"), W = gIV.width, H = gIV.height;
+  const L = 34, B = 22, T = 10, R = 10;
+  const wf = currentWf();
+  const vMin = -4, vMax = 2, iMax = 100;
+  drawGraphAxes(ctx, W, H, L, B, T, R, "V (V)", "I");
+  const px = (v) => L + (v - vMin) / (vMax - vMin) * (W - L - R);
+  const py = (i) => (H - B) - i / iMax * (H - B - T);
+  // V=0 세로선
+  ctx.strokeStyle = "#e2e8f0"; ctx.beginPath(); ctx.moveTo(px(0), T); ctx.lineTo(px(0), H - B); ctx.stroke();
+  ctx.fillStyle = "#9db2c8"; ctx.font = "10px sans-serif"; ctx.textAlign = "center"; ctx.fillText("0", px(0), H - B + 12);
+  // 곡선
+  ctx.strokeStyle = "#1f6fd6"; ctx.lineWidth = 2; ctx.beginPath();
+  for (let i = 0; i <= 120; i++) {
+    const v = vMin + (vMax - vMin) * i / 120;
+    const cur = photocurrent(state.freq14, wf, state.inten, v);
+    i === 0 ? ctx.moveTo(px(v), py(cur)) : ctx.lineTo(px(v), py(cur));
+  }
+  ctx.stroke(); ctx.lineWidth = 1;
+  // 저지전압 표시
+  const v0 = stoppingVoltage_V(state.freq14, wf);
+  if (v0 > 0) {
+    ctx.strokeStyle = "#d64545"; ctx.setLineDash([3, 3]); ctx.beginPath();
+    ctx.moveTo(px(-v0), T); ctx.lineTo(px(-v0), H - B); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = "#d64545"; ctx.textAlign = "center"; ctx.fillText("−V₀", px(-v0), T + 8);
+  }
+  // 현재 동작점
+  if (state.mode === "volt") {
+    const cur = photocurrent(state.freq14, wf, state.inten, state.volt_V);
+    ctx.fillStyle = cur > 0 ? "#1e8f4e" : "#d64545";
+    ctx.beginPath(); ctx.arc(px(state.volt_V), py(cur), 4, 0, 7); ctx.fill();
+  }
+}
+
+// V₀–f 측정 그래프
+function drawVfGraph() {
+  const ctx = gVf.getContext("2d"), W = gVf.width, H = gVf.height;
+  const L = 34, B = 22, T = 10, R = 10;
+  const fMax = 12, v0Max = 4;
+  drawGraphAxes(ctx, W, H, L, B, T, R, "f (×10¹⁴)", "V₀");
+  const px = (f) => L + f / fMax * (W - L - R);
+  const py = (v) => (H - B) - v / v0Max * (H - B - T);
+  // 눈금
+  ctx.fillStyle = "#9db2c8"; ctx.font = "10px sans-serif";
+  ctx.textAlign = "right"; ctx.fillText(v0Max.toFixed(0), L - 3, T + 8); ctx.fillText("0", L - 3, H - B + 3);
+  ctx.textAlign = "center"; ctx.fillText(fMax.toFixed(0), W - R, H - B + 12);
+  // 적합 직선
+  const fit = linearFit(state.measurements.map(m => ({ x: m.f14, y: m.v0 })));
+  if (fit) {
+    ctx.strokeStyle = "#1e8f4e"; ctx.lineWidth = 2; ctx.beginPath();
+    let started = false;
+    for (let i = 0; i <= 60; i++) {
+      const f = fMax * i / 60, v = fit.slope * f + fit.intercept;
+      const yy = Math.max(0, v);
+      if (v >= 0 && v <= v0Max) { started ? ctx.lineTo(px(f), py(v)) : (ctx.moveTo(px(f), py(v)), started = true); }
+    }
+    ctx.stroke(); ctx.lineWidth = 1;
+    // x절편(f₀)
+    const f0 = -fit.intercept / fit.slope;
+    if (f0 > 0 && f0 < fMax) {
+      ctx.fillStyle = "#6b46c1"; ctx.beginPath(); ctx.arc(px(f0), py(0), 3, 0, 7); ctx.fill();
+      ctx.textAlign = "center"; ctx.fillText("f₀", px(f0), py(0) - 6);
+    }
+  }
+  // 측정 점
+  for (const m of state.measurements) {
+    ctx.fillStyle = "#1f6fd6";
+    ctx.beginPath(); ctx.arc(px(m.f14), py(Math.min(v0Max, m.v0)), 3.5, 0, 7); ctx.fill();
+  }
+}
+
+/* ════════════════════════ UI 갱신 ════════════════════════ */
+function currentWf() {
+  return state.wfKey === "mystery" ? state.mysteryWf : state.wf_eV;
+}
+
+function updateUI() {
+  const wf = currentWf();
+  const E = photonEnergy_eV(state.freq14);
+  const K = kMax_eV(state.freq14, wf);
+  const v0 = stoppingVoltage_V(state.freq14, wf);
+  const emitting = K > 0 && state.inten > 0;
+
+  $("freqVal").textContent = state.freq14.toFixed(2);
+  $("intenVal").textContent = state.inten;
+  $("colorHint").textContent = "색: " + colorLabel(state.freq14);
+  $("wfVal").textContent = wf.toFixed(2);
+  $("voltVal").textContent = state.volt_V.toFixed(2);
+
+  $("cE").textContent = E.toFixed(2) + " eV";
+  const hideWf = state.wfKey === "mystery" && !state.mysteryRevealed;
+  $("cPhi").textContent = hideWf ? "??? eV" : wf.toFixed(2) + " eV";
+  $("cK").textContent = K > 0 ? K.toFixed(2) + " eV" : "0 (방출 안 됨)";
+  $("cK").className = "v big" + (K > 0 ? "" : " zero");
+  $("cV0").textContent = v0 > 0 ? v0.toFixed(2) + " V" : "—";
+  $("cV0").className = "v big" + (v0 > 0 ? "" : " zero");
+
+  // 전류계
+  const cur = photocurrent(state.freq14, wf, state.inten, state.volt_V);
+  $("ammeterVal").textContent = cur.toFixed(1);
+  $("ammeterVal").className = "cur" + (cur <= 0.05 ? " zero" : "");
+  $("ammeterBar").style.width = Math.min(100, cur) + "%";
+  $("ammeterBar").style.background = cur <= 0.05 ? "var(--accent2)" : "var(--ok)";
+
+  // 방출 상태
+  $("emitStatus").textContent = state.inten <= 0 ? "광원 꺼짐"
+    : emitting ? "광전자 방출 중 (hf ≥ Φ)" : "방출 안 됨 (hf < Φ)";
+  $("emitStatus").style.color = emitting ? "var(--ok)" : "var(--accent2)";
+
+  updateComparison();
+  updateExplanation();
+  updateMeasurementReadout();
+  drawIVGraph();
+  drawVfGraph();
+}
+
+let lastChanged = "freq";
+function updateComparison() {
+  const under = kMax_eV(state.freq14, currentWf()) <= 0;
+  $("cmpIntensity").classList.toggle("on", !under && lastChanged === "inten");
+  $("cmpFreq").classList.toggle("on", under || lastChanged === "freq");
+}
+
+function updateExplanation() {
+  const wf = currentWf(), E = photonEnergy_eV(state.freq14), K = kMax_eV(state.freq14, wf), v0 = K;
+  let t = "";
+  if (state.inten <= 0) {
+    t = "광원의 세기가 0입니다. 빛이 없으니 아무 일도 일어나지 않습니다.";
+  } else if (K <= 0) {
+    t = `<b>한계진동수 미달 (hf &lt; Φ):</b> 광자 1개의 에너지(${E.toFixed(2)} eV)가 일함수(${(state.wfKey==="mystery"&&!state.mysteryRevealed)?"???":wf.toFixed(2)} eV)보다 작습니다. 세기를 아무리 키워 광자 수를 늘려도 전자는 광자와 1:1로만 상호작용하므로, 단 한 개도 방출되지 않습니다.`;
+  } else if (state.mode === "basic") {
+    t = `<b>광전자 방출 중:</b> 광자 에너지(${E.toFixed(2)} eV) &gt; 일함수라 전자가 즉시 튀어나옵니다. <span style="color:#0891b2;font-weight:600">청록 전자</span>는 표면에서 손실 없이 나온 K<sub>max</sub>=${K.toFixed(2)} eV 전자, <span style="color:#d97706;font-weight:600">주황 전자</span>는 금속 속에서 충돌로 에너지를 잃고 느리게 나온 전자입니다. 세기를 바꾸면 <b>전자 수</b>만 변하고 속도(K<sub>max</sub>)는 그대로임을 확인하세요.`;
+  } else {
+    if (state.volt_V > 0.02) {
+      t = `<b>순방향 전압:</b> 집전판이 전자를 끌어당겨 느린 전자까지 모두 도달 → 전류가 포화값에 이릅니다.`;
+    } else if (state.volt_V <= -v0 + 1e-9) {
+      t = `<b>저지전압 도달 (V ≤ −V₀):</b> 가장 빠른 전자마저 막혀 전류가 0이 됩니다. 이때 |V| = V₀ = ${v0.toFixed(2)} V이고, eV₀ = K<sub>max</sub>이므로 이 값으로 전자의 최대 운동에너지를 알 수 있습니다.`;
+    } else if (state.volt_V < -0.02) {
+      t = `<b>역방향 전압:</b> 느린 전자부터 되돌아가 전류가 줄어듭니다. 아직 0이 아니므로 저지전압 V₀=${v0.toFixed(2)} V보다 약합니다. 더 낮춰 전류가 0이 되는 지점을 찾으세요.`;
+    } else {
+      t = `<b>전압 0 V:</b> 방출된 전자의 초기 속도로 일부가 집전판에 도달해 전류가 흐릅니다.`;
+    }
+  }
+  $("explain").innerHTML = t;
+}
+
+/* ════════════════════════ 측정 ════════════════════════ */
+function currentMetalName() {
+  if (state.wfKey === "mystery") return "X";
+  const names = { "2.14": "Cs", "2.36": "Na", "4.30": "Zn", "5.64": "Pt" };
+  return names[state.wfKey] || `Φ${state.wf_eV.toFixed(2)}`;
+}
+
+function recordMeasurement() {
+  const wf = currentWf();
+  const v0True = stoppingVoltage_V(state.freq14, wf);
+  if (v0True <= 0) { alert("이 진동수에서는 전자가 방출되지 않아 저지전압을 측정할 수 없습니다."); return; }
+  let v0;
+  if (state.measMode === "auto") {
+    v0 = v0True;                          // 정확한 값
+  } else {
+    const cur = photocurrent(state.freq14, wf, state.inten, state.volt_V);
+    if (cur > 0.5) { alert("아직 전류가 흐릅니다. 전압을 더 낮춰 전류가 0이 되는 지점(저지전압)에서 기록하세요."); return; }
+    v0 = -state.volt_V;                   // 학생이 멈춘 전압의 크기 (판단 오차 포함)
+  }
+  state.measurements.push({ f14: state.freq14, v0, metal: currentMetalName() });
+  updateUI();
+}
+
+function updateMeasurementReadout() {
+  const tbody = $("measTable").querySelector("tbody");
+  tbody.innerHTML = "";
+  state.measurements.forEach((m, i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${i + 1}</td><td>${m.f14.toFixed(2)}</td><td>${m.v0.toFixed(2)}</td><td>${m.metal}</td>`;
+    tbody.appendChild(tr);
+  });
+  const fit = linearFit(state.measurements.map(m => ({ x: m.f14, y: m.v0 })));
+  if (fit && state.measurements.length >= 2) {
+    const hMeas = slopeToPlanck_JS(fit.slope);
+    const err = Math.abs(hMeas - PLANCK_TRUE_JS) / PLANCK_TRUE_JS * 100;
+    const f0 = -fit.intercept / fit.slope;
+    $("cSlope").textContent = fit.slope.toFixed(3) + " V/(×10¹⁴)";
+    $("cH").textContent = hMeas.toExponential(2) + " J·s";
+    $("cHErr").textContent = err.toFixed(1) + " %";
+    $("cHErr").className = "v" + (err < 5 ? "" : " zero");
+    $("cF0").textContent = (f0 > 0 ? f0.toFixed(2) : "—") + " ×10¹⁴ Hz";
+  } else {
+    $("cSlope").textContent = "–"; $("cH").textContent = "–";
+    $("cHErr").textContent = "–"; $("cHErr").className = "v"; $("cF0").textContent = "–";
+  }
+}
+
+function exportCSV() {
+  if (!state.measurements.length) { alert("저장할 측정 기록이 없습니다."); return; }
+  const rows = [["번호", "f(x10^14 Hz)", "V0(V)", "금속"]];
+  state.measurements.forEach((m, i) => rows.push([i + 1, m.f14.toFixed(2), m.v0.toFixed(3), m.metal]));
+  const fit = linearFit(state.measurements.map(m => ({ x: m.f14, y: m.v0 })));
+  if (fit && state.measurements.length >= 2) {
+    rows.push([]);
+    rows.push(["기울기(h/e)", fit.slope.toFixed(4), "V/(x10^14Hz)"]);
+    rows.push(["측정 h", slopeToPlanck_JS(fit.slope).toExponential(3), "J.s", `참값 ${PLANCK_TRUE_JS.toExponential(3)}`]);
+    rows.push(["한계진동수 f0", (-fit.intercept / fit.slope).toFixed(2), "x10^14 Hz"]);
+  }
+  const csv = "﻿" + rows.map(r => r.join(",")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = "광전효과_플랑크상수_측정.csv";
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+/* ════════════════════════ 모드/조작 ════════════════════════ */
+function setMode(mode) {
+  state.mode = mode;
+  $("tabBasic").classList.toggle("active", mode === "basic");
+  $("tabVolt").classList.toggle("active", mode === "volt");
+  $("voltPanel").hidden = mode !== "volt";
+  $("measurePanel").hidden = mode !== "volt";
+  $("figIV").style.display = mode === "volt" ? "" : "none";
+  if (mode === "basic") { state.volt_V = 0; $("voltSlider").value = 0; }
+  state.electrons = []; state.photons = [];
+  updateUI();
+}
+
+function setMeasMode(m) {
+  state.measMode = m;
+  $("mManual").classList.toggle("active", m === "manual");
+  $("mAuto").classList.toggle("active", m === "auto");
+  $("measHint").innerHTML = m === "manual"
+    ? "전압을 낮춰 <b>전류가 0이 되는 순간의 전압</b>이 저지전압 V₀입니다. 그 지점에서 아래 버튼으로 기록하세요. (전류가 흐르면 아직 V₀가 아닙니다.)"
+    : "🎯 자동 측정: 현재 진동수의 정확한 저지전압 V₀를 바로 기록합니다. 수동 측정과 오차를 비교해 보세요.";
+}
+
+function resetSim() {
+  state.photons = []; state.electrons = [];
+  updateUI();
+}
+
+/* ════════════════════════ 루프 ════════════════════════ */
+function loop() {
+  if (!state.paused) { spawnPhoton(); updateParticles(); }
+  drawTube();
+  requestAnimationFrame(loop);
+}
+
+/* ════════════════════════ 이벤트 ════════════════════════ */
+$("freqSlider").addEventListener("input", (e) => { state.freq14 = parseFloat(e.target.value); lastChanged = "freq"; updateUI(); });
+$("intenSlider").addEventListener("input", (e) => { state.inten = parseInt(e.target.value, 10); lastChanged = "inten"; updateUI(); });
+$("wfSlider").addEventListener("input", (e) => {
+  if (state.wfKey === "mystery") return;   // 미지 금속은 슬라이더 잠금
+  state.wf_eV = parseFloat(e.target.value); state.wfKey = e.target.value;
+  document.querySelectorAll("#presetBox button").forEach(b => b.classList.remove("active"));
+  updateUI();
+});
+$("voltSlider").addEventListener("input", (e) => { state.volt_V = parseFloat(e.target.value); updateUI(); });
+
+document.querySelectorAll("#presetBox button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#presetBox button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const wf = btn.dataset.wf;
+    if (wf === "mystery") {
+      state.wfKey = "mystery";
+      if (state.mysteryWf === null) state.mysteryWf = MYSTERY_WF_MIN + Math.random() * (MYSTERY_WF_MAX - MYSTERY_WF_MIN);
+      state.mysteryRevealed = false;
+      $("mysteryHint").hidden = false;
+      $("wfSlider").disabled = true;
+    } else {
+      state.wfKey = wf; state.wf_eV = parseFloat(wf);
+      $("wfSlider").value = wf; $("wfSlider").disabled = false;
+      $("mysteryHint").hidden = true;
+    }
+    updateUI();
+  });
+});
+$("revealBtn").addEventListener("click", () => {
+  state.mysteryRevealed = true; updateUI();
+  alert(`미지 금속 X의 일함수 Φ = ${state.mysteryWf.toFixed(2)} eV\n한계진동수 f₀ = ${thresholdFreq_14(state.mysteryWf).toFixed(2)} ×10¹⁴ Hz`);
+});
+
+$("tabBasic").addEventListener("click", () => setMode("basic"));
+$("tabVolt").addEventListener("click", () => setMode("volt"));
+$("mManual").addEventListener("click", () => setMeasMode("manual"));
+$("mAuto").addEventListener("click", () => setMeasMode("auto"));
+$("recordBtn").addEventListener("click", recordMeasurement);
+$("csvBtn").addEventListener("click", exportCSV);
+$("clearMeasBtn").addEventListener("click", () => { state.measurements = []; updateUI(); });
+
+$("playBtn").addEventListener("click", () => {
+  state.paused = !state.paused;
+  $("playBtn").innerHTML = state.paused ? "▶ 재생" : "⏸ 일시정지";
+  $("playBtn").className = state.paused ? "" : "primary";
+});
+$("resetBtn").addEventListener("click", resetSim);
+$("projectorBtn").addEventListener("click", () => document.body.classList.toggle("projector"));
+
+/* ════════════════════════ 시작 ════════════════════════ */
+setMode("basic");
+updateUI();
+requestAnimationFrame(loop);
+
+/* 완성 기준 콘솔 검증 */
+(function verify() {
+  const f = 8.0, phi = 2.14;
+  const E = photonEnergy_eV(f), K = kMax_eV(f, phi), v0 = stoppingVoltage_V(f, phi);
+  console.log(`[검증] f=${f}×10¹⁴Hz, Φ=${phi}eV → E=hf=${E.toFixed(3)}eV, K_max=${K.toFixed(3)}eV, V₀=${v0.toFixed(3)}V`);
+  // 자동 측정 시뮬: 세 진동수의 정확한 V₀로 직선 적합 → h 복원 오차
+  const pts = [5, 7, 9].map(ff => ({ x: ff, y: stoppingVoltage_V(ff, phi) }));
+  const fit = linearFit(pts), hMeas = slopeToPlanck_JS(fit.slope);
+  console.log(`[검증] V₀–f 적합 h=${hMeas.toExponential(4)} J·s (참값 ${PLANCK_TRUE_JS.toExponential(4)}), 오차=${(Math.abs(hMeas-PLANCK_TRUE_JS)/PLANCK_TRUE_JS*100).toFixed(3)}%`);
+})();
+</script>
 </body>
 </html>

@@ -82,6 +82,15 @@
   .calc { padding: 6px 0 2px; }
   .calc .row { row-gap: 6px; }
 
+  /* 스톱워치 버튼 상태 표시 */
+  #watchBtn.idle { background: var(--ok); border-color: var(--ok); color: #fff; }
+  #watchBtn.running { background: var(--accent2); border-color: var(--accent2); color: #fff;
+    animation: watchPulse 1.1s ease-in-out infinite; }
+  @keyframes watchPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(214, 69, 69, 0.5); }
+    50% { box-shadow: 0 0 0 8px rgba(214, 69, 69, 0); }
+  }
+
   details { margin-top: 4px; }
   summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
   .formula-body { padding: 8px 4px; line-height: 1.7; }
@@ -194,7 +203,7 @@
       </div>
       <div class="stopwatch" id="stopwatchDisp">0.000 s</div>
       <div class="controls-row">
-        <button id="watchBtn" class="danger" style="flex:1">⏱ 스톱워치 시작/정지 (Space)</button>
+        <button id="watchBtn" class="idle" style="flex:1">⏱ 스톱워치 시작 (Space)</button>
       </div>
       <p class="hint" id="modeHint">카운트다운(3·2·1) 후 공이 떨어집니다. 낙하 신호음에 Space로 스톱워치를 켜고, 착지 소리에 멈추세요. 반응 시간이 오차로 들어갑니다.</p>
     </div>
@@ -631,7 +640,7 @@ function startDrop() {
   // 학생은 Space 키에 손을 올려두고 낙하 순간에만 반응하면 됨
   state.simTime_s = 0; state.strobeTrail = []; state.nextStrobe_s = 0;
   state.phase = "countdown"; state.countdown_s = COUNTDOWN_S;
-  state.watchRunning = false; state.watchTime_s = 0; updateStopwatchDisplay(0);
+  state.watchRunning = false; state.watchTime_s = 0; updateStopwatchDisplay(0); updateWatchButton();
   beep(880, 0.08);
   $("dropBtn").disabled = true; $("pauseBtn").disabled = false; $("recordBtn").disabled = true;
 }
@@ -648,20 +657,33 @@ function resetSim(keepRecords = true) {
   state.phase = "ready"; state.simTime_s = 0; state.countdown_s = 0;
   state.strobeTrail = []; state.nextStrobe_s = 0;
   state.watchRunning = false; state.watchTime_s = 0;
-  updateStopwatchDisplay(0);
+  updateStopwatchDisplay(0); updateWatchButton();
   $("dropBtn").disabled = false; $("dropBtn").textContent = "▶ 낙하 시작";
   $("pauseBtn").disabled = true; $("recordBtn").disabled = true;
   if (!keepRecords) { state.records = []; renderRecords(); }
+}
+
+function updateWatchButton() {
+  const btn = $("watchBtn");
+  if (state.watchRunning) {
+    btn.textContent = "⏹ 측정 중 — 정지 (Space)";
+    btn.classList.add("running"); btn.classList.remove("idle");
+  } else {
+    btn.textContent = "⏱ 스톱워치 시작 (Space)";
+    btn.classList.add("idle"); btn.classList.remove("running");
+  }
 }
 
 function toggleWatch() {
   if (state.watchMode !== "manual") return;
   if (!state.watchRunning) { state.watchTime_s = 0; state.watchRunning = true; }
   else state.watchRunning = false;
+  updateWatchButton();
 }
 
 function setWatchMode(mode) {
   state.watchMode = mode; state.watchRunning = false;
+  updateWatchButton();
   $("manualTab").classList.toggle("active", mode === "manual");
   $("autoTab").classList.toggle("active", mode === "auto");
   $("watchBtn").disabled = mode === "auto";

@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>빗면으로 중력가속도 g 측정</title>
+<style>
+  :root {
+    --bg: #f4f6fa; --panel: #ffffff; --ink: #1c2733; --sub: #5a6b7d;
+    --accent: #1f6fd6; --accent2: #d64545; --ok: #1e8f4e; --warn: #c07c00;
+    --border: #d7dee8; --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", "Malgun Gothic", sans-serif; background: var(--bg); color: var(--ink); padding: 12px; font-size: 15px; }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  header h1 { font-size: 1.25em; }
+  header .spacer { flex: 1; }
+  .layout { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .sim-col { flex: 1 1 380px; display: flex; flex-direction: column; gap: 12px; }
+  .side-col { flex: 1 1 320px; display: flex; flex-direction: column; gap: 12px; }
+  canvas { display: block; max-width: 100%; }
+  #sceneCanvas { background: linear-gradient(#eaf2fc, #f7fafd); border-radius: 6px; }
+
+  .controls-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
+  button { font-size: 1em; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.danger  { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  fieldset { border: none; }
+  .param { margin-bottom: 10px; }
+  .param label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 4px; }
+  .param label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .param input[type=range] { width: 100%; }
+  .param select { font-size: 1em; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .hint { color: var(--sub); font-size: 0.85em; margin-top: 2px; }
+
+  .stopwatch { font-size: 2.0em; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; letter-spacing: 1px; padding: 6px 0; }
+  .stopwatch.auto { color: var(--ok); }
+  .mode-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+  .mode-tabs button { flex: 1; }
+  .mode-tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+  th, td { border: 1px solid var(--border); padding: 5px 6px; text-align: center; font-variant-numeric: tabular-nums; }
+  th { background: #eef3fa; }
+  tfoot td { font-weight: 700; background: #f5f9f2; }
+
+  .graphs { display: flex; gap: 12px; flex-wrap: wrap; }
+  .graphs figure { flex: 1 1 240px; }
+  .graphs figcaption { text-align: center; font-size: 0.9em; color: var(--sub); margin-top: 3px; }
+  .graphs canvas { background: #fff; border: 1px solid var(--border); border-radius: 6px; width: 100%; }
+
+  #expPanel input[type=number] { width: 84px; padding: 6px 8px; font-size: 1em; border: 1px solid var(--border); border-radius: 6px; }
+  details { margin-top: 4px; }
+  summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+  .formula-body { padding: 8px 4px; line-height: 1.7; }
+  .formula-body .eq { font-size: 1.15em; text-align: center; margin: 6px 0; font-family: Georgia, serif; }
+
+  body.projector { font-size: 19px; }
+  body.projector .stopwatch { font-size: 2.6em; }
+  body.projector button { padding: 12px 18px; }
+
+  @media (max-width: 640px) {
+    body { font-size: 16px; padding: 8px; }
+    .layout { flex-direction: column; }
+    .side-col { order: -1; }
+    .sim-col, .side-col { flex: 1 1 100%; }
+    button { padding: 12px 16px; }
+    input[type=number], select { font-size: 16px; }
+    .stopwatch { font-size: 2.6em; padding: 12px 0; }
+    #watchBtn { padding: 18px 16px; font-size: 1.1em; }
+    th, td { padding: 4px 3px; font-size: 0.85em; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📐 빗면으로 중력가속도 g 측정</h1>
+  <span class="spacer"></span>
+  <button id="projectorBtn" title="프로젝터용 큰 글씨 모드">🖥 큰 글씨 모드</button>
+</header>
+
+<div class="layout">
+
+  <!-- ══════════ 왼쪽: 빗면 장면 ══════════ -->
+  <div class="sim-col">
+    <div class="panel">
+      <canvas id="sceneCanvas" width="420" height="380"></canvas>
+      <div class="controls-row">
+        <button id="startBtn" class="primary">▶ 미끄러뜨리기</button>
+        <button id="pauseBtn" disabled>⏸ 일시정지</button>
+        <button id="resetBtn">↺ 리셋</button>
+        <span class="row" style="margin-left:auto">
+          <label><input type="checkbox" id="soundChk" checked> 🔊 신호음</label>
+          <label><input type="checkbox" id="forceChk" checked> 힘 화살표</label>
+          <label for="speedSel">배속</label>
+          <select id="speedSel">
+            <option value="0.25">×0.25</option>
+            <option value="0.5">×0.5</option>
+            <option value="1" selected>×1</option>
+            <option value="2">×2</option>
+          </select>
+        </span>
+      </div>
+      <p class="hint">빗면 위 <b>광센서 게이트</b>를 지날 때마다 통과 시간이 자동 기록됩니다(신호음). 게이트 간격이 벌어질수록 빠른 구간입니다.</p>
+    </div>
+
+    <div class="panel graphs">
+      <figure>
+        <canvas id="graphST2" width="280" height="170"></canvas>
+        <figcaption>s–t² (이번 실행) · 기울기 = ½a</figcaption>
+      </figure>
+      <figure>
+        <canvas id="graphASin" width="280" height="170"></canvas>
+        <figcaption>a–sinθ (기록) · 기울기 = g</figcaption>
+      </figure>
+    </div>
+
+    <div class="panel">
+      <details>
+        <summary>📖 물리 공식 설명</summary>
+        <div class="formula-body">
+          <p>빗면 위 물체에 작용하는 중력 mg를 빗면 방향과 수직 방향으로 나누면,
+          운동 방향(빗면 아래) 성분은 mg·sinθ 입니다. 마찰이 없으면 가속도는:</p>
+          <p class="eq">a = g·sinθ &nbsp;→&nbsp; g = a / sinθ</p>
+          <p><b>갈릴레이의 아이디어:</b> 자유낙하는 너무 빨라 시간을 재기 어렵습니다.
+          빗면으로 기울기를 줄이면 가속도가 g·sinθ로 <b>작아져</b> 시간을 "희석"할 수 있습니다.
+          각도가 작을수록 재기 쉽지만 너무 작으면 마찰 영향이 커집니다.</p>
+          <p><b>가속도 a 구하기:</b> 등가속도라 s = ½a·t². s를 t²에 대해 그리면
+          원점을 지나는 직선이고 기울기 = ½a 입니다. 여러 각도에서 a를 구해
+          a를 sinθ에 대해 그리면 기울기가 곧 g 입니다.</p>
+          <p style="color:var(--sub)">※ 마찰이 있으면 a = g(sinθ − μcosθ)로, 측정한 a로 구한 g는
+          실제보다 작게 나옵니다(계통 오차). 물체 크기·공기저항은 무시합니다.</p>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- ══════════ 오른쪽: 조작 · 측정 ══════════ -->
+  <div class="side-col">
+
+    <fieldset class="panel">
+      <div class="param">
+        <label for="angSlider">경사각 θ <span class="val"><span id="angVal">30</span>°</span></label>
+        <input type="range" id="angSlider" min="5" max="60" step="1" value="30">
+      </div>
+      <div class="param">
+        <label for="lenSlider">빗면 길이 L <span class="val"><span id="lenVal">2.0</span> m</span></label>
+        <input type="range" id="lenSlider" min="0.5" max="3" step="0.1" value="2">
+      </div>
+      <div class="param">
+        <label for="muSlider">마찰계수 μ <span class="val"><span id="muVal">0.00</span>
+          <span id="muWarn" style="color:var(--warn);font-weight:700" hidden></span></span></label>
+        <input type="range" id="muSlider" min="0" max="0.5" step="0.01" value="0">
+        <p class="hint">0이면 마찰 없음(이상적). 올리면 측정 g가 실제보다 작아지는 계통 오차를 체험합니다.</p>
+      </div>
+      <div class="param row">
+        <label for="gravitySel" style="font-weight:600">장소(중력)</label>
+        <select id="gravitySel">
+          <option value="earth" selected>지구 (9.8 m/s²)</option>
+          <option value="moon">달 (1.62 m/s²)</option>
+          <option value="mars">화성 (3.71 m/s²)</option>
+          <option value="mystery">미지의 행성 X (수행평가용)</option>
+        </select>
+      </div>
+    </fieldset>
+
+    <div class="panel">
+      <div class="mode-tabs">
+        <button id="autoTab" class="active">📡 광센서 게이트(자동)</button>
+        <button id="manualTab">✋ 수동 스톱워치</button>
+      </div>
+      <div class="stopwatch auto" id="stopwatchDisp">0.000 s</div>
+      <p class="hint" id="measureInfo"></p>
+      <div class="controls-row" id="manualRow" style="display:none">
+        <button id="watchBtn" class="danger" style="flex:1">⏱ 스톱워치 시작/정지 (Space)</button>
+      </div>
+      <p class="hint" id="modeHint">게이트를 지날 때마다 통과 시간이 자동 기록되고, s–t² 그래프로 가속도 a가 계산됩니다.</p>
+    </div>
+
+    <div class="panel">
+      <div class="row" style="justify-content:space-between; margin-bottom:6px">
+        <b>측정 기록</b>
+        <span>
+          <button id="recordBtn" disabled>＋ 기록 추가</button>
+          <button id="csvBtn">⬇ CSV 저장</button>
+          <button id="clearBtn">기록 지우기</button>
+        </span>
+      </div>
+      <p class="hint" id="pendingDisp" style="color:var(--accent2)"></p>
+      <table id="recordTable">
+        <thead>
+          <tr><th>#</th><th>구분</th><th>θ(°)</th><th>a (m/s²)</th><th>g = a/sinθ (m/s²)</th><th>상대오차</th></tr>
+        </thead>
+        <tbody></tbody>
+        <tfoot>
+          <tr><td colspan="4">평균 g</td><td id="avgG">–</td><td id="avgErr">–</td></tr>
+        </tfoot>
+      </table>
+      <p class="hint">💡 경사각을 바꿔 가며 여러 번 기록하면 a–sinθ 그래프에 점이 찍히고, 원점을 지나는 직선의 기울기가 곧 g 입니다. 마찰이 없다면 각도가 달라도 g는 일정해야 합니다.</p>
+      <p class="hint" id="mysteryHint" hidden>미지의 행성 X: 참값이 숨겨져 있습니다. 평균 g를 구한 뒤 <button id="revealBtn" style="font-size:0.9em;padding:2px 8px">정답 공개</button></p>
+    </div>
+
+    <!-- ═════ 실제 실험 ═════ -->
+    <div class="panel" id="expPanel">
+      <b>🖐 실제 실험 — 빗면에서 g 측정</b>
+      <p class="hint" style="margin:6px 0">책·판자로 경사면을 만들고 공/수레를 굴리세요.
+      경사각 θ는 각도기(또는 스마트폰 각도계)로, 이동 거리 L은 줄자로 잽니다.
+      너무 매끄러운 물체보다 <b>잘 구르는 물체</b>가 좋습니다.</p>
+      <div class="row">
+        <label for="expAng">경사각 θ</label>
+        <input type="number" id="expAng" step="0.5" min="1" max="89" placeholder="°"> °
+        <label for="expLen">이동 거리 L</label>
+        <input type="number" id="expLen" step="0.01" min="0.01" placeholder="m"> m
+        <button id="applyExp">조건 확정</button>
+      </div>
+      <p style="margin:8px 0"><b>실험 조건:</b> <span id="expDisp" style="color:var(--accent)">아직 미정</span></p>
+      <div class="row">
+        <label for="trialT">낙하 시간 t</label>
+        <input type="number" id="trialT" step="0.01" min="0.01" placeholder="s">
+        <button id="addTrialBtn">＋ 측정 추가</button>
+        <button id="fromWatchBtn" title="위 스톱워치로 잰 값을 가져옵니다">⏱ 스톱워치 값</button>
+      </div>
+      <p class="hint">같은 조건에서 <b>여러 번(3회 이상 권장)</b> 재세요. 평균 시간으로 a = 2L/t², g = a/sinθ를 계산합니다.</p>
+      <p id="trialList" class="hint" style="font-variant-numeric:tabular-nums"></p>
+      <div class="row" style="justify-content:space-between">
+        <span id="trialStats" style="font-variant-numeric:tabular-nums"></span>
+        <span>
+          <button id="clearTrialsBtn">측정 지우기</button>
+          <button id="expToTableBtn" class="primary" disabled>기록표에 추가</button>
+        </span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ════════════════════════ 상수 ════════════════════════ */
+const GRAVITY_PRESETS_MPS2 = { earth: 9.8, moon: 1.62, mars: 3.71 };
+const MYSTERY_G_MIN_MPS2 = 3.0, MYSTERY_G_MAX_MPS2 = 15.0;
+const N_GATES = 5;                 // 광센서 게이트 개수 (등간격)
+const DEG = Math.PI / 180;
+
+/* ════════════════════════ 상태 ════════════════════════ */
+const state = {
+  phase: "ready",            // ready | sliding | paused | done
+  simTime_s: 0,
+  theta_deg: 30, length_m: 2.0, mu: 0,
+  gravityKey: "earth", mysteryG_mps2: null, mysteryRevealed: false,
+  speed: 1, soundOn: true, showForces: true,
+  s_m: 0,                    // 빗면 위 이동 거리 (top부터)
+  gateTimes: [],             // 게이트별 통과 시각 (index 0..N_GATES-1)
+  nextGate: 0,
+  watchMode: "auto",         // auto | manual
+  watchRunning: false, watchTime_s: 0,
+  pendingMeasure: null,      // {theta_deg, a_mps2} 아직 기록 안 됨
+  records: [],               // {src, theta_deg, a_mps2, g_mps2, gTrue_mps2}
+  exp: { theta_deg: null, length_m: null, trials_s: [] },
+};
+
+/* ════════════════════════ 물리 (렌더링과 분리) ════════════════════════ */
+function currentTrueG() {
+  return state.gravityKey === "mystery" ? state.mysteryG_mps2 : GRAVITY_PRESETS_MPS2[state.gravityKey];
+}
+// 빗면 가속도: 마찰 포함. 정지마찰이 이기면 0 (미끄러지지 않음)
+function accel_mps2(g, theta_deg, mu) {
+  const th = theta_deg * DEG;
+  const a = g * (Math.sin(th) - mu * Math.cos(th));
+  return a > 0 ? a : 0;
+}
+function gateSpacing_m() { return state.length_m / N_GATES; }
+function slideDuration_s(a) { return a > 0 ? Math.sqrt(2 * state.length_m / a) : Infinity; }
+function gFromAccel_mps2(a, theta_deg) { return a / Math.sin(theta_deg * DEG); }
+
+/* 원점 통과 최소제곱 기울기: y = k·x → k = Σxy/Σx² */
+function originSlope(pts) {
+  const sxx = pts.reduce((s, p) => s + p.x * p.x, 0);
+  if (sxx === 0) return null;
+  return pts.reduce((s, p) => s + p.x * p.y, 0) / sxx;
+}
+// 현재 실행의 게이트 데이터로 a 추정 (s = ½a t² → s vs t² 기울기 = a/2)
+function accelFromGates() {
+  const pts = [];
+  state.gateTimes.forEach((t, i) => {
+    if (t != null) pts.push({ x: t * t, y: (i + 1) * gateSpacing_m() });
+  });
+  if (pts.length < 2) return null;
+  const slope = originSlope(pts);
+  return slope == null ? null : 2 * slope;
+}
+
+/* ════════════════════════ 소리 ════════════════════════ */
+let audioCtx = null;
+function beep(freq_hz, dur_s) {
+  if (!state.soundOn) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.frequency.value = freq_hz; osc.connect(gain); gain.connect(audioCtx.destination);
+    gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur_s);
+    osc.start(); osc.stop(audioCtx.currentTime + dur_s);
+  } catch (e) { /* 무시 */ }
+}
+
+/* ════════════════════════ DOM · 루프 ════════════════════════ */
+const $ = (id) => document.getElementById(id);
+const scene = $("sceneCanvas"), sctx = scene.getContext("2d");
+let lastFrame_ms = null;
+
+function tick(now_ms) {
+  if (lastFrame_ms !== null) {
+    const dtRaw_s = Math.min((now_ms - lastFrame_ms) / 1000, 0.05);
+    const dt_s = dtRaw_s * state.speed;
+    if (state.phase === "sliding") advance(dt_s);
+    if (state.watchRunning) { state.watchTime_s += dt_s; updateStopwatchDisplay(state.watchTime_s); }
+  }
+  lastFrame_ms = now_ms;
+  drawScene(); drawST2(); drawASin();
+  requestAnimationFrame(tick);
+}
+
+function advance(dt_s) {
+  const g = currentTrueG(), a = accel_mps2(g, state.theta_deg, state.mu);
+  state.simTime_s += dt_s;
+  state.s_m = 0.5 * a * state.simTime_s * state.simTime_s;
+  // 게이트 통과 감지
+  while (state.nextGate < N_GATES && state.s_m >= (state.nextGate + 1) * gateSpacing_m() - 1e-9) {
+    const sGate = (state.nextGate + 1) * gateSpacing_m();
+    state.gateTimes[state.nextGate] = a > 0 ? Math.sqrt(2 * sGate / a) : state.simTime_s;
+    state.nextGate++;
+    beep(760 + state.nextGate * 90, 0.05);
+  }
+  if (state.s_m >= state.length_m) {
+    state.s_m = state.length_m; state.phase = "done";
+    if (state.watchMode === "auto") onAutoDone();
+    $("startBtn").disabled = false; $("startBtn").textContent = "▶ 미끄러뜨리기"; $("pauseBtn").disabled = true;
+  }
+}
+
+function onAutoDone() {
+  const a = accelFromGates();
+  if (a == null) return;
+  const g = currentTrueG(), aTrue = accel_mps2(g, state.theta_deg, state.mu);
+  console.log(`[검증] θ=${state.theta_deg}°, μ=${state.mu}: a(측정)=${a.toFixed(4)}, `
+    + `a(이론 g·sinθ - μg·cosθ)=${aTrue.toFixed(4)} m/s²`);
+  setPending(state.theta_deg, a);
+}
+
+/* ════════════════════════ 장면 렌더링 ════════════════════════ */
+function inclineGeom() {
+  const w = scene.width, h = scene.height;
+  const x0 = 40, yBase = h - 46;              // 바닥 왼쪽 모서리(낮은 쪽, 각 θ)
+  const baseW = w - 100;
+  const th = state.theta_deg * DEG;
+  const rise = baseW * Math.tan(th);
+  const topX = x0 + baseW, topY = yBase - rise;  // 오른쪽 위(높은 쪽)
+  const Lpx = baseW / Math.cos(th);              // 빗면(빗변) 길이 px
+  // top(높은 쪽)에서 아래로 향하는 단위벡터
+  const ux = -Math.cos(th), uy = Math.sin(th);
+  return { x0, yBase, baseW, topX, topY, Lpx, ux, uy, th };
+}
+
+function drawScene() {
+  const w = scene.width, h = scene.height;
+  sctx.clearRect(0, 0, w, h);
+  const G = inclineGeom();
+  const g = currentTrueG(), a = accel_mps2(g, state.theta_deg, state.mu);
+
+  // 빗면 삼각형
+  sctx.fillStyle = "#d8e0ea"; sctx.strokeStyle = "#9db2c8";
+  sctx.beginPath();
+  sctx.moveTo(G.x0, G.yBase); sctx.lineTo(G.topX, G.topY); sctx.lineTo(G.topX, G.yBase); sctx.closePath();
+  sctx.fill(); sctx.stroke();
+  // 각도 표시
+  sctx.strokeStyle = "#5a6b7d"; sctx.fillStyle = "#5a6b7d"; sctx.font = "13px sans-serif";
+  sctx.beginPath(); sctx.arc(G.x0, G.yBase, 30, -G.th, 0); sctx.stroke();
+  sctx.fillText(`θ=${state.theta_deg}°`, G.x0 + 34, G.yBase - 8);
+
+  // 빗면 위 s를 px로
+  const LpxPerM = G.Lpx / state.length_m;
+  const sPx = state.s_m * LpxPerM;
+  // 게이트 (등간격)
+  for (let i = 1; i <= N_GATES; i++) {
+    const gs = i * gateSpacing_m() * LpxPerM;
+    const gx = G.topX + G.ux * gs, gy = G.topY + G.uy * gs;
+    const passed = state.gateTimes[i - 1] != null;
+    sctx.strokeStyle = passed ? "#1e8f4e" : "#c07c00"; sctx.lineWidth = 2;
+    // 게이트: 빗면에 수직으로 짧은 선
+    const nx = -Math.sin(G.th), ny = -Math.cos(G.th);
+    sctx.beginPath(); sctx.moveTo(gx - nx * 11, gy - ny * 11); sctx.lineTo(gx + nx * 3, gy + ny * 3); sctx.stroke();
+    sctx.lineWidth = 1;
+  }
+  // 물체(블록)
+  const bx = G.topX + G.ux * sPx, by = G.topY + G.uy * sPx;
+  sctx.save(); sctx.translate(bx, by); sctx.rotate(-G.th);
+  sctx.fillStyle = "#1f6fd6"; sctx.fillRect(-13, -20, 26, 20);
+  sctx.restore();
+
+  // 힘 화살표
+  if (state.showForces) {
+    const cx = bx, cy = by - 10 * Math.cos(G.th);
+    const sc = 5.2;  // px per (m/s² 단위 힘, m=1 가정)
+    drawArrow(cx, cy, 0, g * sc, "#d64545", "mg");                           // 중력
+    drawArrow(cx, cy, g * Math.sin(G.th) * sc * G.ux, g * Math.sin(G.th) * sc * G.uy, "#1e8f4e", "mg·sinθ"); // 빗면방향
+    const nMag = g * Math.cos(G.th) * sc;
+    drawArrow(cx, cy, -Math.sin(G.th) * nMag, -Math.cos(G.th) * nMag, "#5a6b7d", "N");  // 수직항력
+    if (state.mu > 0 && state.phase === "sliding") {
+      const fMag = state.mu * g * Math.cos(G.th) * sc;
+      drawArrow(cx, cy, -G.ux * fMag, -G.uy * fMag, "#c07c00", "f");         // 마찰(위쪽)
+    }
+  }
+
+  // 정보
+  sctx.fillStyle = "#1c2733"; sctx.font = "bold 14px sans-serif"; sctx.textAlign = "right";
+  const gLabel = state.gravityKey === "mystery" && !state.mysteryRevealed ? "g = ??? (행성 X)" : `g = ${g.toFixed(2)} m/s²`;
+  sctx.fillText(gLabel, w - 12, 20);
+  sctx.fillText(`t = ${state.simTime_s.toFixed(2)} s`, w - 12, 40);
+  sctx.fillText(`s = ${state.s_m.toFixed(2)} m`, w - 12, 60);
+  sctx.textAlign = "left";
+  if (!(state.gravityKey === "mystery" && !state.mysteryRevealed))
+    sctx.fillText(`a = g·sinθ${state.mu > 0 ? "−μg·cosθ" : ""} = ${a.toFixed(2)} m/s²`, 12, 20);
+  if (a === 0) {
+    sctx.fillStyle = "#c07c00"; sctx.font = "bold 15px sans-serif"; sctx.textAlign = "center";
+    sctx.fillText("정지마찰이 이겨 미끄러지지 않음 (μ ≥ tanθ)", w / 2, G.topY - 10);
+  }
+}
+
+function drawArrow(x, y, dx, dy, color, label) {
+  const len = Math.hypot(dx, dy); if (len < 1) return;
+  sctx.strokeStyle = color; sctx.fillStyle = color; sctx.lineWidth = 2;
+  sctx.beginPath(); sctx.moveTo(x, y); sctx.lineTo(x + dx, y + dy); sctx.stroke();
+  const ang = Math.atan2(dy, dx);
+  sctx.beginPath();
+  sctx.moveTo(x + dx, y + dy);
+  sctx.lineTo(x + dx - 7 * Math.cos(ang - 0.4), y + dy - 7 * Math.sin(ang - 0.4));
+  sctx.lineTo(x + dx - 7 * Math.cos(ang + 0.4), y + dy - 7 * Math.sin(ang + 0.4));
+  sctx.closePath(); sctx.fill();
+  sctx.font = "10px sans-serif"; sctx.fillText(label, x + dx + 2 * Math.cos(ang), y + dy + 2 * Math.sin(ang));
+  sctx.lineWidth = 1;
+}
+
+/* ════════════════════════ 그래프 ════════════════════════ */
+function drawLineGraph(cv, pts, xLabel, yLabel, slopeLabelFn) {
+  const ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height, L = 42, B = 24, T = 8, R = 8;
+  ctx.clearRect(0, 0, W, H);
+  const xMax = Math.max(0.001, ...pts.map((p) => p.x)) * 1.2;
+  const yMax = Math.max(0.001, ...pts.map((p) => p.y)) * 1.2;
+  const px = (x) => L + (x / xMax) * (W - L - R);
+  const py = (y) => H - B - (y / yMax) * (H - B - T);
+  ctx.strokeStyle = "#b9c6d6"; ctx.beginPath();
+  ctx.moveTo(L, T); ctx.lineTo(L, H - B); ctx.lineTo(W - R, H - B); ctx.stroke();
+  ctx.fillStyle = "#5a6b7d"; ctx.font = "11px sans-serif";
+  ctx.textAlign = "left"; ctx.fillText(yLabel, L + 6, T + 10);
+  ctx.textAlign = "center"; ctx.fillText(xLabel, (L + W - R) / 2, H - 6);
+  ctx.textAlign = "right"; ctx.fillText(yMax.toFixed(1), L - 3, T + 10);
+  ctx.fillText("0", L - 3, H - B + 4); ctx.fillText(xMax.toFixed(2), W - R, H - B + 14);
+  if (pts.length >= 2) {
+    const slope = originSlope(pts);
+    if (slope != null) {
+      ctx.setLineDash([5, 4]); ctx.strokeStyle = "#d64545"; ctx.beginPath();
+      ctx.moveTo(px(0), py(0)); ctx.lineTo(px(xMax), py(slope * xMax)); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = "#d64545"; ctx.textAlign = "left"; ctx.font = "bold 12px sans-serif";
+      ctx.fillText(slopeLabelFn(slope), L + 8, T + 26);
+    }
+  }
+  for (const p of pts) {
+    if (p.x > xMax || p.y > yMax) continue;
+    ctx.beginPath(); ctx.arc(px(p.x), py(p.y), 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = p.src === "exp" ? "#c07c00" : "#1f6fd6"; ctx.fill();
+  }
+}
+
+function drawST2() {
+  const pts = [];
+  state.gateTimes.forEach((t, i) => { if (t != null) pts.push({ x: t * t, y: (i + 1) * gateSpacing_m() }); });
+  drawLineGraph($("graphST2"), pts, "t² (s²)", "s (m)", (k) => `기울기 ½a → a = ${(2 * k).toFixed(2)} m/s²`);
+}
+function drawASin() {
+  const pts = state.records.map((r) => ({ x: Math.sin(r.theta_deg * DEG), y: r.a_mps2, src: r.src }));
+  const hideTruth = state.gravityKey === "mystery" && !state.mysteryRevealed;
+  drawLineGraph($("graphASin"), pts, "sinθ", "a (m/s²)", (k) => `기울기 → g = ${k.toFixed(2)} m/s²`);
+}
+
+/* ════════════════════════ 측정 · 기록 ════════════════════════ */
+function updateStopwatchDisplay(t_s) { $("stopwatchDisp").textContent = t_s.toFixed(3) + " s"; }
+
+function setPending(theta_deg, a_mps2) {
+  state.pendingMeasure = { theta_deg, a_mps2 };
+  $("recordBtn").disabled = false;
+  $("pendingDisp").innerHTML = `📌 미기록 측정: θ = ${theta_deg}°, a = ${a_mps2.toFixed(3)} m/s² `
+    + `→ g = ${gFromAccel_mps2(a_mps2, theta_deg).toFixed(2)} m/s² · "기록 추가"를 누르세요`;
+}
+function clearPending() { state.pendingMeasure = null; $("recordBtn").disabled = true; $("pendingDisp").textContent = ""; }
+
+function addRecord() {
+  const p = state.pendingMeasure;
+  if (!p) { alert("먼저 측정을 완료하세요."); return; }
+  state.records.push({
+    src: "sim", theta_deg: p.theta_deg, a_mps2: p.a_mps2,
+    g_mps2: gFromAccel_mps2(p.a_mps2, p.theta_deg), gTrue_mps2: currentTrueG(),
+  });
+  renderRecords(); clearPending();
+}
+
+function renderRecords() {
+  const tbody = $("recordTable").querySelector("tbody");
+  tbody.innerHTML = "";
+  const hideTruth = state.gravityKey === "mystery" && !state.mysteryRevealed;
+  state.records.forEach((r, i) => {
+    const err = Math.abs(r.g_mps2 - r.gTrue_mps2) / r.gTrue_mps2 * 100;
+    const hide = hideTruth && r.src !== "exp";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${i + 1}</td><td>${r.src === "exp" ? "🖐 실험" : "💻 시뮬"}</td>
+      <td>${r.theta_deg.toFixed(0)}</td><td>${r.a_mps2.toFixed(2)}</td>
+      <td>${r.g_mps2.toFixed(2)}</td><td>${hide ? "?" : err.toFixed(1) + " %"}</td>`;
+    tbody.appendChild(tr);
+  });
+  if (state.records.length) {
+    const avg = state.records.reduce((s, r) => s + r.g_mps2, 0) / state.records.length;
+    const gTrue = state.records[state.records.length - 1].gTrue_mps2;
+    $("avgG").textContent = avg.toFixed(2) + " m/s²";
+    $("avgErr").textContent = hideTruth ? "?" : (Math.abs(avg - gTrue) / gTrue * 100).toFixed(1) + " %";
+  } else { $("avgG").textContent = "–"; $("avgErr").textContent = "–"; }
+}
+
+function exportCSV() {
+  if (!state.records.length) { alert("저장할 기록이 없습니다."); return; }
+  const hideTruth = state.gravityKey === "mystery" && !state.mysteryRevealed;
+  const rows = [["번호", "구분", "theta(deg)", "a(m/s2)", "g(m/s2)", "상대오차(%)"]];
+  state.records.forEach((r, i) => {
+    const hide = hideTruth && r.src !== "exp";
+    const err = Math.abs(r.g_mps2 - r.gTrue_mps2) / r.gTrue_mps2 * 100;
+    rows.push([i + 1, r.src === "exp" ? "실험" : "시뮬레이션", r.theta_deg.toFixed(1),
+      r.a_mps2.toFixed(3), r.g_mps2.toFixed(3), hide ? "?" : err.toFixed(1)]);
+  });
+  const avg = state.records.reduce((s, r) => s + r.g_mps2, 0) / state.records.length;
+  rows.push(["", "평균", "", "", avg.toFixed(3), ""]);
+  const csv = "﻿" + rows.map((r) => r.join(",")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = "빗면_g측정_기록.csv"; a.click(); URL.revokeObjectURL(a.href);
+}
+
+/* ── 실제 실험 ── */
+function meanOf(arr) { return arr.reduce((s, v) => s + v, 0) / arr.length; }
+function renderExpTrials() {
+  const tr = state.exp.trials_s;
+  $("trialList").textContent = tr.map((t, i) => `t${i + 1} = ${t.toFixed(2)} s`).join(",  ");
+  if (tr.length && state.exp.length_m) {
+    const tMean = meanOf(tr), a = 2 * state.exp.length_m / (tMean * tMean);
+    $("trialStats").innerHTML = `평균 t = <b>${tMean.toFixed(2)} s</b> → a = <b>${a.toFixed(2)}</b>, `
+      + `g = <b>${gFromAccel_mps2(a, state.exp.theta_deg).toFixed(2)}</b> m/s² (${tr.length}회)`;
+  } else $("trialStats").textContent = "";
+  $("expToTableBtn").disabled = !(state.exp.length_m && state.exp.theta_deg && tr.length);
+}
+function expToTable() {
+  const { theta_deg, length_m, trials_s } = state.exp;
+  if (!theta_deg || !length_m || !trials_s.length) return;
+  const tMean = meanOf(trials_s), a = 2 * length_m / (tMean * tMean);
+  state.records.push({
+    src: "exp", theta_deg, a_mps2: a,
+    g_mps2: gFromAccel_mps2(a, theta_deg), gTrue_mps2: GRAVITY_PRESETS_MPS2.earth,
+  });
+  state.exp.trials_s = []; renderExpTrials(); renderRecords();
+}
+
+/* ════════════════════════ 조작 ════════════════════════ */
+function start() {
+  if (state.phase === "paused") {
+    state.phase = "sliding"; $("startBtn").disabled = true; $("pauseBtn").disabled = false; return;
+  }
+  const g = currentTrueG(), a = accel_mps2(g, state.theta_deg, state.mu);
+  if (a === 0) { alert("마찰이 너무 커서 미끄러지지 않습니다. 각도를 높이거나 μ를 낮추세요."); return; }
+  state.simTime_s = 0; state.s_m = 0; state.gateTimes = new Array(N_GATES).fill(null); state.nextGate = 0;
+  state.watchRunning = false; state.watchTime_s = 0; updateStopwatchDisplay(0);
+  state.phase = "sliding";
+  $("startBtn").disabled = true; $("pauseBtn").disabled = false;
+  updateMeasureInfo();
+}
+function pause() {
+  if (state.phase !== "sliding") return;
+  state.phase = "paused"; $("startBtn").disabled = false; $("startBtn").textContent = "▶ 계속"; $("pauseBtn").disabled = true;
+}
+function resetSim(keepRecords = true) {
+  state.phase = "ready"; state.simTime_s = 0; state.s_m = 0;
+  state.gateTimes = new Array(N_GATES).fill(null); state.nextGate = 0;
+  state.watchRunning = false; state.watchTime_s = 0; updateStopwatchDisplay(0);
+  $("startBtn").disabled = false; $("startBtn").textContent = "▶ 미끄러뜨리기"; $("pauseBtn").disabled = true;
+  if (!keepRecords) { state.records = []; renderRecords(); clearPending(); }
+  updateMeasureInfo();
+}
+function updateMeasureInfo() {
+  const done = state.gateTimes.filter((t) => t != null).length;
+  $("measureInfo").textContent = state.watchMode === "auto"
+    ? `게이트 통과: ${done}/${N_GATES}` : "";
+}
+function toggleWatch() {
+  if (state.watchMode !== "manual") return;
+  if (!state.watchRunning) { state.watchTime_s = 0; state.watchRunning = true; }
+  else {
+    state.watchRunning = false;
+    // 수동: 전체 길이 통과 시간 → a = 2L/t²
+    if (state.watchTime_s > 0) setPending(state.theta_deg, 2 * state.length_m / (state.watchTime_s * state.watchTime_s));
+  }
+}
+function setWatchMode(mode) {
+  state.watchMode = mode; state.watchRunning = false;
+  $("autoTab").classList.toggle("active", mode === "auto");
+  $("manualTab").classList.toggle("active", mode === "manual");
+  $("stopwatchDisp").classList.toggle("auto", mode === "auto");
+  $("manualRow").style.display = mode === "manual" ? "" : "none";
+  $("modeHint").textContent = mode === "auto"
+    ? "게이트를 지날 때마다 통과 시간이 자동 기록되고, s–t² 그래프로 가속도 a가 계산됩니다."
+    : "물체를 놓는 순간 스톱워치를 켜고, 빗면 끝에 닿을 때 멈추세요. a = 2L/t²로 계산됩니다.";
+  clearPending(); updateMeasureInfo();
+}
+
+/* ════════════════════════ 이벤트 ════════════════════════ */
+$("startBtn").addEventListener("click", start);
+$("pauseBtn").addEventListener("click", pause);
+$("resetBtn").addEventListener("click", () => resetSim(true));
+$("watchBtn").addEventListener("click", toggleWatch);
+$("recordBtn").addEventListener("click", addRecord);
+$("csvBtn").addEventListener("click", exportCSV);
+$("clearBtn").addEventListener("click", () => { state.records = []; renderRecords(); });
+$("autoTab").addEventListener("click", () => setWatchMode("auto"));
+$("manualTab").addEventListener("click", () => setWatchMode("manual"));
+$("projectorBtn").addEventListener("click", () => document.body.classList.toggle("projector"));
+$("speedSel").addEventListener("change", (e) => { state.speed = parseFloat(e.target.value); });
+$("soundChk").addEventListener("change", (e) => { state.soundOn = e.target.checked; });
+$("forceChk").addEventListener("change", (e) => { state.showForces = e.target.checked; });
+
+$("angSlider").addEventListener("input", (e) => { state.theta_deg = parseInt(e.target.value, 10); $("angVal").textContent = state.theta_deg; updateMuWarn(); resetSim(true); });
+$("lenSlider").addEventListener("input", (e) => { state.length_m = parseFloat(e.target.value); $("lenVal").textContent = state.length_m.toFixed(1); resetSim(true); });
+$("muSlider").addEventListener("input", (e) => { state.mu = parseFloat(e.target.value); $("muVal").textContent = state.mu.toFixed(2); updateMuWarn(); resetSim(true); });
+function updateMuWarn() {
+  const tanth = Math.tan(state.theta_deg * DEG);
+  const warn = $("muWarn");
+  if (state.mu >= tanth) { warn.hidden = false; warn.textContent = "⚠ μ≥tanθ 정지"; }
+  else if (state.mu > 0) { warn.hidden = false; warn.textContent = "계통오차↑"; }
+  else warn.hidden = true;
+}
+$("gravitySel").addEventListener("change", (e) => {
+  state.gravityKey = e.target.value;
+  if (state.gravityKey === "mystery" && state.mysteryG_mps2 === null) {
+    state.mysteryG_mps2 = MYSTERY_G_MIN_MPS2 + Math.random() * (MYSTERY_G_MAX_MPS2 - MYSTERY_G_MIN_MPS2);
+    state.mysteryRevealed = false;
+  }
+  $("mysteryHint").hidden = state.gravityKey !== "mystery";
+  resetSim(false);
+});
+$("revealBtn").addEventListener("click", () => {
+  state.mysteryRevealed = true; renderRecords();
+  alert(`행성 X의 중력가속도 참값: ${state.mysteryG_mps2.toFixed(2)} m/s²`);
+});
+document.addEventListener("keydown", (e) => {
+  if (e.code === "Space" && state.watchMode === "manual" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); toggleWatch(); }
+});
+
+/* 실제 실험 */
+$("applyExp").addEventListener("click", () => {
+  const th = parseFloat($("expAng").value), L = parseFloat($("expLen").value);
+  if (!(th > 0 && th < 90) || !(L > 0)) { alert("경사각(1~89°)과 이동 거리 L(m)을 입력하세요."); return; }
+  state.exp.theta_deg = th; state.exp.length_m = L;
+  $("expDisp").textContent = `θ = ${th}°, L = ${L} m`;
+  renderExpTrials();
+});
+$("addTrialBtn").addEventListener("click", () => {
+  const t = parseFloat($("trialT").value);
+  if (!(t > 0)) { alert("낙하 시간 t(s)를 입력하세요."); return; }
+  state.exp.trials_s.push(t); $("trialT").value = ""; renderExpTrials();
+});
+$("fromWatchBtn").addEventListener("click", () => {
+  if (state.watchTime_s <= 0) { alert("먼저 스톱워치로 시간을 재세요."); return; }
+  $("trialT").value = state.watchTime_s.toFixed(2);
+});
+$("clearTrialsBtn").addEventListener("click", () => { state.exp.trials_s = []; renderExpTrials(); });
+$("expToTableBtn").addEventListener("click", expToTable);
+
+/* ════════════════════════ 시작 ════════════════════════ */
+resetSim(); updateMuWarn();
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

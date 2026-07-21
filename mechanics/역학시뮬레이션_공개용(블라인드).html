@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>물리학2 역학 시뮬레이션 · 제출 기록 (공개용)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap');
+
+  :root{
+    --paper:#f6f7f5;
+    --panel:#ffffff;
+    --ink:#1c2230;
+    --muted:#6b7280;
+    --line:#e2e4e0;
+    --accent:#e0602a;
+    --accent-soft:#fdece2;
+    --f-class:#2f6f5e;
+    --f-class-bg:#e7f3ee;
+    --b-class:#33507e;
+    --b-class-bg:#e9edf7;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans KR', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .wrap{max-width:960px; margin:0 auto; padding:48px 20px 80px;}
+
+  header{margin-bottom:36px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:.14em;
+    color:var(--accent);
+    text-transform:uppercase;
+    margin-bottom:10px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .badge{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    letter-spacing:.05em;
+    background:var(--ink);
+    color:#fff;
+    padding:2px 8px;
+    border-radius:20px;
+  }
+  h1{
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:700;
+    font-size:clamp(24px, 4vw, 34px);
+    line-height:1.25;
+    margin:0 0 10px;
+    letter-spacing:-0.01em;
+  }
+  .sub{
+    color:var(--muted);
+    font-size:14.5px;
+    line-height:1.6;
+    max-width:640px;
+  }
+
+  .toolbar{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    flex-wrap:wrap;
+    margin:28px 0 18px;
+    padding-bottom:18px;
+    border-bottom:1px solid var(--line);
+  }
+  .tabs{display:flex; gap:6px;}
+  .tab{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    padding:7px 13px;
+    border-radius:20px;
+    border:1px solid var(--line);
+    background:var(--panel);
+    color:var(--muted);
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  .tab:hover{border-color:var(--accent);}
+  .tab.active{
+    background:var(--ink);
+    border-color:var(--ink);
+    color:#fff;
+  }
+
+  .count{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:14px;
+  }
+  .count b{color:var(--ink);}
+
+  .log{display:flex; flex-direction:column; gap:8px;}
+
+  .row{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:16px 18px;
+    display:grid;
+    grid-template-columns:64px 1fr auto;
+    align-items:center;
+    gap:16px;
+    transition:border-color .15s ease;
+  }
+  .row:hover{border-color:var(--accent);}
+
+  .runid{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    color:var(--ink);
+    font-weight:600;
+    text-align:left;
+  }
+  .runid span{display:block; font-size:9.5px; letter-spacing:.08em; opacity:.55; color:var(--muted); font-weight:500;}
+
+  .info{min-width:0;}
+  .name-line{
+    display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;
+    margin-bottom:5px;
+  }
+  .name{font-weight:600; font-size:14.5px; font-family:'IBM Plex Mono', monospace; color:var(--muted); letter-spacing:.02em;}
+  .tag{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    padding:2px 8px;
+    border-radius:20px;
+    font-weight:600;
+  }
+  .tag.F{color:var(--f-class); background:var(--f-class-bg);}
+  .tag.B{color:var(--b-class); background:var(--b-class-bg);}
+
+  .summary{
+    font-size:13.5px;
+    color:var(--ink);
+    line-height:1.5;
+    max-width:560px;
+  }
+
+  .actions{display:flex; gap:6px; flex-shrink:0;}
+  .go{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    font-weight:600;
+    text-decoration:none;
+    color:#fff;
+    background:var(--accent);
+    padding:9px 14px;
+    border-radius:8px;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    white-space:nowrap;
+    transition:transform .12s ease, background .12s ease;
+  }
+  .go:hover{background:#c14f20; transform:translateX(2px);}
+  .go .arrow{transition:transform .15s ease;}
+  .go:hover .arrow{transform:translateX(3px);}
+  .go.second{background:transparent; color:var(--accent); border:1px solid var(--accent);}
+  .go.second:hover{background:var(--accent-soft); transform:translateX(2px);}
+
+  .empty{
+    text-align:center;
+    padding:60px 20px;
+    color:var(--muted);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+  }
+
+  footer{
+    margin-top:40px;
+    padding-top:20px;
+    border-top:1px solid var(--line);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--muted);
+    line-height:1.7;
+  }
+
+  @media (max-width: 620px){
+    .row{grid-template-columns:1fr;}
+    .runid{display:none;}
+    .toolbar{flex-direction:column; align-items:stretch;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">2026 · 물리학2 · 역학 단원 <span class="badge">개인정보 비식별화 버전</span></div>
+    <h1>바이브 코딩 시뮬레이션<br>수행평가 제출 기록</h1>
+    <p class="sub">학생이 제작한 역학 시뮬레이션 코드펜과 수행평가 내용 요약입니다. 개인 식별 정보(이름·학번)는 제외하고 순번 코드로 표시했습니다.</p>
+  </header>
+
+  <div class="toolbar">
+    <div class="tabs" id="tabs">
+      <div class="tab active" data-filter="all">전체</div>
+      <div class="tab" data-filter="물리학2F반">F반</div>
+      <div class="tab" data-filter="물리학2B반">B반</div>
+    </div>
+  </div>
+
+  <div class="count" id="count"></div>
+  <div class="log" id="log"></div>
+  <div class="empty" id="empty" style="display:none;">표시할 항목이 없습니다.</div>
+
+  <footer>제출 학생 총 31명 · 리로스쿨 제출 데이터 기준 · 요약은 학생이 작성한 수행평가 서술 내용을 바탕으로 간략 정리한 것입니다.</footer>
+</div>
+
+<script>
+const students = [
+  {"no":1,"class":"물리학2F반","summary":"구심력 공식(F=mrω²)이 각속도 제곱에 비례해 급격히 커지는 현상을 원심분리기 사례에 적용해 시뮬레이션으로 검증","links":["https://codepen.io/editor/xydbtavt-the-looper/pen/019e9ce3-55cc-79aa-bbcb-83b5344df557"]},
+  {"no":2,"class":"물리학2F반","summary":"각속도 개념에 흥미를 느껴 원운동 시뮬레이션 제작","links":["https://codepen.io/editor/ijxglmgs-the-reactor/pen/019ea109-20df-767e-a622-c419c267db18"]},
+  {"no":3,"class":"물리학2B반","summary":"케플러 제2법칙(면적속도 일정)의 원리를 행성 위치별 속도 변화로 시각화","links":["https://codepen.io/oubstksg-the-selector/pen/yyVRQYb"]},
+  {"no":4,"class":"물리학2B반","summary":"역학적 에너지 보존 법칙에서 마찰·공기저항에 따른 에너지 손실 정도를 시뮬레이션으로 검증","links":["https://codepen.io/huilyufs-the-solid/pen/pvNmJYK"]},
+  {"no":5,"class":"물리학2F반","summary":"포물선 운동에서 발사각·초기속도와 공기저항이 도달거리에 미치는 영향을 정량적으로 분석","links":["https://codepen.io/aafxmacq-the-styleful/pen/LEbommd"]},
+  {"no":6,"class":"물리학2F반","summary":"포사체 운동에서 발사각에 따른 수평·수직 분속도 변화와 사거리 관계를 시각화","links":["https://codepen.io/editor/lab-lotto/pen/019eabef-522c-7780-9e7a-8d2a7715ea9f"]},
+  {"no":7,"class":"물리학2F반","summary":"원운동에서 구심가속도·구심력과 선속도 변화의 인과관계를 데이터로 검증","links":["https://codepen.io/cnkyuulb-the-reactor/pen/VYPLjgq"]},
+  {"no":8,"class":"물리학2F반","summary":"뉴턴 제2법칙(F=ma)에서 힘과 가속도의 비례관계를 마찰 없는 이상 조건으로 시뮬레이션","links":["https://codepen.io/editor/ugzubmlk-the-selector/pen/019eac95-b810-7281-adf1-fff4bf28255b"]},
+  {"no":9,"class":"물리학2F반","summary":"단진자 운동에서 위치·운동에너지 전환과 실 길이에 따른 변화, 미소각 근사의 타당성 검증","links":["https://codepen.io/editor/iam-home/pen/019ea105-6b52-768a-aed2-0cc9111f6882"]},
+  {"no":10,"class":"물리학2F반","summary":"운동량 보존 법칙을 자동차 충돌 상황에 적용해 충돌력을 분석","links":["https://codepen.io/editor/vxytfgfc-the-encoder/pen/019eacdc-9b74-7545-8bd9-e3c7abca5a2d"]},
+  {"no":11,"class":"물리학2B반","summary":"카르노 기관의 열효율 한계(열역학 제2법칙)를 두 열원의 온도차 변화로 시뮬레이션","links":["https://codepen.io/hjikuqvn-the-builder/pen/RNoOXZq"]},
+  {"no":12,"class":"물리학2B반","summary":"케플러 법칙 기반 타원 궤도 운동에 구심력·원심력 변수를 추가해 재현","links":["https://codepen.io/bro-ma/pen/xbgZbvm"]},
+  {"no":13,"class":"물리학2F반","summary":"등속 원운동에서 선속도를 통제 변인으로 두고 반지름과 구심력의 반비례 관계를 검증","links":["https://codepen.io/editor/clonohzm-the-vuer/pen/019eadad-a638-70a4-9f39-1267d602bdb9"]},
+  {"no":14,"class":"물리학2B반","summary":"포물선 운동의 최대높이 공식과 역학적 에너지 보존의 연관성을 발사각 변화로 검증","links":["https://codepen.io/kkixeqbu-the-looper/pen/wBgBYdx"]},
+  {"no":15,"class":"물리학2F반","summary":"운동량 보존 법칙에서 질량비·반발계수에 따른 충돌 후 속도 변화를 시뮬레이션","links":["https://codepen.io/editor/gkihpdmw-the-reactor/pen/019eacda-8165-7bc4-8494-beb5458efaae"]},
+  {"no":16,"class":"물리학2F반","summary":"케플러 제1법칙(타원궤도)이 뉴턴 만유인력 법칙만으로 설명되는지 초기속도 변화로 검증","links":["https://codepen.io/editor/cgxwuzdf-the-sasster/pen/019eacfd-e198-77f8-8659-f481be646a62"]},
+  {"no":17,"class":"물리학2F반","summary":"구심력 공식(v²에 비례)에 현실의 마찰·오차를 반영해 동적 시각화 및 데이터로 검증","links":["https://codepen.io/xtpyubmr-the-animator/pen/xbRmNMg"]},
+  {"no":18,"class":"물리학2F반","summary":"등가속도 운동에서 힘·질량 조합에 따른 가속도(F=ma) 비례관계를 실시간 궤적으로 관찰","links":["https://codepen.io/editor/Sans-serif/pen/019ea9af-88bf-7774-8fa8-882d4c2a08c1"]},
+  {"no":19,"class":"물리학2B반","summary":"포물선 운동에서 공기저항이 수평·수직 성분에 미치는 영향과 궤적 비대칭성을 검증","links":["https://codepen.io/hxktkqzt-the-reactor/pen/bNgpVOO"]},
+  {"no":20,"class":"물리학2F반","summary":"카르노 기관의 열효율이 고온·저온 열원 온도차에 따라 어떻게 달라지는지 분석","links":["https://share.google/t4h1g9mZFRmuHVgdG"]},
+  {"no":21,"class":"물리학2B반","summary":"포물선 운동에서 발사각·초기속도에 따른 최고점·도달시간·사거리를 벡터 계산으로 검증","links":["https://codepen.io/fdikuegd-the-selector/pen/dPNMYxZ"]},
+  {"no":22,"class":"물리학2B반","summary":"탄성충돌에서 운동량·운동에너지 보존과 질량비에 따른 충돌 후 속도 변화를 분석","links":["https://codepen.io/ocxhxcpa-the-looper/pen/myRPeYL"]},
+  {"no":23,"class":"물리학2F반","summary":"등가속도 운동과 등속직선운동이 결합한 포물선 운동의 원리를 시각화","links":["https://codepen.io/beerfjjr-the-looper/pen/jEyqbdo"]},
+  {"no":24,"class":"물리학2F반","summary":"포물선 운동에서 발사각 45도가 최대 사거리인지, 상보각(30°/60°)의 결과가 같은지 검증","links":["https://codepen.io/mhjjwcij-the-solid/pen/KwadXvB"]},
+  {"no":25,"class":"물리학2F반","summary":"회전하는 물컵 수면이 오목해지는 현상을 구심력과 반경·선속력 변화로 역학적으로 분석","links":["https://codepen.io/pen/EaZKPYN"]},
+  {"no":26,"class":"물리학2F반","summary":"역학적 에너지가 열에너지로 전환되는 과정(열의 일당량)과 실제 손실(오차)의 관계를 분석","links":["https://codepen.io/editor/bbwwdszj-the-builder/pen/019eaef7-e538-7225-a6f4-2163fdeb8970"]},
+  {"no":27,"class":"물리학2B반","summary":"뉴턴 제2법칙에서 힘-질량-가속도의 선형관계를 마찰 등 현실 변수를 포함해 실시간 검증","links":["https://codepen.io/danginhye/pen/QwdjjQL"]},
+  {"no":28,"class":"물리학2B반","summary":"빗면 운동 공식을 활용해 직접 제작한 전동카트의 경사면 주행을 시뮬레이션으로 재현","links":["https://codepen.io/ejzzijko-the-reactor/pen/ogBxbbp"]},
+  {"no":29,"class":"물리학2B반","summary":"원운동에서 질량·각속도 변화에 따른 실의 장력과, 임계장력 초과 시 단선 후 물체 궤적을 분석","links":["https://codepen.io/ejzzijko-the-reactor/pen/JoEXXrz"]},
+  {"no":30,"class":"물리학2B반","summary":"열의 일당량 개념을 추 낙하-물 온도 상승 실험으로 재현해 에너지 변환 관계를 검증","links":["https://codepen.io/ghkheqmm-the-reactor/pen/wBgBOdV","https://codepen.io/ghkheqmm-the-reactor/pen/XJNwXbj"]},
+  {"no":31,"class":"물리학2B반","summary":"포물선 운동에서 발사각에 따른 사거리·최고점 변화, 45도 최대사거리 여부를 검증","links":["https://codepen.io/qmkdphhl-the-flexboxer/pen/gbgrrJm"]}
+];
+
+let activeFilter = 'all';
+
+function classShort(c){ return c.includes('F') ? 'F' : 'B'; }
+
+function render(){
+  const log = document.getElementById('log');
+  const empty = document.getElementById('empty');
+  const count = document.getElementById('count');
+
+  const filtered = students.filter(s=> activeFilter === 'all' || s.class === activeFilter);
+
+  count.innerHTML = `<b>${filtered.length}</b>건 표시 중 (전체 ${students.length}명)`;
+
+  if(filtered.length === 0){
+    log.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  log.innerHTML = filtered.map(s=>{
+    const cls = classShort(s.class);
+    const linksHtml = s.links.map((url, i)=>{
+      const label = s.links.length > 1 ? `열기 ${i+1}` : '코드펜 열기';
+      const extra = i > 0 ? ' second' : '';
+      return `<a class="go${extra}" href="${url}" target="_blank" rel="noopener">${label}<span class="arrow">→</span></a>`;
+    }).join('');
+
+    return `
+      <div class="row">
+        <div class="runid">학생<span>${String(s.no).padStart(2,'0')}</span></div>
+        <div class="info">
+          <div class="name-line">
+            <span class="name">학생-${String(s.no).padStart(2,'0')}</span>
+            <span class="tag ${cls}">${s.class.replace('물리학2','')}</span>
+          </div>
+          <div class="summary">${s.summary}</div>
+        </div>
+        <div class="actions">${linksHtml}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+document.getElementById('tabs').addEventListener('click', (e)=>{
+  const tab = e.target.closest('.tab');
+  if(!tab) return;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  tab.classList.add('active');
+  activeFilter = tab.dataset.filter;
+  render();
+});
+
+render();
+</script>
+</body>
+</html>

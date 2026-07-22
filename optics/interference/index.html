@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>빛의 중첩과 간섭 시뮬레이션</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d1117;
+      color: #e6edf3;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #58a6ff;
+      margin-bottom: 4px;
+      letter-spacing: 0.02em;
+    }
+
+    .subtitle {
+      text-align: center;
+      font-size: 0.8rem;
+      color: #8b949e;
+      margin-bottom: 14px;
+    }
+
+    /* ── 원리 설명 ── */
+    .principle {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 14px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .principle-item {
+      flex: 1;
+      min-width: 200px;
+      max-width: 360px;
+    }
+
+    .principle-item h3 {
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .principle-item p {
+      font-size: 0.75rem;
+      color: #8b949e;
+      line-height: 1.5;
+    }
+
+    .constructive h3 { color: #f0a500; }
+    .destructive  h3 { color: #58a6ff; }
+    .superposition h3 { color: #3fb950; }
+
+    /* ── 레이아웃: 캔버스 + 컨트롤 ── */
+    .main-layout {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+
+    .canvas-column {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .panel {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      background: #1c2128;
+      border-bottom: 1px solid #30363d;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    /* ── 결과파 하단 두 그래프 ── */
+    .result-graphs {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .result-graphs .sub-label {
+      font-size: 0.68rem;
+      color: #8b949e;
+      padding: 4px 12px 0;
+      border-top: 1px solid #21262d;
+    }
+
+    /* ── 컨트롤 패널 ── */
+    .controls {
+      width: 230px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .ctrl-panel {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .ctrl-header {
+      padding: 7px 12px;
+      background: #1c2128;
+      border-bottom: 1px solid #30363d;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .ctrl-body {
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .ctrl-row {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .ctrl-row label {
+      font-size: 0.7rem;
+      color: #8b949e;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .ctrl-row label span {
+      color: #e6edf3;
+      font-weight: 600;
+    }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: #30363d;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .wave1-range::-webkit-slider-thumb { background: #f0a500; }
+    .wave1-range::-webkit-slider-runnable-track { background: #30363d; }
+
+    .wave2-range::-webkit-slider-thumb { background: #58a6ff; }
+    .wave2-range::-webkit-slider-runnable-track { background: #30363d; }
+
+    /* 위상차 */
+    .phase-panel {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    /* 간섭 상태 배지 */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      margin-left: auto;
+    }
+
+    .badge-constructive { background: #f0a500; color: #0d1117; }
+    .badge-destructive  { background: #58a6ff; color: #0d1117; }
+    .badge-partial      { background: #3fb950; color: #0d1117; }
+
+    /* 애니메이션 버튼 */
+    .btn-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    button {
+      flex: 1;
+      padding: 6px 0;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    button:hover { opacity: 0.85; }
+
+    #btnPlay  { background: #3fb950; color: #0d1117; }
+    #btnReset { background: #30363d; color: #e6edf3; }
+
+    /* 모바일 */
+    @media (max-width: 660px) {
+      .main-layout { flex-direction: column; }
+      .controls { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+<a href="../../index.html" title="홈으로" style="position:fixed;left:12px;bottom:12px;z-index:99999;background:rgba(255,255,255,.94);color:#1c2733;text-decoration:none;padding:8px 13px;border-radius:9px;font:600 14px/1 'Segoe UI','Malgun Gothic',sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.22);border:1px solid rgba(0,0,0,.12)">🏠 홈</a>
+
+<h1>빛의 중첩과 간섭</h1>
+<p class="subtitle">두 파동의 보강간섭과 상쇄간섭 가상 실험 시뮬레이션</p>
+
+<!-- 원리 설명 -->
+<div class="principle">
+  <div class="principle-item superposition">
+    <h3>중첩의 원리 (Superposition)</h3>
+    <p>두 파동이 같은 공간을 지날 때, 합성 변위는 각 파동 변위의 합과 같습니다.<br>
+    <strong>y = y₁ + y₂</strong></p>
+  </div>
+  <div class="principle-item constructive">
+    <h3>보강간섭 (Constructive)</h3>
+    <p>두 파동의 위상차가 0° (같은 위상)일 때 진폭이 최대로 커집니다.<br>
+    경로차 = <strong>nλ</strong> (n = 0, 1, 2, …)</p>
+  </div>
+  <div class="principle-item destructive">
+    <h3>상쇄간섭 (Destructive)</h3>
+    <p>두 파동의 위상차가 180° (반대 위상)일 때 진폭이 최소로 작아집니다.<br>
+    경로차 = <strong>(n + ½)λ</strong></p>
+  </div>
+</div>
+
+<!-- 메인 레이아웃 -->
+<div class="main-layout">
+
+  <!-- 캔버스 영역 -->
+  <div class="canvas-column">
+
+    <!-- 파동 1 -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="dot" style="background:#f0a500"></div>
+        파동 1
+      </div>
+      <canvas id="c1" height="100"></canvas>
+    </div>
+
+    <!-- 파동 2 -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="dot" style="background:#58a6ff"></div>
+        파동 2
+      </div>
+      <canvas id="c2" height="100"></canvas>
+    </div>
+
+    <!-- 합성파 -->
+    <div class="panel">
+      <div class="panel-header" style="flex-wrap:wrap; gap:4px;">
+        <div class="dot" style="background:#3fb950"></div>
+        합성파 (중첩)
+        <div id="interferenceBadge" class="badge badge-constructive">보강간섭</div>
+      </div>
+      <div class="result-graphs">
+        <span class="sub-label">위치에 따른 변위 (x축: 위치)</span>
+        <canvas id="cPos" height="110"></canvas>
+        <span class="sub-label" style="border-top:1px solid #30363d; margin-top:0;">시간에 따른 변위 (x축: 시간, 관측점 x=0)</span>
+        <canvas id="cTime" height="110"></canvas>
+      </div>
+    </div>
+
+  </div><!-- /canvas-column -->
+
+  <!-- 컨트롤 패널 -->
+  <div class="controls">
+
+    <!-- 파동 1 컨트롤 -->
+    <div class="ctrl-panel">
+      <div class="ctrl-header" style="color:#f0a500;">파동 1 설정</div>
+      <div class="ctrl-body">
+        <div class="ctrl-row">
+          <label>진폭 A₁ <span id="lA1">1.0</span></label>
+          <input class="wave1-range" type="range" id="sA1" min="0" max="2" step="0.1" value="1.0">
+        </div>
+        <div class="ctrl-row">
+          <label>파장 λ₁ (px) <span id="lL1">200</span></label>
+          <input class="wave1-range" type="range" id="sL1" min="60" max="400" step="10" value="200">
+        </div>
+        <div class="ctrl-row">
+          <label>진동수 f₁ (Hz) <span id="lF1">1.0</span></label>
+          <input class="wave1-range" type="range" id="sF1" min="0.2" max="3" step="0.1" value="1.0">
+        </div>
+      </div>
+    </div>
+
+    <!-- 파동 2 컨트롤 -->
+    <div class="ctrl-panel">
+      <div class="ctrl-header" style="color:#58a6ff;">파동 2 설정</div>
+      <div class="ctrl-body">
+        <div class="ctrl-row">
+          <label>진폭 A₂ <span id="lA2">1.0</span></label>
+          <input class="wave2-range" type="range" id="sA2" min="0" max="2" step="0.1" value="1.0">
+        </div>
+        <div class="ctrl-row">
+          <label>파장 λ₂ (px) <span id="lL2">200</span></label>
+          <input class="wave2-range" type="range" id="sL2" min="60" max="400" step="10" value="200">
+        </div>
+        <div class="ctrl-row">
+          <label>진동수 f₂ (Hz) <span id="lF2">1.0</span></label>
+          <input class="wave2-range" type="range" id="sF2" min="0.2" max="3" step="0.1" value="1.0">
+        </div>
+      </div>
+    </div>
+
+    <!-- 위상차 -->
+    <div class="phase-panel ctrl-panel">
+      <div class="ctrl-header" style="color:#bc8cff;">위상차 Δφ</div>
+      <div class="ctrl-body">
+        <div class="ctrl-row">
+          <label>위상차 (°) <span id="lPh">0</span></label>
+          <input type="range" id="sPh" min="0" max="360" step="1" value="0"
+                 style="--thumb:#bc8cff"
+                 class="phase-range">
+        </div>
+        <style>
+          .phase-range::-webkit-slider-thumb { background:#bc8cff; -webkit-appearance:none; width:14px;height:14px;border-radius:50%; cursor:pointer; }
+        </style>
+      </div>
+    </div>
+
+    <!-- 애니메이션 -->
+    <div class="ctrl-panel">
+      <div class="ctrl-header">애니메이션</div>
+      <div class="ctrl-body">
+        <div class="btn-row">
+          <button id="btnPlay">⏸ 일시정지</button>
+          <button id="btnReset">↺ 초기화</button>
+        </div>
+        <div style="margin-top:4px;">
+          <div class="ctrl-row">
+            <label>속도 <span id="lSpd">1.0</span>×</label>
+            <input type="range" id="sSpd" min="0.1" max="4" step="0.1" value="1.0"
+                   style="--thumb:#e6edf3; background:#30363d; border-radius:2px;">
+            <style>.spd-range::-webkit-slider-thumb{background:#e6edf3;}</style>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 식 표시 -->
+    <div class="ctrl-panel">
+      <div class="ctrl-header">현재 파동 식</div>
+      <div class="ctrl-body" style="font-size:0.7rem; color:#8b949e; line-height:1.7;">
+        <div id="eq1" style="color:#f0a500;"></div>
+        <div id="eq2" style="color:#58a6ff; margin-top:2px;"></div>
+        <div id="eqS" style="color:#3fb950; margin-top:6px; font-weight:600;"></div>
+      </div>
+    </div>
+
+  </div><!-- /controls -->
+</div>
+
+<script>
+// ──────────────────────────────────────────────
+// 파라미터
+// ──────────────────────────────────────────────
+const params = {
+  A1: 1.0, lambda1: 200, f1: 1.0,
+  A2: 1.0, lambda2: 200, f2: 1.0,
+  phase: 0,   // degrees
+  speed: 1.0,
+};
+
+let time = 0;
+let playing = true;
+let lastTs = null;
+
+// 시간 히스토리 (cTime 그래프용)
+const TIME_HISTORY = 300;
+const timeHistory = new Array(TIME_HISTORY).fill(0);
+
+// ──────────────────────────────────────────────
+// 슬라이더 바인딩
+// ──────────────────────────────────────────────
+function bind(id, labelId, key, fmt = v => v) {
+  const el = document.getElementById(id);
+  const lb = document.getElementById(labelId);
+  el.addEventListener('input', () => {
+    params[key] = parseFloat(el.value);
+    lb.textContent = fmt(params[key]);
+    updateEquations();
+  });
+  lb.textContent = fmt(params[key]);
+}
+
+bind('sA1','lA1','A1', v => v.toFixed(1));
+bind('sL1','lL1','lambda1', v => v.toFixed(0));
+bind('sF1','lF1','f1', v => v.toFixed(1));
+bind('sA2','lA2','A2', v => v.toFixed(1));
+bind('sL2','lL2','lambda2', v => v.toFixed(0));
+bind('sF2','lF2','f2', v => v.toFixed(1));
+bind('sPh','lPh','phase', v => v.toFixed(0));
+bind('sSpd','lSpd','speed', v => v.toFixed(1));
+
+// 버튼
+document.getElementById('btnPlay').addEventListener('click', () => {
+  playing = !playing;
+  document.getElementById('btnPlay').textContent = playing ? '⏸ 일시정지' : '▶ 재생';
+  if (playing) requestAnimationFrame(loop);
+});
+document.getElementById('btnReset').addEventListener('click', () => {
+  time = 0;
+  timeHistory.fill(0);
+});
+
+// ──────────────────────────────────────────────
+// 파동 함수  y = A · sin(2π/λ · x  −  2πf · t  +  φ)
+// ──────────────────────────────────────────────
+function y1(x, t) {
+  const k = (2 * Math.PI) / params.lambda1;
+  const w = 2 * Math.PI * params.f1;
+  return params.A1 * Math.sin(k * x - w * t);
+}
+
+function y2(x, t) {
+  const k = (2 * Math.PI) / params.lambda2;
+  const w = 2 * Math.PI * params.f2;
+  const phi = (params.phase * Math.PI) / 180;
+  return params.A2 * Math.sin(k * x - w * t + phi);
+}
+
+function ySum(x, t) { return y1(x, t) + y2(x, t); }
+
+// ──────────────────────────────────────────────
+// 캔버스 헬퍼
+// ──────────────────────────────────────────────
+function setupCanvas(canvas) {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const W = rect.width || canvas.parentElement.clientWidth;
+  const H = parseInt(canvas.getAttribute('height'));
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return { ctx, W, H };
+}
+
+function drawWave(canvas, waveFn, color, t) {
+  const { ctx, W, H } = setupCanvas(canvas);
+  ctx.clearRect(0, 0, W, H);
+
+  const mid = H / 2;
+  const scale = (H / 2 - 8) / 2;   // 최대 진폭 2 기준
+
+  // 영점선
+  ctx.strokeStyle = '#21262d';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, mid); ctx.lineTo(W, mid); ctx.stroke();
+
+  // 파동
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2.5;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 6;
+  ctx.beginPath();
+  for (let px = 0; px <= W; px++) {
+    const yv = waveFn(px, t) * scale;
+    px === 0 ? ctx.moveTo(px, mid - yv) : ctx.lineTo(px, mid - yv);
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+}
+
+function drawPosition(canvas, t) {
+  const { ctx, W, H } = setupCanvas(canvas);
+  ctx.clearRect(0, 0, W, H);
+  const mid = H / 2;
+  const scale = (H / 2 - 8) / 4;   // 합성파 최대 ±4
+
+  ctx.strokeStyle = '#21262d';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, mid); ctx.lineTo(W, mid); ctx.stroke();
+
+  // y1 + y2 ghost
+  ctx.strokeStyle = 'rgba(240,165,0,0.25)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  for (let px = 0; px <= W; px++) {
+    const yv = y1(px, t) * scale;
+    px === 0 ? ctx.moveTo(px, mid - yv) : ctx.lineTo(px, mid - yv);
+  }
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(88,166,255,0.25)';
+  ctx.beginPath();
+  for (let px = 0; px <= W; px++) {
+    const yv = y2(px, t) * scale;
+    px === 0 ? ctx.moveTo(px, mid - yv) : ctx.lineTo(px, mid - yv);
+  }
+  ctx.stroke();
+
+  // 합성
+  ctx.strokeStyle = '#3fb950';
+  ctx.lineWidth = 2.5;
+  ctx.shadowColor = '#3fb950';
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  for (let px = 0; px <= W; px++) {
+    const yv = ySum(px, t) * scale;
+    px === 0 ? ctx.moveTo(px, mid - yv) : ctx.lineTo(px, mid - yv);
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+}
+
+function drawTime(canvas) {
+  const { ctx, W, H } = setupCanvas(canvas);
+  ctx.clearRect(0, 0, W, H);
+  const mid = H / 2;
+  const scale = (H / 2 - 8) / 4;
+
+  ctx.strokeStyle = '#21262d';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, mid); ctx.lineTo(W, mid); ctx.stroke();
+
+  const N = timeHistory.length;
+  ctx.strokeStyle = '#3fb950';
+  ctx.lineWidth = 2;
+  ctx.shadowColor = '#3fb950';
+  ctx.shadowBlur = 6;
+  ctx.beginPath();
+  for (let i = 0; i < N; i++) {
+    const px = (i / (N - 1)) * W;
+    const yv = timeHistory[i] * scale;
+    i === 0 ? ctx.moveTo(px, mid - yv) : ctx.lineTo(px, mid - yv);
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+}
+
+// ──────────────────────────────────────────────
+// 간섭 상태 판정
+// ──────────────────────────────────────────────
+function updateInterferenceBadge() {
+  const badge = document.getElementById('interferenceBadge');
+  const sameFreq = Math.abs(params.f1 - params.f2) < 0.05;
+  const sameLambda = Math.abs(params.lambda1 - params.lambda2) < 10;
+
+  if (!sameFreq || !sameLambda) {
+    badge.textContent = '맥놀이';
+    badge.className = 'badge badge-partial';
+    return;
+  }
+
+  const ph = ((params.phase % 360) + 360) % 360;
+  if (ph < 20 || ph > 340) {
+    badge.textContent = '보강간섭 ✦';
+    badge.className = 'badge badge-constructive';
+  } else if (ph > 160 && ph < 200) {
+    badge.textContent = '상쇄간섭';
+    badge.className = 'badge badge-destructive';
+  } else {
+    badge.textContent = '부분간섭';
+    badge.className = 'badge badge-partial';
+  }
+}
+
+// ──────────────────────────────────────────────
+// 수식 업데이트
+// ──────────────────────────────────────────────
+function updateEquations() {
+  const k1 = ((2 * Math.PI) / params.lambda1).toFixed(3);
+  const w1 = (2 * Math.PI * params.f1).toFixed(3);
+  const k2 = ((2 * Math.PI) / params.lambda2).toFixed(3);
+  const w2 = (2 * Math.PI * params.f2).toFixed(3);
+  const ph = params.phase;
+
+  document.getElementById('eq1').textContent =
+    `y₁ = ${params.A1.toFixed(1)} sin(${k1}x − ${w1}t)`;
+  document.getElementById('eq2').textContent =
+    `y₂ = ${params.A2.toFixed(1)} sin(${k2}x − ${w2}t + ${ph}°)`;
+  document.getElementById('eqS').textContent =
+    `y = y₁ + y₂`;
+  updateInterferenceBadge();
+}
+updateEquations();
+
+// ──────────────────────────────────────────────
+// 메인 루프
+// ──────────────────────────────────────────────
+function loop(ts) {
+  if (!playing) return;
+
+  if (lastTs !== null) {
+    const dt = Math.min((ts - lastTs) / 1000, 0.05) * params.speed;
+    time += dt;
+    // x=0 에서의 합성파 값 히스토리 추가
+    timeHistory.shift();
+    timeHistory.push(ySum(0, time));
+  }
+  lastTs = ts;
+
+  drawWave(document.getElementById('c1'), y1, '#f0a500', time);
+  drawWave(document.getElementById('c2'), y2, '#58a6ff', time);
+  drawPosition(document.getElementById('cPos'), time);
+  drawTime(document.getElementById('cTime'));
+
+  requestAnimationFrame(loop);
+}
+
+// 리사이즈 대응
+window.addEventListener('resize', () => {
+  // 캔버스들은 setupCanvas 안에서 dpr 반영해서 매 프레임 재설정됨
+});
+
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

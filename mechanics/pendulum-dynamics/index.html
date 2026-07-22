@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>단진자 운동 시각화</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+:root {
+  --bg: #f8f7f2;
+  --surface: #ffffff;
+  --border: #e2dfd6;
+  --text: #1a1814;
+  --muted: #6b6860;
+  --panel-bg: #f0ede6;
+  --col-T: #c0392b;
+  --col-mg: #2980b9;
+  --col-net: #7b2d8b;
+  --col-restore: #1a1814;
+  --col-E: #1a7a4a;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+
+header { background: var(--text); color: #f8f7f2; padding: 11px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+header h1 { font-size: 15px; font-weight: 500; letter-spacing: -.02em; }
+header .sub { font-size: 11px; color: #888; font-family: 'STIX Two Text', serif; flex: 1; }
+
+.snap-bar { display: flex; gap: 5px; align-items: center; }
+.snap-label { font-size: 11px; color: #aaa; white-space: nowrap; }
+.snap-btn { padding: 4px 12px; border: 1px solid #444; border-radius: 3px; background: transparent; color: #ccc; font-size: 11px; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; transition: all .15s; }
+.snap-btn:hover { background: #333; }
+.snap-btn.active { background: #f8f7f2; color: #1a1814; border-color: #f8f7f2; font-weight: 700; }
+.play-btn { padding: 4px 13px; border: 1px solid #666; border-radius: 3px; background: transparent; color: #ccc; font-size: 11px; cursor: pointer; transition: all .15s; margin-left: 4px; }
+.play-btn:hover { background: #333; }
+
+.layout { display: grid; grid-template-columns: 1fr 310px; flex: 1; min-height: 0; }
+
+.canvas-area { display: flex; flex-direction: column; align-items: center; padding: 16px 20px; gap: 9px; }
+
+.canvas-wrap { width: 100%; max-width: 560px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; position: relative; }
+#pendCanvas { display: block; width: 100%; }
+
+.pause-badge { position: absolute; top: 9px; left: 9px; background: rgba(26,24,20,.82); color: #f8f7f2; font-size: 10px; padding: 3px 9px; border-radius: 3px; display: none; }
+.pause-badge.show { display: block; }
+
+.force-analysis { width: 100%; max-width: 560px; display: none; }
+.force-analysis.show { display: block; }
+.fa-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; }
+.fa-card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 9px 11px; border-top: 3px solid var(--border); }
+.fa-card.tension { border-top-color: var(--col-T); }
+.fa-card.gravity  { border-top-color: var(--col-mg); }
+.fa-card.net      { border-top-color: var(--col-net); }
+.fa-name { font-size: 10px; color: var(--muted); margin-bottom: 2px; text-transform: uppercase; letter-spacing: .04em; }
+.fa-val  { font-family: 'STIX Two Text', serif; font-size: 15px; font-weight: 600; }
+.fa-eq   { font-family: 'STIX Two Text', serif; font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+.pos-desc { width: 100%; max-width: 560px; display: none; }
+.pos-desc.show { display: block; }
+.pos-desc-inner { background: var(--text); color: #f8f7f2; border-radius: 4px; padding: 9px 15px; font-size: 12px; line-height: 1.7; font-family: 'STIX Two Text', serif; }
+.pos-desc-inner strong { color: #ffd580; font-size: 13px; }
+
+.formula-bar { width: 100%; max-width: 560px; background: var(--text); color: #f8f7f2; border-radius: 4px; padding: 9px 16px; display: grid; grid-template-columns: repeat(3,1fr); gap: 5px; }
+.fml-item { text-align: center; }
+.fml-label { font-size: 9px; color: #888; margin-bottom: 1px; text-transform: uppercase; letter-spacing: .04em; }
+.fml-val { font-family: 'STIX Two Text', serif; font-size: 16px; font-weight: 600; }
+.fml-val.ke { color: #4db8ff; } .fml-val.pe { color: #ff9f5a; } .fml-val.te { color: #80e6a8; }
+
+.energy-wrap { width: 100%; max-width: 560px; }
+.energy-title { font-size: 10px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; margin-bottom: 4px; }
+#energyCanvas { display: block; width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
+
+.sidebar { background: var(--panel-bg); border-left: 1px solid var(--border); padding: 16px 15px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; }
+.sidebar-section { display: flex; flex-direction: column; gap: 8px; }
+.sec-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); border-bottom: 1px solid var(--border); padding-bottom: 5px; }
+
+.ctrl-row { display: flex; flex-direction: column; gap: 3px; }
+.ctrl-head { display: flex; justify-content: space-between; align-items: baseline; }
+.ctrl-name { font-size: 13px; color: var(--text); font-family: 'STIX Two Text', serif; font-style: italic; }
+.ctrl-disp { font-size: 13px; font-weight: 700; font-family: 'STIX Two Text', serif; min-width: 58px; text-align: right; }
+input[type=range] { width: 100%; accent-color: var(--text); height: 4px; cursor: pointer; }
+
+.readout-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.readout { background: var(--surface); border: 1px solid var(--border); border-radius: 3px; padding: 6px 8px; }
+.readout-label { font-size: 10px; color: var(--muted); margin-bottom: 1px; }
+.readout-val { font-size: 13px; font-weight: 700; font-family: 'STIX Two Text', serif; color: var(--text); }
+.readout-val.red { color: var(--col-T); } .readout-val.purple { color: var(--col-net); }
+
+.tab-bar { display: flex; gap: 3px; }
+.tab-btn { flex: 1; padding: 5px 0; font-size: 10px; font-family: 'Noto Sans KR', sans-serif; background: var(--surface); border: 1px solid var(--border); border-radius: 3px; cursor: pointer; color: var(--muted); transition: all .15s; }
+.tab-btn.active { background: var(--text); color: #f8f7f2; border-color: var(--text); }
+.tab-panel { display: none; } .tab-panel.active { display: flex; flex-direction: column; gap: 7px; }
+
+.deriv-step { background: var(--surface); border-left: 3px solid var(--border); padding: 7px 9px; border-radius: 0 3px 3px 0; }
+.deriv-step.hl  { border-left-color: var(--col-T); }
+.deriv-step.hl2 { border-left-color: var(--col-mg); }
+.deriv-step.hl3 { border-left-color: var(--col-E); }
+.deriv-step.hl4 { border-left-color: var(--col-net); }
+.ds-label { font-size: 10px; color: var(--muted); margin-bottom: 2px; text-transform: uppercase; letter-spacing: .04em; }
+.ds-eq { font-family: 'STIX Two Text', serif; font-size: 12px; line-height: 1.55; }
+
+.approx-bar { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: 3px; }
+.approx-fill { height: 100%; background: #c0392b; border-radius: 3px; transition: width .3s; }
+.leg { display: flex; gap: 10px; font-size: 11px; color: var(--muted); margin-top: 3px; }
+.leg-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 3px; vertical-align: middle; }
+
+.vleg-grid { display: flex; flex-direction: column; gap: 5px; }
+.vleg-row { display: flex; align-items: center; gap: 7px; font-size: 11px; }
+.vleg-swatch { width: 22px; height: 3px; border-radius: 1px; flex-shrink: 0; }
+.vleg-name { font-family: 'STIX Two Text', serif; min-width: 60px; }
+.vleg-desc { font-size: 10px; color: var(--muted); }
+
+.btn-row { display: flex; gap: 5px; }
+.btn-sm { flex:1; padding:6px 0; background:transparent; border:1px solid var(--border); border-radius:3px; font-family:'Noto Sans KR',sans-serif; font-size:11px; cursor:pointer; color:var(--muted); transition:all .15s; }
+.btn-sm:hover { background:var(--surface); color:var(--text); border-color:#aaa; }
+</style>
+</head>
+<body>
+<a href="../../index.html" title="홈으로" style="position:fixed;left:12px;bottom:12px;z-index:99999;background:rgba(255,255,255,.94);color:#1c2733;text-decoration:none;padding:8px 13px;border-radius:9px;font:600 14px/1 'Segoe UI','Malgun Gothic',sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.22);border:1px solid rgba(0,0,0,.12)">🏠 홈</a>
+
+<header>
+  <h1>단진자 운동 시각화</h1>
+  <span class="sub">물리학 II · Simple Pendulum</span>
+  <div class="snap-bar">
+    <span class="snap-label">위치 고정:</span>
+    <button class="snap-btn" id="btn-top"    onclick="snapTo('top')">최고점</button>
+    <button class="snap-btn" id="btn-middle" onclick="snapTo('middle')">중간</button>
+    <button class="snap-btn" id="btn-bottom" onclick="snapTo('bottom')">최저점</button>
+    <button class="play-btn" id="btn-play"   onclick="togglePlay()">▶ 재생</button>
+  </div>
+</header>
+
+<div class="layout">
+  <div class="canvas-area">
+
+    <div class="canvas-wrap">
+      <canvas id="pendCanvas" width="560" height="430"></canvas>
+      <div class="pause-badge" id="pauseBadge">⏸ 정지</div>
+    </div>
+
+    <div class="force-analysis" id="forceAnalysis">
+      <div class="fa-grid">
+        <div class="fa-card tension">
+          <div class="fa-name">장력 T</div>
+          <div class="fa-val" id="fa-T" style="color:var(--col-T)">—</div>
+          <div class="fa-eq" id="fa-T-eq">mg cosθ + mlθ̇²</div>
+        </div>
+        <div class="fa-card gravity">
+          <div class="fa-name">중력 mg</div>
+          <div class="fa-val" id="fa-mg" style="color:var(--col-mg)">—</div>
+          <div class="fa-eq" id="fa-mg-eq">연직 하향 · 일정</div>
+        </div>
+        <div class="fa-card net">
+          <div class="fa-name">알짜힘 F<sub>net</sub></div>
+          <div class="fa-val" id="fa-net" style="color:var(--col-net)">—</div>
+          <div class="fa-eq" id="fa-net-eq">접선+구심 합성</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pos-desc" id="posDesc">
+      <div class="pos-desc-inner" id="posDescInner"></div>
+    </div>
+
+    <div class="formula-bar">
+      <div class="fml-item"><div class="fml-label">운동에너지 K</div><div class="fml-val ke" id="ke-val">0.0000 J</div></div>
+      <div class="fml-item"><div class="fml-label">위치에너지 U</div><div class="fml-val pe" id="pe-val">0.0000 J</div></div>
+      <div class="fml-item"><div class="fml-label">역학적 에너지 E</div><div class="fml-val te" id="te-val">0.0000 J</div></div>
+    </div>
+
+    <div class="energy-wrap">
+      <div class="energy-title">에너지 이력 · K(파랑) / U(주황) / E(초록 점선) — 보라 수직선: 현재 시각</div>
+      <canvas id="energyCanvas" width="560" height="100"></canvas>
+    </div>
+
+  </div><!-- canvas-area -->
+
+  <div class="sidebar">
+
+    <div class="sidebar-section">
+      <div class="sec-title">패널</div>
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('ctrl')">제어</button>
+        <button class="tab-btn" onclick="switchTab('derive')">유도</button>
+        <button class="tab-btn" onclick="switchTab('approx')">근사</button>
+      </div>
+    </div>
+
+    <!-- 제어 탭 -->
+    <div class="tab-panel active" id="tab-ctrl">
+      <div class="sidebar-section">
+        <div class="sec-title">초기 조건</div>
+        <div class="ctrl-row">
+          <div class="ctrl-head"><span class="ctrl-name">초기 각도 θ₀</span><span class="ctrl-disp" id="disp-angle">30°</span></div>
+          <input type="range" min="5" max="75" value="30" id="sl-angle" oninput="onParamChange()">
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-head"><span class="ctrl-name">실 길이 l</span><span class="ctrl-disp" id="disp-L">1.5 m</span></div>
+          <input type="range" min="0.5" max="3.0" step="0.1" value="1.5" id="sl-L" oninput="onParamChange()">
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-head"><span class="ctrl-name">중력가속도 g</span><span class="ctrl-disp" id="disp-g">9.8 m/s²</span></div>
+          <input type="range" min="1.0" max="25.0" step="0.5" value="9.8" id="sl-g" oninput="onParamChange()">
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-head"><span class="ctrl-name">질량 m</span><span class="ctrl-disp" id="disp-m">1.0 kg</span></div>
+          <input type="range" min="0.2" max="5.0" step="0.1" value="1.0" id="sl-m" oninput="onParamChange()">
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sec-title">실시간 값</div>
+        <div class="readout-grid">
+          <div class="readout"><div class="readout-label">각도 θ</div><div class="readout-val" id="r-theta">—</div></div>
+          <div class="readout"><div class="readout-label">각속도 θ̇</div><div class="readout-val" id="r-omega">—</div></div>
+          <div class="readout"><div class="readout-label">주기 T (근사)</div><div class="readout-val" id="r-T">—</div></div>
+          <div class="readout"><div class="readout-label">주기 T (측정)</div><div class="readout-val" id="r-Tmeas">—</div></div>
+          <div class="readout"><div class="readout-label">장력 T</div><div class="readout-val red" id="r-tension">—</div></div>
+          <div class="readout"><div class="readout-label">알짜힘 |F<sub>net</sub>|</div><div class="readout-val purple" id="r-net">—</div></div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sec-title">벡터 범례</div>
+        <div class="vleg-grid">
+          <div class="vleg-row"><div class="vleg-swatch" style="background:var(--col-T)"></div><span class="vleg-name">T (빨강)</span><span class="vleg-desc">장력 · 피벗 방향</span></div>
+          <div class="vleg-row"><div class="vleg-swatch" style="background:var(--col-mg)"></div><span class="vleg-name">mg (파랑)</span><span class="vleg-desc">중력 · 연직 하향</span></div>
+          <div class="vleg-row"><div class="vleg-swatch" style="background:#1a1814"></div><span class="vleg-name">mg sinθ</span><span class="vleg-desc">접선 복원력</span></div>
+          <div class="vleg-row"><div class="vleg-swatch" style="background:#888;height:1px;border-top:1.5px dashed #888"></div><span class="vleg-name">mg cosθ</span><span class="vleg-desc">법선 분력 (점선)</span></div>
+          <div class="vleg-row"><div class="vleg-swatch" style="background:var(--col-net);height:4px"></div><span class="vleg-name">F<sub>net</sub> (보라)</span><span class="vleg-desc">알짜힘 · 굵은 화살표</span></div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-sm" onclick="restart()">↺ 재시작</button>
+        <button class="btn-sm" onclick="togglePlay()">⏯ 일시정지</button>
+      </div>
+    </div>
+
+    <!-- 유도 탭 -->
+    <div class="tab-panel" id="tab-derive">
+      <div class="deriv-step hl"><div class="ds-label">Step 1 · 접선 방향 합력</div><div class="ds-eq">F<sub>tan</sub> = −mg sinθ = m(lθ̈)</div></div>
+      <div class="deriv-step hl2"><div class="ds-label">Step 2 · 운동방정식 (비선형)</div><div class="ds-eq">θ̈ + (g/l) sinθ = 0</div></div>
+      <div class="deriv-step"><div class="ds-label">Step 3 · 소각도 근사</div><div class="ds-eq">sinθ ≈ θ → θ̈ + (g/l)θ = 0<br><span style="font-size:10px;color:#aaa">→ 단순조화운동 SHM</span></div></div>
+      <div class="deriv-step hl3"><div class="ds-label">Step 4 · 해와 주기</div><div class="ds-eq">θ(t) = θ₀ cos(ωt),  ω = √(g/l)<br>T = 2π√(l/g)</div></div>
+      <div class="deriv-step hl4"><div class="ds-label">Step 5 · 에너지 보존</div><div class="ds-eq">E = ½m(lθ̇)² + mgl(1−cosθ) = 일정</div></div>
+      <div class="deriv-step"><div class="ds-label">Step 6 · 장력 (법선 방향)</div><div class="ds-eq">T = mg cosθ + mlθ̇²<br><span style="font-size:10px;color:#aaa">최저점: T = mg + mlθ̇² (최대)</span></div></div>
+    </div>
+
+    <!-- 근사 탭 -->
+    <div class="tab-panel" id="tab-approx">
+      <div class="deriv-step"><div class="ds-label">현재 초기 각도</div><div class="ds-eq" id="approx-theta-line">θ₀ = 30°</div></div>
+      <div class="readout-grid">
+        <div class="readout"><div class="readout-label">sinθ</div><div class="readout-val" id="approx-sin">—</div></div>
+        <div class="readout"><div class="readout-label">θ (rad)</div><div class="readout-val" id="approx-rad">—</div></div>
+        <div class="readout"><div class="readout-label">T (근사)</div><div class="readout-val" style="color:var(--col-E)" id="approx-Ta">—</div></div>
+        <div class="readout"><div class="readout-label">T (보정)</div><div class="readout-val" id="approx-Te">—</div></div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sec-title">sinθ ↔ θ 오차</div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>|sinθ − θ| / θ</span><span id="approx-err-pct" style="font-weight:700;color:#c0392b">—</span></div>
+        <div class="approx-bar"><div class="approx-fill" id="approx-err-bar" style="width:0%"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:5px"><span>주기 오차 (근사 vs 보정)</span><span id="approx-period-err" style="font-weight:700;color:#c0392b">—</span></div>
+        <div class="approx-bar"><div class="approx-fill" id="approx-period-err-bar" style="width:0%"></div></div>
+      </div>
+      <canvas id="approxCanvas" width="278" height="150" style="width:100%;background:white;border:1px solid var(--border);border-radius:3px"></canvas>
+      <div class="leg"><span><span class="leg-dot" style="background:#2980b9"></span>sinθ</span><span><span class="leg-dot" style="background:#c0392b"></span>θ (rad)</span></div>
+    </div>
+
+  </div><!-- sidebar -->
+</div><!-- layout -->
+
+<script>
+// ============================================================
+// State
+// ============================================================
+let theta, dtheta, simTime;
+let L, g_val, mass;
+let paused = false;
+let snapMode = null;
+let animId   = null;
+let energyHistory = [];
+let lastZeroSign = 1, lastZeroTime = 0, measuredPeriod = null;
+const MAX_HIST = 600;
+
+const SNAP_DESC = {
+  top: {
+    label: '최고점 (θ = θ₀)',
+    text: `<strong>최고점 (θ = θ₀)</strong><br>
+속도 = 0 → 운동에너지 K = 0,  위치에너지 U = 최대 (= E 전체)<br>
+알짜힘 방향: 접선 방향 (복원력 mg sinθ₀ — 최저점 쪽)<br>
+장력 T = mg cosθ₀ (원심력 항 mlθ̇² = 0)`
+  },
+  middle: {
+    label: '중간 지점 (θ ≈ θ₀/2)',
+    text: `<strong>중간 지점 (θ = θ₀/2)</strong><br>
+K ≠ 0,  U ≠ 0 — 운동·위치에너지 공존<br>
+알짜힘: 접선 복원력(mg sinθ) + 구심력(mlθ̇²) 의 합성<br>
+장력 T = mg cosθ + mlθ̇²`
+  },
+  bottom: {
+    label: '최저점 (θ = 0)',
+    text: `<strong>최저점 (θ = 0, 평형 위치)</strong><br>
+속도 최대 → 운동에너지 K = 최대,  위치에너지 U = 0<br>
+알짜힘 방향: 연직 상향 (순수 구심 방향, 접선 복원력 = 0)<br>
+장력 T = mg + mlθ̇² — 이 위치에서 장력이 가장 크다`
+  }
+};
+
+// ── params ──────────────────────────────────────────────────
+function readParams() {
+  L     = parseFloat(document.getElementById('sl-L').value);
+  g_val = parseFloat(document.getElementById('sl-g').value);
+  mass  = parseFloat(document.getElementById('sl-m').value);
+  document.getElementById('disp-L').textContent = L.toFixed(1) + ' m';
+  document.getElementById('disp-g').textContent = g_val.toFixed(1) + ' m/s²';
+  document.getElementById('disp-m').textContent = mass.toFixed(1) + ' kg';
+}
+
+function onParamChange() {
+  readParams();
+  if (snapMode) snapTo(snapMode); else restart();
+}
+
+// ── restart ──────────────────────────────────────────────────
+function restart() {
+  readParams();
+  const deg = parseFloat(document.getElementById('sl-angle').value);
+  document.getElementById('disp-angle').textContent = deg + '°';
+  theta = deg * Math.PI / 180;
+  dtheta = 0; simTime = 0;
+  energyHistory = [];
+  lastZeroSign = Math.sign(theta); lastZeroTime = 0; measuredPeriod = null;
+  paused = false; snapMode = null;
+  clearSnapBtns(); hidePauseUI();
+  document.getElementById('btn-play').textContent = '⏸ 정지';
+  updateApproxTab();
+  if (animId) cancelAnimationFrame(animId);
+  loop();
+}
+
+// ── snap to position ─────────────────────────────────────────
+function snapTo(pos) {
+  readParams();
+  const th0 = parseFloat(document.getElementById('sl-angle').value) * Math.PI / 180;
+  const E_total = mass * g_val * L * (1 - Math.cos(th0));
+
+  if (pos === 'top') {
+    theta = th0; dtheta = 0;
+  } else if (pos === 'bottom') {
+    theta = 0;
+    dtheta = Math.sqrt(2 * E_total / (mass * L * L));
+  } else { // middle
+    theta = th0 / 2;
+    const U_mid = mass * g_val * L * (1 - Math.cos(theta));
+    const K_mid = Math.max(E_total - U_mid, 0);
+    dtheta = Math.sqrt(2 * K_mid / (mass * L * L));
+  }
+
+  snapMode = pos; paused = true;
+  clearSnapBtns();
+  document.getElementById('btn-' + pos).classList.add('active');
+  document.getElementById('btn-play').textContent = '▶ 재생';
+  document.getElementById('pauseBadge').textContent = '⏸ ' + SNAP_DESC[pos].label;
+  document.getElementById('pauseBadge').classList.add('show');
+  showForceAnalysis();
+  showPosDesc(pos);
+  if (animId) cancelAnimationFrame(animId);
+  renderFrame();
+}
+
+// ── play / pause ─────────────────────────────────────────────
+function togglePlay() {
+  if (paused) {
+    paused = false; snapMode = null;
+    clearSnapBtns(); hidePauseUI();
+    document.getElementById('btn-play').textContent = '⏸ 정지';
+    animId = requestAnimationFrame(loop);
+  } else {
+    paused = true;
+    document.getElementById('btn-play').textContent = '▶ 재생';
+    if (animId) cancelAnimationFrame(animId);
+  }
+}
+
+function clearSnapBtns() {
+  ['btn-top','btn-middle','btn-bottom'].forEach(id => document.getElementById(id).classList.remove('active'));
+}
+function hidePauseUI() {
+  document.getElementById('pauseBadge').classList.remove('show');
+  document.getElementById('forceAnalysis').classList.remove('show');
+  document.getElementById('posDesc').classList.remove('show');
+}
+function showForceAnalysis() {
+  document.getElementById('forceAnalysis').classList.add('show');
+  updateForceCards();
+}
+function showPosDesc(pos) {
+  document.getElementById('posDescInner').innerHTML = SNAP_DESC[pos].text;
+  document.getElementById('posDesc').classList.add('show');
+}
+
+// ── force cards ───────────────────────────────────────────────
+function updateForceCards() {
+  const Tmag   = mass * (g_val * Math.cos(theta) + L * dtheta * dtheta);
+  const mgMag  = mass * g_val;
+  const Ftan   = mass * g_val * Math.abs(Math.sin(theta));
+  const Fcent  = mass * L * dtheta * dtheta;
+  const Fnet   = Math.sqrt(Ftan*Ftan + Fcent*Fcent);
+  document.getElementById('fa-T').textContent   = Tmag.toFixed(3) + ' N';
+  document.getElementById('fa-mg').textContent  = mgMag.toFixed(3) + ' N';
+  document.getElementById('fa-net').textContent = Fnet.toFixed(3) + ' N';
+}
+
+// ============================================================
+// Physics – RK4
+// ============================================================
+function rk4(th, dth, dt) {
+  const f = a => -(g_val/L)*Math.sin(a);
+  const k1v=f(th), k1x=dth;
+  const k2v=f(th+.5*dt*k1x), k2x=dth+.5*dt*k1v;
+  const k3v=f(th+.5*dt*k2x), k3x=dth+.5*dt*k2v;
+  const k4v=f(th+dt*k3x),    k4x=dth+dt*k3v;
+  return { th: th+(dt/6)*(k1x+2*k2x+2*k3x+k4x), dth: dth+(dt/6)*(k1v+2*k2v+2*k3v+k4v) };
+}
+
+// ============================================================
+// Main loop
+// ============================================================
+function loop() {
+  if (paused) return;
+  const dt=0.016, STEPS=4;
+  for (let i=0;i<STEPS;i++) {
+    const r=rk4(theta,dtheta,dt/STEPS);
+    theta=r.th; dtheta=r.dth; simTime+=dt/STEPS;
+  }
+  const sign=Math.sign(theta);
+  if (sign!==lastZeroSign && lastZeroSign!==0 && theta<0) {
+    if (lastZeroTime>0.1) measuredPeriod=(simTime-lastZeroTime)*2;
+    lastZeroTime=simTime;
+  }
+  if (sign!==0) lastZeroSign=sign;
+  renderFrame();
+  animId=requestAnimationFrame(loop);
+}
+
+// ============================================================
+// Render frame
+// ============================================================
+function renderFrame() {
+  const K = 0.5 * mass * Math.pow(L*dtheta, 2);
+  const U = mass * g_val * L * (1 - Math.cos(theta));
+  const E = K + U;
+
+  if (!paused || !snapMode) {
+    energyHistory.push({t:simTime, K, U, E});
+    if (energyHistory.length>MAX_HIST) energyHistory.shift();
+  }
+
+  const Tmag   = mass*(g_val*Math.cos(theta) + L*dtheta*dtheta);
+  const Ftan   = mass*g_val*Math.abs(Math.sin(theta));
+  const Fcent  = mass*L*dtheta*dtheta;
+  const Fnet   = Math.sqrt(Ftan*Ftan + Fcent*Fcent);
+  const T_approx = 2*Math.PI*Math.sqrt(L/g_val);
+
+  document.getElementById('r-theta').textContent   = (theta*180/Math.PI).toFixed(2)+'°';
+  document.getElementById('r-omega').textContent   = dtheta.toFixed(3)+' rad/s';
+  document.getElementById('r-T').textContent       = T_approx.toFixed(3)+' s';
+  document.getElementById('r-Tmeas').textContent   = measuredPeriod ? measuredPeriod.toFixed(3)+' s' : '—';
+  document.getElementById('r-tension').textContent = Tmag.toFixed(3)+' N';
+  document.getElementById('r-net').textContent     = Fnet.toFixed(3)+' N';
+  document.getElementById('ke-val').textContent    = K.toFixed(4)+' J';
+  document.getElementById('pe-val').textContent    = U.toFixed(4)+' J';
+  document.getElementById('te-val').textContent    = E.toFixed(4)+' J';
+
+  if (paused && snapMode) updateForceCards();
+
+  drawPendulum();
+  drawEnergyChart();
+}
+
+// ============================================================
+// Draw – Pendulum
+// ============================================================
+function drawPendulum() {
+  const cv=document.getElementById('pendCanvas');
+  const ctx=cv.getContext('2d');
+  const W=cv.width, H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  // ceiling hatching
+  ctx.fillStyle='#ccc'; ctx.fillRect(0,0,W,28);
+  ctx.strokeStyle='#bbb'; ctx.lineWidth=1;
+  for(let i=-H;i<W+H;i+=14){ ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i+28,28); ctx.stroke(); }
+
+  const ox=W*0.42, oy=28;
+  const scale=Math.min(130,(H-90)/Math.max(L,0.5));
+  const px=ox+Math.sin(theta)*scale*L;
+  const py=oy+Math.cos(theta)*scale*L;
+
+  // equilibrium dashed
+  ctx.save(); ctx.setLineDash([6,5]); ctx.strokeStyle='#ccc'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(ox,oy+scale*L+42); ctx.stroke(); ctx.restore();
+
+  // arc trajectory
+  const th0=parseFloat(document.getElementById('sl-angle').value)*Math.PI/180;
+  ctx.save(); ctx.setLineDash([5,5]); ctx.strokeStyle='#ddd'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.arc(ox,oy,scale*L,Math.PI/2-th0,Math.PI/2+th0); ctx.stroke(); ctx.restore();
+
+  // x displacement
+  if (Math.abs(theta)>0.02) {
+    ctx.save(); ctx.setLineDash([4,4]); ctx.strokeStyle='#bbb'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(ox,py+17); ctx.lineTo(px,py+17); ctx.stroke(); ctx.restore();
+    const xd=Math.sign(px-ox);
+    ctx.fillStyle='#bbb';
+    ctx.beginPath(); ctx.moveTo(ox,py+17); ctx.lineTo(ox+xd*7,py+13); ctx.lineTo(ox+xd*7,py+21); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(px,py+17); ctx.lineTo(px-xd*7,py+13); ctx.lineTo(px-xd*7,py+21); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#999'; ctx.font='italic 13px "STIX Two Text",serif'; ctx.textAlign='center';
+    ctx.fillText('x',(ox+px)/2,py+31);
+  }
+
+  // string
+  ctx.strokeStyle='#333'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(px,py); ctx.stroke();
+
+  // l label
+  const midX=(ox+px)/2, midY=(oy+py)/2;
+  const nx=-(py-oy), ny=px-ox, nl=Math.sqrt(nx*nx+ny*ny)||1;
+  ctx.font='italic 15px "STIX Two Text",serif'; ctx.fillStyle='#444'; ctx.textAlign='center';
+  ctx.fillText('l', midX+nx/nl*17, midY+ny/nl*17);
+
+  // θ arc
+  if (Math.abs(theta)>0.02) {
+    const aR=38;
+    ctx.save(); ctx.strokeStyle='#444'; ctx.lineWidth=1;
+    ctx.beginPath();
+    theta>0 ? ctx.arc(ox,oy,aR,Math.PI/2-theta,Math.PI/2) : ctx.arc(ox,oy,aR,Math.PI/2,Math.PI/2-theta);
+    ctx.stroke();
+    const aaAngle=theta>0?Math.PI/2:Math.PI/2-theta;
+    const aax=ox+aR*Math.cos(aaAngle), aay=oy+aR*Math.sin(aaAngle);
+    const dir=theta>0?-1:1;
+    ctx.fillStyle='#444';
+    ctx.beginPath(); ctx.moveTo(aax,aay); ctx.lineTo(aax-dir*5,aay-5); ctx.lineTo(aax+dir*5,aay-4); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    ctx.font='italic 14px "STIX Two Text",serif'; ctx.fillStyle='#333'; ctx.textAlign='center';
+    const tla=Math.PI/2-theta/2;
+    ctx.fillText('θ', ox+(aR+13)*Math.cos(tla), oy+(aR+13)*Math.sin(tla));
+  }
+
+  // ── Arrow helper ──────────────────────────────────────────
+  function arrow(x1,y1,dx,dy,color,lw,dashed,hs) {
+    const len=Math.sqrt(dx*dx+dy*dy); if(len<2)return;
+    ctx.save(); ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=lw;
+    if(dashed) ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x1+dx,y1+dy); ctx.stroke();
+    ctx.setLineDash([]);
+    const ux=dx/len,uy=dy/len,hw=(hs||7)*0.55;
+    ctx.beginPath();
+    ctx.moveTo(x1+dx,y1+dy);
+    ctx.lineTo(x1+dx-ux*(hs||7)+uy*hw, y1+dy-uy*(hs||7)-ux*hw);
+    ctx.lineTo(x1+dx-ux*(hs||7)-uy*hw, y1+dy-uy*(hs||7)+ux*hw);
+    ctx.closePath(); ctx.fill(); ctx.restore();
+  }
+
+  const vS=52/(mass*g_val);
+  const strDx=ox-px, strDy=oy-py;
+  const strLen=Math.sqrt(strDx*strDx+strDy*strDy)||1;
+
+  // mg (blue, downward)
+  const mgPx=mass*g_val*vS;
+  arrow(px,py, 0,mgPx, '#2980b9',2.5,false,8);
+
+  // mg cosθ (dashed, along string outward)
+  const cosP=mass*g_val*Math.cos(theta)*vS;
+  const cosDx=-strDx/strLen*cosP, cosDy=-strDy/strLen*cosP;
+  arrow(px,py, cosDx,cosDy, '#555',1.5,true,6);
+
+  // mg sinθ (black, tangential restore)
+  const sinP=mass*g_val*Math.abs(Math.sin(theta))*vS;
+  const tanDx=-strDy/strLen, tanDy=strDx/strLen;
+  const rs=-Math.sign(theta);
+  const sinDx=tanDx*sinP*rs, sinDy=tanDy*sinP*rs;
+  arrow(px,py, sinDx,sinDy, '#1a1814',2,false,7);
+
+  // T (red, toward pivot)
+  const TpLen=68;
+  const Tdx=strDx/strLen*TpLen, Tdy=strDy/strLen*TpLen;
+  arrow(px,py, Tdx,Tdy, '#c0392b',2.5,false,8);
+
+  // ── 알짜힘 (net force, purple) ──────────────────────────
+  // 접선 복원력 벡터 + 구심력 벡터 합성
+  const FcentP = mass*L*dtheta*dtheta*vS;          // pixel 크기
+  const Fcent_dx = strDx/strLen*FcentP;             // 피벗 방향 (구심)
+  const Fcent_dy = strDy/strLen*FcentP;
+  const Fnet_dx = sinDx + Fcent_dx;
+  const Fnet_dy = sinDy + Fcent_dy;
+  const FnetLen = Math.sqrt(Fnet_dx*Fnet_dx+Fnet_dy*Fnet_dy);
+  if (FnetLen > 3) {
+    arrow(px,py, Fnet_dx,Fnet_dy, '#7b2d8b',3.5,false,11);
+  }
+
+  // ── 레이블 ───────────────────────────────────────────────
+  ctx.font='13px "STIX Two Text",serif';
+  // T
+  ctx.fillStyle='#c0392b'; ctx.textAlign='left';
+  ctx.fillText('T', px+Tdx*.5+7, py+Tdy*.5-4);
+  // mg
+  ctx.fillStyle='#2980b9'; ctx.font='italic 13px "STIX Two Text",serif'; ctx.textAlign='left';
+  ctx.fillText('mg', px+7, py+mgPx*.55);
+  if (Math.abs(theta)>0.05) {
+    ctx.font='11px "STIX Two Text",serif';
+    ctx.fillStyle='#1a1814'; ctx.textAlign='center';
+    ctx.fillText('mg sinθ', px+sinDx*.5-14*Math.sign(sinDx||1), py+sinDy*.5-8);
+    ctx.fillStyle='#555';
+    ctx.fillText('mg cosθ', px+cosDx*.55+10, py+cosDy*.55+5);
+  }
+  if (FnetLen>8) {
+    ctx.font='bold 12px "STIX Two Text",serif';
+    ctx.fillStyle='#7b2d8b'; ctx.textAlign='left';
+    ctx.fillText('F\u2091\u2091\u209c', px+Fnet_dx+7, py+Fnet_dy+4);
+  }
+
+  // pivot
+  ctx.fillStyle='#333'; ctx.beginPath(); ctx.arc(ox,oy,4,0,Math.PI*2); ctx.fill();
+
+  // bob
+  const grad=ctx.createRadialGradient(px-5,py-5,2,px,py,16);
+  grad.addColorStop(0,'#e8e8e8'); grad.addColorStop(.5,'#b0b0b0'); grad.addColorStop(1,'#707070');
+  ctx.fillStyle=grad; ctx.beginPath(); ctx.arc(px,py,15,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#888'; ctx.lineWidth=.5; ctx.stroke();
+
+  // ── 정지 시 추가 표시 ─────────────────────────────────────
+  if (paused && snapMode) {
+    // 최저점 기준선 (점선)
+    const bottomY = oy + scale*L;
+    ctx.save(); ctx.setLineDash([4,4]); ctx.strokeStyle='rgba(100,100,100,.3)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(ox-scale*L*1.15,bottomY); ctx.lineTo(ox+scale*L*1.15,bottomY); ctx.stroke(); ctx.restore();
+
+    // 높이 h 표시
+    const hPx = bottomY - py;
+    if (hPx > 6) {
+      ctx.save(); ctx.setLineDash([3,3]); ctx.strokeStyle='#1a7a4a'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(px+30,py); ctx.lineTo(px+30,bottomY); ctx.stroke(); ctx.restore();
+      ctx.font='11px "STIX Two Text",serif'; ctx.fillStyle='#1a7a4a'; ctx.textAlign='left';
+      ctx.fillText('h = '+(hPx/scale).toFixed(3)+' m', px+34, (py+bottomY)/2+4);
+    }
+
+    // 추 주변 발광 효과 (위치 강조)
+    const glowColors = { top:'rgba(192,57,43,', middle:'rgba(123,45,139,', bottom:'rgba(26,122,74,' };
+    const gc = glowColors[snapMode];
+    ctx.beginPath(); ctx.arc(px,py,28,0,Math.PI*2);
+    ctx.strokeStyle=gc+'0.5)'; ctx.lineWidth=2; ctx.stroke();
+    ctx.beginPath(); ctx.arc(px,py,34,0,Math.PI*2);
+    ctx.strokeStyle=gc+'0.2)'; ctx.lineWidth=1.5; ctx.stroke();
+  }
+}
+
+// ============================================================
+// Draw – Energy Chart
+// ============================================================
+function drawEnergyChart() {
+  const cv=document.getElementById('energyCanvas');
+  const ctx=cv.getContext('2d');
+  const W=cv.width, H=cv.height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+  if(energyHistory.length<2)return;
+
+  const pad={l:36,r:14,t:10,b:22};
+  const eMax=energyHistory.reduce((a,d)=>Math.max(a,d.E),0)*1.15||1;
+  const tEnd=energyHistory[energyHistory.length-1].t;
+  const tStart=Math.max(0,tEnd-12);
+  const xp=t=>pad.l+(t-tStart)/Math.max(tEnd-tStart,.01)*(W-pad.l-pad.r);
+  const yp=v=>H-pad.b-(v/eMax)*(H-pad.t-pad.b);
+
+  ctx.strokeStyle='#eee'; ctx.lineWidth=.5;
+  [.25,.5,.75,1].forEach(f=>{ ctx.beginPath(); ctx.moveTo(pad.l,yp(eMax*f)); ctx.lineTo(W-pad.r,yp(eMax*f)); ctx.stroke(); });
+
+  const E0=energyHistory[energyHistory.length-1].E;
+  ctx.strokeStyle='#1a7a4a'; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(pad.l,yp(E0)); ctx.lineTo(W-pad.r,yp(E0)); ctx.stroke(); ctx.setLineDash([]);
+
+  const vis=energyHistory.filter(d=>d.t>=tStart);
+  ctx.strokeStyle='#2980b9'; ctx.lineWidth=1.5; ctx.beginPath();
+  vis.forEach((d,i)=>{ i===0?ctx.moveTo(xp(d.t),yp(d.K)):ctx.lineTo(xp(d.t),yp(d.K)); }); ctx.stroke();
+  ctx.strokeStyle='#e67e22'; ctx.lineWidth=1.5; ctx.beginPath();
+  vis.forEach((d,i)=>{ i===0?ctx.moveTo(xp(d.t),yp(d.U)):ctx.lineTo(xp(d.t),yp(d.U)); }); ctx.stroke();
+
+  // 현재 시각 마커 (정지 시 보라)
+  const xt=xp(simTime);
+  if (xt>=pad.l && xt<=W-pad.r) {
+    ctx.strokeStyle=paused?'#7b2d8b':'rgba(100,100,100,.25)';
+    ctx.lineWidth=paused?1.5:1; ctx.setLineDash(paused?[]:[3,3]);
+    ctx.beginPath(); ctx.moveTo(xt,pad.t); ctx.lineTo(xt,H-pad.b); ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  ctx.fillStyle='#999'; ctx.font='10px sans-serif';
+  ctx.textAlign='right'; ctx.fillText((eMax*.87).toFixed(2),pad.l-2,yp(eMax*.87)+4);
+  ctx.textAlign='left'; ctx.fillText('t(s)',W-pad.r+2,H-5);
+}
+
+// ============================================================
+// Approx Tab
+// ============================================================
+function updateApproxTab() {
+  readParams();
+  const deg=parseFloat(document.getElementById('sl-angle').value);
+  const rad=deg*Math.PI/180, sinV=Math.sin(rad);
+  const Ta=2*Math.PI*Math.sqrt(L/g_val);
+  const Te=Ta*(1+rad*rad/16+11*rad*rad*rad*rad/3072);
+  const sinErr=Math.abs(sinV-rad)/Math.abs(rad)*100;
+  const pErr=Math.abs(Te-Ta)/Te*100;
+
+  document.getElementById('approx-theta-line').innerHTML='θ₀ = '+deg+'° = '+rad.toFixed(4)+' rad';
+  document.getElementById('approx-sin').textContent=sinV.toFixed(5);
+  document.getElementById('approx-rad').textContent=rad.toFixed(5);
+  document.getElementById('approx-Ta').textContent=Ta.toFixed(4)+' s';
+  document.getElementById('approx-Te').textContent=Te.toFixed(4)+' s';
+  document.getElementById('approx-err-pct').textContent=sinErr.toFixed(3)+'%';
+  document.getElementById('approx-err-bar').style.width=Math.min(sinErr*3,100)+'%';
+  document.getElementById('approx-period-err').textContent=pErr.toFixed(3)+'%';
+  document.getElementById('approx-period-err-bar').style.width=Math.min(pErr*10,100)+'%';
+  drawApproxGraph(deg);
+}
+
+function drawApproxGraph(markDeg) {
+  const cv=document.getElementById('approxCanvas');
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+  const pad={l:28,r:10,t:12,b:26};
+  const xM=Math.PI;
+  const xp=x=>pad.l+x/xM*(W-pad.l-pad.r);
+  const yp=y=>H-pad.b-y/1.2*(H-pad.t-pad.b);
+
+  ctx.strokeStyle='#eee'; ctx.lineWidth=.5;
+  [.4,.8,1.2].forEach(v=>{ ctx.beginPath(); ctx.moveTo(pad.l,yp(v)); ctx.lineTo(W-pad.r,yp(v)); ctx.stroke(); });
+  ctx.strokeStyle='#ddd'; ctx.lineWidth=.5;
+  ctx.beginPath(); ctx.moveTo(pad.l,H-pad.b); ctx.lineTo(W-pad.r,H-pad.b); ctx.stroke();
+
+  ctx.strokeStyle='#2980b9'; ctx.lineWidth=2; ctx.beginPath();
+  for(let i=0;i<=200;i++){const x=i/200*xM,y=Math.sin(x); i===0?ctx.moveTo(xp(x),yp(y)):ctx.lineTo(xp(x),yp(y));} ctx.stroke();
+
+  ctx.strokeStyle='#c0392b'; ctx.lineWidth=2; ctx.setLineDash([5,4]); ctx.beginPath();
+  for(let i=0;i<=200;i++){const x=i/200*xM; i===0?ctx.moveTo(xp(x),yp(x)):ctx.lineTo(xp(x),yp(x));} ctx.stroke(); ctx.setLineDash([]);
+
+  if(markDeg){
+    const r=markDeg*Math.PI/180;
+    ctx.fillStyle='#e74c3c'; ctx.beginPath(); ctx.arc(xp(r),yp(Math.sin(r)),4,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#333'; ctx.font='10px serif'; ctx.textAlign='left';
+    ctx.fillText(markDeg+'°',xp(r)+6,yp(Math.sin(r))+4);
+  }
+  ctx.fillStyle='#aaa'; ctx.font='9px serif'; ctx.textAlign='center';
+  ['0','π/4','π/2','3π/4','π'].forEach((l,i)=>ctx.fillText(l,xp(i*Math.PI/4),H-8));
+}
+
+// ============================================================
+// Tab switching
+// ============================================================
+function switchTab(name) {
+  const ns=['ctrl','derive','approx'];
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',ns[i]===name));
+  document.querySelectorAll('.tab-panel').forEach((p,i)=>p.classList.toggle('active',ns[i]===name));
+  if(name==='approx') updateApproxTab();
+}
+
+document.getElementById('sl-angle').addEventListener('input',()=>{
+  document.getElementById('disp-angle').textContent=document.getElementById('sl-angle').value+'°';
+  if(document.getElementById('tab-approx').classList.contains('active')) updateApproxTab();
+});
+
+// ============================================================
+// Init
+// ============================================================
+restart();
+</script>
+</body>
+</html>

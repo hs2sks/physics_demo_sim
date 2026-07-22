@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>특수 상대성이론 — 빛의 경로 시뮬레이션</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root {
+  --bg:      #06061a;
+  --panel:   #0e0e28;
+  --card:    #13132f;
+  --border:  #2a2a60;
+  --accent:  #8b78ff;
+  --accent2: #4dc9f7;
+  --yellow:  #ffe066;
+  --green:   #5ef77a;
+  --text:    #dde2ff;
+  --muted:   #7070a0;
+  --fs-scale: 1;          /* 전체화면에서 1.3으로 변경 */
+}
+
+/* 전체화면 진입 시 스케일 증가 */
+:fullscreen { --fs-scale: 1.3; }
+:-webkit-full-screen { --fs-scale: 1.3; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Sans KR', sans-serif;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 12px 24px;
+  gap: 12px;
+  position: relative;
+}
+
+/* ── 전체화면 버튼 (우측 상단 고정) ── */
+#btnFs {
+  position: fixed;
+  top: 12px;
+  right: 14px;
+  z-index: 999;
+  background: rgba(139,120,255,.18);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 6px 13px;
+  font-size: .78rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Noto Sans KR', sans-serif;
+  transition: all .18s;
+  backdrop-filter: blur(4px);
+}
+#btnFs:hover { background: rgba(139,120,255,.35); transform: translateY(-1px); }
+/* iOS 등 미지원 시 숨김 */
+#btnFs.hidden { display: none; }
+
+/* ── 헤더 ── */
+header { text-align: center; padding-right: 80px; /* 전체화면 버튼 여백 */ }
+header h1 {
+  font-size: clamp(1rem, 2.6vw, 1.55rem);
+  font-weight: 700;
+  background: linear-gradient(120deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+header p { color: var(--muted); font-size: .78rem; margin-top: 3px; }
+
+/* ── 캔버스 행 ── */
+.canvases {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  max-width: 1080px;
+  flex-wrap: wrap;
+}
+
+.cv-box {
+  flex: 1 1 440px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.cv-label {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px 5px;
+  font-size: calc(.8rem * var(--fs-scale));
+  color: var(--muted); font-weight: 600;
+}
+.cv-label .dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
+.dot-a { background: var(--green); }
+.dot-b { background: var(--accent); }
+
+canvas { width: 100%; display: block; }
+
+.cv-foot {
+  padding: 4px 14px 8px;
+  font-size: calc(.72rem * var(--fs-scale));
+  color: var(--muted);
+  font-style: italic;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* ── 컨트롤 바 (전체화면에서 fixed 하단) ── */
+.ctrl-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  width: 100%;
+  max-width: 1080px;
+}
+
+/* 전체화면에서 컨트롤을 화면 하단에 고정 */
+:fullscreen .ctrl-bar,
+:-webkit-full-screen .ctrl-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  max-width: 100%;
+  border-radius: 14px 14px 0 0;
+  z-index: 100;
+  border-bottom: none;
+}
+
+.ctrl-group { display: flex; flex-direction: column; gap: 4px; flex: 1 1 180px; }
+.ctrl-group label {
+  font-size: calc(.73rem * var(--fs-scale));
+  color: var(--muted); font-weight: 600; letter-spacing: .03em;
+}
+
+.slider-row { display: flex; align-items: center; gap: 8px; }
+
+input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1; height: 5px;
+  border-radius: 3px;
+  background: var(--border);
+  outline: none; cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 17px; height: 17px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 0 8px #8b78ff66;
+  transition: transform .15s;
+}
+input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.25); }
+
+.val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: calc(.84rem * var(--fs-scale));
+  color: var(--accent2);
+  min-width: 42px; text-align: right;
+}
+
+.btn-group { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+
+button {
+  padding: 7px 15px;
+  border-radius: 8px; border: none;
+  font-size: calc(.79rem * var(--fs-scale));
+  font-weight: 600; cursor: pointer;
+  font-family: 'Noto Sans KR', sans-serif;
+  transition: all .18s;
+}
+#btnPlay  { background: var(--accent); color: #fff; min-width: 100px; text-align: center; }
+#btnPlay:hover  { background: #a090ff; transform: translateY(-1px); }
+#btnReset { background: var(--card); color: var(--muted); border: 1px solid var(--border); }
+#btnReset:hover { background: var(--border); color: var(--text); }
+#btnHint  { background: var(--card); color: var(--accent2); border: 1px solid var(--accent2); }
+#btnHint.on { background: var(--accent2); color: #000; }
+
+/* ── 배속 그룹 ── */
+.speed-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 0 0 auto;
+}
+.speed-group label {
+  font-size: calc(.73rem * var(--fs-scale));
+  color: var(--muted); font-weight: 600;
+}
+.speed-btns { display: flex; gap: 5px; }
+.spd-btn {
+  padding: 5px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted);
+  font-size: calc(.75rem * var(--fs-scale));
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+  position: relative;
+}
+.spd-btn:hover { background: var(--border); color: var(--text); }
+.spd-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 0 10px #8b78ff55;
+}
+.spd-hint {
+  font-size: .65rem;
+  color: var(--muted);
+  margin-top: 3px;
+  font-style: italic;
+  height: 14px;
+  transition: opacity .2s;
+}
+
+/* ── v=0 메시지 ── */
+#msg0 {
+  width: 100%; text-align: center;
+  color: var(--yellow); font-size: calc(.79rem * var(--fs-scale));
+  display: none;
+  animation: blink 2s infinite;
+}
+#msg0.show { display: block; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* ── 힌트 박스 ── */
+#hintBox {
+  display: none;
+  background: #091926;
+  border: 1px solid var(--accent2);
+  border-radius: 10px;
+  padding: 11px 16px;
+  font-size: calc(.79rem * var(--fs-scale));
+  color: var(--accent2);
+  line-height: 1.9;
+  width: 100%; max-width: 1080px;
+}
+#hintBox.show { display: block; }
+
+/* ── 시간 비교표 ── */
+.tbl-wrap {
+  width: 100%; max-width: 1080px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: visible;   /* 항상 표시 */
+}
+.tbl-wrap.collapsed table,
+.tbl-wrap.collapsed thead,
+.tbl-wrap.collapsed tbody { display: none; }
+
+.tbl-head {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: default;
+}
+/* 전체화면에서 표 접기 버튼 표시 */
+.tbl-head h2 {
+  font-size: calc(.82rem * var(--fs-scale));
+  font-weight: 600; color: var(--muted);
+}
+#btnTblToggle {
+  background: var(--card); color: var(--muted);
+  border: 1px solid var(--border);
+  padding: 3px 10px; font-size: .72rem;
+  display: none;      /* 일반 모드에서 숨김 */
+}
+:fullscreen #btnTblToggle,
+:-webkit-full-screen #btnTblToggle { display: inline-block; }
+
+table { width: 100%; border-collapse: collapse; font-size: calc(.78rem * var(--fs-scale)); }
+thead th {
+  background: #1a1a40; padding: 8px 12px;
+  text-align: center; font-weight: 600;
+  color: var(--muted); border-bottom: 1px solid var(--border);
+}
+tbody td {
+  padding: 7px 12px; text-align: center;
+  border-bottom: 1px solid #1c1c40;
+  font-family: 'JetBrains Mono', monospace;
+}
+tbody tr:last-child td { border: none; }
+tbody tr:hover { background: #1a1a40; }
+.p { color: var(--text); font-family: 'Noto Sans KR', sans-serif; }
+.a { color: var(--green); }
+.b { color: var(--accent2); }
+.f { color: var(--accent); }
+
+/* ── 키 힌트 바 ── */
+#keyBar {
+  width: 100%; max-width: 1080px;
+  text-align: center;
+  font-size: .68rem; color: var(--muted);
+  line-height: 1.9;
+}
+#keyBar kbd {
+  display: inline-block;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px; font-size: .68rem;
+  font-family: 'JetBrains Mono', monospace;
+  margin: 0 2px;
+}
+
+footer { color: var(--muted); font-size: .65rem; padding-top: 2px; }
+
+/* ── 전체화면 시 캔버스 영역 확장 ── */
+:fullscreen .canvases,
+:-webkit-full-screen .canvases {
+  max-width: 100%;
+  flex: 1;
+}
+:fullscreen body,
+:-webkit-full-screen body {
+  padding-bottom: 120px; /* 컨트롤 패널 높이 만큼 */
+}
+</style>
+</head>
+<body>
+<a href="../../index.html" title="홈으로" style="position:fixed;left:12px;bottom:12px;z-index:99999;background:rgba(255,255,255,.94);color:#1c2733;text-decoration:none;padding:8px 13px;border-radius:9px;font:600 14px/1 'Segoe UI','Malgun Gothic',sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.22);border:1px solid rgba(0,0,0,.12)">🏠 홈</a>
+
+<!-- 우측 상단 전체화면 버튼 -->
+<button id="btnFs">⛶ 전체화면</button>
+
+<header>
+  <h1>특수 상대성이론 — 관성계에 따른 빛의 경로</h1>
+  <p>광원에서 방출된 빛이 서로 다른 관성계에서 어떻게 보이는지 비교합니다</p>
+</header>
+
+<!-- 캔버스 두 개 -->
+<div class="canvases" id="canvases">
+  <div class="cv-box">
+    <div class="cv-label"><span class="dot dot-a"></span>관찰자 A의 관성계 (정지계)</div>
+    <canvas id="cvA"></canvas>
+    <div class="cv-foot" id="footA">빛은 항상 같은 거리를 이동 → 모든 구간 t₀</div>
+  </div>
+  <div class="cv-box">
+    <div class="cv-label"><span class="dot dot-b"></span>관찰자 B의 관성계 (이동계)</div>
+    <canvas id="cvB"></canvas>
+    <div class="cv-foot" id="footB">우주선이 이동하면 빛의 경로가 길어진다 → 시간 팽창</div>
+  </div>
+</div>
+
+<!-- 컨트롤 바 -->
+<div class="ctrl-bar" id="ctrlBar">
+
+  <!-- v/c 슬라이더 -->
+  <div class="ctrl-group">
+    <label>속도 v / c &nbsp;<kbd style="font-size:.65rem;background:var(--card);border:1px solid var(--border);border-radius:4px;padding:1px 4px;font-family:monospace">← →</kbd></label>
+    <div class="slider-row">
+      <input type="range" id="sVc" min="0" max="0.95" step="0.01" value="0.6">
+      <span class="val" id="vVc">0.60</span>
+    </div>
+  </div>
+
+  <!-- 재생 버튼 -->
+  <div class="btn-group">
+    <button id="btnPlay">⏸ 일시정지</button>
+    <button id="btnReset">↺ 초기화</button>
+    <button id="btnHint">💡 힌트</button>
+  </div>
+
+  <!-- 배속 버튼 -->
+  <div class="speed-group">
+    <label>재생 배속 &nbsp;<kbd style="font-size:.65rem;background:var(--card);border:1px solid var(--border);border-radius:4px;padding:1px 4px;font-family:monospace">1~5</kbd></label>
+    <div class="speed-btns" id="spdBtns">
+      <button class="spd-btn" data-spd="0.25" title="경로 관찰용">0.25×</button>
+      <button class="spd-btn" data-spd="0.5"  title="비교 분석용">0.5×</button>
+      <button class="spd-btn active" data-spd="1"  title="기본">1×</button>
+      <button class="spd-btn" data-spd="2"  title="반복 확인용">2×</button>
+      <button class="spd-btn" data-spd="4"  title="빠른 비교용">4×</button>
+    </div>
+    <div class="spd-hint" id="spdHint">기본</div>
+  </div>
+
+  <!-- v=0 메시지 -->
+  <div id="msg0">v = 0 이면 A와 B의 관성계가 동일합니다</div>
+</div>
+
+<!-- 힌트 박스 -->
+<div id="hintBox">
+  <strong>시간 관계 힌트</strong><br>
+  • t₁ &gt; t₀ : 빛이 달아나는 거울을 향해 이동 → 더 오래 걸림<br>
+  • t₂ &lt; t₀ : 거울이 반사된 빛 쪽으로 이동 → 빨리 돌아옴<br>
+  • t₃ = t₄ = γt₀ : 수직 방향은 대칭, 시간 팽창만 발생<br>
+  • t₁ + t₂ = 2γt₀ , &nbsp; t₁ · t₂ = t₀² → 두 시간의 기하평균 = t₀
+</div>
+
+<!-- 시간 비교표 -->
+<div class="tbl-wrap" id="tblWrap">
+  <div class="tbl-head">
+    <h2>📊 시간 비교표 &nbsp;(t₀ = 1.000 기준)</h2>
+    <button id="btnTblToggle">접기 ▲</button>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>경로</th>
+        <th style="color:#5ef77a">A의 관성계</th>
+        <th style="color:#4dc9f7">B의 관성계</th>
+        <th>수식</th>
+        <th>수치</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="p">광원 → p (전진)</td><td class="a">t₀ = 1.000</td><td class="b">t₁</td><td class="f">γt₀(1 + v/c)</td><td id="vT1">—</td></tr>
+      <tr><td class="p">p → 광원 (복귀)</td><td class="a">t₀ = 1.000</td><td class="b">t₂</td><td class="f">γt₀(1 − v/c)</td><td id="vT2">—</td></tr>
+      <tr><td class="p">광원 → q (하강)</td><td class="a">t₀ = 1.000</td><td class="b">t₃</td><td class="f">γt₀</td><td id="vT3">—</td></tr>
+      <tr><td class="p">q → 광원 (상승)</td><td class="a">t₀ = 1.000</td><td class="b">t₄</td><td class="f">γt₀</td><td id="vT4">—</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 키보드 단축키 안내 -->
+<div id="keyBar">
+  <kbd>Space</kbd> 재생/정지 &nbsp;
+  <kbd>F</kbd> 전체화면 &nbsp;
+  <kbd>H</kbd> 힌트 &nbsp;
+  <kbd>←</kbd><kbd>→</kbd> 속도 조절 &nbsp;
+  <kbd>1</kbd>~<kbd>5</kbd> 배속 선택
+</div>
+
+<footer>고등학교 물리학 | 특수 상대성이론 교육용 시뮬레이션</footer>
+
+<script>
+// ================================================================
+//  특수 상대성이론 빛의 경로 시뮬레이션
+//  물리:
+//    A 정지계: 광원·거울 정지, 직선 왕복, 모든 구간 = t₀
+//    B 이동계: 우주선이 오른쪽으로 v 이동
+//      p 방향(수평): t₁ = γt₀(1+β), t₂ = γt₀(1-β)
+//      q 방향(수직): t₃ = t₄ = γt₀
+//  로렌츠 인자: γ = 1/√(1 − β²),  β = v/c
+// ================================================================
+
+// ── 캔버스 ──────────────────────────────────────────────────────
+const cvA = document.getElementById('cvA');
+const cvB = document.getElementById('cvB');
+const cA  = cvA.getContext('2d');
+const cB  = cvB.getContext('2d');
+
+// 캔버스 논리 해상도 (픽셀)
+let CW = 500, CH = 320;
+
+/** 캔버스 크기를 컨테이너에 맞게 조정 */
+function resizeCanvases() {
+  const boxes = document.querySelectorAll('.cv-box');
+  boxes.forEach((box, i) => {
+    const cv  = i === 0 ? cvA : cvB;
+    const ctx = i === 0 ? cA  : cB;
+    const w   = box.clientWidth  || 500;
+    const h   = Math.round(w * (320 / 500));   // 비율 유지
+    cv.width  = w;
+    cv.height = h;
+    CW = w; CH = h;
+  });
+}
+
+// ── 물리량 ──────────────────────────────────────────────────────
+let vc = 0.6;
+let gamma, t1, t2, t3, t4;
+
+// L: 논리 거리(픽셀). 캔버스 크기에 비례
+function getL() { return Math.round(CW * 0.24); }
+
+// A 캔버스 광원 위치
+function getSrcA() { return { x: Math.round(CW * 0.50), y: Math.round(CH * 0.41) }; }
+
+// ── 별 데이터 ────────────────────────────────────────────────────
+const STARS = Array.from({length: 60}, () => ({
+  x: Math.random(),  // 0~1 비율로 저장 → 렌더 시 CW 곱함
+  y: Math.random(),
+  r: Math.random() * 1.3 + 0.2,
+  a: Math.random() * 0.45 + 0.15
+}));
+
+// ── 애니메이션 상태 ─────────────────────────────────────────────
+// globalTime: t₀ 단위 절대 시간 (루프에서 관리)
+let playing = true;
+let spd     = 1.0;       // 배속
+const CYCLE_SEC = 3.0;   // spd=1 일 때 1 t₀ 에 해당하는 실제 시간(초)
+
+// ── 물리 계산 ───────────────────────────────────────────────────
+function calcPhysics() {
+  gamma = 1 / Math.sqrt(1 - vc * vc);
+  t1 = gamma * (1 + vc);
+  t2 = gamma * (1 - vc);
+  t3 = gamma;
+  t4 = gamma;
+
+  document.getElementById('vT1').textContent = t1.toFixed(3);
+  document.getElementById('vT2').textContent = t2.toFixed(3);
+  document.getElementById('vT3').textContent = t3.toFixed(3);
+  document.getElementById('vT4').textContent = t4.toFixed(3);
+}
+
+// ── 그리기 유틸 ─────────────────────────────────────────────────
+function drawSrc(ctx, x, y) {
+  const g = ctx.createRadialGradient(x, y, 0, x, y, 26);
+  g.addColorStop(0, 'rgba(255,230,80,.65)');
+  g.addColorStop(1, 'rgba(255,230,80,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(x, y, 26, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ffe066';
+  ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#fff8c0'; ctx.lineWidth = 1.5; ctx.stroke();
+}
+
+function drawMirror(ctx, x, y, vert) {
+  const hw = CW * 0.01, hh = CW * 0.044;   // 크기 비례
+  ctx.fillStyle = '#4a6a80'; ctx.strokeStyle = '#80b0c8'; ctx.lineWidth = 1;
+  if (vert) {
+    ctx.fillRect(x - hw, y - hh, hw * 2, hh * 2);
+    ctx.strokeRect(x - hw, y - hh, hw * 2, hh * 2);
+  } else {
+    ctx.fillRect(x - hh, y - hw, hh * 2, hw * 2);
+    ctx.strokeRect(x - hh, y - hw, hh * 2, hw * 2);
+  }
+}
+
+// solid=true면 실선, false면 점선
+function drawPath(ctx, x1, y1, x2, y2, col, solid) {
+  ctx.save();
+  ctx.strokeStyle = col || '#4466aa';
+  ctx.lineWidth = solid ? 2 : 1.5;
+  ctx.globalAlpha = solid ? 0.7 : 0.55;
+  if (!solid) ctx.setLineDash([6, 4]);
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  ctx.restore();
+}
+
+function drawPhoton(ctx, x, y, col) {
+  col = col || '#ffe066';
+  const r = CW * 0.022;
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, '#ffffff');
+  g.addColorStop(.35, col);
+  g.addColorStop(1, 'rgba(255,240,100,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+}
+
+function lbl(ctx, txt, x, y, col) {
+  ctx.save();
+  const fs = Math.max(11, Math.round(CW * 0.024));
+  ctx.font = `600 ${fs}px JetBrains Mono, monospace`;
+  ctx.fillStyle = col || '#8090c0';
+  ctx.fillText(txt, x, y);
+  ctx.restore();
+}
+
+function drawStars(ctx, offX) {
+  ctx.save();
+  STARS.forEach(s => {
+    ctx.globalAlpha = s.a;
+    ctx.fillStyle = '#fff';
+    const sx = ((s.x * CW + offX) % CW + CW) % CW;
+    ctx.beginPath(); ctx.arc(sx, s.y * CH, s.r, 0, Math.PI * 2); ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+// ── A 관성계 그리기 ─────────────────────────────────────────────
+// phaseA: 0~1, A의 한 사이클 (총 2t₀ 기준)
+function drawA(phaseA) {
+  const ctx = cA;
+  const W = cvA.width, H = cvA.height;
+  ctx.fillStyle = '#07071e'; ctx.fillRect(0, 0, W, H);
+  drawStars(ctx, 0);
+
+  const {x: sx, y: sy} = getSrcA();
+  const L = getL();
+  const px = sx + L, py = sy;
+  const qx = sx,     qy = sy + L;
+
+  // 전체 경로 실선 (밝게)
+  drawPath(ctx, sx, sy, px, py, '#2288aa', true);
+  drawPath(ctx, sx, sy, qx, qy, '#4455cc', true);
+  drawMirror(ctx, px, py, true);
+  drawMirror(ctx, qx, qy, false);
+  drawSrc(ctx, sx, sy);
+
+  // ── p 방향 빛 (수평): phaseA 0~0.5 전진, 0.5~1 복귀 ──
+  let bpx, bpy;
+  if (phaseA < 0.5) {
+    bpx = sx + (px - sx) * (phaseA / 0.5); bpy = sy;
+    lbl(ctx, 't₀', (sx + px) / 2 - 8, sy - 16, '#80d8ff');
+  } else {
+    bpx = px + (sx - px) * ((phaseA - 0.5) / 0.5); bpy = sy;
+    lbl(ctx, 't₀', (sx + px) / 2 - 8, sy - 16, '#80d8ff');
+  }
+  drawPhoton(ctx, bpx, bpy, '#ffe066');
+
+  // ── q 방향 빛 (수직): phaseA 0~0.5 하강, 0.5~1 상승 ──
+  let bqx, bqy;
+  if (phaseA < 0.5) {
+    bqx = sx; bqy = sy + (qy - sy) * (phaseA / 0.5);
+    lbl(ctx, 't₀', sx + 9, (sy + qy) / 2 + 5, '#b0c0ff');
+  } else {
+    bqx = sx; bqy = qy + (sy - qy) * ((phaseA - 0.5) / 0.5);
+    lbl(ctx, 't₀', sx + 9, (sy + qy) / 2 + 5, '#b0c0ff');
+  }
+  drawPhoton(ctx, bqx, bqy, '#c8b4ff');
+
+  // L 표시
+  ctx.fillStyle = '#5060a0';
+  ctx.font = `bold 12px JetBrains Mono, monospace`;
+  ctx.fillText('L', (sx + px) / 2 - 4, sy + 20);
+  ctx.fillText('L', sx - 20, (sy + qy) / 2 + 4);
+
+  // 정보
+  ctx.fillStyle = '#404070';
+  ctx.font = '11px JetBrains Mono, monospace';
+  ctx.fillText('v = 0  (정지계)', 10, H - 10);
+}
+
+// ── B 관성계 그리기 ─────────────────────────────────────────────
+// phaseB: 0~1, B의 한 사이클 (총 2γt₀ 기준)
+// 우주선 전체가 오른쪽 이동 → p 수평 비대칭, q 대각선
+function drawB(phaseB) {
+  const ctx = cB;
+  const W = cvB.width, H = cvB.height;
+  ctx.fillStyle = '#04041a'; ctx.fillRect(0, 0, W, H);
+
+  const starOff = -(phaseB * 2 * gamma * vc * getL() * 0.55) % W;
+  drawStars(ctx, starOff);
+
+  const L   = getL();
+  const vPx = vc * L;              // 우주선 픽셀 속도
+  const cPx = L;                   // 빛 픽셀 속도
+  const elapsed = phaseB * 2 * gamma; // 경과 시간 (t₀ 단위)
+
+  const totalMove = vPx * 2 * gamma;
+  const sx0 = Math.max(20, (W - totalMove) / 2 - L / 2);
+  const sy0 = Math.round(H * 0.38);
+
+  const sxNow = sx0 + vPx * elapsed;
+  const syNow = sy0;
+  const pxNow = sxNow + L, pyNow = syNow;
+  const qxNow = sxNow,     qyNow = syNow + L;
+
+  // 이동 방향 화살표
+  ctx.save();
+  ctx.strokeStyle = '#5050a088'; ctx.lineWidth = 1.2; ctx.setLineDash([4, 5]);
+  ctx.beginPath(); ctx.moveTo(12, 16); ctx.lineTo(W - 12, 16); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#7070d0bb';
+  ctx.beginPath(); ctx.moveTo(W-10,16); ctx.lineTo(W-20,11); ctx.lineTo(W-20,21); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  ctx.fillStyle = '#5050b0';
+  ctx.font = '11px Noto Sans KR, sans-serif';
+  ctx.fillText('우주선 이동 방향 →', W / 2 - 56, 13);
+
+  // ── p 방향 광자(수평) ──────────────────────────────────────────
+  // 전진(t₁): 거울p가 달아나므로 경로 길, 복귀(t₂): 광원이 마중나옴 → 경로 짧음
+  const reflX_p = sx0 + cPx * t1;
+  const endX_p  = sx0 + vPx * 2 * gamma;
+  let bpx, bpy;
+  if (elapsed <= t1) {
+    bpx = sx0 + cPx * elapsed; bpy = sy0;
+  } else {
+    bpx = reflX_p - cPx * (elapsed - t1); bpy = sy0;
+  }
+  // 전체 p 경로 (밝은 실선)
+  drawPath(ctx, sx0, sy0, reflX_p, sy0, '#22aa88', true);
+  drawPath(ctx, reflX_p, sy0, endX_p, sy0, '#2266aa', true);
+  drawPath(ctx, sxNow, syNow, pxNow, pyNow, '#2a5555', false);
+  drawMirror(ctx, pxNow, pyNow, true);
+  if (bpx >= 0 && bpx <= W) drawPhoton(ctx, bpx, bpy, '#ffe066');
+  if (elapsed <= t1) {
+    lbl(ctx, 't₁', Math.min((sx0 + reflX_p) / 2 - 8, W - 30), sy0 - 18, '#ffab40');
+  } else {
+    lbl(ctx, 't₂', (reflX_p + Math.min(sxNow, W - 20)) / 2 - 8, sy0 - 18, '#69f0ae');
+  }
+
+  // ── q 방향 광자(대각선) ────────────────────────────────────────
+  // B에서 광자가 대각선 이동:
+  //   수평: vx = vPx, 수직: vy = cPx/γ
+  //   합속력 = √(vx²+vy²) = √((βc)²+(c/γ)²) = c√(β²+(1-β²)) = c ✓
+  const reflX_q = sx0 + vPx * t3;
+  const reflY_q = sy0 + L;
+  const endX_q  = sx0 + vPx * 2 * gamma;
+  let bqx, bqy;
+  if (elapsed <= t3) {
+    bqx = sx0 + vPx * elapsed;
+    bqy = sy0 + (cPx / gamma) * elapsed;
+  } else {
+    const dt = elapsed - t3;
+    bqx = reflX_q + vPx * dt;
+    bqy = reflY_q - (cPx / gamma) * dt;
+  }
+  // 전체 q 경로 (밝은 실선 대각선)
+  drawPath(ctx, sx0, sy0, reflX_q, reflY_q, '#4455dd', true);
+  drawPath(ctx, reflX_q, reflY_q, endX_q, sy0, '#5544cc', true);
+  drawPath(ctx, sxNow, syNow, qxNow, qyNow, '#2a2a55', false);
+  drawMirror(ctx, qxNow, qyNow, false);
+  if (bqx >= 0 && bqx <= W && bqy >= 0 && bqy <= H) drawPhoton(ctx, bqx, bqy, '#a0c0ff');
+  const qLblOff = elapsed <= t3 ? 10 : 10;
+  if (elapsed <= t3) {
+    lbl(ctx, 't₃', bqx + qLblOff, bqy - 5, '#82b1ff');
+  } else {
+    lbl(ctx, 't₄', bqx + qLblOff, bqy - 5, '#80deea');
+  }
+
+  drawSrc(ctx, sxNow, syNow);
+
+  // γ 정보 표시
+  ctx.fillStyle = '#404070';
+  ctx.font = '11px JetBrains Mono, monospace';
+  ctx.fillText(`v/c=${vc.toFixed(2)}  γ=${gamma.toFixed(3)}`, 10, H - 10);
+}
+
+// ── 메인 루프 ───────────────────────────────────────────────────
+// globalTime: 절대 시간 (t₀ 단위)
+//   A 사이클: 2t₀ → phaseA = (globalTime % 2) / 2
+//   B 사이클: 2γt₀ → phaseB = (globalTime % (2γ)) / (2γ)
+// → A가 B보다 γ배 빠르게 순환 → 시간 팽창 시각화!
+let lastTs = null;
+let globalTime = 0;   // t₀ 단위 절대 시간
+
+function loop(ts) {
+  if (!lastTs) lastTs = ts;
+  const dt = (ts - lastTs) / 1000;
+  lastTs = ts;
+
+  if (playing) {
+    // 1초 = CYCLE_SEC 분의 1 t₀ (기본 spd=1 기준)
+    globalTime += dt * spd / CYCLE_SEC;
+  }
+
+  // A: 2t₀ 주기로 반복
+  const phaseA = (globalTime % 2) / 2;
+  // B: 2γt₀ 주기로 반복 (γ > 1 이므로 B가 더 느림)
+  const cycleB = 2 * gamma;
+  const phaseB = (globalTime % cycleB) / cycleB;
+
+  drawA(phaseA);
+  drawB(phaseB);
+  requestAnimationFrame(loop);
+}
+
+// ── 배속 버튼 ───────────────────────────────────────────────────
+const SPEED_HINTS = {
+  '0.25': '경로 관찰용',
+  '0.5':  '비교 분석용',
+  '1':    '기본',
+  '2':    '반복 확인용',
+  '4':    '빠른 비교용'
+};
+
+function setSpeed(v) {
+  spd = v;
+  document.querySelectorAll('.spd-btn').forEach(b => {
+    b.classList.toggle('active', parseFloat(b.dataset.spd) === v);
+  });
+  document.getElementById('spdHint').textContent = SPEED_HINTS[String(v)] || '';
+}
+
+document.getElementById('spdBtns').addEventListener('click', e => {
+  const btn = e.target.closest('.spd-btn');
+  if (btn) setSpeed(parseFloat(btn.dataset.spd));
+});
+
+// ── v/c 슬라이더 ────────────────────────────────────────────────
+document.getElementById('sVc').addEventListener('input', function() {
+  vc = parseFloat(this.value);
+  document.getElementById('vVc').textContent = vc.toFixed(2);
+  calcPhysics();
+  const isZero = vc < 0.005;
+  document.getElementById('msg0').classList.toggle('show', isZero);
+  document.getElementById('footB').textContent = isZero
+    ? 'v = 0 이면 B의 관성계도 A와 동일합니다'
+    : '우주선이 이동하면 빛의 경로가 길어진다 → 시간 팽창';
+});
+
+// ── 재생/정지 ────────────────────────────────────────────────────
+document.getElementById('btnPlay').addEventListener('click', togglePlay);
+function togglePlay() {
+  playing = !playing;
+  document.getElementById('btnPlay').textContent = playing ? '⏸ 일시정지' : '▶ 재생';
+}
+
+// ── 초기화 ───────────────────────────────────────────────────────
+document.getElementById('btnReset').addEventListener('click', () => {
+  vc = 0.6;
+  document.getElementById('sVc').value = 0.6;
+  document.getElementById('vVc').textContent = '0.60';
+  globalTime = 0;
+  calcPhysics();
+  document.getElementById('msg0').classList.remove('show');
+  document.getElementById('footB').textContent = '우주선이 이동하면 빛의 경로가 길어진다 → 시간 팽창';
+});
+
+// ── 힌트 ─────────────────────────────────────────────────────────
+document.getElementById('btnHint').addEventListener('click', toggleHint);
+function toggleHint() {
+  document.getElementById('btnHint').classList.toggle('on');
+  document.getElementById('hintBox').classList.toggle('show');
+}
+
+// ── 전체화면 ─────────────────────────────────────────────────────
+const btnFs = document.getElementById('btnFs');
+
+// iOS Safari 미지원 숨김
+if (!document.documentElement.requestFullscreen && !document.documentElement.webkitRequestFullscreen) {
+  btnFs.classList.add('hidden');
+}
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+    const el = document.documentElement;
+    (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+  } else {
+    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  }
+}
+
+btnFs.addEventListener('click', toggleFullscreen);
+
+// 전체화면 변경 이벤트 → 버튼 텍스트 + 크기 재조정
+function onFsChange() {
+  const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  btnFs.textContent = isFs ? '✕ 전체화면 나가기' : '⛶ 전체화면';
+  // 표 펼치기/접기 버튼 업데이트
+  document.getElementById('btnTblToggle').textContent = isFs ? '접기 ▲' : '펼치기 ▼';
+  setTimeout(() => { resizeCanvases(); }, 100);
+}
+document.addEventListener('fullscreenchange', onFsChange);
+document.addEventListener('webkitfullscreenchange', onFsChange);
+
+// ── 표 접기/펼치기 (전체화면용) ─────────────────────────────────
+let tblCollapsed = false;
+document.getElementById('btnTblToggle').addEventListener('click', () => {
+  tblCollapsed = !tblCollapsed;
+  document.getElementById('tblWrap').classList.toggle('collapsed', tblCollapsed);
+  document.getElementById('btnTblToggle').textContent = tblCollapsed ? '펼치기 ▼' : '접기 ▲';
+});
+
+// ── 키보드 단축키 ────────────────────────────────────────────────
+const SPEED_KEYS = ['0.25', '0.5', '1', '2', '4'];  // 키 1~5
+
+document.addEventListener('keydown', e => {
+  // 입력 필드 포커스 시 무시
+  if (e.target.tagName === 'INPUT') return;
+
+  switch (e.code) {
+    case 'Space':
+      e.preventDefault();
+      togglePlay();
+      break;
+    case 'KeyF':
+      toggleFullscreen();
+      break;
+    case 'KeyH':
+      toggleHint();
+      break;
+    case 'ArrowLeft': {
+      e.preventDefault();
+      const sl = document.getElementById('sVc');
+      vc = Math.max(0, parseFloat(sl.value) - 0.05);
+      sl.value = vc;
+      document.getElementById('vVc').textContent = vc.toFixed(2);
+      calcPhysics();
+      document.getElementById('msg0').classList.toggle('show', vc < 0.005);
+      break;
+    }
+    case 'ArrowRight': {
+      e.preventDefault();
+      const sl = document.getElementById('sVc');
+      vc = Math.min(0.95, parseFloat(sl.value) + 0.05);
+      sl.value = vc;
+      document.getElementById('vVc').textContent = vc.toFixed(2);
+      calcPhysics();
+      document.getElementById('msg0').classList.toggle('show', vc < 0.005);
+      break;
+    }
+    case 'Digit1': setSpeed(0.25); break;
+    case 'Digit2': setSpeed(0.5);  break;
+    case 'Digit3': setSpeed(1);    break;
+    case 'Digit4': setSpeed(2);    break;
+    case 'Digit5': setSpeed(4);    break;
+  }
+});
+
+// ── 윈도우 리사이즈 대응 ────────────────────────────────────────
+window.addEventListener('resize', () => {
+  clearTimeout(window._rsTimer);
+  window._rsTimer = setTimeout(resizeCanvases, 120);
+});
+
+// ── 초기화 및 시작 ──────────────────────────────────────────────
+resizeCanvases();
+calcPhysics();
+setSpeed(1);
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

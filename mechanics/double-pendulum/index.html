@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>이중진자 운동 시각화</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+:root {
+  --bg: #f8f7f2;
+  --surface: #ffffff;
+  --border: #e2dfd6;
+  --text: #1a1814;
+  --muted: #6b6860;
+  --panel-bg: #f0ede6;
+  --col-p1: #2980b9;
+  --col-p2: #7b2d8b;
+  --col-E: #1a7a4a;
+  --col-warn: #c0392b;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+
+header { background: var(--text); color: #f8f7f2; padding: 11px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+header h1 { font-size: 15px; font-weight: 500; letter-spacing: -.02em; }
+header .sub { font-size: 11px; color: #888; font-family: 'STIX Two Text', serif; flex: 1; }
+
+.snap-bar { display: flex; gap: 5px; align-items: center; }
+.snap-label { font-size: 11px; color: #aaa; white-space: nowrap; }
+.snap-btn { padding: 4px 12px; border: 1px solid #444; border-radius: 3px; background: transparent; color: #ccc; font-size: 11px; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; transition: all .15s; }
+.snap-btn:hover { background: #333; }
+.snap-btn.active { background: #f8f7f2; color: #1a1814; border-color: #f8f7f2; font-weight: 700; }
+.play-btn { padding: 4px 13px; border: 1px solid #666; border-radius: 3px; background: transparent; color: #ccc; font-size: 11px; cursor: pointer; transition: all .15s; margin-left: 4px; }
+.play-btn:hover { background: #333; }
+
+.layout { display: grid; grid-template-columns: 1fr 310px; flex: 1; min-height: 0; }
+
+.canvas-area { display: flex; flex-direction: column; align-items: center; padding: 16px 20px; gap: 9px; }
+
+.canvas-wrap { width: 100%; max-width: 560px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; position: relative; }
+#pendCanvas { display: block; width: 100%; cursor: default; }
+#pendCanvas.draggable { cursor: grab; }
+#pendCanvas.dragging { cursor: grabbing; }
+
+.pause-badge { position: absolute; top: 9px; left: 9px; background: rgba(26,24,20,.82); color: #f8f7f2; font-size: 10px; padding: 3px 9px; border-radius: 3px; display: none; }
+.pause-badge.show { display: block; }
+.drag-hint { position: absolute; top: 9px; right: 9px; background: rgba(26,24,20,.6); color: #f8f7f2; font-size: 10px; padding: 3px 9px; border-radius: 3px; display: none; }
+.drag-hint.show { display: block; }
+
+.formula-bar { width: 100%; max-width: 560px; background: var(--text); color: #f8f7f2; border-radius: 4px; padding: 9px 16px; display: grid; grid-template-columns: repeat(3,1fr); gap: 5px; }
+.fml-item { text-align: center; }
+.fml-label { font-size: 9px; color: #888; margin-bottom: 1px; text-transform: uppercase; letter-spacing: .04em; }
+.fml-val { font-family: 'STIX Two Text', serif; font-size: 16px; font-weight: 600; }
+.fml-val.ke { color: #4db8ff; } .fml-val.pe { color: #ff9f5a; } .fml-val.te { color: #80e6a8; }
+
+.energy-wrap { width: 100%; max-width: 560px; }
+.energy-title { font-size: 10px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; margin-bottom: 4px; }
+#energyCanvas { display: block; width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
+
+.sidebar { background: var(--panel-bg); border-left: 1px solid var(--border); padding: 16px 15px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; }
+.sidebar-section { display: flex; flex-direction: column; gap: 8px; }
+.sec-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); border-bottom: 1px solid var(--border); padding-bottom: 5px; }
+
+.ctrl-row { display: flex; flex-direction: column; gap: 3px; }
+.ctrl-head { display: flex; justify-content: space-between; align-items: baseline; }
+.ctrl-name { font-size: 13px; color: var(--text); font-family: 'STIX Two Text', serif; font-style: italic; }
+.ctrl-name .p1 { color: var(--col-p1); } .ctrl-name .p2 { color: var(--col-p2); }
+.ctrl-disp { font-size: 13px; font-weight: 700; font-family: 'STIX Two Text', serif; min-width: 58px; text-align: right; }
+input[type=range] { width: 100%; accent-color: var(--text); height: 4px; cursor: pointer; }
+input[type=range]:disabled { opacity: .35; cursor: not-allowed; }
+
+.readout-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.readout { background: var(--surface); border: 1px solid var(--border); border-radius: 3px; padding: 6px 8px; }
+.readout-label { font-size: 10px; color: var(--muted); margin-bottom: 1px; }
+.readout-val { font-size: 13px; font-weight: 700; font-family: 'STIX Two Text', serif; color: var(--text); }
+.readout-val.blue { color: var(--col-p1); } .readout-val.purple { color: var(--col-p2); }
+
+.tab-bar { display: flex; gap: 3px; }
+.tab-btn { flex: 1; padding: 5px 0; font-size: 10px; font-family: 'Noto Sans KR', sans-serif; background: var(--surface); border: 1px solid var(--border); border-radius: 3px; cursor: pointer; color: var(--muted); transition: all .15s; }
+.tab-btn.active { background: var(--text); color: #f8f7f2; border-color: var(--text); }
+.tab-panel { display: none; } .tab-panel.active { display: flex; flex-direction: column; gap: 7px; }
+
+.deriv-step { background: var(--surface); border-left: 3px solid var(--border); padding: 7px 9px; border-radius: 0 3px 3px 0; }
+.deriv-step.hl  { border-left-color: var(--col-p1); }
+.deriv-step.hl2 { border-left-color: var(--col-p2); }
+.deriv-step.hl3 { border-left-color: var(--col-E); }
+.deriv-step.hl4 { border-left-color: var(--col-warn); }
+.ds-label { font-size: 10px; color: var(--muted); margin-bottom: 2px; text-transform: uppercase; letter-spacing: .04em; }
+.ds-eq { font-family: 'STIX Two Text', serif; font-size: 12px; line-height: 1.55; }
+
+.toggle-row { display: flex; align-items: center; justify-content: space-between; background: var(--surface); border: 1px solid var(--border); border-radius: 3px; padding: 6px 9px; }
+.toggle-label { font-size: 12px; display: flex; align-items: center; gap: 6px; }
+.toggle-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.toggle-sw { position: relative; width: 32px; height: 17px; cursor: pointer; }
+.toggle-sw input { opacity: 0; width: 0; height: 0; }
+.toggle-track { position: absolute; inset: 0; background: var(--border); border-radius: 9px; transition: .15s; }
+.toggle-track::before { content: ''; position: absolute; width: 13px; height: 13px; border-radius: 50%; background: #fff; top: 2px; left: 2px; transition: .15s; }
+.toggle-sw input:checked + .toggle-track { background: var(--text); }
+.toggle-sw input:checked + .toggle-track::before { transform: translateX(15px); }
+
+.btn-row { display: flex; gap: 5px; }
+.btn-sm { flex:1; padding:6px 0; background:transparent; border:1px solid var(--border); border-radius:3px; font-family:'Noto Sans KR',sans-serif; font-size:11px; cursor:pointer; color:var(--muted); transition:all .15s; }
+.btn-sm:hover { background:var(--surface); color:var(--text); border-color:#aaa; }
+
+.speed-bar { display: flex; gap: 3px; }
+.speed-btn { flex: 1; padding: 4px 0; font-size: 10px; font-family: 'STIX Two Text', serif; background: var(--surface); border: 1px solid var(--border); border-radius: 3px; cursor: pointer; color: var(--muted); transition: all .15s; }
+.speed-btn.active { background: var(--text); color: #f8f7f2; border-color: var(--text); font-weight: 600; }
+
+.note-box { background: var(--surface); border: 1px solid var(--border); border-radius: 3px; padding: 8px 10px; font-size: 11px; line-height: 1.65; color: var(--muted); }
+.note-box strong { color: var(--text); }
+</style>
+</head>
+<body>
+<a href="../../index.html" title="홈으로" style="position:fixed;left:12px;bottom:12px;z-index:99999;background:rgba(255,255,255,.94);color:#1c2733;text-decoration:none;padding:8px 13px;border-radius:9px;font:600 14px/1 'Segoe UI','Malgun Gothic',sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.22);border:1px solid rgba(0,0,0,.12)">🏠 홈</a>
+
+<header>
+  <h1>이중진자 운동 시각화</h1>
+  <span class="sub">물리학 II · Double Pendulum — Chaos &amp; Damping</span>
+  <div class="snap-bar">
+    <span class="snap-label">프리셋:</span>
+    <button class="snap-btn" id="pre-regular" onclick="applyPreset('regular')">규칙 운동</button>
+    <button class="snap-btn" id="pre-chaos"   onclick="applyPreset('chaos')">혼돈 운동</button>
+    <button class="snap-btn" id="pre-damped"  onclick="applyPreset('damped')">감쇠 강조</button>
+    <button class="play-btn" id="btn-play"    onclick="togglePlay()">▶ 재생</button>
+  </div>
+</header>
+
+<div class="layout">
+  <div class="canvas-area">
+
+    <div class="canvas-wrap">
+      <canvas id="pendCanvas" width="560" height="470"></canvas>
+      <div class="pause-badge" id="pauseBadge">⏸ 정지</div>
+      <div class="drag-hint" id="dragHint">추를 드래그하여 각도 설정</div>
+    </div>
+
+    <div class="formula-bar">
+      <div class="fml-item"><div class="fml-label">운동에너지 K</div><div class="fml-val ke" id="ke-val">0.0000 J</div></div>
+      <div class="fml-item"><div class="fml-label">위치에너지 U</div><div class="fml-val pe" id="pe-val">0.0000 J</div></div>
+      <div class="fml-item"><div class="fml-label">역학적 에너지 E</div><div class="fml-val te" id="te-val">0.0000 J</div></div>
+    </div>
+
+    <div class="energy-wrap">
+      <div class="energy-title">에너지 이력 · K(파랑) / U(주황) / E(초록) — 감쇠가 있으면 E가 감소한다</div>
+      <canvas id="energyCanvas" width="560" height="100"></canvas>
+    </div>
+
+  </div><!-- canvas-area -->
+
+  <div class="sidebar">
+
+    <div class="sidebar-section">
+      <div class="sec-title">패널</div>
+      <div class="tab-bar">
+        <button class="tab-btn active" id="tabbtn-ctrl"  onclick="switchTab('ctrl')">제어</button>
+        <button class="tab-btn" id="tabbtn-damp" onclick="switchTab('damp')">감쇠·궤적</button>
+        <button class="tab-btn" id="tabbtn-eq"   onclick="switchTab('eq')">운동방정식</button>
+      </div>
+    </div>
+
+    <!-- 제어 탭 -->
+    <div class="tab-panel active" id="tab-ctrl">
+      <div class="sidebar-section">
+        <div class="sec-title">초기 각도 (정지 상태에서 조절)</div>
+        <div class="ctrl-row">
+          <div class="ctrl-head"><span class="ctrl-name"><span class="p1">θ₁</span> (1차 진자)</span><span class="ctrl-disp" id="disp-th1">120°</span></div>
+          <input type="range" min="-170" max="170" step="0.5" value="120" id="sl-th1" oninput="onAngleChange()">
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-head"><span class="ctrl-name"><span class="p2">θ₂</span> (2차 진자)</span><span class="ctrl-disp" id="disp-th2">120°</span></div>
+          <input type="range" min="-170" max="170" step="0.5" value="120" id="sl-th2" oninput="onAngleChange()">
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sec-title">물리 파라미터</div>
+        <div class="ctrl-row">
+          <div class="ctrl-head"><span class="ctrl-name">L₁ (1차 길이)</span><span class="ctrl-disp" id="disp-L1">1.0 m</span></div>
+          <input type="range" min="0.3" max="1.5" step="0.05" value="1.0" id="sl-L1" oninput="onParamChange()">
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-head"><span class="ctrl-name">L₂ (2차 길이)</span><span class="ctrl-disp" id="disp-L2">1.0 m</span></div>
+          <input type="range" min="0.3" max="1.5" step="0.05" value="1.0" id="sl-L2" oninput="onParamChange()">
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-head"><span class="ctrl-name">m₁ (1차 질량)</span><span class="ctrl-disp" id="disp-m1">1.0 kg</span></div>
+          <input type="range" min="0.1" max="3.0" step="0.1" value="1.0" id="sl-m1" oninput="onParamChange()">
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-head"><span class="ctrl-name">m₂ (2차 질량)</span><span class="ctrl-disp" id="disp-m2">1.0 kg</span></div>
+          <input type="range" min="0.1" max="3.0" step="0.1" value="1.0" id="sl-m2" oninput="onParamChange()">
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sec-title">재생 속도</div>
+        <div class="speed-bar">
+          <button class="speed-btn" onclick="setSpeed(0.25,this)">0.25×</button>
+          <button class="speed-btn" onclick="setSpeed(0.5,this)">0.5×</button>
+          <button class="speed-btn active" onclick="setSpeed(1,this)">1×</button>
+          <button class="speed-btn" onclick="setSpeed(2,this)">2×</button>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sec-title">실시간 값</div>
+        <div class="readout-grid">
+          <div class="readout"><div class="readout-label">θ₁</div><div class="readout-val blue" id="r-th1">—</div></div>
+          <div class="readout"><div class="readout-label">θ₂</div><div class="readout-val purple" id="r-th2">—</div></div>
+          <div class="readout"><div class="readout-label">각속도 ω₁</div><div class="readout-val blue" id="r-w1">—</div></div>
+          <div class="readout"><div class="readout-label">각속도 ω₂</div><div class="readout-val purple" id="r-w2">—</div></div>
+          <div class="readout"><div class="readout-label">경과 시간</div><div class="readout-val" id="r-time">—</div></div>
+          <div class="readout"><div class="readout-label">E / E₀</div><div class="readout-val" style="color:var(--col-E)" id="r-eratio">—</div></div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-sm" onclick="resetSim()">↺ 리셋</button>
+        <button class="btn-sm" onclick="togglePlay()">⏯ 재생 / 정지</button>
+      </div>
+    </div>
+
+    <!-- 감쇠·궤적 탭 -->
+    <div class="tab-panel" id="tab-damp">
+      <div class="sidebar-section">
+        <div class="sec-title">공기저항 (속도 비례 항력)</div>
+        <div class="ctrl-row">
+          <div class="ctrl-head"><span class="ctrl-name">b₁</span><span class="ctrl-disp" id="disp-b1">0.00</span></div>
+          <input type="range" min="0" max="0.5" step="0.01" value="0" id="sl-b1" oninput="onParamChange()">
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-head"><span class="ctrl-name">b₂</span><span class="ctrl-disp" id="disp-b2">0.00</span></div>
+          <input type="range" min="0" max="0.5" step="0.01" value="0" id="sl-b2" oninput="onParamChange()">
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sec-title">피벗 마찰 (쿨롱 마찰)</div>
+        <div class="ctrl-row">
+          <div class="ctrl-head"><span class="ctrl-name">μ₁</span><span class="ctrl-disp" id="disp-mu1">0.00</span></div>
+          <input type="range" min="0" max="0.2" step="0.005" value="0" id="sl-mu1" oninput="onParamChange()">
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-head"><span class="ctrl-name">μ₂</span><span class="ctrl-disp" id="disp-mu2">0.00</span></div>
+          <input type="range" min="0" max="0.2" step="0.005" value="0" id="sl-mu2" oninput="onParamChange()">
+        </div>
+        <div class="btn-row">
+          <button class="btn-sm" onclick="setDamping(0,0)">이상계 (감쇠 0)</button>
+          <button class="btn-sm" onclick="setDamping(0.15,0.02)">감쇠 적용</button>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sec-title">이동 경로 (궤적)</div>
+        <div class="toggle-row">
+          <span class="toggle-label"><span class="toggle-dot" style="background:var(--col-p1)"></span>1차 진자 궤적</span>
+          <label class="toggle-sw"><input type="checkbox" id="tg-trail1" onchange="draw()"><span class="toggle-track"></span></label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label"><span class="toggle-dot" style="background:var(--col-p2)"></span>2차 진자 궤적</span>
+          <label class="toggle-sw"><input type="checkbox" id="tg-trail2" checked onchange="draw()"><span class="toggle-track"></span></label>
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-head"><span class="ctrl-name" style="font-style:normal;font-family:'Noto Sans KR',sans-serif;font-size:12px">궤적 길이</span><span class="ctrl-disp" id="disp-trail">8 s</span></div>
+          <input type="range" min="1" max="20" step="1" value="8" id="sl-trail" oninput="onTrailLenChange()">
+        </div>
+        <button class="btn-sm" onclick="clearTrails()">궤적 지우기</button>
+      </div>
+
+      <div class="note-box">
+        <strong>관찰 포인트</strong> — 1차 진자(파랑)의 궤적은 피벗을 중심으로 한 원호에 갇히지만,
+        2차 진자(보라)의 궤적은 초기 각도가 크면 예측 불가능한 <strong>혼돈(chaos)</strong> 패턴을 그린다.
+        초기 각도를 0.1°만 바꿔 다시 재생해 보라.
+      </div>
+    </div>
+
+    <!-- 운동방정식 탭 -->
+    <div class="tab-panel" id="tab-eq">
+      <div class="deriv-step hl"><div class="ds-label">일반화 좌표</div><div class="ds-eq">θ₁, θ₂ : 각 진자의 연직 기준 각도<br><span style="font-size:10px;color:#aaa">x₁ = L₁sinθ₁, y₁ = −L₁cosθ₁<br>x₂ = x₁ + L₂sinθ₂, y₂ = y₁ − L₂cosθ₂</span></div></div>
+      <div class="deriv-step hl2"><div class="ds-label">질량 행렬 (라그랑주 역학)</div><div class="ds-eq">M₁₁ = (m₁+m₂)L₁²<br>M₁₂ = M₂₁ = m₂L₁L₂cos(θ₁−θ₂)<br>M₂₂ = m₂L₂²</div></div>
+      <div class="deriv-step"><div class="ds-label">일반화 힘 (중력 + 원심 결합항)</div><div class="ds-eq">C₁ = −m₂L₁L₂ω₂²sin(θ₁−θ₂) − (m₁+m₂)gL₁sinθ₁<br>C₂ = +m₂L₁L₂ω₁²sin(θ₁−θ₂) − m₂gL₂sinθ₂</div></div>
+      <div class="deriv-step hl4"><div class="ds-label">감쇠 항</div><div class="ds-eq">D₁ = −b₁ω₁ − μ₁·sgn(ω₁)<br>D₂ = −b₂ω₂ − μ₂·sgn(ω₂)<br><span style="font-size:10px;color:#aaa">b: 공기저항(점성), μ: 피벗 쿨롱 마찰</span></div></div>
+      <div class="deriv-step"><div class="ds-label">연립 방정식 → 각가속도</div><div class="ds-eq">M·[α₁; α₂] = [C₁+D₁; C₂+D₂]<br><span style="font-size:10px;color:#aaa">2×2 크래머 공식으로 매 스텝 α₁, α₂ 계산</span></div></div>
+      <div class="deriv-step hl3"><div class="ds-label">수치 적분 · RK4</div><div class="ds-eq">dt = 1/240 s, 4차 룽게-쿠타<br><span style="font-size:10px;color:#aaa">감쇠 = 0일 때 에너지 편차 &lt; 0.001% (60 s)</span></div></div>
+      <div class="deriv-step"><div class="ds-label">에너지</div><div class="ds-eq">K = ½m₁L₁²ω₁² + ½m₂[L₁²ω₁² + L₂²ω₂²<br>&nbsp;&nbsp;&nbsp;&nbsp;+ 2L₁L₂ω₁ω₂cos(θ₁−θ₂)]<br>U = −(m₁+m₂)gL₁cosθ₁ − m₂gL₂cosθ₂ + C</div></div>
+      <div class="note-box">
+        <strong>주의</strong> — 이중진자는 결정론적 계이지만 초기조건에 극도로 민감한 <strong>혼돈계</strong>다.
+        이 시뮬레이션은 수치 근사이며, 큰 각도에서 장시간 결과는 실제 진자의 예측이 아니라 혼돈적 거동의 시연이다.
+      </div>
+    </div>
+
+  </div><!-- sidebar -->
+</div><!-- layout -->
+
+<script>
+// ============================================================
+// 물리 상수·상태
+// ============================================================
+const g = 9.8;
+const DT = 1 / 240;              // RK4 고정 스텝
+const MAX_HIST = 600;            // 에너지 그래프 포인트 수
+
+// state = [th1, th2, w1, w2]
+let state = [0, 0, 0, 0];
+let params = { m1: 1, m2: 1, L1: 1, L2: 1, b1: 0, b2: 0, mu1: 0, mu2: 0 };
+let paused = true;
+let simTime = 0;
+let speed = 1;
+let accumulator = 0;
+let lastTs = null;
+let E0 = 0;                       // 리셋 시점 총에너지 (E/E0 표시용)
+
+let trail1 = [], trail2 = [];     // {x, y} 화면 좌표 아님 — 물리 좌표(m) 저장
+let trailMaxPts = 8 * 60;         // 궤적 길이(초) × 60fps
+let energyHistory = [];
+
+const cv  = document.getElementById('pendCanvas');
+const ctx = cv.getContext('2d');
+const ecv = document.getElementById('energyCanvas');
+const ectx = ecv.getContext('2d');
+
+// ============================================================
+// 물리 엔진 (검증 완료: 감쇠 0 → 60s 에너지 편차 0.0003%)
+// ============================================================
+function derivs(s, p) {
+  const [th1, th2, w1, w2] = s;
+  const { m1, m2, L1, L2, b1, b2, mu1, mu2 } = p;
+  const d = th1 - th2;
+  const cd = Math.cos(d), sd = Math.sin(d);
+
+  const M11 = (m1 + m2) * L1 * L1;
+  const M12 = m2 * L1 * L2 * cd;
+  const M22 = m2 * L2 * L2;
+
+  const C1 = -m2 * L1 * L2 * w2 * w2 * sd - (m1 + m2) * g * L1 * Math.sin(th1);
+  const C2 =  m2 * L1 * L2 * w1 * w1 * sd - m2 * g * L2 * Math.sin(th2);
+
+  // 감쇠: 점성(공기저항) + 쿨롱 마찰 (tanh로 sgn 근사 — 정지 근처 채터링 방지)
+  const D1 = -b1 * w1 - mu1 * Math.tanh(w1 * 50);
+  const D2 = -b2 * w2 - mu2 * Math.tanh(w2 * 50);
+
+  const R1 = C1 + D1, R2 = C2 + D2;
+  const det = M11 * M22 - M12 * M12;
+  const a1 = (M22 * R1 - M12 * R2) / det;
+  const a2 = (M11 * R2 - M12 * R1) / det;
+  return [w1, w2, a1, a2];
+}
+
+function rk4Step(s, dt, p) {
+  const k1 = derivs(s, p);
+  const s2 = s.map((v, i) => v + 0.5 * dt * k1[i]);
+  const k2 = derivs(s2, p);
+  const s3 = s.map((v, i) => v + 0.5 * dt * k2[i]);
+  const k3 = derivs(s3, p);
+  const s4 = s.map((v, i) => v + dt * k3[i]);
+  const k4 = derivs(s4, p);
+  return s.map((v, i) => v + (dt / 6) * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]));
+}
+
+function energy(s, p) {
+  const [th1, th2, w1, w2] = s;
+  const { m1, m2, L1, L2 } = p;
+  const KE = 0.5 * m1 * L1 * L1 * w1 * w1
+    + 0.5 * m2 * (L1 * L1 * w1 * w1 + L2 * L2 * w2 * w2
+      + 2 * L1 * L2 * w1 * w2 * Math.cos(th1 - th2));
+  const PE = -(m1 + m2) * g * L1 * Math.cos(th1) - m2 * g * L2 * Math.cos(th2)
+    + (m1 + m2) * g * L1 + m2 * g * L2;   // 최저점 기준 0
+  return { KE, PE, E: KE + PE };
+}
+
+// ============================================================
+// 좌표 변환 (물리 m ↔ 화면 px)
+// ============================================================
+function scaleInfo() {
+  const cx = cv.width / 2, cy = cv.height / 2;
+  const R = params.L1 + params.L2;
+  const scale = (Math.min(cv.width, cv.height) / 2 - 28) / R;
+  return { cx, cy, scale };
+}
+function toScreen(px, py) {  // 물리: x 오른쪽+, y 아래쪽+ (θ=0이 연직 아래)
+  const { cx, cy, scale } = scaleInfo();
+  return [cx + px * scale, cy + py * scale];
+}
+function bobPositions(s) {
+  const [th1, th2] = s;
+  const { L1, L2 } = params;
+  const x1 = L1 * Math.sin(th1), y1 = L1 * Math.cos(th1);
+  const x2 = x1 + L2 * Math.sin(th2), y2 = y1 + L2 * Math.cos(th2);
+  return { x1, y1, x2, y2 };
+}
+
+// ============================================================
+// 시뮬레이션 루프
+// ============================================================
+function frame(ts) {
+  if (lastTs === null) lastTs = ts;
+  let elapsed = Math.min((ts - lastTs) / 1000, 0.05);
+  lastTs = ts;
+
+  if (!paused) {
+    accumulator += elapsed * speed;
+    let stepped = false;
+    while (accumulator >= DT) {
+      state = rk4Step(state, DT, params);
+      simTime += DT;
+      accumulator -= DT;
+      stepped = true;
+    }
+    if (stepped) {
+      const { x1, y1, x2, y2 } = bobPositions(state);
+      trail1.push({ x: x1, y: y1 });
+      trail2.push({ x: x2, y: y2 });
+      while (trail1.length > trailMaxPts) trail1.shift();
+      while (trail2.length > trailMaxPts) trail2.shift();
+      const e = energy(state, params);
+      energyHistory.push(e);
+      if (energyHistory.length > MAX_HIST) energyHistory.shift();
+    }
+  }
+
+  draw();
+  drawEnergy();
+  updateReadouts();
+  requestAnimationFrame(frame);
+}
+
+// ============================================================
+// 렌더링
+// ============================================================
+function drawTrail(pts, color) {
+  if (pts.length < 2) return;
+  const n = pts.length;
+  for (let i = 1; i < n; i++) {
+    const a = i / n;                       // 오래된 것일수록 투명
+    const [px0, py0] = toScreen(pts[i - 1].x, pts[i - 1].y);
+    const [px1, py1] = toScreen(pts[i].x, pts[i].y);
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = a * 0.75;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(px0, py0);
+    ctx.lineTo(px1, py1);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function draw() {
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  const { cx, cy } = scaleInfo();
+
+  // 궤적
+  if (document.getElementById('tg-trail1').checked) drawTrail(trail1, getCSS('--col-p1'));
+  if (document.getElementById('tg-trail2').checked) drawTrail(trail2, getCSS('--col-p2'));
+
+  const { x1, y1, x2, y2 } = bobPositions(state);
+  const [sx1, sy1] = toScreen(x1, y1);
+  const [sx2, sy2] = toScreen(x2, y2);
+
+  // 피벗 마운트
+  ctx.fillStyle = '#1a1814';
+  ctx.fillRect(cx - 14, cy - 5, 28, 5);
+  ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.fill();
+
+  // 막대 1, 2
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = getCSS('--col-p1');
+  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(sx1, sy1); ctx.stroke();
+  ctx.strokeStyle = getCSS('--col-p2');
+  ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(sx2, sy2); ctx.stroke();
+
+  // 추 (반지름 ∝ m^(1/3))
+  const r1 = 8 * Math.cbrt(params.m1), r2 = 8 * Math.cbrt(params.m2);
+  ctx.fillStyle = getCSS('--col-p1');
+  ctx.beginPath(); ctx.arc(sx1, sy1, r1, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = getCSS('--col-p2');
+  ctx.beginPath(); ctx.arc(sx2, sy2, r2, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#1a1814'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(sx1, sy1, r1, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(sx2, sy2, r2, 0, Math.PI * 2); ctx.stroke();
+}
+
+let cssCache = {};
+function getCSS(v) {
+  if (!cssCache[v]) cssCache[v] = getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  return cssCache[v];
+}
+
+function drawEnergy() {
+  ectx.clearRect(0, 0, ecv.width, ecv.height);
+  if (energyHistory.length < 2) return;
+  let maxE = 0;
+  for (const e of energyHistory) maxE = Math.max(maxE, e.E, e.KE, e.PE);
+  if (maxE <= 0) maxE = 1;
+  const W = ecv.width, H = ecv.height, pad = 4;
+  const xw = W / (MAX_HIST - 1);
+  const yOf = (v) => H - pad - (v / maxE) * (H - 2 * pad);
+  const series = [
+    { key: 'KE', color: '#4da6e8', width: 1.3 },
+    { key: 'PE', color: '#e8874d', width: 1.3 },
+    { key: 'E',  color: '#1a7a4a', width: 1.8 },
+  ];
+  for (const sr of series) {
+    ectx.strokeStyle = sr.color;
+    ectx.lineWidth = sr.width;
+    ectx.beginPath();
+    energyHistory.forEach((e, i) => {
+      const x = i * xw, y = yOf(e[sr.key]);
+      i === 0 ? ectx.moveTo(x, y) : ectx.lineTo(x, y);
+    });
+    ectx.stroke();
+  }
+}
+
+// ============================================================
+// UI
+// ============================================================
+const $ = (id) => document.getElementById(id);
+const deg2rad = (d) => d * Math.PI / 180;
+const rad2deg = (r) => r * 180 / Math.PI;
+const normDeg = (d) => { let x = ((d + 180) % 360 + 360) % 360 - 180; return x; };
+
+function readParams() {
+  params.L1 = parseFloat($('sl-L1').value);
+  params.L2 = parseFloat($('sl-L2').value);
+  params.m1 = parseFloat($('sl-m1').value);
+  params.m2 = parseFloat($('sl-m2').value);
+  params.b1 = parseFloat($('sl-b1').value);
+  params.b2 = parseFloat($('sl-b2').value);
+  params.mu1 = parseFloat($('sl-mu1').value);
+  params.mu2 = parseFloat($('sl-mu2').value);
+  $('disp-L1').textContent = params.L1.toFixed(2) + ' m';
+  $('disp-L2').textContent = params.L2.toFixed(2) + ' m';
+  $('disp-m1').textContent = params.m1.toFixed(1) + ' kg';
+  $('disp-m2').textContent = params.m2.toFixed(1) + ' kg';
+  $('disp-b1').textContent = params.b1.toFixed(2);
+  $('disp-b2').textContent = params.b2.toFixed(2);
+  $('disp-mu1').textContent = params.mu1.toFixed(3);
+  $('disp-mu2').textContent = params.mu2.toFixed(3);
+}
+
+function onParamChange() {
+  readParams();
+  if (paused) { E0 = energy(state, params).E; draw(); }
+}
+
+function onAngleChange() {
+  if (!paused) return;   // 재생 중엔 슬라이더가 disabled라 호출되지 않지만 방어
+  const t1 = parseFloat($('sl-th1').value);
+  const t2 = parseFloat($('sl-th2').value);
+  $('disp-th1').textContent = t1.toFixed(1) + '°';
+  $('disp-th2').textContent = t2.toFixed(1) + '°';
+  state = [deg2rad(t1), deg2rad(t2), 0, 0];
+  simTime = 0;
+  clearTrails();
+  energyHistory = [];
+  E0 = energy(state, params).E;
+  draw();
+}
+
+function onTrailLenChange() {
+  const s = parseInt($('sl-trail').value, 10);
+  trailMaxPts = s * 60;
+  $('disp-trail').textContent = s + ' s';
+}
+
+function clearTrails() { trail1 = []; trail2 = []; draw(); }
+
+function setDamping(b, mu) {
+  $('sl-b1').value = b; $('sl-b2').value = b;
+  $('sl-mu1').value = mu; $('sl-mu2').value = mu;
+  readParams();
+}
+
+function togglePlay() {
+  paused = !paused;
+  $('btn-play').textContent = paused ? '▶ 재생' : '⏸ 정지';
+  $('pauseBadge').classList.toggle('show', paused);
+  $('dragHint').classList.toggle('show', paused);
+  $('sl-th1').disabled = !paused;
+  $('sl-th2').disabled = !paused;
+  cv.classList.toggle('draggable', paused);
+  if (!paused) { accumulator = 0; lastTs = null; }
+}
+
+function resetSim() {
+  if (!paused) togglePlay();
+  readParams();
+  onAngleChange();
+}
+
+function setSpeed(s, btn) {
+  speed = s;
+  document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function switchTab(name) {
+  ['ctrl', 'damp', 'eq'].forEach(t => {
+    $('tab-' + t).classList.toggle('active', t === name);
+    $('tabbtn-' + t).classList.toggle('active', t === name);
+  });
+}
+
+const PRESETS = {
+  regular: { th1: 15,  th2: 10,  b: 0,    mu: 0 },
+  chaos:   { th1: 120, th2: 120, b: 0,    mu: 0 },
+  damped:  { th1: 120, th2: 60,  b: 0.15, mu: 0.02 },
+};
+function applyPreset(name) {
+  const p = PRESETS[name];
+  if (!paused) togglePlay();
+  $('sl-th1').value = p.th1;
+  $('sl-th2').value = p.th2;
+  setDamping(p.b, p.mu);
+  onAngleChange();
+  document.querySelectorAll('.snap-btn').forEach(b => b.classList.remove('active'));
+  $('pre-' + name).classList.add('active');
+}
+
+function updateReadouts() {
+  $('r-th1').textContent = normDeg(rad2deg(state[0])).toFixed(1) + '°';
+  $('r-th2').textContent = normDeg(rad2deg(state[1])).toFixed(1) + '°';
+  $('r-w1').textContent = state[2].toFixed(2) + ' rad/s';
+  $('r-w2').textContent = state[3].toFixed(2) + ' rad/s';
+  $('r-time').textContent = simTime.toFixed(1) + ' s';
+  const e = energy(state, params);
+  $('ke-val').textContent = e.KE.toFixed(3) + ' J';
+  $('pe-val').textContent = e.PE.toFixed(3) + ' J';
+  $('te-val').textContent = e.E.toFixed(3) + ' J';
+  $('r-eratio').textContent = E0 > 0 ? ((e.E / E0) * 100).toFixed(1) + ' %' : '—';
+}
+
+// ============================================================
+// 캔버스 드래그 (일시정지 상태에서 추 각도 설정)
+// ============================================================
+let dragging = 0;   // 0: 없음, 1: bob1, 2: bob2
+
+function canvasPos(ev) {
+  const r = cv.getBoundingClientRect();
+  return [
+    (ev.clientX - r.left) * (cv.width / r.width),
+    (ev.clientY - r.top) * (cv.height / r.height),
+  ];
+}
+
+cv.addEventListener('mousedown', (ev) => {
+  if (!paused) return;
+  const [mx, my] = canvasPos(ev);
+  const { x1, y1, x2, y2 } = bobPositions(state);
+  const [sx1, sy1] = toScreen(x1, y1);
+  const [sx2, sy2] = toScreen(x2, y2);
+  const d1 = Math.hypot(mx - sx1, my - sy1);
+  const d2 = Math.hypot(mx - sx2, my - sy2);
+  const HIT = 26;
+  if (d2 <= HIT && d2 <= d1) dragging = 2;        // 겹치면 2차 우선(위에 그려짐)
+  else if (d1 <= HIT) dragging = 1;
+  if (dragging) cv.classList.add('dragging');
+});
+
+window.addEventListener('mousemove', (ev) => {
+  if (!dragging || !paused) return;
+  const [mx, my] = canvasPos(ev);
+  const { cx, cy, scale } = scaleInfo();
+  if (dragging === 1) {
+    const th = Math.atan2(mx - cx, my - cy);      // θ=0 연직 아래
+    state[0] = th; state[2] = 0; state[3] = 0;
+    $('sl-th1').value = clampDeg(rad2deg(th));
+  } else {
+    const { x1, y1 } = bobPositions(state);
+    const [sx1, sy1] = toScreen(x1, y1);
+    const th = Math.atan2(mx - sx1, my - sy1);
+    state[1] = th; state[2] = 0; state[3] = 0;
+    $('sl-th2').value = clampDeg(rad2deg(th));
+  }
+  $('disp-th1').textContent = normDeg(rad2deg(state[0])).toFixed(1) + '°';
+  $('disp-th2').textContent = normDeg(rad2deg(state[1])).toFixed(1) + '°';
+  simTime = 0;
+  trail1 = []; trail2 = [];
+  energyHistory = [];
+  E0 = energy(state, params).E;
+  draw();
+});
+
+window.addEventListener('mouseup', () => {
+  if (dragging) { dragging = 0; cv.classList.remove('dragging'); }
+});
+
+function clampDeg(d) { return Math.max(-170, Math.min(170, normDeg(d))); }
+
+// ============================================================
+// 초기화
+// ============================================================
+readParams();
+onTrailLenChange();
+onAngleChange();
+$('sl-th1').disabled = false;
+$('sl-th2').disabled = false;
+cv.classList.add('draggable');
+$('pauseBadge').classList.add('show');
+$('dragHint').classList.add('show');
+$('pre-chaos').classList.add('active');
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

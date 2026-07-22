@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>열역학 시뮬레이터: 입자 운동과 열효율</title>
+    <style>
+        :root {
+            --hot-color: #e74c3c;
+            --cold-color: #3498db;
+            --work-color: #2ecc71;
+            --bg-color: #f8f9fa;
+        }
+        body {
+            font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            max-width: 700px;
+            width: 100%;
+        }
+        h1 { text-align: center; color: #2c3e50; font-size: 1.5rem; margin-bottom: 25px; }
+        
+        .formula-box {
+            background: #f1f3f5;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+        input[type="range"] { width: 100%; cursor: pointer; }
+
+        .efficiency-display {
+            text-align: center;
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: var(--work-color);
+            margin: 15px 0;
+            padding: 10px;
+            border: 2px solid var(--work-color);
+            border-radius: 8px;
+        }
+
+        canvas {
+            display: block;
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            width: 100%;
+            height: auto;
+        }
+
+        .description {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #666;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+<a href="../../index.html" title="홈으로" style="position:fixed;left:12px;bottom:12px;z-index:99999;background:rgba(255,255,255,.94);color:#1c2733;text-decoration:none;padding:8px 13px;border-radius:9px;font:600 14px/1 'Segoe UI','Malgun Gothic',sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.22);border:1px solid rgba(0,0,0,.12)">🏠 홈</a>
+
+<div class="card">
+    <h1>열기관 입자 운동 & 에너지 흐름 시뮬레이션</h1>
+
+    <div class="formula-box">
+        카르노 열효율(e) = 1 - (T<sub>L</sub> / T<sub>H</sub>)
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label><span>고열원 온도 (T<sub>H</sub>)</span> <span id="th-val" style="color:var(--hot-color)">800 K</span></label>
+            <input type="range" id="th-slider" min="300" max="1200" step="10" value="800">
+        </div>
+        <div class="control-group">
+            <label><span>저열원 온도 (T<sub>L</sub>)</span> <span id="tl-val" style="color:var(--cold-color)">300 K</span></label>
+            <input type="range" id="tl-slider" min="50" max="300" step="10" value="300">
+        </div>
+    </div>
+
+    <div class="efficiency-display">
+        현재 열효율: <span id="eff-percent">62.5</span>%
+    </div>
+
+    <canvas id="mainCanvas" width="600" height="500"></canvas>
+
+    <div class="description">
+        • <b>미시적 변화:</b> 온도가 높을수록 원자(입자)들이 더 빠르게 무질서하게 운동합니다.<br>
+        • <b>거시적 변화:</b> 고열원과 저열원의 온도 차이가 커질수록 '한 일(W)'의 비율이 커지며 화살표가 두꺼워집니다. 반면, 효율이 아무리 높아도 저열원으로 버려지는 열(Q<sub>L</sub>)은 0이 될 수 없습니다.
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('mainCanvas');
+    const ctx = canvas.getContext('2d');
+    const thSlider = document.getElementById('th-slider');
+    const tlSlider = document.getElementById('tl-slider');
+    const thText = document.getElementById('th-val');
+    const tlText = document.getElementById('tl-val');
+    const effText = document.getElementById('eff-percent');
+
+    // 입자 클래스 정의
+    class Particle {
+        constructor(xRange, yRange, color) {
+            this.xRange = xRange;
+            this.yRange = yRange;
+            this.x = xRange[0] + Math.random() * (xRange[1] - xRange[0]);
+            this.y = yRange[0] + Math.random() * (yRange[1] - yRange[0]);
+            this.vx = (Math.random() - 0.5);
+            this.vy = (Math.random() - 0.5);
+            this.radius = 3;
+            this.color = color;
+        }
+
+        update(tempFactor) {
+            // 온도가 높을수록 속도 증가 (루트 T에 비례하는 물리적 특성 모사)
+            const speed = Math.sqrt(tempFactor) * 0.2;
+            this.x += this.vx * speed;
+            this.y += this.vy * speed;
+
+            // 벽 충돌 처리
+            if (this.x < this.xRange[0] || this.x > this.xRange[1]) this.vx *= -1;
+            if (this.y < this.yRange[0] || this.y > this.yRange[1]) this.vy *= -1;
+        }
+
+        draw() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.closePath();
+        }
+    }
+
+    const hotParticles = Array.from({ length: 30 }, () => new Particle([50, 550], [30, 100], '#ff7675'));
+    const coldParticles = Array.from({ length: 30 }, () => new Particle([50, 550], [400, 470], '#74b9ff'));
+
+    function animate() {
+        const Th = parseInt(thSlider.value);
+        const Tl = parseInt(tlSlider.value);
+        const efficiency = 1 - (Tl / Th);
+
+        thText.innerText = `${Th} K`;
+        tlText.innerText = `${Tl} K`;
+        effText.innerText = (efficiency * 100).toFixed(1);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 1. 열원 상자 그리기
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#dfe6e9';
+        ctx.strokeRect(50, 30, 500, 70); // 고열원
+        ctx.strokeRect(50, 400, 500, 70); // 저열원
+        
+        ctx.fillStyle = '#2c3e50';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillText(`고열원 (Th = ${Th}K)`, 60, 25);
+        ctx.fillText(`저열원 (Tl = ${Tl}K)`, 60, 395);
+
+        // 2. 입자 애니메이션
+        hotParticles.forEach(p => { p.update(Th); p.draw(); });
+        coldParticles.forEach(p => { p.update(Tl); p.draw(); });
+
+        // 3. 열기관 및 에너지 흐름 (화살표)
+        const centerX = canvas.width / 2;
+        const qhWidth = 80; // 입력 에너지 기준 두께
+        const wWidth = qhWidth * efficiency; // 효율에 따른 일 두께
+        const qlWidth = qhWidth * (1 - efficiency); // 버려지는 열 두께
+
+        // 열기관 본체
+        ctx.beginPath();
+        ctx.arc(centerX, 250, 50, 0, Math.PI * 2);
+        ctx.fillStyle = '#95a5a6';
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.fillText('열기관', centerX, 255);
+
+        // Q_H 화살표 (고열원 -> 기관)
+        ctx.fillStyle = '#e74c3c';
+        ctx.fillRect(centerX - qhWidth / 2, 100, qhWidth, 100);
+        
+        // W 화살표 (기관 -> 외부)
+        ctx.fillStyle = '#2ecc71';
+        ctx.fillRect(centerX + 50, 250 - wWidth / 2, 100, wWidth);
+        // 화살표 머리
+        ctx.beginPath();
+        ctx.moveTo(centerX + 150, 250 - wWidth / 2 - 10);
+        ctx.lineTo(centerX + 175, 250);
+        ctx.lineTo(centerX + 150, 250 + wWidth / 2 + 10);
+        ctx.fill();
+
+        // Q_L 화살표 (기관 -> 저열원)
+        ctx.fillStyle = '#3498db';
+        ctx.fillRect(centerX - qlWidth / 2, 300, qlWidth, 100);
+        
+        // 텍스트 라벨
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'center';
+        ctx.fillText(`흡수 열 Q_H`, centerX, 150);
+        ctx.textAlign = 'left';
+        if(wWidth > 5) ctx.fillText(`일 W`, centerX + 60, 250 - wWidth/2 - 5);
+        ctx.textAlign = 'center';
+        if(qlWidth > 5) ctx.fillText(`방출 열 Q_L`, centerX, 350);
+
+        requestAnimationFrame(animate);
+    }
+
+    animate();
+</script>
+
+</body>
+</html>

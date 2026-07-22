@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>CCD 이미지 센서 작동원리 시뮬레이션</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/iconfont/tabler-icons.min.css">
+<style>
+  :root {
+    --color-background-primary: #ffffff;
+    --color-background-secondary: #f1efe8;
+    --color-background-tertiary: #e8e6dd;
+    --color-background-info: #e6f1fb;
+    --color-text-primary: #1a1a1a;
+    --color-text-secondary: #5f5e5a;
+    --color-text-info: #0c447c;
+    --color-border-tertiary: rgba(60,60,55,0.15);
+    --color-border-secondary: rgba(60,60,55,0.3);
+    --color-border-info: #378add;
+    --border-radius-md: 8px;
+    --border-radius-lg: 12px;
+    --b: var(--color-border-tertiary);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-background-primary: #1e1e1c;
+      --color-background-secondary: #2c2c2a;
+      --color-background-tertiary: #232321;
+      --color-background-info: #0c447c;
+      --color-text-primary: #f1efe8;
+      --color-text-secondary: #b4b2a9;
+      --color-text-info: #b5d4f4;
+      --color-border-tertiary: rgba(220,220,210,0.15);
+      --color-border-secondary: rgba(220,220,210,0.3);
+    }
+  }
+  body {
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--color-background-primary);
+    color: var(--color-text-primary);
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 24px 16px 60px;
+  }
+  .t { fill: var(--color-text-primary); font-size: 14px; }
+  .ts { fill: var(--color-text-secondary); font-size: 12px; }
+  .th { fill: var(--color-text-primary); font-size: 14px; font-weight: 500; }
+  .c-amber { fill: #FAEEDA; stroke: #854F0B; }
+  .c-amber .t, .c-amber .th { fill: #633806; }
+  @media (prefers-color-scheme: dark) {
+    .c-amber { fill: #633806; stroke: #FAC775; }
+    .c-amber .t, .c-amber .th { fill: #FAEEDA; }
+  }
+  @keyframes pulseGlow { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+  .activeGate { animation: pulseGlow 0.9s ease-in-out infinite; }
+  button {
+    background: transparent;
+    border: 0.5px solid var(--color-border-secondary);
+    border-radius: var(--border-radius-md);
+    color: var(--color-text-primary);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 8px 12px;
+  }
+  button:hover { background: var(--color-background-secondary); }
+  button:active { transform: scale(0.98); }
+  input[type="range"] { accent-color: var(--color-border-info); }
+  .stepBtn { padding: 8px 16px; font-size: 13px; }
+  .stepBtn.active { background: var(--color-background-info); border-color: var(--color-border-info); color: var(--color-text-info); }
+  .tabRow { display: flex; gap: 8px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .ctrlRow { display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; flex-wrap: wrap; }
+  .iconBtn { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; padding: 0; }
+  .nextBtn { display: flex; align-items: center; gap: 6px; }
+  h1 { font-size: 20px; font-weight: 500; }
+</style>
+</head>
+<body>
+<a href="../../index.html" title="홈으로" style="position:fixed;left:12px;bottom:12px;z-index:99999;background:rgba(255,255,255,.94);color:#1c2733;text-decoration:none;padding:8px 13px;border-radius:9px;font:600 14px/1 'Segoe UI','Malgun Gothic',sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.22);border:1px solid rgba(0,0,0,.12)">🏠 홈</a>
+
+<h1>CCD 이미지 센서 작동원리 시뮬레이션</h1>
+<p style="color:var(--color-text-secondary); font-size:14px;">전하 축적부터 버킷 브리게이드 전송, 출력 앰프까지 3단계로 체험합니다.</p>
+
+<div class="tabRow" id="tabRow"></div>
+<div id="panelHost"></div>
+
+<script>
+const panels = ['accumulate', 'vertical', 'horizontal'];
+const labels = {accumulate: '1. 전하 축적', vertical: '2. 수직 전송 (버킷 브리게이드)', horizontal: '3. 수평 전송 + 출력'};
+let current = 'accumulate';
+
+const sharedState = { grid: null, exitedRow: null };
+
+const N = 5;
+const cellW = 56;
+const cellH = 30;
+const wellDepth = 38;
+const originX = 280;
+const originY = 60;
+
+function isoX(col, row) { return originX + (col - row) * (cellW/2); }
+function isoY(col, row) { return originY + (col + row) * (cellH/2); }
+
+function renderTabs() {
+  const row = document.getElementById('tabRow');
+  row.innerHTML = '';
+  panels.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'stepBtn' + (p === current ? ' active' : '');
+    btn.textContent = labels[p];
+    btn.onclick = () => { current = p; renderTabs(); renderPanel(); };
+    row.appendChild(btn);
+  });
+}
+
+function renderPanel() {
+  const host = document.getElementById('panelHost');
+  if (current === 'accumulate') { host.innerHTML = accumulateHTML(); initAccumulate(); }
+  if (current === 'vertical') { host.innerHTML = verticalHTML(); initVertical(); }
+  if (current === 'horizontal') { host.innerHTML = horizontalHTML(); initHorizontal(); }
+}
+
+function wellSVG(col, row, fillRatio, idAttr) {
+  const cx = isoX(col, row);
+  const cy = isoY(col, row);
+  const topPts = [
+    [cx, cy - cellH/2],
+    [cx + cellW/2, cy],
+    [cx, cy + cellH/2],
+    [cx - cellW/2, cy]
+  ];
+  const topPath = 'M' + topPts.map(p => p.join(',')).join(' L') + ' Z';
+  const leftWallTop = [[cx - cellW/2, cy], [cx, cy + cellH/2]];
+  const leftWallBottom = [[cx - cellW/2, cy + wellDepth], [cx, cy + cellH/2 + wellDepth]];
+  const rightWallTop = [[cx, cy + cellH/2], [cx + cellW/2, cy]];
+  const rightWallBottom = [[cx, cy + cellH/2 + wellDepth], [cx + cellW/2, cy + wellDepth]];
+  const leftPath = 'M' + leftWallTop[0] + ' L' + leftWallTop[1] + ' L' + leftWallBottom[1] + ' L' + leftWallBottom[0] + ' Z';
+  const rightPath = 'M' + rightWallTop[0] + ' L' + rightWallTop[1] + ' L' + rightWallBottom[1] + ' L' + rightWallBottom[0] + ' Z';
+  const floorPath = 'M' + [cx - cellW/2, cy + wellDepth] + ' L' + [cx, cy + cellH/2 + wellDepth] + ' L' + [cx + cellW/2, cy + wellDepth] + ' L' + [cx, cy - cellH/2 + wellDepth] + ' Z';
+
+  const fh = Math.max(0, Math.min(1, fillRatio)) * wellDepth;
+  const fillTopY = wellDepth - fh;
+  const liquidTopPts = [
+    [cx, cy - cellH/2 + fillTopY],
+    [cx + cellW/2, cy + fillTopY],
+    [cx, cy + cellH/2 + fillTopY],
+    [cx - cellW/2, cy + fillTopY]
+  ];
+  const liquidTopPath = 'M' + liquidTopPts.map(p => p.join(',')).join(' L') + ' Z';
+  const liquidLeftPath = 'M' + [cx - cellW/2, cy + fillTopY] + ' L' + [cx, cy + cellH/2 + fillTopY] + ' L' + [cx, cy + cellH/2 + wellDepth] + ' L' + [cx - cellW/2, cy + wellDepth] + ' Z';
+  const liquidRightPath = 'M' + [cx, cy + cellH/2 + fillTopY] + ' L' + [cx + cellW/2, cy + fillTopY] + ' L' + [cx + cellW/2, cy + wellDepth] + ' L' + [cx, cy + cellH/2 + wellDepth] + ' Z';
+
+  let s = '';
+  s += '<path d="' + floorPath + '" fill="var(--color-background-tertiary)" stroke="var(--b)" stroke-width="0.5"/>';
+  s += '<path d="' + leftPath + '" fill="var(--color-background-secondary)" stroke="var(--b)" stroke-width="0.5" opacity="0.9"/>';
+  s += '<path d="' + rightPath + '" fill="var(--color-background-primary)" stroke="var(--b)" stroke-width="0.5" opacity="0.55"/>';
+  if (fh > 0.5) {
+    s += '<path class="liquid" data-well="' + idAttr + '" d="' + liquidLeftPath + '" fill="#0C447C" opacity="0.75"/>';
+    s += '<path class="liquid" data-well="' + idAttr + '" d="' + liquidRightPath + '" fill="#185FA5" opacity="0.6"/>';
+    s += '<path class="liquid" data-well="' + idAttr + '" d="' + liquidTopPath + '" fill="#85B7EB" opacity="0.7"/>';
+    s += '<line x1="' + (cx - cellW/4) + '" y1="' + (cy + fillTopY - cellH/4) + '" x2="' + cx + '" y2="' + (cy + fillTopY) + '" stroke="#E6F1FB" stroke-width="1.5" opacity="0.7" stroke-linecap="round"/>';
+  }
+  s += '<path d="' + topPath + '" fill="none" stroke="var(--b)" stroke-width="0.5"/>';
+  return s;
+}
+
+function gatePhaseBarSVG(col, row, phaseIndex, activePhase) {
+  const cx = isoX(col, row);
+  const cyBase = isoY(col, row) + wellDepth + cellH/2 + 10;
+  const segW = (cellW - 8) / 3;
+  let s = '';
+  for (let p=0; p<3; p++){
+    const isActive = p === activePhase;
+    const color = isActive ? '#EF9F27' : 'var(--color-border-tertiary)';
+    const cls = isActive ? 'class="activeGate"' : '';
+    const x = cx - cellW/2 + 4 + p*segW;
+    s += '<rect ' + cls + ' x="' + x + '" y="' + cyBase + '" width="' + (segW - 2) + '" height="5" rx="2" fill="' + color + '"/>';
+  }
+  return s;
+}
+
+function gateLegendSVG(x, y) {
+  let s = '<g>';
+  const phaseLabel = ['φ1', 'φ2', 'φ3'];
+  for (let p=0;p<3;p++){
+    s += '<rect x="' + (x + p*70) + '" y="' + y + '" width="14" height="5" rx="2" fill="' + (p===0?'#EF9F27':'var(--color-border-tertiary)') + '"/>';
+    s += '<text class="ts" x="' + (x + p*70 + 20) + '" y="' + (y+4) + '" dominant-baseline="central">' + phaseLabel[p] + '</text>';
+  }
+  s += '</g>';
+  return s;
+}
+
+function accumulateHTML() {
+  return '\
+    <div class="ctrlRow">\
+      <label style="font-size:14px; color:var(--color-text-secondary); min-width:90px;">빛의 세기</label>\
+      <input type="range" id="lightSlider" min="0" max="100" value="50" style="flex:1;">\
+      <span id="lightOut" style="font-size:14px; font-weight:500; min-width:40px; text-align:right;">50%</span>\
+    </div>\
+    <div id="accSvgHost"></div>\
+    <div id="accInfo" style="background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:0.875rem 1rem; font-size:13px; color:var(--color-text-secondary); margin-top:1rem;">\
+      픽셀(우물)을 클릭하면 그 위치의 전하량을 볼 수 있습니다. 빛이 셀수록 우물에 더 많은 전하(파란 액체)가 채워집니다.\
+    </div>\
+    <div style="display:flex; justify-content:flex-end; margin-top:1rem;">\
+      <button class="nextBtn" id="toVerticalBtn">이 전하로 수직 전송 보기 <i class="ti ti-arrow-right" aria-hidden="true"></i></button>\
+    </div>\
+  ';
+}
+
+function initAccumulate() {
+  const slider = document.getElementById('lightSlider');
+  const out = document.getElementById('lightOut');
+  const host = document.getElementById('accSvgHost');
+  const info = document.getElementById('accInfo');
+  const toVerticalBtn = document.getElementById('toVerticalBtn');
+  let pattern = [];
+  for (let r=0;r<N;r++){ pattern.push([]); for (let c=0;c<N;c++){ pattern[r].push(0.2 + Math.random()*0.8); } }
+  let currentGrid = [];
+
+  function computeGrid() {
+    const intensity = Number(slider.value) / 100;
+    currentGrid = pattern.map(rowArr => rowArr.map(v => Math.min(1, v * intensity)));
+    return intensity;
+  }
+
+  function render() {
+    const intensity = computeGrid();
+    out.textContent = Math.round(intensity*100) + '%';
+    const maxY = isoY(0, N-1) + cellH/2 + wellDepth + 30;
+    const minX = isoX(0, N-1) - cellW/2 - 20;
+    const maxX = isoX(N-1, 0) + cellW/2 + 20;
+    let svg = '<svg width="100%" viewBox="' + minX + ' 0 ' + (maxX-minX) + ' ' + maxY + '" role="img"><title>전하 축적 등각투영도</title><desc>5x5 픽셀 우물에 빛의 세기에 비례한 전하가 액체처럼 채워지는 모습</desc>';
+    for (let r=0;r<N;r++){
+      for (let c=0;c<N;c++){
+        svg += '<g class="node wellGroup" data-r="' + r + '" data-c="' + c + '" style="cursor:pointer;">' + wellSVG(c, r, currentGrid[r][c], r+'_'+c) + '</g>';
+      }
+    }
+    svg += '</svg>';
+    host.innerHTML = svg;
+    host.querySelectorAll('.wellGroup').forEach(g => {
+      g.onclick = () => {
+        const r = Number(g.dataset.r), c = Number(g.dataset.c);
+        info.innerHTML = '<span style="color:var(--color-text-primary); font-weight:500;">픽셀 (' + (r+1) + '행, ' + (c+1) + '열)</span> — 전하량 약 ' + Math.round(currentGrid[r][c]*100) + '%';
+      };
+    });
+  }
+  slider.addEventListener('input', render);
+  render();
+
+  toVerticalBtn.onclick = () => {
+    computeGrid();
+    sharedState.grid = currentGrid.map(rowArr => rowArr.slice());
+    current = 'vertical';
+    renderTabs();
+    renderPanel();
+  };
+}
+
+function verticalHTML() {
+  return '\
+    <div class="ctrlRow">\
+      <button class="iconBtn" id="playBtn" aria-label="재생"><i class="ti ti-player-play" aria-hidden="true"></i></button>\
+      <button class="iconBtn" id="stepBtn" aria-label="한 단계"><i class="ti ti-step-into" aria-hidden="true"></i></button>\
+      <button class="iconBtn" id="resetBtn" aria-label="초기화"><i class="ti ti-refresh" aria-hidden="true"></i></button>\
+      <label style="font-size:14px; color:var(--color-text-secondary); margin-left:8px;">속도</label>\
+      <input type="range" id="speedSlider" min="1" max="5" value="3" style="flex:1;">\
+    </div>\
+    <div id="vertSvgHost"></div>\
+    <div id="vertInfo" style="background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:0.875rem 1rem; font-size:13px; color:var(--color-text-secondary); margin-top:1rem;">\
+      재생 버튼을 누르면 3상(φ1→φ2→φ3) 게이트 전압이 순서대로 켜지며, 전위 우물이 옆으로 이동해 전하를 한 행씩 아래로 밀어냅니다. 맨 아래 줄에 도달한 전하는 수평 시프트 레지스터로 전달됩니다.\
+    </div>\
+    <div style="display:flex; justify-content:flex-end; margin-top:1rem;">\
+      <button class="nextBtn" id="toHorizontalBtn">이 전하로 수평 전송 보기 <i class="ti ti-arrow-right" aria-hidden="true"></i></button>\
+    </div>\
+  ';
+}
+
+function initVertical() {
+  const playBtn = document.getElementById('playBtn');
+  const stepBtn = document.getElementById('stepBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const speedSlider = document.getElementById('speedSlider');
+  const host = document.getElementById('vertSvgHost');
+  const info = document.getElementById('vertInfo');
+  const toHorizontalBtn = document.getElementById('toHorizontalBtn');
+
+  let grid = [];
+  let exitedRow = new Array(N).fill(0);
+  let exitedCount = 0;
+  let playing = false;
+  let timer = null;
+  let gatePhase = 0;
+
+  function initGrid() {
+    if (sharedState.grid) {
+      grid = sharedState.grid.map(r => r.slice());
+    } else {
+      grid = [];
+      for (let r=0;r<N;r++){ grid.push([]); for (let c=0;c<N;c++){ grid[r].push(0.3 + Math.random()*0.7); } }
+    }
+    exitedRow = new Array(N).fill(0);
+    exitedCount = 0;
+    gatePhase = 0;
+  }
+
+  function shiftDown() {
+    if (grid.every(rowArr => rowArr.every(v => v === 0)) && exitedCount === 0) return;
+    const bottomHadCharge = grid[N-1].some(v => v > 0);
+    const newGrid = grid.map(rowArr => rowArr.slice());
+    for (let r=N-1; r>0; r--){
+      for (let c=0;c<N;c++){ newGrid[r][c] = grid[r-1][c]; }
+    }
+    for (let c=0;c<N;c++){ newGrid[0][c] = 0; }
+    if (bottomHadCharge) {
+      exitedRow = grid[N-1].slice();
+      exitedCount++;
+    } else {
+      exitedRow = new Array(N).fill(0);
+    }
+    grid = newGrid;
+    gatePhase = (gatePhase + 1) % 3;
+  }
+
+  function render() {
+    const maxY = isoY(0, N-1) + cellH/2 + wellDepth + 90;
+    const minX = isoX(0, N-1) - cellW/2 - 20;
+    const maxX = isoX(N-1, 0) + cellW/2 + 20;
+    let svg = '<svg width="100%" viewBox="' + minX + ' 0 ' + (maxX-minX) + ' ' + maxY + '" role="img"><title>수직 버킷 브리게이드 전송</title><desc>3상 게이트 전압이 순환하며 각 열의 전하를 한 행씩 아래로 이동시키는 모습</desc>';
+    for (let r=0;r<N;r++){
+      for (let c=0;c<N;c++){
+        svg += wellSVG(c, r, grid[r][c], r+'_'+c);
+      }
+    }
+    const bottomRow = N-1;
+    for (let c=0;c<N;c++){
+      svg += gatePhaseBarSVG(c, bottomRow, c, gatePhase);
+    }
+    const legendX = isoX(0, N-1) - cellW/2;
+    const legendY = isoY(0, N-1) + cellH/2 + wellDepth + 36;
+    svg += gateLegendSVG(legendX, legendY);
+    const labelY = legendY + 26;
+    svg += '<text class="ts" x="' + ((minX+maxX)/2) + '" y="' + labelY + '" text-anchor="middle">수평 시프트 레지스터로 전달된 행: ' + exitedCount + '개</text>';
+    svg += '</svg>';
+    host.innerHTML = svg;
+  }
+
+  function tick() { shiftDown(); render(); }
+
+  function play() {
+    if (timer) clearInterval(timer);
+    playing = true;
+    playBtn.innerHTML = '<i class="ti ti-player-pause" aria-hidden="true"></i>';
+    const speed = Number(speedSlider.value);
+    const interval = 1100 - speed*150;
+    timer = setInterval(tick, interval);
+  }
+  function pause() {
+    if (timer) clearInterval(timer);
+    playing = false;
+    playBtn.innerHTML = '<i class="ti ti-player-play" aria-hidden="true"></i>';
+  }
+
+  playBtn.onclick = () => { playing ? pause() : play(); };
+  stepBtn.onclick = () => { pause(); tick(); };
+  resetBtn.onclick = () => { pause(); initGrid(); render(); };
+  speedSlider.oninput = () => { if (playing) play(); };
+
+  toHorizontalBtn.onclick = () => {
+    pause();
+    sharedState.exitedRow = exitedRow.some(v => v > 0) ? exitedRow.slice() : grid[N-1].slice();
+    current = 'horizontal';
+    renderTabs();
+    renderPanel();
+  };
+
+  initGrid();
+  render();
+}
+
+function horizontalHTML() {
+  return '\
+    <div class="ctrlRow">\
+      <button class="iconBtn" id="hPlayBtn" aria-label="재생"><i class="ti ti-player-play" aria-hidden="true"></i></button>\
+      <button class="iconBtn" id="hStepBtn" aria-label="한 단계"><i class="ti ti-step-into" aria-hidden="true"></i></button>\
+      <button class="iconBtn" id="hResetBtn" aria-label="초기화"><i class="ti ti-refresh" aria-hidden="true"></i></button>\
+      <label style="font-size:14px; color:var(--color-text-secondary); margin-left:8px;">속도</label>\
+      <input type="range" id="hSpeedSlider" min="1" max="5" value="3" style="flex:1;">\
+    </div>\
+    <div id="horizSvgHost"></div>\
+    <div style="display:flex; gap:16px; margin-top:1rem; flex-wrap:wrap;">\
+      <div style="flex:1; min-width:200px; background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:0.875rem 1rem;">\
+        <p style="font-size:12px; color:var(--color-text-secondary); margin:0 0 4px;">출력 앰프 전압</p>\
+        <p style="font-size:22px; font-weight:500; margin:0;" id="ampVoltage">0.00 V</p>\
+      </div>\
+      <div style="flex:1; min-width:200px; background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:0.875rem 1rem;">\
+        <p style="font-size:12px; color:var(--color-text-secondary); margin:0 0 4px;">읽어낸 픽셀 수</p>\
+        <p style="font-size:22px; font-weight:500; margin:0;" id="pixelCount">0 / 5</p>\
+      </div>\
+    </div>\
+    <p style="font-size:13px; color:var(--color-text-secondary); margin-top:1rem;">수직 전송으로 내려온 한 줄(행)이 수평 시프트 레지스터에 들어가면, 3상 게이트 전압이 순서대로 켜지며 한 칸씩 출력 앰프 쪽으로 이동해 차례로 전압값으로 변환됩니다. 모든 픽셀이 동일한 앰프를 거치기 때문에 CCD는 픽셀 간 노이즈 편차가 적습니다.</p>\
+  ';
+}
+
+function initHorizontal() {
+  const playBtn = document.getElementById('hPlayBtn');
+  const stepBtn = document.getElementById('hStepBtn');
+  const resetBtn = document.getElementById('hResetBtn');
+  const speedSlider = document.getElementById('hSpeedSlider');
+  const host = document.getElementById('horizSvgHost');
+  const voltageOut = document.getElementById('ampVoltage');
+  const countOut = document.getElementById('pixelCount');
+
+  const rowY = 1;
+  let row = [];
+  let ampValue = 0;
+  let readCount = 0;
+  let playing = false;
+  let timer = null;
+  let gatePhase = 0;
+
+  const ampCol = N;
+
+  function initRow() {
+    if (sharedState.exitedRow) {
+      row = sharedState.exitedRow.slice();
+    } else {
+      row = [];
+      for (let c=0;c<N;c++){ row.push(0.3 + Math.random()*0.7); }
+    }
+    ampValue = 0;
+    readCount = 0;
+    gatePhase = 0;
+  }
+
+  function shiftRight() {
+    if (row.every(v => v === 0) && readCount >= N) return;
+    let exited = row[N-1];
+    for (let c=N-1;c>0;c--){ row[c] = row[c-1]; }
+    row[0] = 0;
+    if (exited > 0) { ampValue = exited; readCount++; }
+    gatePhase = (gatePhase + 1) % 3;
+  }
+
+  function render() {
+    const maxY = isoY(0, rowY) + cellH/2 + wellDepth + 90;
+    const minX = isoX(0, rowY) - cellW/2 - 30;
+    const maxX = isoX(ampCol, rowY) + cellW/2 + 40;
+    let svg = '<svg width="100%" viewBox="' + minX + ' 0 ' + (maxX-minX) + ' ' + maxY + '" role="img"><title>수평 전송과 출력 앰프</title><desc>3상 게이트 전압에 따라 수평 시프트 레지스터를 따라 전하가 한 칸씩 이동하여 출력 앰프에서 전압으로 변환되는 모습</desc>';
+    for (let c=0;c<N;c++){ svg += wellSVG(c, rowY, row[c], 'h'+c); }
+    for (let c=0;c<N;c++){ svg += gatePhaseBarSVG(c, rowY, c, gatePhase); }
+    const ampX = isoX(ampCol, rowY);
+    const ampYc = isoY(ampCol, rowY);
+    const glow = ampValue > 0.05 ? 'opacity="1"' : 'opacity="0.4"';
+    svg += '<circle cx="' + ampX + '" cy="' + (ampYc + cellH/2) + '" r="20" class="c-amber" stroke-width="0.5" ' + glow + '/>';
+    svg += '<text class="ts" x="' + ampX + '" y="' + (ampYc + cellH/2) + '" text-anchor="middle" dominant-baseline="central">앰프</text>';
+    const arrowX1 = isoX(0, rowY) - 40;
+    svg += '<text class="ts" x="' + arrowX1 + '" y="' + (isoY(0,rowY)+cellH/2) + '" text-anchor="middle">입력</text>';
+    const legendX = isoX(0, rowY) - cellW/2;
+    const legendY = isoY(0, rowY) + cellH/2 + wellDepth + 36;
+    svg += gateLegendSVG(legendX, legendY);
+    svg += '</svg>';
+    host.innerHTML = svg;
+    voltageOut.textContent = (ampValue * 3.3).toFixed(2) + ' V';
+    countOut.textContent = Math.min(readCount, N) + ' / ' + N;
+  }
+
+  function tick() { shiftRight(); render(); if (readCount >= N) pause(); }
+
+  function play() {
+    if (timer) clearInterval(timer);
+    playing = true;
+    playBtn.innerHTML = '<i class="ti ti-player-pause" aria-hidden="true"></i>';
+    const speed = Number(speedSlider.value);
+    const interval = 1000 - speed*140;
+    timer = setInterval(tick, interval);
+  }
+  function pause() {
+    if (timer) clearInterval(timer);
+    playing = false;
+    playBtn.innerHTML = '<i class="ti ti-player-play" aria-hidden="true"></i>';
+  }
+
+  playBtn.onclick = () => { playing ? pause() : play(); };
+  stepBtn.onclick = () => { pause(); tick(); };
+  resetBtn.onclick = () => { pause(); initRow(); render(); };
+  speedSlider.oninput = () => { if (playing) play(); };
+
+  initRow();
+  render();
+}
+
+renderTabs();
+renderPanel();
+</script>
+</body>
+</html>

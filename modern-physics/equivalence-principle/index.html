@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>등가원리와 시공간 | Equivalence Principle & Spacetime</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700&family=Poppins:wght@400;600&display=swap');
+        
+        :root {
+            --bg-color: #0f172a;
+            --text-color: #f8fafc;
+            --card-bg: rgba(30, 41, 59, 0.85);
+            --accent-color: #38bdf8;
+        }
+
+        .light-mode {
+            --bg-color: #f8fafc;
+            --text-color: #1e293b;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --accent-color: #0284c7;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', 'Poppins', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+            overflow-x: hidden;
+        }
+
+        .tab-content {
+            display: none;
+            animation: slideUp 0.4s ease-out;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .glass {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+        }
+
+        .nav-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+        .nav-scroll::-webkit-scrollbar { display: none; }
+
+        canvas {
+            max-width: 100%;
+            height: auto;
+            background: #0b1120;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 0.5rem;
+        }
+
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
+            margin-left: -125px;
+            background-color: #334155;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 16px;
+            position: fixed;
+            z-index: 1000;
+            left: 50%;
+            bottom: 30px;
+            font-size: 14px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+
+        #toast.show {
+            visibility: visible;
+            animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        }
+
+        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+
+        :fullscreen { background-color: var(--bg-color); }
+        
+        .tab-btn.active-tab {
+            background-color: var(--accent-color) !important;
+            color: #0f172a !important;
+            border-color: white !important;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+        }
+
+        .control-panel {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+        }
+
+        #introCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: #020617;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col relative">
+<a href="../../index.html" title="홈으로" style="position:fixed;left:12px;bottom:12px;z-index:99999;background:rgba(255,255,255,.94);color:#1c2733;text-decoration:none;padding:8px 13px;border-radius:9px;font:600 14px/1 'Segoe UI','Malgun Gothic',sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.22);border:1px solid rgba(0,0,0,.12)">🏠 홈</a>
+
+    <div id="toast">메시지 내용</div>
+
+    <!-- Top Controls -->
+    <div class="fixed top-4 right-4 z-[100] flex gap-2">
+        <button onclick="toggleLanguage()" class="p-2 glass hover:scale-110 transition shadow-lg flex items-center gap-1">
+            <span id="langIcon">🌐</span> <span id="langText" class="text-xs font-bold">EN</span>
+        </button>
+        <button onclick="toggleTheme()" class="p-2 glass hover:scale-110 transition shadow-lg">
+            <span id="themeIcon">🌙</span>
+        </button>
+        <button onclick="toggleFullScreen()" class="p-2 glass hover:scale-110 transition shadow-lg" title="전체화면">
+            <span id="screenIcon">⛶</span>
+        </button>
+    </div>
+
+    <!-- Navigation -->
+    <header class="p-4 md:p-6 glass sticky top-0 z-50 m-2 shadow-2xl">
+        <div class="max-w-7xl mx-auto flex flex-col gap-4">
+            <h1 class="text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400 text-center md:text-left">
+                <span class="ko-text">등가원리와 일반 상대성 이론</span>
+                <span class="en-text hidden">Equivalence Principle & General Relativity</span>
+            </h1>
+            
+            <nav class="flex overflow-x-auto nav-scroll gap-2 pb-2" id="mainNav">
+                <button onclick="showTab('intro')" class="tab-btn shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition glass active-tab" data-tab="intro">시작</button>
+                <button onclick="showTab('frame')" class="tab-btn shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition glass" data-tab="frame">좌표계</button>
+                <button onclick="showTab('force')" class="tab-btn shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition glass" data-tab="force">관성력 실험</button>
+                <button onclick="showTab('equivalence')" class="tab-btn shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition glass" data-tab="equivalence">등가원리 실험</button>
+                <button onclick="showTab('time')" class="tab-btn shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition glass" data-tab="time">시간지연</button>
+                <button onclick="showTab('gps')" class="tab-btn shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition glass" data-tab="gps">실생활(GPS)</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-[1600px] mx-auto w-full p-4 md:p-8 relative">
+        
+        <!-- Tab: Intro -->
+        <div id="intro" class="tab-content active text-center py-24 md:py-48 relative overflow-hidden">
+            <canvas id="introCanvas"></canvas>
+            <div class="relative z-10 space-y-6 text-white">
+                <h2 class="text-5xl md:text-7xl font-black mb-8 leading-tight ko-text drop-shadow-2xl">
+                    시공간은 <span class="text-blue-400">어떻게</span> 휘어지는가?
+                </h2>
+                <div class="glass p-10 inline-block max-w-3xl mx-auto border-t-4 border-blue-500 shadow-2xl bg-slate-900/40">
+                    <p class="text-xl md:text-2xl text-white font-medium leading-relaxed ko-text">
+                        "내 생애 가장 행복했던 생각"<br>
+                        <span class="text-blue-300 text-lg">- 알베르트 아인슈타인 -</span>
+                    </p>
+                    <p class="text-slate-300 mt-4 ko-text">
+                        질량이 만드는 시공간의 굴곡과 가속도가 만드는 등가 원리를<br>정밀한 시뮬레이션으로 탐구해 봅시다.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Frame -->
+        <div id="frame" class="tab-content space-y-6">
+            <h3 class="text-2xl font-bold flex items-center gap-2"><span class="p-2 bg-blue-500 rounded-lg text-white">01</span><span>좌표계의 이해</span></h3>
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="glass p-6 border-l-4 border-emerald-500 shadow-xl"><h4 class="text-xl font-bold text-emerald-400 mb-3">관성 좌표계</h4><p class="text-sm opacity-80">외부 정지 관찰자. 실제 힘의 합력이 가속도를 만듭니다.</p></div>
+                <div class="glass p-6 border-l-4 border-amber-500 shadow-xl"><h4 class="text-xl font-bold text-amber-400 mb-3">가속 좌표계</h4><p class="text-sm opacity-80">함께 가속되는 내부 시점. 관성력을 도입하여 힘의 평형을 설명합니다.</p></div>
+            </div>
+        </div>
+
+        <!-- Tab: Force -->
+        <div id="force" class="tab-content space-y-8">
+            <h3 class="text-2xl font-bold flex items-center gap-2"><span class="p-2 bg-emerald-500 rounded-lg text-white">02</span><span>관성력 시뮬레이션</span></h3>
+            <div class="flex justify-center gap-4">
+                <button id="btnForceLinear" onclick="setForceMode('linear')" class="px-6 py-2 rounded-full glass font-bold transition hover:bg-emerald-500/30 btn-active">1. 직선 가속 운동</button>
+                <button id="btnForceCircular" onclick="setForceMode('circular')" class="px-6 py-2 rounded-full glass font-bold transition hover:bg-emerald-500/30">2. 원운동</button>
+            </div>
+            
+            <div class="control-panel flex flex-wrap justify-center gap-6 p-4 items-center mx-auto max-w-4xl shadow-lg">
+                <button id="btnForcePause" onclick="toggleForcePause()" class="px-6 py-2 rounded-full bg-slate-700 text-white font-bold text-sm hover:bg-slate-600 transition">일시정지</button>
+                <button onclick="resetForceSim()" class="px-6 py-2 rounded-full bg-pink-600 text-white font-bold text-sm hover:bg-pink-500 transition">초기화</button>
+            </div>
+
+            <div id="linearContainer" class="glass p-6 space-y-4">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                    <h4 class="text-lg font-bold text-blue-400">직선 가속과 정밀 FBD (알짜힘 수치 표현)</h4>
+                    <div class="flex items-center gap-4 w-full md:w-1/2 bg-black/30 p-2 rounded-lg">
+                        <span class="text-xs font-bold text-red-500 shrink-0">가속도(a)</span>
+                        <input type="range" id="forceLinearAccel" min="-8" max="8" step="0.1" value="0" class="w-full accent-red-500">
+                        <span id="forceLinearVal" class="font-mono text-xs w-8 text-red-400 text-center">0.0</span>
+                    </div>
+                </div>
+                <div class="relative overflow-hidden glass bg-slate-900 border border-white/20">
+                    <canvas id="forceLinearCanvas" width="1000" height="400" class="w-full"></canvas>
+                </div>
+            </div>
+
+            <div id="circularContainer" class="glass p-6 space-y-4 hidden">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                    <h4 class="text-lg font-bold text-purple-400">원운동의 시점 별 해석</h4>
+                    <div class="flex items-center gap-4 w-full md:w-1/2 bg-black/30 p-2 rounded-lg">
+                        <span class="text-xs font-bold text-purple-400 shrink-0">각속도(ω)</span>
+                        <input type="range" id="forceAngularVel" min="0" max="4" step="0.1" value="1.5" class="w-full accent-purple-500">
+                        <span id="forceAngularVal" class="font-mono text-xs w-8 text-purple-400 text-center">1.5</span>
+                    </div>
+                </div>
+                <div class="relative overflow-hidden glass bg-black border border-white/20 shadow-inner">
+                    <canvas id="forceCircularCanvas" width="1000" height="420" class="w-full"></canvas>
+                </div>
+            </div>
+
+            <div class="text-center p-3 glass bg-slate-800/50 text-xs space-y-1">
+                <p>🔴 실제 힘(\(\vec{T}, m\vec{g}, \vec{F}_c\)) | 🔵 가상 힘(\(\vec{F}_i, \vec{F}_f\)) | 🟢 <b>알짜힘(\(\vec{F}_{net}\))</b></p>
+                <p class="text-blue-300 font-bold">※ 가속 좌표계에서는 관성력이 실제 힘을 상쇄하여 초록색 알짜힘이 0(평형)이 됩니다.</p>
+            </div>
+        </div>
+
+        <!-- Tab: Equivalence -->
+        <div id="equivalence" class="tab-content space-y-8">
+            <h3 class="text-2xl font-bold flex items-center gap-2"><span class="p-2 bg-pink-500 rounded-lg text-white">03</span><span>아인슈타인의 등가원리 실험실</span></h3>
+
+            <div class="control-panel flex flex-col gap-6 p-6 mx-auto max-w-5xl shadow-2xl">
+                <div class="flex flex-wrap justify-center gap-4 border-b border-white/5 pb-4">
+                    <button id="btnEquivObject" onclick="setEquivMode('object')" class="px-8 py-2 rounded-full glass font-bold transition hover:bg-pink-500/30 btn-active text-sm">물체의 낙하</button>
+                    <button id="btnEquivLight" onclick="setEquivMode('light')" class="px-8 py-2 rounded-full glass font-bold transition hover:bg-pink-500/30 text-sm">빛의 휘어짐</button>
+                    <button id="btnEquivPause" onclick="toggleEquivPause()" class="px-6 py-2 rounded-full bg-slate-700 text-white font-bold text-sm hover:bg-slate-600 transition">일시정지</button>
+                    <button onclick="resetEquivSim()" class="px-6 py-2 rounded-full bg-pink-600 text-white font-bold text-sm hover:bg-pink-500 transition">초기화</button>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div class="flex items-center gap-4 bg-black/40 p-3 px-6 rounded-2xl">
+                        <span class="text-xs font-bold text-pink-400 shrink-0">가속도(a/g)</span>
+                        <input type="range" id="equivSlider" min="1" max="20" step="0.5" value="9.8" class="w-full accent-pink-500">
+                        <span id="equivSliderVal" class="font-mono text-xs w-12 text-pink-300 text-center">9.8</span>
+                    </div>
+                    <div class="flex items-center gap-4 bg-black/40 p-3 px-6 rounded-2xl">
+                        <span class="text-xs font-bold text-cyan-400 shrink-0">시간 속도</span>
+                        <input type="range" id="equivTimeSpeed" min="0.1" max="2" step="0.1" value="1" class="w-full accent-cyan-500">
+                        <span id="equivTimeSpeedVal" class="font-mono text-xs w-12 text-cyan-300 text-center">x1.0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="glass p-4 border-t-4 border-green-500 h-[560px]">
+                    <h4 class="text-sm font-bold text-green-400 text-center mb-2">1. 지구 표면 (중력장)</h4>
+                    <canvas id="canvasEarth" width="400" height="500" class="w-full"></canvas>
+                </div>
+                <div class="glass p-4 border-t-4 border-blue-500 h-[560px]">
+                    <h4 class="text-sm font-bold text-blue-400 text-center mb-2">2. 우주선 외부 (관성계)</h4>
+                    <canvas id="canvasShipExt" width="400" height="500" class="w-full"></canvas>
+                </div>
+                <div class="glass p-4 border-t-4 border-pink-500 h-[560px]">
+                    <h4 class="text-sm font-bold text-pink-400 text-center mb-2">3. 우주선 내부 (가속계)</h4>
+                    <canvas id="canvasShipInt" width="400" height="500" class="w-full"></canvas>
+                </div>
+            </div>
+            
+            <div class="text-center p-4 glass bg-slate-800/50 text-[11px] space-y-1">
+                <p class="text-pink-300 font-bold">"우주선을 통과하면 1초 후에 실험이 자동 반복됩니다."</p>
+                <p class="text-slate-400">물체 운동은 <b>점선 타점</b>으로, 빛의 진행은 <b>파선</b>으로 표현됩니다.</p>
+            </div>
+        </div>
+
+        <!-- Tab: Time Dilation -->
+        <div id="time" class="tab-content space-y-8">
+            <h3 class="text-2xl font-bold flex items-center gap-2"><span class="p-2 bg-indigo-500 rounded-lg text-white">04</span><span>일반 상대성 이론: 중력 시간 지연</span></h3>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div class="lg:col-span-3 glass p-4 relative overflow-hidden h-[600px] flex items-center justify-center bg-black">
+                    <canvas id="timeCanvas" width="800" height="600" class="w-full h-full"></canvas>
+                </div>
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="glass p-6 space-y-4">
+                        <h4 class="font-bold text-indigo-400 border-b border-white/10 pb-2">상대적 시간 경과</h4>
+                        <div class="space-y-6 font-mono">
+                            <div class="flex justify-between items-center text-emerald-400">
+                                <span class="text-xs">먼 우주 (시계 A)</span>
+                                <span id="timeAVal" class="text-lg">0.00 Y</span>
+                            </div>
+                            <div class="flex justify-between items-center text-blue-400">
+                                <span class="text-xs">행성 궤도 (시계 B)</span>
+                                <span id="timeBVal" class="text-lg">0.00 Y</span>
+                            </div>
+                            <div class="flex justify-between items-center text-pink-400">
+                                <span class="text-xs">행성 표면 (시계 C)</span>
+                                <span id="timeCVal" class="text-lg">0.00 Y</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass p-6 space-y-4 bg-indigo-950/20">
+                        <h4 class="font-bold text-slate-300 text-sm">중력 시간 지연 개요</h4>
+                        <p class="text-[12px] leading-relaxed text-slate-400 ko-text">
+                            질량이 클수록 시공간은 더 깊게 휘어집니다. 
+                            아인슈타인의 이론에 따르면, 중력이 강할수록 시간은 상대적으로 느리게 흐릅니다. 
+                            블랙홀 근처에서 시간이 거의 멈추는 현상을 시뮬레이션으로 관찰해 보세요.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel p-6 shadow-xl">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                    <div class="flex items-center gap-4 bg-black/40 p-4 rounded-2xl">
+                        <span class="text-xs font-bold text-indigo-400 shrink-0">천체 질량</span>
+                        <input type="range" id="massSlider" min="1" max="100" step="1" value="20" class="w-full accent-indigo-500">
+                        <span id="massLabel" class="font-bold text-xs w-16 text-center text-indigo-300">지구형</span>
+                    </div>
+                    <div class="flex justify-center gap-4">
+                        <button id="btnTimePause" onclick="toggleTimePause()" class="px-8 py-3 rounded-full bg-slate-700 text-white font-bold text-sm hover:bg-slate-600 transition">재생/일시정지</button>
+                        <button onclick="resetTimeSim()" class="px-8 py-3 rounded-full bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-500 transition">초기화</button>
+                    </div>
+                    <div class="flex items-center gap-4 bg-black/40 p-4 rounded-2xl">
+                        <span class="text-xs font-bold text-cyan-400 shrink-0">시간 속도</span>
+                        <input type="range" id="timeDilationSpeed" min="0.1" max="2" step="0.1" value="1" class="w-full accent-cyan-500">
+                        <span id="timeDilationSpeedVal" class="font-mono text-xs w-10 text-cyan-300 text-center">x1.0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="gps" class="tab-content space-y-6"><h3 class="text-2xl font-bold border-l-4 border-yellow-500 pl-4">05. GPS와 상대성 이론</h3><div class="grid md:grid-cols-3 gap-6"><div class="glass p-8 text-center border-b-8 border-blue-500 shadow-lg"><p class="text-xs opacity-50 mb-2 font-bold text-blue-400">속도 효과</p><p class="text-4xl font-black text-white">-7μs</p></div><div class="glass p-8 text-center border-b-8 border-indigo-500 shadow-lg"><p class="text-xs opacity-50 mb-2 font-bold text-indigo-400">중력 효과</p><p class="text-4xl font-black text-white">+45μs</p></div><div class="glass p-8 text-center bg-yellow-500/10 border-b-8 border-yellow-500 shadow-2xl"><p class="text-xs opacity-50 mb-2 font-bold text-yellow-500">최종 보정</p><p class="text-4xl font-black text-yellow-500">+38μs</p></div></div></div>
+    </main>
+
+    <footer class="p-8 text-center text-slate-500 text-xs glass mt-8"><p>© Physics Lab | Equivalence Principle & Relativity Simulation</p></footer>
+
+    <script>
+        // 전역 변수 통합 관리
+        let isForcePaused = false, isEquivPaused = false, isTimePaused = false;
+        let equivMode = 'object', currentTab = 'intro';
+        let forceReq, equivReq, timeReq, introReq;
+        let stars = [], starsForShip = [];
+        let equivTime = 0, trailCounter = 0, repeatDelay = 0;
+        let trailsE = [], trailsSE = [], trailsSI = [];
+        let referenceTime = 0, accumulatedA = 0, accumulatedB = 0, accumulatedC = 0;
+        
+        let lPos = 0, lAng = 0, lOffset = 0, cRot = 0;
+
+        // --- INTRO CANVAS ---
+        const introCanvas = document.getElementById('introCanvas');
+        const ictx = introCanvas.getContext('2d');
+        function resizeIntro() { introCanvas.width = window.innerWidth; introCanvas.height = window.innerHeight; }
+        function drawIntro() {
+            ictx.fillStyle = "#020617"; ictx.fillRect(0,0,introCanvas.width,introCanvas.height);
+            const w = introCanvas.width, h = introCanvas.height, cx = w/2, cy = h/2 + 50, time = Date.now() * 0.0008;
+            ictx.strokeStyle = "rgba(56, 189, 248, 0.15)";
+            const step = 45;
+            for(let x = -cx; x < cx + step; x += step) {
+                ictx.beginPath();
+                for(let y = -cy; y < h - cy + 10; y += 10) {
+                    const d = Math.sqrt(x*x + y*y);
+                    const offset = (30000 / (d + 80)) * Math.sin(time + d*0.01);
+                    ictx.lineTo(cx + x, cy + y + offset);
+                }
+                ictx.stroke();
+            }
+            for(let y = -cy; y < h - cy + step; y += step) {
+                ictx.beginPath();
+                for(let x = -cx; x < cx + 10; x += 10) {
+                    const d = Math.sqrt(x*x + y*y);
+                    const offset = (30000 / (d + 80)) * Math.sin(time + d*0.01);
+                    ictx.lineTo(cx + x, cy + y + offset);
+                }
+                ictx.stroke();
+            }
+            introReq = requestAnimationFrame(drawIntro);
+        }
+
+        // --- UI HANDLERS ---
+        function showTab(tabId) {
+            currentTab = tabId;
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.remove('active-tab');
+                if (b.getAttribute('data-tab') === tabId) b.classList.add('active-tab');
+            });
+            startLoops();
+            if (window.MathJax) MathJax.typeset();
+        }
+
+        function setForceMode(m) {
+            document.getElementById('linearContainer').classList.toggle('hidden', m !== 'linear');
+            document.getElementById('circularContainer').classList.toggle('hidden', m !== 'circular');
+            document.getElementById('btnForceLinear').classList.toggle('btn-active', m === 'linear');
+            document.getElementById('btnForceCircular').classList.toggle('btn-active', m === 'circular');
+        }
+
+        function toggleForcePause() { isForcePaused = !isForcePaused; document.getElementById('btnForcePause').innerText = isForcePaused ? "재생" : "일시정지"; }
+        function toggleEquivPause() { isEquivPaused = !isEquivPaused; document.getElementById('btnEquivPause').innerText = isEquivPaused ? "재생" : "일시정지"; }
+        function toggleTimePause() { isTimePaused = !isTimePaused; document.getElementById('btnTimePause').innerText = isTimePaused ? "재생" : "일시정지"; }
+        
+        function resetForceSim() { document.getElementById('forceLinearAccel').value = 0; document.getElementById('forceAngularVel').value = 1.5; lPos = 0; lAng = 0; }
+        function resetEquivSim() { equivTime = 0; trailCounter = 0; repeatDelay = 0; trailsE = []; trailsSE = []; trailsSI = []; }
+        function resetTimeSim() { referenceTime = 0; accumulatedA = 0; accumulatedB = 0; accumulatedC = 0; }
+        function setEquivMode(m) { equivMode = m; resetEquivSim(); document.getElementById('btnEquivObject').classList.toggle('btn-active', m === 'object'); document.getElementById('btnEquivLight').classList.toggle('btn-active', m === 'light'); }
+
+        // --- DRAWING HELPERS ---
+        function drawArrow(ctx, x, y, vx, vy, color, label, isDashed = false) {
+            if (Math.abs(vx) < 0.3 && Math.abs(vy) < 0.3) return;
+            ctx.save(); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 3;
+            if (isDashed) ctx.setLineDash([6, 4]);
+            const angle = Math.atan2(vy, vx), head = 10, tx = x + vx, ty = y + vy;
+            ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(tx, ty); ctx.stroke();
+            ctx.setLineDash([]); ctx.beginPath(); ctx.moveTo(tx, ty);
+            ctx.lineTo(tx-head*Math.cos(angle-Math.PI/6), ty-head*Math.sin(angle-Math.PI/6));
+            ctx.lineTo(tx-head*Math.cos(angle+Math.PI/6), ty-head*Math.sin(angle+Math.PI/6));
+            ctx.closePath(); ctx.fill();
+            ctx.font = "bold 11px Arial"; ctx.fillText(label, tx+10*Math.cos(angle), ty+10*Math.sin(angle)+4);
+            ctx.restore();
+        }
+
+        function drawChar(ctx, x, y, color, label) {
+            ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.beginPath();
+            ctx.arc(x, y-35, 7, 0, 7); ctx.moveTo(x, y-28); ctx.lineTo(x, y-10);
+            ctx.moveTo(x-10, y-22); ctx.lineTo(x+10, y-22); ctx.moveTo(x, y-10);
+            ctx.lineTo(x-7, y+10); ctx.lineTo(x, y-10); ctx.lineTo(x+7, y+10); ctx.stroke();
+            ctx.fillStyle = color; ctx.font = "bold 9px Arial"; ctx.textAlign = "center";
+            ctx.fillText(label, x, y+25); ctx.restore();
+        }
+
+        // --- TIME DILATION SIM ---
+        const tc = document.getElementById('timeCanvas'), tctx = tc.getContext('2d');
+        function drawClock(ctx, x, y, time, label, color, targetX, targetY) {
+            const r = 35; ctx.save();
+            
+            // Connecting Arrow
+            ctx.strokeStyle = "rgba(255,255,255,0.3)";
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(targetX, targetY); ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Arrow Head at Target
+            const angToTarget = Math.atan2(targetY - y, targetX - x);
+            ctx.fillStyle = "rgba(255,255,255,0.3)";
+            ctx.beginPath(); ctx.moveTo(targetX, targetY);
+            ctx.lineTo(targetX - 8*Math.cos(angToTarget-0.4), targetY - 8*Math.sin(angToTarget-0.4));
+            ctx.lineTo(targetX - 8*Math.cos(angToTarget+0.4), targetY - 8*Math.sin(angToTarget+0.4));
+            ctx.fill();
+
+            ctx.translate(x, y); ctx.strokeStyle = color; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.stroke(); ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fill();
+            const ang = (time % 60) * (Math.PI / 30) - Math.PI/2; ctx.strokeStyle = "white"; ctx.lineWidth = 2.5;
+            ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(r*0.8*Math.cos(ang), r*0.8*Math.sin(ang)); ctx.stroke();
+            ctx.fillStyle = color; ctx.font = "bold 10px Poppins"; ctx.textAlign = "center"; ctx.fillText(label, 0, r + 15); ctx.restore();
+        }
+
+        function runTimeDilation() {
+            if (currentTab !== 'time') return;
+            if (!isTimePaused) {
+                const mass = parseFloat(document.getElementById('massSlider').value);
+                const tSpeed = parseFloat(document.getElementById('timeDilationSpeed').value);
+                document.getElementById('timeDilationSpeedVal').innerText = "x" + tSpeed.toFixed(1);
+                
+                const massLabel = document.getElementById('massLabel');
+                let dilationB, dilationC, planetColor, label;
+                if (mass < 15) { label = "소행성"; planetColor = "#94a3b8"; dilationB = 0.98; dilationC = 0.95; }
+                else if (mass < 35) { label = "지구형"; planetColor = "#38bdf8"; dilationB = 0.9; dilationC = 0.8; }
+                else if (mass < 55) { label = "목성형"; planetColor = "#fb923c"; dilationB = 0.7; dilationC = 0.5; }
+                else if (mass < 85) { label = "태양형"; planetColor = "#facc15"; dilationB = 0.4; dilationC = 0.2; }
+                else { label = "블랙홀"; planetColor = "#000"; dilationB = 0.15; dilationC = 0.001; }
+                massLabel.innerText = label;
+
+                const dt = 0.1 * tSpeed; accumulatedA += dt; accumulatedB += dt * dilationB; accumulatedC += dt * dilationC;
+                tctx.fillStyle = "#020617"; tctx.fillRect(0,0,800,600);
+                const cx = 400, cy = 300, distortionMult = mass * 1.5;
+                tctx.strokeStyle = "rgba(79, 70, 229, 0.2)";
+                for(let i=-600; i<600; i+=40) { tctx.beginPath(); for(let j=-400; j<400; j+=10) { const d = Math.sqrt(i*i + j*j); const push = distortionMult * Math.exp(-d/120); tctx.lineTo(cx+i, cy+j+push); } tctx.stroke(); }
+                for(let j=-400; j<400; j+=40) { tctx.beginPath(); for(let i=-600; i<600; i+=10) { const d = Math.sqrt(i*i + j*j); const push = distortionMult * Math.exp(-d/120); tctx.lineTo(cx+i, cy+j+push); } tctx.stroke(); }
+
+                const planetRadius = 30 + mass/5;
+                if (label === "블랙홀") {
+                    tctx.shadowBlur = 40; tctx.shadowColor = "#f472b6";
+                    tctx.strokeStyle = "white"; tctx.lineWidth = 4;
+                    tctx.beginPath(); tctx.arc(cx, cy, 40, 0, Math.PI*2); tctx.stroke();
+                    tctx.fillStyle = "black"; tctx.fill(); tctx.shadowBlur = 0;
+                } else {
+                    tctx.fillStyle = planetColor; tctx.beginPath(); tctx.arc(cx, cy, planetRadius, 0, Math.PI*2); tctx.fill();
+                }
+
+                // Clocks with Arrows pointing to points of interest
+                drawClock(tctx, 700, 100, accumulatedA, "시계 A (먼 우주)", "#10b981", 600, 100); // Point in deep space
+                drawClock(tctx, 100, 300, accumulatedB, "시계 B (행성 궤도)", "#3b82f6", cx - planetRadius - 60, cy); // Point in orbit
+                drawClock(tctx, 400, 500, accumulatedC, "시계 C (행성 표면)", "#f472b6", cx, cy + planetRadius); // Point on surface
+
+                document.getElementById('timeAVal').innerText = (accumulatedA/10).toFixed(2) + " Y";
+                document.getElementById('timeBVal').innerText = (accumulatedB/10).toFixed(2) + " Y";
+                document.getElementById('timeCVal').innerText = (accumulatedC/10).toFixed(2) + " Y";
+            }
+            timeReq = requestAnimationFrame(runTimeDilation);
+        }
+
+        // --- FORCE SIM ---
+        const flctx_v = document.getElementById('forceLinearCanvas').getContext('2d');
+        const fcctx_v = document.getElementById('forceCircularCanvas').getContext('2d');
+        function runForceSim() {
+            if (currentTab !== 'force') return;
+            if (!isForcePaused) {
+                const a = parseFloat(document.getElementById('forceLinearAccel').value);
+                document.getElementById('forceLinearVal').innerText = a.toFixed(1);
+                lAng += (-Math.atan(a/9.8) - lAng) * 0.15; lPos = (lPos + a * 0.2) % 200; lOffset = (lOffset - a * 1.5) % 100;
+                flctx_v.clearRect(0,0,1000,400); flctx_v.strokeStyle = "rgba(255,255,255,0.1)"; flctx_v.beginPath(); flctx_v.moveTo(500,0); flctx_v.lineTo(500,400); flctx_v.stroke();
+                const gV={x:0, y:110}, iV={x:-a*11, y:0}, tV={x:-(gV.x+iV.x), y:-(gV.y+iV.y)}, nV={x:tV.x+gV.x, y:tV.y+gV.y};
+                const bx=110+lPos, px=bx+130+Math.sin(lAng)*130, py=80+Math.cos(lAng)*130;
+                flctx_v.fillStyle="#38bdf811"; flctx_v.fillRect(bx,80,260,180); flctx_v.strokeRect(bx,80,260,180);
+                drawChar(flctx_v, 100, 350, "#10b981", "관찰자");
+                flctx_v.strokeStyle="#94a3b8"; flctx_v.beginPath(); flctx_v.moveTo(bx+130,80); flctx_v.lineTo(px,py); flctx_v.stroke();
+                flctx_v.fillStyle="#fff"; flctx_v.beginPath(); flctx_v.arc(px,py,15,0,7); flctx_v.fill();
+                drawArrow(flctx_v, px, py, tV.x, tV.y, "#ef4444", "T"); drawArrow(flctx_v, px, py, gV.x, gV.y, "#ef4444", "mg");
+                drawArrow(flctx_v, px, py, nV.x, nV.y, "#22c55e", "Fnet");
+                const rx=750, rpx=rx+Math.sin(lAng)*130, rpy=80+Math.cos(lAng)*130;
+                flctx_v.save(); flctx_v.beginPath(); flctx_v.rect(500,0,500,400); flctx_v.clip();
+                flctx_v.strokeStyle="rgba(255,255,255,0.05)"; for(let i=-200; i<1200; i+=50) { let x=500+(i+lOffset)%500; flctx_v.beginPath(); flctx_v.moveTo(x,300); flctx_v.lineTo(x,400); flctx_v.stroke(); }
+                flctx_v.restore(); flctx_v.fillStyle="#fbbf2408"; flctx_v.fillRect(rx-130,80,260,180); flctx_v.strokeRect(rx-130,80,260,180);
+                drawChar(flctx_v, rx, 180, "#fbbf24", "탑승자");
+                flctx_v.strokeStyle="#94a3b8"; flctx_v.beginPath(); flctx_v.moveTo(rx,80); flctx_v.lineTo(rpx,rpy); flctx_v.stroke();
+                flctx_v.fillStyle="#fbbf24"; flctx_v.beginPath(); flctx_v.arc(rpx,rpy,15,0,7); flctx_v.fill();
+                drawArrow(flctx_v, rpx, rpy, tV.x, tV.y, "#ef4444", "T"); drawArrow(flctx_v, rpx, rpy, gV.x, gV.y, "#ef4444", "mg");
+                drawArrow(flctx_v, rpx, rpy, iV.x, iV.y, "#3b82f6", "Fi", true);
+                flctx_v.fillStyle="#22c55e"; flctx_v.font="bold 12px Arial"; flctx_v.fillText("Fnet = 0.0N", rpx+20, rpy-20);
+                const w = parseFloat(document.getElementById('forceAngularVel').value);
+                document.getElementById('forceAngularVal').innerText = w.toFixed(1);
+                cRot += w * 0.045; fcctx_v.fillStyle = "#0f172a"; fcctx_v.fillRect(0,0,1000,420);
+                const fM = w*w*16; fcctx_v.strokeStyle="rgba(255,255,255,0.1)"; fcctx_v.beginPath(); fcctx_v.arc(250,210,110,0,7); fcctx_v.stroke();
+                const ox=250+Math.cos(cRot)*110, oy=210+Math.sin(cRot)*110;
+                fcctx_v.fillStyle="#ef4444"; fcctx_v.beginPath(); fcctx_v.arc(ox,oy,12,0,7); fcctx_v.fill();
+                drawChar(fcctx_v, 80, 390, "#10b981", "관찰자"); drawArrow(fcctx_v, ox, oy, fM*Math.cos(cRot+Math.PI), fM*Math.sin(cRot+Math.PI), "#22c55e", "Fnet");
+                fcctx_v.save(); fcctx_v.beginPath(); fcctx_v.rect(500,0,500,420); fcctx_v.clip();
+                fcctx_v.save(); fcctx_v.translate(750, 210); fcctx_v.rotate(-cRot);
+                stars.forEach(s => { let sx=(s.x-250)%800-400, sy=s.y-210; fcctx_v.fillStyle="#ffffff44"; fcctx_v.beginPath(); fcctx_v.arc(sx,sy,s.size,0,7); fcctx_v.fill(); });
+                fcctx_v.restore(); fcctx_v.strokeStyle="#fbbf24"; fcctx_v.beginPath(); fcctx_v.arc(750,210,110,0,7); fcctx_v.stroke();
+                fcctx_v.fillStyle="#fbbf24"; fcctx_v.beginPath(); fcctx_v.arc(750+110,210,12,0,7); fcctx_v.fill();
+                drawChar(fcctx_v, 750, 230, "#fbbf24", "탑승자");
+                drawArrow(fcctx_v, 750+110, 210, -fM, 0, "#ef4444", "Fc"); drawArrow(fcctx_v, 750+110, 210, fM, 0, "#3b82f6", "Ff", true);
+                fcctx_v.fillStyle="#22c55e"; fcctx_v.font="bold 12px Arial"; fcctx_v.fillText("Fnet = 0.0N", 750+110+20, 210-20);
+                fcctx_v.restore(); fcctx_v.strokeStyle="white"; fcctx_v.beginPath(); fcctx_v.moveTo(500,0); fcctx_v.lineTo(500,420); fcctx_v.stroke();
+            }
+            forceReq = requestAnimationFrame(runForceSim);
+        }
+
+        // --- EQUIV SIM ---
+        const c_e = document.getElementById('canvasEarth').getContext('2d');
+        const c_se = document.getElementById('canvasShipExt').getContext('2d');
+        const c_si = document.getElementById('canvasShipInt').getContext('2d');
+        function runEquivSim() {
+            if (currentTab !== 'equivalence') return;
+            const a = parseFloat(document.getElementById('equivSlider').value), tSpeed = parseFloat(document.getElementById('equivTimeSpeed').value);
+            document.getElementById('equivSliderVal').innerText = a.toFixed(1);
+            if (!isEquivPaused && repeatDelay === 0) { equivTime += 0.008 * tSpeed; trailCounter++; }
+            const scale = 11, sW = 160, sH = 320, lV = 65, off = 0.5 * a * scale * equivTime * equivTime;
+            if (equivTime > 6 || off > 400) { if (repeatDelay === 0) repeatDelay = Date.now(); if (Date.now() - repeatDelay > 1000) resetEquivSim(); }
+            c_e.clearRect(0,0,400,500); c_se.clearRect(0,0,400,500); c_si.clearRect(0,0,400,500);
+            starsForShip.forEach(s => {
+                c_se.fillStyle=`#ffffff22`; c_se.beginPath(); c_se.arc(s.x, s.y, s.size, 0, 7); c_se.fill();
+                let sy=(s.y+off)%500; c_si.fillStyle=`#ffffff55`; c_si.beginPath(); c_si.arc(s.x, sy, s.size, 0, 7); c_si.fill();
+            });
+            c_e.strokeStyle="#4ade80"; c_e.strokeRect(120,80,sW,sH); drawChar(c_e, 150, 340, "#4ade80", "지구 관찰자");
+            c_se.strokeStyle="#38bdf8"; c_se.strokeRect(120, 420-off-sH, sW, sH);
+            c_si.strokeStyle="#f472b6"; c_si.strokeRect(120,80,sW,sH); drawChar(c_si, 150, 340, "#f472b6", "내부 관찰자");
+            if (equivMode === 'object') {
+                const yE = 180+off, ySE = 180, ySI = 180+off;
+                if (!isEquivPaused && trailCounter % 20 === 0 && repeatDelay === 0) { trailsE.push(yE); trailsSE.push(ySE); trailsSI.push(ySI); }
+                trailsE.forEach(y => { c_e.fillStyle="#ef444444"; c_e.beginPath(); c_e.arc(200,y,2,0,7); c_e.fill(); });
+                if (yE < 395) { c_e.fillStyle="#ef4444"; c_e.beginPath(); c_e.arc(200,yE,10,0,7); c_e.fill(); drawArrow(c_e, 200, yE, 0, a*3, "#ef4444", "mg"); }
+                trailsSE.forEach(y => { c_se.fillStyle="#fff4"; c_se.beginPath(); c_se.arc(200,y,2,0,7); c_se.fill(); });
+                c_se.fillStyle="#fff"; c_se.beginPath(); c_se.arc(200,ySE,10,0,7); c_se.fill(); 
+                trailsSI.forEach(y => { c_si.fillStyle="#3b82f644"; c_si.beginPath(); c_si.arc(200,y,2,0,7); c_si.fill(); });
+                if (ySI < 395) { c_si.fillStyle="#fbbf24"; c_si.beginPath(); c_si.arc(200,ySI,10,0,7); c_si.fill(); drawArrow(c_si, 200, ySI, 0, a*3, "#3b82f6", "Fi", true); }
+            } else {
+                const bX = Math.min(equivTime*lV, sW);
+                [ [c_e, 180], [c_si, 180] ].forEach(([ctx, sY]) => {
+                    ctx.setLineDash([8, 6]); ctx.strokeStyle="#fbbf24"; ctx.beginPath(); ctx.moveTo(120,sY);
+                    for(let x=0; x<=bX; x+=2) { let t=x/lV; ctx.lineTo(120+x, sY + 0.5*a*scale*t*t); } ctx.stroke(); ctx.setLineDash([]);
+                });
+                c_se.setLineDash([8, 6]); c_se.strokeStyle="#fbbf2422"; c_se.beginPath(); c_se.moveTo(120,200); c_se.lineTo(120+bX,200); c_se.stroke(); c_se.setLineDash([]);
+            }
+            equivReq = requestAnimationFrame(runEquivSim);
+        }
+
+        function startLoops() {
+            if(forceReq) cancelAnimationFrame(forceReq); if(equivReq) cancelAnimationFrame(equivReq); if(timeReq) cancelAnimationFrame(timeReq);
+            if(currentTab==='force') runForceSim();
+            if(currentTab==='equivalence') runEquivSim();
+            if(currentTab==='time') runTimeDilation();
+        }
+
+        window.onload = () => {
+            resizeIntro(); drawIntro();
+            stars = []; starsForShip = [];
+            for(let i=0; i<150; i++) stars.push({ x:Math.random()*800, y:Math.random()*600, size:Math.random()*2, alpha:Math.random() });
+            for(let i=0; i<100; i++) starsForShip.push({ x:Math.random()*400, y:Math.random()*500, size:Math.random()*2, alpha:Math.random() });
+            showTab('intro');
+        };
+        window.onresize = resizeIntro;
+    </script>
+</body>
+</html>

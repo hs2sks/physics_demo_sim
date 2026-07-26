@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>빛의 속도 측정 — 과학사</title>
+<style>
+  :root {
+    --bg:#f4f6fa; --panel:#fff; --ink:#1c2733; --sub:#5a6b7d;
+    --accent:#1f6fd6; --accent2:#d64545; --ok:#1e8f4e; --warn:#c07c00; --gold:#e0a800;
+    --border:#d7dee8; --radius:10px;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:"Segoe UI","Malgun Gothic",sans-serif; background:var(--bg); color:var(--ink); padding:12px; font-size:15px; line-height:1.55; }
+  header { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+  header h1 { font-size:1.25em; }
+  header .spacer { flex:1; }
+  .home { text-decoration:none; color:var(--sub); border:1px solid var(--border); padding:6px 12px; border-radius:8px; font-size:0.9em; white-space:nowrap; }
+  .home:hover { color:var(--accent); }
+  button { font-size:1em; padding:8px 14px; border-radius:8px; border:1px solid var(--border); background:#fff; cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+  .tabs button { flex:1 1 auto; font-size:0.95em; }
+  .tabs button.active { background:var(--ink); color:#fff; border-color:var(--ink); }
+
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:14px; margin-bottom:12px; }
+  .layout { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start; }
+  .col-sim { flex:1 1 420px; }
+  .col-side { flex:1 1 300px; }
+  canvas { display:block; max-width:100%; background:#0c1119; border-radius:6px; }
+  .yr { display:inline-block; font-size:0.8em; background:#eef3fa; color:var(--accent); padding:1px 9px; border-radius:20px; margin-left:6px; vertical-align:middle; }
+
+  .param { margin:10px 0; }
+  .param label { display:flex; justify-content:space-between; font-weight:600; margin-bottom:4px; }
+  .param label .val { color:var(--accent); font-variant-numeric:tabular-nums; }
+  .param input[type=range] { width:100%; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .hint { color:var(--sub); font-size:0.86em; margin-top:6px; }
+
+  .result { background:#f5f9f2; border:1px solid #cfe3c8; border-radius:8px; padding:10px 12px; margin-top:10px; font-variant-numeric:tabular-nums; }
+  .result .big { font-size:1.5em; font-weight:700; color:var(--ok); }
+  .result .err { color:var(--sub); font-size:0.9em; }
+  .result.bad { background:#fdf0ef; border-color:#f0c9c4; }
+  .result.bad .big { color:var(--accent2); }
+
+  .story { font-size:0.92em; }
+  .story h3 { font-size:1em; margin:10px 0 4px; color:var(--accent); }
+  .story p { margin-bottom:6px; }
+  .eq { text-align:center; font-family:Georgia,serif; font-size:1.1em; margin:8px 0; background:#f7f9fc; border:1px solid var(--border); border-radius:6px; padding:6px; }
+
+  table { width:100%; border-collapse:collapse; font-size:0.9em; }
+  th,td { border:1px solid var(--border); padding:5px 7px; text-align:center; font-variant-numeric:tabular-nums; }
+  th { background:#eef3fa; }
+  td.name { text-align:left; }
+  tr.modern td { background:#eaf2fc; font-weight:700; }
+
+  body.projector { font-size:19px; }
+  body.projector button { padding:11px 16px; }
+  @media (max-width:720px){ body{font-size:16px;} .col-sim,.col-side{flex:1 1 100%;} }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="home" href="../../index.html">🏠 홈</a>
+  <h1>🌠 빛의 속도 측정 — 과학사</h1>
+  <span class="spacer"></span>
+  <button id="projectorBtn" title="프로젝터용 큰 글씨">🖥 큰 글씨</button>
+</header>
+
+<div class="tabs" id="tabs">
+  <button data-tab="overview" class="active">📜 개요·타임라인</button>
+  <button data-tab="galileo">🏔 갈릴레이 1638</button>
+  <button data-tab="romer">🪐 뢰머 1676</button>
+  <button data-tab="fizeau">⚙️ 피조 1849</button>
+  <button data-tab="foucault">🪞 푸코 1862</button>
+</div>
+
+<!-- ══════════ 개요 ══════════ -->
+<section id="overview" class="tabpanel">
+  <div class="panel story">
+    <p>빛이 <b>순식간에</b> 도달하는지, 아니면 <b>유한한 속도</b>로 달리는지 — 이 물음에 답하기까지 약 250년이 걸렸습니다.
+    측정 정밀도는 점점 높아져, 오늘날 빛의 속도는 <b>측정하는 값이 아니라 정의된 상수</b>가 되었습니다.</p>
+    <div class="eq">현대 정의값 &nbsp; c = 299 792 458 m/s (정확)</div>
+    <p class="hint">1983년부터 1 m는 "빛이 진공에서 1/299 792 458 초 동안 가는 거리"로 정의됩니다. 즉 c는 더 이상 오차가 없습니다.</p>
+  </div>
+  <div class="panel">
+    <table>
+      <thead><tr><th>연도</th><th class="name">과학자 · 방법</th><th>측정한 c</th><th>현대값 대비</th></tr></thead>
+      <tbody>
+        <tr><td>1638</td><td class="name">갈릴레이 · 랜턴 신호</td><td>측정 실패</td><td>—</td></tr>
+        <tr><td>1676</td><td class="name">뢰머 · 목성 위성 이오</td><td>≈ 220 000 km/s</td><td>−27%</td></tr>
+        <tr><td>1728</td><td class="name">브래들리 · 광행차</td><td>≈ 301 000 km/s</td><td>+0.4%</td></tr>
+        <tr><td>1849</td><td class="name">피조 · 톱니바퀴</td><td>≈ 313 000 km/s</td><td>+4.4%</td></tr>
+        <tr><td>1862</td><td class="name">푸코 · 회전거울</td><td>≈ 298 000 km/s</td><td>−0.6%</td></tr>
+        <tr><td>1926</td><td class="name">마이컬슨 · 회전 팔각거울</td><td>≈ 299 796 km/s</td><td>+0.001%</td></tr>
+        <tr class="modern"><td>1983~</td><td class="name">현대 · 정의 상수</td><td>299 792.458 km/s</td><td>기준</td></tr>
+      </tbody>
+    </table>
+    <p class="hint" id="measuredNote">위 탭에서 직접 측정해 보면, 여러분이 구한 값이 여기에 기록됩니다.</p>
+    <table id="measuredTable" style="margin-top:8px; display:none">
+      <thead><tr><th class="name">내가 측정한 방법</th><th>구한 c (km/s)</th><th>오차</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ══════════ 갈릴레이 ══════════ -->
+<section id="galileo" class="tabpanel" hidden>
+  <div class="layout">
+    <div class="col-sim panel">
+      <canvas id="cvGalileo" width="440" height="240"></canvas>
+      <div class="param">
+        <label for="galL">두 언덕 사이 거리 L <span class="val"><span id="galLVal">2.0</span> km</span></label>
+        <input type="range" id="galL" min="0.5" max="30" step="0.5" value="2">
+      </div>
+      <button id="galFlash" class="primary">💡 랜턴 신호 보내기</button>
+      <div class="result bad" id="galResult"></div>
+    </div>
+    <div class="col-side panel story">
+      <h3>랜턴 신호법 <span class="yr">1638</span></h3>
+      <p>갈릴레이는 두 언덕에서 조수와 마주 서서, 한쪽이 등불을 열면 다른 쪽이 그것을 <b>본 즉시</b> 자기 등불을 열게 하고, 빛이 왕복하는 시간을 재려 했습니다.</p>
+      <div class="eq">빛 왕복 시간 = 2L / c</div>
+      <p>문제는 사람의 <b>반응 시간(약 0.2초)</b>이 빛의 왕복 시간보다 압도적으로 크다는 것. 거리를 아무리 늘려도 반응 시간에 묻혀 버립니다.</p>
+      <p class="hint">거리 슬라이더를 최대로 올려도 빛 왕복 시간은 여전히 반응 시간의 수천분의 1입니다. 갈릴레이는 "빛이 즉각적이지는 않은 것 같지만, 매우 빠르다"는 결론에 그쳤습니다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 뢰머 ══════════ -->
+<section id="romer" class="tabpanel" hidden>
+  <div class="layout">
+    <div class="col-sim panel">
+      <canvas id="cvRomer" width="440" height="300"></canvas>
+      <div class="param">
+        <label for="romMonth">지구의 공전 위치 <span class="val"><span id="romMonthVal">0</span> 개월</span></label>
+        <input type="range" id="romMonth" min="0" max="6" step="0.1" value="0">
+      </div>
+      <p class="hint">0개월: 지구가 목성에 가장 가까움 · 6개월: 가장 멀어짐(궤도 반대편)</p>
+      <div class="result" id="romResult"></div>
+    </div>
+    <div class="col-side panel story">
+      <h3>목성 위성 이오의 식 <span class="yr">1676</span></h3>
+      <p>목성의 위성 <b>이오</b>는 약 1.77일마다 목성 뒤로 숨었다 나오는 <b>식(蝕)</b>을 반복합니다. 뢰머는 지구가 목성에서 <b>멀어질 때 식이 점점 늦게</b> 관측되는 것을 발견했습니다.</p>
+      <p>지구가 반 바퀴 도는 동안 늦어진 총 시간은, 빛이 <b>지구 공전궤도의 지름</b>을 가로지르는 데 걸리는 시간입니다.</p>
+      <div class="eq">c = 궤도 지름 D / 최대 지연 Δt</div>
+      <p class="hint">이것이 빛의 속도가 <b>유한함</b>을 보인 최초의 증거입니다. (뢰머 자신은 c를 명시적으로 계산하진 않았고, 하위헌스가 그 값으로 계산했습니다.)</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 피조 ══════════ -->
+<section id="fizeau" class="tabpanel" hidden>
+  <div class="layout">
+    <div class="col-sim panel">
+      <canvas id="cvFizeau" width="440" height="260"></canvas>
+      <div class="param">
+        <label for="fizF">톱니바퀴 회전수 f <span class="val"><span id="fizFVal">0</span> 회/초</span></label>
+        <input type="range" id="fizF" min="0" max="40" step="0.05" value="0">
+      </div>
+      <div class="row">
+        <label>거리 L <input type="number" id="fizL" value="8633" step="1" style="width:90px"> m</label>
+        <label>톱니 수 n <input type="number" id="fizN" value="720" step="1" style="width:70px"></label>
+      </div>
+      <div class="result" id="fizResult"></div>
+    </div>
+    <div class="col-side panel story">
+      <h3>회전 톱니바퀴 <span class="yr">1849</span></h3>
+      <p>피조는 빠르게 도는 <b>톱니바퀴의 틈</b>으로 빛을 내보내, 멀리(L=8.6 km) 있는 거울에 반사시켜 되돌아오게 했습니다.</p>
+      <p>회전이 느리면 빛은 <b>같은 틈</b>으로 돌아오지만, 회전수를 높이면 돌아온 빛이 <b>다음 톱니에 막혀(식)</b> 사라집니다.</p>
+      <div class="eq">c = 4 · L · n · f<sub>식</sub></div>
+      <p class="hint">밝기 막대가 처음으로 0이 되는 회전수 f를 찾아 위 식에 넣으세요. 지상 실험실에서 빛의 속도를 잰 <b>최초</b>의 측정입니다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 푸코 ══════════ -->
+<section id="foucault" class="tabpanel" hidden>
+  <div class="layout">
+    <div class="col-sim panel">
+      <canvas id="cvFoucault" width="440" height="260"></canvas>
+      <div class="param">
+        <label for="fouW">회전거울 회전수 <span class="val"><span id="fouWVal">400</span> 회/초</span></label>
+        <input type="range" id="fouW" min="0" max="1000" step="5" value="400">
+      </div>
+      <div class="row">
+        <label>거울 간 거리 D <input type="number" id="fouD" value="20" step="1" style="width:70px"> m</label>
+      </div>
+      <div class="result" id="fouResult"></div>
+    </div>
+    <div class="col-side panel story">
+      <h3>회전거울 <span class="yr">1862</span></h3>
+      <p>푸코는 빛을 <b>회전하는 거울</b>에 맞춰, 멀리 있는 고정 거울로 보냈다 되돌렸습니다. 빛이 왕복하는 짧은 시간 동안 회전거울이 <b>조금 돌아가</b>, 돌아온 빛은 원래 경로에서 살짝 <b>비껴</b> 나갑니다.</p>
+      <div class="eq">편향각 = 4 ω D / c &nbsp;→&nbsp; c = 4 ω D / 편향각</div>
+      <p>이 방법은 좁은 실험실에서도 가능했고, 특히 <b>물속에서 빛이 더 느림</b>을 보여 빛의 <b>파동설</b>을 뒷받침했습니다.</p>
+      <p class="hint">ω는 각속도(2πf). 편향각이 아주 작아 화면에서는 과장해 표시합니다.</p>
+    </div>
+  </div>
+</section>
+
+<script>
+"use strict";
+const C = 299792458;                 // 빛의 속도 (m/s, 참값)
+const EARTH_R = 1.496e11;            // 지구 공전 반지름 (m)
+const EARTH_D = 2 * EARTH_R;         // 지름
+const $ = (id) => document.getElementById(id);
+const fmtKms = (c_mps) => (c_mps / 1000).toLocaleString('en-US', {maximumFractionDigits:0});
+const errPct = (c_mps) => ((c_mps - C) / C * 100);
+
+const measured = {};                 // {method: c_mps}
+function recordMeasure(method, label, c_mps) {
+  measured[method] = { label, c: c_mps };
+  const tb = $("measuredTable").querySelector("tbody");
+  tb.innerHTML = "";
+  const keys = Object.keys(measured);
+  keys.forEach(k => {
+    const m = measured[k];
+    const e = errPct(m.c);
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td class="name">${m.label}</td><td>${fmtKms(m.c)}</td><td>${(e>=0?'+':'')}${e.toFixed(1)}%</td>`;
+    tb.appendChild(tr);
+  });
+  $("measuredTable").style.display = keys.length ? "" : "none";
+  $("measuredNote").textContent = keys.length
+    ? "직접 측정한 값입니다. 개요 표의 역사적 값·현대값과 비교해 보세요."
+    : "위 탭에서 직접 측정해 보면, 여러분이 구한 값이 여기에 기록됩니다.";
+}
+
+/* ════════ 탭 전환 ════════ */
+let activeTab = "overview";
+$("tabs").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  activeTab = b.dataset.tab;
+  document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("active", x === b));
+  document.querySelectorAll(".tabpanel").forEach(p => p.hidden = p.id !== activeTab);
+});
+$("projectorBtn").addEventListener("click", () => document.body.classList.toggle("projector"));
+
+/* ════════ 공통 애니메이션 루프 ════════ */
+let t0 = performance.now();
+function loop(now) {
+  const t = (now - t0) / 1000;
+  if (activeTab === "galileo") drawGalileo(t);
+  else if (activeTab === "romer") drawRomer(t);
+  else if (activeTab === "fizeau") drawFizeau(t);
+  else if (activeTab === "foucault") drawFoucault(t);
+  requestAnimationFrame(loop);
+}
+
+/* ════════ 갈릴레이 ════════ */
+const galCv = $("cvGalileo"), galCtx = galCv.getContext("2d");
+let galFlashT = -99;
+$("galL").addEventListener("input", (e) => { $("galLVal").textContent = (+e.target.value).toFixed(1); updateGalileo(); });
+$("galFlash").addEventListener("click", () => { galFlashT = (performance.now()-t0)/1000; });
+function updateGalileo() {
+  const L_km = +$("galL").value, L = L_km * 1000;
+  const lightRT = 2 * L / C;             // 빛 왕복 시간(s)
+  const reaction = 0.2;                  // 사람 반응(s)
+  const needKmForReaction = reaction * C / 2 / 1000; // 반응시간=빛왕복 이 되려면
+  $("galResult").innerHTML =
+    `빛의 왕복 시간 = <b>${(lightRT*1e6).toFixed(2)} µs</b> (${(lightRT*1000).toFixed(4)} ms)<br>`
+    + `사람 반응 시간 ≈ <b>0.2 s</b> = 200 000 µs<br>`
+    + `<span class="err">→ 반응 시간이 빛 왕복보다 약 <b>${Math.round(reaction/lightRT).toLocaleString()}배</b> 커서 측정 불가.<br>`
+    + `빛 왕복이 반응 시간과 같아지려면 L ≈ ${Math.round(needKmForReaction).toLocaleString()} km 필요!</span>`;
+}
+function drawGalileo(t) {
+  const w = galCv.width, h = galCv.height, ctx = galCtx;
+  ctx.fillStyle = "#0c1119"; ctx.fillRect(0,0,w,h);
+  // 별
+  ctx.fillStyle = "#ffffff22";
+  for (let i=0;i<40;i++){ ctx.fillRect((i*97)%w, (i*53)%(h/2), 1.5, 1.5); }
+  const gy = h-40;
+  // 두 언덕
+  ctx.fillStyle = "#233";
+  ctx.beginPath(); ctx.moveTo(20,gy); ctx.lineTo(70,gy-70); ctx.lineTo(120,gy); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(w-120,gy); ctx.lineTo(w-70,gy-70); ctx.lineTo(w-20,gy); ctx.closePath(); ctx.fill();
+  ctx.fillStyle="#3a4a5a"; ctx.fillRect(0,gy,w,40);
+  const ax=70, ay=gy-70, bx=w-70, by=gy-70;
+  // 관찰자 A/B 랜턴
+  const flashAge = t - galFlashT;
+  const roundtripAnim = 1.4; // 화면 애니메이션용(실제 아님)
+  function lantern(x,y,on,label){ ctx.beginPath(); ctx.arc(x,y,7,0,7); ctx.fillStyle=on?"#ffe066":"#5a4a20"; ctx.fill();
+    if(on){ctx.beginPath();ctx.arc(x,y,13,0,7);ctx.fillStyle="rgba(255,224,102,.3)";ctx.fill();}
+    ctx.fillStyle="#cbd5e1"; ctx.font="11px sans-serif"; ctx.textAlign="center"; ctx.fillText(label,x,y+24); }
+  let aOn=false,bOn=false,pulseX=null;
+  if (flashAge>=0 && flashAge<roundtripAnim){
+    aOn = true;
+    const p = flashAge/roundtripAnim; // 0→1 왕복
+    if (p<0.5){ pulseX = ax + (bx-ax)*(p/0.5); if(p>0.47) bOn=true; }
+    else { pulseX = bx + (ax-bx)*((p-0.5)/0.5); bOn=true; }
+  }
+  // 빛 경로
+  ctx.strokeStyle="#334155"; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke(); ctx.setLineDash([]);
+  lantern(ax,ay,aOn,"A (관찰자)"); lantern(bx,by,bOn,"B (조수)");
+  if (pulseX!==null){ ctx.beginPath(); ctx.arc(pulseX,ay,5,0,7); ctx.fillStyle="#fff59d"; ctx.fill(); }
+  // L 표시
+  ctx.strokeStyle="#64748b"; ctx.beginPath(); ctx.moveTo(ax,gy+14); ctx.lineTo(bx,gy+14); ctx.stroke();
+  ctx.fillStyle="#94a3b8"; ctx.font="12px sans-serif"; ctx.textAlign="center";
+  ctx.fillText("L = "+(+$("galL").value).toFixed(1)+" km", (ax+bx)/2, gy+30);
+}
+
+/* ════════ 뢰머 ════════ */
+const romCv = $("cvRomer"), romCtx = romCv.getContext("2d");
+$("romMonth").addEventListener("input", (e)=>{ $("romMonthVal").textContent=(+e.target.value).toFixed(1); updateRomer(); });
+function earthDistForMonth(m){ // m: 0(근일 정렬)~6(원일). 각도 0~π
+  const ang = Math.PI * (m/6);
+  // 목성이 매우 멀리 있다고 가정: 지구-목성 거리 ≈ d_J - R*cos(ang)
+  return -EARTH_R*Math.cos(ang); // 상대 거리(근접 위치 기준 +): 0 → +2R
+}
+function updateRomer(){
+  const m = +$("romMonth").value;
+  const extra = earthDistForMonth(m) + EARTH_R; // 근접(0)에서 0, 원(6)에서 2R
+  const delay = extra / C;
+  const res = $("romResult");
+  if (m >= 6 - 1e-6){
+    const c_meas = EARTH_D / delay;
+    res.className = "result";
+    res.innerHTML = `가장 멀어짐: 누적 지연 Δt = <b>${(delay/60).toFixed(1)} 분</b><br>`
+      + `궤도 지름 D = 2 × 1.496×10¹¹ = <b>2.99×10¹¹ m</b><br>`
+      + `<span class="big">c = D/Δt ≈ ${fmtKms(c_meas)} km/s</span><br>`
+      + `<span class="err">현대값 대비 ${errPct(c_meas)>=0?'+':''}${errPct(c_meas).toFixed(1)}%</span>`;
+    recordMeasure("romer","뢰머 · 목성 위성", c_meas);
+  } else {
+    res.className = "result";
+    res.innerHTML = `현재 누적 지연 Δt = <b>${(delay/60).toFixed(2)} 분</b> (${delay.toFixed(0)} 초)<br>`
+      + `<span class="err">지구가 멀어질수록 이오의 식이 늦게 보입니다. 슬라이더를 <b>6개월</b>(가장 멀어짐)까지 옮겨 c를 계산하세요.</span>`;
+  }
+}
+function drawRomer(t){
+  const w=romCv.width,h=romCv.height,ctx=romCtx;
+  ctx.fillStyle="#0c1119"; ctx.fillRect(0,0,w,h);
+  const sunX=w*0.30, sunY=h*0.52, orbR=78;
+  // 지구 궤도
+  ctx.strokeStyle="#2a3550"; ctx.beginPath(); ctx.arc(sunX,sunY,orbR,0,7); ctx.stroke();
+  // 태양
+  ctx.beginPath(); ctx.arc(sunX,sunY,13,0,7); ctx.fillStyle="#ffcc33"; ctx.fill();
+  ctx.fillStyle="#ffcc33"; ctx.font="11px sans-serif"; ctx.textAlign="center"; ctx.fillText("태양",sunX,sunY+26);
+  // 지구 위치 (m=0: 목성쪽=오른쪽 근접, m=6: 반대편)
+  const m=+$("romMonth").value; const ang = Math.PI*(m/6); // 0(오른쪽)→π(왼쪽)
+  const eex = sunX + orbR*Math.cos(ang), eey = sunY - orbR*Math.sin(ang);
+  // 목성 + 이오 (오른쪽 멀리)
+  const jx=w-40, jy=sunY;
+  ctx.beginPath(); ctx.arc(jx,jy,16,0,7); ctx.fillStyle="#c9a66b"; ctx.fill();
+  ctx.strokeStyle="#a8875030"; ctx.beginPath(); ctx.arc(jx,jy,26,0,7); ctx.stroke();
+  const ioAng=t*2.2; const iox=jx+26*Math.cos(ioAng), ioy=jy+26*Math.sin(ioAng);
+  const eclipsed = Math.cos(ioAng) < -0.6; // 목성 뒤
+  ctx.beginPath(); ctx.arc(iox,ioy,4,0,7); ctx.fillStyle=eclipsed?"#4a4a4a":"#e8e8e8"; ctx.fill();
+  ctx.fillStyle="#c9a66b"; ctx.font="11px sans-serif"; ctx.fillText("목성",jx,jy+34);
+  ctx.fillStyle="#94a3b8"; ctx.fillText("이오",jx+30,jy-24);
+  // 지구
+  ctx.beginPath(); ctx.arc(eex,eey,6,0,7); ctx.fillStyle="#4da6ff"; ctx.fill();
+  ctx.fillStyle="#4da6ff"; ctx.fillText("지구",eex,eey-12);
+  // 빛 경로(이오→지구)
+  ctx.strokeStyle="#ffe06655"; ctx.setLineDash([3,4]); ctx.beginPath(); ctx.moveTo(jx,jy); ctx.lineTo(eex,eey); ctx.stroke(); ctx.setLineDash([]);
+  // 근접/원 위치 표시
+  ctx.fillStyle="#64748b"; ctx.font="10px sans-serif"; ctx.textAlign="center";
+  ctx.fillText("근접(0개월)", sunX+orbR, sunY+orbR+2 > h? sunY: sunY-orbR-6> 0? sunY-orbR-6: sunY);
+}
+
+/* ════════ 피조 ════════ */
+const fizCv=$("cvFizeau"), fizCtx=fizCv.getContext("2d");
+["fizF","fizL","fizN"].forEach(id=> $(id).addEventListener("input", updateFizeau));
+$("fizF").addEventListener("input", e=> $("fizFVal").textContent=(+e.target.value).toFixed(2));
+function fizeauIntensity(f,L,n){
+  const tau = 2*L/C;               // 왕복 시간
+  return Math.pow(Math.cos(Math.PI*n*f*tau),2); // 1(틈)~0(톱니 막힘)
+}
+function updateFizeau(){
+  const f=+$("fizF").value, L=+$("fizL").value, n=+$("fizN").value;
+  const I = fizeauIntensity(f,L,n);
+  const f1 = C/(4*L*n);            // 첫 식 회전수
+  // 식의 차수 k (첫 식=1, 다음=3,5...): c = 4Lnf / k
+  const order = Math.max(1, Math.round(4*L*n*f/C) | 1);  // 가장 가까운 홀수
+  const c_meas = 4*L*n*f / order;
+  const res=$("fizResult");
+  const near = Math.abs(I) < 0.02 && f>0.5;
+  res.className = "result" + (near? "" : (I>0.5? " ":" "));
+  let bar = `<div style="height:12px;background:#e5ebf3;border-radius:6px;overflow:hidden;margin:4px 0">`
+    + `<div style="height:100%;width:${(I*100).toFixed(0)}%;background:${I<0.15?'#d64545':'#1e8f4e'}"></div></div>`;
+  res.innerHTML = `돌아온 빛의 밝기: <b>${(I*100).toFixed(0)}%</b> ${bar}`
+    + (near
+      ? `<span class="big">${order===1?'첫':order+'차'} 식(蝕) 발생! c = 4Lnf${order>1?'/'+order:''} = ${fmtKms(c_meas)} km/s</span><br><span class="err">현대값 대비 ${errPct(c_meas)>=0?'+':''}${errPct(c_meas).toFixed(1)}%</span>`
+      : `<span class="err">회전수를 올려 밝기가 <b>처음 0%</b>가 되는 지점(첫 식)을 찾으세요. 힌트: 약 ${f1.toFixed(1)} 회/초 부근</span>`);
+  if (near) recordMeasure("fizeau","피조 · 톱니바퀴", c_meas);
+}
+function drawFizeau(t){
+  const w=fizCv.width,h=fizCv.height,ctx=fizCtx;
+  ctx.fillStyle="#0c1119"; ctx.fillRect(0,0,w,h);
+  const f=+$("fizF").value, L=+$("fizL").value, n=+$("fizN").value;
+  const wheelX=70, wheelY=h/2, R=42, teeth=16;
+  // 광원
+  ctx.fillStyle="#94a3b8"; ctx.font="11px sans-serif"; ctx.textAlign="center";
+  ctx.fillText("광원",wheelX,20);
+  // 톱니바퀴 (시각용 16톱니, 회전각 = 2πf t 를 느리게)
+  const rot = t*f*0.35;
+  ctx.save(); ctx.translate(wheelX,wheelY); ctx.rotate(rot);
+  ctx.fillStyle="#334155";
+  for(let i=0;i<teeth;i++){ const a=i/teeth*2*Math.PI; if(i%2===0){ ctx.beginPath(); const a2=(i+1)/teeth*2*Math.PI;
+    ctx.moveTo(Math.cos(a)*R*0.6,Math.sin(a)*R*0.6); ctx.lineTo(Math.cos(a)*R,Math.sin(a)*R);
+    ctx.lineTo(Math.cos(a2)*R,Math.sin(a2)*R); ctx.lineTo(Math.cos(a2)*R*0.6,Math.sin(a2)*R*0.6); ctx.closePath(); ctx.fill(); } }
+  ctx.beginPath(); ctx.arc(0,0,R*0.6,0,7); ctx.strokeStyle="#475569"; ctx.stroke();
+  ctx.restore();
+  // 거울 (오른쪽)
+  const mx=w-30;
+  ctx.fillStyle="#9db2c8"; ctx.fillRect(mx,wheelY-40,6,80);
+  ctx.fillStyle="#94a3b8"; ctx.fillText("거울",mx,wheelY-48);
+  ctx.fillStyle="#64748b"; ctx.font="10px sans-serif"; ctx.fillText("L = "+(L/1000).toFixed(1)+" km", (wheelX+mx)/2, wheelY+58);
+  // 빛 경로 (밝기에 따라)
+  const I=fizeauIntensity(f,L,n);
+  ctx.strokeStyle=`rgba(255,224,102,${0.25+0.6*1})`; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(wheelX+R,wheelY-6); ctx.lineTo(mx,wheelY-6); ctx.stroke(); // 나가는 빛
+  ctx.strokeStyle=`rgba(255,224,102,${0.15+0.75*I})`;
+  ctx.beginPath(); ctx.moveTo(mx,wheelY+6); ctx.lineTo(wheelX+R,wheelY+6); ctx.stroke(); // 돌아오는 빛(밝기 I)
+  ctx.lineWidth=1;
+  // 관찰자 눈 밝기
+  ctx.beginPath(); ctx.arc(wheelX,wheelY+62,8,0,7); ctx.fillStyle=`rgba(255,224,102,${0.1+0.85*I})`; ctx.fill();
+  ctx.strokeStyle="#64748b"; ctx.stroke();
+  ctx.fillStyle="#94a3b8"; ctx.fillText("관측",wheelX,wheelY+84);
+}
+
+/* ════════ 푸코 ════════ */
+const fouCv=$("cvFoucault"), fouCtx=fouCv.getContext("2d");
+["fouW","fouD"].forEach(id=> $(id).addEventListener("input", updateFoucault));
+$("fouW").addEventListener("input", e=> $("fouWVal").textContent=(+e.target.value).toFixed(0));
+function updateFoucault(){
+  const f=+$("fouW").value, D=+$("fouD").value;
+  const omega=2*Math.PI*f;
+  const tau=2*D/C;
+  const deflection = 2*omega*tau;        // 편향각(rad) = 4ωD/c ... 2*(ω*τ) with τ=2D/c → 2ω·2D/c? check
+  // 회전거울이 τ 동안 도는 각 = ω·τ. 반사빔 편향 = 2·(ω·τ) = 2ωτ. τ=2D/c → 편향=4ωD/c
+  const defl = 2*omega*tau; // = 4ωD/c
+  const c_meas = f>0 ? 4*omega*D/ (defl) : C; // 항상 c (자기일관): 대신 표시용으로 defl로부터 역산
+  const res=$("fouResult");
+  if (f<1){ res.className="result"; res.innerHTML=`회전거울을 돌리세요. 회전이 없으면 빛은 그대로 되돌아옵니다.`; return; }
+  // 실제로는 학생이 편향각을 '측정'하고 c=4ωD/편향각. 여기선 defl이 참값에서 나왔으므로 c 복원.
+  const c_from = 4*omega*D/defl;
+  res.className="result";
+  res.innerHTML = `회전거울이 도는 각 = ω·(2D/c) 만큼, 돌아온 빛은 <b>${(defl*1e6).toFixed(1)} µrad</b> 편향<br>`
+    + `<span class="big">c = 4ωD / 편향각 ≈ ${fmtKms(c_from)} km/s</span><br>`
+    + `<span class="err">편향각을 정밀히 잴수록 c가 정확해집니다 (현대값 대비 ${errPct(c_from)>=0?'+':''}${errPct(c_from).toFixed(2)}%)</span>`;
+  recordMeasure("foucault","푸코 · 회전거울", c_from);
+}
+function drawFoucault(t){
+  const w=fouCv.width,h=fouCv.height,ctx=fouCtx;
+  ctx.fillStyle="#0c1119"; ctx.fillRect(0,0,w,h);
+  const f=+$("fouW").value, D=+$("fouD").value;
+  const srcX=40, my=h/2, rmX=140, fmX=w-30;
+  // 광원
+  ctx.fillStyle="#94a3b8"; ctx.font="11px sans-serif"; ctx.textAlign="center"; ctx.fillText("광원",srcX,my-30);
+  ctx.beginPath(); ctx.arc(srcX,my,6,0,7); ctx.fillStyle="#ffe066"; ctx.fill();
+  // 회전거울
+  const spin=t*f*0.02;
+  ctx.save(); ctx.translate(rmX,my); ctx.rotate(Math.sin(spin)*0.25);
+  ctx.fillStyle="#5fd3ff"; ctx.fillRect(-3,-24,6,48); ctx.restore();
+  ctx.fillStyle="#94a3b8"; ctx.fillText("회전거울",rmX,my+42);
+  // 고정거울
+  ctx.fillStyle="#9db2c8"; ctx.fillRect(fmX,my-30,6,60);
+  ctx.fillStyle="#94a3b8"; ctx.fillText("고정거울",fmX-4,my-38);
+  ctx.fillStyle="#64748b"; ctx.font="10px sans-serif"; ctx.fillText("D = "+D+" m",(rmX+fmX)/2,my+54);
+  // 빛 경로
+  ctx.strokeStyle="rgba(255,224,102,.8)"; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(srcX+6,my); ctx.lineTo(rmX,my); ctx.stroke();       // 광원→회전거울
+  ctx.beginPath(); ctx.moveTo(rmX,my); ctx.lineTo(fmX,my); ctx.stroke();          // →고정거울
+  // 돌아온 빛(편향 과장)
+  const deflShow = f>0 ? Math.min(38, f*0.03) : 0;
+  ctx.strokeStyle="rgba(255,120,120,.9)";
+  ctx.beginPath(); ctx.moveTo(fmX,my); ctx.lineTo(rmX,my); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(rmX,my); ctx.lineTo(srcX+30,my-deflShow); ctx.stroke(); // 편향되어 돌아옴
+  ctx.lineWidth=1;
+  // 스크린 편향 표시
+  ctx.fillStyle="#ff8080"; ctx.beginPath(); ctx.arc(srcX+30,my-deflShow,4,0,7); ctx.fill();
+  ctx.fillStyle="#94a3b8"; ctx.fillText("편향된 상",srcX+30,my-deflShow-10);
+}
+
+/* ════════ 초기화 ════════ */
+updateGalileo(); updateRomer(); updateFizeau(); updateFoucault();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

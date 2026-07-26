@@ -175,9 +175,11 @@ function initStep1() {
     const jx=w/2, jy=h/2;
     ctx.beginPath(); ctx.arc(jx,jy,34,0,7); ctx.fillStyle="#d9a066"; ctx.fill();
     ctx.fillStyle="#fceec2"; ctx.font="13px sans-serif"; ctx.textAlign="center"; ctx.fillText("목성",jx,jy+52);
-    const ang = running ? t*2.4 : 0;
+    const ang = running ? t*1.1 : 0;    // 천천히 돌려서 '숨는' 순간을 눈으로 볼 수 있게
     const ix = jx+58*Math.cos(ang), iy=jy+22*Math.sin(ang);
-    const eclipsed = Math.cos(ang) < -0.55 && Math.sin(ang) > -0.3 && Math.sin(ang) < 0.3;
+    const angMod = ((ang % (2*Math.PI)) + 2*Math.PI) % (2*Math.PI);
+    const distFromBack = Math.min(Math.abs(angMod - Math.PI), 2*Math.PI - Math.abs(angMod - Math.PI));
+    const eclipsed = distFromBack < 0.65;   // 목성 뒤쪽 폭을 넉넉히 잡아 숨는 시간이 잘 보이게
     if (running && eclipsed && !lastEclipsed) { state.eclipseCount++; $("eclipseCountLabel").textContent = state.eclipseCount; }
     lastEclipsed = eclipsed && running;
     if (!eclipsed) { ctx.beginPath(); ctx.arc(ix,iy,7,0,7); ctx.fillStyle="#f0e6c8"; ctx.fill(); }
@@ -234,7 +236,7 @@ function initStep2() {
     ctx.beginPath(); ctx.arc(sunX,sunY,14,0,7); ctx.fillStyle="#ffcc33"; ctx.fill();
     ctx.fillStyle="#ffcc33"; ctx.font="11px sans-serif"; ctx.textAlign="center"; ctx.fillText("태양",sunX,sunY+28);
     const ang = Math.PI*state.gaugeMonth/6;
-    const ex = sunX+orbR*Math.cos(ang), ey=sunY-orbR*Math.sin(ang)*0.55;
+    const ex = sunX+orbR*Math.cos(ang), ey=sunY-orbR*Math.sin(ang);
     ctx.beginPath(); ctx.arc(ex,ey,7,0,7); ctx.fillStyle="#4da6ff"; ctx.fill();
     ctx.fillStyle="#4da6ff"; ctx.fillText("지구",ex,ey-14);
     const jx=w-70, jy=h/2;
@@ -299,7 +301,7 @@ function initStep3() {
         ro.innerHTML = `🎉 도착! 거리가 ${state.courierDistIdx===1?'가까울':(state.courierDistIdx===2?'보통일':'멀')} 때 <b>${elapsed.toFixed(1)}초</b> 걸렸어요.`;
       }
     }
-    ctx.font="20px sans-serif"; ctx.fillText("🏃", px+30, y-20);
+    ctx.font="22px sans-serif"; ctx.fillText("🏃", px, y-12);
   });
 }
 
@@ -310,9 +312,14 @@ function renderStep4() {
     <div class="step-eyebrow">STEP 4 / 6 · 직접 관측해보기</div>
     <div class="step-title">🔬 이제 여러분이 뢰머가 되어 볼게요!</div>
     <div class="story">
-      <p>지구가 목성과 <b>가장 가까울 때</b>, 그리고 <b>가장 멀 때</b> — 두 시점에서 이오가 나타나는 시각을 관측하고 실험 기록표에 적어봅시다.</p>
+      <p>지구는 태양 주위를 쉬지 않고 돌고 있어요. 지구가 <b>①번 자리(목성과 가장 가까움)</b>와 <b>②번 자리(가장 멀어짐)</b>를 지날 때 이오가 나타나는 시각을 관측하고 실험 기록표에 적어봅시다.</p>
+      <p class="hint" style="color:var(--sub); font-size:0.9em">💡 지구가 ①②번 자리 근처(노랗게 빛날 때)일 때 관측하면 더 정확해요. "잠시 멈춤"으로 딱 맞는 순간에 멈춰보세요!</p>
     </div>
-    <canvas id="cv4" width="600" height="220"></canvas>
+    <canvas id="cv4" width="600" height="260"></canvas>
+    <div class="controls">
+      <button id="btnPause4">⏸ 잠시 멈춤</button>
+      <span style="font-weight:700">지구 위치: <span id="orbitMonthLabel" style="color:var(--accent)">0.0</span> 개월째</span>
+    </div>
     <div class="controls">
       <button class="primary" id="btnObsNear">① 가장 가까울 때 관측</button>
       <button class="primary" id="btnObsFar">② 가장 멀 때 관측</button>
@@ -324,54 +331,122 @@ function renderStep4() {
         <tr><td>② 지구-목성 가장 멀어짐</td><td id="rowFar" class="pending">아직 관측 안 함</td></tr>
       </tbody>
     </table>
-    <div class="readout wait" id="step4Note">두 곳 모두 관측하면 다음 단계에서 빛의 속도를 계산해볼 수 있어요!</div>
+    <div class="readout wait" id="step4Note">두 곳 모두 관측하면 재미있는 이야기가 하나 더 나와요!</div>
+    <div id="historyRiddle"></div>
   </div>`;
 }
 function initStep4() {
   const canvas = $("cv4"), ctx = canvas.getContext("2d");
-  let anim = { running:false, which:null, start:0 };
-  function runObs(which) {
-    anim = { running:true, which, start:performance.now() };
-  }
-  $("btnObsNear").addEventListener("click", ()=>runObs("near"));
-  $("btnObsFar").addEventListener("click", ()=>runObs("far"));
-  function finishObs(which) {
-    const delay = which==="near" ? 0 : MAX_DELAY_S;
+  const ORBIT_PERIOD_S = 9;     // 화면에서 지구가 한 바퀴 도는 데 걸리는 연출 시간
+  let paused = false, orbitAccum = 0, lastGlobalT = null;
+
+  $("btnPause4").addEventListener("click", () => {
+    paused = !paused;
+    $("btnPause4").textContent = paused ? "▶ 다시 돌기" : "⏸ 잠시 멈춤";
+  });
+
+  function currentMonth() { return (orbitAccum / ORBIT_PERIOD_S * 12) % 12; }
+  function monthDist(a, b) { const d = Math.abs(a-b); return Math.min(d, 12-d); }
+
+  function doObserve(which) {
+    const m = currentMonth();
+    const delay = delayAtMonth(m);
+    const target = which === "near" ? 0 : 6;
+    const good = monthDist(m, target) < 0.5;
     if (which==="near") state.obsNear = delay; else state.obsFar = delay;
     const row = $(which==="near" ? "rowNear" : "rowFar");
     row.classList.remove("pending");
-    row.innerHTML = delay < 0.5
-      ? `✅ 예상 시각과 <b style="color:var(--ok)">정확히 일치!</b> (지연 0초)`
-      : `⏱ 예상보다 <b style="color:var(--warn)">${fmtMinSec(delay)} 늦게</b> 나타남!`;
+    const qualityMsg = good ? "🎯 딱 좋은 순간에 관측했어요!" : "🤏 목표 자리에서 조금 벗어났어요. 버튼을 다시 눌러 정확한 순간에 재관측해보세요.";
+    row.innerHTML = (delay < 5
+        ? `✅ 예상 시각과 <b style="color:var(--ok)">거의 일치!</b> (지연 ${fmtMinSec(delay)})`
+        : `⏱ 예상보다 <b style="color:var(--warn)">${fmtMinSec(delay)} 늦게</b> 나타남!`)
+      + `<br><span style="font-size:0.85em;color:${good?'var(--ok)':'var(--warn)'}">${qualityMsg}</span>`;
     if (state.obsNear!=null && state.obsFar!=null) {
       $("step4Note").className="readout";
-      $("step4Note").innerHTML = `🎉 두 관측 완료! 다음 단계로 넘어가서 빛의 속도를 계산해봅시다 →`;
+      $("step4Note").innerHTML = `🎉 두 관측 완료! 아래 수수께끼도 풀어보세요 👇`;
+      renderHistoryRiddle();
     }
   }
-  startLoop(()=>{
+  $("btnObsNear").addEventListener("click", ()=>doObserve("near"));
+  $("btnObsFar").addEventListener("click", ()=>doObserve("far"));
+
+  function renderHistoryRiddle() {
+    const dt = Math.max(1, state.obsFar - state.obsNear);
+    const C_HIST = 220000 * 1000;               // 1676년 당시 얻어졌던 값 (m/s)
+    const D_hist = C_HIST * dt;
+    const R_hist = D_hist / 2;
+    const errPctD = (D_hist - EARTH_D) / EARTH_D * 100;
+    $("historyRiddle").innerHTML = `
+      <div class="card" style="background:#fff6e8; border-color:var(--accent); margin-top:12px">
+        <div class="step-title" style="font-size:1.1em">🕵️ 뢰머 시대의 수수께끼</div>
+        <p>1676년, 뢰머와 동료들도 여러분처럼 지연시간을 관측해서 빛의 속도를 구했어요. 그런데 그들이 얻은 값은 <b>약 220,000 km/s</b>로, 오늘날 값보다 훨씬 느렸답니다. 왜 그랬을까요?</p>
+        <p>여러분이 관측한 것과 <b>비슷한 지연시간(Δt = ${fmtMinSec(dt)})</b>을 그들도 관측했다고 가정하면, 그들은 지구-태양 거리를 얼마라고 <b>믿고 있었던</b> 걸까요? 거꾸로 계산해봅시다!</p>
+        <div class="eq">지구-태양 거리 = 당시 c × Δt ÷ 2</div>
+        <div class="readout">
+          <span class="big">약 ${R_hist.toExponential(2)} m (${Math.round(R_hist/1000).toLocaleString('en-US')} km)</span><br>
+          오늘날 알고 있는 값(1.496×10¹¹ m)과 비교하면 <b>${errPctD>=0?'+':''}${errPctD.toFixed(1)}%</b> 차이가 나요!<br>
+          <span style="color:var(--sub); font-size:0.92em">뢰머 시대 사람들은 지구-태양 거리를 실제보다 짧게 알고 있었기 때문에, 계산한 빛의 속도도 실제보다 느리게 나온 거예요.</span>
+        </div>
+      </div>`;
+  }
+  function refreshRow(which) {
+    const val = which==="near" ? state.obsNear : state.obsFar;
+    if (val==null) return;
+    const row = $(which==="near" ? "rowNear" : "rowFar");
+    row.classList.remove("pending");
+    row.innerHTML = val < 5
+      ? `✅ 예상 시각과 <b style="color:var(--ok)">거의 일치!</b> (지연 ${fmtMinSec(val)})`
+      : `⏱ 예상보다 <b style="color:var(--warn)">${fmtMinSec(val)} 늦게</b> 나타남!`;
+  }
+  refreshRow("near"); refreshRow("far");
+  if (state.obsNear!=null && state.obsFar!=null) {
+    $("step4Note").className="readout";
+    $("step4Note").innerHTML = `🎉 두 관측 완료! 아래 수수께끼도 풀어보세요 👇`;
+    renderHistoryRiddle();
+  }
+
+  startLoop((t)=>{
+    if (lastGlobalT===null) lastGlobalT = t;
+    const dtFrame = t - lastGlobalT; lastGlobalT = t;
+    if (!paused) orbitAccum += dtFrame;
+
     const w=canvas.width,h=canvas.height; ctx.clearRect(0,0,w,h);
     ctx.fillStyle="#0b1526"; ctx.fillRect(0,0,w,h);
-    const sunX=110, sunY=h/2, orbR=70;
+    const sunX=150, sunY=h/2, orbR=90;
     ctx.strokeStyle="#2a3550"; ctx.beginPath(); ctx.arc(sunX,sunY,orbR,0,7); ctx.stroke();
-    ctx.beginPath(); ctx.arc(sunX,sunY,12,0,7); ctx.fillStyle="#ffcc33"; ctx.fill();
-    let earthAng = 0;
-    if (anim.running) earthAng = anim.which==="near" ? 0 : Math.PI;
-    else if (anim.which==="near") earthAng = 0; else if (anim.which==="far") earthAng = Math.PI;
-    const ex = sunX+orbR*Math.cos(earthAng), ey=sunY;
-    ctx.beginPath(); ctx.arc(ex,ey,7,0,7); ctx.fillStyle="#4da6ff"; ctx.fill();
-    ctx.fillStyle="#4da6ff"; ctx.font="11px sans-serif"; ctx.textAlign="center"; ctx.fillText("지구",ex,ey-14);
+    ctx.beginPath(); ctx.arc(sunX,sunY,14,0,7); ctx.fillStyle="#ffcc33"; ctx.fill();
+    ctx.fillStyle="#ffcc33"; ctx.font="11px sans-serif"; ctx.textAlign="center"; ctx.fillText("태양",sunX,sunY+30);
+
+    const month = currentMonth();
+    $("orbitMonthLabel").textContent = month.toFixed(1);
+
+    function drawMarker(mMonth, label) {
+      const a = Math.PI*mMonth/6;
+      const mx = sunX+orbR*Math.cos(a), my = sunY-orbR*Math.sin(a);
+      const near = monthDist(month, mMonth) < 0.5;
+      ctx.beginPath(); ctx.arc(mx,my, near?9:6, 0,7);
+      ctx.fillStyle = near ? "#ffe066" : "#4a5568"; ctx.fill();
+      ctx.strokeStyle="#ffffff55"; ctx.stroke();
+      ctx.fillStyle="#cbd5e1"; ctx.font="11px sans-serif"; ctx.textAlign="center";
+      ctx.fillText(label, mx, my-14);
+      return near;
+    }
+    const nearActive = drawMarker(0, "①");
+    const farActive = drawMarker(6, "②");
+
+    const ang = Math.PI*month/6;
+    const ex = sunX+orbR*Math.cos(ang), ey=sunY-orbR*Math.sin(ang);
+    ctx.beginPath(); ctx.arc(ex,ey,8,0,7); ctx.fillStyle="#4da6ff"; ctx.fill();
+    ctx.fillStyle="#4da6ff"; ctx.font="12px sans-serif"; ctx.fillText("지구",ex,ey-16);
+
     const jx=w-70, jy=h/2;
-    ctx.beginPath(); ctx.arc(jx,jy,18,0,7); ctx.fillStyle="#d9a066"; ctx.fill();
-    ctx.fillStyle="#fceec2"; ctx.fillText("목성",jx,jy+30);
+    ctx.beginPath(); ctx.arc(jx,jy,20,0,7); ctx.fillStyle="#d9a066"; ctx.fill();
+    ctx.fillStyle="#fceec2"; ctx.fillText("목성",jx,jy+34);
     ctx.strokeStyle="#ffe06655"; ctx.setLineDash([3,4]); ctx.beginPath(); ctx.moveTo(ex,ey); ctx.lineTo(jx,jy); ctx.stroke(); ctx.setLineDash([]);
-    if (anim.running) {
-      const el = (performance.now()-anim.start)/1000;
-      const dur = 1.2;
-      if (el < dur) {
-        ctx.fillStyle="#ffcc4d"; ctx.font="bold 16px sans-serif"; ctx.fillText("🔭 관측 중...", w/2, 30);
-      } else {
-        anim.running=false; finishObs(anim.which);
-      }
+
+    if (nearActive || farActive) {
+      ctx.fillStyle="#ffcc4d"; ctx.font="bold 14px sans-serif"; ctx.textAlign="center";
+      ctx.fillText("✨ 지금이 관측하기 좋은 순간이에요!", w/2, 26);
     }
   });
 }

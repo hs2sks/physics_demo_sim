@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>피조의 실험 — 돌아가는 톱니바퀴로 빛을 잡다</title>
+<style>
+  :root {
+    --bg:#fdf8f0; --panel:#fff; --ink:#2b2620; --sub:#7a7267;
+    --accent:#2f7ac2; --accent2:#d64545; --ok:#2f9e5c; --warn:#d64545;
+    --border:#dbe6f0; --radius:14px;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:"Segoe UI","Malgun Gothic",sans-serif; background:var(--bg); color:var(--ink); padding:12px; font-size:16px; line-height:1.65; }
+  header { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+  header h1 { font-size:1.2em; }
+  header .spacer { flex:1; }
+  .navbtn { text-decoration:none; color:var(--sub); border:1px solid var(--border); padding:7px 13px; border-radius:9px; font-size:0.85em; white-space:nowrap; background:#fff; }
+  .navbtn:hover { color:var(--accent); border-color:var(--accent); }
+
+  .wrap { max-width:760px; margin:0 auto; }
+
+  .progress { display:flex; align-items:center; gap:0; margin-bottom:16px; overflow-x:auto; padding-bottom:4px; }
+  .pd { width:34px; height:34px; border-radius:50%; border:2px solid var(--border); display:flex; align-items:center; justify-content:center;
+        font-size:14px; font-weight:700; color:var(--sub); cursor:pointer; flex-shrink:0; background:#fff; transition:all .15s; }
+  .pd.on { background:var(--accent); border-color:var(--accent); color:#fff; transform:scale(1.1); }
+  .pd.done { background:#e4f0fb; border-color:var(--accent); color:var(--accent); }
+  .pl { flex:1; height:3px; background:var(--border); min-width:14px; }
+  .pl.done { background:var(--accent); }
+
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:20px; box-shadow:0 3px 14px rgba(40,80,120,.06); margin-bottom:14px; }
+  .step-eyebrow { font-size:0.85em; color:var(--accent); font-weight:700; letter-spacing:.03em; margin-bottom:4px; }
+  .step-title { font-size:1.35em; font-weight:800; margin-bottom:12px; }
+  .story p { margin-bottom:10px; font-size:1.02em; }
+  .story b { color:var(--accent); }
+  .story .analogy { background:#eaf3fc; border-left:4px solid var(--accent); padding:10px 14px; border-radius:0 8px 8px 0; margin:10px 0; font-size:0.98em; }
+
+  canvas { display:block; max-width:100%; background:#0c1119; border-radius:10px; margin:14px 0; }
+
+  .controls { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:10px 0; }
+  button { font-size:1em; padding:10px 18px; border-radius:10px; border:1px solid var(--border); background:#fff; cursor:pointer; font-weight:600; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.primary:hover { background:#215f9c; }
+  button:disabled { opacity:0.4; cursor:not-allowed; }
+  .param { margin:12px 0; }
+  .param label { display:flex; justify-content:space-between; font-weight:700; margin-bottom:5px; }
+  .param label .val { color:var(--accent); font-variant-numeric:tabular-nums; }
+  .param input[type=range] { width:100%; height:8px; }
+
+  .readout { background:#f2f8f4; border:1px solid #cfe9d8; border-radius:10px; padding:12px 14px; margin-top:10px; font-size:1.05em; }
+  .readout.wait { background:#f5f2ea; border-color:var(--border); color:var(--sub); }
+  .readout .big { font-size:1.3em; font-weight:800; color:var(--ok); }
+  .readout .big.warn { color:var(--warn); }
+  .brightbar { height:14px; background:#e5ebf3; border-radius:7px; overflow:hidden; margin:6px 0; }
+  .brightbar > i { display:block; height:100%; background:var(--ok); }
+
+  table { width:100%; border-collapse:collapse; font-size:0.92em; margin-top:10px; }
+  th,td { border:1px solid var(--border); padding:7px; text-align:center; }
+  th { background:#eaf3fc; }
+  td.pending { color:var(--sub); font-style:italic; }
+
+  .navrow { display:flex; justify-content:space-between; margin-top:16px; }
+  .navrow button { min-width:96px; }
+
+  .eq { text-align:center; font-family:Georgia,serif; font-size:1.15em; margin:10px 0; background:#f4f8fb; border:1px solid var(--border); border-radius:8px; padding:8px; }
+
+  .final-links { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+  .final-links a, .final-links span { flex:1 1 200px; text-align:center; padding:12px; border-radius:10px; border:1px solid var(--border); text-decoration:none; color:var(--ink); background:#fff; font-weight:600; }
+  .final-links span.wip { opacity:0.55; }
+  .final-links a:hover { border-color:var(--accent); color:var(--accent); }
+
+  @media (max-width:640px) { body{font-size:15.5px;} .step-title{font-size:1.2em;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <a class="navbtn" href="../../../index.html">🏠 홈</a>
+  <a class="navbtn" href="../index.html">← 개요로</a>
+  <h1>⚙️ 피조의 실험</h1>
+  <span class="spacer"></span>
+</header>
+
+<div class="progress" id="progress"></div>
+<div id="stepHost"></div>
+
+</div>
+
+<script>
+"use strict";
+/* ═══════════════════ 물리 상수 ═══════════════════ */
+const C = 299792458;
+const L = 8633;          // 피조가 실제 사용한 거리 (m)
+const N_TEETH = 720;     // 톱니 수
+const TAU = 2*L/C;       // 빛의 왕복 시간
+const F1_THEORY = C/(4*L*N_TEETH); // 첫 식이 일어나는 회전수 (≈12.06 회/초)
+
+function fmtSec(s){ return s.toFixed(1)+"초"; }
+function brightness(f){ return Math.cos(Math.PI*N_TEETH*f*TAU) ** 2; }
+
+const $ = (id) => document.getElementById(id);
+
+/* ═══════════════════ 상태 ═══════════════════ */
+const STEP_COUNT = 6;
+const state = {
+  step: 1,
+  fenceRunning: false,
+  gateSpeedIdx: 1,        // 1=느림 2=보통 3=빠름 (STEP3 놀이)
+  gateThrown: false,
+  attempts: [],           // {f, bright}
+  bestF: null,            // 학생이 찾은 '첫 식' 회전수
+};
+
+/* ═══════════════════ 진행 표시 ═══════════════════ */
+function renderProgress() {
+  const el = $("progress"); el.innerHTML = "";
+  for (let i = 1; i <= STEP_COUNT; i++) {
+    const d = document.createElement("div");
+    d.className = "pd" + (i === state.step ? " on" : i < state.step ? " done" : "");
+    d.textContent = i < state.step ? "✓" : i;
+    d.onclick = () => goStep(i);
+    el.appendChild(d);
+    if (i < STEP_COUNT) {
+      const l = document.createElement("div");
+      l.className = "pl" + (i < state.step ? " done" : "");
+      el.appendChild(l);
+    }
+  }
+}
+function goStep(n) { state.step = Math.max(1, Math.min(STEP_COUNT, n)); render(); }
+
+/* ═══════════════════ 공통 애니메이션 루프 ═══════════════════ */
+let animId = null, t0 = performance.now();
+function startLoop(drawFn) {
+  cancelAnimationFrame(animId);
+  function frame(now) { drawFn((now - t0) / 1000); animId = requestAnimationFrame(frame); }
+  animId = requestAnimationFrame(frame);
+}
+
+/* ═══════════════════ STEP 1 — 깜빡이는 울타리 ═══════════════════ */
+function renderStep1() {
+  return `
+  <div class="card">
+    <div class="step-eyebrow">STEP 1 / 6 · 이야기의 시작</div>
+    <div class="step-title">🚧 빙글빙글 도는 울타리 사이로 보기</div>
+    <div class="story">
+      <p>울타리 판자 사이로 저 멀리 반짝이는 불빛을 본 적 있나요? 울타리가 <b>빙글빙글 돌고 있다면</b> 어떨까요?</p>
+      <div class="analogy">💡 울타리가 천천히 돌면 불빛이 계속 잘 보이지만, 아주 <b>빠르게 돌면</b> 어느 순간 판자가 딱 가로막아서 불빛이 <b>잠깐 사라지기도</b> 해요.</div>
+      <p>1849년, 프랑스의 과학자 <b>피조</b>는 바로 이 원리로 <b>돌아가는 톱니바퀴</b>를 이용해서 빛의 속도를 재려고 했어요. 아래 버튼을 눌러 울타리를 돌려보세요.</p>
+    </div>
+    <canvas id="cv1" width="600" height="200"></canvas>
+    <div class="controls">
+      <button class="primary" id="btnSpin1">🌀 울타리 돌리기</button>
+    </div>
+  </div>`;
+}
+function initStep1() {
+  const canvas = $("cv1"), ctx = canvas.getContext("2d");
+  $("btnSpin1").addEventListener("click", () => {
+    state.fenceRunning = !state.fenceRunning;
+    $("btnSpin1").textContent = state.fenceRunning ? "⏸ 멈추기" : "🌀 울타리 돌리기";
+  });
+  startLoop((t) => {
+    const w=canvas.width,h=canvas.height; ctx.clearRect(0,0,w,h);
+    ctx.fillStyle="#0c1119"; ctx.fillRect(0,0,w,h);
+    // 멀리 있는 불빛
+    const lightX=w-50, lightY=h/2;
+    ctx.beginPath(); ctx.arc(lightX,lightY,14,0,7);
+    ctx.fillStyle="#ffe066"; ctx.fill();
+    // 울타리 (세로 판자, 회전에 따라 폭이 변해 앞/뒤 판자처럼 보임)
+    const speed = state.fenceRunning ? 3 : 0;
+    const n = 8;
+    let visible = true;
+    for (let i=0;i<n;i++){
+      const phase = (t*speed + i/n*2*Math.PI);
+      const w2 = Math.abs(Math.cos(phase)) * 22 + 2;
+      const x = 60 + i*36;
+      ctx.fillStyle="#4a5568"; ctx.fillRect(x-w2/2, h/2-55, w2, 110);
+      if (Math.abs(x-lightX+300)<1) {} // no-op
+    }
+    // 판자가 불빛 정면을 가리는지(가운데 인덱스만 체크) 간단 표시
+    const midPhase = t*speed + 3.5/n*2*Math.PI;
+    const midW = Math.abs(Math.cos(midPhase))*22+2;
+    visible = midW < 9;
+    ctx.fillStyle = visible ? "#ffe066cc" : "#33313088";
+    ctx.font="bold 15px sans-serif"; ctx.textAlign="center";
+    ctx.fillText(visible ? "✨ 불빛이 보여요!" : "⬛ 지금은 안 보여요...", w/2, 30);
+  });
+}
+
+/* ═══════════════════ STEP 2 — 실험 장치 소개 ═══════════════════ */
+function renderStep2() {
+  return `
+  <div class="card">
+    <div class="step-eyebrow">STEP 2 / 6 · 실험 장치 살펴보기</div>
+    <div class="step-title">🔭 빛이 다녀오는 길</div>
+    <div class="story">
+      <p>피조의 실험 장치는 이렇게 생겼어요: <b>빛을 쏘는 곳</b> → <b>빙글빙글 도는 톱니바퀴</b> → 아주 먼 곳의 <b>거울</b> → 다시 톱니바퀴를 지나 <b>눈</b>으로.</p>
+      <div class="analogy">💡 빛은 톱니 사이의 <b>틈</b>으로 나가서, 8.6 km나 떨어진 거울에 부딪혀 <b>되돌아옵니다</b>. 그 잠깐 사이에 바퀴가 조금 돌면, 돌아온 빛이 <b>다음 톱니에 막힐 수도</b> 있어요!</p>
+    </div>
+    <canvas id="cv2" width="600" height="200"></canvas>
+    <p class="hint" style="color:var(--sub); font-size:0.9em">실제 피조는 파리 근교의 두 언덕(쉬렌↔몽마르트르) 사이, 약 8.6 km 거리에서 이 실험을 했어요.</p>
+  </div>`;
+}
+function initStep2() {
+  const canvas = $("cv2"), ctx = canvas.getContext("2d");
+  startLoop((t) => {
+    const w=canvas.width,h=canvas.height; ctx.clearRect(0,0,w,h);
+    ctx.fillStyle="#0c1119"; ctx.fillRect(0,0,w,h);
+    const y=h/2;
+    const srcX=40, wheelX=170, mirrorX=w-40;
+    ctx.font="12px sans-serif"; ctx.fillStyle="#94a3b8"; ctx.textAlign="center";
+    ctx.fillText("빛나는 곳",srcX,y-46);
+    ctx.beginPath(); ctx.arc(srcX,y,8,0,7); ctx.fillStyle="#ffe066"; ctx.fill();
+    // 톱니바퀴
+    ctx.save(); ctx.translate(wheelX,y); ctx.rotate(t*1.2);
+    ctx.fillStyle="#5a6b7d";
+    for(let i=0;i<12;i++){ const a=i/12*2*Math.PI; if(i%2===0){ const a2=(i+1)/12*2*Math.PI;
+      ctx.beginPath(); ctx.moveTo(Math.cos(a)*20,Math.sin(a)*20); ctx.lineTo(Math.cos(a)*34,Math.sin(a)*34);
+      ctx.lineTo(Math.cos(a2)*34,Math.sin(a2)*34); ctx.lineTo(Math.cos(a2)*20,Math.sin(a2)*20); ctx.closePath(); ctx.fill(); } }
+    ctx.restore();
+    ctx.fillText("톱니바퀴",wheelX,y-46);
+    // 거울
+    ctx.fillStyle="#9db2c8"; ctx.fillRect(mirrorX,y-30,6,60);
+    ctx.fillText("거울",mirrorX,y-46);
+    ctx.fillText("(8.6 km 거리)",mirrorX,y+56);
+    // 빛 화살표(나가고 돌아옴을 점선 두 줄로 표시)
+    ctx.strokeStyle="rgba(255,224,102,.6)"; ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.moveTo(srcX+10,y-6); ctx.lineTo(mirrorX,y-6); ctx.stroke();
+    ctx.strokeStyle="rgba(255,140,140,.6)";
+    ctx.beginPath(); ctx.moveTo(mirrorX,y+6); ctx.lineTo(srcX+10,y+6); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle="#e2e8f0"; ctx.font="11px sans-serif";
+    ctx.fillText("나가는 빛 →",(srcX+mirrorX)/2, y-14);
+    ctx.fillText("← 돌아오는 빛",(srcX+mirrorX)/2, y+22);
+  });
+}
+
+/* ═══════════════════ STEP 3 — 회전문 놀이 ═══════════════════ */
+function renderStep3() {
+  return `
+  <div class="card">
+    <div class="step-eyebrow">STEP 3 / 6 · 놀이로 이해하기</div>
+    <div class="step-title">🎡 뺑뺑이 틈으로 공 던지기 놀이</div>
+    <div class="story">
+      <p>친구들이 팔을 벌리고 <b>뺑뺑이처럼 빙글빙글</b> 돌고 있어요. 나는 그 틈 사이로 공을 던졌다가, 공이 벽에 맞고 튕겨 돌아오는 걸 <b>같은 틈으로</b> 받아야 해요!</p>
+      <div class="analogy">💡 뺑뺑이가 <b>딱 알맞은 속도</b>로 돌면, 공이 돌아올 때 친구의 <b>팔에 맞아 튕겨나가요</b>. 이게 바로 톱니바퀴가 빛을 막는 것과 같은 원리예요!</div>
+    </div>
+    <canvas id="cv3" width="600" height="220"></canvas>
+    <div class="controls">
+      <label>뺑뺑이 속도: </label>
+      <button data-s="1">느리게</button>
+      <button data-s="2">딱 맞게</button>
+      <button data-s="3">너무 빠르게</button>
+      <button class="primary" id="btnThrow3">🎾 공 던지기</button>
+    </div>
+    <div class="readout wait" id="throwReadout">속도를 고르고 "공 던지기"를 눌러보세요.</div>
+  </div>`;
+}
+function initStep3() {
+  const canvas = $("cv3"), ctx = canvas.getContext("2d");
+  document.querySelectorAll('[data-s]').forEach(b=>b.addEventListener("click",()=>{
+    state.gateSpeedIdx = +b.dataset.s; state.gateThrown=false;
+    $("throwReadout").className="readout wait"; $("throwReadout").textContent="속도를 골랐어요. 공을 던져보세요!";
+  }));
+  // rad/s — roundTrip(1.4s) 동안 회전한 양에 따라: 1번 통과, 2번 막힘(딱 맞는 속도), 3번 다시 통과
+  const speedMap = {1: 1.1, 2: 2.55, 3: 7.0};
+  let throwStart = null;
+  $("btnThrow3").addEventListener("click", () => { throwStart = performance.now(); state.gateThrown=true; $("throwReadout").className="readout wait"; $("throwReadout").textContent="공이 날아가는 중..."; });
+  const roundTrip = 1.4; // 연출용 왕복 시간(초)
+  startLoop(() => {
+    const w=canvas.width,h=canvas.height; ctx.clearRect(0,0,w,h);
+    ctx.fillStyle="#eef4fb"; ctx.fillRect(0,0,w,h);
+    const cx=170, cy=h/2, r=60;
+    const spin = speedMap[state.gateSpeedIdx];
+    const now = (performance.now())/1000;
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(now*spin);
+    ctx.strokeStyle="#94a3b8"; ctx.lineWidth=6;
+    for (let i=0;i<4;i++){ const a=i/4*2*Math.PI; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(r*Math.cos(a), r*Math.sin(a)); ctx.stroke(); }
+    ctx.lineWidth=1; ctx.restore();
+    ctx.fillStyle="#64748b"; ctx.font="12px sans-serif"; ctx.textAlign="center"; ctx.fillText("뺑뺑이",cx,cy+r+20);
+    const wallX=w-60;
+    ctx.fillStyle="#c9b892"; ctx.fillRect(wallX,cy-40,8,80);
+    ctx.fillText("벽",wallX,cy-52);
+    // 공
+    if (throwStart != null) {
+      const el = (performance.now()-throwStart)/1000;
+      let bx, by=cy;
+      if (el < roundTrip/2) { bx = cx+r + (wallX-cx-r)*(el/(roundTrip/2)); }
+      else if (el < roundTrip) { bx = wallX - (wallX-cx-r)*((el-roundTrip/2)/(roundTrip/2)); }
+      else {
+        // 공은 항상 팔 사이 '틈'이 열려 있을 때 던져진다고 가정(회전량 기준 0).
+        // 왕복하는 동안 회전한 양이 90°의 절반(45°)에 가까우면 팔이 그 자리를 막아 '튕김',
+        // 0°나 90°에 가까우면(다시 틈 자리로 돌아옴) '통과'.
+        const rotDuring = (roundTrip*spin) % (Math.PI/2);
+        const distFromBlockZone = Math.abs(rotDuring - Math.PI/4);
+        const passed = distFromBlockZone > Math.PI/4*0.5;
+        const ro = $("throwReadout"); ro.className="readout";
+        ro.innerHTML = passed
+          ? `🎉 팔 사이 틈으로 공이 <b style="color:var(--ok)">쏙 들어왔어요!</b> (뺑뺑이가 팔 너비만큼만 돌았어요)`
+          : `🙅 공이 <b style="color:var(--warn)">친구 팔에 맞고 튕겨났어요!</b> (뺑뺑이가 딱 절반만큼 더 돌아서 막혔어요)`;
+        throwStart = null; bx=cx+r;
+      }
+      ctx.beginPath(); ctx.arc(bx,by,7,0,7); ctx.fillStyle="#e0872a"; ctx.fill();
+    }
+  });
+}
+
+/* ═══════════════════ STEP 4 — 직접 실험해보기 ═══════════════════ */
+function renderStep4() {
+  return `
+  <div class="card">
+    <div class="step-eyebrow">STEP 4 / 6 · 직접 실험해보기</div>
+    <div class="step-title">🔬 톱니바퀴를 천천히 돌려봅시다</div>
+    <div class="story">
+      <p><b>실험 순서</b>: ① 회전수를 0부터 아주 천천히 올려보세요. ② 돌아온 빛의 밝기를 살펴보세요. ③ 빛이 <b>처음으로 완전히 사라지는</b> 순간의 회전수를 "기록하기"로 남겨보세요!</p>
+    </div>
+    <canvas id="cv4" width="600" height="220"></canvas>
+    <div class="param">
+      <label for="fizF">회전수 f <span class="val"><span id="fizFVal">0.00</span> 회/초</span></label>
+      <input type="range" id="fizF" min="0" max="30" step="0.02" value="0">
+    </div>
+    <div>밝기: <span id="brightPct">100</span>%</div>
+    <div class="brightbar"><i id="brightBar" style="width:100%"></i></div>
+    <div class="controls">
+      <button class="primary" id="btnRecord4">📌 지금 회전수 기록하기</button>
+    </div>
+    <table>
+      <thead><tr><th>#</th><th>회전수 (회/초)</th><th>밝기</th><th>판정</th></tr></thead>
+      <tbody id="attemptBody"><tr><td colspan="4" class="pending">아직 기록 없음</td></tr></tbody>
+    </table>
+    <div class="readout wait" id="step4Note">처음으로 밝기가 0%에 가까워지는 회전수를 찾아 기록해보세요!</div>
+  </div>`;
+}
+function initStep4() {
+  const canvas = $("cv4"), ctx = canvas.getContext("2d");
+  const slider = $("fizF");
+  slider.addEventListener("input", () => { $("fizFVal").textContent = (+slider.value).toFixed(2); updateBright(); });
+  function updateBright() {
+    const f = +slider.value;
+    const I = brightness(f);
+    $("brightPct").textContent = Math.round(I*100);
+    $("brightBar").style.width = (I*100)+"%";
+    $("brightBar").style.background = I<0.15 ? "#d64545" : "#2f9e5c";
+  }
+  $("btnRecord4").addEventListener("click", () => {
+    const f = +slider.value, I = brightness(f);
+    state.attempts.push({f, I});
+    if (I < 0.05 && (state.bestF===null || I < brightness(state.bestF))) state.bestF = f;
+    renderAttempts();
+  });
+  function renderAttempts() {
+    const tb = $("attemptBody"); tb.innerHTML = "";
+    state.attempts.forEach((a, i) => {
+      const good = a.I < 0.05;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${i+1}</td><td>${a.f.toFixed(2)}</td><td>${Math.round(a.I*100)}%</td>
+        <td style="color:${good?'var(--ok)':'var(--sub)'}">${good?'🎯 식 발견!':'통과 중'}</td>`;
+      tb.appendChild(tr);
+    });
+    if (state.bestF !== null) {
+      $("step4Note").className = "readout";
+      $("step4Note").innerHTML = `🎉 회전수 <b>${state.bestF.toFixed(2)} 회/초</b>에서 빛이 사라지는 걸 찾았어요! 다음 단계에서 이 값으로 빛의 속도를 계산해봅시다 →`;
+    }
+  }
+  renderAttempts();
+  updateBright();
+  startLoop((t) => {
+    const w=canvas.width,h=canvas.height; ctx.clearRect(0,0,w,h);
+    ctx.fillStyle="#0c1119"; ctx.fillRect(0,0,w,h);
+    const f = +slider.value;
+    const wheelX=90, y=h/2;
+    ctx.save(); ctx.translate(wheelX,y); ctx.rotate(t*f*0.5);
+    ctx.fillStyle="#5a6b7d";
+    for(let i=0;i<16;i++){ const a=i/16*2*Math.PI; if(i%2===0){ const a2=(i+1)/16*2*Math.PI;
+      ctx.beginPath(); ctx.moveTo(Math.cos(a)*24,Math.sin(a)*24); ctx.lineTo(Math.cos(a)*40,Math.sin(a)*40);
+      ctx.lineTo(Math.cos(a2)*40,Math.sin(a2)*40); ctx.lineTo(Math.cos(a2)*24,Math.sin(a2)*24); ctx.closePath(); ctx.fill(); } }
+    ctx.restore();
+    const mirrorX=w-40;
+    ctx.fillStyle="#9db2c8"; ctx.fillRect(mirrorX,y-30,6,60);
+    ctx.fillStyle="#94a3b8"; ctx.font="12px sans-serif"; ctx.textAlign="center"; ctx.fillText("거울",mirrorX,y-42);
+    const I = brightness(f);
+    ctx.strokeStyle=`rgba(255,224,102,.7)`; ctx.beginPath(); ctx.moveTo(wheelX+40,y-6); ctx.lineTo(mirrorX,y-6); ctx.stroke();
+    ctx.strokeStyle=`rgba(255,224,102,${0.15+0.8*I})`; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(mirrorX,y+6); ctx.lineTo(wheelX+40,y+6); ctx.stroke(); ctx.lineWidth=1;
+    ctx.beginPath(); ctx.arc(wheelX,y+70,10,0,7); ctx.fillStyle=`rgba(255,224,102,${0.1+0.85*I})`; ctx.fill();
+    ctx.strokeStyle="#64748b"; ctx.stroke();
+    ctx.fillStyle="#94a3b8"; ctx.fillText("관측",wheelX,y+92);
+  });
+}
+
+/* ═══════════════════ STEP 5 — 계산 ═══════════════════ */
+function renderStep5() {
+  return `
+  <div class="card">
+    <div class="step-eyebrow">STEP 5 / 6 · 드디어 계산!</div>
+    <div class="step-title">🧮 빛은 얼마나 빨리 달릴까?</div>
+    <div class="story">
+      <p>빛이 톱니바퀴에서 거울까지 갔다 오는 동안, 바퀴는 톱니 <b>절반만큼</b> 회전해서 다음 톱니가 빛을 막았어요. 이 관계를 식으로 쓰면:</p>
+    </div>
+    <div class="eq">c = 4 × L × n × f</div>
+    <p style="text-align:center; color:var(--sub); font-size:0.92em">L = 거울까지 거리(8,633 m), n = 톱니 수(720개), f = 여러분이 찾은 회전수</p>
+    <div id="calcBox"></div>
+    <div class="readout" id="finalCalc"></div>
+  </div>`;
+}
+function initStep5() {
+  const f = state.bestF ?? F1_THEORY;
+  const usedDefault = state.bestF===null;
+  $("calcBox").innerHTML = usedDefault
+    ? `<p style="color:var(--sub)">※ STEP 4에서 아직 식을 찾지 못해서, 이론값(약 ${F1_THEORY.toFixed(2)} 회/초)으로 계산합니다. STEP 4로 돌아가 직접 찾아도 좋아요.</p>`
+    : `<p>여러분이 STEP 4에서 찾은 회전수 f = <b style="color:var(--accent)">${f.toFixed(2)} 회/초</b>를 사용합니다.</p>`;
+  const c_meas = 4*L*N_TEETH*f;
+  const err = (c_meas - C)/C*100;
+  $("finalCalc").innerHTML = `<div class="big">c = 4 × 8,633 × 720 × ${f.toFixed(2)} ≈ ${(c_meas/1000).toLocaleString('en-US',{maximumFractionDigits:0})} km/s</div>
+    <p style="margin-top:6px">실제 빛의 속도(299,792 km/s)와 비교하면 오차 <b>${err>=0?'+':''}${err.toFixed(2)}%</b>!</p>`;
+}
+
+/* ═══════════════════ STEP 6 — 정리 ═══════════════════ */
+function renderStep6() {
+  return `
+  <div class="card">
+    <div class="step-eyebrow">STEP 6 / 6 · 정리</div>
+    <div class="step-title">🏆 피조가 알아낸 것</div>
+    <div class="story">
+      <p>피조는 이 실험으로 <b>땅 위, 실험실에서 처음으로</b> 빛의 속도를 측정하는 데 성공했어요! 이전의 뢰머는 우주(목성과 이오)를 관찰해야 했지만, 피조는 파리 근교의 두 언덕만으로 해냈답니다.</p>
+      <div class="analogy">💡 정리하면: 빛이 왕복하는 짧은 시간 동안 톱니바퀴가 <b>정확히 톱니 절반만큼</b> 돌면, 돌아온 빛이 다음 톱니에 막혀요. 그 회전수를 알면 왕복 시간을, 그리고 빛의 속도를 계산할 수 있어요.</div>
+    </div>
+    <table>
+      <thead><tr><th>측정자</th><th>구한 값</th><th>비고</th></tr></thead>
+      <tbody>
+        <tr><td>피조 (1849)</td><td>≈ 313,000 km/s</td><td>당시 거리 측정이 조금 부정확했음</td></tr>
+        <tr><td>이 시뮬레이션</td><td id="mySimResult">—</td><td>현대 거리·톱니수 값 사용</td></tr>
+        <tr><td>현대 정의값</td><td>299,792.458 km/s</td><td>정확한 기준값</td></tr>
+      </tbody>
+    </table>
+    <div class="final-links">
+      <a href="../index.html">📜 개요로 돌아가기</a>
+      <a href="../romer/index.html">🪐 뢰머의 실험</a>
+      <span class="wip">🪞 푸코의 실험 (준비 중)</span>
+    </div>
+    <div class="controls" style="margin-top:14px">
+      <button id="btnRestart">↺ 처음부터 다시 해보기</button>
+    </div>
+  </div>`;
+}
+function initStep6() {
+  const f = state.bestF ?? F1_THEORY;
+  const c_meas = 4*L*N_TEETH*f;
+  $("mySimResult").textContent = (c_meas/1000).toLocaleString('en-US',{maximumFractionDigits:0}) + " km/s";
+  $("btnRestart").addEventListener("click", () => {
+    state.step=1; state.attempts=[]; state.bestF=null; state.fenceRunning=false; state.gateThrown=false;
+    render();
+  });
+}
+
+/* ═══════════════════ 렌더 디스패치 ═══════════════════ */
+const RENDERERS = { 1:[renderStep1,initStep1], 2:[renderStep2,initStep2], 3:[renderStep3,initStep3], 4:[renderStep4,initStep4], 5:[renderStep5,initStep5], 6:[renderStep6,initStep6] };
+function render() {
+  renderProgress();
+  const [r, init] = RENDERERS[state.step];
+  $("stepHost").innerHTML = r() + navHTML();
+  init();
+  $("prevBtn")?.addEventListener("click", ()=>goStep(state.step-1));
+  $("nextBtn")?.addEventListener("click", ()=>goStep(state.step+1));
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+function navHTML() {
+  return `<div class="navrow">
+    <button id="prevBtn" ${state.step===1?"disabled":""}>← 이전</button>
+    <button class="primary" id="nextBtn" ${state.step===STEP_COUNT?"disabled":""}>다음 →</button>
+  </div>`;
+}
+
+render();
+</script>
+</body>
+</html>

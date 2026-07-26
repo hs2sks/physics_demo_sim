@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>뢰머의 실험 — 빛도 달리는 데 시간이 걸릴까?</title>
+<style>
+  :root {
+    --bg:#fdf8f0; --panel:#fff; --ink:#2b2620; --sub:#7a7267;
+    --accent:#e0872a; --accent2:#3d7ad1; --ok:#2f9e5c; --warn:#d64545;
+    --border:#ecdfc9; --radius:14px;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:"Segoe UI","Malgun Gothic",sans-serif; background:var(--bg); color:var(--ink); padding:12px; font-size:16px; line-height:1.65; }
+  header { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+  header h1 { font-size:1.2em; }
+  header .spacer { flex:1; }
+  .navbtn { text-decoration:none; color:var(--sub); border:1px solid var(--border); padding:7px 13px; border-radius:9px; font-size:0.85em; white-space:nowrap; background:#fff; }
+  .navbtn:hover { color:var(--accent); border-color:var(--accent); }
+
+  .wrap { max-width:760px; margin:0 auto; }
+
+  /* 진행 표시 */
+  .progress { display:flex; align-items:center; gap:0; margin-bottom:16px; overflow-x:auto; padding-bottom:4px; }
+  .pd { width:34px; height:34px; border-radius:50%; border:2px solid var(--border); display:flex; align-items:center; justify-content:center;
+        font-size:14px; font-weight:700; color:var(--sub); cursor:pointer; flex-shrink:0; background:#fff; transition:all .15s; }
+  .pd.on { background:var(--accent); border-color:var(--accent); color:#fff; transform:scale(1.1); }
+  .pd.done { background:#fdecd8; border-color:var(--accent); color:var(--accent); }
+  .pl { flex:1; height:3px; background:var(--border); min-width:14px; }
+  .pl.done { background:var(--accent); }
+
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:20px; box-shadow:0 3px 14px rgba(120,90,40,.06); margin-bottom:14px; }
+  .step-eyebrow { font-size:0.85em; color:var(--accent); font-weight:700; letter-spacing:.03em; margin-bottom:4px; }
+  .step-title { font-size:1.35em; font-weight:800; margin-bottom:12px; }
+  .story p { margin-bottom:10px; font-size:1.02em; }
+  .story b { color:var(--accent); }
+  .story .analogy { background:#fff6e8; border-left:4px solid var(--accent); padding:10px 14px; border-radius:0 8px 8px 0; margin:10px 0; font-size:0.98em; }
+
+  canvas { display:block; max-width:100%; background:#eef4fb; border-radius:10px; margin:14px 0; }
+
+  .controls { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:10px 0; }
+  button { font-size:1em; padding:10px 18px; border-radius:10px; border:1px solid var(--border); background:#fff; cursor:pointer; font-weight:600; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.primary:hover { background:#c9711d; }
+  button:disabled { opacity:0.4; cursor:not-allowed; }
+  .param { margin:12px 0; }
+  .param label { display:flex; justify-content:space-between; font-weight:700; margin-bottom:5px; }
+  .param label .val { color:var(--accent); font-variant-numeric:tabular-nums; }
+  .param input[type=range] { width:100%; height:8px; }
+
+  .readout { background:#f2f8f4; border:1px solid #cfe9d8; border-radius:10px; padding:12px 14px; margin-top:10px; font-size:1.05em; }
+  .readout.wait { background:#f5f2ea; border-color:var(--border); color:var(--sub); }
+  .readout .big { font-size:1.3em; font-weight:800; color:var(--ok); }
+  .readout .big.warn { color:var(--warn); }
+
+  table { width:100%; border-collapse:collapse; font-size:0.95em; margin-top:10px; }
+  th,td { border:1px solid var(--border); padding:8px; text-align:center; }
+  th { background:#fdf3e3; }
+  td.pending { color:var(--sub); font-style:italic; }
+
+  .navrow { display:flex; justify-content:space-between; margin-top:16px; }
+  .navrow button { min-width:96px; }
+
+  .eq { text-align:center; font-family:Georgia,serif; font-size:1.2em; margin:10px 0; background:#f7f4ec; border:1px solid var(--border); border-radius:8px; padding:8px; }
+
+  .final-links { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+  .final-links a, .final-links span { flex:1 1 200px; text-align:center; padding:12px; border-radius:10px; border:1px solid var(--border); text-decoration:none; color:var(--ink); background:#fff; font-weight:600; }
+  .final-links span.wip { opacity:0.55; }
+  .final-links a:hover { border-color:var(--accent); color:var(--accent); }
+
+  @media (max-width:640px) { body{font-size:15.5px;} .step-title{font-size:1.2em;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <a class="navbtn" href="../../../index.html">🏠 홈</a>
+  <a class="navbtn" href="../index.html">← 개요로</a>
+  <h1>🪐 뢰머의 실험</h1>
+  <span class="spacer"></span>
+</header>
+
+<div class="progress" id="progress"></div>
+
+<div id="stepHost"></div>
+
+</div>
+
+<script>
+"use strict";
+/* ═══════════════════ 물리 상수 ═══════════════════ */
+const C = 299792458;                 // 빛의 속도 (m/s)
+const EARTH_R = 1.496e11;            // 지구 공전 반지름 (m)
+const EARTH_D = 2 * EARTH_R;         // 지구 공전 궤도 지름 (m)
+const MAX_DELAY_S = EARTH_D / C;     // 최대 지연 (~997.6 s ≈ 16.6분)
+
+function delayAtMonth(month) {       // month: 0(근접)~6(최원)~12(근접)
+  const ang = Math.PI * month / 6;
+  return (EARTH_R * (1 - Math.cos(ang))) / C;
+}
+function fmtMinSec(s) {
+  const m = Math.floor(s/60), sec = Math.round(s%60);
+  return `${m}분 ${sec}초`;
+}
+
+/* ═══════════════════ 상태 ═══════════════════ */
+const STEP_COUNT = 6;
+const state = {
+  step: 1,
+  eclipseCount: 0,
+  gaugeMonth: 0,
+  courierRunning: false,
+  courierDistIdx: 1,       // 1=가까움, 2=멈, 3=아주 멈
+  obsNear: null,           // 관측된 지연(s) — 근접
+  obsFar: null,            // 관측된 지연(s) — 원거리
+};
+
+const $ = (id) => document.getElementById(id);
+
+/* ═══════════════════ 진행 표시 ═══════════════════ */
+function renderProgress() {
+  const el = $("progress"); el.innerHTML = "";
+  for (let i = 1; i <= STEP_COUNT; i++) {
+    const d = document.createElement("div");
+    d.className = "pd" + (i === state.step ? " on" : i < state.step ? " done" : "");
+    d.textContent = i < state.step ? "✓" : i;
+    d.onclick = () => goStep(i);
+    el.appendChild(d);
+    if (i < STEP_COUNT) {
+      const l = document.createElement("div");
+      l.className = "pl" + (i < state.step ? " done" : "");
+      el.appendChild(l);
+    }
+  }
+}
+function goStep(n) { state.step = Math.max(1, Math.min(STEP_COUNT, n)); render(); }
+
+/* ═══════════════════ 캔버스 애니메이션 공통 ═══════════════════ */
+let animId = null, t0 = performance.now();
+function startLoop(drawFn) {
+  cancelAnimationFrame(animId);
+  function frame(now) { drawFn((now - t0) / 1000); animId = requestAnimationFrame(frame); }
+  animId = requestAnimationFrame(frame);
+}
+
+/* ═══════════════════ STEP 1 — 우주의 시계, 이오 ═══════════════════ */
+function renderStep1() {
+  return `
+  <div class="card">
+    <div class="step-eyebrow">STEP 1 / 6 · 이야기의 시작</div>
+    <div class="step-title">🌙 우주에 있는 신기한 시계</div>
+    <div class="story">
+      <p>목성 옆에는 <b>이오</b>라는 작은 위성이 빙글빙글 돌고 있어요. 이오는 목성 뒤에 <b>숨었다가 다시 나타나기</b>를 아주 규칙적으로 반복합니다.</p>
+      <div class="analogy">💡 마치 정확한 <b>시계의 초침</b>처럼, 이오는 "똑딱 — 숨는다, 똑딱 — 나타난다"를 반복해요. 옛날 뱃사람들은 이 우주의 시계를 이용해서 바다 한가운데서도 정확한 시각을 알고 싶어했답니다.</p>
+      <p>아래 버튼을 눌러서 이오가 몇 번이나 목성 뒤에 숨는지 직접 관찰해 보세요!</p>
+    </div>
+    <canvas id="cv1" width="600" height="260"></canvas>
+    <div class="controls">
+      <button class="primary" id="btnObserve1">🔭 관찰 시작</button>
+      <span style="font-weight:700">숨은 횟수: <span id="eclipseCountLabel" style="color:var(--accent)">0</span> 번</span>
+    </div>
+    <p class="hint" style="color:var(--sub); font-size:0.9em">※ 실제로 이오는 약 42.5시간마다 한 번씩 숨었다 나타납니다. 여기서는 빠르게 돌려서 보여드려요.</p>
+  </div>`;
+}
+function initStep1() {
+  const canvas = $("cv1"), ctx = canvas.getContext("2d");
+  let running = false, lastEclipsed = false;
+  $("btnObserve1").addEventListener("click", () => { running = !running; $("btnObserve1").textContent = running ? "⏸ 잠시 멈춤" : "🔭 관찰 시작"; });
+  startLoop((t) => {
+    const w=canvas.width,h=canvas.height; ctx.clearRect(0,0,w,h);
+    ctx.fillStyle="#0b1526"; ctx.fillRect(0,0,w,h);
+    ctx.fillStyle="#ffffff30";
+    for(let i=0;i<50;i++) ctx.fillRect((i*67)%w,(i*41)%h,1.4,1.4);
+    const jx=w/2, jy=h/2;
+    ctx.beginPath(); ctx.arc(jx,jy,34,0,7); ctx.fillStyle="#d9a066"; ctx.fill();
+    ctx.fillStyle="#fceec2"; ctx.font="13px sans-serif"; ctx.textAlign="center"; ctx.fillText("목성",jx,jy+52);
+    const ang = running ? t*2.4 : 0;
+    const ix = jx+58*Math.cos(ang), iy=jy+22*Math.sin(ang);
+    const eclipsed = Math.cos(ang) < -0.55 && Math.sin(ang) > -0.3 && Math.sin(ang) < 0.3;
+    if (running && eclipsed && !lastEclipsed) { state.eclipseCount++; $("eclipseCountLabel").textContent = state.eclipseCount; }
+    lastEclipsed = eclipsed && running;
+    if (!eclipsed) { ctx.beginPath(); ctx.arc(ix,iy,7,0,7); ctx.fillStyle="#f0e6c8"; ctx.fill(); }
+    ctx.strokeStyle="#ffffff15"; ctx.beginPath(); ctx.ellipse(jx,jy,58,22,0,0,7); ctx.stroke();
+    if (running && eclipsed) {
+      ctx.fillStyle="#ffcc4d"; ctx.font="bold 20px sans-serif"; ctx.textAlign="center";
+      ctx.fillText("✨ 숨었다!", jx, 40);
+    }
+    ctx.fillStyle="#9db2c8"; ctx.font="12px sans-serif"; ctx.textAlign="left";
+    ctx.fillText("이오", ix+10, iy);
+  });
+}
+
+/* ═══════════════════ STEP 2 — 시계가 안 맞아! ═══════════════════ */
+function renderStep2() {
+  return `
+  <div class="card">
+    <div class="step-eyebrow">STEP 2 / 6 · 이상한 점 발견</div>
+    <div class="step-title">🤔 어? 시계가 자꾸 틀려요!</div>
+    <div class="story">
+      <p>그런데 천문학자들이 몇 달 동안 계속 관찰해보니 이상한 점을 발견했어요. <b>지구가 목성에서 점점 멀어질 때</b>는 이오가 예상보다 <b style="color:var(--warn)">늦게</b> 나타나고, <b>지구가 목성 쪽으로 가까워질 때</b>는 예상보다 <b style="color:var(--ok)">일찍</b> 나타났던 거예요.</p>
+      <p>슬라이더를 움직여서 지구가 궤도의 어느 위치에 있는지 바꿔보고, 이오가 얼마나 어긋나 보이는지 확인해 보세요.</p>
+    </div>
+    <canvas id="cv2" width="600" height="260"></canvas>
+    <div class="param">
+      <label for="gaugeMonth">지구의 공전 위치 <span class="val"><span id="gaugeMonthVal">0.0</span> 개월째</span></label>
+      <input type="range" id="gaugeMonth" min="0" max="12" step="0.1" value="0">
+    </div>
+    <div class="readout" id="gaugeReadout"></div>
+  </div>`;
+}
+function initStep2() {
+  const canvas = $("cv2"), ctx = canvas.getContext("2d");
+  const slider = $("gaugeMonth");
+  slider.value = state.gaugeMonth;
+  slider.addEventListener("input", () => { state.gaugeMonth = +slider.value; $("gaugeMonthVal").textContent = state.gaugeMonth.toFixed(1); updateGauge(); });
+  function updateGauge() {
+    const d = delayAtMonth(state.gaugeMonth);
+    const ro = $("gaugeReadout");
+    if (d < 0.5) {
+      ro.innerHTML = `📍 지금은 지구가 목성과 <b>가장 가까운 위치</b> 근처예요. 이오는 <b style="color:var(--ok)">예상 시각과 거의 정확히</b> 나타납니다.`;
+    } else {
+      const ratio = d / MAX_DELAY_S;
+      const early = ratio < 0.5 ? false : false;
+      ro.innerHTML = `⏱ 예상 시각보다 이오가 나타나는 것이 <b style="color:var(--warn)">${fmtMinSec(d)} 정도 늦어 보여요!</b> (전체 지연 중 ${(ratio*100).toFixed(0)}%)`;
+    }
+  }
+  updateGauge();
+  startLoop((t)=>{
+    const w=canvas.width,h=canvas.height; ctx.clearRect(0,0,w,h);
+    ctx.fillStyle="#0b1526"; ctx.fillRect(0,0,w,h);
+    const sunX=140, sunY=h/2, orbR=90;
+    ctx.strokeStyle="#2a3550"; ctx.beginPath(); ctx.arc(sunX,sunY,orbR,0,7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(sunX,sunY,14,0,7); ctx.fillStyle="#ffcc33"; ctx.fill();
+    ctx.fillStyle="#ffcc33"; ctx.font="11px sans-serif"; ctx.textAlign="center"; ctx.fillText("태양",sunX,sunY+28);
+    const ang = Math.PI*state.gaugeMonth/6;
+    const ex = sunX+orbR*Math.cos(ang), ey=sunY-orbR*Math.sin(ang)*0.55;
+    ctx.beginPath(); ctx.arc(ex,ey,7,0,7); ctx.fillStyle="#4da6ff"; ctx.fill();
+    ctx.fillStyle="#4da6ff"; ctx.fillText("지구",ex,ey-14);
+    const jx=w-70, jy=h/2;
+    ctx.beginPath(); ctx.arc(jx,jy,20,0,7); ctx.fillStyle="#d9a066"; ctx.fill();
+    ctx.fillStyle="#fceec2"; ctx.fillText("목성",jx,jy+34);
+    ctx.strokeStyle="#ffe06655"; ctx.setLineDash([3,4]); ctx.beginPath(); ctx.moveTo(ex,ey); ctx.lineTo(jx,jy); ctx.stroke(); ctx.setLineDash([]);
+    // 시계 오차 게이지
+    const gx=w/2, gy=40, gr=22;
+    const d=delayAtMonth(state.gaugeMonth), ratio=Math.min(1,d/MAX_DELAY_S);
+    ctx.strokeStyle="#334155"; ctx.beginPath(); ctx.arc(gx,gy,gr,Math.PI*0.8,Math.PI*2.2); ctx.stroke();
+    const needleAng = Math.PI*0.8 + ratio*Math.PI*1.4;
+    ctx.strokeStyle="#ffcc4d"; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(gx,gy); ctx.lineTo(gx+gr*0.8*Math.cos(needleAng), gy+gr*0.8*Math.sin(needleAng)); ctx.stroke();
+    ctx.lineWidth=1;
+  });
+}
+
+/* ═══════════════════ STEP 3 — 뢰머의 아이디어: 심부름꾼 ═══════════════════ */
+function renderStep3() {
+  return `
+  <div class="card">
+    <div class="step-eyebrow">STEP 3 / 6 · 뢰머의 기발한 생각</div>
+    <div class="step-title">🏃 빛도 심부름꾼처럼 달려오는 거라면?</div>
+    <div class="story">
+      <p>덴마크의 과학자 <b>뢰머</b>는 이렇게 생각했어요 — <b>"혹시 빛도 심부름꾼처럼, 거리를 달려오는 데 시간이 걸리는 게 아닐까?"</b></p>
+      <div class="analogy">💡 친구가 편지를 들고 나에게 뛰어온다고 생각해 보세요. 친구가 <b>가까이</b> 있으면 편지를 <b>빨리</b> 받고, 친구가 <b>멀리</b> 있으면 편지를 <b>늦게</b> 받겠죠?</div>
+      <p>거리를 바꿔가며 심부름꾼이 도착하는 시간이 어떻게 달라지는지 직접 확인해 보세요.</p>
+    </div>
+    <canvas id="cv3" width="600" height="180"></canvas>
+    <div class="controls">
+      <label>거리: </label>
+      <button data-d="1">가까이</button>
+      <button data-d="2">보통</button>
+      <button data-d="3">아주 멀리</button>
+      <button class="primary" id="btnRun3">🏃 출발!</button>
+    </div>
+    <div class="readout wait" id="courierReadout">거리를 고르고 "출발!"을 눌러보세요.</div>
+    <p class="hint" style="color:var(--sub); font-size:0.9em">※ 실제 빛은 훨씬 빠르지만, 원리를 보여주려고 심부름꾼 속도를 아주 느리게 표현했어요.</p>
+  </div>`;
+}
+function initStep3() {
+  const canvas = $("cv3"), ctx = canvas.getContext("2d");
+  document.querySelectorAll('[data-d]').forEach(b=>b.addEventListener("click",()=>{ state.courierDistIdx = +b.dataset.d; state.courierRunning=false; state.courierStart=null; $("courierReadout").className="readout wait"; $("courierReadout").textContent="거리를 골랐어요. \"출발!\"을 눌러보세요."; }));
+  $("btnRun3").addEventListener("click", () => { state.courierRunning = true; state.courierStart = performance.now(); $("courierReadout").className="readout wait"; $("courierReadout").textContent="심부름꾼이 달리는 중..."; });
+  const distPx = {1:180, 2:320, 3:460};
+  const speed = 90; // px/s (연출용, 실제 속도 아님)
+  startLoop(() => {
+    const w=canvas.width,h=canvas.height; ctx.clearRect(0,0,w,h);
+    ctx.fillStyle="#eef4fb"; ctx.fillRect(0,0,w,h);
+    const startX=40, y=h/2, dist=distPx[state.courierDistIdx];
+    ctx.strokeStyle="#c9b892"; ctx.setLineDash([5,5]); ctx.beginPath(); ctx.moveTo(startX,y); ctx.lineTo(startX+dist,y); ctx.stroke(); ctx.setLineDash([]);
+    ctx.font="24px sans-serif"; ctx.textAlign="center";
+    ctx.fillText("🧑", startX, y+8);
+    ctx.fillText("🏠", startX+dist, y+8);
+    let px = startX;
+    if (state.courierRunning && state.courierStart!=null) {
+      const elapsed = (performance.now()-state.courierStart)/1000;
+      px = Math.min(startX+dist, startX + elapsed*speed);
+      if (px >= startX+dist) {
+        state.courierRunning = false;
+        const ro=$("courierReadout"); ro.className="readout";
+        ro.innerHTML = `🎉 도착! 거리가 ${state.courierDistIdx===1?'가까울':(state.courierDistIdx===2?'보통일':'멀')} 때 <b>${elapsed.toFixed(1)}초</b> 걸렸어요.`;
+      }
+    }
+    ctx.font="20px sans-serif"; ctx.fillText("🏃", px+30, y-20);
+  });
+}
+
+/* ═══════════════════ STEP 4 — 실제로 관측해보기 ═══════════════════ */
+function renderStep4() {
+  return `
+  <div class="card">
+    <div class="step-eyebrow">STEP 4 / 6 · 직접 관측해보기</div>
+    <div class="step-title">🔬 이제 여러분이 뢰머가 되어 볼게요!</div>
+    <div class="story">
+      <p>지구가 목성과 <b>가장 가까울 때</b>, 그리고 <b>가장 멀 때</b> — 두 시점에서 이오가 나타나는 시각을 관측하고 실험 기록표에 적어봅시다.</p>
+    </div>
+    <canvas id="cv4" width="600" height="220"></canvas>
+    <div class="controls">
+      <button class="primary" id="btnObsNear">① 가장 가까울 때 관측</button>
+      <button class="primary" id="btnObsFar">② 가장 멀 때 관측</button>
+    </div>
+    <table>
+      <thead><tr><th>관측 위치</th><th>관측 결과</th></tr></thead>
+      <tbody>
+        <tr><td>① 지구-목성 가장 가까움</td><td id="rowNear" class="pending">아직 관측 안 함</td></tr>
+        <tr><td>② 지구-목성 가장 멀어짐</td><td id="rowFar" class="pending">아직 관측 안 함</td></tr>
+      </tbody>
+    </table>
+    <div class="readout wait" id="step4Note">두 곳 모두 관측하면 다음 단계에서 빛의 속도를 계산해볼 수 있어요!</div>
+  </div>`;
+}
+function initStep4() {
+  const canvas = $("cv4"), ctx = canvas.getContext("2d");
+  let anim = { running:false, which:null, start:0 };
+  function runObs(which) {
+    anim = { running:true, which, start:performance.now() };
+  }
+  $("btnObsNear").addEventListener("click", ()=>runObs("near"));
+  $("btnObsFar").addEventListener("click", ()=>runObs("far"));
+  function finishObs(which) {
+    const delay = which==="near" ? 0 : MAX_DELAY_S;
+    if (which==="near") state.obsNear = delay; else state.obsFar = delay;
+    const row = $(which==="near" ? "rowNear" : "rowFar");
+    row.classList.remove("pending");
+    row.innerHTML = delay < 0.5
+      ? `✅ 예상 시각과 <b style="color:var(--ok)">정확히 일치!</b> (지연 0초)`
+      : `⏱ 예상보다 <b style="color:var(--warn)">${fmtMinSec(delay)} 늦게</b> 나타남!`;
+    if (state.obsNear!=null && state.obsFar!=null) {
+      $("step4Note").className="readout";
+      $("step4Note").innerHTML = `🎉 두 관측 완료! 다음 단계로 넘어가서 빛의 속도를 계산해봅시다 →`;
+    }
+  }
+  startLoop(()=>{
+    const w=canvas.width,h=canvas.height; ctx.clearRect(0,0,w,h);
+    ctx.fillStyle="#0b1526"; ctx.fillRect(0,0,w,h);
+    const sunX=110, sunY=h/2, orbR=70;
+    ctx.strokeStyle="#2a3550"; ctx.beginPath(); ctx.arc(sunX,sunY,orbR,0,7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(sunX,sunY,12,0,7); ctx.fillStyle="#ffcc33"; ctx.fill();
+    let earthAng = 0;
+    if (anim.running) earthAng = anim.which==="near" ? 0 : Math.PI;
+    else if (anim.which==="near") earthAng = 0; else if (anim.which==="far") earthAng = Math.PI;
+    const ex = sunX+orbR*Math.cos(earthAng), ey=sunY;
+    ctx.beginPath(); ctx.arc(ex,ey,7,0,7); ctx.fillStyle="#4da6ff"; ctx.fill();
+    ctx.fillStyle="#4da6ff"; ctx.font="11px sans-serif"; ctx.textAlign="center"; ctx.fillText("지구",ex,ey-14);
+    const jx=w-70, jy=h/2;
+    ctx.beginPath(); ctx.arc(jx,jy,18,0,7); ctx.fillStyle="#d9a066"; ctx.fill();
+    ctx.fillStyle="#fceec2"; ctx.fillText("목성",jx,jy+30);
+    ctx.strokeStyle="#ffe06655"; ctx.setLineDash([3,4]); ctx.beginPath(); ctx.moveTo(ex,ey); ctx.lineTo(jx,jy); ctx.stroke(); ctx.setLineDash([]);
+    if (anim.running) {
+      const el = (performance.now()-anim.start)/1000;
+      const dur = 1.2;
+      if (el < dur) {
+        ctx.fillStyle="#ffcc4d"; ctx.font="bold 16px sans-serif"; ctx.fillText("🔭 관측 중...", w/2, 30);
+      } else {
+        anim.running=false; finishObs(anim.which);
+      }
+    }
+  });
+}
+
+/* ═══════════════════ STEP 5 — 계산 ═══════════════════ */
+function renderStep5() {
+  return `
+  <div class="card">
+    <div class="step-eyebrow">STEP 5 / 6 · 드디어 계산!</div>
+    <div class="step-title">🧮 빛은 얼마나 빨리 달릴까?</div>
+    <div class="story">
+      <p>두 관측 사이에, 빛은 <b>얼마나 더 먼 거리</b>를 추가로 달려야 했을까요? 바로 <b>지구가 태양을 도는 궤도의 지름</b>만큼입니다!</p>
+    </div>
+    <canvas id="cv5" width="600" height="200"></canvas>
+    <div class="eq">지구 공전궤도 지름 D ≈ 2.99 × 10¹¹ m (약 3억 km, 지구를 약 750만 바퀴 두른 거리!)</div>
+    <div id="calcBox"></div>
+    <div class="eq">c = D ÷ Δt</div>
+    <div class="readout" id="finalCalc"></div>
+  </div>`;
+}
+function initStep5() {
+  const canvas = $("cv5"), ctx = canvas.getContext("2d");
+  const near = state.obsNear ?? 0, far = state.obsFar ?? MAX_DELAY_S;
+  const usedDefault = state.obsNear==null || state.obsFar==null;
+  const dt = far - near;
+  $("calcBox").innerHTML = usedDefault
+    ? `<p style="color:var(--sub)">※ STEP 4를 아직 완료하지 않아서, 기본값(가까울 때 0초, 멀 때 16.6분 지연)으로 계산합니다. STEP 4로 돌아가 직접 관측해도 좋아요.</p>`
+    : `<p>여러분이 관측한 값 — 가까울 때 지연 <b>${fmtMinSec(near)}</b>, 멀 때 지연 <b>${fmtMinSec(far)}</b> → 두 값의 차이 Δt = <b style="color:var(--accent)">${fmtMinSec(dt)}</b></p>`;
+  const c_meas = dt > 0 ? EARTH_D / dt : 0;
+  const err = c_meas > 0 ? ((c_meas - C)/C*100) : 0;
+  $("finalCalc").innerHTML = c_meas > 0
+    ? `<div class="big">c = 2.99×10¹¹ m ÷ ${dt.toFixed(0)}초 ≈ ${(c_meas/1000).toLocaleString('en-US',{maximumFractionDigits:0})} km/s</div>
+       <p style="margin-top:6px">실제 빛의 속도(299,792 km/s)와 비교하면 오차 <b>${err>=0?'+':''}${err.toFixed(2)}%</b> — 거의 정확해요!</p>`
+    : `<div class="big warn">Δt가 0이라 계산할 수 없어요. STEP 4에서 두 관측을 모두 완료해 보세요.</div>`;
+  startLoop(()=>{
+    const w=canvas.width,h=canvas.height; ctx.clearRect(0,0,w,h);
+    ctx.fillStyle="#eef4fb"; ctx.fillRect(0,0,w,h);
+    const cx=w/2, cy=h/2+10, r=70;
+    ctx.strokeStyle="#9db2c8"; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.arc(cx,cy,r,0,7); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.arc(cx,cy,8,0,7); ctx.fillStyle="#ffcc33"; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx-r,cy,6,0,7); ctx.fillStyle="#4da6ff"; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx+r,cy,6,0,7); ctx.fillStyle="#4da6ff"; ctx.fill();
+    ctx.strokeStyle="#e0872a"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(cx-r,cy); ctx.lineTo(cx+r,cy); ctx.stroke(); ctx.lineWidth=1;
+    ctx.fillStyle="#e0872a"; ctx.font="bold 13px sans-serif"; ctx.textAlign="center"; ctx.fillText("D (지구 공전궤도 지름)", cx, cy+22);
+  });
+}
+
+/* ═══════════════════ STEP 6 — 정리 ═══════════════════ */
+function renderStep6() {
+  return `
+  <div class="card">
+    <div class="step-eyebrow">STEP 6 / 6 · 정리</div>
+    <div class="step-title">🏆 뢰머가 알아낸 것</div>
+    <div class="story">
+      <p>뢰머는 이 실험으로 <b>"빛도 속도가 있고, 순식간에 도달하는 게 아니다"</b>는 것을 인류 최초로 증명했어요! 그전까지 사람들은 빛이 어디든 <b>즉시</b> 닿는다고 생각했었죠.</p>
+      <div class="analogy">💡 정리하면: 지구가 목성에서 멀어질수록 이오의 빛이 우리에게 오는 데 <b>더 긴 거리</b>를 달려야 해서 <b>더 늦게</b> 도착한 거예요. 이 어긋남을 재서 빛의 속도를 계산할 수 있었답니다.</div>
+    </div>
+    <table>
+      <thead><tr><th>측정자</th><th>구한 값</th><th>비고</th></tr></thead>
+      <tbody>
+        <tr><td>뢰머 (1676)</td><td>≈ 220,000 km/s</td><td>당시 궤도 반지름 값이 부정확했음</td></tr>
+        <tr><td>이 시뮬레이션</td><td id="mySimResult">—</td><td>현대 궤도 반지름 값 사용</td></tr>
+        <tr><td>현대 정의값</td><td>299,792.458 km/s</td><td>정확한 기준값</td></tr>
+      </tbody>
+    </table>
+    <div class="final-links">
+      <a href="../index.html">📜 개요로 돌아가기</a>
+      <span class="wip">⚙️ 피조의 실험 (준비 중)</span>
+      <span class="wip">🪞 푸코의 실험 (준비 중)</span>
+    </div>
+    <div class="controls" style="margin-top:14px">
+      <button id="btnRestart">↺ 처음부터 다시 해보기</button>
+    </div>
+  </div>`;
+}
+function initStep6() {
+  const near = state.obsNear ?? 0, far = state.obsFar ?? MAX_DELAY_S;
+  const dt = far - near;
+  const c_meas = dt > 0 ? EARTH_D/dt : 0;
+  $("mySimResult").textContent = c_meas > 0 ? (c_meas/1000).toLocaleString('en-US',{maximumFractionDigits:0}) + " km/s" : "—";
+  $("btnRestart").addEventListener("click", () => {
+    state.step=1; state.eclipseCount=0; state.gaugeMonth=0; state.obsNear=null; state.obsFar=null;
+    render();
+  });
+}
+
+/* ═══════════════════ 렌더 디스패치 ═══════════════════ */
+const RENDERERS = { 1:[renderStep1,initStep1], 2:[renderStep2,initStep2], 3:[renderStep3,initStep3], 4:[renderStep4,initStep4], 5:[renderStep5,initStep5], 6:[renderStep6,initStep6] };
+function render() {
+  renderProgress();
+  const [r, init] = RENDERERS[state.step];
+  $("stepHost").innerHTML = r() + navHTML();
+  init();
+  $("prevBtn")?.addEventListener("click", ()=>goStep(state.step-1));
+  $("nextBtn")?.addEventListener("click", ()=>goStep(state.step+1));
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+function navHTML() {
+  return `<div class="navrow">
+    <button id="prevBtn" ${state.step===1?"disabled":""}>← 이전</button>
+    <button class="primary" id="nextBtn" ${state.step===STEP_COUNT?"disabled":""}>다음 →</button>
+  </div>`;
+}
+
+render();
+</script>
+</body>
+</html>

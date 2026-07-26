@@ -205,6 +205,7 @@ function renderStep2() {
 }
 function initStep2() {
   const canvas = $("cv2"), ctx = canvas.getContext("2d");
+  const N_SECT = 12;
   startLoop((t) => {
     const w=canvas.width,h=canvas.height; ctx.clearRect(0,0,w,h);
     ctx.fillStyle="#0c1119"; ctx.fillRect(0,0,w,h);
@@ -213,27 +214,48 @@ function initStep2() {
     ctx.font="12px sans-serif"; ctx.fillStyle="#94a3b8"; ctx.textAlign="center";
     ctx.fillText("빛나는 곳",srcX,y-46);
     ctx.beginPath(); ctx.arc(srcX,y,8,0,7); ctx.fillStyle="#ffe066"; ctx.fill();
-    // 톱니바퀴
-    ctx.save(); ctx.translate(wheelX,y); ctx.rotate(t*1.2);
+
+    const theta = t*1.2;
+    // 톱니바퀴 — 회전하지만, 빛이 지나가는 자리(구멍)는 화면상 고정된 한 점
+    ctx.save(); ctx.translate(wheelX,y); ctx.rotate(theta);
     ctx.fillStyle="#5a6b7d";
-    for(let i=0;i<12;i++){ const a=i/12*2*Math.PI; if(i%2===0){ const a2=(i+1)/12*2*Math.PI;
+    for(let i=0;i<N_SECT;i++){ const a=i/N_SECT*2*Math.PI; if(i%2===0){ const a2=(i+1)/N_SECT*2*Math.PI;
       ctx.beginPath(); ctx.moveTo(Math.cos(a)*20,Math.sin(a)*20); ctx.lineTo(Math.cos(a)*34,Math.sin(a)*34);
       ctx.lineTo(Math.cos(a2)*34,Math.sin(a2)*34); ctx.lineTo(Math.cos(a2)*20,Math.sin(a2)*20); ctx.closePath(); ctx.fill(); } }
     ctx.restore();
     ctx.fillText("톱니바퀴",wheelX,y-46);
+
     // 거울
     ctx.fillStyle="#9db2c8"; ctx.fillRect(mirrorX,y-30,6,60);
     ctx.fillText("거울",mirrorX,y-46);
     ctx.fillText("(8.6 km 거리)",mirrorX,y+56);
-    // 빛 화살표(나가고 돌아옴을 점선 두 줄로 표시)
-    ctx.strokeStyle="rgba(255,224,102,.6)"; ctx.setLineDash([5,4]);
-    ctx.beginPath(); ctx.moveTo(srcX+10,y-6); ctx.lineTo(mirrorX,y-6); ctx.stroke();
-    ctx.strokeStyle="rgba(255,140,140,.6)";
-    ctx.beginPath(); ctx.moveTo(mirrorX,y+6); ctx.lineTo(srcX+10,y+6); ctx.stroke();
+
+    // 빛이 지나가는 고정 지점(오른쪽, 거울 방향)이 지금 톱니인지 틈인지 판정
+    const localAt0 = (((-theta) % (2*Math.PI)) + 2*Math.PI) % (2*Math.PI);
+    const idx = Math.floor(localAt0 / (2*Math.PI/N_SECT));
+    const open = (idx % 2 === 1);
+
+    // 광원 → 바퀴 (항상 도달)
+    ctx.setLineDash([5,4]);
+    ctx.strokeStyle="rgba(255,224,102,.6)";
+    ctx.beginPath(); ctx.moveTo(srcX+10,y-4); ctx.lineTo(wheelX-22,y-4); ctx.stroke();
+
+    if (open) {
+      ctx.beginPath(); ctx.moveTo(wheelX+22,y-4); ctx.lineTo(mirrorX,y-4); ctx.stroke();
+      ctx.strokeStyle="rgba(255,140,140,.6)";
+      ctx.beginPath(); ctx.moveTo(mirrorX,y+4); ctx.lineTo(srcX+10,y+4); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle="#e2e8f0"; ctx.font="11px sans-serif"; ctx.textAlign="center";
+      ctx.fillText("나가는 빛 →",(srcX+mirrorX)/2, y-14);
+      ctx.fillText("← 돌아오는 빛",(srcX+mirrorX)/2, y+22);
+      ctx.fillStyle="#7ee787"; ctx.font="bold 12px sans-serif";
+      ctx.fillText("✨ 틈이 열려서 통과!", wheelX, y+56);
+    } else {
+      ctx.setLineDash([]);
+      ctx.fillStyle="#ffcc4d"; ctx.font="bold 12px sans-serif"; ctx.textAlign="center";
+      ctx.fillText("⛔ 지금은 톱니에 막혀 있어요", wheelX, y+56);
+    }
     ctx.setLineDash([]);
-    ctx.fillStyle="#e2e8f0"; ctx.font="11px sans-serif";
-    ctx.fillText("나가는 빛 →",(srcX+mirrorX)/2, y-14);
-    ctx.fillText("← 돌아오는 빛",(srcX+mirrorX)/2, y+22);
   });
 }
 
@@ -283,12 +305,16 @@ function initStep3() {
     const wallX=w-60;
     ctx.fillStyle="#c9b892"; ctx.fillRect(wallX,cy-40,8,80);
     ctx.fillText("벽",wallX,cy-52);
+    // 나 (뺑뺑이 왼쪽에서 공을 던지고 받는 사람)
+    const START = cx - r - 40;
+    ctx.font="22px sans-serif"; ctx.fillText("🧍", START, cy+7);
+    ctx.font="12px sans-serif"; ctx.fillText("나",START,cy+28);
     // 공
     if (throwStart != null) {
       const el = (performance.now()-throwStart)/1000;
       let bx, by=cy;
-      if (el < roundTrip/2) { bx = cx+r + (wallX-cx-r)*(el/(roundTrip/2)); }
-      else if (el < roundTrip) { bx = wallX - (wallX-cx-r)*((el-roundTrip/2)/(roundTrip/2)); }
+      if (el < roundTrip/2) { bx = START + (wallX-START)*(el/(roundTrip/2)); }
+      else if (el < roundTrip) { bx = wallX - (wallX-START)*((el-roundTrip/2)/(roundTrip/2)); }
       else {
         // 공은 항상 팔 사이 '틈'이 열려 있을 때 던져진다고 가정(회전량 기준 0).
         // 왕복하는 동안 회전한 양이 90°의 절반(45°)에 가까우면 팔이 그 자리를 막아 '튕김',
@@ -300,7 +326,7 @@ function initStep3() {
         ro.innerHTML = passed
           ? `🎉 팔 사이 틈으로 공이 <b style="color:var(--ok)">쏙 들어왔어요!</b> (뺑뺑이가 팔 너비만큼만 돌았어요)`
           : `🙅 공이 <b style="color:var(--warn)">친구 팔에 맞고 튕겨났어요!</b> (뺑뺑이가 딱 절반만큼 더 돌아서 막혔어요)`;
-        throwStart = null; bx=cx+r;
+        throwStart = null; bx=START;
       }
       ctx.beginPath(); ctx.arc(bx,by,7,0,7); ctx.fillStyle="#e0872a"; ctx.fill();
     }
@@ -370,7 +396,7 @@ function initStep4() {
     const w=canvas.width,h=canvas.height; ctx.clearRect(0,0,w,h);
     ctx.fillStyle="#0c1119"; ctx.fillRect(0,0,w,h);
     const f = +slider.value;
-    const wheelX=90, y=h/2;
+    const srcX=40, wheelX=140, y=h/2;
     ctx.save(); ctx.translate(wheelX,y); ctx.rotate(t*f*0.5);
     ctx.fillStyle="#5a6b7d";
     for(let i=0;i<16;i++){ const a=i/16*2*Math.PI; if(i%2===0){ const a2=(i+1)/16*2*Math.PI;
@@ -381,12 +407,20 @@ function initStep4() {
     ctx.fillStyle="#9db2c8"; ctx.fillRect(mirrorX,y-30,6,60);
     ctx.fillStyle="#94a3b8"; ctx.font="12px sans-serif"; ctx.textAlign="center"; ctx.fillText("거울",mirrorX,y-42);
     const I = brightness(f);
-    ctx.strokeStyle=`rgba(255,224,102,.7)`; ctx.beginPath(); ctx.moveTo(wheelX+40,y-6); ctx.lineTo(mirrorX,y-6); ctx.stroke();
+    // 광원 → 바퀴 → 거울 (나가는 빛, 항상 도달)
+    ctx.strokeStyle="rgba(255,224,102,.55)";
+    ctx.beginPath(); ctx.moveTo(srcX+8,y-6); ctx.lineTo(wheelX-40,y-6); ctx.stroke();
+    ctx.strokeStyle="rgba(255,224,102,.7)";
+    ctx.beginPath(); ctx.moveTo(wheelX+40,y-6); ctx.lineTo(mirrorX,y-6); ctx.stroke();
+    // 거울 → 바퀴 → 광원 (돌아오는 빛, 밝기 I로 표시)
     ctx.strokeStyle=`rgba(255,224,102,${0.15+0.8*I})`; ctx.lineWidth=2;
-    ctx.beginPath(); ctx.moveTo(mirrorX,y+6); ctx.lineTo(wheelX+40,y+6); ctx.stroke(); ctx.lineWidth=1;
-    ctx.beginPath(); ctx.arc(wheelX,y+70,10,0,7); ctx.fillStyle=`rgba(255,224,102,${0.1+0.85*I})`; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(mirrorX,y+6); ctx.lineTo(wheelX+40,y+6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(wheelX-40,y+6); ctx.lineTo(srcX+8,y+6); ctx.stroke();
+    ctx.lineWidth=1;
+    // 광원 = 관측 지점 (빛이 나가고 돌아오는 바로 그 자리, 같은 축 위)
+    ctx.beginPath(); ctx.arc(srcX,y,10,0,7); ctx.fillStyle=`rgba(255,224,102,${0.25+0.75*I})`; ctx.fill();
     ctx.strokeStyle="#64748b"; ctx.stroke();
-    ctx.fillStyle="#94a3b8"; ctx.fillText("관측",wheelX,y+92);
+    ctx.fillStyle="#94a3b8"; ctx.font="12px sans-serif"; ctx.textAlign="center"; ctx.fillText("광원·관측",srcX,y+28);
   });
 }
 

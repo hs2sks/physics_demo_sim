@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>마이컬슨-몰리 실험 — 에테르 바람을 찾아서</title>
+<style>
+  :root {
+    --bg:#f0fbfa; --panel:#fff; --ink:#1f3b3a; --sub:#5f7f7d;
+    --accent:#0f9488; --accent2:#d64545; --ok:#2f9e5c; --warn:#d64545;
+    --border:#c9e8e4; --radius:14px;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:"Segoe UI","Malgun Gothic",sans-serif; background:var(--bg); color:var(--ink); padding:12px; font-size:16px; line-height:1.65; }
+  header { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+  header h1 { font-size:1.2em; }
+  header .spacer { flex:1; }
+  .navbtn { text-decoration:none; color:var(--sub); border:1px solid var(--border); padding:7px 13px; border-radius:9px; font-size:0.85em; white-space:nowrap; background:#fff; }
+  .navbtn:hover { color:var(--accent); border-color:var(--accent); }
+
+  .wrap { max-width:760px; margin:0 auto; }
+
+  .progress { display:flex; align-items:center; gap:0; margin-bottom:16px; overflow-x:auto; padding-bottom:4px; }
+  .pd { width:34px; height:34px; border-radius:50%; border:2px solid var(--border); display:flex; align-items:center; justify-content:center;
+        font-size:14px; font-weight:700; color:var(--sub); cursor:pointer; flex-shrink:0; background:#fff; transition:all .15s; }
+  .pd.on { background:var(--accent); border-color:var(--accent); color:#fff; transform:scale(1.1); }
+  .pd.done { background:#e2f5f2; border-color:var(--accent); color:var(--accent); }
+  .pl { flex:1; height:3px; background:var(--border); min-width:14px; }
+  .pl.done { background:var(--accent); }
+
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:20px; box-shadow:0 3px 14px rgba(20,110,100,.07); margin-bottom:14px; }
+  .step-eyebrow { font-size:0.85em; color:var(--accent); font-weight:700; letter-spacing:.03em; margin-bottom:4px; }
+  .step-title { font-size:1.35em; font-weight:800; margin-bottom:12px; }
+  .story p { margin-bottom:10px; font-size:1.02em; }
+  .story b { color:var(--accent); }
+  .story .analogy { background:#e6f7f5; border-left:4px solid var(--accent); padding:10px 14px; border-radius:0 8px 8px 0; margin:10px 0; font-size:0.98em; }
+
+  canvas { display:block; max-width:100%; background:#0c1119; border-radius:10px; margin:14px 0; }
+
+  .controls { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:10px 0; }
+  button { font-size:1em; padding:10px 18px; border-radius:10px; border:1px solid var(--border); background:#fff; cursor:pointer; font-weight:600; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.primary:hover { background:#0c766c; }
+  button:disabled { opacity:0.4; cursor:not-allowed; }
+  .param { margin:12px 0; }
+  .param label { display:flex; justify-content:space-between; font-weight:700; margin-bottom:5px; }
+  .param label .val { color:var(--accent); font-variant-numeric:tabular-nums; }
+  .param input[type=range] { width:100%; height:8px; }
+
+  .readout { background:#f2f8f4; border:1px solid #cfe9d8; border-radius:10px; padding:12px 14px; margin-top:10px; font-size:1.05em; }
+  .readout.wait { background:#f5f2ea; border-color:var(--border); color:var(--sub); }
+  .readout .big { font-size:1.3em; font-weight:800; color:var(--ok); }
+  .readout .big.warn { color:var(--warn); }
+
+  table { width:100%; border-collapse:collapse; font-size:0.92em; margin-top:10px; }
+  th,td { border:1px solid var(--border); padding:7px; text-align:center; }
+  th { background:#e6f7f5; }
+  td.pending { color:var(--sub); font-style:italic; }
+
+  .navrow { display:flex; justify-content:space-between; margin-top:16px; }
+  .navrow button { min-width:96px; }
+
+  .eq { text-align:center; font-family:Georgia,serif; font-size:1.15em; margin:10px 0; background:#eef9f7; border:1px solid var(--border); border-radius:8px; padding:8px; }
+
+  .final-links { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+  .final-links a, .final-links span { flex:1 1 200px; text-align:center; padding:12px; border-radius:10px; border:1px solid var(--border); text-decoration:none; color:var(--ink); background:#fff; font-weight:600; }
+  .final-links span.wip { opacity:0.55; }
+  .final-links a:hover { border-color:var(--accent); color:var(--accent); }
+
+  @media (max-width:640px) { body{font-size:15.5px;} .step-title{font-size:1.2em;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <a class="navbtn" href="../../index.html">🏠 홈</a>
+  <a class="navbtn" href="../index.html">← 광학으로</a>
+  <h1>🌊 마이컬슨-몰리의 실험</h1>
+  <span class="spacer"></span>
+</header>
+
+<div class="progress" id="progress"></div>
+<div id="stepHost"></div>
+
+</div>
+
+<script>
+"use strict";
+/* ═══════════════════ 물리 상수 ═══════════════════ */
+const C = 299792458;
+const V_EARTH = 29800;      // 지구 공전 속력 (m/s)
+const L_ARM = 11;           // 마이컬슨-몰리 장치의 유효 팔 길이 (m, 여러 번 반사시켜 늘림)
+const LAMBDA = 500e-9;      // 사용한 빛의 파장 (m)
+const MAX_SHIFT = 2*L_ARM*V_EARTH*V_EARTH/(LAMBDA*C*C); // 이론상 예상되는 최대 무늬 이동량
+
+function predictedShift(angleDeg) { return MAX_SHIFT * Math.sin(2*angleDeg*Math.PI/180); }
+
+// STEP1 배 경주용 상수 (이야기 전용 단위, 실제 물리 단위 아님)
+const V_BOAT = 6;   // 배의 속력 (칸/초)
+const L_RIVER = 18; // 왕복 편도 거리 (칸)
+
+const $ = (id) => document.getElementById(id);
+
+/* ═══════════════════ 상태 ═══════════════════ */
+const STEP_COUNT = 6;
+const state = {
+  step: 1,
+  bestExpected: null,   // STEP3에서 마지막으로 확인한 예상 이동량
+};
+
+/* ═══════════════════ 진행 표시 ═══════════════════ */
+function renderProgress() {
+  const el = $("progress"); el.innerHTML = "";
+  for (let i = 1; i <= STEP_COUNT; i++) {
+    const d = document.createElement("div");
+    d.className = "pd" + (i === state.step ? " on" : i < state.step ? " done" : "");
+    d.textContent = i < state.step ? "✓" : i;
+    d.onclick = () => goStep(i);
+    el.appendChild(d);
+    if (i < STEP_COUNT) {
+      const l = document.createElement("div");
+      l.className = "pl" + (i < state.step ? " done" : "");
+      el.appendChild(l);
+    }
+  }
+}
+function goStep(n) { state.step = Math.max(1, Math.min(STEP_COUNT, n)); render(); }
+
+/* ═══════════════════ 공통 애니메이션 루프 ═══════════════════ */
+let animId = null, t0 = performance.now();
+function startLoop(drawFn) {
+  cancelAnimationFrame(animId);
+  function frame(now) { drawFn((now - t0) / 1000); animId = requestAnimationFrame(frame); }
+  animId = requestAnimationFrame(frame);
+}
+
+/* ═══════════════════ 간섭무늬(줄무늬) 그리기 헬퍼 ═══════════════════ */
+function drawFringes(ctx, cx, cy, w, h, shiftPx) {
+  const barWidth = 12, gap = 12, period = barWidth + gap;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(cx - w/2, cy - h/2, w, h); ctx.clip();
+  const offset = ((shiftPx % period) + period) % period;
+  for (let x = cx - w/2 - period + offset; x < cx + w/2 + period; x += period) {
+    ctx.fillStyle = "#e8e4d8";
+    ctx.fillRect(x, cy - h/2, barWidth, h);
+  }
+  ctx.restore();
+  ctx.strokeStyle = "#475569"; ctx.strokeRect(cx - w/2, cy - h/2, w, h);
+}
+
+/* ═══════════════════ STEP 1 — 이야기의 시작: 강물 위의 배 경주 ═══════════════════ */
+function renderStep1() {
+  return `
+  <div class="card">
+    <div class="step-eyebrow">STEP 1 / 6 · 이야기의 시작</div>
+    <div class="step-title">🚣 강물 위에서 배 경주를 해봅시다</div>
+    <div class="story">
+      <p>똑같은 속력으로 노를 젓는 배 두 척이 있어요. <b>위쪽 배</b>는 강물의 흐름과 나란한 방향으로 왕복하고(상류로 갔다가 하류로 돌아와요), <b>아래쪽 배</b>는 강물을 가로질러 왕복해요(맞은편 기슭까지 갔다가 돌아와요). 둘 다 같은 거리를 왕복하는데, 누가 먼저 돌아올까요?</p>
+      <div class="analogy">💡 상류로 거슬러 갈 때는 느려지고 하류로 내려올 때는 빨라지니까 "손해 본 시간을 나중에 만회하지 않을까?" 싶지만... 사실은 <b>손해가 더 커요</b>! 반면 가로지르는 배는 물살을 비스듬히 밀어내는 정도로만 손해를 보기 때문에 <b>항상 먼저 도착</b>해요.</div>
+    </div>
+    <canvas id="cv1" width="600" height="220"></canvas>
+    <div class="param">
+      <label for="riverSpeed">강물 속력 <span class="val"><span id="riverSpeedVal">2</span> 칸/초</span></label>
+      <input type="range" id="riverSpeed" min="0" max="4" step="0.5" value="2">
+    </div>
+    <div class="controls">
+      <button class="primary" id="btnRace1">🏁 경주 시작!</button>
+    </div>
+    <div class="readout wait" id="raceReadout">강물 속력을 정하고 경주를 시작해보세요.</div>
+  </div>`;
+}
+function initStep1() {
+  const canvas = $("cv1"), ctx = canvas.getContext("2d");
+  const slider = $("riverSpeed");
+  slider.addEventListener("input", () => { $("riverSpeedVal").textContent = slider.value; });
+  let race = null;
+  $("btnRace1").addEventListener("click", () => {
+    const vr = +slider.value;
+    const t1 = L_RIVER/(V_BOAT-vr), t2 = L_RIVER/(V_BOAT+vr);
+    const effSpeed = Math.sqrt(V_BOAT*V_BOAT - vr*vr);
+    const tPerpLeg = L_RIVER/effSpeed;
+    race = { start: performance.now(), vr, t1, t2, tPerpLeg, doneA:false, doneB:false, finishA:null, finishB:null };
+    $("raceReadout").className = "readout wait"; $("raceReadout").textContent = "배들이 출발했어요...";
+  });
+  const dockX = 90, buoyX = 520, yA = 70, yB = 160;
+  startLoop(() => {
+    const w=canvas.width, h=canvas.height; ctx.clearRect(0,0,w,h);
+    ctx.fillStyle = "#dff1f8"; ctx.fillRect(0,0,w,h);
+    ctx.fillStyle = "#8fc7dd"; ctx.font = "14px sans-serif"; ctx.textAlign = "center";
+    for (let x = dockX+40; x < buoyX; x += 60) ctx.fillText("→", x, yA-30);
+    ctx.fillStyle = "#5f7f7d"; ctx.font = "12px sans-serif";
+    ctx.fillText("나란히 왕복 (강물 방향)", (dockX+buoyX)/2, yA-44);
+    ctx.fillText("가로질러 왕복", (dockX+buoyX)/2, yB-44);
+    [yA,yB].forEach(y => {
+      ctx.fillStyle = "#c9b892"; ctx.fillRect(dockX-10, y-10, 10, 20);
+      ctx.beginPath(); ctx.arc(buoyX, y, 6, 0, 7); ctx.fillStyle = "#e0872a"; ctx.fill();
+    });
+    let bxA = dockX, bxB = dockX;
+    if (race) {
+      const el = (performance.now()-race.start)/1000;
+      if (el < race.t1) bxA = dockX + (buoyX-dockX)*(el/race.t1);
+      else if (el < race.t1+race.t2) bxA = buoyX - (buoyX-dockX)*((el-race.t1)/race.t2);
+      else { bxA = dockX; if (!race.doneA) { race.doneA = true; race.finishA = race.t1+race.t2; } }
+
+      const totalB = race.tPerpLeg*2;
+      if (el < race.tPerpLeg) bxB = dockX + (buoyX-dockX)*(el/race.tPerpLeg);
+      else if (el < totalB) bxB = buoyX - (buoyX-dockX)*((el-race.tPerpLeg)/race.tPerpLeg);
+      else { bxB = dockX; if (!race.doneB) { race.doneB = true; race.finishB = totalB; } }
+
+      if (race.doneA && race.doneB) {
+        const diff = Math.abs(race.finishA - race.finishB);
+        const ro = $("raceReadout"); ro.className = "readout";
+        ro.innerHTML = diff < 0.05
+          ? `🤝 강물 속력이 0이라 두 배가 <b>동시에</b> 도착했어요! (나란히: ${race.finishA.toFixed(1)}초, 가로질러: ${race.finishB.toFixed(1)}초)`
+          : `🏆 <b style="color:var(--ok)">가로지르는 배가 ${diff.toFixed(1)}초 더 빨리</b> 도착했어요! (나란히: ${race.finishA.toFixed(1)}초, 가로질러: ${race.finishB.toFixed(1)}초)`;
+      }
+    }
+    ctx.fillStyle = "#2f7ac2"; ctx.beginPath(); ctx.arc(bxA,yA,9,0,7); ctx.fill();
+    ctx.fillStyle = "#0f9488"; ctx.beginPath(); ctx.arc(bxB,yB,9,0,7); ctx.fill();
+    ctx.font = "13px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText("🚣", bxA, yA+5); ctx.fillText("🚣", bxB, yB+5);
+  });
+}
+
+/* ═══════════════════ STEP 2 — 빛으로 확장하기 ═══════════════════ */
+function renderStep2() {
+  return `
+  <div class="card">
+    <div class="step-eyebrow">STEP 2 / 6 · 빛으로 확장하기</div>
+    <div class="step-title">🌌 빛도 "에테르"라는 강물을 헤엄칠까?</div>
+    <div class="story">
+      <p>19세기 과학자들은 빛도 파동이라고 생각했어요. 파도가 물을 타고 움직이듯, 빛도 우주를 가득 채운 보이지 않는 물질인 <b>'에테르(ether)'</b> 속을 지나간다고 믿었죠.</p>
+      <div class="analogy">💡 지구는 태양 주위를 초속 약 30km라는 무시무시한 속력으로 돌고 있어요. 에테르 속을 이렇게 빠르게 움직인다면, 달리는 자동차 창문 밖으로 손을 내밀 때처럼 <b>'에테르 바람'</b>을 맞고 있어야 하지 않을까요?</div>
+      <p>1887년, 미국의 과학자 <b>마이컬슨</b>과 <b>몰리</b>는 이 에테르 바람을 잡아내기 위한 장치를 만들었어요. 반투명 거울로 빛을 둘로 나눠서 서로 수직인 두 방향(나란한 방향 / 가로지르는 방향)으로 보낸 뒤 다시 합치는 장치예요 — 방금 본 배 경주와 똑같은 원리랍니다!</p>
+    </div>
+    <canvas id="cv2" width="600" height="260"></canvas>
+    <p class="hint" style="color:var(--sub); font-size:0.9em">두 방향으로 갔다 온 빛을 다시 합치면 <b>간섭무늬</b>가 만들어져요. 물살(에테르 바람) 방향 왕복이 정말 더 오래 걸린다면, 무늬가 특정한 모양으로 나타나야겠죠?</p>
+  </div>`;
+}
+function initStep2() {
+  const canvas = $("cv2"), ctx = canvas.getContext("2d");
+  const srcX=50, srcY=210, hmX=210, hmY=210, farRightX=520, topY=40, screenY=210, screenX=srcX;
+  startLoop((t) => {
+    const w=canvas.width, h=canvas.height; ctx.clearRect(0,0,w,h);
+    ctx.fillStyle = "#0c1119"; ctx.fillRect(0,0,w,h);
+    ctx.font = "12px sans-serif"; ctx.fillStyle = "#94a3b8"; ctx.textAlign = "center";
+
+    ctx.fillText("광원", srcX, srcY+26);
+    ctx.beginPath(); ctx.arc(srcX,srcY,7,0,7); ctx.fillStyle = "#ffe066"; ctx.fill();
+
+    ctx.save(); ctx.translate(hmX,hmY); ctx.rotate(-Math.PI/4);
+    ctx.fillStyle = "#c9b8f0"; ctx.fillRect(-16,-2,32,4);
+    ctx.restore();
+    ctx.fillText("반투명 거울", hmX, hmY+30);
+
+    ctx.fillStyle = "#9db2c8"; ctx.fillRect(farRightX, hmY-24, 6, 48);
+    ctx.fillText("거울 A (나란한 팔)", farRightX-10, hmY-34);
+
+    ctx.fillStyle = "#9db2c8"; ctx.fillRect(hmX-24, topY, 48, 6);
+    ctx.fillText("거울 B (가로지르는 팔)", hmX+70, topY+16);
+
+    const dash = (t*40) % 16;
+    ctx.strokeStyle = "rgba(255,224,102,.7)"; ctx.setLineDash([6,4]); ctx.lineDashOffset = -dash;
+    ctx.beginPath(); ctx.moveTo(srcX+8,srcY); ctx.lineTo(hmX,hmY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(hmX,hmY); ctx.lineTo(farRightX,hmY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(hmX,hmY); ctx.lineTo(hmX,topY+6); ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.strokeStyle = "rgba(255,140,140,.8)"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(farRightX,hmY); ctx.lineTo(hmX,hmY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(hmX,topY+6); ctx.lineTo(hmX,hmY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(hmX,hmY); ctx.lineTo(screenX,screenY+70); ctx.stroke();
+    ctx.lineWidth = 1;
+
+    ctx.fillStyle = "#334155"; ctx.fillRect(screenX-24, screenY+68, 48, 40);
+    ctx.fillStyle = "#94a3b8"; ctx.fillText("관측 화면", screenX, screenY+124);
+    drawFringes(ctx, screenX, screenY+88, 40, 36, 0);
+  });
+}
+
+/* ═══════════════════ STEP 3 — 예상되는 결과 ═══════════════════ */
+function renderStep3() {
+  return `
+  <div class="card">
+    <div class="step-eyebrow">STEP 3 / 6 · 예상되는 결과</div>
+    <div class="step-title">🔮 에테르 바람이 분다면...</div>
+    <div class="story">
+      <p>에테르 바람이 정말 분다면, 바람과 나란한 방향으로 왕복하는 빛과 바람을 가로지르는 방향으로 왕복하는 빛은 서로 <b>다른 시간</b>이 걸려야 해요 — 꼭 아까 배 경주처럼요! 장치를 빙글빙글 돌리면, 어느 팔이 "나란한 팔"이 되는지가 계속 바뀌면서 간섭무늬도 함께 움직여야 해요.</p>
+      <div class="analogy">💡 지구의 공전 속력(초속 30km)과 장치의 팔 길이(11m)를 이용해서 계산하면, 장치를 90˚ 돌릴 때마다 무늬가 <b>약 ${MAX_SHIFT.toFixed(2)}개</b>만큼 이동할 것으로 예상됐어요.</div>
+    </div>
+    <canvas id="cv3" width="600" height="160"></canvas>
+    <div class="param">
+      <label for="angle3">장치 회전 각도 <span class="val"><span id="angle3Val">0</span>˚</span></label>
+      <input type="range" id="angle3" min="0" max="180" step="1" value="0">
+    </div>
+    <div class="readout" id="predictReadout"></div>
+  </div>`;
+}
+function initStep3() {
+  const canvas = $("cv3"), ctx = canvas.getContext("2d");
+  const slider = $("angle3");
+  function update() {
+    const angle = +slider.value;
+    $("angle3Val").textContent = angle;
+    const shift = predictedShift(angle);
+    state.bestExpected = shift;
+    $("predictReadout").innerHTML = `이 각도에서 예상되는 무늬 이동량: <b style="color:var(--accent)">${shift.toFixed(3)}개</b>`;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = "#0c1119"; ctx.fillRect(0,0,canvas.width,canvas.height);
+    drawFringes(ctx, canvas.width/2, canvas.height/2, 260, 90, shift*80);
+  }
+  slider.addEventListener("input", update);
+  update();
+}
+
+/* ═══════════════════ STEP 4 — 실제로 실험해보기 ═══════════════════ */
+function renderStep4() {
+  return `
+  <div class="card">
+    <div class="step-eyebrow">STEP 4 / 6 · 실제로 실험해보기</div>
+    <div class="step-title">🔬 자, 실제로 돌려봅시다!</div>
+    <div class="story">
+      <p>이제 진짜 장치를 돌려서 무늬가 예상대로 움직이는지 확인해볼 차례예요. 슬라이더로 장치를 돌려보세요.</p>
+    </div>
+    <canvas id="cv4" width="600" height="160"></canvas>
+    <div class="param">
+      <label for="angle4">장치 회전 각도 <span class="val"><span id="angle4Val">0</span>˚</span></label>
+      <input type="range" id="angle4" min="0" max="180" step="1" value="0">
+    </div>
+    <div class="readout wait" id="actualReadout">각도를 돌려보세요.</div>
+  </div>`;
+}
+function initStep4() {
+  const canvas = $("cv4"), ctx = canvas.getContext("2d");
+  const slider = $("angle4");
+  function update() {
+    const angle = +slider.value;
+    $("angle4Val").textContent = angle;
+    const jitter = (Math.sin(angle*13.7)*0.004);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = "#0c1119"; ctx.fillRect(0,0,canvas.width,canvas.height);
+    drawFringes(ctx, canvas.width/2, canvas.height/2, 260, 90, jitter*80);
+    $("actualReadout").className = "readout";
+    $("actualReadout").innerHTML = `😲 어라? 각도를 <b>${angle}˚</b>까지 돌려봐도 무늬가 <b style="color:var(--warn)">거의 그대로</b>예요! (실제 관측된 이동량: 0.01개 미만 — 예상했던 ${MAX_SHIFT.toFixed(2)}개와 전혀 달라요)`;
+  }
+  slider.addEventListener("input", update);
+  update();
+}
+
+/* ═══════════════════ STEP 5 — 놀라운 결과의 의미 ═══════════════════ */
+function renderStep5() {
+  return `
+  <div class="card">
+    <div class="step-eyebrow">STEP 5 / 6 · 놀라운 결과의 의미</div>
+    <div class="step-title">😲 실패가 곧 위대한 발견이었다</div>
+    <div class="story">
+      <p>마이컬슨과 몰리는 온갖 방법으로 장치를 더 정밀하게 만들고, 하루 중 다른 시간에, 계절을 바꿔가며 몇 번이고 실험을 반복했어요. 그런데 언제나 결과는 같았습니다 — <b>무늬는 거의 움직이지 않았어요.</b></p>
+      <div class="analogy">💡 이건 마치 "가로지르는 배가 나란히 가는 배보다 항상 먼저 도착해야 하는데, 실제로 재보니 둘이 똑같이 도착하더라!"는 것과 같아요. 그렇다면 결론은 하나뿐이죠 — <b>애초에 강물(에테르 바람)이 흐르고 있지 않았던 것</b>입니다.</div>
+      <p>에테르가 없다는 건, 빛의 속도가 <b>보는 사람이 어떻게 움직이든 항상 똑같다</b>는 뜻이었어요. 이 놀라운 사실은 훗날 아인슈타인이 <b>특수상대성이론(1905년)</b>을 만드는 데 결정적인 실마리가 되었습니다. "실패한 실험"이 오히려 물리학 역사상 가장 중요한 발견 중 하나가 된 거예요!</p>
+    </div>
+  </div>`;
+}
+function initStep5() {}
+
+/* ═══════════════════ STEP 6 — 정리 ═══════════════════ */
+function renderStep6() {
+  return `
+  <div class="card">
+    <div class="step-eyebrow">STEP 6 / 6 · 정리</div>
+    <div class="step-title">🏆 마이컬슨과 몰리가 알아낸 것</div>
+    <div class="story">
+      <p>마이컬슨-몰리 실험은 <b>"측정하려던 것을 찾지 못한"</b> 실험이었어요. 하지만 그 "무(無)결과"가 바로 정답이었습니다 — 에테르는 없었고, 빛의 속도는 누가 어떻게 움직이며 재더라도 항상 똑같아요.</p>
+      <div class="analogy">💡 정리하면: 강물 위 배 경주처럼 나란한 방향과 가로지르는 방향의 왕복 시간이 달라야 했지만, 실제로는 <b>차이가 전혀 없었어요</b>. 그래서 과학자들은 '에테르 바람'이라는 가정 자체를 버려야 했고, 이는 아인슈타인의 특수상대성이론으로 이어졌습니다.</p>
+      <p style="color:var(--sub); font-size:0.92em">🎁 보너스: 마이컬슨은 이 연구로 1907년 미국인 최초로 노벨 물리학상을 받았어요. "실패"로 상을 받은 셈이죠!</p>
+    </div>
+    <table>
+      <thead><tr><th>구분</th><th>값</th><th>비고</th></tr></thead>
+      <tbody>
+        <tr><td>이론적 예상 이동량</td><td>≈ ${MAX_SHIFT.toFixed(2)} 개</td><td>에테르 바람이 있다고 가정했을 때</td></tr>
+        <tr><td>실제 관측된 이동량</td><td>&lt; 0.02 개</td><td>마이컬슨-몰리, 1887년</td></tr>
+        <tr><td>결론</td><td>에테르는 없다</td><td>빛의 속도는 항상 일정 (c = 299,792.458 km/s)</td></tr>
+      </tbody>
+    </table>
+    <div class="final-links">
+      <a href="../index.html">🌈 광학으로 돌아가기</a>
+      <a href="../../index.html">🏠 홈으로</a>
+    </div>
+    <div class="controls" style="margin-top:14px">
+      <button id="btnRestart">↺ 처음부터 다시 해보기</button>
+    </div>
+  </div>`;
+}
+function initStep6() {
+  $("btnRestart").addEventListener("click", () => {
+    state.step = 1; state.bestExpected = null;
+    render();
+  });
+}
+
+/* ═══════════════════ 렌더 디스패치 ═══════════════════ */
+const RENDERERS = { 1:[renderStep1,initStep1], 2:[renderStep2,initStep2], 3:[renderStep3,initStep3], 4:[renderStep4,initStep4], 5:[renderStep5,initStep5], 6:[renderStep6,initStep6] };
+function render() {
+  renderProgress();
+  const [r, init] = RENDERERS[state.step];
+  $("stepHost").innerHTML = r() + navHTML();
+  init();
+  $("prevBtn")?.addEventListener("click", ()=>goStep(state.step-1));
+  $("nextBtn")?.addEventListener("click", ()=>goStep(state.step+1));
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+function navHTML() {
+  return `<div class="navrow">
+    <button id="prevBtn" ${state.step===1?"disabled":""}>← 이전</button>
+    <button class="primary" id="nextBtn" ${state.step===STEP_COUNT?"disabled":""}>다음 →</button>
+  </div>`;
+}
+
+render();
+</script>
+</body>
+</html>

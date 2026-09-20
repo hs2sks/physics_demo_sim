@@ -446,14 +446,17 @@ function rebuildFieldLines(charges, refQAbs) {
       const geo = new THREE.BufferGeometry().setFromPoints(vecPts);
       const line = new THREE.Line(geo, material);
       fieldLineGroup.add(line);
-      // 방향 화살촉(선 중간 지점)
+      // 방향 화살촉(선 중간 지점) — 추적 경로의 진행 방향이 아니라
+      // 실제 전기장 벡터 방향을 사용한다(음전하는 안쪽, 양전하는 바깥쪽).
       const mid = Math.floor(pts.length / 2);
       if (mid > 0 && mid < pts.length - 1) {
-        const from = new THREE.Vector3(pts[mid-1].x, pts[mid-1].y, pts[mid-1].z);
-        const to = new THREE.Vector3(pts[mid+1].x, pts[mid+1].y, pts[mid+1].z);
-        const dir = to.clone().sub(from).normalize();
-        const arrow = new THREE.ArrowHelper(dir, new THREE.Vector3(pts[mid].x, pts[mid].y, pts[mid].z), 0.01, 0x8fd6d6, 0.9, 0.4);
-        fieldLineGroup.add(arrow);
+        const Emid = fieldAt(pts[mid], charges);
+        const midMag = vecMag(Emid);
+        if (midMag > 1e-6) {
+          const dir = new THREE.Vector3(Emid.x, Emid.y, Emid.z).normalize();
+          const arrow = new THREE.ArrowHelper(dir, new THREE.Vector3(pts[mid].x, pts[mid].y, pts[mid].z), 0.01, 0x8fd6d6, 0.9, 0.4);
+          fieldLineGroup.add(arrow);
+        }
       }
     }
   }

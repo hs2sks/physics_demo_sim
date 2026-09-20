@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D 전기장 시뮬레이션</title>
+<style>
+  :root {
+    --bg: #f4f6fa; --panel: #ffffff; --ink: #1c2733; --sub: #5a6b7d;
+    --accent: #1f6fd6; --accent2: #d64545; --ok: #1e8f4e;
+    --border: #d7dee8; --radius: 10px;
+    --pos: #e0472f; --neg: #2f6fe0; --probe: #c98a12; --efield: #14a3a3; --force: #ff8c32; --ext: #3fae58;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+    background: var(--bg); color: var(--ink);
+    padding: 12px; font-size: 15px;
+  }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  header h1 { font-size: 1.25em; }
+  header .spacer { flex: 1; }
+  a.home { text-decoration:none; color:var(--sub); border:1px solid var(--border); padding:6px 12px; border-radius:8px; font-size:0.9em; white-space:nowrap; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+  .tabs button { flex: 0 0 auto; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 1em; }
+  .tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .layout { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .sim-col { flex: 2 1 480px; display: flex; flex-direction: column; gap: 12px; }
+  .side-col { flex: 1 1 320px; display: flex; flex-direction: column; gap: 12px; }
+
+  #sceneWrap { position: relative; width: 100%; aspect-ratio: 4/3; border-radius: 8px; overflow: hidden; background: radial-gradient(circle at 50% 30%, #16233a, #060a12 75%); }
+  #sceneWrap canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #hoverHint { position:absolute; left:8px; bottom:8px; color:#9fb3d9; font-size:0.78em; background:rgba(6,10,18,0.55); padding:4px 8px; border-radius:6px; pointer-events:none; }
+
+  .scenario-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .scenario-picker button { flex: 1 1 30%; min-width: 120px; padding: 8px 6px; font-size: 0.86em; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  .scenario-picker button.active { background: #eaf1fd; border-color: var(--accent); color: var(--accent); font-weight: 700; }
+
+  .param { margin-bottom: 10px; }
+  .param label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 4px; font-size: 0.92em; }
+  .param label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .param input[type=range] { width: 100%; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .hint { color: var(--sub); font-size: 0.83em; margin-top: 2px; line-height: 1.5; }
+
+  button { font-size: 1em; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.warn { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .controls-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.82em; color: var(--sub); margin-top: 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .swatch { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+
+  table.readout { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+  table.readout td { padding: 4px 2px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  table.readout td:first-child { color: var(--sub); }
+  table.readout td:last-child { text-align: right; font-weight: 700; }
+
+  details { margin-top: 6px; }
+  summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+  .formula-body { padding: 8px 2px; line-height: 1.8; font-size: 0.92em; }
+  .formula-body .eq { font-size: 1.08em; text-align: center; margin: 6px 0; font-family: Georgia, serif; }
+  .note { border-left: 3px solid var(--accent); background: #eef4fd; padding: 8px 10px; border-radius: 6px; font-size: 0.86em; margin-top: 8px; line-height: 1.6; }
+  .misconception { border-left: 3px solid var(--accent2); background: #fdeeee; padding: 8px 10px; border-radius: 6px; font-size: 0.86em; margin-top: 8px; line-height: 1.6; }
+
+  .charge-list { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; }
+  .charge-item { display: grid; grid-template-columns: auto 1fr 1fr 1fr auto; gap: 4px; align-items: center; font-size: 0.8em; background: #f7f9fc; border: 1px solid var(--border); border-radius: 6px; padding: 5px 6px; }
+  .charge-item input[type=number] { width: 100%; padding: 3px 2px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.95em; }
+  .charge-item .sign { width: 22px; height: 22px; border-radius: 50%; border: none; color: #fff; font-weight: 700; cursor: pointer; }
+  .charge-item .del { border: none; background: none; color: var(--accent2); cursor: pointer; font-size: 1.1em; }
+
+  canvas.chart { width: 100%; background: #fff; border: 1px solid var(--border); border-radius: 6px; }
+
+  body.projector { font-size: 19px; }
+  body.projector button { padding: 12px 18px; }
+  body.projector .scenario-picker button { font-size: 1em; padding: 12px 8px; }
+
+  @media (max-width: 720px) {
+    body { font-size: 16px; padding: 8px; }
+    .layout { flex-direction: column; }
+    .sim-col, .side-col { flex: 1 1 100%; }
+    button { padding: 11px 14px; }
+    input[type=range] { height: 26px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="home" href="../index.html">🏠 홈</a>
+  <h1>⚡ 3D 전기장 시뮬레이션</h1>
+  <span class="spacer"></span>
+  <button id="projectorBtn" title="프로젝터용 큰 글씨 모드">🖥 큰 글씨 모드</button>
+</header>
+
+<div class="tabs">
+  <button id="tabScenarioBtn" class="active">📘 시나리오 (22-1~22-7)</button>
+  <button id="tabFreeBtn">🧪 자유 탐구</button>
+</div>
+
+<div class="layout">
+
+  <div class="sim-col">
+    <div class="panel">
+      <div id="sceneWrap">
+        <div id="hoverHint">마우스 드래그: 회전 · 휠: 확대/축소</div>
+      </div>
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--pos)"></i>양전하(+)</span>
+        <span><i class="swatch" style="background:var(--neg)"></i>음전하(−)</span>
+        <span><i class="swatch" style="background:var(--probe)"></i>탐침(측정점)</span>
+        <span><i class="swatch" style="background:var(--efield);border-radius:2px"></i>전기장 E</span>
+        <span><i class="swatch" style="background:var(--force);border-radius:2px"></i>힘 F</span>
+        <span><i class="swatch" style="background:var(--ext);border-radius:2px"></i>외부 균일장</span>
+      </div>
+    </div>
+
+    <div class="panel" id="graphPanel" hidden>
+      <canvas id="chartCanvas" class="chart" width="440" height="220"></canvas>
+      <div class="hint" id="chartHint"></div>
+    </div>
+  </div>
+
+  <div class="side-col">
+
+    <div class="panel" id="scenarioPanel">
+      <div class="scenario-picker" id="scenarioPicker"></div>
+      <div id="scenarioBody"></div>
+    </div>
+
+    <div class="panel" id="freePanel" hidden>
+      <div class="hint">3D 화면의 바닥 격자를 클릭하면 그 자리에 전하가 추가됩니다 (최대 8개).</div>
+      <div class="row" style="margin:8px 0">
+        <label style="display:flex;align-items:center;gap:6px;font-weight:600">
+          다음 클릭 전하량(nC)
+          <input type="number" id="nextQ" value="4" step="0.5" style="width:70px;padding:4px 6px;border:1px solid var(--border);border-radius:6px">
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-weight:600">
+          높이 y(cm)
+          <input type="number" id="nextY" value="0" step="1" style="width:60px;padding:4px 6px;border:1px solid var(--border);border-radius:6px">
+        </label>
+      </div>
+      <div class="charge-list" id="chargeList"></div>
+      <div class="controls-row">
+        <button id="clearChargesBtn" class="warn">🗑 전체 지우기</button>
+        <label style="display:flex;align-items:center;gap:6px;margin-left:auto">
+          <input type="checkbox" id="fieldLinesChk" checked> 전기장선 표시
+        </label>
+      </div>
+      <div class="hint" style="margin-top:8px">전기장선의 <b>밀도</b>(전하당 선의 개수)는 전하 크기에 비례합니다 — 전하를 키워 보세요.</div>
+    </div>
+
+    <div class="panel">
+      <b>탐침(probe) 측정값</b>
+      <table class="readout" id="probeReadout"></table>
+      <div class="note" id="probeNote"></div>
+    </div>
+
+    <div class="panel">
+      <details id="formulaDetails">
+        <summary>📐 관련 공식 보기</summary>
+        <div class="formula-body" id="formulaBody"></div>
+      </details>
+    </div>
+
+    <div class="panel" id="misconceptionPanel"></div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+"use strict";
+
+/* ============================================================
+   1. 물리 계산 코어 (렌더링과 완전히 분리된 순수 함수들)
+   좌표 단위: cm, 전하 단위: nC, 결과 전기장 단위: N/C
+   ============================================================ */
+const K_COULOMB = 8.99e9;      // N·m²/C²
+const EPS0 = 8.85e-12;         // C²/(N·m²)
+const CM_TO_M = 0.01;
+const NC_TO_C = 1e-9;
+const MIN_R_M = 0.004;         // 특이점 방지용 최소 거리(4mm)
+
+function chargeToCoulomb(qNC) { return qNC * NC_TO_C; }
+
+// point, chargePos: {x,y,z} in cm. 반환: E={x,y,z} in N/C
+function fieldAt(point, charges) {
+  let Ex = 0, Ey = 0, Ez = 0;
+  for (const c of charges) {
+    const dx = (point.x - c.pos.x) * CM_TO_M;
+    const dy = (point.y - c.pos.y) * CM_TO_M;
+    const dz = (point.z - c.pos.z) * CM_TO_M;
+    let r = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (r < MIN_R_M) r = MIN_R_M;
+    const qC = chargeToCoulomb(c.q);
+    const mag = (K_COULOMB * qC) / (r * r);
+    Ex += (mag * dx) / r;
+    Ey += (mag * dy) / r;
+    Ez += (mag * dz) / r;
+  }
+  return { x: Ex, y: Ey, z: Ez };
+}
+
+function vecMag(v) { return Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z); }
+function vecAdd(a, b) { return { x: a.x + b.x, y: a.y + b.y, z: a.z + b.z }; }
+function vecScale(a, s) { return { x: a.x * s, y: a.y * s, z: a.z * s }; }
+
+// 전기쌍극자 원거리 근사식: E = (1/2πε0) * (q*d_m) / z_m^3   [qNC, d_cm, z_cm]
+function dipoleFarField(qNC, dCm, zCm) {
+  const qC = chargeToCoulomb(qNC);
+  const dM = dCm * CM_TO_M;
+  const zM = Math.max(Math.abs(zCm) * CM_TO_M, MIN_R_M);
+  const p = qC * dM; // C·m
+  return (1 / (2 * Math.PI * EPS0)) * (p / (zM * zM * zM));
+}
+
+// 쌍극자(+q at +d/2, -q at -d/2, z축 위)의 정확한 축상 전기장 (두 점전하 합)
+function dipoleExactAxialField(qNC, dCm, zCm) {
+  const charges = [
+    { q: qNC, pos: { x: 0, y: 0, z: dCm / 2 } },
+    { q: -qNC, pos: { x: 0, y: 0, z: -dCm / 2 } },
+  ];
+  const E = fieldAt({ x: 0, y: 0, z: zCm }, charges);
+  return Math.abs(E.z);
+}
+
+// 3D 필드라인 추적 (RK 없이 정규화-오일러법으로 충분히 작은 step 사용)
+function traceFieldLine(seed, initialSign, charges, opts) {
+  const stepCm = opts.stepCm, maxSteps = opts.maxSteps, boxHalf = opts.boxHalf, captureCm = opts.captureCm;
+  const pts = [{ x: seed.x, y: seed.y, z: seed.z }];
+  let p = { x: seed.x, y: seed.y, z: seed.z };
+  for (let i = 0; i < maxSteps; i++) {
+    const E = fieldAt(p, charges);
+    let mag = vecMag(E);
+    if (mag < 1e-6) break;
+    let dir = vecScale(E, initialSign / mag); // 양전하 시드: +E 방향, 음전하 시드: -E 방향
+    p = vecAdd(p, vecScale(dir, stepCm));
+    pts.push({ x: p.x, y: p.y, z: p.z });
+    if (Math.abs(p.x) > boxHalf || Math.abs(p.y) > boxHalf || Math.abs(p.z) > boxHalf) break;
+    // 반대 부호 전하 근처면 종료(그 전하에서 선이 끝남)
+    let captured = false;
+    for (const c of charges) {
+      const dx = p.x - c.pos.x, dy = p.y - c.pos.y, dz = p.z - c.pos.z;
+      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      if (dist < captureCm && Math.sign(c.q) !== Math.sign(initialSign * (initialSign > 0 ? 1 : 1))) {
+        // 시드 전하 본인은 제외, 부호가 다른 전하만 캡처로 인정
+      }
+      if (dist < captureCm) {
+        if ((initialSign > 0 && c.q < 0) || (initialSign < 0 && c.q > 0)) { captured = true; }
+      }
+    }
+    if (captured) break;
+  }
+  return pts;
+}
+
+// Fibonacci sphere: n개의 점을 구 표면에 고르게 분포
+function fibonacciSphere(n, radius) {
+  const pts = [];
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < n; i++) {
+    const y = 1 - (i / (n - 1)) * 2;
+    const r = Math.sqrt(1 - y * y);
+    const theta = golden * i;
+    pts.push({ x: Math.cos(theta) * r * radius, y: y * radius, z: Math.sin(theta) * r * radius });
+  }
+  return pts;
+}
+
+function numLinesForCharge(qAbs, refQ) {
+  const n = Math.round(6 + 14 * (qAbs / refQ));
+  return Math.max(6, Math.min(26, n));
+}
+
+function fmtE(val) {
+  const a = Math.abs(val);
+  if (a === 0) return "0 N/C";
+  if (a >= 1000 || a < 0.01) return val.toExponential(2) + " N/C";
+  return val.toFixed(1) + " N/C";
+}
+function fmtSci(val, unit) {
+  if (val === 0) return "0 " + unit;
+  return val.toExponential(3) + " " + unit;
+}
+
+/* ============================================================
+   2. 자체 검증 (콘솔 로그) — 물리 검증 단계
+   ============================================================ */
+function runSelfTests() {
+  const results = [];
+  // Test 1: 점전하 하나, 알려진 해석값과 비교
+  {
+    const E = fieldAt({ x: 10, y: 0, z: 0 }, [{ q: 5, pos: { x: 0, y: 0, z: 0 } }]);
+    const expected = (K_COULOMB * 5e-9) / (0.1 * 0.1); // 4495 N/C
+    const got = E.x;
+    const err = Math.abs(got - expected) / expected;
+    results.push(["점전하 E=kq/r^2", err < 0.01, `expected=${expected.toFixed(1)} got=${got.toFixed(1)} err=${(err*100).toFixed(3)}%`]);
+  }
+  // Test 2: 대칭 배치된 두 동일 전하 - 수직이등분선 위에서 합벡터가 그 축 방향(대칭축)만 가져야 함
+  {
+    const charges = [{ q: 5, pos: { x: -5, y: 0, z: 0 } }, { q: 5, pos: { x: 5, y: 0, z: 0 } }];
+    const E = fieldAt({ x: 0, y: 10, z: 0 }, charges);
+    const symmetryOk = Math.abs(E.x) < 1e-6 && Math.abs(E.z) < 1e-6;
+    const rEach = Math.sqrt(5*5+10*10) * CM_TO_M;
+    const eEach = (K_COULOMB * 5e-9) / (rEach*rEach);
+    const cosAngle = 10 / Math.sqrt(5*5+10*10);
+    const expectedY = 2 * eEach * cosAngle;
+    const err = Math.abs(E.y - expectedY) / expectedY;
+    results.push(["중첩원리(대칭 두 전하)", symmetryOk && err < 0.01, `symmetryOk=${symmetryOk} expectedY=${expectedY.toFixed(1)} got=${E.y.toFixed(1)}`]);
+  }
+  // Test 3: 쌍극자 원거리극한 수렴 / 근거리 발산
+  {
+    const far = dipoleExactAxialField(5, 1, 50);
+    const farApprox = dipoleFarField(5, 1, 50);
+    const farErr = Math.abs(far - farApprox) / far;
+    const near = dipoleExactAxialField(5, 1, 2);
+    const nearApprox = dipoleFarField(5, 1, 2);
+    const nearErr = Math.abs(near - nearApprox) / near;
+    results.push(["쌍극자 원거리 근사 수렴(z=50d)", farErr < 0.02, `err=${(farErr*100).toFixed(3)}%`]);
+    results.push(["쌍극자 근거리 근사 오차 확대(z=2d)", nearErr > 0.05, `err=${(nearErr*100).toFixed(2)}%`]);
+  }
+  console.log("=== 전기장 시뮬레이션 물리 검증 ===");
+  let allPass = true;
+  for (const [name, pass, detail] of results) {
+    console.log(`[${pass ? "PASS" : "FAIL"}] ${name} — ${detail}`);
+    if (!pass) allPass = false;
+  }
+  console.log(allPass ? "모든 검증 통과" : "일부 검증 실패 — 콘솔 확인 필요");
+}
+
+/* ============================================================
+   3. Three.js 장면 구성
+   ============================================================ */
+const BOX_HALF = 16; // cm, 표시 박스 절반 크기
+
+let scene, camera, renderer, controls;
+let chargeMeshes = [];      // {mesh, data}
+let fieldLineGroup = new THREE.Group();
+let probeArrowE, probeArrowF, probeMesh;
+let extFieldGroup = new THREE.Group();
+let animCharge = null, animDipole = null;
+
+function initScene() {
+  const wrap = document.getElementById("sceneWrap");
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(45, wrap.clientWidth / wrap.clientHeight, 0.1, 500);
+  camera.position.set(26, 20, 30);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  wrap.insertBefore(renderer.domElement, wrap.firstChild);
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.target.set(0, 0, 0);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.9);
+  dl.position.set(20, 30, 15);
+  scene.add(dl);
+
+  const grid = new THREE.GridHelper(BOX_HALF * 2, 16, 0x3a5a8a, 0x1f3352);
+  scene.add(grid);
+  const axes = new THREE.AxesHelper(BOX_HALF * 0.6);
+  scene.add(axes);
+
+  scene.add(fieldLineGroup);
+  scene.add(extFieldGroup);
+
+  probeMesh = new THREE.Mesh(
+    new THREE.SphereGeometry(0.55, 16, 16),
+    new THREE.MeshStandardMaterial({ color: 0xc98a12, emissive: 0x553300 })
+  );
+  scene.add(probeMesh);
+
+  probeArrowE = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 1, 0x14c9c9, 1.2, 0.7);
+  scene.add(probeArrowE);
+  probeArrowF = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 1, 0xff8c32, 1.2, 0.7);
+  probeArrowF.visible = false;
+  scene.add(probeArrowF);
+
+  window.addEventListener("resize", onResize);
+  onResize();
+  renderer.domElement.addEventListener("pointerdown", onSceneClick);
+
+  animate();
+}
+
+function onResize() {
+  const wrap = document.getElementById("sceneWrap");
+  const w = wrap.clientWidth, h = wrap.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  stepAnimation();
+  renderer.render(scene, camera);
+}
+
+function clearGroup(g) { while (g.children.length) g.remove(g.children[0]); }
+
+function sphereForCharge(qNC) {
+  const color = qNC >= 0 ? 0xe0472f : 0x2f6fe0;
+  const radius = 0.7 + 0.35 * Math.min(3, Math.abs(qNC) / 4);
+  const mesh = new THREE.Mesh(
+    new THREE.SphereGeometry(radius, 20, 20),
+    new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.25 })
+  );
+  return mesh;
+}
+
+function rebuildChargeMeshes(charges) {
+  for (const cm of chargeMeshes) scene.remove(cm.mesh);
+  chargeMeshes = [];
+  for (const c of charges) {
+    const mesh = sphereForCharge(c.q);
+    mesh.position.set(c.pos.x, c.pos.y, c.pos.z);
+    scene.add(mesh);
+    chargeMeshes.push({ mesh, data: c });
+  }
+}
+
+function rebuildFieldLines(charges, refQAbs) {
+  clearGroup(fieldLineGroup);
+  const material = new THREE.LineBasicMaterial({ color: 0x8fd6d6, transparent: true, opacity: 0.75 });
+  for (const c of charges) {
+    if (Math.abs(c.q) < 1e-9) continue;
+    const n = numLinesForCharge(Math.abs(c.q), refQAbs);
+    const seedDirs = fibonacciSphere(n, 1.0);
+    const sign = c.q > 0 ? 1 : -1;
+    for (const d of seedDirs) {
+      const seed = { x: c.pos.x + d.x * 0.9, y: c.pos.y + d.y * 0.9, z: c.pos.z + d.z * 0.9 };
+      const pts = traceFieldLine(seed, sign, charges, { stepCm: 0.35, maxSteps: 260, boxHalf: BOX_HALF, captureCm: 0.9 });
+      if (pts.length < 2) continue;
+      const vecPts = pts.map(p => new THREE.Vector3(p.x, p.y, p.z));
+      const geo = new THREE.BufferGeometry().setFromPoints(vecPts);
+      const line = new THREE.Line(geo, material);
+      fieldLineGroup.add(line);
+      // 방향 화살촉(선 중간 지점)
+      const mid = Math.floor(pts.length / 2);
+      if (mid > 0 && mid < pts.length - 1) {
+        const from = new THREE.Vector3(pts[mid-1].x, pts[mid-1].y, pts[mid-1].z);
+        const to = new THREE.Vector3(pts[mid+1].x, pts[mid+1].y, pts[mid+1].z);
+        const dir = to.clone().sub(from).normalize();
+        const arrow = new THREE.ArrowHelper(dir, new THREE.Vector3(pts[mid].x, pts[mid].y, pts[mid].z), 0.01, 0x8fd6d6, 0.9, 0.4);
+        fieldLineGroup.add(arrow);
+      }
+    }
+  }
+}
+
+function updateExternalFieldViz(active, magnitude, dirVec) {
+  clearGroup(extFieldGroup);
+  if (!active || magnitude <= 0) return;
+  const dir = new THREE.Vector3(dirVec.x, dirVec.y, dirVec.z).normalize();
+  const len = 5.5;
+  const step = 7;
+  for (let x = -BOX_HALF + 4; x <= BOX_HALF - 4; x += step) {
+    for (let y = -BOX_HALF + 4; y <= BOX_HALF - 4; y += step) {
+      const origin = new THREE.Vector3(x, y, 0).sub(dir.clone().multiplyScalar(len/2));
+      const arrow = new THREE.ArrowHelper(dir, origin, len, 0x3fae58, 1.1, 0.5);
+      extFieldGroup.add(arrow);
+    }
+  }
+}
+
+function updateProbeViz(probePos, E, showForce, F) {
+  probeMesh.position.set(probePos.x, probePos.y, probePos.z);
+  const mag = vecMag(E);
+  const dispScale = mag > 0 ? Math.min(9, 2.4 * Math.log10(1 + mag / 200)) : 0;
+  if (mag > 1e-3) {
+    probeArrowE.visible = true;
+    probeArrowE.position.set(probePos.x, probePos.y, probePos.z);
+    probeArrowE.setDirection(new THREE.Vector3(E.x, E.y, E.z).normalize());
+    probeArrowE.setLength(Math.max(1.2, dispScale), 0.8, 0.45);
+  } else {
+    probeArrowE.visible = false;
+  }
+  if (showForce && F) {
+    const fMag = vecMag(F);
+    probeArrowF.visible = fMag > 1e-20;
+    probeArrowF.position.set(probePos.x, probePos.y, probePos.z);
+    if (fMag > 1e-20) {
+      probeArrowF.setDirection(new THREE.Vector3(F.x, F.y, F.z).normalize());
+      probeArrowF.setLength(Math.max(1.2, dispScale), 0.8, 0.45);
+    }
+  } else {
+    probeArrowF.visible = false;
+  }
+}
+
+function onSceneClick(ev) {
+  if (state.tab !== "free" || state.freeMode !== "add") return;
+  const wrap = document.getElementById("sceneWrap");
+  const rect = wrap.getBoundingClientRect();
+  const mouse = new THREE.Vector2(
+    ((ev.clientX - rect.left) / rect.width) * 2 - 1,
+    -((ev.clientY - rect.top) / rect.height) * 2 + 1
+  );
+  const raycaster = new THREE.Raycaster();
+  raycaster.setFromCamera(mouse, camera);
+  const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const pt = new THREE.Vector3();
+  if (!raycaster.ray.intersectPlane(plane, pt)) return;
+  if (Math.abs(pt.x) > BOX_HALF - 1 || Math.abs(pt.z) > BOX_HALF - 1) return;
+  if (state.freeCharges.length >= 8) { alert("전하는 최대 8개까지 추가할 수 있습니다."); return; }
+  const qVal = parseFloat(document.getElementById("nextQ").value) || 1;
+  const yVal = parseFloat(document.getElementById("nextY").value) || 0;
+  state.freeCharges.push({ id: state.nextId++, q: qVal, pos: { x: round1(pt.x), y: round1(yVal), z: round1(pt.z) } });
+  renderChargeList();
+  refreshAll();
+}
+function round1(v) { return Math.round(v * 10) / 10; }
+
+/* ============================================================
+   4. 애니메이션 상태(균일장 속 전하/쌍극자)
+   ============================================================ */
+let animState = { playing: false, t: 0 };
+
+function stepAnimation() {
+  if (!animState.playing) return;
+  const dt = 1 / 60;
+  animState.t += dt;
+  if (state.scenarioId === 4 && animCharge) {
+    const s = scenarioParams;
+    const qC = chargeToCoulomb(s.q4);
+    const mKg = s.m4 * 1e-6; // mg -> kg
+    const F = qC * s.eExt4; // N (방향은 +x 기준, 음전하면 자동으로 음수 -> 반대방향)
+    const a = F / mKg; // m/s^2
+    // 화면 스케일: 1 cm = 0.01 m 이므로 cm 단위 가속도로 환산
+    const aCm = a * 100;
+    animCharge.v += aCm * dt * 0.02; // 시연용 시간 배속(0.02) 적용
+    animCharge.x += animCharge.v * dt;
+    if (Math.abs(animCharge.x) > BOX_HALF - 2) {
+      animState.playing = false;
+      updatePlayButton();
+    }
+    animCharge.mesh.position.x = animCharge.x;
+    document.getElementById("anim4Speed") && (document.getElementById("anim4Speed").textContent = Math.abs(animCharge.v).toFixed(1) + " cm/s(연출값)");
+  }
+  if (state.scenarioId === 5 && animDipole) {
+    const s = scenarioParams;
+    const qC = chargeToCoulomb(s.q5);
+    const dM = s.d5 * CM_TO_M;
+    const p = qC * dM; // C·m
+    const I = 2.0e-4; // 교육용 가상 관성모멘트 (kg·m^2, 임의값)
+    const damping = 3.0;
+    const torque = -p * s.eExt5 * Math.sin(animDipole.theta);
+    const alpha = torque / I - damping * animDipole.omega;
+    animDipole.omega += alpha * dt;
+    animDipole.theta += animDipole.omega * dt;
+    animDipole.group.rotation.z = animDipole.theta;
+    const U = -p * s.eExt5 * Math.cos(animDipole.theta);
+    document.getElementById("dipoleAnimReadout") && (document.getElementById("dipoleAnimReadout").textContent =
+      `θ = ${(animDipole.theta * 180/Math.PI).toFixed(1)}°  |  τ = ${fmtSci(Math.abs(torque),"N·m")}  |  U = ${fmtSci(U,"J")}`);
+    if (Math.abs(animDipole.omega) < 0.001 && Math.abs(torque) < 1e-12) {
+      // 거의 정지 상태 — 계속 재생해도 무방하지만 표시는 유지
+    }
+  }
+}
+function updatePlayButton() {
+  const btn = document.getElementById("playBtn");
+  if (btn) btn.textContent = animState.playing ? "⏸ 일시정지" : "▶ 재생";
+}
+
+/* ============================================================
+   5. 시나리오 정의
+   ============================================================ */
+const scenarios = [
+  {
+    id: 1, name: "① 점전하 하나",
+    section: "22-1 · 22-2",
+    desc: "대전입자 하나가 주위 공간에 만드는 전기장을 살펴봅니다. 탐침을 옮기며 전기장 벡터의 방향과 크기가 어떻게 변하는지, 전기장선이 양전하에서 나와 어떻게 퍼지는지 확인하세요.",
+    misconception: "전기장선은 실제로 존재하는 입자의 이동 경로가 아닙니다 — 각 점에서 전기장의 방향·상대적 크기(선의 밀도)를 나타내는 시각화 도구일 뿐입니다. 회전시켜 보면 하나의 선이 아니라 3차원 전체를 감싸는 구조임을 알 수 있습니다.",
+  },
+  {
+    id: 2, name: "② 두 점전하 — 중첩원리",
+    section: "22-2",
+    desc: "두 전하가 만드는 전기장은 각각의 전기장을 벡터로 더한 것(중첩원리)입니다. 탐침 위치에서 두 개의 가는 화살표(각 전하의 기여)와 굵은 화살표(합)를 비교해 보세요.",
+    misconception: "두 반대 부호 전하 사이의 중점에도 전기장은 0이 아닙니다 — 오히려 두 전하 모두 그 지점을 향해(또는 그 지점에서) 같은 방향으로 밀어주므로 전기장이 강하게 존재합니다. 탐침을 두 전하 사이로 옮겨 확인해 보세요.",
+  },
+  {
+    id: 3, name: "③ 전기쌍극자",
+    section: "22-3",
+    desc: "크기는 같고 부호가 반대인 두 전하가 짧은 거리 d만큼 떨어져 있는 전기쌍극자입니다. 쌍극자축 위 거리 z를 조절하며, 점전하(∝1/r²)보다 전기장이 얼마나 더 빨리 감소하는지(∝1/z³) 그래프로 비교합니다.",
+    misconception: "쌍극자에서 멀어질수록 '정확한 두 점전하의 합'과 '쌍극자 근사식'이 서로 가까워집니다 — 근사식은 z≫d일 때만 성립합니다. 그래프에서 z가 작을 때 두 곡선이 벌어지는 것을 확인하세요.",
+  },
+  {
+    id: 4, name: "④ 균일한 장 속 점전하",
+    section: "22-6",
+    desc: "균일한 외부 전기장 E 안에 놓인 점전하는 F=qE의 힘을 받습니다. 재생을 누르면 전하가 힘의 방향으로 가속되는 모습을 볼 수 있습니다(잉크젯 프린터의 원리와 같습니다).",
+    misconception: "힘의 방향은 전하의 부호에 따라 달라집니다 — 양전하는 E와 같은 방향, 음전하는 E와 반대 방향으로 힘을 받습니다. 부호를 바꿔서 방향이 실제로 반대가 되는지 확인해 보세요.",
+  },
+  {
+    id: 5, name: "⑤ 균일한 장 속 쌍극자",
+    section: "22-7",
+    desc: "균일한 외부 전기장 안의 전기쌍극자는 토크 τ=p×E를 받아 회전하며, 결국 전기장 방향으로 정렬됩니다. 초기 각도를 바꾸고 재생해 회전 과정을 관찰하세요.",
+    misconception: "균일한 외부 전기장 속 쌍극자에는 알짜 '힘'은 작용하지 않습니다(양 끝의 힘이 서로 상쇄) — 작용하는 것은 오직 '토크'뿐입니다. 그래서 쌍극자의 질량중심은 이동하지 않고 제자리에서 회전만 합니다.",
+  },
+];
+
+let scenarioParams = {
+  q1: 5,
+  q2a: 5, q2b: 5, sameSign: true, sep2: 10,
+  q3: 5, d3: 1.5, z3: 10,
+  q4: 4, m4: 5, eExt4: 1500,
+  q5: 4, d5: 2, eExt5: 1500, theta5: 60,
+};
+
+/* ============================================================
+   6. 전역 상태
+   ============================================================ */
+const state = {
+  tab: "scenario",
+  scenarioId: 1,
+  freeCharges: [
+    { id: 1, q: 5, pos: { x: -6, y: 0, z: 0 } },
+    { id: 2, q: -5, pos: { x: 6, y: 0, z: 0 } },
+  ],
+  nextId: 3,
+  freeMode: "add",
+  probe: { x: 10, y: 5, z: 0 },
+  probeChargeSign: 0, // 0=시험전하 없음, 1=+, -1=-
+};
+
+function currentCharges() {
+  if (state.tab === "free") return state.freeCharges;
+  return chargesForScenario(state.scenarioId);
+}
+
+function chargesForScenario(id) {
+  const p = scenarioParams;
+  if (id === 1) return [{ q: p.q1, pos: { x: 0, y: 0, z: 0 } }];
+  if (id === 2) return [
+    { q: p.q2a, pos: { x: -p.sep2/2, y: 0, z: 0 } },
+    { q: p.sameSign ? p.q2b : -p.q2b, pos: { x: p.sep2/2, y: 0, z: 0 } },
+  ];
+  if (id === 3) return [
+    { q: p.q3, pos: { x: 0, y: 0, z: p.d3/2 } },
+    { q: -p.q3, pos: { x: 0, y: 0, z: -p.d3/2 } },
+  ];
+  if (id === 4) return [{ q: p.q4, pos: { x: animCharge ? animCharge.x : -BOX_HALF + 3, y: 0, z: 0 } }];
+  if (id === 5) return []; // 쌍극자는 별도 메쉬 그룹으로 렌더링(외부장 시나리오)
+  return [];
+}
+
+function currentProbe() {
+  if (state.scenarioId === 3 && state.tab === "scenario") return { x: 0, y: 0, z: scenarioParams.z3 };
+  return state.probe;
+}
+
+/* ============================================================
+   7. 렌더 & UI 갱신
+   ============================================================ */
+function refreshAll() {
+  const charges = currentCharges();
+  const showExt = state.tab === "scenario" && (state.scenarioId === 4 || state.scenarioId === 5);
+  updateExternalFieldViz(showExt,
+    state.scenarioId === 4 ? scenarioParams.eExt4 : scenarioParams.eExt5,
+    { x: 1, y: 0, z: 0 });
+
+  if (state.scenarioId === 4 && state.tab === "scenario") {
+    if (!animCharge) {
+      const mesh = sphereForCharge(scenarioParams.q4);
+      scene.add(mesh);
+      animCharge = { mesh, x: -BOX_HALF + 3, v: 0 };
+    }
+    animCharge.mesh.material.color.set(scenarioParams.q4 >= 0 ? 0xe0472f : 0x2f6fe0);
+    animCharge.mesh.material.emissive.set(scenarioParams.q4 >= 0 ? 0xe0472f : 0x2f6fe0);
+    animCharge.mesh.position.set(animCharge.x, 0, 0);
+  } else if (animCharge) {
+    scene.remove(animCharge.mesh); animCharge = null;
+  }
+
+  if (state.scenarioId === 5 && state.tab === "scenario") {
+    if (!animDipole) {
+      const group = new THREE.Group();
+      const pos = sphereForCharge(scenarioParams.q5);
+      pos.position.set(scenarioParams.d5/2, 0, 0);
+      const neg = sphereForCharge(-scenarioParams.q5);
+      neg.position.set(-scenarioParams.d5/2, 0, 0);
+      const rod = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.12, 0.12, scenarioParams.d5, 8),
+        new THREE.MeshStandardMaterial({ color: 0x9aa7bd })
+      );
+      rod.rotation.z = Math.PI / 2;
+      group.add(pos, neg, rod);
+      scene.add(group);
+      animDipole = { group, pos, neg, rod, theta: scenarioParams.theta5 * Math.PI/180, omega: 0 };
+      animDipole.group.rotation.z = animDipole.theta;
+    }
+    animDipole.pos.position.set(scenarioParams.d5/2, 0, 0);
+    animDipole.neg.position.set(-scenarioParams.d5/2, 0, 0);
+    animDipole.rod.scale.y = scenarioParams.d5;
+  } else if (animDipole) {
+    scene.remove(animDipole.group); animDipole = null;
+  }
+
+  rebuildChargeMeshes(charges);
+
+  const showLines = state.tab === "free" ? document.getElementById("fieldLinesChk").checked : true;
+  if (showLines && state.scenarioId !== 4 && state.scenarioId !== 5 || (state.tab === "free")) {
+    const allQ = charges.map(c => Math.abs(c.q));
+    const refQ = allQ.length ? Math.max(...allQ) : 5;
+    rebuildFieldLines(charges, refQ);
+  } else {
+    clearGroup(fieldLineGroup);
+  }
+
+  const probe = currentProbe();
+  let effectiveCharges = charges;
+  if (state.scenarioId === 4 && state.tab === "scenario") effectiveCharges = [];
+  if (state.scenarioId === 5 && state.tab === "scenario") effectiveCharges = [];
+  const E = (state.scenarioId === 4 || state.scenarioId === 5) && state.tab === "scenario"
+    ? { x: scenarioParams[state.scenarioId===4?"eExt4":"eExt5"], y: 0, z: 0 }
+    : fieldAt(probe, effectiveCharges);
+
+  let F = null, showForce = false;
+  if (state.probeChargeSign !== 0 && state.tab === "free") {
+    const qTest = state.probeChargeSign * 1; // 1 nC 시험전하로 가정
+    F = vecScale(E, chargeToCoulomb(qTest));
+    showForce = true;
+  }
+  updateProbeViz(probe, E, showForce, F);
+  renderProbeReadout(probe, E, F);
+  renderFormula();
+  renderMisconception();
+  renderChart();
+}
+
+function renderProbeReadout(probe, E, F) {
+  const tbl = document.getElementById("probeReadout");
+  const mag = vecMag(E);
+  let rows = [
+    ["탐침 위치 (cm)", `(${probe.x.toFixed(1)}, ${probe.y.toFixed(1)}, ${probe.z.toFixed(1)})`],
+    ["전기장 크기 |E|", fmtE(mag)],
+    ["전기장 방향 (단위벡터)", mag > 1e-6 ? `(${(E.x/mag).toFixed(2)}, ${(E.y/mag).toFixed(2)}, ${(E.z/mag).toFixed(2)})` : "—"],
+  ];
+  if (F) {
+    rows.push(["시험전하에 작용하는 힘 |F|", fmtSci(vecMag(F), "N")]);
+  }
+  tbl.innerHTML = rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("");
+
+  const note = document.getElementById("probeNote");
+  note.textContent = "이 지점의 전기장은 시험전하를 놓든 놓지 않든 항상 동일한 값입니다 — 전기장은 대전된 물체가 주위 공간에 미리 만들어 놓은 성질입니다.";
+}
+
+function renderFormula() {
+  const body = document.getElementById("formulaBody");
+  const map = {
+    1: `<div class="eq">E = F / q<sub>0</sub></div><div class="eq">E = (1/4πε<sub>0</sub>) |q| / r²</div>전기장선은 양전하에서 나와 음전하로 들어가며, 선의 밀도는 전기장 크기에 비례합니다.`,
+    2: `<div class="eq">E<sub>alt</sub> = E<sub>1</sub> + E<sub>2</sub> + ... (벡터합)</div>여러 전하가 만드는 알짜 전기장은 각 전하가 단독으로 만드는 전기장의 벡터 합입니다(중첩원리).`,
+    3: `<div class="eq">E = (1/2πε<sub>0</sub>) · p / z³ ,  p = qd</div>쌍극자모멘트 p는 음전하에서 양전하를 향합니다. 먼 거리(z≫d)에서 전기장은 점전하보다 훨씬 빠르게(1/z³) 감소합니다.`,
+    4: `<div class="eq">F = qE</div>전하 q가 양수면 힘은 E와 같은 방향, 음수면 반대 방향입니다.`,
+    5: `<div class="eq">τ = p × E ,  U = −p·E</div>균일한 장에서 쌍극자에 작용하는 알짜 힘은 0이지만, 토크는 0이 아니므로 회전하여 결국 p가 E와 나란해집니다(U가 최소가 되는 상태).`,
+  };
+  if (state.tab === "free") {
+    body.innerHTML = `<div class="eq">E = Σ (1/4πε<sub>0</sub>) (q<sub>i</sub>/r<sub>i</sub>²) r̂<sub>i</sub></div>자유롭게 배치한 모든 전하가 만드는 전기장을 중첩원리로 계산해 보여줍니다.`;
+  } else {
+    body.innerHTML = map[state.scenarioId] || "";
+  }
+}
+
+function renderMisconception() {
+  const panel = document.getElementById("misconceptionPanel");
+  const sc = scenarios.find(s => s.id === state.scenarioId);
+  if (state.tab === "free" || !sc) {
+    panel.innerHTML = `<div class="misconception"><b>💡 확인해보기</b><br>서로 가까운 반대 부호의 두 전하를 만들어 그 사이 지점에 탐침을 놓아보세요 — 전기장이 0이 아니라 오히려 강하다는 것을 알 수 있습니다.</div>`;
+    return;
+  }
+  panel.innerHTML = `<div class="misconception"><b>💡 흔한 오개념</b><br>${sc.misconception}</div>`;
+}
+
+function renderChargeList() {
+  const wrap = document.getElementById("chargeList");
+  wrap.innerHTML = state.freeCharges.map(c => `
+    <div class="charge-item" data-id="${c.id}">
+      <button class="sign" style="background:${c.q>=0?'#e0472f':'#2f6fe0'}" data-act="toggle">${c.q>=0?'+':'−'}</button>
+      <input type="number" step="0.5" value="${c.q}" data-field="q" title="전하량(nC)">
+      <input type="number" step="1" value="${c.pos.x}" data-field="x" title="x(cm)">
+      <input type="number" step="1" value="${c.pos.z}" data-field="z" title="z(cm)">
+      <button class="del" data-act="del">✕</button>
+    </div>`).join("");
+  wrap.querySelectorAll(".charge-item").forEach(item => {
+    const id = parseInt(item.dataset.id);
+    item.querySelector('[data-act="toggle"]').addEventListener("click", () => {
+      const c = state.freeCharges.find(c => c.id === id);
+      c.q = -c.q; renderChargeList(); refreshAll();
+    });
+    item.querySelector('[data-act="del"]').addEventListener("click", () => {
+      state.freeCharges = state.freeCharges.filter(c => c.id !== id);
+      renderChargeList(); refreshAll();
+    });
+    item.querySelectorAll("input").forEach(inp => {
+      inp.addEventListener("input", () => {
+        const c = state.freeCharges.find(c => c.id === id);
+        const f = inp.dataset.field;
+        const v = parseFloat(inp.value);
+        if (isNaN(v)) return;
+        if (f === "q") c.q = v;
+        if (f === "x") c.pos.x = Math.max(-BOX_HALF+1, Math.min(BOX_HALF-1, v));
+        if (f === "z") c.pos.z = Math.max(-BOX_HALF+1, Math.min(BOX_HALF-1, v));
+        refreshAll();
+      });
+    });
+  });
+}
+
+/* ---- 로그-로그 비교 그래프 (시나리오 3 전용) ---- */
+function renderChart() {
+  const panel = document.getElementById("graphPanel");
+  if (!(state.tab === "scenario" && state.scenarioId === 3)) { panel.hidden = true; return; }
+  panel.hidden = false;
+  const canvas = document.getElementById("chartCanvas");
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width, H = canvas.height, pad = 36;
+  ctx.clearRect(0, 0, W, H);
+  const q = scenarioParams.q3, d = scenarioParams.d3;
+  const zMin = d * 0.6, zMax = d * 40;
+  const logMin = Math.log10(zMin), logMax = Math.log10(zMax);
+
+  const exactVals = [], approxVals = [];
+  const N = 60;
+  for (let i = 0; i <= N; i++) {
+    const z = Math.pow(10, logMin + (logMax - logMin) * i / N);
+    exactVals.push(dipoleExactAxialField(q, d, z));
+    approxVals.push(dipoleFarField(q, d, z));
+  }
+  const allVals = exactVals.concat(approxVals).filter(v => v > 0);
+  const eMin = Math.log10(Math.min(...allVals)), eMax = Math.log10(Math.max(...allVals));
+
+  function xPix(z) { return pad + (Math.log10(z) - logMin) / (logMax - logMin) * (W - pad - 10); }
+  function yPix(e) { return H - pad - (Math.log10(e) - eMin) / (eMax - eMin || 1) * (H - pad - 10); }
+
+  ctx.strokeStyle = "#d7dee8"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad, 6); ctx.lineTo(pad, H-pad); ctx.lineTo(W-6, H-pad); ctx.stroke();
+  ctx.fillStyle = "#5a6b7d"; ctx.font = "11px sans-serif";
+  ctx.fillText("z (cm, log)", W - 70, H - 8);
+  ctx.save(); ctx.translate(10, 20); ctx.fillText("E (N/C, log)", 0, 0); ctx.restore();
+
+  function drawLine(vals, color) {
+    ctx.strokeStyle = color; ctx.lineWidth = 2.2; ctx.beginPath();
+    for (let i = 0; i <= N; i++) {
+      const z = Math.pow(10, logMin + (logMax - logMin) * i / N);
+      const px = xPix(z), py = yPix(vals[i]);
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+  drawLine(exactVals, "#1f6fd6");
+  drawLine(approxVals, "#e0472f");
+
+  // 현재 z3 위치 마커
+  const zNow = Math.max(zMin, Math.min(zMax, scenarioParams.z3));
+  const px = xPix(zNow);
+  ctx.strokeStyle = "#c98a12"; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(px, 6); ctx.lineTo(px, H-pad); ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = "#1f6fd6"; ctx.fillText("● 정확한 값(두 점전하 합)", pad+4, 16);
+  ctx.fillStyle = "#e0472f"; ctx.fillText("● 쌍극자 근사식(1/z³)", pad+4, 30);
+
+  const exactNow = dipoleExactAxialField(q, d, zNow);
+  const approxNow = dipoleFarField(q, d, zNow);
+  const errPct = Math.abs(exactNow - approxNow) / exactNow * 100;
+  document.getElementById("chartHint").innerHTML =
+    `z = ${zNow.toFixed(1)} cm (d의 ${(zNow/d).toFixed(1)}배) 에서 근사식 오차: <b>${errPct.toFixed(1)}%</b>` +
+    (zNow/d < 3 ? " — 아직 z≫d 조건이 아니라 오차가 큽니다." : " — z≫d 조건에 가까워 근사식이 잘 맞습니다.");
+}
+
+/* ============================================================
+   8. 시나리오별 컨트롤 패널
+   ============================================================ */
+function renderScenarioPicker() {
+  const wrap = document.getElementById("scenarioPicker");
+  wrap.innerHTML = scenarios.map(s =>
+    `<button data-id="${s.id}" class="${s.id===state.scenarioId?'active':''}">${s.name}</button>`
+  ).join("");
+  wrap.querySelectorAll("button").forEach(b => {
+    b.addEventListener("click", () => {
+      state.scenarioId = parseInt(b.dataset.id);
+      animState.playing = false;
+      renderScenarioPicker();
+      renderScenarioControls();
+      refreshAll();
+    });
+  });
+}
+
+function slider(id, label, val, min, max, step, unit) {
+  return `<div class="param">
+    <label>${label} <span class="val" id="${id}_val">${val}${unit||''}</span></label>
+    <input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${val}">
+  </div>`;
+}
+function bindSlider(id, unit, onChange) {
+  const el = document.getElementById(id);
+  const valEl = document.getElementById(id + "_val");
+  el.addEventListener("input", () => {
+    valEl.textContent = el.value + (unit||'');
+    onChange(parseFloat(el.value));
+    refreshAll();
+  });
+}
+
+function renderScenarioControls() {
+  const body = document.getElementById("scenarioBody");
+  const sc = scenarios.find(s => s.id === state.scenarioId);
+  const p = scenarioParams;
+  let html = `<p class="hint" style="margin-bottom:10px"><b>${sc.section}</b> — ${sc.desc}</p>`;
+
+  if (state.scenarioId === 1) {
+    html += slider("q1", "전하량 q (nC)", p.q1, -10, 10, 0.5, " nC");
+  } else if (state.scenarioId === 2) {
+    html += `<div class="row" style="margin-bottom:8px">
+      <button id="sameSignBtn" class="${p.sameSign?'primary':''}">같은 부호</button>
+      <button id="diffSignBtn" class="${!p.sameSign?'primary':''}">반대 부호</button>
+    </div>`;
+    html += slider("q2a", "전하 1 크기 (nC)", p.q2a, 1, 10, 0.5, " nC");
+    html += slider("q2b", "전하 2 크기 (nC)", p.q2b, 1, 10, 0.5, " nC");
+    html += slider("sep2", "두 전하 사이 거리 (cm)", p.sep2, 2, 24, 0.5, " cm");
+  } else if (state.scenarioId === 3) {
+    html += slider("q3", "전하 크기 q (nC)", p.q3, 0.5, 10, 0.5, " nC");
+    html += slider("d3", "쌍극자 간격 d (cm)", p.d3, 0.5, 4, 0.1, " cm");
+    html += slider("z3", "탐침까지 축상 거리 z (cm)", p.z3, 1, 30, 0.5, " cm");
+  } else if (state.scenarioId === 4) {
+    html += slider("q4", "전하량 q (nC)", p.q4, -8, 8, 0.5, " nC");
+    html += slider("m4", "질량 m (mg)", p.m4, 1, 20, 0.5, " mg");
+    html += slider("eExt4", "외부 전기장 크기 (N/C)", p.eExt4, 0, 4000, 100, " N/C");
+    html += `<div class="hint" id="anim4Speed">재생을 누르면 F=qE 방향으로 가속됩니다.</div>`;
+  } else if (state.scenarioId === 5) {
+    html += slider("q5", "전하 크기 q (nC)", p.q5, 1, 8, 0.5, " nC");
+    html += slider("d5", "쌍극자 간격 d (cm)", p.d5, 1, 5, 0.5, " cm");
+    html += slider("eExt5", "외부 전기장 크기 (N/C)", p.eExt5, 200, 4000, 100, " N/C");
+    html += slider("theta5", "초기 각도 θ (도)", p.theta5, 0, 180, 5, "°");
+    html += `<div class="hint" id="dipoleAnimReadout"></div>`;
+  }
+
+  if (state.scenarioId === 4 || state.scenarioId === 5) {
+    html += `<div class="controls-row">
+      <button id="playBtn" class="primary">▶ 재생</button>
+      <button id="resetAnimBtn">↺ 리셋</button>
+    </div>`;
+  }
+
+  if (state.scenarioId !== 3) {
+    html += `<hr style="margin:10px 0;border:none;border-top:1px solid var(--border)">`;
+    html += `<b style="font-size:0.9em">탐침 위치</b>`;
+    html += slider("probeX", "x (cm)", state.probe.x, -BOX_HALF, BOX_HALF, 0.5, " cm");
+    html += slider("probeY", "y (cm)", state.probe.y, -BOX_HALF, BOX_HALF, 0.5, " cm");
+    html += slider("probeZ", "z (cm)", state.probe.z, -BOX_HALF, BOX_HALF, 0.5, " cm");
+  }
+
+  body.innerHTML = html;
+
+  if (state.scenarioId === 1) {
+    bindSlider("q1", " nC", v => p.q1 = v);
+  } else if (state.scenarioId === 2) {
+    document.getElementById("sameSignBtn").addEventListener("click", () => { p.sameSign = true; renderScenarioControls(); refreshAll(); });
+    document.getElementById("diffSignBtn").addEventListener("click", () => { p.sameSign = false; renderScenarioControls(); refreshAll(); });
+    bindSlider("q2a", " nC", v => p.q2a = v);
+    bindSlider("q2b", " nC", v => p.q2b = v);
+    bindSlider("sep2", " cm", v => p.sep2 = v);
+  } else if (state.scenarioId === 3) {
+    bindSlider("q3", " nC", v => p.q3 = v);
+    bindSlider("d3", " cm", v => p.d3 = v);
+    bindSlider("z3", " cm", v => p.z3 = v);
+  } else if (state.scenarioId === 4) {
+    bindSlider("q4", " nC", v => p.q4 = v);
+    bindSlider("m4", " mg", v => p.m4 = v);
+    bindSlider("eExt4", " N/C", v => p.eExt4 = v);
+  } else if (state.scenarioId === 5) {
+    bindSlider("q5", " nC", v => p.q5 = v);
+    bindSlider("d5", " cm", v => p.d5 = v);
+    bindSlider("eExt5", " N/C", v => p.eExt5 = v);
+    bindSlider("theta5", "°", v => { p.theta5 = v; if (animDipole) { animDipole.theta = v*Math.PI/180; animDipole.omega = 0; animDipole.group.rotation.z = animDipole.theta; } });
+  }
+
+  if (state.scenarioId === 4 || state.scenarioId === 5) {
+    document.getElementById("playBtn").addEventListener("click", () => {
+      animState.playing = !animState.playing;
+      updatePlayButton();
+    });
+    document.getElementById("resetAnimBtn").addEventListener("click", () => {
+      animState.playing = false;
+      if (state.scenarioId === 4 && animCharge) { animCharge.x = -BOX_HALF + 3; animCharge.v = 0; }
+      if (state.scenarioId === 5 && animDipole) { animDipole.theta = scenarioParams.theta5 * Math.PI/180; animDipole.omega = 0; animDipole.group.rotation.z = animDipole.theta; }
+      updatePlayButton();
+      refreshAll();
+    });
+  }
+
+  if (state.scenarioId !== 3) {
+    bindSlider("probeX", " cm", v => state.probe.x = v);
+    bindSlider("probeY", " cm", v => state.probe.y = v);
+    bindSlider("probeZ", " cm", v => state.probe.z = v);
+  }
+}
+
+/* ============================================================
+   9. 탭 전환 & 초기화
+   ============================================================ */
+function switchTab(tab) {
+  state.tab = tab;
+  animState.playing = false;
+  document.getElementById("tabScenarioBtn").classList.toggle("active", tab === "scenario");
+  document.getElementById("tabFreeBtn").classList.toggle("active", tab === "free");
+  document.getElementById("scenarioPanel").hidden = tab !== "scenario";
+  document.getElementById("freePanel").hidden = tab !== "free";
+  refreshAll();
+}
+
+document.getElementById("tabScenarioBtn").addEventListener("click", () => switchTab("scenario"));
+document.getElementById("tabFreeBtn").addEventListener("click", () => switchTab("free"));
+document.getElementById("clearChargesBtn").addEventListener("click", () => { state.freeCharges = []; renderChargeList(); refreshAll(); });
+document.getElementById("fieldLinesChk").addEventListener("change", refreshAll);
+document.getElementById("projectorBtn").addEventListener("click", () => document.body.classList.toggle("projector"));
+
+initScene();
+renderScenarioPicker();
+renderScenarioControls();
+renderChargeList();
+switchTab("scenario");
+runSelfTests();
+</script>
+
+</body>
+</html>
+<!--claude-meta
+category: electromagnetism
+slug: electric-field-3d
+icon: ⚡
+title: 3D 전기장 시뮬레이션
+desc: 점전하·쌍극자가 만드는 전기장을 3차원으로 탐구합니다 (Halliday Ch.22)
+-->

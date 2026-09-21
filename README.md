@@ -31,11 +31,14 @@ mechanics/                     역학
 ├── gravity/                   중력가속도(g) 측정
 │   ├── free-fall/             🍎 자유낙하        ✔ 완료
 │   ├── pendulum/              🕰 단진자          ✔ 완료
-│   ├── inclined-plane/        📐 빗면            준비 중
+│   ├── inclined-plane/        📐 빗면            ✔ 완료
 │   └── spring/                🌀 용수철 진자      준비 중
+├── newton-second-law/         ⚖️ 뉴턴 제2법칙 가상 실험실  ✔ 완료
+├── kepler-laws/                🪐 케플러 법칙 → 뉴턴 만유인력  ✔ 완료
+├── circular-motion-vector/     🔄 등속원운동 벡터 워크벤치  ✔ 완료
 └── black-ice/                 🧊 블랙아이스(마찰·제동 R&E 실험실)  ✔ 완료
-electromagnetism/              전자기            준비 중
-optics/                        광학              준비 중
+electromagnetism/              전자기            시뮬레이션 1개
+optics/                        광학              시뮬레이션 4개
 modern-physics/                현대물리
 └── photoelectric-effect/      💡 광전효과        ✔ 완료
 tools/                         분석 도구

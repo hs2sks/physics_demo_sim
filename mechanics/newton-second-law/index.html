@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>뉴턴 제2법칙 가상 실험실 (F = ma)</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- KaTeX for formulas -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+    body {
+      font-family: 'Pretendard', sans-serif;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-slate-800/80 backdrop-blur border-b border-slate-700 px-6 py-4 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="bg-indigo-600 p-2.5 rounded-xl text-white shadow-lg shadow-indigo-500/30">
+          <i class="fa-solid fa-atom text-xl"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            뉴턴 제2법칙 실험 시뮬레이션
+            <span class="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-500/30">F = ma</span>
+          </h1>
+          <p class="text-xs text-slate-400">힘($F$), 질량($m$), 가속도($a$) 사이의 상호 관계 탐구 및 그래프 해석</p>
+        </div>
+      </div>
+
+      <!-- Experiment Presets -->
+      <div class="flex items-center gap-2 bg-slate-900/60 p-1.5 rounded-xl border border-slate-700/60">
+        <button id="tabMode1" onclick="setExperimentMode('force')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all bg-indigo-600 text-white shadow">
+          실험 1: 질량 일정 ($F \text{ vs } a$)
+        </button>
+        <button id="tabMode2" onclick="setExperimentMode('mass')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-400 hover:text-white">
+          실험 2: 힘 일정 ($m \text{ vs } a$)
+        </button>
+        <button id="tabMode3" onclick="setExperimentMode('free')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-400 hover:text-white">
+          자유 탐구 모드
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main class="max-w-7xl mx-auto p-4 md:p-6 w-full grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
+    
+    <!-- LEFT PANEL: Simulation & Controls (7 Cols) -->
+    <section class="lg:col-span-7 flex flex-col gap-5">
+      
+      <!-- Simulation Canvas Box -->
+      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-xl flex flex-col gap-3">
+        <div class="flex justify-between items-center border-b border-slate-700/60 pb-2.5">
+          <div class="flex items-center gap-2 text-sm font-semibold text-slate-200">
+            <i class="fa-solid fa-gauge-high text-indigo-400"></i>
+            <span>실시간 운동 트랙 (마찰 없음 가정)</span>
+          </div>
+          <div class="flex items-center gap-4 text-xs font-mono">
+            <span class="text-slate-400">시간: <strong id="valTime" class="text-indigo-400 text-sm">0.00</strong>s</span>
+            <span class="text-slate-400">이동거리: <strong id="valDistance" class="text-emerald-400 text-sm">0.00</strong>m</span>
+            <span class="text-slate-400">속도: <strong id="valVelocity" class="text-amber-400 text-sm">0.00</strong>m/s</span>
+          </div>
+        </div>
+
+        <!-- Canvas Container -->
+        <div class="relative w-full aspect-[2.4/1] bg-gradient-to-b from-slate-950 to-slate-900 rounded-xl overflow-hidden border border-slate-800 shadow-inner">
+          <canvas id="simCanvas" class="w-full h-full block"></canvas>
+          
+          <!-- End-of-track Flag -->
+          <div class="absolute right-3 top-2 text-[11px] bg-slate-800/90 text-slate-300 px-2 py-1 rounded border border-slate-700 font-mono">
+            결승선 (10.0 m)
+          </div>
+        </div>
+
+        <!-- Real-time Dashboard Gauges -->
+        <div class="grid grid-cols-3 gap-3">
+          <div class="bg-slate-900/80 border border-slate-700/50 p-3 rounded-xl flex items-center justify-between">
+            <div>
+              <div class="text-[11px] font-medium text-slate-400">작용하는 알짜힘 ($F$)</div>
+              <div class="text-xl font-bold font-mono text-cyan-400" id="dashForce">2.0 <span class="text-xs font-normal">N</span></div>
+            </div>
+            <div class="w-9 h-9 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center font-bold">
+              F
+            </div>
+          </div>
+          
+          <div class="bg-slate-900/80 border border-slate-700/50 p-3 rounded-xl flex items-center justify-between">
+            <div>
+              <div class="text-[11px] font-medium text-slate-400">수레의 총 질량 ($m$)</div>
+              <div class="text-xl font-bold font-mono text-amber-400" id="dashMass">1.0 <span class="text-xs font-normal">kg</span></div>
+            </div>
+            <div class="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold">
+              m
+            </div>
+          </div>
+
+          <div class="bg-slate-900/80 border border-indigo-500/30 p-3 rounded-xl flex items-center justify-between ring-1 ring-indigo-500/20">
+            <div>
+              <div class="text-[11px] font-medium text-indigo-300">계산된 가속도 ($a = F/m$)</div>
+              <div class="text-xl font-bold font-mono text-indigo-400" id="dashAcc">2.00 <span class="text-xs font-normal">m/s²</span></div>
+            </div>
+            <div class="w-9 h-9 rounded-lg bg-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold">
+              a
+            </div>
+          </div>
+        </div>
+
+        <!-- Controls: Simulation Playback -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+          <div class="flex items-center gap-2">
+            <button id="btnPlay" onclick="togglePlay()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-semibold rounded-xl text-sm transition-all flex items-center gap-2 shadow-lg shadow-indigo-600/30">
+              <i class="fa-solid fa-play" id="playIcon"></i>
+              <span id="playText">실험 시작</span>
+            </button>
+            <button onclick="resetSim()" class="px-4 py-2.5 bg-slate-700 hover:bg-slate-600 active:scale-95 text-slate-200 font-medium rounded-xl text-sm transition-all flex items-center gap-1.5">
+              <i class="fa-solid fa-rotate-left"></i>
+              <span>초기화</span>
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button onclick="recordDataPoint()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-semibold rounded-xl text-sm transition-all flex items-center gap-2 shadow-lg shadow-emerald-600/30">
+              <i class="fa-solid fa-circle-plus"></i>
+              <span>현재 측정값 기록</span>
+            </button>
+            <button onclick="autoGenerateSampleSeries()" title="질량이나 힘을 변경하며 5회 자동 연속 측정" class="px-3.5 py-2.5 bg-slate-700/80 hover:bg-slate-600 text-slate-300 hover:text-white rounded-xl text-sm transition-all flex items-center gap-1.5">
+              <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i>
+              <span class="hidden sm:inline">5회 자동측정</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slider Controls Panel -->
+      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl flex flex-col gap-5">
+        <div class="flex items-center justify-between border-b border-slate-700/70 pb-3">
+          <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+            <i class="fa-solid fa-sliders text-indigo-400"></i>
+            <span>실험 변인 조절 장치</span>
+          </h2>
+          <span id="modeDescription" class="text-xs text-indigo-300 bg-indigo-950/60 px-2.5 py-1 rounded-full border border-indigo-800/60">
+            질량($m$)을 1.0kg으로 고정하고 힘($F$)을 변화시킵니다.
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Force Slider -->
+          <div class="flex flex-col gap-2.5 bg-slate-900/60 p-4 rounded-xl border border-slate-700/50" id="forceControlBox">
+            <div class="flex justify-between items-center">
+              <label for="sliderForce" class="text-xs font-semibold text-cyan-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-arrow-right-long text-cyan-400"></i>
+                당기는 힘 ($F$)
+              </label>
+              <div class="font-mono font-bold text-cyan-300 text-sm bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800/60">
+                <span id="labelForce">2.0</span> N
+              </div>
+            </div>
+            <input type="range" id="sliderForce" min="0.5" max="10.0" step="0.5" value="2.0" oninput="onParamChange()" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-400">
+            <div class="flex justify-between text-[10px] text-slate-400 font-mono">
+              <span>0.5 N</span>
+              <span>5.0 N</span>
+              <span>10.0 N</span>
+            </div>
+          </div>
+
+          <!-- Mass Slider -->
+          <div class="flex flex-col gap-2.5 bg-slate-900/60 p-4 rounded-xl border border-slate-700/50" id="massControlBox">
+            <div class="flex justify-between items-center">
+              <label for="sliderMass" class="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-weight-hanging text-amber-400"></i>
+                수레 질량 ($m$)
+              </label>
+              <div class="font-mono font-bold text-amber-300 text-sm bg-amber-950/80 px-2 py-0.5 rounded border border-amber-800/60">
+                <span id="labelMass">1.0</span> kg
+              </div>
+            </div>
+            <input type="range" id="sliderMass" min="0.5" max="5.0" step="0.5" value="1.0" oninput="onParamChange()" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-400">
+            <div class="flex justify-between text-[10px] text-slate-400 font-mono">
+              <span>0.5 kg</span>
+              <span>2.5 kg</span>
+              <span>5.0 kg</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Educational Hint Note -->
+        <div class="bg-indigo-950/30 border border-indigo-800/40 rounded-xl p-3.5 flex items-start gap-3 text-xs text-slate-300">
+          <i class="fa-solid fa-lightbulb text-indigo-400 text-base mt-0.5"></i>
+          <div class="leading-relaxed" id="conceptHint">
+            <strong>탐구 포인트:</strong> 질량이 일정할 때 당기는 힘($F$)을 2배, 3배로 증가시키면 가속도($a$)는 어떻게 변화할까요? 값을 변경하며 측정값을 기록해보세요.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL: Data Table & Interactive Graph (5 Cols) -->
+    <section class="lg:col-span-5 flex flex-col gap-5">
+      
+      <!-- Graph View & Analysis Card -->
+      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-700/70 pb-3">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-chart-line text-emerald-400"></i>
+            <h2 class="text-sm font-bold text-slate-200">실험 데이터 그래프 분석</h2>
+          </div>
+          
+          <!-- Axis Selector Switch -->
+          <div class="flex bg-slate-900 p-1 rounded-lg border border-slate-700 text-xs">
+            <button id="btnGraphFA" onclick="switchGraphType('F-a')" class="px-2.5 py-1 rounded-md font-semibold bg-emerald-600 text-white transition-all">
+              F - a
+            </button>
+            <button id="btnGraphMA" onclick="switchGraphType('m-a')" class="px-2.5 py-1 rounded-md font-semibold text-slate-400 hover:text-white transition-all">
+              m - a
+            </button>
+            <button id="btnGraphInvMA" onclick="switchGraphType('invM-a')" class="px-2.5 py-1 rounded-md font-semibold text-slate-400 hover:text-white transition-all">
+              (1/m) - a
+            </button>
+          </div>
+        </div>
+
+        <!-- Chart Container -->
+        <div class="relative w-full h-64 bg-slate-900/90 rounded-xl p-2 border border-slate-700/60">
+          <canvas id="analysisChart"></canvas>
+        </div>
+
+        <!-- Trendline / Regression Info Box -->
+        <div id="regressionAnalysisBox" class="bg-slate-900/90 border border-emerald-500/30 rounded-xl p-3.5 flex flex-col gap-1.5 text-xs">
+          <div class="flex items-center justify-between text-emerald-400 font-semibold">
+            <span class="flex items-center gap-1.5">
+              <i class="fa-solid fa-square-root-variable"></i>
+              그래프 해석 및 비례식 유도
+            </span>
+            <span id="trendlineEq" class="font-mono text-white bg-slate-800 px-2 py-0.5 rounded border border-slate-700">a = 1.000 × F</span>
+          </div>
+          <p id="trendlineDesc" class="text-slate-300 text-[11px] leading-relaxed">
+            데이터가 원점을 지나는 직선을 이룹니다. 즉, <strong>가속도($a$)는 알짜힘($F$)에 정비례</strong>합니다. (기울기 $= \frac{1}{m} = 1.0\text{ kg}^{-1}$)
+          </p>
+        </div>
+      </div>
+
+      <!-- Data Record Table -->
+      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl flex flex-col gap-3">
+        <div class="flex items-center justify-between border-b border-slate-700/70 pb-3">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-table-list text-indigo-400"></i>
+            <h3 class="text-sm font-bold text-slate-200">측정 데이터 목록</h3>
+            <span id="dataCountBadge" class="text-[11px] font-mono bg-indigo-900/60 text-indigo-300 px-2 py-0.2 rounded-full border border-indigo-700/50">0개 기록됨</span>
+          </div>
+          <button onclick="clearDataTable()" class="text-xs text-rose-400 hover:text-rose-300 transition-colors flex items-center gap-1">
+            <i class="fa-regular fa-trash-can"></i> 전체 삭제
+          </button>
+        </div>
+
+        <!-- Table View with Scroll -->
+        <div class="overflow-x-auto max-h-52 overflow-y-auto rounded-lg border border-slate-700">
+          <table class="w-full text-left text-xs text-slate-300 font-mono">
+            <thead class="bg-slate-900/90 text-slate-400 uppercase text-[10px] sticky top-0 border-b border-slate-700">
+              <tr>
+                <th class="py-2.5 px-3">회차</th>
+                <th class="py-2.5 px-3 text-cyan-400">힘 F (N)</th>
+                <th class="py-2.5 px-3 text-amber-400">질량 m (kg)</th>
+                <th class="py-2.5 px-3 text-purple-400">1/m (kg⁻¹)</th>
+                <th class="py-2.5 px-3 text-indigo-400">가속도 a (m/s²)</th>
+                <th class="py-2.5 px-2 text-center">삭제</th>
+              </tr>
+            </thead>
+            <tbody id="dataTableBody" class="divide-y divide-slate-700/60 bg-slate-800/40">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+          <div id="tableEmptyState" class="py-8 text-center text-slate-500 text-xs">
+            <i class="fa-solid fa-flask-vial text-2xl mb-2 text-slate-600 block"></i>
+            '현재 측정값 기록' 버튼을 눌러 데이터를 누적하세요.
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Notification Toast -->
+  <div id="toastBox" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-indigo-600 text-white px-4 py-2.5 rounded-xl shadow-2xl text-xs flex items-center gap-2 border border-indigo-400/40">
+    <i class="fa-solid fa-circle-check"></i>
+    <span id="toastMsg">알림 메시지</span>
+  </div>
+
+  <!-- JavaScript Logic -->
+  <script>
+    /* ============================================================
+       1. Global State & Variables
+    ============================================================ */
+    const TRACK_LENGTH = 10.0; // Total track length in meters
+    let simState = {
+      force: 2.0,        // Newtons (F)
+      mass: 1.0,         // Kilograms (m)
+      time: 0.0,         // Seconds
+      distance: 0.0,     // Meters (s)
+      velocity: 0.0,     // m/s (v)
+      acceleration: 2.0, // m/s² (a = F/m)
+      running: false,
+      lastTimestamp: null,
+      mode: 'force'      // 'force' (F-a focus), 'mass' (m-a focus), 'free'
+    };
+
+    let dataset = []; // Stores { id, force, mass, invMass, acc }
+    let graphType = 'F-a'; // 'F-a', 'm-a', 'invM-a'
+    let chartInstance = null;
+
+    // Canvas Elements
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+
+    /* ============================================================
+       2. Initialization
+    ============================================================ */
+    window.addEventListener('DOMContentLoaded', () => {
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+      
+      initChart();
+      updateDashboard();
+      drawSimulation();
+      
+      // Auto-load 4 default sample measurements for quick first impression
+      preloadIntroData();
+    });
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.resetTransform();
+      ctx.scale(dpr, dpr);
+      drawSimulation();
+    }
+
+    /* ============================================================
+       3. Physics & Animation Engine
+    ============================================================ */
+    function computeAcceleration() {
+      return simState.force / simState.mass;
+    }
+
+    function togglePlay() {
+      if (simState.distance >= TRACK_LENGTH) {
+        resetSim();
+      }
+      
+      simState.running = !simState.running;
+      const playBtn = document.getElementById('btnPlay');
+      const playIcon = document.getElementById('playIcon');
+      const playText = document.getElementById('playText');
+
+      if (simState.running) {
+        playBtn.classList.replace('bg-indigo-600', 'bg-rose-600');
+        playBtn.classList.replace('hover:bg-indigo-500', 'hover:bg-rose-500');
+        playIcon.classList.replace('fa-play', 'fa-pause');
+        playText.textContent = '일시 정지';
+        simState.lastTimestamp = performance.now();
+        requestAnimationFrame(animLoop);
+      } else {
+        playBtn.classList.replace('bg-rose-600', 'bg-indigo-600');
+        playBtn.classList.replace('hover:bg-rose-500', 'hover:bg-indigo-500');
+        playIcon.classList.replace('fa-pause', 'fa-play');
+        playText.textContent = '계속 진행';
+      }
+    }
+
+    function resetSim() {
+      simState.running = false;
+      simState.time = 0.0;
+      simState.distance = 0.0;
+      simState.velocity = 0.0;
+      simState.lastTimestamp = null;
+      
+      const playBtn = document.getElementById('btnPlay');
+      const playIcon = document.getElementById('playIcon');
+      const playText = document.getElementById('playText');
+      playBtn.classList.replace('bg-rose-600', 'bg-indigo-600');
+      playBtn.classList.replace('hover:bg-rose-500', 'hover:bg-indigo-500');
+      playIcon.className = 'fa-solid fa-play';
+      playText.textContent = '실험 시작';
+
+      updateDashboard();
+      drawSimulation();
+    }
+
+    function animLoop(timestamp) {
+      if (!simState.running) return;
+
+      const dt = Math.min((timestamp - simState.lastTimestamp) / 1000, 0.05); // cap delta time
+      simState.lastTimestamp = timestamp;
+
+      // Kinematic update: s = v*dt + 0.5*a*dt^2, v = v + a*dt
+      simState.acceleration = computeAcceleration();
+      simState.velocity += simState.acceleration * dt;
+      simState.distance += simState.velocity * dt;
+      simState.time += dt;
+
+      if (simState.distance >= TRACK_LENGTH) {
+        simState.distance = TRACK_LENGTH;
+        simState.running = false;
+        
+        const playBtn = document.getElementById('btnPlay');
+        const playIcon = document.getElementById('playIcon');
+        const playText = document.getElementById('playText');
+        playBtn.classList.replace('bg-rose-600', 'bg-indigo-600');
+        playIcon.className = 'fa-solid fa-rotate-left';
+        playText.textContent = '다시 실행';
+        
+        showToast('결승선에 도달했습니다! 측정값을 기록해보세요.');
+      }
+
+      updateDashboard();
+      drawSimulation();
+
+      if (simState.running) {
+        requestAnimationFrame(animLoop);
+      }
+    }
+
+    /* ============================================================
+       4. Visual Rendering (HTML5 Canvas)
+    ============================================================ */
+    function drawSimulation() {
+      const w = canvas.getBoundingClientRect().width;
+      const h = canvas.getBoundingClientRect().height;
+      ctx.clearRect(0, 0, w, h);
+
+      // Coordinates setup
+      const trackPadding = 45;
+      const trackWidth = w - trackPadding * 2;
+      const trackY = h * 0.72;
+      const trackHeight = 12;
+
+      // 1. Draw Track & Rulers
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(trackPadding, trackY, trackWidth, trackHeight);
+
+      // Track surface line
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(trackPadding, trackY);
+      ctx.lineTo(trackPadding + trackWidth, trackY);
+      ctx.stroke();
+
+      // 2. Draw Distance Tick Marks (0m to 10m)
+      ctx.font = '10px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      for (let m = 0; m <= 10; m++) {
+        const xPos = trackPadding + (m / 10) * trackWidth;
+        const isMajor = m % 2 === 0;
+        
+        ctx.strokeStyle = isMajor ? '#94a3b8' : '#475569';
+        ctx.lineWidth = isMajor ? 1.5 : 1;
+        ctx.beginPath();
+        ctx.moveTo(xPos, trackY + trackHeight);
+        ctx.lineTo(xPos, trackY + trackHeight + (isMajor ? 8 : 4));
+        ctx.stroke();
+
+        if (isMajor) {
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText(`${m}m`, xPos, trackY + trackHeight + 20);
+        }
+      }
+
+      // 3. Cart Position Calculation
+      const cartFraction = Math.min(simState.distance / TRACK_LENGTH, 1.0);
+      const cartWidth = 64;
+      const cartHeight = 32;
+      const cartX = trackPadding + cartFraction * (trackWidth - cartWidth);
+      const cartY = trackY - cartHeight;
+
+      // 4. Draw Motion Trails if moving
+      if (simState.velocity > 0.2) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(99, 102, 241, 0.25)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(trackPadding, cartY + cartHeight / 2);
+        ctx.lineTo(cartX, cartY + cartHeight / 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 5. Draw Dynamic Cart Body
+      ctx.fillStyle = '#4f46e5'; // Indigo body
+      ctx.beginPath();
+      ctx.roundRect(cartX, cartY, cartWidth, cartHeight, 6);
+      ctx.fill();
+      ctx.strokeStyle = '#818cf8';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Cart Windows/Pattern
+      ctx.fillStyle = '#1e1b4b';
+      ctx.fillRect(cartX + 8, cartY + 6, cartWidth - 16, 10);
+
+      // Stacking Mass Blocks on Cart
+      const massCount = Math.round(simState.mass * 2); // 0.5kg increments
+      const blockWidth = 14;
+      const blockHeight = 8;
+      const blocksPerRow = 3;
+      
+      for (let i = 0; i < massCount; i++) {
+        const row = Math.floor(i / blocksPerRow);
+        const col = i % blocksPerRow;
+        const bx = cartX + 11 + col * (blockWidth + 3);
+        const by = cartY - 4 - (row + 1) * (blockHeight + 2);
+
+        ctx.fillStyle = '#f59e0b'; // Amber weights
+        ctx.fillRect(bx, by, blockWidth, blockHeight);
+        ctx.strokeStyle = '#d97706';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(bx, by, blockWidth, blockHeight);
+      }
+
+      // Cart Wheels
+      const wheelRadius = 6;
+      ctx.fillStyle = '#1e293b';
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 2;
+
+      // Left wheel
+      ctx.beginPath();
+      ctx.arc(cartX + 14, trackY, wheelRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Right wheel
+      ctx.beginPath();
+      ctx.arc(cartX + cartWidth - 14, trackY, wheelRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // 6. Draw Force Vector Arrow (Pulling Force F)
+      const arrowStartX = cartX + cartWidth;
+      const arrowY = cartY + cartHeight / 2;
+      const arrowLength = Math.max(25, (simState.force / 10.0) * (w * 0.22)); // visual scale
+
+      ctx.strokeStyle = '#22d3ee'; // Cyan Force Vector
+      ctx.fillStyle = '#22d3ee';
+      ctx.lineWidth = 3;
+
+      ctx.beginPath();
+      ctx.moveTo(arrowStartX, arrowY);
+      ctx.lineTo(arrowStartX + arrowLength, arrowY);
+      ctx.stroke();
+
+      // Arrow head
+      ctx.beginPath();
+      ctx.moveTo(arrowStartX + arrowLength, arrowY);
+      ctx.lineTo(arrowStartX + arrowLength - 8, arrowY - 5);
+      ctx.lineTo(arrowStartX + arrowLength - 8, arrowY + 5);
+      ctx.closePath();
+      ctx.fill();
+
+      // Force Label above arrow
+      ctx.font = 'bold 11px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#67e8f9';
+      ctx.textAlign = 'center';
+      ctx.fillText(`F = ${simState.force.toFixed(1)}N`, arrowStartX + arrowLength / 2, arrowY - 8);
+
+      // Mass Label under Cart
+      ctx.fillStyle = '#fcd34d';
+      ctx.font = '10px "JetBrains Mono", monospace';
+      ctx.fillText(`m=${simState.mass.toFixed(1)}kg`, cartX + cartWidth / 2, cartY + cartHeight - 4);
+    }
+
+    /* ============================================================
+       5. Dashboard & UI Sync
+    ============================================================ */
+    function updateDashboard() {
+      simState.acceleration = computeAcceleration();
+
+      document.getElementById('valTime').textContent = simState.time.toFixed(2);
+      document.getElementById('valDistance').textContent = simState.distance.toFixed(2);
+      document.getElementById('valVelocity').textContent = simState.velocity.toFixed(2);
+
+      document.getElementById('dashForce').innerHTML = `${simState.force.toFixed(1)} <span class="text-xs font-normal">N</span>`;
+      document.getElementById('dashMass').innerHTML = `${simState.mass.toFixed(1)} <span class="text-xs font-normal">kg</span>`;
+      document.getElementById('dashAcc').innerHTML = `${simState.acceleration.toFixed(2)} <span class="text-xs font-normal">m/s²</span>`;
+
+      document.getElementById('labelForce').textContent = simState.force.toFixed(1);
+      document.getElementById('labelMass').textContent = simState.mass.toFixed(1);
+    }
+
+    function onParamChange() {
+      simState.force = parseFloat(document.getElementById('sliderForce').value);
+      simState.mass = parseFloat(document.getElementById('sliderMass').value);
+      updateDashboard();
+      drawSimulation();
+    }
+
+    function setExperimentMode(mode) {
+      simState.mode = mode;
+      
+      const tab1 = document.getElementById('tabMode1');
+      const tab2 = document.getElementById('tabMode2');
+      const tab3 = document.getElementById('tabMode3');
+      const modeDesc = document.getElementById('modeDescription');
+      const conceptHint = document.getElementById('conceptHint');
+      const sliderForce = document.getElementById('sliderForce');
+      const sliderMass = document.getElementById('sliderMass');
+
+      // Reset tab styling
+      [tab1, tab2, tab3].forEach(t => {
+        t.className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-400 hover:text-white";
+      });
+
+      if (mode === 'force') {
+        tab1.className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all bg-indigo-600 text-white shadow";
+        modeDesc.textContent = "질량(m=1.0kg) 고정 ➔ 힘(F)에 따른 가속도(a) 관계 분석";
+        conceptHint.innerHTML = "<strong>탐구 포인트:</strong> 물체의 질량이 일정할 때, 작용하는 <strong>알짜힘($F$)이 커질수록 가속도($a$)는 정비례($a \\propto F$)</strong>하여 커집니다.";
+        
+        sliderMass.value = "1.0";
+        sliderMass.disabled = true;
+        sliderForce.disabled = false;
+        document.getElementById('massControlBox').classList.add('opacity-50');
+        document.getElementById('forceControlBox').classList.remove('opacity-50');
+        
+        switchGraphType('F-a');
+      } else if (mode === 'mass') {
+        tab2.className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all bg-indigo-600 text-white shadow";
+        modeDesc.textContent = "힘(F=2.0N) 고정 ➔ 질량(m)에 따른 가속도(a) 관계 분석";
+        conceptHint.innerHTML = "<strong>탐구 포인트:</strong> 가해진 힘이 일정할 때, 물체의 <strong>질량($m$)이 커질수록 가속도($a$)는 반비례($a \\propto \\frac{1}{m}$)</strong>합니다.";
+        
+        sliderForce.value = "2.0";
+        sliderForce.disabled = true;
+        sliderMass.disabled = false;
+        document.getElementById('forceControlBox').classList.add('opacity-50');
+        document.getElementById('massControlBox').classList.remove('opacity-50');
+        
+        switchGraphType('m-a');
+      } else {
+        tab3.className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all bg-indigo-600 text-white shadow";
+        modeDesc.textContent = "힘(F)과 질량(m)을 자유롭게 조절하여 탐구합니다.";
+        conceptHint.innerHTML = "<strong>자유 탐구:</strong> 원하는 임의의 $F$와 $m$을 설정하고 $a = \\frac{F}{m}$ 관계가 그래프에 어떻게 반영되는지 검증해보세요.";
+        
+        sliderForce.disabled = false;
+        sliderMass.disabled = false;
+        document.getElementById('forceControlBox').classList.remove('opacity-50');
+        document.getElementById('massControlBox').classList.remove('opacity-50');
+      }
+
+      onParamChange();
+      resetSim();
+    }
+
+    /* ============================================================
+       6. Data Recording & Table Management
+    ============================================================ */
+    function recordDataPoint() {
+      const f = simState.force;
+      const m = simState.mass;
+      const invM = parseFloat((1 / m).toFixed(3));
+      const a = parseFloat((f / m).toFixed(3));
+
+      // Prevent exact identical duplicates in a row
+      const isDuplicate = dataset.some(d => Math.abs(d.force - f) < 0.01 && Math.abs(d.mass - m) < 0.01);
+      if (isDuplicate) {
+        showToast('이미 동일한 F와 m 조건의 측정값이 기록되어 있습니다.');
+        return;
+      }
+
+      dataset.push({
+        id: dataset.length + 1,
+        force: f,
+        mass: m,
+        invMass: invM,
+        acc: a
+      });
+
+      renderTable();
+      updateChartData();
+      showToast(`측정 기록 완료: F=${f}N, m=${m}kg ➔ a=${a}m/s²`);
+    }
+
+    function removeDataRow(index) {
+      dataset.splice(index, 1);
+      // Re-index
+      dataset.forEach((item, idx) => item.id = idx + 1);
+      renderTable();
+      updateChartData();
+    }
+
+    function clearDataTable() {
+      dataset = [];
+      renderTable();
+      updateChartData();
+      showToast('측정 데이터가 초기화되었습니다.');
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('dataTableBody');
+      const emptyState = document.getElementById('tableEmptyState');
+      const badge = document.getElementById('dataCountBadge');
+
+      tbody.innerHTML = '';
+      badge.textContent = `${dataset.length}개 기록됨`;
+
+      if (dataset.length === 0) {
+        emptyState.style.display = 'block';
+        return;
+      }
+      emptyState.style.display = 'none';
+
+      dataset.forEach((row, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-700/50 transition-colors";
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 font-semibold text-slate-400">#${row.id}</td>
+          <td class="py-2.5 px-3 text-cyan-300 font-bold">${row.force.toFixed(1)}</td>
+          <td class="py-2.5 px-3 text-amber-300">${row.mass.toFixed(1)}</td>
+          <td class="py-2.5 px-3 text-purple-300">${row.invMass.toFixed(2)}</td>
+          <td class="py-2.5 px-3 text-indigo-300 font-bold">${row.acc.toFixed(2)}</td>
+          <td class="py-2.5 px-2 text-center">
+            <button onclick="removeDataRow(${idx})" class="text-slate-500 hover:text-rose-400 transition-colors p-1">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function autoGenerateSampleSeries() {
+      if (simState.mode === 'force') {
+        const forces = [1.0, 2.0, 4.0, 6.0, 8.0];
+        forces.forEach(f => {
+          dataset.push({
+            id: dataset.length + 1,
+            force: f,
+            mass: 1.0,
+            invMass: 1.0,
+            acc: parseFloat((f / 1.0).toFixed(2))
+          });
+        });
+      } else if (simState.mode === 'mass') {
+        const masses = [0.5, 1.0, 2.0, 2.5, 4.0];
+        masses.forEach(m => {
+          dataset.push({
+            id: dataset.length + 1,
+            force: 2.0,
+            mass: m,
+            invMass: parseFloat((1 / m).toFixed(3)),
+            acc: parseFloat((2.0 / m).toFixed(2))
+          });
+        });
+      } else {
+        const samples = [
+          { f: 2.0, m: 1.0 },
+          { f: 4.0, m: 1.0 },
+          { f: 4.0, m: 2.0 },
+          { f: 6.0, m: 2.0 },
+          { f: 8.0, m: 2.0 }
+        ];
+        samples.forEach(s => {
+          dataset.push({
+            id: dataset.length + 1,
+            force: s.f,
+            mass: s.m,
+            invMass: parseFloat((1 / s.m).toFixed(3)),
+            acc: parseFloat((s.f / s.m).toFixed(2))
+          });
+        });
+      }
+      renderTable();
+      updateChartData();
+      showToast('5개의 자동 실험 데이터가 추가되었습니다.');
+    }
+
+    function preloadIntroData() {
+      // Default dataset for F-a exploration
+      const initialForces = [1.0, 2.0, 3.0, 4.0, 5.0];
+      initialForces.forEach((f, i) => {
+        dataset.push({
+          id: i + 1,
+          force: f,
+          mass: 1.0,
+          invMass: 1.0,
+          acc: f
+        });
+      });
+      renderTable();
+      updateChartData();
+    }
+
+    /* ============================================================
+       7. Chart.js Graphs & Regression Fitting
+    ============================================================ */
+    function initChart() {
+      const ctxChart = document.getElementById('analysisChart').getContext('2d');
+      chartInstance = new Chart(ctxChart, {
+        type: 'scatter',
+        data: {
+          datasets: [
+            {
+              label: '측정 데이터 점 (Experimental Data)',
+              data: [],
+              backgroundColor: '#10b981',
+              borderColor: '#059669',
+              pointRadius: 6,
+              pointHoverRadius: 8,
+              borderWidth: 2
+            },
+            {
+              label: '이론적 관계선 / 회귀 추세선 (Trendline)',
+              data: [],
+              type: 'line',
+              borderColor: 'rgba(99, 102, 241, 0.85)',
+              borderWidth: 2,
+              borderDash: [6, 4],
+              pointRadius: 0,
+              fill: false,
+              tension: 0.1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 400 },
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: '힘 F (N)',
+                color: '#94a3b8',
+                font: { size: 12, weight: 'bold', family: 'Pretendard' }
+              },
+              grid: { color: 'rgba(51, 65, 85, 0.5)' },
+              ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono' } }
+            },
+            y: {
+              title: {
+                display: true,
+                text: '가속도 a (m/s²)',
+                color: '#94a3b8',
+                font: { size: 12, weight: 'bold', family: 'Pretendard' }
+              },
+              grid: { color: 'rgba(51, 65, 85, 0.5)' },
+              ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono' } },
+              beginAtZero: true
+            }
+          },
+          plugins: {
+            legend: {
+              labels: {
+                color: '#cbd5e1',
+                font: { size: 11, family: 'Pretendard' }
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              titleColor: '#e2e8f0',
+              bodyColor: '#cbd5e1',
+              padding: 10,
+              borderColor: '#334155',
+              borderWidth: 1
+            }
+          }
+        }
+      });
+    }
+
+    function switchGraphType(type) {
+      graphType = type;
+      
+      const btnFA = document.getElementById('btnGraphFA');
+      const btnMA = document.getElementById('btnGraphMA');
+      const btnInvMA = document.getElementById('btnGraphInvMA');
+
+      [btnFA, btnMA, btnInvMA].forEach(b => {
+        b.className = "px-2.5 py-1 rounded-md font-semibold text-slate-400 hover:text-white transition-all";
+      });
+
+      if (type === 'F-a') {
+        btnFA.className = "px-2.5 py-1 rounded-md font-semibold bg-emerald-600 text-white transition-all";
+        chartInstance.options.scales.x.title.text = '힘 F (N)';
+      } else if (type === 'm-a') {
+        btnMA.className = "px-2.5 py-1 rounded-md font-semibold bg-emerald-600 text-white transition-all";
+        chartInstance.options.scales.x.title.text = '질량 m (kg)';
+      } else if (type === 'invM-a') {
+        btnInvMA.className = "px-2.5 py-1 rounded-md font-semibold bg-emerald-600 text-white transition-all";
+        chartInstance.options.scales.x.title.text = '질량의 역수 1/m (kg⁻¹)';
+      }
+
+      updateChartData();
+    }
+
+    function updateChartData() {
+      if (!chartInstance) return;
+
+      let scatterPoints = [];
+      let trendlinePoints = [];
+      const eqElem = document.getElementById('trendlineEq');
+      const descElem = document.getElementById('trendlineDesc');
+
+      if (graphType === 'F-a') {
+        scatterPoints = dataset.map(d => ({ x: d.force, y: d.acc }));
+        
+        // Linear fit: a = k * F (where k ≈ 1/m)
+        if (dataset.length > 0) {
+          const maxF = Math.max(...dataset.map(d => d.force), 10);
+          // Calculate average slope (1/m)
+          const avgInvM = dataset.reduce((sum, d) => sum + (d.acc / d.force), 0) / dataset.length;
+          trendlinePoints = [
+            { x: 0, y: 0 },
+            { x: maxF * 1.05, y: avgInvM * (maxF * 1.05) }
+          ];
+
+          eqElem.textContent = `a = ${avgInvM.toFixed(3)} × F`;
+          descElem.innerHTML = `그래프가 원점을 지나는 직선입니다. 즉, <strong>가속도($a$)는 알짜힘($F$)에 비례</strong>합니다. (기울기 $k = \\frac{1}{m} \\approx ${avgInvM.toFixed(2)}\\text{ kg}^{-1}$)`;
+        }
+      } else if (graphType === 'm-a') {
+        scatterPoints = dataset.map(d => ({ x: d.mass, y: d.acc }));
+        
+        // Inverse curve fit: a = F / m
+        if (dataset.length > 0) {
+          const avgF = dataset.reduce((sum, d) => sum + (d.acc * d.mass), 0) / dataset.length;
+          const minM = Math.min(...dataset.map(d => d.mass), 0.5);
+          const maxM = Math.max(...dataset.map(d => d.mass), 5.0);
+          
+          for (let m = 0.4; m <= maxM + 0.5; m += 0.2) {
+            trendlinePoints.push({ x: parseFloat(m.toFixed(1)), y: avgF / m });
+          }
+
+          eqElem.textContent = `a = ${avgF.toFixed(2)} / m`;
+          descElem.innerHTML = `그래프가 직각쌍곡선 형태를 보입니다. 즉, <strong>가속도($a$)는 질량($m$)에 반비례($a \\propto \\frac{1}{m}$)</strong>합니다. (일정한 힘 $F \\approx ${avgF.toFixed(2)}\\text{ N}$)`;
+        }
+      } else if (graphType === 'invM-a') {
+        scatterPoints = dataset.map(d => ({ x: d.invMass, y: d.acc }));
+        
+        // Linear fit in 1/m space: a = F * (1/m)
+        if (dataset.length > 0) {
+          const maxInvM = Math.max(...dataset.map(d => d.invMass), 2.0);
+          const avgF = dataset.reduce((sum, d) => sum + (d.acc / d.invMass), 0) / dataset.length;
+          
+          trendlinePoints = [
+            { x: 0, y: 0 },
+            { x: maxInvM * 1.1, y: avgF * (maxInvM * 1.1) }
+          ];
+
+          eqElem.textContent = `a = ${avgF.toFixed(3)} × (1/m)`;
+          descElem.innerHTML = `질량의 역수($\\frac{1}{m}$)를 가로축으로 설정하면 <strong>직선 관계</strong>로 변환됩니다. 직선의 기울기는 작용한 <strong>알짜힘($F \\approx ${avgF.toFixed(2)}\\text{ N}$)</strong>을 의미합니다.`;
+        }
+      }
+
+      chartInstance.data.datasets[0].data = scatterPoints;
+      chartInstance.data.datasets[1].data = trendlinePoints;
+      chartInstance.update();
+    }
+
+    /* ============================================================
+       8. Toast Notification Utility
+    ============================================================ */
+    let toastTimeout = null;
+    function showToast(msg) {
+      const toast = document.getElementById('toastBox');
+      const toastMsg = document.getElementById('toastMsg');
+      toastMsg.textContent = msg;
+
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+
+      if (toastTimeout) clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 2600);
+    }
+  </script>
+</body>
+</html>

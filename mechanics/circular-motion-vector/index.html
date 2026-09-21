@@ -1,0 +1,985 @@
+<title>등속 원운동 벡터 워크벤치</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg:#f3f4f8;
+    --surface:#ffffff;
+    --surface-2:#eaecf3;
+    --ink:#14171f;
+    --muted:#5a6272;
+    --border:#dadfe8;
+    --accent:#4a55c9;
+    --accent-ink:#ffffff;
+    --amber:#b7660a;
+    --amber-line:#d9822b;
+    --green:#12805f;
+    --green-line:#1e9d6b;
+    --red:#c53434;
+    --red-line:#d94b4b;
+    --violet:#6d4bd6;
+    --violet-line:#8b6ae0;
+    --shadow: 0 1px 2px rgba(20,23,31,.04), 0 8px 24px -12px rgba(20,23,31,.18);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14161c;
+      --surface:#1b1e26;
+      --surface-2:#232733;
+      --ink:#eceef3;
+      --muted:#9aa3b7;
+      --border:#2c3140;
+      --accent:#8b95f0;
+      --accent-ink:#14161c;
+      --amber:#f3b568;
+      --amber-line:#f0a94e;
+      --green:#5fd7a8;
+      --green-line:#34c98a;
+      --red:#f28b87;
+      --red-line:#ef6a66;
+      --violet:#bcaaf5;
+      --violet-line:#a78bfa;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 28px -12px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14161c;
+    --surface:#1b1e26;
+    --surface-2:#232733;
+    --ink:#eceef3;
+    --muted:#9aa3b7;
+    --border:#2c3140;
+    --accent:#8b95f0;
+    --accent-ink:#14161c;
+    --amber:#f3b568;
+    --amber-line:#f0a94e;
+    --green:#5fd7a8;
+    --green-line:#34c98a;
+    --red:#f28b87;
+    --red-line:#ef6a66;
+    --violet:#bcaaf5;
+    --violet-line:#a78bfa;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 28px -12px rgba(0,0,0,.55);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans KR','Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    line-height:1.5;
+  }
+  .mono{font-family:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace; font-variant-numeric:tabular-nums;}
+
+  .page{
+    max-width:1180px;
+    margin:0 auto;
+    padding:28px 24px 60px;
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+  }
+
+  header.top{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:8px 24px;
+    padding-bottom:4px;
+    border-bottom:1px solid var(--border);
+  }
+  .eyebrow{
+    font-size:12.5px;
+    letter-spacing:.06em;
+    color:var(--muted);
+    font-weight:500;
+  }
+  h1{
+    font-size:22px;
+    font-weight:700;
+    margin:2px 0 0;
+    text-wrap:balance;
+    letter-spacing:-.01em;
+  }
+  .legend{
+    display:flex;
+    gap:14px;
+    flex-wrap:wrap;
+    font-size:12.5px;
+    color:var(--muted);
+  }
+  .legend span{display:inline-flex; align-items:center; gap:5px;}
+  .swatch{width:11px; height:3px; border-radius:2px; display:inline-block;}
+
+  .panel{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+  }
+
+  .controls{
+    padding:16px 18px;
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:18px 26px;
+  }
+  .tabs{
+    display:flex;
+    gap:6px;
+    background:var(--surface-2);
+    padding:4px;
+    border-radius:10px;
+  }
+  .tab{
+    appearance:none;
+    border:none;
+    background:transparent;
+    color:var(--muted);
+    font-family:inherit;
+    font-size:13.5px;
+    font-weight:600;
+    padding:8px 14px;
+    border-radius:7px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .tab[aria-selected="true"]{
+    background:var(--accent);
+    color:var(--accent-ink);
+  }
+
+  .field{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    min-width:150px;
+  }
+  .field label{
+    font-size:12px;
+    color:var(--muted);
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+  }
+  .field label .val{
+    font-family:'IBM Plex Mono',monospace;
+    color:var(--ink);
+    font-weight:600;
+  }
+  input[type="range"]{
+    -webkit-appearance:none;
+    appearance:none;
+    width:100%;
+    height:4px;
+    border-radius:2px;
+    background:var(--border);
+    outline:none;
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:16px;height:16px;border-radius:50%;
+    background:var(--accent);
+    border:2px solid var(--surface);
+    box-shadow:0 0 0 1px var(--accent);
+    cursor:pointer;
+  }
+  input[type="range"]::-moz-range-thumb{
+    width:16px;height:16px;border-radius:50%;
+    background:var(--accent);
+    border:2px solid var(--surface);
+    box-shadow:0 0 0 1px var(--accent);
+    cursor:pointer;
+  }
+  input[type="range"]:focus-visible::-webkit-slider-thumb{ outline:2px solid var(--accent); outline-offset:2px; }
+
+  .btnrow{ display:flex; gap:8px; }
+  button.action{
+    appearance:none;
+    border:1px solid var(--border);
+    background:var(--surface-2);
+    color:var(--ink);
+    font-family:inherit;
+    font-size:13px;
+    font-weight:600;
+    padding:9px 14px;
+    border-radius:8px;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+  }
+  button.action:hover{ border-color:var(--accent); }
+  button.action:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  button.action.primary{
+    background:var(--accent);
+    color:var(--accent-ink);
+    border-color:var(--accent);
+  }
+
+  .stage-wrap{
+    display:grid;
+    grid-template-columns:minmax(0,1.55fr) minmax(260px,1fr);
+    gap:16px;
+    align-items:stretch;
+  }
+  @media (max-width:860px){
+    .stage-wrap{ grid-template-columns:1fr; }
+  }
+
+  .stage-panel{ padding:14px 14px 8px; }
+  .stage-caption{
+    font-size:12.5px;
+    color:var(--muted);
+    padding:2px 6px 10px;
+  }
+  svg#scene{ width:100%; height:auto; display:block; }
+  .grip{ cursor:grab; }
+  .grip:active{ cursor:grabbing; }
+  .grip.disabled{ pointer-events:none; opacity:.35; }
+
+  .side{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+  .readout{ padding:16px 18px; }
+  .readout h2, .derivation h2{
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:var(--muted);
+    margin:0 0 12px;
+    font-weight:600;
+  }
+  .rows{ display:flex; flex-direction:column; gap:8px; }
+  .row{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    gap:10px;
+    font-size:13.5px;
+    padding-bottom:8px;
+    border-bottom:1px dashed var(--border);
+  }
+  .row:last-child{ border-bottom:none; padding-bottom:0; }
+  .row .k{ color:var(--muted); }
+  .row .v{ font-family:'IBM Plex Mono',monospace; font-weight:600; white-space:nowrap; }
+  .row .v small{ color:var(--muted); font-weight:400; margin-left:3px; }
+
+  .approx-note{
+    margin-top:10px;
+    padding:10px 12px;
+    background:var(--surface-2);
+    border-radius:9px;
+    font-size:12.5px;
+    color:var(--muted);
+    line-height:1.5;
+  }
+  .approx-note b{ color:var(--ink); }
+
+  .derivation{ padding:16px 18px; flex:1; }
+  .step-list{ display:flex; flex-direction:column; gap:2px; }
+  .drv{
+    padding:10px 10px;
+    border-radius:9px;
+    font-size:13.5px;
+    line-height:1.65;
+  }
+  .drv.active{ background:var(--surface-2); }
+  .drv .tag{
+    display:inline-block;
+    font-size:10.5px;
+    font-weight:700;
+    color:var(--accent);
+    letter-spacing:.04em;
+    margin-right:6px;
+  }
+  .frac{ display:inline-flex; flex-direction:column; vertical-align:middle; text-align:center; margin:0 3px; font-size:.92em; }
+  .frac .num{ border-bottom:1.3px solid currentColor; padding:0 3px 1px; }
+  .frac .den{ padding:1px 3px 0; }
+  .eqn{ font-family:'IBM Plex Mono',monospace; }
+
+  .misconception{
+    margin-top:6px;
+    padding:11px 12px;
+    border-radius:9px;
+    background:color-mix(in srgb, var(--red-line) 12%, var(--surface));
+    border:1px solid color-mix(in srgb, var(--red-line) 35%, var(--border));
+    font-size:12.5px;
+    line-height:1.55;
+  }
+  .misconception b{ color:var(--red); }
+
+  .bench-panel{ padding:14px 18px 18px; }
+  .bench-head{
+    display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px;
+    margin-bottom:6px;
+  }
+  .bench-head h2{
+    font-size:11.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:0; font-weight:600;
+  }
+  .bench-hint{ font-size:12.5px; color:var(--muted); }
+  .bench-hint b{ color:var(--ink); }
+  #btnClearBench{ font-size:12px; padding:6px 10px; }
+
+  footer.note{
+    font-size:12px;
+    color:var(--muted);
+    text-align:center;
+    padding-top:6px;
+  }
+</style>
+
+<div class="page">
+
+  <header class="top">
+    <div>
+      <div class="eyebrow">역학과 에너지 · 등속 원운동</div>
+      <h1>위치·속도 벡터를 평행이동해 구심가속도 유도하기</h1>
+    </div>
+    <div class="legend" id="legend"></div>
+  </header>
+
+  <div class="panel controls">
+    <div class="tabs" role="tablist" aria-label="학습 단계">
+      <button class="tab" id="tabBtn1" role="tab" aria-selected="true">1단계 · 위치·변위 벡터</button>
+      <button class="tab" id="tabBtn2" role="tab" aria-selected="false">2단계 · 속도·구심가속도</button>
+    </div>
+
+    <div class="field">
+      <label>반지름 r <span class="val mono" id="valR">2.0 m</span></label>
+      <input type="range" id="rangeR" min="1" max="3" step="0.5" value="2">
+    </div>
+    <div class="field">
+      <label>회전각 Δθ <span class="val mono" id="valDTheta">40°</span></label>
+      <input type="range" id="rangeDTheta" min="8" max="90" step="1" value="40">
+    </div>
+    <div class="field">
+      <label>각속도 ω <span class="val mono" id="valOmega">1.00 rad/s</span></label>
+      <input type="range" id="rangeOmega" min="0.2" max="3" step="0.1" value="1">
+    </div>
+    <div class="field">
+      <label>시작 각도 θ₁ <span class="val mono" id="valTheta1">200°</span></label>
+      <input type="range" id="rangeTheta1" min="0" max="359" step="1" value="200">
+    </div>
+
+    <div class="btnrow">
+      <button class="action primary" id="btnPlay">▶ 재생</button>
+      <button class="action" id="btnReset">⟲ 초기화</button>
+    </div>
+  </div>
+
+  <div class="stage-wrap">
+    <div class="panel stage-panel">
+      <div class="stage-caption" id="stageCaption"></div>
+      <svg id="scene" viewBox="0 0 700 900" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div class="bench-panel">
+        <div class="bench-head">
+          <h2 id="benchTitle">벡터 워크벤치</h2>
+          <div class="bench-hint" id="benchHint"></div>
+          <button class="action" id="btnClearBench" type="button">↺ 워크벤치 지우기</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="panel readout">
+        <h2>실시간 값</h2>
+        <div class="rows" id="readoutRows"></div>
+        <div class="approx-note" id="approxNote"></div>
+      </div>
+      <div class="panel derivation">
+        <h2 id="derivTitle">유도 과정</h2>
+        <div class="step-list" id="derivSteps"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="note">그림 속 값을 조절하거나 벡터를 드래그해 직접 확인해보세요 · 등속 원운동 · 2022 개정 교육과정 역학과 에너지</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- state ----------
+  var state = {
+    step: 1,
+    rMeters: 2.0,
+    dThetaDeg: 40,
+    theta1Deg: 200,
+    omega: 1.0,
+    playing: false,
+    placed: { a: null, b: null } // {tail:{x,y}, tip:{x,y}}
+  };
+
+  var PX_PER_M = 60;         // orbit scale (px per meter)
+  var FIXED_V_ARROW_PX = 90; // v1/v2 are always equal length in uniform circular motion,
+                              // so a fixed on-screen length keeps layout stable regardless
+                              // of the actual v value (shown numerically in the readout).
+  var O = { x: 350, y: 260 };
+  var ANCHOR = { x: 350, y: 660 };
+  var SNAP_R = 28;
+  // Workbench box is a square-ish region centered on ANCHOR, sized so any
+  // translated r-vector (max 3m * 60px/m = 180px) fits in every direction.
+  var BENCH = { x: 120, y: 470, w: 460, h: 380 };
+
+  var svg = document.getElementById('scene');
+  var NS = 'http://www.w3.org/2000/svg';
+
+  function el(tag, attrs){
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs){ e.setAttribute(k, attrs[k]); }
+    return e;
+  }
+
+  // ---------- static defs (markers) ----------
+  function buildDefs(){
+    var defs = el('defs', {});
+    var colors = {
+      amber: getVar('--amber-line'),
+      green: getVar('--green-line'),
+      red: getVar('--red-line'),
+      violet: getVar('--violet-line'),
+      muted: getVar('--muted')
+    };
+    Object.keys(colors).forEach(function(name){
+      var m = el('marker', {
+        id: 'arrow-' + name,
+        markerWidth: '9', markerHeight: '9', refX: '6.5', refY: '4.5',
+        orient: 'auto', markerUnits: 'userSpaceOnUse'
+      });
+      var p = el('path', { d: 'M0,0 L9,4.5 L0,9 Z', fill: colors[name] });
+      m.appendChild(p);
+      defs.appendChild(m);
+    });
+    svg.appendChild(defs);
+    return colors;
+  }
+
+  function getVar(name){
+    return getComputedStyle(document.body).getPropertyValue(name).trim();
+  }
+
+  var COLORS = buildDefs();
+
+  function refreshMarkerColors(){
+    var newColors = {
+      amber: getVar('--amber-line'), green: getVar('--green-line'),
+      red: getVar('--red-line'), violet: getVar('--violet-line'), muted: getVar('--muted')
+    };
+    Object.keys(newColors).forEach(function(name){
+      var marker = svg.querySelector('#arrow-' + name + ' path');
+      if (marker) marker.setAttribute('fill', newColors[name]);
+    });
+    COLORS = newColors;
+  }
+
+  // static groups
+  var gOrbit = el('g', { id: 'gOrbit' }); svg.appendChild(gOrbit);
+  var gBench = el('g', { id: 'gBench' }); svg.appendChild(gBench);
+  var gGhost = el('g', { id: 'gGhost' }); svg.appendChild(gGhost);
+
+  // ---------- geometry helpers ----------
+  function toRad(d){ return d * Math.PI / 180; }
+  function toDeg(r){ return r * 180 / Math.PI; }
+  function pointOnCircle(cx, cy, R, thetaDeg){
+    var t = toRad(thetaDeg);
+    return { x: cx + R * Math.cos(t), y: cy - R * Math.sin(t) };
+  }
+  function tangentUnit(thetaDeg){
+    var t = toRad(thetaDeg);
+    return { x: -Math.sin(t), y: -Math.cos(t) }; // CCW motion direction, screen coords
+  }
+  function dist(a, b){ return Math.hypot(a.x - b.x, a.y - b.y); }
+  function fmt(n, d){ return Number(n).toFixed(d == null ? 2 : d); }
+
+  function svgPoint(clientX, clientY){
+    var pt = svg.createSVGPoint();
+    pt.x = clientX; pt.y = clientY;
+    var ctm = svg.getScreenCTM();
+    return pt.matrixTransform(ctm.inverse());
+  }
+
+  function makeVector(tail, tip, colorKey, label, opts){
+    opts = opts || {};
+    var g = el('g', { class: 'vector' + (opts.cls ? ' ' + opts.cls : '') });
+    var line = el('line', {
+      x1: tail.x, y1: tail.y, x2: tip.x, y2: tip.y,
+      stroke: COLORS[colorKey], 'stroke-width': opts.width || 3,
+      'marker-end': 'url(#arrow-' + colorKey + ')',
+      'stroke-dasharray': opts.dashed ? '6 5' : 'none',
+      opacity: opts.opacity != null ? opts.opacity : 1
+    });
+    g.appendChild(line);
+    if (label){
+      var lx, ly;
+      if (opts.lx != null || opts.ly != null){
+        // explicit offset past the tip (used for the Δr/Δv result vector)
+        lx = tip.x + (tip.x - tail.x) * 0.10 + (opts.lx||0);
+        ly = tip.y + (tip.y - tail.y) * 0.10 + (opts.ly||8);
+      } else {
+        // default: sit beside the vector's midpoint (perpendicular offset) so
+        // the label never lands on top of the point label just past the tip
+        var dx = tip.x - tail.x, dy = tip.y - tail.y;
+        var len = Math.hypot(dx, dy) || 1;
+        var nx = -dy / len, ny = dx / len;
+        var off = 15;
+        lx = (tail.x + tip.x) / 2 + nx * off;
+        ly = (tail.y + tip.y) / 2 + ny * off + 4;
+      }
+      var t = el('text', { x: lx, y: ly, fill: COLORS[colorKey], class: 'label', 'font-size': opts.fs || 16, 'font-weight': 700 });
+      t.textContent = label;
+      g.appendChild(t);
+    }
+    return g;
+  }
+
+  function textEl(x, y, str, opts){
+    opts = opts || {};
+    var t = el('text', {
+      x: x, y: y, fill: opts.fill || 'var(--muted)', 'font-size': opts.fs || 13,
+      'text-anchor': opts.anchor || 'middle', 'font-weight': opts.weight || 500
+    });
+    t.setAttribute('font-family', opts.mono ? "'IBM Plex Mono',monospace" : "'IBM Plex Sans KR',sans-serif");
+    t.textContent = str;
+    return t;
+  }
+
+  // ---------- main render ----------
+  function render(){
+    gOrbit.innerHTML = '';
+    var R = state.rMeters * PX_PER_M;
+    var th1 = state.theta1Deg;
+    var th2 = state.theta1Deg + state.dThetaDeg;
+    var P = pointOnCircle(O.x, O.y, R, th1);
+    var Q = pointOnCircle(O.x, O.y, R, th2);
+
+    // orbit circle
+    gOrbit.appendChild(el('circle', { cx:O.x, cy:O.y, r:R, fill:'none', stroke:'var(--border)', 'stroke-width':2 }));
+    gOrbit.appendChild(el('circle', { cx:O.x, cy:O.y, r:2.5, fill:'var(--muted)' }));
+    gOrbit.appendChild(textEl(O.x - 14, O.y + 18, 'O', { fill:'var(--muted)', fs:14, weight:700 }));
+
+    // Δθ angle marker at O
+    var ar = 34;
+    var A1 = pointOnCircle(O.x, O.y, ar, th1);
+    var A2 = pointOnCircle(O.x, O.y, ar, th2);
+    var largeArc = state.dThetaDeg > 180 ? 1 : 0;
+    gOrbit.appendChild(el('path', {
+      d: 'M ' + A1.x + ' ' + A1.y + ' A ' + ar + ' ' + ar + ' 0 ' + largeArc + ' 0 ' + A2.x + ' ' + A2.y,
+      fill:'none', stroke:'var(--muted)', 'stroke-width':1.6
+    }));
+    var amid = pointOnCircle(O.x, O.y, ar + 16, (th1 + th2)/2);
+    gOrbit.appendChild(textEl(amid.x, amid.y, 'Δθ', { fill:'var(--muted)', fs:13, weight:600 }));
+
+    // arc Δs (step 1 emphasis)
+    var arcOpacity = state.step === 1 ? 1 : 0.28;
+    gOrbit.appendChild(el('path', {
+      d: 'M ' + P.x + ' ' + P.y + ' A ' + R + ' ' + R + ' 0 ' + largeArc + ' 0 ' + Q.x + ' ' + Q.y,
+      fill:'none', stroke: COLORS.violet, 'stroke-width':4, opacity: arcOpacity, 'stroke-linecap':'round'
+    }));
+
+    // chord (direct Δr on the circle, for reference)
+    gOrbit.appendChild(el('line', {
+      x1:P.x, y1:P.y, x2:Q.x, y2:Q.y, stroke: COLORS.violet, 'stroke-width':2,
+      'stroke-dasharray':'5 5', opacity: state.step === 1 ? 0.85 : 0.25
+    }));
+
+    // points P, Q
+    [ ['P', P], ['Q', Q] ].forEach(function(pair){
+      gOrbit.appendChild(el('circle', { cx: pair[1].x, cy: pair[1].y, r: 4, fill:'var(--ink)' }));
+      var off = pointOnCircle(O.x, O.y, R + 20, pair[0] === 'P' ? th1 : th2);
+      gOrbit.appendChild(textEl(off.x, off.y, pair[0], { fill:'var(--ink)', fs:14, weight:700 }));
+    });
+
+    // position vectors r1, r2
+    var rOpacity = state.step === 1 ? 1 : 0.32;
+    gOrbit.appendChild(makeVector(O, P, 'amber', state.step===1 ? 'r₁' : null, { opacity:rOpacity, width: state.step===1?3.2:2.2 }));
+    gOrbit.appendChild(makeVector(O, Q, 'amber', state.step===1 ? 'r₂' : null, { opacity:rOpacity, width: state.step===1?3.2:2.2 }));
+
+    var vLen1=0, vLen2=0, v1tip=null, v2tip=null;
+    if (state.step === 2){
+      var vPx = FIXED_V_ARROW_PX;
+      var t1 = tangentUnit(th1), t2 = tangentUnit(th2);
+      v1tip = { x: P.x + t1.x*vPx, y: P.y + t1.y*vPx };
+      v2tip = { x: Q.x + t2.x*vPx, y: Q.y + t2.y*vPx };
+      gOrbit.appendChild(makeVector(P, v1tip, 'green', 'v₁', { width:3.4 }));
+      gOrbit.appendChild(makeVector(Q, v2tip, 'green', 'v₂', { width:3.4 }));
+
+      // Direction check: Δv⃗'s direction always equals the inward radial
+      // direction at the arc's midpoint — exactly, for any Δθ, not just as
+      // Δθ→0 (only |Δv|≈vΔθ needs the small-angle limit). Draw both as short
+      // parallel rays from the midpoint so the match is visible directly.
+      var thetaMid = th1 + state.dThetaDeg / 2;
+      var Mmid = pointOnCircle(O.x, O.y, R, thetaMid);
+      var radialDir = { x: (O.x - Mmid.x) / R, y: (O.y - Mmid.y) / R };
+      var v1vec = { x: v1tip.x - P.x, y: v1tip.y - P.y };
+      var v2vec = { x: v2tip.x - Q.x, y: v2tip.y - Q.y };
+      var dv = { x: v2vec.x - v1vec.x, y: v2vec.y - v1vec.y };
+      var dvLen = Math.hypot(dv.x, dv.y) || 1;
+      var dvDir = { x: dv.x / dvLen, y: dv.y / dvLen };
+      // Cap the ray length so it never overshoots O when r (and so R) is
+      // small — at R=60 (r=1m) a fixed 68px ray would poke past the center.
+      var CMP_LEN = Math.min(68, R * 0.78), CMP_OFF = 8;
+      var perp = { x: -radialDir.y, y: radialDir.x };
+      var radialStart = { x: Mmid.x + perp.x*CMP_OFF, y: Mmid.y + perp.y*CMP_OFF };
+      var radialEnd = { x: radialStart.x + radialDir.x*CMP_LEN, y: radialStart.y + radialDir.y*CMP_LEN };
+      var dvStart = { x: Mmid.x - perp.x*CMP_OFF, y: Mmid.y - perp.y*CMP_OFF };
+      var dvEnd = { x: dvStart.x + dvDir.x*CMP_LEN, y: dvStart.y + dvDir.y*CMP_LEN };
+      gOrbit.appendChild(el('circle', { cx:Mmid.x, cy:Mmid.y, r:2.5, fill:'var(--muted)' }));
+      gOrbit.appendChild(makeVector(radialStart, radialEnd, 'red', null, { width:3 }));
+      gOrbit.appendChild(makeVector(dvStart, dvEnd, 'red', null, { width:3, dashed:true, opacity:0.85 }));
+      // Label sits beside the rays (perpendicular offset) rather than past
+      // their tips, so it doesn't crowd whatever is near O (labels, r-vectors).
+      var cmpMid = { x: (radialStart.x+radialEnd.x)/2, y: (radialStart.y+radialEnd.y)/2 };
+      var cmpLabelPt = { x: cmpMid.x + perp.x*26, y: cmpMid.y + perp.y*26 };
+      gOrbit.appendChild(textEl(cmpLabelPt.x, cmpLabelPt.y, 'a⃗ ∥ Δv⃗', { fill: COLORS.red, fs:13, weight:700 }));
+    }
+
+    // grips (draggable handles) — placed at the arrowhead so r1/r2 (which
+    // share a tail at O) get two distinct, non-overlapping grab points.
+    // Dragging translates the WHOLE vector rigidly; the ghost's tail is what
+    // must reach O′, which the ghost preview shows live as it's dragged.
+    function addGrip(tail, tip, id, colorKey){
+      var gx = tip.x, gy = tip.y;
+      var already = state.placed.a === id || state.placed.b === id;
+      var grp = el('g', { class: 'grip' + (already || state.playing ? ' disabled' : ''), 'data-id': id });
+      grp.appendChild(el('circle', { cx:gx, cy:gy, r:10, fill:'var(--surface)', stroke:COLORS[colorKey], 'stroke-width':2.4 }));
+      grp.appendChild(el('circle', { cx:gx, cy:gy, r:3, fill:COLORS[colorKey] }));
+      grp.dataset.tailx = tail.x; grp.dataset.taily = tail.y;
+      grp.dataset.tipx = tip.x; grp.dataset.tipy = tip.y;
+      grp.dataset.color = colorKey;
+      grp.dataset.gx = gx; grp.dataset.gy = gy;
+      gOrbit.appendChild(grp);
+      grp.addEventListener('pointerdown', onGripDown);
+    }
+    if (state.step === 1){
+      addGrip(O, P, 'r1', 'amber');
+      addGrip(O, Q, 'r2', 'amber');
+    } else {
+      addGrip(P, v1tip, 'v1', 'green');
+      addGrip(Q, v2tip, 'v2', 'green');
+    }
+
+    // Live definition of each draggable vector's current tail/tip, so a
+    // vector already placed in the workbench can be recomputed every frame
+    // (including during playback) instead of freezing at drag time.
+    var vectorDefs = { r1: { tail:O, tip:P }, r2: { tail:O, tip:Q } };
+    if (state.step === 2){
+      vectorDefs.v1 = { tail:P, tip:v1tip };
+      vectorDefs.v2 = { tail:Q, tip:v2tip };
+    }
+
+    renderBench(vectorDefs);
+    renderReadout(th1, vectorDefs);
+    renderDerivation(th1);
+    updateChrome();
+  }
+
+  // ---------- workbench ----------
+  function renderBench(vectorDefs){
+    gBench.innerHTML = '';
+    // frame
+    gBench.appendChild(el('rect', {
+      x: BENCH.x, y: BENCH.y, width: BENCH.w, height: BENCH.h, rx: 16,
+      fill: 'none', stroke: 'var(--border)', 'stroke-width': 1.6, 'stroke-dasharray': '3 6'
+    }));
+    gBench.appendChild(el('circle', { cx: ANCHOR.x, cy: ANCHOR.y, r: 3.5, fill: 'var(--muted)' }));
+    gBench.appendChild(textEl(ANCHOR.x, ANCHOR.y + 22, "O′", { fill: 'var(--muted)', fs: 13, weight: 700 }));
+
+    var a = state.placed.a, b = state.placed.b;
+    if (!a && !b){
+      var hintY = BENCH.y + 32;
+      gBench.appendChild(textEl(ANCHOR.x, hintY, '위 그림의 화살촉 손잡이(⊙)를 드래그해', { fill:'var(--muted)', fs:13 }));
+      gBench.appendChild(textEl(ANCHOR.x, hintY + 20, '이 워크벤치의 O′에 꼬리가 닿도록 옮겨보세요', { fill:'var(--muted)', fs:13 }));
+      return;
+    }
+    // Placed vectors are re-anchored at O′ every frame using their CURRENT
+    // direction/length from vectorDefs, so they keep tracking r/Δθ/θ₁/ω —
+    // including live during playback — instead of freezing at drop time.
+    var placedPoints = {};
+    [a, b].forEach(function(id){
+      if (!id) return;
+      var def = vectorDefs[id];
+      if (!def) return;
+      var dir = { x: def.tip.x - def.tail.x, y: def.tip.y - def.tail.y };
+      var tail = { x: ANCHOR.x, y: ANCHOR.y };
+      var tip = { x: ANCHOR.x + dir.x, y: ANCHOR.y + dir.y };
+      placedPoints[id] = { tail:tail, tip:tip };
+      var colorKey = id.indexOf('v') === 0 ? 'green' : 'amber';
+      var label = (id === 'r1' || id === 'v1') ? (colorKey==='amber' ? 'r₁' : 'v₁') : (colorKey==='amber' ? 'r₂' : 'v₂');
+      gBench.appendChild(makeVector(tail, tip, colorKey, label, { width: 3.2 }));
+    });
+    if (a && b && placedPoints[a] && placedPoints[b]){
+      var diffColor = state.step === 1 ? 'violet' : 'red';
+      var diffLabel = state.step === 1 ? 'Δr' : 'Δv';
+      gBench.appendChild(makeVector(placedPoints[a].tip, placedPoints[b].tip, diffColor, diffLabel, { width: 3.4, lx: 10, ly: -6 }));
+    }
+  }
+
+  // angle between the two placed (translated) vectors, sharing a tail at
+  // O′ — used to confirm it matches Δθ, i.e. the SAS-similarity condition.
+  // Recomputed live from vectorDefs so it stays correct during playback too.
+  function placedAngleDeg(vectorDefs){
+    var a = state.placed.a, b = state.placed.b;
+    if (!a || !b || !vectorDefs[a] || !vectorDefs[b]) return null;
+    var da = vectorDefs[a], db = vectorDefs[b];
+    var angA = Math.atan2(-(da.tip.y - da.tail.y), da.tip.x - da.tail.x);
+    var angB = Math.atan2(-(db.tip.y - db.tail.y), db.tip.x - db.tail.x);
+    var d = Math.abs(toDeg(angA - angB));
+    if (d > 180) d = 360 - d;
+    return d;
+  }
+
+  function clearBench(){
+    state.placed.a = null; state.placed.b = null;
+  }
+
+  // ---------- drag to translate ----------
+  var dragCtx = null;
+  function onGripDown(evt){
+    if (state.playing) return;
+    evt.preventDefault();
+    var grp = evt.currentTarget;
+    var id = grp.dataset.id;
+    var tail = { x: parseFloat(grp.dataset.tailx), y: parseFloat(grp.dataset.taily) };
+    var tip = { x: parseFloat(grp.dataset.tipx), y: parseFloat(grp.dataset.tipy) };
+    var colorKey = grp.dataset.color;
+    var startPt = svgPoint(evt.clientX, evt.clientY);
+
+    dragCtx = { id: id, tail0: tail, tip0: tip, colorKey: colorKey, startPt: startPt };
+
+    gGhost.innerHTML = '';
+    var ghostG = makeVector(tail, tip, colorKey, null, { width: 3.4, opacity: 0.85 });
+    ghostG.id = 'ghostVector';
+    gGhost.appendChild(ghostG);
+
+    window.addEventListener('pointermove', onGripMove);
+    window.addEventListener('pointerup', onGripUp, { once: true });
+  }
+
+  function onGripMove(evt){
+    if (!dragCtx) return;
+    var cur = svgPoint(evt.clientX, evt.clientY);
+    var dx = cur.x - dragCtx.startPt.x, dy = cur.y - dragCtx.startPt.y;
+    var newTail = { x: dragCtx.tail0.x + dx, y: dragCtx.tail0.y + dy };
+    var newTip = { x: dragCtx.tip0.x + dx, y: dragCtx.tip0.y + dy };
+    var line = gGhost.querySelector('#ghostVector line');
+    if (line){
+      line.setAttribute('x1', newTail.x); line.setAttribute('y1', newTail.y);
+      line.setAttribute('x2', newTip.x); line.setAttribute('y2', newTip.y);
+    }
+    dragCtx.curTail = newTail; dragCtx.curTip = newTip;
+  }
+
+  function onGripUp(evt){
+    window.removeEventListener('pointermove', onGripMove);
+    if (!dragCtx) return;
+    var curTail = dragCtx.curTail || dragCtx.tail0;
+    var curTip = dragCtx.curTip || dragCtx.tip0;
+    gGhost.innerHTML = '';
+
+    if (dist(curTail, ANCHOR) <= SNAP_R){
+      // Store only which vector was placed — its tail/tip are recomputed
+      // live from current state every render (see vectorDefs in render()),
+      // so the construction keeps tracking slider changes and playback.
+      if (!state.placed.a || state.placed.a === dragCtx.id){
+        state.placed.a = dragCtx.id;
+      } else {
+        state.placed.b = dragCtx.id;
+      }
+    }
+    dragCtx = null;
+    render();
+  }
+
+  // ---------- readout & derivation ----------
+  function computeValues(){
+    var r = state.rMeters;
+    var dThetaRad = toRad(state.dThetaDeg);
+    var v = r * state.omega;
+    var a = v * v / r;
+    var chord = 2 * r * Math.sin(dThetaRad / 2);   // |Δr|
+    var arc = r * dThetaRad;                        // Δs
+    var dvChord = 2 * v * Math.sin(dThetaRad / 2);  // |Δv| exact
+    return { r:r, dThetaRad:dThetaRad, v:v, a:a, chord:chord, arc:arc, dvChord:dvChord };
+  }
+
+  function row(k, v, unit){
+    return '<div class="row"><span class="k">' + k + '</span><span class="v">' + v + (unit ? ' <small>' + unit + '</small>' : '') + '</span></div>';
+  }
+
+  function renderReadout(th1, vectorDefs){
+    var c = computeValues();
+    var html = '';
+    html += row('r (반지름)', fmt(c.r,1), 'm');
+    html += row('θ₁', fmt(state.theta1Deg,0), '°');
+    html += row('Δθ', fmt(state.dThetaDeg,0) + '° = ' + fmt(c.dThetaRad,3), 'rad');
+    html += row('ω (각속도)', fmt(state.omega,2), 'rad/s');
+    if (state.step === 1){
+      html += row('v = rω', fmt(c.v,2), 'm/s');
+      html += row('현 |Δr|', fmt(c.chord,3), 'm');
+      html += row('호 Δs = rΔθ', fmt(c.arc,3), 'm');
+    } else {
+      html += row('v = rω', fmt(c.v,2), 'm/s');
+      html += row('|Δv| (정확값)', fmt(c.dvChord,3), 'm/s');
+      html += row('a = v²/r = rω²', fmt(c.a,2), 'm/s²');
+    }
+    var placedAngle = placedAngleDeg(vectorDefs);
+    if (placedAngle != null){
+      html += row('워크벤치 낀각', fmt(placedAngle,1) + '° (Δθ와 일치 → 닮음)', '');
+    }
+    document.getElementById('readoutRows').innerHTML = html;
+
+    var ratio = c.arc === 0 ? 1 : c.chord / c.arc;
+    var note = document.getElementById('approxNote');
+    if (state.step === 1){
+      note.innerHTML = 'Δθ가 작아질수록 현 |Δr|과 호 Δs의 길이가 같아집니다 — 지금 비율 <b>|Δr| / Δs = ' + fmt(ratio,4) + '</b> (Δθ→0이면 1에 수렴). 이 근사 덕분에 순간 속력을 v = Δs/Δt = rω 로 쓸 수 있습니다.';
+    } else {
+      var ratio2 = (c.dThetaRad === 0) ? 1 : c.dvChord / (c.v * c.dThetaRad);
+      note.innerHTML = '<b>방향</b>은 Δθ 크기와 무관하게 항상 정확히 구심 방향(그림의 빨간 두 화살표 참고)이고, <b>크기</b>만 근사가 필요합니다 — 지금 <b>|Δv| / (vΔθ) = ' + fmt(ratio2,4) + '</b> → Δθ→0에서 1에 수렴하여 a = vω = v²/r = rω² 를 얻습니다.';
+    }
+  }
+
+  var STEP1_STEPS = [
+    { tag:'①', html: '위치벡터 <span class="eqn">r⃗₁ = O→P</span>, <span class="eqn">r⃗₂ = O→Q</span>, 크기는 모두 <span class="eqn">r</span>' },
+    { tag:'②', html: '변위벡터 <span class="eqn">Δr⃗ = r⃗₂ − r⃗₁</span> — 워크벤치에서 두 벡터를 O′에 평행이동해 직접 구성해보세요' },
+    { tag:'③', html: '호의 길이 <span class="eqn">Δs = rΔθ</span> (Δθ는 라디안)' },
+    { tag:'④', html: 'Δθ가 작으면 <span class="eqn">|Δr⃗| ≈ Δs</span> (현 ≈ 호)' },
+    { tag:'⑤', html: '속력 <span class="eqn">v = <span class="frac"><span class="num">Δs</span><span class="den">Δt</span></span> = <span class="frac"><span class="num">rΔθ</span><span class="den">Δt</span></span> = rω</span>' }
+  ];
+  var STEP2_STEPS = [
+    { tag:'①', html: '속도벡터 <span class="eqn">v⃗₁ ⊥ r⃗₁</span>, <span class="eqn">v⃗₂ ⊥ r⃗₂</span>, 크기는 모두 <span class="eqn">v = rω</span>, 방향은 운동 방향(접선)' },
+    { tag:'②', html: '속도변화벡터 <span class="eqn">Δv⃗ = v⃗₂ − v⃗₁</span> — 워크벤치에서 v⃗₁, v⃗₂를 O′에 평행이동해 구성해보세요' },
+    { tag:'③', html: '삼각형 O-P-Q ∼ v⃗₁·v⃗₂로 만든 삼각형 (SAS 닮음, 낀각 모두 Δθ) → <span class="eqn"><span class="frac"><span class="num">|Δv⃗|</span><span class="den">v</span></span> = <span class="frac"><span class="num">|Δr⃗|</span><span class="den">r</span></span></span>' },
+    { tag:'④', html: 'Δθ→0이면 <span class="eqn">|Δr⃗| ≈ Δs = rΔθ</span> 이므로 <span class="eqn">|Δv⃗| ≈ vΔθ</span>' },
+    { tag:'⑤', html: '구심가속도 <span class="eqn">a = <span class="frac"><span class="num">|Δv⃗|</span><span class="den">Δt</span></span> = vω = <span class="frac"><span class="num">v²</span><span class="den">r</span></span> = rω²</span>' },
+    { tag:'⑥', html: '사실 Δv⃗의 방향은 Δθ 크기와 관계없이 <b>항상 정확히</b> 호 PQ 중점에서 원의 중심을 향합니다 (위 그림의 빨간 실선·점선 화살표) — <b>구심 방향</b>. Δθ→0 근사가 필요한 건 방향이 아니라 <b>크기</b>뿐입니다.' }
+  ];
+
+  function renderDerivation(){
+    var steps = state.step === 1 ? STEP1_STEPS : STEP2_STEPS;
+    var activeIdx = -1;
+    if (state.step === 1){
+      activeIdx = (state.placed.a && state.placed.b) ? 4 : (state.placed.a || state.placed.b) ? 1 : 0;
+    } else {
+      activeIdx = (state.placed.a && state.placed.b) ? 4 : (state.placed.a || state.placed.b) ? 1 : 0;
+    }
+    var html = '';
+    steps.forEach(function(s, i){
+      html += '<div class="drv' + (i === activeIdx ? ' active' : '') + '"><span class="tag">' + s.tag + '</span>' + s.html + '</div>';
+    });
+    if (state.step === 2){
+      html += '<div class="misconception"><b>오개념 확인</b> — 가속도가 속도와 같은 방향이라고 생각하기 쉽지만, 등속 원운동에서는 <b>속력은 일정</b>하고 <b>방향만</b> 바뀝니다. Δv⃗는 v⃗와 수직에 가깝고, Δθ 크기와 무관하게 항상 원의 중심 방향(구심 방향)을 향합니다.</div>';
+    } else {
+      html += '<div class="misconception"><b>오개념 확인</b> — 변위 Δr⃗(직선, 현)과 이동 거리 Δs(곡선, 호)는 <b>다른 양</b>입니다. Δθ가 클수록 두 값의 차이가 커지고, Δθ→0일 때만 같아집니다.</div>';
+    }
+    document.getElementById('derivSteps').innerHTML = html;
+  }
+
+  // ---------- chrome (labels, tabs, legend) ----------
+  function updateChrome(){
+    document.getElementById('valR').textContent = fmt(state.rMeters,1) + ' m';
+    document.getElementById('valDTheta').textContent = fmt(state.dThetaDeg,0) + '°';
+    document.getElementById('valOmega').textContent = fmt(state.omega,2) + ' rad/s';
+    document.getElementById('valTheta1').textContent = fmt(state.theta1Deg,0) + '°';
+
+    document.getElementById('tabBtn1').setAttribute('aria-selected', state.step === 1);
+    document.getElementById('tabBtn2').setAttribute('aria-selected', state.step === 2);
+
+    document.getElementById('stageCaption').textContent = state.step === 1
+      ? '원운동 궤도 위 두 위치벡터 r⃗₁, r⃗₂ — 손잡이를 드래그해 아래 워크벤치에서 Δr⃗을 구성하세요.'
+      : '접선 방향 속도벡터 v⃗₁, v⃗₂ (위치벡터는 참고용으로 흐리게 표시) — 손잡이를 드래그해 Δv⃗를 구성하세요.';
+    document.getElementById('benchTitle').textContent = state.step === 1 ? '벡터 워크벤치 · Δr⃗ 구성' : '벡터 워크벤치 · Δv⃗ 구성';
+    document.getElementById('benchHint').innerHTML = (state.placed.a && state.placed.b)
+      ? '<b>완성!</b> 두 삼각형의 닮음 관계를 확인해보세요.'
+      : '두 벡터를 모두 O′로 옮기면 차이 벡터가 자동으로 그려집니다.';
+    document.getElementById('derivTitle').textContent = state.step === 1 ? '유도 과정 · v = rω' : '유도 과정 · a = v²/r = rω²';
+
+    document.getElementById('legend').innerHTML =
+      '<span><i class="swatch" style="background:' + COLORS.amber + '"></i>위치벡터 r</span>' +
+      '<span><i class="swatch" style="background:' + COLORS.green + '"></i>속도벡터 v</span>' +
+      '<span><i class="swatch" style="background:' + COLORS.violet + '"></i>Δr / 호 Δs</span>' +
+      '<span><i class="swatch" style="background:' + COLORS.red + '"></i>Δv (→ 가속도 방향)</span>';
+
+    document.getElementById('btnPlay').textContent = state.playing ? '⏸ 일시정지' : '▶ 재생';
+  }
+
+  // ---------- controls wiring ----------
+  // Sliders no longer clear the workbench — a placed vector is recomputed
+  // live from the current state each render (see vectorDefs), so a
+  // construction survives r/Δθ/θ₁/ω changes instead of being wiped out.
+  document.getElementById('rangeR').addEventListener('input', function(e){
+    state.rMeters = parseFloat(e.target.value); render();
+  });
+  document.getElementById('rangeDTheta').addEventListener('input', function(e){
+    state.dThetaDeg = parseFloat(e.target.value); render();
+  });
+  document.getElementById('rangeOmega').addEventListener('input', function(e){
+    state.omega = parseFloat(e.target.value); render();
+  });
+  document.getElementById('rangeTheta1').addEventListener('input', function(e){
+    state.theta1Deg = parseFloat(e.target.value); render();
+  });
+
+  document.getElementById('btnClearBench').addEventListener('click', function(){
+    clearBench(); render();
+  });
+
+  document.getElementById('tabBtn1').addEventListener('click', function(){
+    state.step = 1; clearBench(); render();
+  });
+  document.getElementById('tabBtn2').addEventListener('click', function(){
+    state.step = 2; clearBench(); render();
+  });
+
+  var rafId = null, lastT = null;
+  function playLoop(ts){
+    if (!state.playing) return;
+    if (lastT == null) lastT = ts;
+    var dt = (ts - lastT) / 1000;
+    lastT = ts;
+    state.theta1Deg = (state.theta1Deg + state.omega * (180/Math.PI) * dt) % 360;
+    document.getElementById('rangeTheta1').value = state.theta1Deg;
+    render();
+    rafId = requestAnimationFrame(playLoop);
+  }
+  document.getElementById('btnPlay').addEventListener('click', function(){
+    state.playing = !state.playing;
+    if (state.playing){
+      // Keep any workbench construction — it now tracks θ₁ live, so the
+      // teacher can watch both triangles rotate together during playback.
+      lastT = null;
+      rafId = requestAnimationFrame(playLoop);
+    } else if (rafId){
+      cancelAnimationFrame(rafId);
+    }
+    render();
+  });
+
+  document.getElementById('btnReset').addEventListener('click', function(){
+    state.playing = false;
+    if (rafId) cancelAnimationFrame(rafId);
+    state.rMeters = 2.0; state.dThetaDeg = 40; state.theta1Deg = 200; state.omega = 1.0;
+    document.getElementById('rangeR').value = 2;
+    document.getElementById('rangeDTheta').value = 40;
+    document.getElementById('rangeTheta1').value = 200;
+    document.getElementById('rangeOmega').value = 1;
+    clearBench();
+    render();
+  });
+
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(){
+    refreshMarkerColors(); render();
+  });
+
+  render();
+})();
+</script>

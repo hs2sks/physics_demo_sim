@@ -43,6 +43,9 @@ modern-physics/                현대물리
 └── photoelectric-effect/      💡 광전효과        ✔ 완료
 tools/                         분석 도구
 └── stroboscope/              📸 스트로보스코프(운동 영상 분석)  ✔ 완료
+lectures/                      📚 수업 자료 (수업용 프레젠테이션 · 복습용)
+├── index.html                 수업 자료 허브 (과목·단원별 목록, 검색)
+└── index.json                 자료 목록
 students/                      🎓 학생 제출자료 (년도·학기별 누적)
 ├── index.html                 학생 자료 허브 (목록)
 └── 2026-1/
@@ -56,6 +59,20 @@ students/                      🎓 학생 제출자료 (년도·학기별 누�
 1. `students/<년도>-<학기>/` 폴더에 갤러리 HTML 파일을 넣습니다
    (예: `students/2026-2/physics2-waves.html`).
 2. `students/index.html`의 `submissions` 배열에 항목을 한 줄 추가합니다.
+
+### 수업 자료(프레젠테이션) 추가 방법
+
+1. `lectures/<과목폴더>/` 에 프레젠테이션 HTML을 넣습니다
+   (예: `lectures/physics1/2026-10-01-escape-velocity.html`).
+2. `lectures/index.json` 배열에 항목을 추가합니다.
+
+```json
+{ "subject": "물리학1", "unit": "역학과 에너지", "title": "탈출 속도",
+  "date": "2026-10-01", "desc": "한 줄 설명", "tags": ["만유인력"],
+  "path": "physics1/2026-10-01-escape-velocity.html" }
+```
+
+이 페이지에는 **수업용 프레젠테이션만** 올립니다. 단독 시뮬레이션은 각 분야 폴더에 둡니다.
 
 ## 공통 특징
 

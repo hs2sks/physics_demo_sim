@@ -1,0 +1,983 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>단열과 열팽창 — 시뮬레이션으로 이해하기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap">
+<style>
+:root{
+  --bg:#dfe5f0; --slide:#f5f7fc; --panel:#ffffff; --ink:#14203a; --muted:#54617b; --line:#c9d2e4;
+  --blue:#1f5fd1; --onblue:#ffffff; --amber:#b45f00; --green:#0c7a58; --red:#b8321f;
+  --blue-soft:#dce8fb; --amber-soft:#fbe8cf;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+    --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+    --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+  --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+  --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;overflow:hidden}
+#viewport{position:relative;width:100%;height:100%;overflow:hidden}
+#deck{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center center;background:var(--slide);box-shadow:0 12px 70px rgba(0,0,0,.28);overflow:hidden}
+.slide{position:absolute;inset:0;display:none;flex-direction:column;padding:84px 88px 52px;gap:24px;background:var(--slide);font-size:32px;line-height:1.4}
+.slide.active{display:flex}
+.hd{display:flex;align-items:baseline;justify-content:space-between;gap:24px;flex:none}
+.hd h2{font-size:58px;line-height:1.15;margin:0;font-weight:800;letter-spacing:-.01em}
+.hd .src{font-size:26px;color:var(--muted);white-space:nowrap}
+.body{flex:1;min-height:0;display:grid;gap:36px}
+.side{display:flex;flex-direction:column;gap:18px;min-height:0}
+canvas{display:block;border-radius:16px;background:#0a1330}
+.box{background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:20px 26px}
+.box h3{margin:0 0 8px;font-size:30px}
+.sm{font-size:26px;color:var(--muted)}
+.lead{font-size:40px;line-height:1.35}
+.k{color:var(--amber);font-weight:700}.p{color:var(--blue);font-weight:700}.ok{color:var(--green);font-weight:700}.bad{color:var(--red);font-weight:700}
+/* math */
+.m{font-family:'STIX Two Text','Times New Roman',serif;font-style:italic;font-size:1.1em;white-space:nowrap}
+.m .u,.u{font-style:normal}
+.m sub,.m sup{font-size:.68em;line-height:0;font-style:normal}
+.fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.15;margin:0 .12em;font-size:.95em}
+.fr>span:first-child{padding:0 .2em .06em;border-bottom:.07em solid currentColor}
+.fr>span:last-child{padding-top:.06em}
+.sq{white-space:nowrap}.sq .rad{border-top:.07em solid currentColor;padding:0 .15em;margin-left:-.04em}
+.eq{font-size:44px;text-align:center;padding:6px 0}
+/* controls */
+.ctl{display:flex;flex-direction:column;gap:4px}
+.ctl .row{display:flex;justify-content:space-between;align-items:baseline;font-size:27px;gap:12px}
+.ctl .val{font-weight:700;font-variant-numeric:tabular-nums}
+.rangew{position:relative}
+input[type=range]{width:100%;height:44px;-webkit-appearance:none;appearance:none;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:38px;height:38px;border-radius:50%;background:var(--blue);margin-top:-13px;border:4px solid var(--panel);box-shadow:0 1px 6px rgba(0,0,0,.35)}
+input[type=range]::-moz-range-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;background:var(--blue);border:4px solid var(--panel)}
+input[type=range]:focus-visible{outline:3px solid var(--blue);outline-offset:4px;border-radius:8px}
+.marks{position:relative;height:60px;font-size:22px;color:var(--muted)}
+.marks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.btns{display:flex;gap:12px;flex-wrap:wrap}
+.btn,.chip{font:inherit;font-size:27px;font-weight:700;padding:10px 24px;border-radius:12px;border:2px solid var(--blue);background:var(--panel);color:var(--blue);cursor:pointer;line-height:1.25}
+.btn.pri{background:var(--blue);color:var(--onblue)}
+.chip{padding:8px 18px;font-size:26px;border-color:var(--line);color:var(--ink);font-weight:500}
+.chip.on{border-color:var(--blue);background:var(--blue-soft);font-weight:700}
+.btn:focus-visible,.chip:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.chips{display:flex;gap:10px;flex-wrap:wrap}
+/* step reveal */
+.st{display:grid;grid-template-columns:46px 1fr;gap:14px;padding:8px 14px;border-radius:14px;opacity:0;transform:translateY(10px);transition:opacity .35s,transform .35s;border:2px solid transparent}
+.st.on{opacity:.55;transform:none}
+.st.cur{opacity:1;background:var(--panel);border-color:var(--blue)}
+.st .n{width:42px;height:42px;border-radius:50%;background:var(--blue);color:var(--onblue);display:grid;place-items:center;font-weight:800;font-size:24px;margin-top:2px}
+.st .tl{display:flex;flex-wrap:wrap;gap:2px 14px;align-items:baseline}
+.st .t{font-size:23px;color:var(--muted);line-height:1.3}
+.st b{font-size:27px}
+.st .eq{font-size:35px;line-height:1.1;text-align:left;padding:2px 0}
+/* cover */
+.cover{flex-direction:row;align-items:center;gap:56px}
+.cover.active{display:flex}
+.cv-l{flex:1;display:flex;flex-direction:column;gap:28px}
+.cv-l h1{font-size:200px;line-height:1;margin:0;font-weight:800;letter-spacing:-.04em}
+.cv-tag{font-size:30px;color:var(--muted)}
+.q{border-left:8px solid var(--blue);border-radius:6px;padding:8px 0 8px 28px;font-size:36px;line-height:1.45}
+/* table */
+table.t{border-collapse:collapse;width:100%;font-size:27px}
+table.t th,table.t td{padding:10px 14px;border-bottom:2px solid var(--line);text-align:right;white-space:nowrap}
+table.t th:first-child,table.t td:first-child,table.t th:last-child,table.t td:last-child{text-align:left}
+table.t th{font-size:24px;color:var(--muted);font-weight:500}
+table.t tbody tr{cursor:pointer}
+table.t tbody tr.on{background:var(--blue-soft);font-weight:700}
+/* atmosphere rows */
+.gas{display:grid;grid-template-columns:230px 1fr 250px;align-items:center;gap:24px;font-size:28px}
+.track{position:relative;height:46px;background:var(--line);border-radius:10px;overflow:visible}
+.fill{position:absolute;left:0;top:0;bottom:0;border-radius:10px;min-width:6px}
+.fill.keep{background:var(--blue)}.fill.lose{background:#e08a00}
+.tick{position:absolute;top:-10px;bottom:-10px;width:0;border-left:4px dashed var(--ink)}
+.tick.ve{border-left:4px solid var(--red)}
+.tk{position:absolute;top:-38px;font-size:22px;color:var(--muted);transform:translateX(-50%);white-space:nowrap}
+/* HUD / notes */
+#hud{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:10px;align-items:center;background:rgba(10,19,48,.86);color:#e9effd;padding:8px 14px;border-radius:14px;font-size:18px;opacity:0;transition:opacity .3s;z-index:20}
+#hud.show{opacity:1}
+#hud button{font:inherit;font-size:18px;color:#e9effd;background:transparent;border:1.5px solid rgba(233,239,253,.5);border-radius:8px;padding:4px 12px;cursor:pointer}
+#notes{position:absolute;left:0;right:0;bottom:0;background:rgba(10,19,48,.94);color:#eaf0ff;padding:26px 88px 34px;font-size:30px;line-height:1.5;display:none;z-index:15}
+#notes.on{display:block}
+#notes b{color:#ffb454}
+
+.ko{font-family:'Noto Sans KR',sans-serif;font-style:normal;font-size:.8em}
+#bar{position:absolute;top:14px;left:88px;right:88px;height:54px;display:flex;justify-content:space-between;align-items:center;z-index:12}
+#bar .bl{font-size:26px;font-weight:800}
+#bar .br{display:flex;gap:10px}
+.tb{font:inherit;font-size:24px;font-weight:700;padding:7px 18px;border-radius:12px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;line-height:1.2}
+.tb:hover{border-color:var(--blue)}.tb.on{border-color:var(--blue);background:var(--blue-soft)}
+.tb:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+#help{position:absolute;inset:0;background:rgba(6,11,30,.82);display:none;align-items:center;justify-content:center;z-index:30}
+#help.on{display:flex}
+.hp{background:var(--panel);color:var(--ink);border-radius:22px;padding:36px 52px 40px;width:1320px;max-height:960px;overflow:auto;font-size:27px;line-height:1.5;border:2px solid var(--line)}
+.hp h3{font-size:40px;margin:0 0 14px}.hp h4{font-size:29px;margin:18px 0 6px;color:var(--blue)}
+.hp .g{display:grid;grid-template-columns:230px 1fr;gap:6px 22px}
+.hp kbd{font:inherit;font-size:24px;font-weight:700;background:var(--blue-soft);border:2px solid var(--line);border-radius:8px;padding:1px 10px;margin-right:4px}
+#ask{position:absolute;inset:0;background:rgba(6,11,30,.6);display:none;align-items:center;justify-content:center;z-index:25;cursor:pointer}
+#ask.on{display:flex}
+#ask .ak{background:var(--panel);color:var(--ink);border-radius:24px;border-left:16px solid var(--blue);padding:44px 72px 40px 60px;width:1500px;box-shadow:0 20px 80px rgba(0,0,0,.45)}
+#ask .ah{font-size:30px;color:var(--blue);font-weight:800;margin-bottom:18px}
+#ask .aq{font-size:54px;line-height:1.4;font-weight:700;margin:10px 0;letter-spacing:-.01em}
+#ask .aq span{color:var(--blue);margin-right:14px}
+#ask .af{font-size:24px;color:var(--muted);margin-top:22px}
+#notes .nh{font-size:24px;color:#9db0d8;margin-bottom:6px}
+#notes .nq{margin:4px 0 10px;font-size:29px}
+#notes .ni{margin:6px 0;font-size:27px;line-height:1.45}
+#notes .nx{color:#ff9d9d;font-weight:700}#notes .nv{color:#5eead4;font-weight:700}
+@media (prefers-reduced-motion: reduce){.st{transition:none}}
+
+.qgrid{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:22px;flex:1;min-height:0}
+.qc{background:var(--panel);border:2px solid var(--line);border-radius:18px;padding:20px 28px;display:flex;flex-direction:column;gap:8px}
+.qc h3{margin:0;font-size:31px}.qc p{margin:0;font-size:26px;line-height:1.4;color:var(--muted)}
+.qc .fb{font-size:24px;line-height:1.45;flex:1}.qc.done{border-color:var(--green)}
+
+</style>
+</head>
+<body>
+<div id="viewport">
+<div id="deck">
+
+<section class="slide cover" id="s1">
+  <div class="cv-l">
+    <div class="cv-tag">Ⅱ. 열과 에너지 · 01. 단열과 열팽창 (2차시) · 교과서 56~57쪽 외</div>
+    <h1 style="font-size:150px">열팽창</h1>
+    <p class="lead" style="margin:0">기차 레일 이음매에는 왜 틈을 남겨 둘까?</p>
+    <div class="q">한여름 뙤약볕 아래의 레일과 한겨울 새벽의 레일, 길이가 같을까? 틈이 없다면 어떤 일이 생길까?</div>
+    <div class="sm">오른쪽: 하루 동안 온도가 바뀔 때 이음매 틈의 변화 (틈 크기는 확대해 그림)<br>상단의 ❓ 조작법 · 💬 발문 띄우기 · 📝 오개념 교정 노트 · 다크 전환 버튼을 쓰거나 → / Space 로 시작</div>
+  </div>
+  <canvas id="c-hero"></canvas>
+</section>
+
+<section class="slide" id="s2">
+  <header class="hd"><h2>물체는 왜 늘어날까? — 입자 모형</h2><span class="src">열팽창의 원인 · 개념 모형</span></header>
+  <div class="body" style="grid-template-columns:1100px 1fr">
+    <canvas id="c-ch"></canvas>
+    <div class="side">
+      <div class="box sm" style="color:var(--ink)">온도가 높아지면 입자의 진동이 <b>활발</b>해진다. 그런데 이웃 입자에 <span class="bad">가까워지기는 어렵고</span> <span class="ok">멀어지기는 쉬워서</span>, 평균 간격이 조금씩 넓어진다.</div>
+      <div class="ctl"><div class="row"><span>온도 (열 운동의 세기)</span><span class="val" id="ch-tv">낮음</span></div><input id="ch-t" type="range" min="1" max="10" step="1" value="2"></div>
+      <div class="box" style="font-size:30px;line-height:1.6">입자 사이 평균 간격 <b class="k" id="ch-gap">—</b><br><span class="sm">정지 상태(0 K 에 해당) 간격 대비</span></div>
+      <div class="chips"><button class="chip" id="ch-sym">만약 대칭인 결합이라면? (교과서 밖 심화)</button></div>
+      <div class="sm">무차원 개념 모형: 입자 12개, 이웃끼리만 결합. 실제 고체의 팽창은 이보다 훨씬 작다.</div>
+      <div class="btns"><button class="btn pri" id="ch-play">⏸ 일시정지</button><button class="btn" id="ch-reset">↺ 처음 상태</button></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" id="s3">
+  <header class="hd"><h2>선팽창 — 막대가 늘어난 길이</h2><span class="src">그림 Ⅱ-4 막대의 열팽창</span></header>
+  <div class="body" style="grid-template-columns:1100px 1fr">
+    <canvas id="c-ln"></canvas>
+    <div class="side">
+      <div class="box"><div class="eq" style="font-size:40px"><span class="m">l = l<sub>0</sub> + Δl = l<sub>0</sub>(1 + αΔT)</span></div><div class="sm" style="text-align:center"><span class="m">α</span> : 물질의 선팽창 계수</div></div>
+      <div class="chips" id="ln-mats"></div>
+      <div class="ctl"><div class="row"><span>처음 길이 <span class="m">l</span><sub>0</sub></span><span class="val" id="ln-lv">10 m</span></div><input id="ln-l" type="range" min="1" max="50" step="1" value="10"></div>
+      <div class="ctl"><div class="row"><span>온도 차 <span class="m">ΔT</span></span><span class="val" id="ln-tv">0 K</span></div><input id="ln-t" type="range" min="0" max="100" step="1" value="0"></div>
+      <div class="box" style="font-size:30px;line-height:1.55" id="ln-out">&nbsp;</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" id="s4" data-steps="6">
+  <header class="hd"><h2>식으로 정리하기</h2><span class="src">그림 Ⅱ-4 · → 키로 한 단계씩</span></header>
+  <div class="body" style="grid-template-columns:1fr 800px">
+    <div class="side" style="gap:10px">
+      <div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>처음 길이가 2배면</b><span class="t">같은 온도 차에서 늘어난 길이도 2배</span></div><div class="eq"><span class="m">Δl ∝ l<sub>0</sub></span></div></div></div>
+      <div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>온도 차가 2배면</b><span class="t">같은 막대에서 늘어난 길이도 2배</span></div><div class="eq"><span class="m">Δl ∝ ΔT</span></div></div></div>
+      <div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>둘을 합치면</b><span class="t">비례 상수 α 는 물질마다 다르다</span></div><div class="eq"><span class="m">Δl = α l<sub>0</sub> ΔT</span></div></div></div>
+      <div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>늘어난 뒤의 길이</b><span class="t">처음 길이 + 늘어난 길이</span></div><div class="eq"><span class="m">l = l<sub>0</sub> + Δl = l<sub>0</sub>(1 + αΔT)</span></div></div></div>
+      <div class="st" data-i="5"><div class="n">5</div><div><div class="tl"><b>α 의 단위와 뜻</b><span class="t">1 K 올라갈 때 길이가 늘어나는 비율</span></div><div class="eq"><span class="m">α = <span class="fr"><span>Δl</span><span>l<sub>0</sub>ΔT</span></span></span> <span class="m u">(/K)</span></div></div></div>
+      <div class="st" data-i="6"><div class="n">6</div><div><div class="tl"><b>예: 철 레일 25 m, ΔT = 40 K</b><span class="t">α = 11.8 × 10⁻⁶ /K</span></div><div class="eq"><span class="m">Δl = 11.8×10<sup>−6</sup> × 25 × 40 ≈ 1.2 <span class="u">cm</span></span></div></div></div>
+    </div>
+    <canvas id="c-dv"></canvas>
+  </div>
+</section>
+
+<section class="slide" id="s5">
+  <header class="hd"><h2>물질마다 다른 선팽창 계수</h2><span class="src">교과서 표 · 출처: 물리학 핸드북(2010)</span></header>
+  <div class="body" style="grid-template-columns:1fr 820px">
+    <div class="side" style="gap:14px">
+      <table class="t" id="tb-a"><thead><tr><th>물질</th><th>α (×10⁻⁶ /K)</th><th>늘어난 길이</th></tr></thead><tbody></tbody></table>
+      <div class="ctl"><div class="row"><span>처음 길이 <span class="m">l</span><sub>0</sub></span><span class="val" id="tb-lv">1 m</span></div><input id="tb-l" type="range" min="0.1" max="2" step="0.1" value="1"></div>
+      <div class="ctl"><div class="row"><span>온도 차 <span class="m">ΔT</span></span><span class="val" id="tb-tv">100 K</span></div><input id="tb-t" type="range" min="10" max="300" step="10" value="100"></div>
+    </div>
+    <div class="side" style="gap:14px">
+      <canvas id="c-tb"></canvas>
+      <div class="box sm" style="color:var(--ink)" id="tb-msg">표의 행을 눌러 물질을 골라 보자.</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" id="s6">
+  <header class="hd"><h2>부피 팽창</h2><span class="src">교과서 · 부피 팽창 계수 β</span></header>
+  <div class="body" style="grid-template-columns:1000px 1fr">
+    <canvas id="c-vl"></canvas>
+    <div class="side">
+      <div class="box"><div class="eq" style="font-size:42px"><span class="m">ΔV = β V<sub>0</sub> ΔT</span></div><div class="sm" style="text-align:center">길이가 늘어나면 부피도 커진다 · <span class="m">β</span> : 부피 팽창 계수</div></div>
+      <div class="chips" id="vl-mats"></div>
+      <div class="ctl"><div class="row"><span>온도 차 <span class="m">ΔT</span></span><span class="val" id="vl-tv">100 K</span></div><input id="vl-t" type="range" min="0" max="300" step="10" value="100"></div>
+      <div class="box" style="font-size:30px;line-height:1.55" id="vl-out">&nbsp;</div>
+      <div class="chips"><button class="chip" id="vl-adv">심화: β 와 α 의 관계 (교과서 밖)</button></div>
+      <div class="box sm" id="vl-advbox" style="display:none;color:var(--ink)">&nbsp;</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" id="s7">
+  <header class="hd"><h2>해 보기 · 단열일까, 열팽창일까?</h2><span class="src">교과서 56쪽 해 보기</span></header>
+  <div class="sm" style="flex:none;margin-top:-10px;color:var(--ink)">교과서 예: <b>단열</b> — 건축물의 벽체 사이 단열재 → 스티로폼처럼 단열 성능이 우수한 단열재를 채운다. 카드마다 어떤 원리를 활용했는지 골라 보자.</div>
+  <div class="qgrid" style="grid-template-columns:1fr 1fr 1fr">
+    <div class="qc" id="k1" data-ans="ins"><h3>① 이중창</h3><p>유리 두 장 사이에 공기(또는 기체)층을 두었다.</p><div class="btns"><button class="btn" data-pick="ins">단열</button><button class="btn" data-pick="exp">열팽창</button></div><div class="fb"></div></div>
+    <div class="qc" id="k2" data-ans="exp"><h3>② 기차 레일의 틈새</h3><p>레일 이음매 부분에 일부러 틈을 남겨 둔다.</p><div class="btns"><button class="btn" data-pick="ins">단열</button><button class="btn" data-pick="exp">열팽창</button></div><div class="fb"></div></div>
+    <div class="qc" id="k3" data-ans="ins"><h3>③ 아이스박스</h3><p>내부의 90 % 이상이 공기층인 스티로폼으로 만든다.</p><div class="btns"><button class="btn" data-pick="ins">단열</button><button class="btn" data-pick="exp">열팽창</button></div><div class="fb"></div></div>
+    <div class="qc" id="k4" data-ans="exp"><h3>④ 다리미 온도 조절</h3><p>두 금속을 붙인 띠가 뜨거워지면 휘어져 전류를 끊는다.</p><div class="btns"><button class="btn" data-pick="ins">단열</button><button class="btn" data-pick="exp">열팽창</button></div><div class="fb"></div></div>
+    <div class="qc" id="k5" data-ans="exp"><h3>⑤ 다리의 이음매</h3><p>다리 상판 사이에 톱니 모양 이음 장치를 둔다.</p><div class="btns"><button class="btn" data-pick="ins">단열</button><button class="btn" data-pick="exp">열팽창</button></div><div class="fb"></div></div>
+    <div class="qc" id="k6" data-ans="ins"><h3>⑥ 벽 속 유리 섬유</h3><p>섬유 사이사이 공기층이 있는 유리 섬유를 벽에 채운다.</p><div class="btns"><button class="btn" data-pick="ins">단열</button><button class="btn" data-pick="exp">열팽창</button></div><div class="fb"></div></div>
+  </div>
+</section>
+
+<section class="slide" id="s8">
+  <header class="hd"><h2>단열을 고려한 벽체 구조</h2><span class="src">교과서 56쪽 · 그림 Ⅱ-5</span></header>
+  <div class="body" style="grid-template-columns:1100px 1fr">
+    <canvas id="c-wl"></canvas>
+    <div class="side" style="gap:14px">
+      <div class="box sm" style="color:var(--ink);padding:14px 22px">층마다 1차시의 전도 식이 적용된다. 열이 지나가기 <b>어려운 층</b>(단열재·공기층)을 끼우면 벽 전체로 새는 열이 크게 줄어든다.</div>
+      <div class="chips"><button class="chip on" id="wl-ins">단열재(스티로폼)</button><button class="chip on" id="wl-air">공기층</button></div>
+      <div class="ctl"><div class="row"><span>단열재 두께</span><span class="val" id="wl-dv">10 cm</span></div><input id="wl-d" type="range" min="1" max="20" step="1" value="10"></div>
+      <div class="ctl"><div class="row"><span>바깥 온도 (실내 20 ℃)</span><span class="val" id="wl-tv">−5 ℃</span></div><input id="wl-t" type="range" min="-15" max="35" step="1" value="-5"></div>
+      <div class="box" style="font-size:29px;line-height:1.55" id="wl-out">&nbsp;</div>
+      <div class="sm">층 두께·열전도도는 예시 값. 방수층·외부 덮개는 얇아 생략한 모형.</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" id="s9">
+  <header class="hd"><h2>기차 레일의 틈새</h2><span class="src">교과서 57쪽 · 그림 Ⅱ-6 (가)</span></header>
+  <div class="body" style="grid-template-columns:1100px 1fr">
+    <canvas id="c-rl"></canvas>
+    <div class="side" style="gap:14px">
+      <div class="box"><div class="eq" style="font-size:38px"><span class="m">Δl = α l<sub>0</sub> ΔT</span></div><div class="sm" style="text-align:center">철 레일 한 토막 <span class="m">l</span><sub>0</sub> = 25 m · 설치 온도 15 ℃ (예시)</div></div>
+      <div class="ctl"><div class="row"><span>레일 온도</span><span class="val" id="rl-tv">15 ℃</span></div><input id="rl-t" type="range" min="-20" max="65" step="1" value="15"></div>
+      <div class="ctl"><div class="row"><span>설치할 때 남긴 틈</span><span class="val" id="rl-gv">0 mm</span></div><input id="rl-g" type="range" min="0" max="20" step="1" value="0"></div>
+      <div class="box" style="font-size:29px;line-height:1.55" id="rl-out">&nbsp;</div>
+      <div class="btns"><button class="btn pri" id="rl-play">▶ 1년 날씨 재생</button><button class="btn" id="rl-reset">↺ 처음 상태</button></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" id="s10">
+  <header class="hd"><h2>철근 콘크리트 — 계수를 맞춰라</h2><span class="src">교과서 57쪽 · 그림 Ⅱ-6 (나)</span></header>
+  <div class="body" style="grid-template-columns:1100px 1fr">
+    <canvas id="c-rc"></canvas>
+    <div class="side" style="gap:14px">
+      <div class="box sm" style="color:var(--ink)">콘크리트 속에 넣는 막대를 바꿔 보자. 두 물질의 선팽창 계수가 다르면 온도가 바뀔 때 <b>서로 다르게 늘어나</b> 경계가 벌어진다.</div>
+      <div class="chips" id="rc-mats"><button class="chip on" data-m="철">철근 (11.8)</button><button class="chip" data-m="구리">구리 (16.5)</button><button class="chip" data-m="알루미늄">알루미늄 (23.1)</button></div>
+      <div class="ctl"><div class="row"><span>온도 변화 <span class="m">ΔT</span></span><span class="val" id="rc-tv">40 K</span></div><input id="rc-t" type="range" min="0" max="60" step="1" value="40"></div>
+      <div class="box" style="font-size:29px;line-height:1.55" id="rc-out">&nbsp;</div>
+      <div class="sm">균열 기준(변형 차이 100×10⁻⁶)은 설명을 위한 예시 값. 콘크리트 α = 12.0 ×10⁻⁶ /K</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" id="s11">
+  <header class="hd"><h2>바이메탈 온도 조절 장치</h2><span class="src">교과서 57쪽 · 그림 Ⅱ-7</span></header>
+  <div class="body" style="grid-template-columns:1100px 1fr">
+    <canvas id="c-bm"></canvas>
+    <div class="side" style="gap:14px">
+      <div class="box sm" style="color:var(--ink);padding:14px 22px"><b>바이메탈</b>: 열팽창 정도가 다른 두 금속을 붙인 띠. 뜨거워지면 <span class="k">잘 늘어나는 금속</span>이 바깥쪽이 되도록 휘어 접점이 떨어진다.</div>
+      <div class="ctl"><div class="row"><span>설정 온도 (다이얼)</span><span class="val" id="bm-sv">150 ℃</span></div><input id="bm-s" type="range" min="80" max="200" step="10" value="150"></div>
+      <div class="chips"><button class="chip" id="bm-swap">두 금속을 뒤집어 붙이면?</button></div>
+      <div class="box" style="font-size:29px;line-height:1.55" id="bm-out">&nbsp;</div>
+      <div class="btns"><button class="btn pri" id="bm-play">⏸ 일시정지</button><button class="btn" id="bm-reset">↺ 처음 상태</button><button class="btn" id="bm-speed">속도 ×1</button></div>
+      <div class="sm">개념 모형: 휘는 정도는 크게 확대해 그림. 온도 값은 예시.</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" id="s12">
+  <header class="hd"><h2>정리하고 확인하기</h2><span class="src">교과서 56~57쪽 · 이것만은 꼭</span></header>
+  <div class="body" style="grid-template-columns:1fr 820px">
+    <div class="side" style="gap:16px">
+      <div class="box"><h3>① 열팽창</h3><div class="sm" style="color:var(--ink)">온도가 높아지면 길이·부피가 커진다. <span class="m">l = l<sub>0</sub>(1 + αΔT)</span>, <span class="m">ΔV = βV<sub>0</sub>ΔT</span> — 계수는 물질마다 다르다.</div></div>
+      <div class="box"><h3>② 단열</h3><div class="sm" style="color:var(--ink)">열전도율이 낮은 공기를 가둔 단열재(스티로폼·유리 섬유·우레탄 폼)와 공기층으로 열의 이동을 줄인다.</div></div>
+      <div class="box"><h3>③ 열팽창의 활용과 대비</h3><div class="sm" style="color:var(--ink)">레일·다리의 틈, 철근과 콘크리트의 계수 맞추기, 바이메탈 온도 조절 장치</div></div>
+      <div class="box" style="border-color:var(--amber)"><h3>창의·융합 활동</h3><div class="sm" style="color:var(--ink)">창문의 단열 성능을 높이는 방법을 조사하고, 우리 집 창문의 단열 성능을 높이기 위한 계획서를 작성해 보자.</div></div>
+    </div>
+    <div class="side" style="gap:16px">
+      <div class="box" style="border-color:var(--blue)"><h3>확인 1</h3><div style="display:flex;gap:16px;align-items:center;justify-content:space-between"><div style="font-size:28px;line-height:1.45">길이 10 m 인 구리 막대의 온도가 50 K 올라가면 몇 mm 늘어날까? (α = 16.5×10⁻⁶ /K)</div><button class="btn" data-rv="a1" style="flex:none">정답 보기</button></div><div id="a1" class="sm" style="color:var(--ink);margin-top:8px"></div></div>
+      <div class="box" style="border-color:var(--blue)"><h3>확인 2</h3><div style="display:flex;gap:16px;align-items:center;justify-content:space-between"><div style="font-size:28px;line-height:1.45">스티로폼이 가볍고 단열 성능이 뛰어난 까닭은?</div><button class="btn" data-rv="a2" style="flex:none">정답 보기</button></div><div id="a2" class="sm" style="color:var(--ink);margin-top:8px"></div></div>
+      <div class="box" style="border-color:var(--blue)"><h3>확인 3</h3><div style="display:flex;gap:16px;align-items:center;justify-content:space-between"><div style="font-size:28px;line-height:1.45">바이메탈이 뜨거워지면 어느 쪽으로 휘어질까?</div><button class="btn" data-rv="a3" style="flex:none">정답 보기</button></div><div id="a3" class="sm" style="color:var(--ink);margin-top:8px"></div></div>
+      <div class="sm">확인 문제는 수업용으로 새로 만든 문항</div>
+    </div>
+  </div>
+</section>
+
+<div id="notes"></div>
+<div id="bar"><div class="bl">🌡️ 단열과 열팽창 <span class="sm">· 교과서 56~57쪽 외</span></div><div class="br"><button class="tb" id="b-help">❓ 조작법</button><button class="tb" id="b-ask">💬 발문 띄우기</button><button class="tb" id="b-notes">📝 오개념 교정 노트</button><button class="tb" id="b-theme">🌙 다크 전환</button></div></div>
+<div id="ask" role="dialog" aria-label="발문"></div>
+<div id="help" role="dialog" aria-label="조작법 설명"><div class="hp">
+<h3>조작법</h3>
+<h4>키보드</h4>
+<div class="g"><div><kbd>→</kbd><kbd>Space</kbd></div><div>다음 (단계가 있는 슬라이드는 단계부터 진행)</div>
+<div><kbd>←</kbd></div><div>이전 (단계도 거꾸로)</div>
+<div><kbd>Home</kbd><kbd>End</kbd></div><div>처음 / 마지막 슬라이드</div>
+<div><kbd>F</kbd></div><div>전체 화면</div>
+<div><kbd>Q</kbd></div><div>이 슬라이드의 <b>발문(학생용 질문)</b>을 화면 위에 크게 띄우기 / 닫기 (아무 곳이나 클릭해도 닫힘)</div>
+<div><kbd>N</kbd></div><div>오개념 교정 노트 열기/닫기 (교사용)</div>
+<div><kbd>T</kbd></div><div>다크 / 라이트 전환</div>
+<div><kbd>?</kbd><kbd>Esc</kbd></div><div>조작법 열기 / 닫기</div></div>
+<h4>화면 조작</h4>
+<div class="g"><div>슬라이더</div><div>드래그하는 즉시 시뮬레이션에 반영</div>
+<div>▶ ⏸ ↺</div><div>재생 / 일시정지 / 처음 상태로</div><div>물질 칩</div><div>3·6번: 교과서 표의 물질을 골라 선팽창 계수를 바꾼다</div><div>표 행 클릭</div><div>5번: 물질을 골라 막대와 설명을 본다</div><div>칩(토글)</div><div>2번 대칭 결합(심화), 6번 β≈3α(심화), 8번 단열재·공기층, 10번 막대 재료, 11번 금속 뒤집기</div><div>카드·정답 보기</div><div>7번: 단열/열팽창 선택, 12번: 확인 문제 정답 보기</div></div>
+<h4>수업 진행 팁</h4>
+<div>① 학생에게 결과를 <b>먼저 예측</b>하게 하고 → ② 시뮬레이션으로 확인하고 → ③ 식·법칙으로 정리하면 오개념이 잘 교정됩니다.</div>
+<div class="btns" style="margin-top:22px"><button class="btn pri" id="help-x">닫기 (Esc)</button></div>
+</div></div>
+</div>
+<div id="hud"><button id="h-prev" aria-label="이전">◀</button><span id="h-pg">1 / 11</span><button id="h-next" aria-label="다음">▶</button><button id="h-fs" aria-label="전체화면">⛶</button></div>
+</div>
+
+<script>
+'use strict';
+/* PHYSICS-START */
+/* 렌더링과 분리된 순수 계산부. DOM/캔버스 참조 금지 → verify.js 로 단독 검증 */
+const PHYS = (() => {
+  /* 선팽창 계수 (×10⁻⁶ /K) — 교과서 표 (출처: 물리학 핸드북, 2010) */
+  const ALPHA = [
+    ['콘크리트', 12.0], ['파이렉스 유리', 3.3], ['창 유리', 7.9], ['석영 유리', 0.6],
+    ['철', 11.8], ['구리', 16.5], ['알루미늄', 23.1]];
+  const aOf = name => (ALPHA.find(r => r[0] === name) || [0, 0])[1] * 1e-6;
+
+  /* ① 선팽창 Δl = α l₀ ΔT,  l = l₀(1 + αΔT) */
+  const dL = (l0, a, dT) => a * l0 * dT;
+  const lenAt = (l0, a, dT) => l0 * (1 + a * dT);
+  /* ② 부피 팽창: 정육면체 각 변이 l₀(1+αΔT) → 정확한 값과 근사 β ≈ 3α */
+  const volExact = (V0, a, dT) => V0 * Math.pow(1 + a * dT, 3) - V0;
+  const volApprox = (V0, a, dT) => 3 * a * V0 * dT;
+
+  /* ③ 입자 모형: 1차원 사슬, 이웃 결합 퍼텐셜 U(x) = c x² − g x³ + q x⁴ (x = 결합 길이 − r₀)
+   *    g = 0 이면 대칭(조화) → 온도를 올려도 평균 간격 그대로. g > 0 이면 비대칭 → 평균 간격 증가
+   *    Langevin(BAOAB) 열욕으로 온도 kT 유지. 무차원(m = 1, r₀ = 1) */
+  const POT = { c: 1, g: 1.2, q: 0.7 };
+  const bondU = (x, sym) => POT.c * x * x - (sym ? 0 : POT.g * x * x * x) + (sym ? 0 : POT.q * x * x * x * x);
+  const bondF = (x, sym) => -(2 * POT.c * x - (sym ? 0 : 3 * POT.g * x * x) + (sym ? 0 : 4 * POT.q * x * x * x)); // −dU/dx
+  const meanShiftTheory = kT => 3 * POT.g * kT / (4 * POT.c * POT.c); // 1차 근사 ⟨x⟩ ≈ 3g·kT / 4c²
+  function makeChain(N, seed) {
+    let s = seed >>> 0 || 1; const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+    const gauss = () => { let u = 0; while (u === 0) u = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rnd()); };
+    const x = Array.from({ length: N }, (_, i) => i), v = new Array(N).fill(0);
+    return { N, x, v, f: new Array(N).fill(0), gauss, t: 0, avgBond: 1 };
+  }
+  function chainForces(ch, sym) {
+    const { N, x, f } = ch; f.fill(0);
+    for (let i = 0; i < N - 1; i++) { const F = bondF(x[i + 1] - x[i] - 1, sym); f[i + 1] += F; f[i] -= F; }
+  }
+  function chainStep(ch, kT, sym, h, gamma = 1) { // BAOAB
+    const { N, x, v, f } = ch, e = Math.exp(-gamma * h), s = Math.sqrt((1 - e * e) * kT);
+    for (let i = 0; i < N; i++) { v[i] += .5 * h * f[i]; x[i] += .5 * h * v[i]; }
+    for (let i = 0; i < N; i++) v[i] = e * v[i] + s * ch.gauss();
+    for (let i = 0; i < N; i++) x[i] += .5 * h * v[i];
+    chainForces(ch, sym); for (let i = 0; i < N; i++) v[i] += .5 * h * f[i];
+    let p = 0; for (let i = 0; i < N; i++) p += v[i]; p /= N; for (let i = 0; i < N; i++) v[i] -= p; // 무게중심 정지
+    ch.t += h;
+  }
+  const chainBond = ch => (ch.x[ch.N - 1] - ch.x[0]) / (ch.N - 1);
+
+  /* ④ 벽체 열전도 (직렬 층): q = ΔT / Σ(d/k)  [W/m²],  각 경계면 온도 */
+  function wall(layers, Tin, Tout) {
+    const R = layers.reduce((a, L) => a + L.d / L.k, 0), q = (Tin - Tout) / R; const Ts = [Tout]; let T = Tout;
+    layers.forEach(L => { T += q * L.d / L.k; Ts.push(T); }); return { R, q, Ts };
+  }
+
+  /* ⑤ 레일 이음매 틈: 설치 온도 T0 에서 g0(mm), 길이 L(m) */
+  const railGap = (g0, L, a, T, T0) => g0 - a * L * (T - T0) * 1000;
+  const railNeed = (L, a, Tmax, T0) => a * L * (Tmax - T0) * 1000;
+
+  /* ⑥ 철근–콘크리트 열변형 차이 (자유 팽창 길이 차의 비율) */
+  const mismatch = (aR, aC, dT) => (aR - aC) * dT;
+
+  /* ⑦ 바이메탈 (두께·탄성률이 같은 두 층): κ = 3Δα·ΔT / (2h), 끝 처짐 = (1 − cos κL)/κ */
+  const bimetalK = (dA, dT, h) => 3 * dA * dT / (2 * h);
+  const bimetalTip = (k, L) => Math.abs(k) < 1e-12 ? 0 : (1 - Math.cos(k * L)) / k;
+
+  /* ⑧ 바이메탈 온도 조절 (다리미 개념 모형): C dT/dt = P·on − K(T − Ta), 히스테리시스 ±hy */
+  function thermoStep(s, p, h) {
+    s.T += h * ((s.on ? p.P : 0) - p.K * (s.T - p.Ta)) / p.C;
+    if (s.on && s.T >= p.Tset + p.hy) s.on = false; else if (!s.on && s.T <= p.Tset - p.hy) s.on = true;
+    s.t += h;
+  }
+  return { ALPHA, aOf, dL, lenAt, volExact, volApprox, POT, bondU, bondF, meanShiftTheory, makeChain, chainForces, chainStep, chainBond, wall, railGap, railNeed, mismatch, bimetalK, bimetalTip, thermoStep };
+})();
+/* PHYSICS-END */
+
+/* ===== 공통 유틸 ===== */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const TAU = Math.PI * 2, DPR = 2;
+const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const C = { bg: '#0a1330', grid: 'rgba(160,190,255,.22)', text: '#e3ecff', dim: '#9db0d8', KE: '#ffb454', PE: '#7fb2ff', E: '#ffffff', ok: '#5eead4', bad: '#ff9d9d' };
+const font = (px, w = 500, it = false) => `${it ? 'italic ' : ''}${w} ${px}px 'Noto Sans KR',sans-serif`;
+const mathFont = px => `italic 400 ${px}px 'STIX Two Text','Times New Roman',serif`;
+function setupCanvas(cv, W, H) { cv.width = W * DPR; cv.height = H * DPR; cv.style.width = W + 'px'; cv.style.height = H + 'px'; const c = cv.getContext('2d'); c.setTransform(DPR, 0, 0, DPR, 0, 0); return c; }
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function makeStars(W, H, n, seed) { const r = mulberry(seed); return Array.from({ length: n }, () => [r() * W, r() * H, .25 + r() * .55, r() < .12 ? 3 : 2]); }
+function drawStars(ctx, stars) { stars.forEach(([x, y, a, s]) => { ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(x, y, s, s); }); }
+function arrow(ctx, x0, y0, x1, y1, color, lw = 4, head = 15) {
+  const a = Math.atan2(y1 - y0, x1 - x0); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - Math.cos(a) * head * .6, y1 - Math.sin(a) * head * .6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - head * Math.cos(a - .45), y1 - head * Math.sin(a - .45)); ctx.lineTo(x1 - head * Math.cos(a + .45), y1 - head * Math.sin(a + .45)); ctx.closePath(); ctx.fill();
+}
+const PLANET_COL = { earth: ['#7fbcff', '#1f57b5', '#0b2a66'], mercury: ['#cfc7bd', '#8b8279', '#4a453f'], mars: ['#f2a680', '#b4562d', '#6b2b12'], jupiter: ['#ecd0a6', '#b98a5a', '#6d4a2c'], saturn: ['#f3e3ac', '#c8ad6a', '#7d6a35'] };
+function drawPlanet(ctx, cx, cy, r, key) {
+  const c = PLANET_COL[key] || PLANET_COL.earth, g = ctx.createRadialGradient(cx - r * .35, cy - r * .35, r * .1, cx, cy, r);
+  g.addColorStop(0, c[0]); g.addColorStop(.55, c[1]); g.addColorStop(1, c[2]);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fill();
+  ctx.strokeStyle = 'rgba(150,200,255,.35)'; ctx.lineWidth = Math.max(2, r * .04); ctx.beginPath(); ctx.arc(cx, cy, r + 2, 0, TAU); ctx.stroke();
+}
+function mathRun(ctx, x, y, parts) { let cx = x; parts.forEach(q => { ctx.font = q.f; ctx.fillStyle = q.c; ctx.fillText(q.t, cx, y + (q.dy || 0)); cx += ctx.measureText(q.t).width; }); return cx; }
+function bindRange(id, cb) { const el = $('#' + id); el.addEventListener('input', () => cb(parseFloat(el.value))); el.addEventListener('change', () => el.blur()); return el; }
+const fmt = (x, d = 2) => (x < 0 ? '−' : '') + Math.abs(x).toFixed(d);
+
+
+
+const REG = {};
+/* =====================================================================
+   공용 그리기 도우미 (Sankey band, 막대+그래프 패널, 색 보간, 과학적 표기)
+   ===================================================================== */
+function sci(x) {
+  if (x >= 1e-2) return (x * 100).toFixed(x >= .1 ? 1 : 2) + ' %';
+  const e = Math.floor(Math.log10(x)), m = x / Math.pow(10, e), SUP = { '-': '⁻', 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹' };
+  return m.toFixed(1) + '×10' + String(e).split('').map(ch => SUP[ch]).join('');
+}
+function band(ctx, x0, ya0, ya1, x1, yb0, yb1, color) {
+  const mx = (x0 + x1) / 2; ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(x0, ya0); ctx.bezierCurveTo(mx, ya0, mx, yb0, x1, yb0);
+  ctx.lineTo(x1, yb1); ctx.bezierCurveTo(mx, yb1, mx, ya1, x0, ya1); ctx.closePath(); ctx.fill();
+}
+const mix = (c1, c2, u) => `rgb(${Math.round(c1[0] + (c2[0] - c1[0]) * u)},${Math.round(c1[1] + (c2[1] - c1[1]) * u)},${Math.round(c1[2] + (c2[2] - c1[2]) * u)})`;
+const COLD = [90, 160, 255], HOT = [255, 110, 70], AMB = '#ff9d4d';
+function drawBarsGraph(ctx, W, H, cfg) { // cfg: title, range[lo,hi], bars[[label,v,color]], series[{c,dash,pts}], tmin, tmax
+  ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+  const lo = cfg.range[0], hi = cfg.range[1], top = 62, bot = H - 60, yv = v => bot - (v - lo) / (hi - lo) * (bot - top), zero = yv(Math.max(lo, 0));
+  ctx.font = font(22); ctx.fillStyle = C.dim; ctx.fillText(cfg.title, 12, 30);
+  const bw = 62, gap = 26, bx0 = 26;
+  ctx.strokeStyle = C.grid; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(bx0 - 8, zero); ctx.lineTo(bx0 + cfg.bars.length * (bw + gap), zero); ctx.stroke();
+  cfg.bars.forEach(([lab, v, c], i) => {
+    const x = bx0 + i * (bw + gap), y1 = yv(v); ctx.fillStyle = c; ctx.fillRect(x, Math.min(zero, y1), bw, Math.max(2, Math.abs(zero - y1)));
+    ctx.textAlign = 'center'; ctx.font = font(24, 700); ctx.fillText(lab, x + bw / 2, H - 22); ctx.font = font(21); ctx.fillStyle = C.text; ctx.fillText(v.toFixed(2), x + bw / 2, y1 - 8); ctx.textAlign = 'left';
+  });
+  const gx0 = bx0 + cfg.bars.length * (bw + gap) + 34, gx1 = W - 16, span = Math.max(1e-6, cfg.tmax - cfg.tmin), gx = t => gx0 + (t - cfg.tmin) / span * (gx1 - gx0);
+  ctx.strokeStyle = C.grid; ctx.beginPath(); ctx.moveTo(gx0, top); ctx.lineTo(gx0, bot); ctx.moveTo(gx0, zero); ctx.lineTo(gx1, zero); ctx.stroke();
+  ctx.font = font(22); ctx.fillStyle = C.dim; ctx.fillText('시간 →', gx1 - 84, H - 22);
+  cfg.series.forEach((sr, j) => {
+    ctx.strokeStyle = sr.c; ctx.lineWidth = sr.dash ? 4 : 3; ctx.setLineDash(sr.dash ? [10, 6] : []); ctx.beginPath();
+    sr.pts.forEach(([t, v], i) => { const px = gx(t), py = yv(v); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = sr.c; ctx.font = font(23, 700); ctx.fillText(sr.label, gx0 + 12 + j * 84, top - 14);
+  });
+}
+
+
+/* 시뮬레이션: REG.sN = { start, stop, frame(dt) } */
+const aFe = PHYS.aOf('철');
+const tCol = T => mix(COLD, HOT, Math.min(1, Math.max(0, (T + 20) / 85)));   // ℃ → 색 (−20 ~ 65 ℃)
+function matChips(boxSel, init, cb) { // 교과서 표의 물질 칩
+  const box = $(boxSel); box.innerHTML = PHYS.ALPHA.map(([n, a]) => `<button class="chip${n === init ? ' on' : ''}" data-m="${n}">${n}</button>`).join('');
+  $$('.chip', box).forEach(b => b.onclick = () => { $$('.chip', box).forEach(x => x.classList.toggle('on', x === b)); cb(b.dataset.m); });
+}
+function railSide(ctx, x, y, w, col) { // 레일 옆모습 (머리·몸통·발)
+  ctx.fillStyle = col; ctx.fillRect(x, y, w, 26); ctx.fillRect(x + 0, y + 26, w, 12); ctx.fillStyle = mix([110, 115, 125], [160, 165, 175], .5); ctx.fillRect(x, y + 38, w, 14);
+  ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, 52);
+}
+
+/* ---- 1. 표지: 하루 동안 레일 틈 변화 ---- */
+REG.s1 = (() => {
+  const W = 820, H = 820, ctx = setupCanvas($('#c-hero'), W, H); let t = 0;
+  function draw() {
+    const T = 15 + 30 * Math.sin(t * .5), g = PHYS.railGap(10, 25, aFe, T, 15), day = (Math.sin(t * .5) + 1) / 2;
+    ctx.fillStyle = mix([12, 20, 50], [70, 120, 190], day); ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = day > .5 ? '#ffd76a' : '#e8eefc'; ctx.beginPath(); ctx.arc(120 + 580 * day, 150 - 60 * day, 46, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#55504a'; ctx.fillRect(0, 470, W, 350); // 자갈
+    const r = mulberry(3); for (let i = 0; i < 260; i++) { ctx.fillStyle = `rgba(${150 + r() * 60},${140 + r() * 50},${130 + r() * 40},.55)`; ctx.beginPath(); ctx.arc(r() * W, 480 + r() * 330, 4 + r() * 6, 0, TAU); ctx.fill(); }
+    const S = 6, rail = 300, gp = Math.max(0, g) * S, ext = (10 - Math.max(0, g)) * S / 2, cx = W / 2;
+    ctx.fillStyle = '#6b4b2e'; [-1, 0, 1].forEach(k => ctx.fillRect(cx - 40 + k * 260, 400, 80, 120));
+    railSide(ctx, cx - gp / 2 - rail - ext, 340, rail + ext, tCol(T)); railSide(ctx, cx + gp / 2, 340, rail + ext, tCol(T));
+    ctx.font = font(30, 800); ctx.fillStyle = C.text; ctx.textAlign = 'center';
+    ctx.fillText(`레일 온도 ${T.toFixed(0)} ℃`, cx, 250); ctx.fillStyle = g > .3 ? C.ok : C.bad; ctx.fillText(g > .3 ? `이음매 틈 ${g.toFixed(1)} mm` : '틈이 거의 없다!', cx, 300);
+    ctx.textAlign = 'left'; ctx.font = font(22); ctx.fillStyle = C.text; ctx.fillText('철 레일 25 m · 15 ℃ 에서 틈 10 mm (예시) · 틈만 확대', 24, H - 24);
+  }
+  return { start() { draw(); }, stop() { }, frame(dt) { t += REDUCED ? 0 : dt; draw(); } };
+})();
+
+/* ---- 2. 입자 모형: 비대칭 결합 → 평균 간격 증가 ---- */
+REG.s2 = (() => {
+  const W = 1100, H = 830, ctx = setupCanvas($('#c-ch'), W, H), N = 12, SC = 76; let lev = 2, sym = false, ch, avg, hist, running = true;
+  const kTof = l => .012 * l, LV = ['', '아주 낮음', '낮음', '낮음', '조금 낮음', '보통', '보통', '조금 높음', '높음', '높음', '아주 높음'];
+  function reset() { ch = PHYS.makeChain(N, 11); PHYS.chainForces(ch, sym); avg = 1; hist = [[0, 0]]; running = !REDUCED; sync(); draw(); }
+  function sync() { $('#ch-tv').textContent = `${LV[lev]} (${lev})`; $('#ch-gap').textContent = (avg >= 1 ? '+' : '−') + Math.abs((avg - 1) * 100).toFixed(1) + ' %'; $('#ch-sym').classList.toggle('on', sym); $('#ch-play').textContent = running ? '⏸ 일시정지' : '▶ 재생'; }
+  function turning(E) { // U(x) = E 인 두 점
+    const f = x => PHYS.bondU(x, sym) - E, bis = (a, b) => { for (let i = 0; i < 50; i++) { const m = (a + b) / 2; (f(a) * f(m) <= 0) ? b = m : a = m; } return (a + b) / 2; };
+    return [bis(-1.5, 0), bis(0, 2.5)];
+  }
+  function draw() {
+    ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H); const kT = kTof(lev);
+    // 사슬
+    const mean = ch.x.reduce((a, b) => a + b, 0) / N, X = v => W / 2 + (v - mean) * SC, y = 120;
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 3; for (let i = 0; i < N - 1; i++) { ctx.beginPath(); ctx.moveTo(X(ch.x[i]), y); ctx.lineTo(X(ch.x[i + 1]), y); ctx.stroke(); }
+    ch.x.forEach(v => { ctx.fillStyle = mix(COLD, HOT, (lev - 1) / 9); ctx.beginPath(); ctx.arc(X(v), y, 22, 0, TAU); ctx.fill(); });
+    const L0 = (N - 1) * SC, Lavg = (N - 1) * SC * avg; ctx.strokeStyle = C.dim; ctx.lineWidth = 3; ctx.setLineDash([8, 6]);
+    [[W / 2 - L0 / 2, W / 2 + L0 / 2, 178, '정지'], [W / 2 - Lavg / 2, W / 2 + Lavg / 2, 210, '평균']].forEach(([a, b, yy, s], j) => {
+      ctx.strokeStyle = j ? C.KE : C.dim; ctx.beginPath(); ctx.moveTo(a, yy - 10); ctx.lineTo(a, yy); ctx.lineTo(b, yy); ctx.lineTo(b, yy - 10); ctx.stroke(); ctx.font = font(22); ctx.fillStyle = j ? C.KE : C.dim; ctx.textAlign = 'right'; ctx.fillText(s, a - 12, yy + 8); ctx.textAlign = 'left'; });
+    ctx.setLineDash([]);
+    // 퍼텐셜 곡선
+    const px0 = 120, px1 = 980, py0 = 270, py1 = 560, xm = -.6, xM = 1.2, um = .45, Xp = x => px0 + (x - xm) / (xM - xm) * (px1 - px0), Yp = u => py1 - Math.min(u, um) / um * (py1 - py0);
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(px0, py1); ctx.lineTo(px1, py1); ctx.moveTo(Xp(0), py0 - 10); ctx.lineTo(Xp(0), py1); ctx.stroke();
+    ctx.strokeStyle = C.PE; ctx.lineWidth = 4; ctx.beginPath(); for (let i = 0; i <= 300; i++) { const x = xm + (xM - xm) * i / 300; i ? ctx.lineTo(Xp(x), Yp(PHYS.bondU(x, sym))) : ctx.moveTo(Xp(x), Yp(PHYS.bondU(x, sym))); } ctx.stroke();
+    const E = 1.5 * kT, [a, b] = turning(E), mid = (a + b) / 2;
+    ctx.strokeStyle = C.KE; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(Xp(a), Yp(E)); ctx.lineTo(Xp(b), Yp(E)); ctx.stroke();
+    ctx.fillStyle = C.KE; ctx.beginPath(); ctx.arc(Xp(mid), Yp(E), 9, 0, TAU); ctx.fill(); ctx.strokeStyle = C.KE; ctx.setLineDash([6, 6]); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(Xp(mid), Yp(E)); ctx.lineTo(Xp(mid), py1); ctx.stroke(); ctx.setLineDash([]);
+    ctx.font = font(22); ctx.fillStyle = C.dim; ctx.fillText('이웃 입자와의 결합 에너지', px0, py0 - 14); ctx.fillText('← 가까워짐', px0, py1 + 30); ctx.fillText('멀어짐 →', px1 - 100, py1 + 30); ctx.fillText('정지 간격', Xp(0) - 46, py1 + 30);
+    ctx.fillStyle = C.KE; ctx.font = font(22, 700); ctx.fillText('진동 범위의 가운데 ●', Math.min(Xp(b) + 14, px1 - 220), Yp(E) - 12);
+    // 시간 그래프
+    const gx0 = 120, gx1 = 980, gy0 = 650, gy1 = 800, tw = 60, tn = ch.t, gx = tt => gx1 - (tn - tt) / tw * (gx1 - gx0), gy = v => gy1 - v / 12 * (gy1 - gy0);
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(gx0, gy0); ctx.lineTo(gx0, gy1); ctx.lineTo(gx1, gy1); ctx.stroke();
+    ctx.font = font(22); ctx.fillStyle = C.dim; ctx.fillText('평균 간격 증가 (%)', gx0 + 10, gy0 - 8); ctx.fillText('0', gx0 - 26, gy1 + 6); ctx.fillText('12', gx0 - 40, gy0 + 8); ctx.fillText('시간 →', gx1 - 84, gy1 + 30);
+    ctx.strokeStyle = C.KE; ctx.lineWidth = 3; ctx.beginPath(); let f = true; hist.forEach(([tt, v]) => { if (tn - tt > tw) return; const p = [gx(tt), gy(Math.max(-1, Math.min(12, v)))]; f ? ctx.moveTo(...p) : ctx.lineTo(...p); f = false; }); ctx.stroke();
+  }
+  function frame(dt) {
+    if (running) { const kT = kTof(lev), n = 8; for (let i = 0; i < n; i++) { PHYS.chainStep(ch, kT, sym, .02); avg += (PHYS.chainBond(ch) - avg) * .02 / 20; } if (hist.length === 0 || ch.t - hist[hist.length - 1][0] > .2) hist.push([ch.t, (avg - 1) * 100]); if (hist.length > 600) hist.shift(); sync(); }
+    draw();
+  }
+  bindRange('ch-t', v => { lev = v; sync(); draw(); });
+  $('#ch-sym').onclick = () => { sym = !sym; reset(); }; $('#ch-play').onclick = () => { running = !running; sync(); }; $('#ch-reset').onclick = () => { lev = 2; $('#ch-t').value = 2; reset(); };
+  return { start() { reset(); }, stop() { running = false; }, frame };
+})();
+
+/* ---- 3. 선팽창: 두 막대 + Δl–ΔT 그래프 ---- */
+REG.s3 = (() => {
+  const W = 1100, H = 830, ctx = setupCanvas($('#c-ln'), W, H); let mat = '철', l0 = 10, dT = 0; const PXM = 14, PXMM = 3, MAG = Math.round(PXMM * 1000 / PXM);
+  function sync() {
+    const a = PHYS.aOf(mat), d = PHYS.dL(l0, a, dT); $('#ln-lv').textContent = l0 + ' m'; $('#ln-tv').textContent = dT + ' K';
+    $('#ln-out').innerHTML = `<span class="m">α</span> = ${(a * 1e6).toFixed(1)}×10⁻⁶ /K (${mat})<br>늘어난 길이 <span class="m">Δl</span> = <b class="k">${(d * 1000).toFixed(2)} mm</b><br>나중 길이 <span class="m">l</span> = ${PHYS.lenAt(l0, a, dT).toFixed(5)} m`; draw();
+  }
+  function rod(x, y, len, ext, T, lab) {
+    const g = ctx.createLinearGradient(0, y, 0, y + 46); g.addColorStop(0, '#f5dc8a'); g.addColorStop(.5, '#c9a43c'); g.addColorStop(1, '#8a6a1c');
+    ctx.fillStyle = g; ctx.fillRect(x, y, len, 46); if (ext > 0) { ctx.fillStyle = mix([201, 164, 60], HOT, .6); ctx.fillRect(x + len, y, ext, 46); }
+    ctx.font = font(26, 700); ctx.fillStyle = C.text; ctx.fillText(lab, x, y - 14);
+  }
+  function draw() {
+    ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H); const a = PHYS.aOf(mat), d = PHYS.dL(l0, a, dT), x0 = 50, L = l0 * PXM, E = d * 1000 * PXMM;
+    rod(x0, 70, L, 0, 0, '처음 온도 T₀'); rod(x0, 210, L, E, dT, `온도 T = T₀ + ${dT} K`);
+    ctx.strokeStyle = C.dim; ctx.lineWidth = 2; ctx.setLineDash([6, 6]); ctx.beginPath(); ctx.moveTo(x0 + L, 60); ctx.lineTo(x0 + L, 270); ctx.stroke(); ctx.setLineDash([]);
+    arrow(ctx, x0, 140, x0 + L, 140, C.dim, 3, 12); arrow(ctx, x0 + L, 140, x0, 140, C.dim, 3, 12); ctx.font = mathFont(28); ctx.fillStyle = C.text; ctx.fillText('l₀', x0 + L / 2 - 10, 170 - 4);
+    if (E > 6) { arrow(ctx, x0 + L, 288, x0 + L + E, 288, C.KE, 3, 10); ctx.font = mathFont(28); ctx.fillStyle = C.KE; ctx.fillText('Δl', x0 + L + E / 2 - 14, 322); }
+    ctx.font = font(22); ctx.fillStyle = C.dim; ctx.fillText(`늘어난 부분만 약 ${MAG}배 확대해 그림`, x0, 360);
+    // 그래프
+    const gx0 = 120, gx1 = 1040, gy0 = 430, gy1 = 760, ymax = PHYS.dL(l0, PHYS.aOf('알루미늄'), 100) * 1000 * 1.08, gx = t => gx0 + t / 100 * (gx1 - gx0), gy = v => gy1 - v / ymax * (gy1 - gy0);
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(gx0, gy0); ctx.lineTo(gx0, gy1); ctx.lineTo(gx1, gy1); ctx.stroke();
+    ctx.font = font(22); ctx.fillStyle = C.dim; ctx.fillText('Δl (mm)', gx0 + 10, gy0 - 8); ctx.fillText('ΔT (K) →', gx1 - 150, gy1 + 34); ctx.fillText('0', gx0 - 22, gy1 + 6); ctx.fillText(ymax.toFixed(ymax < 10 ? 1 : 0), gx0 - 66, gy0 + 8); ctx.fillText('100', gx1 - 18, gy1 + 34);
+    PHYS.ALPHA.forEach(([n, al]) => { const on = n === mat, yv = PHYS.dL(l0, al * 1e-6, 100) * 1000; ctx.strokeStyle = on ? C.KE : 'rgba(160,190,255,.35)'; ctx.lineWidth = on ? 5 : 2; ctx.beginPath(); ctx.moveTo(gx(0), gy(0)); ctx.lineTo(gx(100), gy(yv)); ctx.stroke(); });
+    ctx.fillStyle = C.KE; ctx.beginPath(); ctx.arc(gx(dT), gy(d * 1000), 10, 0, TAU); ctx.fill(); ctx.font = font(24, 700); ctx.fillText(mat, gx(100) - 90, gy(PHYS.dL(l0, a, 100) * 1000) - 10);
+  }
+  matChips('#ln-mats', mat, m => { mat = m; sync(); });
+  bindRange('ln-l', v => { l0 = v; sync(); }); bindRange('ln-t', v => { dT = v; sync(); });
+  return { start() { sync(); }, stop() { }, frame() { } };
+})();
+
+/* ---- 4. 단계 유도 그림 ---- */
+REG.s4 = (() => {
+  const W = 800, H = 830, ctx = setupCanvas($('#c-dv'), W, H); let st = 0;
+  function bar(x, y, len, ext, lab) { ctx.fillStyle = '#c9a43c'; ctx.fillRect(x, y, len, 34); ctx.fillStyle = mix([201, 164, 60], HOT, .6); ctx.fillRect(x + len, y, ext, 34); ctx.font = font(22, 700); ctx.fillStyle = C.text; ctx.fillText(lab, x, y - 10); ctx.fillStyle = C.KE; ctx.fillText(`Δl × ${ext / 40}`, x + len + ext + 10, y + 26); }
+  function draw() {
+    ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H); ctx.font = font(22); ctx.fillStyle = C.dim;
+    if (st >= 1) { ctx.fillText('같은 ΔT', 40, 36); bar(40, 80, 220, 40, 'l₀'); bar(40, 160, 440, 80, '2 l₀'); }
+    if (st >= 2) { ctx.fillStyle = C.dim; ctx.font = font(22); ctx.fillText('같은 막대 l₀', 40, 266); bar(40, 310, 220, 40, 'ΔT'); bar(40, 390, 220, 80, '2ΔT'); }
+    if (st >= 3) {
+      const gx0 = 90, gx1 = 740, gy0 = 500, gy1 = 780, gx = t => gx0 + t / 50 * (gx1 - gx0), gy = v => gy1 - v / 30 * (gy1 - gy0);
+      ctx.strokeStyle = C.grid; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(gx0, gy0); ctx.lineTo(gx0, gy1); ctx.lineTo(gx1, gy1); ctx.stroke(); ctx.font = font(22); ctx.fillStyle = C.dim; ctx.fillText('Δl (mm), l₀ = 25 m', gx0 + 10, gy0 - 8); ctx.fillText('ΔT (K) → 50', gx1 - 140, gy1 + 32);
+      [['알루미늄', C.bad], ['철', C.KE], ['파이렉스 유리', C.PE]].forEach(([n, c]) => { const v = PHYS.dL(25, PHYS.aOf(n), 50) * 1000; ctx.strokeStyle = c; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(gx(0), gy(0)); ctx.lineTo(gx(50), gy(v)); ctx.stroke(); ctx.fillStyle = c; ctx.font = font(22, 700); ctx.fillText(n, gx(50) - 120, gy(v) - 10); });
+      ctx.fillStyle = C.text; ctx.font = font(22); ctx.fillText('기울기 = α l₀ → 물질마다 다르다', gx0 + 20, gy0 + 30);
+      if (st >= 6) { const v = PHYS.dL(25, aFe, 40) * 1000; ctx.fillStyle = C.KE; ctx.beginPath(); ctx.arc(gx(40), gy(v), 10, 0, TAU); ctx.fill(); ctx.font = font(24, 800); ctx.fillText(`${v.toFixed(1)} mm`, gx(40) - 120, gy(v) + 8); }
+    }
+    if (st >= 4) { ctx.fillStyle = C.text; ctx.font = mathFont(30); ctx.fillText('l = l₀ + Δl', 560, 112); }
+  }
+  return { start() { draw(); }, stop() { }, frame() { }, onStep(s) { st = s; draw(); } };
+})();
+
+/* ---- 5. 선팽창 계수 표 ---- */
+REG.s5 = (() => {
+  const W = 820, H = 620, ctx = setupCanvas($('#c-tb'), W, H); let l0 = 1, dT = 100, sel = '석영 유리';
+  const MSG = {
+    '콘크리트': '콘크리트와 철의 계수가 거의 같다 → 철근 콘크리트가 가능한 까닭(10번 슬라이드).',
+    '파이렉스 유리': '창 유리보다 잘 늘어나지 않아 급격한 온도 변화에도 덜 깨진다 → 실험용 유리 기구, 오븐 용기.',
+    '창 유리': '두꺼운 유리컵에 뜨거운 물을 부으면 안쪽만 먼저 늘어나 깨질 수 있다.',
+    '석영 유리': '표에서 가장 작다. 온도가 바뀌어도 길이가 거의 변하지 않는다.',
+    '철': '레일·다리·철근의 재료. 콘크리트와 계수가 거의 같다.',
+    '구리': '철보다 잘 늘어난다. 철과 붙이면 바이메탈이 된다(11번 슬라이드).',
+    '알루미늄': '표에서 가장 크다. 석영 유리의 약 40배 정도 늘어난다.' };
+  const tb = $('#tb-a tbody'); tb.innerHTML = PHYS.ALPHA.map(([n, a]) => `<tr data-m="${n}"><td>${n}</td><td>${a.toFixed(1)}</td><td id="tb-d-${PHYS.ALPHA.findIndex(r => r[0] === n)}">—</td></tr>`).join('');
+  $$('tr', tb).forEach(tr => tr.onclick = () => { sel = tr.dataset.m; sync(); });
+  function sync() {
+    $('#tb-lv').textContent = l0.toFixed(1) + ' m'; $('#tb-tv').textContent = dT + ' K';
+    PHYS.ALPHA.forEach(([n, a], i) => $('#tb-d-' + i).textContent = (PHYS.dL(l0, a * 1e-6, dT) * 1000).toFixed(2) + ' mm');
+    $$('tr', tb).forEach(tr => tr.classList.toggle('on', tr.dataset.m === sel)); $('#tb-msg').innerHTML = `<b>${sel}</b>: ${MSG[sel]}`; draw();
+  }
+  function draw() {
+    ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H); const mx = PHYS.dL(l0, 23.1e-6, dT) * 1000, x0 = 190, x1 = 700, rowH = 76;
+    ctx.font = font(22); ctx.fillStyle = C.dim; ctx.fillText(`같은 막대(${l0.toFixed(1)} m)를 ${dT} K 데웠을 때 늘어난 길이`, 24, 36);
+    PHYS.ALPHA.forEach(([n, a], i) => {
+      const y = 70 + i * rowH, v = PHYS.dL(l0, a * 1e-6, dT) * 1000, w = v / mx * (x1 - x0), on = n === sel;
+      ctx.fillStyle = on ? C.text : C.dim; ctx.font = font(24, on ? 800 : 500); ctx.textAlign = 'right'; ctx.fillText(n, x0 - 14, y + 34); ctx.textAlign = 'left';
+      ctx.fillStyle = on ? C.KE : 'rgba(127,178,255,.55)'; ctx.fillRect(x0, y + 8, Math.max(2, w), 40); ctx.fillStyle = C.text; ctx.font = font(22, on ? 800 : 500); ctx.fillText(v.toFixed(2) + ' mm', x0 + Math.max(2, w) + 10, y + 36);
+    });
+  }
+  bindRange('tb-l', v => { l0 = v; sync(); }); bindRange('tb-t', v => { dT = v; sync(); });
+  return { start() { sync(); }, stop() { }, frame() { } };
+})();
+
+/* ---- 6. 부피 팽창 ---- */
+REG.s6 = (() => {
+  const W = 1000, H = 830, ctx = setupCanvas($('#c-vl'), W, H); let mat = '알루미늄', dT = 100, adv = false; const MAG = 15;
+  function cube(cx, cy, s, fill, stroke, dash) {
+    const d = s * .45, P = [[cx - s / 2, cy - s / 2 + d / 2], [cx + s / 2, cy - s / 2 + d / 2], [cx + s / 2, cy + s / 2 + d / 2], [cx - s / 2, cy + s / 2 + d / 2]], Q = P.map(([x, y]) => [x + d, y - d]);
+    const poly = (pts, f) => { ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(...p) : ctx.moveTo(...p)); ctx.closePath(); if (f) { ctx.fillStyle = f; ctx.fill(); } ctx.stroke(); };
+    ctx.strokeStyle = stroke; ctx.lineWidth = 3; ctx.setLineDash(dash ? [10, 8] : []);
+    poly([P[0], P[1], Q[1], Q[0]], fill && fill[1]); poly([P[1], P[2], Q[2], Q[1]], fill && fill[2]); poly(P, fill && fill[0]); ctx.setLineDash([]);
+  }
+  function sync() {
+    const a = PHYS.aOf(mat), ex = PHYS.volExact(1, a, dT), ap = PHYS.volApprox(1, a, dT); $('#vl-tv').textContent = dT + ' K';
+    $('#vl-out').innerHTML = `각 변: <span class="m">l<sub>0</sub>(1 + αΔT)</span> = ${(1 + a * dT).toFixed(5)} <span class="m">l</span><sub>0</sub><br>부피 증가 <span class="m">ΔV / V<sub>0</sub></span> = <b class="k">${(ex * 100).toFixed(3)} %</b>`;
+    $('#vl-adv').classList.toggle('on', adv); $('#vl-advbox').style.display = adv ? '' : 'none';
+    $('#vl-advbox').innerHTML = `<span class="m">(1 + αΔT)<sup>3</sup> = 1 + 3αΔT + 3(αΔT)<sup>2</sup> + (αΔT)<sup>3</sup></span><br>αΔT 가 아주 작아 뒤의 두 항을 무시하면 <b class="k">β ≈ 3α</b><br>정확한 값 ${(ex * 100).toFixed(4)} % · 근사 3αΔT ${(ap * 100).toFixed(4)} %`;
+    draw();
+  }
+  function draw() {
+    ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H); const a = PHYS.aOf(mat), s0 = 300, s1 = s0 * (1 + a * dT * MAG), cx = 440, cy = 430;
+    cube(cx, cy, s1, ['rgba(255,150,70,.55)', 'rgba(255,170,90,.75)', 'rgba(220,120,60,.6)'], C.KE, false);
+    cube(cx, cy, s0, null, C.text, true);
+    ctx.font = font(24, 700); ctx.fillStyle = C.text; ctx.fillText('점선: 처음 부피 V₀', 40, 60); ctx.fillStyle = C.KE; ctx.fillText(`색칠: ΔT = ${dT} K 뒤 (${mat})`, 40, 96);
+    ctx.font = font(22); ctx.fillStyle = C.dim; ctx.fillText(`늘어난 정도를 ${MAG}배 확대해 그림`, 40, H - 30);
+  }
+  matChips('#vl-mats', mat, m => { mat = m; sync(); });
+  bindRange('vl-t', v => { dT = v; sync(); }); $('#vl-adv').onclick = () => { adv = !adv; sync(); };
+  return { start() { sync(); }, stop() { }, frame() { } };
+})();
+
+/* ---- 7. 해 보기: 단열 / 열팽창 판별 ---- */
+const CARD_WHY = {
+  k1: '두 유리 사이의 공기(기체)층은 열전도도가 낮아 열이 잘 빠져나가지 않는다.',
+  k2: '여름에 레일이 늘어나도 서로 밀어 휘지 않도록 늘어날 자리를 남긴다(9번).',
+  k3: '스티로폼은 내부의 90 % 이상이 공기층이라 가볍고 단열이 잘 된다(교과서 56쪽).',
+  k4: '두 금속의 열팽창 정도 차이로 휘어 회로를 끊는다 — 바이메탈(11번).',
+  k5: '그림 Ⅱ-6 (가)의 레일 틈새처럼, 다리 상판이 늘어날 여유를 둔다.',
+  k6: '섬유 사이의 공기층으로 단열 효과를 높인다(교과서 56쪽).' };
+REG.s7 = { start() { }, stop() { }, frame() { } };
+$$('#s7 .qc').forEach(card => $$('[data-pick]', card).forEach(btn => btn.onclick = () => {
+  const ok = btn.dataset.pick === card.dataset.ans; card.classList.toggle('done', ok);
+  $('.fb', card).innerHTML = ok ? '<b class="ok">맞아요!</b> ' + CARD_WHY[card.id] : '<b class="bad">다시 생각해 보자.</b> 열의 이동을 막는 것인지, 온도에 따라 길이가 변하는 것을 이용·대비하는 것인지 구분해 보자.';
+}));
+
+/* ---- 8. 벽체 단열 ---- */
+REG.s8 = (() => {
+  const W = 1100, H = 830, ctx = setupCanvas($('#c-wl'), W, H); let ins = true, air = true, dIns = .10, Tout = -5, t = 0; const Tin = 20, AREA = 30;
+  const layers = () => [{ n: '외벽(벽돌)', d: .19, k: .6, c: '#b5523b' }, air && { n: '공기층', d: .03, k: .18, c: '#9fc4e8' }, ins && { n: '단열재', d: dIns, k: .035, c: '#e8eef5' }, { n: '내벽', d: .0125, k: .25, c: '#d9b98c' }].filter(Boolean);
+  const qBare = () => PHYS.wall([{ d: .19, k: .6 }, { d: .0125, k: .25 }], Tin, Tout).q;
+  function sync() {
+    const r = PHYS.wall(layers(), Tin, Tout), qb = qBare(); $('#wl-dv').textContent = Math.round(dIns * 100) + ' cm'; $('#wl-tv').textContent = (Tout < 0 ? '−' : '') + Math.abs(Tout) + ' ℃';
+    $('#wl-ins').classList.toggle('on', ins); $('#wl-air').classList.toggle('on', air);
+    const dir = r.q >= 0 ? '실내 → 바깥' : '바깥 → 실내', MJ = Math.abs(r.q) * AREA * 86400 / 1e6;
+    $('#wl-out').innerHTML = `1 m² 당 새는 열: <b class="k">${Math.abs(r.q).toFixed(1)} W</b> (${dir})<br>벽 30 m², 하루: <b>${MJ.toFixed(1)} MJ</b><br>단열재·공기층이 없을 때의 <b class="p">${(Math.abs(r.q) / Math.abs(qb) * 100).toFixed(0)} %</b>`; draw();
+  }
+  function draw() {
+    ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H); const L = layers(), r = PHYS.wall(L, Tin, Tout), S = 1300, x0 = 230, y0 = 110, y1 = 540, Ty = T => y1 - (T + 20) / 60 * (y1 - y0);
+    const Tc = T => mix(COLD, HOT, Math.min(1, Math.max(0, (T + 15) / 50)));
+    ctx.fillStyle = Tc(Tout); ctx.globalAlpha = .35; ctx.fillRect(0, y0 - 40, x0, y1 - y0 + 80); ctx.globalAlpha = 1;
+    let x = x0; const xs = [x0]; L.forEach(l => { const w = l.d * S; ctx.fillStyle = l.c; ctx.fillRect(x, y0 - 40, w, y1 - y0 + 80); ctx.strokeStyle = 'rgba(0,0,0,.4)'; ctx.lineWidth = 2; ctx.strokeRect(x, y0 - 40, w, y1 - y0 + 80); if (l.n === '외벽(벽돌)') { ctx.strokeStyle = 'rgba(255,255,255,.25)'; for (let yy = y0 - 40; yy < y1 + 40; yy += 34) { ctx.beginPath(); ctx.moveTo(x, yy); ctx.lineTo(x + w, yy); ctx.stroke(); } } x += w; xs.push(x); });
+    ctx.fillStyle = Tc(Tin); ctx.globalAlpha = .35; ctx.fillRect(x, y0 - 40, W - x, y1 - y0 + 80); ctx.globalAlpha = 1;
+    ctx.font = font(22, 700); ctx.textAlign = 'center'; L.forEach((l, i) => { const cx = (xs[i] + xs[i + 1]) / 2; ctx.fillStyle = C.text; ctx.fillText(l.n, cx, y1 + 70 + (i % 2) * 30); }); ctx.textAlign = 'left';
+    ctx.font = font(26, 800); ctx.fillStyle = C.text; ctx.fillText('바깥', 60, 60); ctx.fillText(`${Tout} ℃`, 60, 96); ctx.textAlign = 'right'; ctx.fillText('실내', W - 40, 60); ctx.fillText(`${Tin} ℃`, W - 40, 96); ctx.textAlign = 'left';
+    // 온도 분포
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(20, Ty(Tout)); ctx.lineTo(x0, Ty(Tout)); r.Ts.forEach((T, i) => ctx.lineTo(xs[i], Ty(T))); ctx.lineTo(W - 20, Ty(Tin)); ctx.stroke();
+    ctx.font = font(22); ctx.fillStyle = '#ffffff'; ctx.fillText('— 벽 속 온도', 20, y1 + 30);
+    // 열 흐름 입자
+    const q = r.q, n = Math.min(40, Math.round(Math.abs(q) / 3)), sp = Math.min(1, Math.abs(q) / 80);
+    for (let i = 0; i < n; i++) { const u = ((i * .618 + t * .25 * (0.3 + sp)) % 1), xx = q >= 0 ? W - 20 - u * (W - 40) : 20 + u * (W - 40), yy = y0 + ((i * 97) % (y1 - y0)); ctx.fillStyle = 'rgba(255,180,84,.9)'; ctx.beginPath(); ctx.arc(xx, yy, 6, 0, TAU); ctx.fill(); }
+    // 비교 막대
+    const qb = Math.abs(qBare()), by = 690, bx0 = 230, bx1 = 1040, sc = (bx1 - bx0) / Math.max(qb, Math.abs(q), 1);
+    [['단열 없을 때', qb, C.bad, by], ['지금', Math.abs(q), C.ok, by + 56]].forEach(([lab, v, c, yy]) => { const w = Math.max(3, v * sc), tx = bx0 + w + 10 > bx1 - 150 ? bx0 + 10 : bx0 + w + 10; ctx.fillStyle = c; ctx.fillRect(bx0, yy, w, 40); ctx.font = font(22, 700); ctx.textAlign = 'right'; ctx.fillStyle = C.text; ctx.fillText(lab, bx0 - 12, yy + 28); ctx.textAlign = 'left'; ctx.fillStyle = tx === bx0 + 10 ? '#0a1330' : C.text; ctx.fillText(v.toFixed(1) + ' W/m²', tx, yy + 28); });
+  }
+  bindRange('wl-d', v => { dIns = v / 100; sync(); }); bindRange('wl-t', v => { Tout = v; sync(); });
+  $('#wl-ins').onclick = () => { ins = !ins; sync(); }; $('#wl-air').onclick = () => { air = !air; sync(); };
+  return { start() { sync(); }, stop() { }, frame(dt) { t += REDUCED ? 0 : dt; draw(); } };
+})();
+
+/* ---- 9. 레일 틈새 ---- */
+REG.s9 = (() => {
+  const W = 1100, H = 830, ctx = setupCanvas($('#c-rl'), W, H); let T = 15, g0 = 0, running = false, ph = 0; const L = 25, T0 = 15, TMAX = 65, S = 4;
+  const MON = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+  function sync() {
+    const g = PHYS.railGap(g0, L, aFe, T, T0), dl = PHYS.dL(L, aFe, T - T0) * 1000; $('#rl-tv').textContent = T.toFixed(0) + ' ℃'; $('#rl-gv').textContent = g0 + ' mm';
+    $('#rl-out').innerHTML = `레일 한 토막이 늘어난 길이 ${dl >= 0 ? '' : '−'}${Math.abs(dl).toFixed(1)} mm<br>지금 틈: ${g > .05 ? `<b class="ok">${g.toFixed(1)} mm</b>` : g > -.05 ? '<b class="k">0 mm — 더 늘어날 자리가 없다</b>' : '<b class="bad">0 — 서로 밀어 휜다!</b>'}<br>${TMAX} ℃ 까지 견디려면 최소 <b class="k">${PHYS.railNeed(L, aFe, TMAX, T0).toFixed(1)} mm</b>`;
+    $('#rl-play').textContent = running ? '⏸ 일시정지' : '▶ 1년 날씨 재생'; draw();
+  }
+  function draw() {
+    const g = PHYS.railGap(g0, L, aFe, T, T0), over = Math.max(0, -g), day = Math.min(1, Math.max(0, (T + 20) / 85));
+    ctx.fillStyle = mix([20, 30, 70], [80, 140, 210], day); ctx.fillRect(0, 0, W, 412); ctx.fillStyle = '#4e4a45'; ctx.fillRect(0, 412, W, 78);
+    // 온도계
+    ctx.fillStyle = '#e8eefc'; ctx.fillRect(40, 60, 30, 260); ctx.fillStyle = tCol(T); const hh = (T + 20) / 85 * 240; ctx.fillRect(46, 314 - hh, 18, hh); ctx.beginPath(); ctx.arc(55, 335, 26, 0, TAU); ctx.fill();
+    ctx.font = font(28, 800); ctx.fillStyle = C.text; ctx.fillText(`${T.toFixed(0)} ℃`, 90, 90); if (running) { ctx.font = font(24, 700); ctx.fillText(MON[Math.floor(((ph / TAU) % 1 + 1) % 1 * 12)], 90, 128); }
+    // 레일 3토막
+    const gp = Math.max(0, g) * S, base = 240, ext = (T - T0) * aFe * L * 1000 * S, w = base + ext, total = 3 * w + 2 * gp, x0 = (W - total) / 2 + 60, y = 360;
+    for (let i = 0; i < 3; i++) {
+      const x = x0 + i * (w + gp);
+      if (over > 0 && i === 1) { const amp = Math.min(90, 14 * Math.sqrt(over)); ctx.fillStyle = tCol(T); ctx.beginPath(); for (let k = 0; k <= 40; k++) { const xx = x + w * k / 40, yy = y - amp * Math.sin(Math.PI * k / 40); k ? ctx.lineTo(xx, yy) : ctx.moveTo(xx, yy); } for (let k = 40; k >= 0; k--) { const xx = x + w * k / 40, yy = y + 52 - amp * Math.sin(Math.PI * k / 40); ctx.lineTo(xx, yy); } ctx.closePath(); ctx.fill(); }
+      else railSide(ctx, x, y, w, tCol(T));
+    }
+    ctx.font = font(22); ctx.fillStyle = C.text; ctx.fillText('레일 25 m 토막 3개 (틈과 늘어난 길이만 확대)', 120, 470);
+    if (over > 0) { ctx.font = font(30, 800); ctx.fillStyle = C.bad; ctx.textAlign = 'center'; ctx.fillText('⚠ 늘어날 자리가 없어 레일이 휘었다', W / 2 + 60, 210); ctx.textAlign = 'left'; }
+    // 틈–온도 그래프
+    const gx0 = 130, gx1 = 1050, gy0 = 540, gy1 = 790, Tm = -20, TM = 65, gm = -12, gM = 32, gx = v => gx0 + (v - Tm) / (TM - Tm) * (gx1 - gx0), gy = v => gy1 - (v - gm) / (gM - gm) * (gy1 - gy0);
+    ctx.fillStyle = 'rgba(255,157,157,.15)'; ctx.fillRect(gx0, gy(0), gx1 - gx0, gy1 - gy(0));
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(gx0, gy0); ctx.lineTo(gx0, gy1); ctx.lineTo(gx1, gy1); ctx.moveTo(gx0, gy(0)); ctx.lineTo(gx1, gy(0)); ctx.stroke();
+    ctx.font = font(22); ctx.fillStyle = C.dim; ctx.fillText('틈 (mm)', gx0 + 10, gy0 - 8); ctx.fillText('0', gx0 - 24, gy(0) + 8); ctx.fillText('레일 온도 (℃) →  65', gx1 - 230, gy1 + 30); ctx.fillText('−20', gx0 - 20, gy1 + 30); ctx.fillText(String(gM), gx0 - 40, gy0 + 8);
+    ctx.fillStyle = C.bad; ctx.fillText('맞닿아 휘는 영역', gx0 + 14, gy1 - 14);
+    ctx.strokeStyle = C.KE; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(gx(Tm), gy(PHYS.railGap(g0, L, aFe, Tm, T0))); ctx.lineTo(gx(TM), gy(PHYS.railGap(g0, L, aFe, TM, T0))); ctx.stroke();
+    ctx.fillStyle = g > .05 ? C.ok : C.bad; ctx.beginPath(); ctx.arc(gx(T), gy(g), 11, 0, TAU); ctx.fill();
+  }
+  function frame(dt) { if (running) { ph += dt * TAU / 12; T = 22.5 - 30 * Math.cos(ph) + 8 * Math.sin(ph * 30); T = Math.max(-20, Math.min(65, T)); $('#rl-t').value = Math.round(T); sync(); } }
+  bindRange('rl-t', v => { T = v; running = false; sync(); }); bindRange('rl-g', v => { g0 = v; sync(); });
+  $('#rl-play').onclick = () => { running = !running; sync(); }; $('#rl-reset').onclick = () => { T = 15; g0 = 0; ph = 0; running = false; $('#rl-t').value = 15; $('#rl-g').value = 0; sync(); };
+  return { start() { sync(); }, stop() { running = false; }, frame };
+})();
+
+/* ---- 10. 철근 콘크리트 ---- */
+REG.s10 = (() => {
+  const W = 1100, H = 830, ctx = setupCanvas($('#c-rc'), W, H); let mat = '철', dT = 40; const MAG = 150, LIM = 1e-4, aC = PHYS.aOf('콘크리트');
+  function sync() {
+    const aR = PHYS.aOf(mat), e = PHYS.mismatch(aR, aC, dT); $('#rc-tv').textContent = dT + ' K';
+    $$('#rc-mats .chip').forEach(b => b.classList.toggle('on', b.dataset.m === mat));
+    $('#rc-out').innerHTML = `콘크리트 늘어난 비율 ${(aC * dT * 1e6).toFixed(0)}×10⁻⁶<br>${mat} 막대 늘어난 비율 ${(aR * dT * 1e6).toFixed(0)}×10⁻⁶<br>차이 <b class="${Math.abs(e) > LIM ? 'bad' : 'ok'}">${(Math.abs(e) * 1e6).toFixed(0)}×10⁻⁶ → ${Math.abs(e) > LIM ? '균열 위험' : '함께 늘어난다'}</b>`; draw();
+  }
+  function draw() {
+    ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H); const aR = PHYS.aOf(mat), e = PHYS.mismatch(aR, aC, dT), L = 760, x0 = 120, y0 = 150, h = 260;
+    const Lc = L * (1 + aC * dT * MAG), Lr = L * (1 + aR * dT * MAG);
+    ctx.strokeStyle = C.dim; ctx.setLineDash([8, 6]); ctx.lineWidth = 2; ctx.strokeRect(x0, y0, L, h); ctx.setLineDash([]);
+    ctx.fillStyle = '#8f949c'; ctx.fillRect(x0, y0, Lc, h); const r = mulberry(5); for (let i = 0; i < 160; i++) { ctx.fillStyle = `rgba(${90 + r() * 60},${95 + r() * 60},${100 + r() * 60},.6)`; ctx.beginPath(); ctx.arc(x0 + r() * Lc, y0 + r() * h, 2 + r() * 4, 0, TAU); ctx.fill(); }
+    const rc = mat === '철' ? '#2b3240' : mat === '구리' ? '#c8743a' : '#d7dde6';
+    [y0 + 70, y0 + h - 70].forEach(yy => { ctx.fillStyle = rc; ctx.fillRect(x0 + 20, yy - 10, Lr - 40 + (Lr > Lc ? 0 : 0), 20); ctx.strokeStyle = 'rgba(0,0,0,.4)'; ctx.lineWidth = 2; ctx.strokeRect(x0 + 20, yy - 10, Lr - 40, 20); });
+    const bad = Math.abs(e) / LIM; if (bad > 1) { ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 3; const n = Math.min(14, Math.floor(bad * 3)); for (let i = 0; i < n; i++) { const cx = x0 + 60 + (i * 53) % (Lc - 120), cy = i % 2 ? y0 + 70 : y0 + h - 70; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + 10, cy + (i % 2 ? -30 : 30)); ctx.lineTo(cx - 6, cy + (i % 2 ? -60 : 60)); ctx.lineTo(cx + 8, cy + (i % 2 ? -70 : 70)); ctx.stroke(); } }
+    ctx.font = font(24, 700); ctx.fillStyle = C.text; ctx.fillText('콘크리트 보 (점선: 데우기 전)', x0, y0 - 20); ctx.fillStyle = C.text; ctx.fillText(`속에 넣은 막대: ${mat}`, x0, y0 + h + 40);
+    ctx.font = font(22); ctx.fillStyle = C.dim; ctx.fillText(`늘어난 길이만 ${MAG}배 확대`, x0 + 520, y0 + h + 40);
+    // 변형 차이 막대
+    const bx0 = 120, bx1 = 1000, by = 620, sc = (bx1 - bx0) / (5 * LIM);
+    ctx.fillStyle = C.dim; ctx.font = font(22); ctx.fillText('두 물질의 늘어난 비율 차이', bx0, by - 20);
+    ctx.fillStyle = 'rgba(160,190,255,.15)'; ctx.fillRect(bx0, by, bx1 - bx0, 56); ctx.fillStyle = Math.abs(e) > LIM ? C.bad : C.ok; ctx.fillRect(bx0, by, Math.min(bx1 - bx0, Math.abs(e) * sc), 56);
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.setLineDash([8, 6]); ctx.beginPath(); ctx.moveTo(bx0 + LIM * sc, by - 10); ctx.lineTo(bx0 + LIM * sc, by + 66); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = C.text; ctx.fillText('균열 기준 (예시)', bx0 + LIM * sc - 70, by + 96); ctx.fillText(`${(Math.abs(e) * 1e6).toFixed(0)}×10⁻⁶`, bx0 + 10, by + 38);
+    if (bad > 1) { ctx.font = font(28, 800); ctx.fillStyle = C.bad; ctx.fillText('⚠ 철근과 콘크리트가 분리되어 균열이 생긴다', bx0, 780); } else { ctx.font = font(28, 800); ctx.fillStyle = C.ok; ctx.fillText('✔ 두 물질이 거의 같이 늘어나 붙어 있다', bx0, 780); }
+  }
+  $$('#rc-mats .chip').forEach(b => b.onclick = () => { mat = b.dataset.m; sync(); }); bindRange('rc-t', v => { dT = v; sync(); });
+  return { start() { sync(); }, stop() { }, frame() { } };
+})();
+
+/* ---- 11. 바이메탈 온도 조절 ---- */
+REG.s11 = (() => {
+  const W = 1100, H = 830, ctx = setupCanvas($('#c-bm'), W, H), p = { P: 1000, K: 4, C: 800, Ta: 20, Tset: 150, hy: 5 }, KV = .5, BL = 420;
+  let s, hist, running = true, swap = false, speed = 1;
+  function reset() { s = { T: 20, on: true, t: 0 }; hist = [[0, 20, 1]]; running = !REDUCED; sync(); draw(); }
+  function sync() {
+    $('#bm-sv').textContent = p.Tset + ' ℃'; $('#bm-swap').classList.toggle('on', swap); $('#bm-play').textContent = running ? '⏸ 일시정지' : '▶ 재생'; $('#bm-speed').textContent = '속도 ×' + speed;
+    const hot = s.T > p.Tset + 30;
+    $('#bm-out').innerHTML = `다리미 바닥 온도 <b class="k">${s.T.toFixed(0)} ℃</b><br>접점: ${s.on ? '<b class="ok">붙음 → 전류 흐름(가열)</b>' : '<b class="p">떨어짐 → 전류 끊김</b>'}${swap && hot ? '<br><b class="bad">⚠ 과열! 전류가 끊기지 않는다</b>' : ''}`;
+  }
+  function strip(x0, y0, u, flip) { // 끝 처짐 u(px, 위 +) 인 원호 바이메탈
+    const k = Math.abs(u) < .5 ? 0 : 2 * u / (BL * BL), pts = []; for (let i = 0; i <= 40; i++) { const sL = BL * i / 40; pts.push(k === 0 ? [x0 + sL, y0] : [x0 + Math.sin(k * sL) / k, y0 - (1 - Math.cos(k * sL)) / k]); }
+    const lay = (off, c) => { ctx.strokeStyle = c; ctx.lineWidth = 13; ctx.lineCap = 'butt'; ctx.beginPath(); pts.forEach(([x, y], i) => { const j = Math.min(i, 39), dx = pts[j + 1][0] - pts[j][0], dy = pts[j + 1][1] - pts[j][1], n = Math.hypot(dx, dy) || 1, ox = dy / n * off, oy = -dx / n * off; i ? ctx.lineTo(x - ox, y - oy) : ctx.moveTo(x - ox, y - oy); }); ctx.stroke(); };
+    const top = flip ? '#e0a05a' : '#c9d3e0', bot = flip ? '#c9d3e0' : '#e0a05a'; lay(-7, top); lay(7, bot); return pts[40];
+  }
+  function draw() {
+    ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H); const x0 = 180, y0 = 250, uSet = KV * (p.Tset - 20), uFree = (swap ? -1 : 1) * KV * (s.T - 20);
+    const tip = strip(x0, y0, uFree, swap), leafU = Math.min(uFree, uSet), lx = x0 + BL - 4, ly = s.on ? tip[1] + 14 : y0 - leafU + 14; // 접점 판: 띠를 따라 올라가다 멈춤 턱(uSet)에서 멈춘다
+    ctx.fillStyle = '#5b6470'; ctx.fillRect(x0 - 50, y0 - 60, 50, 120); // 고정부
+    const cy = y0 + 140; ctx.strokeStyle = '#8b8279'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(lx + 60, cy); ctx.lineTo(lx + 60, ly + 10); ctx.lineTo(lx, ly + 10); ctx.stroke(); // 접점 판(용수철 판)
+    ctx.fillStyle = '#ffd76a'; ctx.beginPath(); ctx.arc(lx, ly, 10, 0, TAU); ctx.fill();
+    const sy = y0 - uSet + 20; ctx.fillStyle = '#c9d3e0'; ctx.fillRect(lx + 34, sy - 8, 60, 8); ctx.fillRect(lx + 90, sy - 8, 8, 50); // 멈춤 턱
+    ctx.font = font(22, 700); ctx.fillStyle = C.text; ctx.fillText('멈춤 턱 (다이얼로 높이 조절)', lx + 110, sy); ctx.fillText('접점', lx + 70, cy - 10);
+    // 회로와 열선
+    const hy = 430; ctx.strokeStyle = s.on ? C.KE : C.dim; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x0 - 25, y0 + 60); ctx.lineTo(x0 - 25, hy); ctx.moveTo(lx + 60, cy); ctx.lineTo(lx + 60, hy); ctx.stroke();
+    ctx.fillStyle = mix([70, 70, 80], HOT, Math.min(1, (s.T - 20) / 230)); ctx.fillRect(x0 - 60, hy, BL + 120, 34); ctx.font = font(22, 700); ctx.fillStyle = C.text; ctx.fillText(`열선(저항선) · 다리미 바닥 ${s.T.toFixed(0)} ℃`, x0 - 50, hy + 66);
+    if (s.on) { ctx.fillStyle = C.KE; ctx.font = font(24, 800); ctx.fillText('전류 ON', x0 - 30, 60 + 0); } else { ctx.fillStyle = C.PE; ctx.font = font(24, 800); ctx.fillText('전류 OFF', x0 - 30, 60); }
+    // 범례
+    [['#e0a05a', '팽창이 잘 되는 금속'], ['#c9d3e0', '팽창이 잘 되지 않는 금속']].forEach(([c, n], i) => { ctx.fillStyle = c; ctx.fillRect(700, 40 + i * 40, 36, 22); ctx.fillStyle = C.text; ctx.font = font(22); ctx.fillText(n, 748, 58 + i * 40); });
+    // 온도 그래프
+    const gx0 = 110, gx1 = 1060, gy0 = 580, gy1 = 800, tw = 600, tn = s.t, Tmx = 290, gx = tt => gx0 + Math.max(0, tt - Math.max(0, tn - tw)) / tw * (gx1 - gx0), gy = T => gy1 - (T - 0) / Tmx * (gy1 - gy0);
+    ctx.fillStyle = 'rgba(94,234,212,.12)'; ctx.fillRect(gx0, gy(p.Tset + p.hy), gx1 - gx0, gy(p.Tset - p.hy) - gy(p.Tset + p.hy));
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(gx0, gy0); ctx.lineTo(gx0, gy1); ctx.lineTo(gx1, gy1); ctx.stroke();
+    ctx.strokeStyle = C.ok; ctx.setLineDash([8, 6]); ctx.beginPath(); ctx.moveTo(gx0, gy(p.Tset)); ctx.lineTo(gx1, gy(p.Tset)); ctx.stroke(); ctx.setLineDash([]);
+    ctx.font = font(22); ctx.fillStyle = C.dim; ctx.fillText('온도 (℃)', gx0 + 10, gy0 - 8); ctx.fillText('시간 →', gx1 - 84, gy1 + 30); ctx.fillStyle = C.ok; ctx.fillText(`설정 ${p.Tset} ℃`, gx1 - 150, gy(p.Tset) - 10);
+    ctx.strokeStyle = C.KE; ctx.lineWidth = 3; ctx.beginPath(); let f = true; hist.forEach(([tt, T]) => { if (tn - tt > tw) return; f ? ctx.moveTo(gx(tt), gy(T)) : ctx.lineTo(gx(tt), gy(T)); f = false; }); ctx.stroke();
+  }
+  function frame(dt) {
+    if (running) { const n = Math.round(20 * speed * Math.min(dt, .05) / .01); for (let i = 0; i < n; i++) { PHYS.thermoStep(s, p, .01); if (swap) s.on = true; } hist.push([s.t, s.T, s.on]); while (hist.length && s.t - hist[0][0] > 620) hist.shift(); sync(); }
+    draw();
+  }
+  bindRange('bm-s', v => { p.Tset = v; sync(); draw(); });
+  $('#bm-swap').onclick = () => { swap = !swap; reset(); }; $('#bm-play').onclick = () => { running = !running; sync(); }; $('#bm-reset').onclick = reset;
+  $('#bm-speed').onclick = () => { speed = speed === 1 ? 3 : speed === 3 ? 8 : 1; sync(); };
+  return { start() { reset(); }, stop() { running = false; }, frame };
+})();
+
+/* ---- 12. 정리 ---- */
+REG.s12 = { start() { }, stop() { }, frame() { } };
+const ANS = {
+  a1: 'Δl = αl₀ΔT = 16.5×10⁻⁶ × 10 × 50 = 8.25×10⁻³ m ≈ 8.3 mm',
+  a2: '내부의 90 % 이상이 공기층이기 때문. 공기는 열전도도가 낮아 단열이 잘 되고, 공기가 대부분이라 가볍다.',
+  a3: '팽창이 잘 되는 금속이 바깥쪽(볼록한 쪽)이 되도록, 즉 팽창이 잘 되지 않는 금속 쪽으로 휜다.' };
+$$('#s12 [data-rv]').forEach(b => b.onclick = () => { const el = $('#' + b.dataset.rv); el.innerHTML = el.innerHTML ? '' : ANS[b.dataset.rv]; b.textContent = el.innerHTML ? '정답 가리기' : '정답 보기'; });
+
+/* =====================================================================
+   슬라이드 관리자
+   ===================================================================== */
+const slides = $$('.slide'), deck = $('#deck'); let cur = -1, step = 0, activeFrame = null, hudTimer = 0;
+
+
+/* 오개념 교정 노트(교사용): { q: 교사용 진행 발문, m: [[오개념, 교정 방법], ...] } */
+const NOTES = {
+  s1: { q: '예측부터 받으세요. “레일 사이에 틈이 없으면 여름에 어떻게 될까?” 오른쪽 그림에서 낮·밤 온도와 틈 크기를 함께 읽게 합니다.', m: [
+    ['레일 틈은 공사를 대충 해서 생긴 것이다.', '온도에 따라 레일 길이가 변하는 것을 대비해 일부러 남긴 틈. 9번 슬라이드에서 틈 0 으로 놓고 온도를 올려 확인'],
+    ['고체는 단단해서 온도가 바뀌어도 길이가 변하지 않는다.', '변화가 mm 단위로 작아 눈에 잘 안 띌 뿐. 25 m 레일이 30 K 에 약 9 mm 늘어난다(표지 그림, 예시).']] },
+  s2: { q: '온도가 높아지면 입자 자체가 커지는 걸까요, 간격이 넓어지는 걸까요? 온도 슬라이더를 1 → 10 으로 올려 보세요.', m: [
+    ['열팽창은 입자 하나하나가 커지기 때문이다.', '입자의 크기는 그대로, 진동이 커지면서 평균 간격이 넓어진다. 화면의 입자 크기는 변하지 않는다.'],
+    ['진동이 커지면 좌우로 똑같이 흔들리니 평균 위치는 그대로여야 한다.', '결합 에너지 곡선이 비대칭(가까워지기 어렵고 멀어지기 쉬움)이라 진동 범위의 가운데 ●가 오른쪽으로 이동. “대칭인 결합” 칩을 켜면 팽창하지 않는다(교과서 밖 심화).'],
+    ['화면의 팽창률(수 %)이 실제 고체의 값이다.', '무차원 개념 모형으로 크게 과장. 실제 철은 100 K 에 약 0.1 %']] },
+  s3: { q: '처음 길이를 2배로 하면 그래프 기울기는? 같은 온도 차에서 어느 물질이 가장 많이 늘어날까요?', m: [
+    ['늘어난 길이는 온도에만 관계있다.', 'l₀ 슬라이더를 바꾸면 같은 ΔT 에서도 Δl 이 비례해 바뀐다. 그래프 축 최댓값 변화로 확인'],
+    ['같은 온도 차면 모든 물질이 같이 늘어난다.', '물질 칩을 바꿔 보면 기울기(α)가 다르다. 그래프의 흐린 선이 다른 물질'],
+    ['화면에서 늘어난 길이가 실제 비율이다.', '늘어난 부분만 약 143배 확대해 그린 것. 실제 l 은 소수 다섯째 자리 정도만 바뀐다(판독값 확인).']] },
+  s4: { q: '두 비례 관계를 하나의 식으로 합치려면 무엇이 필요할까요? α 의 단위는 무엇일까요?', m: [
+    ['l = αl₀ΔT 이다(늘어난 길이와 나중 길이 혼동).', 'αl₀ΔT 는 늘어난 길이 Δl. 나중 길이는 l₀ 에 Δl 을 더한 l₀(1 + αΔT). 4단계'],
+    ['α 의 단위는 m/K 이다.', 'α = Δl / (l₀ΔT) → m/(m·K) = 1/K. 길이 단위와 상관없는 “비율”'],
+    ['℃ 와 K 로 계산한 ΔT 가 다르다.', '온도 “차”는 1 ℃ = 1 K 로 같다.']] },
+  s5: { q: '같은 막대를 같은 온도만큼 데우면 어느 물질이 가장 많이, 가장 적게 늘어날까요? 실험용 비커가 파이렉스 유리인 까닭은?', m: [
+    ['유리는 모두 같은 물질이라 계수도 같다.', '창 유리 7.9, 파이렉스 3.3, 석영 0.6 으로 종류에 따라 10배 이상 차이(표)'],
+    ['열팽창 계수가 큰 물질이 더 단단하다/약하다.', '계수는 온도에 따른 길이 변화 비율일 뿐, 강도와 직접 관계없다.'],
+    ['콘크리트와 철이 비슷한 건 우연일 뿐 쓸모없는 정보다.', '이 덕분에 철근 콘크리트가 가능하다 → 10번 슬라이드']] },
+  s6: { q: '길이가 늘어나면 부피는 어떻게 될까요? 구멍이 뚫린 금속판을 데우면 구멍은 커질까요, 작아질까요?', m: [
+    ['부피 팽창은 선팽창과 전혀 다른 현상이다.', '가로·세로·높이가 모두 (1 + αΔT)배 → 부피도 커진다. 심화 칩: β ≈ 3α (교과서 밖)'],
+    ['데우면 금속판의 구멍은 작아진다.', '물체 전체가 사진을 확대하듯 커지므로 구멍도 커진다. (화면에는 없음, 구두로 다룸)'],
+    ['부피가 늘면 질량도 늘어난다.', '질량은 그대로, 밀도가 작아진다.']] },
+  s7: { q: '교과서 예처럼 각 사례가 단열을 이용한 것인지, 열팽창을 이용하거나 대비한 것인지 고르세요. 모둠별로 예를 하나씩 더 찾아 보게 합니다.', m: [
+    ['이중창은 유리가 두 장이라 단열이 된다.', '핵심은 유리 사이에 갇힌 공기(기체)층. 공기는 열전도도가 낮다.'],
+    ['레일 틈새는 단열을 위한 것이다.', '열의 이동과 무관, 온도에 따른 길이 변화(열팽창)에 대비'],
+    ['(주의) 카드 정답은 정의에 따른 판단입니다.', '교과서 해 보기 표에는 단열 예시 한 줄만 있음. 학생이 다른 근거를 대면 토의로 확장하세요.']] },
+  s8: { q: '단열재를 빼면 새는 열은 몇 배가 될까요? 벽 속 온도가 가장 크게 떨어지는 층은 어디일까요?', m: [
+    ['벽돌을 두껍게 하는 것이 단열재를 넣는 것보다 효과적이다.', '벽돌의 열전도도(0.6, 예시)는 스티로폼(0.035)의 약 17배. 두께 슬라이더로 단열재 몇 cm 가 벽돌 수십 cm 와 맞먹음을 확인'],
+    ['단열재는 차가운 공기를 막는 것이다.', '막는 것은 열의 이동. 바깥 온도를 35 ℃ 로 올리면 열이 바깥 → 실내로 흐르고, 여름에도 단열재가 냉방 손실을 줄인다.'],
+    ['공기층은 두꺼울수록 무조건 좋다.', '너무 두꺼우면 안에서 대류가 생겨 효과가 줄어든다(교과서 밖, 모형은 대류 무시).']] },
+  s9: { q: '틈을 0 mm 로 두고 온도를 올려 보세요. 65 ℃ 까지 견디려면 틈을 몇 mm 남겨야 할까요?', m: [
+    ['틈은 넓을수록 무조건 안전하다.', '겨울(−20 ℃)에는 틈이 더 벌어져 덜컹거림·충격이 커진다. 그래프에서 낮은 온도의 틈 확인'],
+    ['레일 한 토막만 고려하면 된다.', '틈 하나가 레일 한 토막(25 m)의 늘어남을 받아낸다. 토막이 길면 틈도 커야 한다(Δl ∝ l₀).'],
+    ['레일 온도는 기온과 같다.', '햇볕을 받은 레일은 기온보다 훨씬 뜨거워질 수 있다. 화면 값은 예시(요즘은 장대 레일·신축 이음매도 사용).']] },
+  s10: { q: '콘크리트 속 철을 알루미늄으로 바꾸면 무엇이 문제일까요? 왜 하필 철을 쓸까요?', m: [
+    ['철은 단단하니까 콘크리트 속에 넣는다(강도만 고려).', '강도와 함께 선팽창 계수가 콘크리트와 거의 같아(11.8 vs 12.0) 함께 늘고 줄어든다. 알루미늄 칩으로 균열 확인'],
+    ['온도 변화가 작으면 계수가 달라도 괜찮다.', 'ΔT 슬라이더를 낮추면 차이가 줄지만, 계절마다 반복되며 쌓인다. 균열 기준은 예시 값'],
+    ['철근이 늘어나는 만큼 콘크리트도 따라 늘어난다.', '각 물질은 자기 계수대로 늘어나려 한다. 차이만큼 경계에 힘이 걸린다.']] },
+  s11: { q: '바이메탈이 뜨거워지면 어느 쪽으로 휠까요? 두 금속을 뒤집어 붙이면 다리미는 어떻게 될까요?', m: [
+    ['바이메탈은 잘 늘어나는 금속 쪽으로 휜다.', '잘 늘어나는 금속이 더 길어져 바깥(볼록한) 쪽이 된다 → 덜 늘어나는 쪽으로 휜다. 범례 색으로 확인'],
+    ['바이메탈은 금속이 녹거나 물러져서 휜다.', '두 금속의 열팽창 정도 차이 때문. 식으면 다시 원래대로 돌아와 전류가 다시 흐른다(그래프의 반복).'],
+    ['설정 온도에서 온도가 딱 멈춘다.', '접점이 붙고 떨어지기를 반복하며 설정 온도 근처에서 오르내린다. “두 금속을 뒤집어 붙이면?” → 과열(전류가 끊기지 않음)']] },
+  s12: { q: '오늘 배운 것을 “이것만은 꼭” 세 문장으로 정리하고, 창의·융합 활동(창문 단열 계획서)을 과제로 안내하세요.', m: [
+    ['단열과 열팽창은 서로 관계없는 별개의 내용이다.', '둘 다 “열”이 물질에 주는 영향을 건축·생활에 활용한 것. 벽체(단열)와 철근 콘크리트(열팽창)가 한 건물에 함께 있다.'],
+    ['확인 문제는 교과서 문항이다.', '수업용으로 새로 만든 문항입니다.']] }
+};
+/* 학생용 발문 */
+const ASK = {
+  s1: ['한여름과 한겨울, 기차 레일의 길이는 같을까?', '레일 이음매에 틈이 없다면 어떤 일이 생길까?'],
+  s2: ['물체가 데워지면 입자가 커질까, 입자 사이가 멀어질까?', '진동이 커지면 왜 평균 간격이 넓어질까?'],
+  s3: ['처음 길이가 2배가 되면 늘어난 길이는 어떻게 될까?', '같은 온도만큼 데우면 어떤 물질이 가장 많이 늘어날까?'],
+  s4: ['늘어난 길이 Δl 은 어떤 양들에 비례할까?', 'α 의 단위는 무엇일까?'],
+  s5: ['같은 조건에서 가장 적게 늘어나는 물질은? 어디에 쓰면 좋을까?', '콘크리트와 철의 계수를 비교해 보자.'],
+  s6: ['길이가 늘어나면 부피는 어떻게 될까?', '구멍이 뚫린 금속판을 데우면 구멍의 크기는?'],
+  s7: ['각 예는 단열과 열팽창 중 무엇을 활용했을까?', '우리 주변에서 예를 하나 더 찾아보자.'],
+  s8: ['단열재를 빼면 벽으로 새는 열은 어떻게 될까?', '벽 속 온도가 가장 크게 바뀌는 층은 어디일까?'],
+  s9: ['틈이 없는 레일은 더운 날 어떻게 될까?', '65 ℃ 까지 견디려면 틈을 얼마나 남겨야 할까?'],
+  s10: ['철근과 콘크리트의 선팽창 계수가 다르면 어떻게 될까?', '콘크리트 속에 알루미늄을 넣으면 안 되는 까닭은?'],
+  s11: ['바이메탈은 뜨거워지면 어느 쪽으로 휠까?', '다리미는 어떻게 온도를 일정하게 유지할까?'],
+  s12: ['오늘 배운 내용을 세 문장으로 정리해 보자.', '우리 집 창문의 단열 성능을 높이는 방법은?']
+};
+
+function renderNotes(i) {
+  const n = NOTES[slides[i].id]; if (!n) { $('#notes').innerHTML = ''; return; }
+  $('#notes').innerHTML = `<div class="nh">📝 오개념 교정 노트 · 슬라이드 ${i + 1} / ${slides.length}<span style="float:right">발문을 화면에 띄우기: Q 키</span></div><div class="nq">💬 발문: ${n.q}</div>` +
+    n.m.map(([a, b]) => `<div class="ni"><span class="nx">❌ 오개념</span> ${a}<br><span class="nv">✅ 교정</span> ${b}</div>`).join('');
+}
+
+
+
+/* 넘치는 패널은 자동으로 축소해 한 화면에 맞춘다 (렌더링 높이 기준 안전장치) */
+function fitSides() {
+  if (cur < 0) return;
+  $$('.side, .qgrid', slides[cur]).forEach(el => {
+    el.style.transform = ''; el.style.width = '';
+    if (el.clientHeight > 0 && el.scrollHeight > el.clientHeight + 1) { const k = el.clientHeight / el.scrollHeight; el.style.transformOrigin = 'top left'; el.style.transform = `scale(${k})`; el.style.width = (100 / k) + '%'; }
+  });
+}
+document.addEventListener('click', () => setTimeout(fitSides, 0)); document.addEventListener('input', () => setTimeout(fitSides, 0));
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitSides);
+
+const CIRC = ['①', '②', '③'];
+function renderAsk(i) {
+  const q = ASK[slides[i].id] || [];
+  $('#ask').innerHTML = `<div class="ak"><div class="ah">💬 생각해 보기 · ${i + 1} / ${slides.length}</div>` + q.map((t, k) => `<div class="aq">${q.length > 1 ? `<span>${CIRC[k]}</span>` : ''}${t}</div>`).join('') + '<div class="af">Q 키 · Esc · 화면 클릭으로 닫기</div></div>';
+}
+function toggleAsk(force) { const on = $('#ask').classList.toggle('on', force); $('#b-ask').classList.toggle('on', on); }
+const maxStep = i => +(slides[i].dataset.steps || 0);
+function fit() { const vp = $('#viewport'), s = Math.min(vp.clientWidth / 1920, vp.clientHeight / 1080); deck.style.transform = `translate(-50%,-50%) scale(${s})`; }
+function applyStep() {
+  $$('.st', slides[cur]).forEach(el => { el.classList.toggle('on', +el.dataset.i <= step); el.classList.toggle('cur', +el.dataset.i === step); });
+  const r = REG[slides[cur].id]; r && r.onStep && r.onStep(step);
+}
+function show(i, st = 0) {
+  i = Math.max(0, Math.min(slides.length - 1, i)); if (cur >= 0) { const o = REG[slides[cur].id]; o && o.stop && o.stop(); slides[cur].classList.remove('active'); }
+  cur = i; step = Math.min(st, maxStep(i)); slides[i].classList.add('active'); const r = REG[slides[i].id]; activeFrame = r && r.frame; r && r.start && r.start();
+  $('#h-pg').textContent = `${i + 1} / ${slides.length}`; renderNotes(i); renderAsk(i); toggleAsk(false); applyStep(); fitSides();
+}
+const next = () => { if (step < maxStep(cur)) { step++; applyStep(); } else if (cur < slides.length - 1) show(cur + 1); };
+const prev = () => { if (step > 0) { step--; applyStep(); } else if (cur > 0) show(cur - 1, maxStep(cur - 1)); };
+function isDark() { const r = document.documentElement; return r.dataset.theme === 'dark' || (!r.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches); }
+function themeBtn() { $('#b-theme').textContent = isDark() ? '☀ 라이트 전환' : '🌙 다크 전환'; }
+function toggleTheme() { document.documentElement.dataset.theme = isDark() ? 'light' : 'dark'; themeBtn(); }
+function toggleNotes() { const on = $('#notes').classList.toggle('on'); $('#b-notes').classList.toggle('on', on); }
+function toggleHelp(force) { const on = $('#help').classList.toggle('on', force); $('#b-help').classList.toggle('on', on); }
+function fullscreen() { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) { } }
+function poke() { $('#hud').classList.add('show'); clearTimeout(hudTimer); hudTimer = setTimeout(() => $('#hud').classList.remove('show'), 2600); }
+document.addEventListener('keydown', e => {
+  const t = e.target; if (t && t.tagName === 'INPUT' && t.type === 'range' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); next(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+  else if (e.key === 'Home') show(0); else if (e.key === 'End') show(slides.length - 1);
+  else if (e.key === 'f' || e.key === 'F') fullscreen(); else if (e.key === 'n' || e.key === 'N') toggleNotes(); else if (e.key === 't' || e.key === 'T') toggleTheme(); else if (e.key === 'q' || e.key === 'Q') toggleAsk(); else if (e.key === '?' || e.key === 'h' || e.key === 'H') toggleHelp(); else if (e.key === 'Escape') { toggleHelp(false); toggleAsk(false); if ($('#notes').classList.contains('on')) toggleNotes(); }
+});
+$('#h-prev').onclick = prev; $('#h-next').onclick = next; $('#h-fs').onclick = fullscreen; $('#b-help').onclick = () => toggleHelp(); $('#b-ask').onclick = () => toggleAsk(); $('#ask').onclick = () => toggleAsk(false); $('#help-x').onclick = () => toggleHelp(false); $('#help').onclick = e => { if (e.target.id === 'help') toggleHelp(false); }; $('#b-notes').onclick = toggleNotes; $('#b-theme').onclick = toggleTheme;
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
+['mousemove', 'touchstart', 'pointerdown'].forEach(ev => document.addEventListener(ev, poke, { passive: true }));
+window.addEventListener('resize', fit); fit();
+let lastT = performance.now();
+(function loop(now) { const dt = Math.min(.05, (now - lastT) / 1000); lastT = now; if (activeFrame) activeFrame(dt); requestAnimationFrame(loop); })(lastT);
+let startAt = 0; try { const h = parseInt(location.hash.slice(1), 10); if (h >= 1 && h <= slides.length) startAt = h - 1; } catch (e) { }
+themeBtn(); show(startAt); poke();
+</script>
+</body>
+</html>

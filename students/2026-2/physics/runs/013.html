@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>기차 배웅 운동 물리학 탐구 시뮬레이션</title>
+    <!-- Tailwind CSS CDN 로드 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700;800&display=swap');
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body class="p-3 md:p-6 min-h-screen flex flex-col justify-between">
+
+    <div class="max-w-6xl mx-auto w-full space-y-5">
+        <!-- 상단 헤더 영역 -->
+        <header class="bg-slate-800/90 rounded-2xl p-4 md:p-5 shadow-lg border border-slate-700 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <div class="inline-flex items-center gap-2 bg-blue-500/20 text-blue-300 text-xs font-bold px-3 py-1 rounded-full mb-2 border border-blue-500/30">
+                    <span>🔬 고등학교 물리학Ⅰ 탐구 활동</span>
+                    <span>•</span>
+                    <span>등가속도 및 등속도 운동 분석</span>
+                </div>
+                <h1 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight">기차 배웅 운동 물리학 시뮬레이션</h1>
+                <p class="text-xs md:text-sm text-slate-400 mt-1">기차와 사람이 나란히 달리며 배웅하는 상황의 위치 및 속력 변화를 정밀 물리 수식으로 분석합니다.</p>
+            </div>
+            <!-- 실시간 상태 상단 배지 -->
+            <div id="statusBadge" class="bg-slate-900 text-slate-300 font-bold px-4 py-2.5 rounded-xl border border-slate-700 text-center text-sm min-w-[180px]">
+                준비 상태 (0.0초)
+            </div>
+        </header>
+
+        <!-- 메인 애니메이션 스크린 -->
+        <section class="bg-slate-900 rounded-2xl p-4 md:p-5 shadow-xl border border-slate-800 relative">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-slate-800">
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <h2 class="font-bold text-sm md:text-base text-slate-200">실시간 트랙 애니메이션</h2>
+                </div>
+                
+                <!-- 카메라 앵글 컨트롤 버튼 그룹 -->
+                <div class="flex items-center gap-1.5 bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-xs">
+                    <span class="text-slate-400 px-1 font-medium">📷 카메라 앵글:</span>
+                    <button id="btnCamOverview" class="cam-btn bg-blue-600 text-white px-3 py-1.5 rounded-lg font-bold transition shadow hover:bg-blue-500">
+                        🔭 멀리서 한눈에 보기
+                    </button>
+                    <button id="btnCamFollow" class="cam-btn text-slate-400 px-3 py-1.5 rounded-lg font-medium hover:text-white transition">
+                        🔍 가까이서 추적하기
+                    </button>
+                </div>
+            </div>
+
+            <!-- 메인 애니메이션 캔버스 -->
+            <div class="relative bg-slate-950 rounded-xl overflow-hidden border border-slate-800 shadow-inner">
+                <canvas id="simCanvas" width="1000" height="260" class="w-full h-[230px] md:h-[270px] object-cover"></canvas>
+            </div>
+
+            <!-- 실시간 수치 데이터 대시보드 -->
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-2 md:gap-3 mt-4 text-xs md:text-sm">
+                <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700/60">
+                    <div class="text-slate-400 text-xs">⏱️ 경과 시간</div>
+                    <div id="uiTime" class="text-lg md:text-xl font-bold text-amber-400 mt-0.5">0.0초</div>
+                </div>
+                <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700/60">
+                    <div class="text-slate-400 text-xs">🚂 기차 속력</div>
+                    <div id="uiTrainSpeed" class="text-lg md:text-xl font-bold text-blue-400 mt-0.5">0.00 m/s</div>
+                </div>
+                <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700/60">
+                    <div class="text-slate-400 text-xs">🏃 사람 속력</div>
+                    <div id="uiPersonSpeed" class="text-lg md:text-xl font-bold text-emerald-400 mt-0.5">0.00 m/s</div>
+                </div>
+                <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700/60">
+                    <div class="text-slate-400 text-xs">📍 기차 위치</div>
+                    <div id="uiTrainPos" class="text-lg md:text-xl font-bold text-blue-300 mt-0.5">0.0m</div>
+                </div>
+                <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700/60">
+                    <div class="text-slate-400 text-xs">📍 사람 위치</div>
+                    <div id="uiPersonPos" class="text-lg md:text-xl font-bold text-emerald-300 mt-0.5">0.0m</div>
+                </div>
+                <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700/60 col-span-2 md:col-span-1">
+                    <div class="text-slate-400 text-xs">📏 두 대상 거리 차이</div>
+                    <div id="uiDistanceDiff" class="text-lg md:text-xl font-bold text-rose-400 mt-0.5">0.0m</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 컨트롤 패널 -->
+        <section class="bg-slate-800/90 rounded-2xl p-4 shadow-md border border-slate-700 flex flex-wrap items-center justify-between gap-3">
+            <!-- 실행 제어 버튼 -->
+            <div class="flex flex-wrap items-center gap-2">
+                <button id="btnStart" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-5 py-2.5 rounded-xl shadow-lg transition active:scale-95 flex items-center gap-1.5 text-sm">
+                    ▶️ 시작
+                </button>
+                <button id="btnPause" class="bg-slate-700 hover:bg-slate-600 text-white font-bold px-4 py-2.5 rounded-xl transition active:scale-95 text-sm">
+                    ⏸️ 일시정지
+                </button>
+                <button id="btnRestart" class="bg-amber-600 hover:bg-amber-500 text-white font-bold px-4 py-2.5 rounded-xl transition active:scale-95 text-sm">
+                    🔄 다시 시작
+                </button>
+                <button id="btnReset" class="bg-slate-600 hover:bg-slate-500 text-white font-bold px-4 py-2.5 rounded-xl transition active:scale-95 text-sm">
+                    ⏹️ 처음으로
+                </button>
+            </div>
+
+            <!-- 배속 설정 -->
+            <div class="flex items-center gap-2 text-xs font-semibold text-slate-300 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
+                <span class="pl-2 text-slate-400">재생 속도:</span>
+                <button data-speed="1" class="speed-btn px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold shadow">1x</button>
+                <button data-speed="2" class="speed-btn px-2.5 py-1 rounded-lg hover:bg-slate-800 text-slate-400">2x</button>
+                <button data-speed="5" class="speed-btn px-2.5 py-1 rounded-lg hover:bg-slate-800 text-slate-400">5x</button>
+            </div>
+        </section>
+
+        <!-- 물리 그래프 영역 -->
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <!-- 1. 시간-속력 (v-t) 그래프 -->
+            <div class="bg-slate-800/90 rounded-2xl p-4 shadow-md border border-slate-700 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="font-bold text-white text-base flex items-center gap-2">
+                            📈 시간-속력 (v-t) 그래프
+                        </h3>
+                        <span class="text-xs bg-slate-900 text-slate-400 px-2 py-0.5 rounded font-mono">y: 속력(m/s), x: 시간(s)</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mb-3">배웅 구간 동안 두 대상의 가속도가 같고, 이후 사람은 등속, 기차는 연속 가속합니다.</p>
+                </div>
+                <div class="bg-slate-950 p-2 rounded-xl border border-slate-800">
+                    <canvas id="vtCanvas" width="500" height="220" class="w-full h-[190px]"></canvas>
+                </div>
+            </div>
+
+            <!-- 2. 시간-거리 (x-t) 그래프 -->
+            <div class="bg-slate-800/90 rounded-2xl p-4 shadow-md border border-slate-700 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="font-bold text-white text-base flex items-center gap-2">
+                            📉 시간-거리 (x-t) 그래프
+                        </h3>
+                        <span class="text-xs bg-slate-900 text-slate-400 px-2 py-0.5 rounded font-mono">y: 거리(m), x: 시간(s)</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mb-3">배웅 종료 시점까지 동일한 이동 궤적을 그리며, 이후 거리가 점차 벌어집니다.</p>
+                </div>
+                <div class="bg-slate-950 p-2 rounded-xl border border-slate-800">
+                    <canvas id="xtCanvas" width="500" height="220" class="w-full h-[190px]"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- 이론적 계산 결과 요약 카드 -->
+        <section class="bg-slate-800/90 rounded-2xl p-5 shadow-md border border-slate-700">
+            <h3 class="font-extrabold text-white text-lg mb-4 flex items-center gap-2">
+                📋 탐구 분석 결과 수치 요약
+            </h3>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                <div class="p-3.5 bg-blue-950/40 rounded-xl border border-blue-800/50">
+                    <span class="text-xs text-blue-400 font-semibold block">기차 가속도</span>
+                    <strong id="cardTrainAccel" class="text-lg text-white">0.00000 m/s²</strong>
+                    <span class="text-[11px] text-slate-400 block mt-0.5">a = (120 / 3.6) / 120</span>
+                </div>
+                <div class="p-3.5 bg-emerald-950/40 rounded-xl border border-emerald-800/50">
+                    <span class="text-xs text-emerald-400 font-semibold block">사람 가속도</span>
+                    <strong id="cardPersonAccel" class="text-lg text-white">0.00000 m/s²</strong>
+                    <span class="text-[11px] text-slate-400 block mt-0.5">기차와 동일 가속 출발</span>
+                </div>
+                <div class="p-3.5 bg-amber-950/40 rounded-xl border border-amber-800/50">
+                    <span class="text-xs text-amber-400 font-semibold block">사람 최고속력 도달 시간</span>
+                    <strong id="cardPersonTime" class="text-lg text-white">0.00초</strong>
+                    <span class="text-[11px] text-slate-400 block mt-0.5">t = v_person / a (정밀 공식 계산)</span>
+                </div>
+                <div class="p-3.5 bg-purple-950/40 rounded-xl border border-purple-800/50">
+                    <span class="text-xs text-purple-400 font-semibold block">기차 최고속력 도달 시간</span>
+                    <strong class="text-lg text-white">120.0초 (33.33 m/s)</strong>
+                    <span class="text-[11px] text-slate-400 block mt-0.5">120 km/h 도달 시점</span>
+                </div>
+                <div class="p-3.5 bg-slate-900 rounded-xl border border-slate-700">
+                    <span class="text-xs text-slate-400 font-semibold block">120초 후 기차 위치</span>
+                    <strong id="cardTrainPos120" class="text-lg text-white">0.0 m</strong>
+                    <span class="text-[11px] text-slate-500 block mt-0.5">½ × a × t²</span>
+                </div>
+                <div class="p-3.5 bg-slate-900 rounded-xl border border-slate-700">
+                    <span class="text-xs text-slate-400 font-semibold block">120초 후 사람 위치</span>
+                    <strong id="cardPersonPos120" class="text-lg text-white">0.0 m</strong>
+                    <span class="text-[11px] text-slate-500 block mt-0.5">등가속 + 등속 구간 합산</span>
+                </div>
+                <div class="p-3.5 bg-rose-950/40 rounded-xl border border-rose-800/60 col-span-2">
+                    <span class="text-xs text-rose-400 font-semibold block">120초 시점 최종 거리 차이</span>
+                    <strong id="cardDiff120" class="text-xl text-rose-300 font-extrabold">0.0 m</strong>
+                    <span class="text-[11px] text-slate-400 block mt-0.5">사람 최고속도 도달 후 기차가 지속 우세</span>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <footer class="max-w-6xl mx-auto w-full text-center text-xs text-slate-500 my-6">
+        고등학교 물리학Ⅰ 물리 탐구 시뮬레이션 웹 프로그램
+    </footer>
+
+    <script>
+        // ==========================================
+        // [1] 기초 조건 입력값 설정 (km/h 및 초 단위)
+        // ==========================================
+        const INPUT_TRAIN_MAX_KMH = 120.0;    // 기차 최고 속력: 120 km/h
+        const INPUT_TRAIN_TIME_S = 120.0;     // 기차 가속 시간: 120초
+        const INPUT_PERSON_MAX_KMH = 60.0;    // 사람 최고 속력: 60 km/h
+
+        // ==========================================
+        // [2] 기초 조건으로 정밀 동적 계산되는 물리 엔진
+        // ==========================================
+        const PHYSICS = {
+            // km/h -> m/s 정밀 변환
+            get TRAIN_MAX_SPEED() { return INPUT_TRAIN_MAX_KMH / 3.6; },
+            get TRAIN_ACCEL_TIME() { return INPUT_TRAIN_TIME_S; },
+            
+            // 가속도 a = Δv / Δt (소수점 정밀 계산)
+            get ACCEL() {
+                return this.TRAIN_MAX_SPEED / this.TRAIN_ACCEL_TIME;
+            },
+            
+            get PERSON_MAX_SPEED() { return INPUT_PERSON_MAX_KMH / 3.6; },
+            
+            // 사람 최고 속력 도달 시간 t = v / a (임의 하드코딩 없이 공식으로 정밀 계산)
+            get PERSON_ACCEL_TIME() {
+                return this.PERSON_MAX_SPEED / this.ACCEL;
+            },
+            
+            TOTAL_SIM_TIME: 120.0
+        };
+
+        // ==========================================
+        // [3] 시뮬레이션 상태 변수
+        // ==========================================
+        let currentTime = 0.0;            // 경과 시간 (초)
+        let isRunning = false;             // 실행 여부
+        let simSpeed = 1.0;                // 배속 (1x, 2x, 5x)
+        let cameraMode = 'OVERVIEW';       // 'OVERVIEW' 또는 'FOLLOW'
+        let animationFrameId = null;
+        let lastTimestamp = null;
+
+        // ==========================================
+        // [4] DOM 엘리먼트 참조
+        // ==========================================
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const vtCanvas = document.getElementById('vtCanvas');
+        const vtCtx = vtCanvas.getContext('2d');
+        const xtCanvas = document.getElementById('xtCanvas');
+        const xtCtx = xtCanvas.getContext('2d');
+
+        // UI 대시보드 참조
+        const uiTime = document.getElementById('uiTime');
+        const uiTrainSpeed = document.getElementById('uiTrainSpeed');
+        const uiPersonSpeed = document.getElementById('uiPersonSpeed');
+        const uiTrainPos = document.getElementById('uiTrainPos');
+        const uiPersonPos = document.getElementById('uiPersonPos');
+        const uiDistanceDiff = document.getElementById('uiDistanceDiff');
+        const statusBadge = document.getElementById('statusBadge');
+
+        // 버튼 참조
+        const btnStart = document.getElementById('btnStart');
+        const btnPause = document.getElementById('btnPause');
+        const btnRestart = document.getElementById('btnRestart');
+        const btnReset = document.getElementById('btnReset');
+        const btnCamOverview = document.getElementById('btnCamOverview');
+        const btnCamFollow = document.getElementById('btnCamFollow');
+        const speedButtons = document.querySelectorAll('.speed-btn');
+
+        // ==========================================
+        // [5] 정밀 동적 물리 수식 계산
+        // ==========================================
+        function calculatePhysics(t) {
+            const accel = PHYSICS.ACCEL;
+
+            // 기차 위치 및 속력
+            let trainSpeed, trainPos;
+            if (t <= PHYSICS.TRAIN_ACCEL_TIME) {
+                trainSpeed = accel * t;
+                trainPos = 0.5 * accel * t * t;
+            } else {
+                trainSpeed = PHYSICS.TRAIN_MAX_SPEED;
+                const posAtTrainMax = 0.5 * accel * Math.pow(PHYSICS.TRAIN_ACCEL_TIME, 2);
+                trainPos = posAtTrainMax + PHYSICS.TRAIN_MAX_SPEED * (t - PHYSICS.TRAIN_ACCEL_TIME);
+            }
+
+            // 사람 위치 및 속력
+            let personSpeed, personPos;
+            const tPersonMax = PHYSICS.PERSON_ACCEL_TIME;
+
+            if (t <= tPersonMax) {
+                personSpeed = accel * t;
+                personPos = 0.5 * accel * t * t;
+            } else {
+                personSpeed = PHYSICS.PERSON_MAX_SPEED;
+                const posAtPersonMax = 0.5 * accel * Math.pow(tPersonMax, 2);
+                personPos = posAtPersonMax + PHYSICS.PERSON_MAX_SPEED * (t - tPersonMax);
+            }
+
+            return {
+                trainSpeed,
+                trainPos,
+                personSpeed,
+                personPos,
+                distanceDiff: Math.max(0, trainPos - personPos)
+            };
+        }
+
+        // ==========================================
+        // [6] 요약 카드 수치 갱신
+        // ==========================================
+        function updateSummaryCards() {
+            const accel = PHYSICS.ACCEL;
+            const personTime = PHYSICS.PERSON_ACCEL_TIME;
+            const pos120Train = 0.5 * accel * 120 * 120;
+            const posPersonMax = 0.5 * accel * personTime * personTime;
+            const pos120Person = posPersonMax + PHYSICS.PERSON_MAX_SPEED * (120 - personTime);
+
+            document.getElementById('cardTrainAccel').textContent = `${accel.toFixed(5)} m/s²`;
+            document.getElementById('cardPersonAccel').textContent = `${accel.toFixed(5)} m/s²`;
+            document.getElementById('cardPersonTime').textContent = `${personTime.toFixed(2)}초 (${PHYSICS.PERSON_MAX_SPEED.toFixed(2)} m/s)`;
+            document.getElementById('cardTrainPos120').textContent = `${pos120Train.toFixed(1)} m`;
+            document.getElementById('cardPersonPos120').textContent = `${pos120Person.toFixed(1)} m`;
+            document.getElementById('cardDiff120').textContent = `${(pos120Train - pos120Person).toFixed(1)} m`;
+        }
+
+        // ==========================================
+        // [7] 애니메이션 캔버스 그리기
+        // ==========================================
+        function drawSimulationCanvas(state) {
+            const width = canvas.width;
+            const height = canvas.height;
+
+            // 배경 지우기
+            ctx.fillStyle = '#020617';
+            ctx.fillRect(0, 0, width, height);
+
+            let scale, offsetX;
+
+            if (cameraMode === 'OVERVIEW') {
+                const totalDistanceOnScreen = 2200;
+                const margin = 70;
+                scale = (width - margin * 2) / totalDistanceOnScreen;
+                offsetX = margin;
+            } else {
+                const midPos = (state.trainPos + state.personPos) / 2;
+                scale = 1.8;
+                offsetX = width / 2 - midPos * scale;
+            }
+
+            const railY = height * 0.68;
+
+            // 레일 및 거리 눈금
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(0, railY);
+            ctx.lineTo(width, railY);
+            ctx.stroke();
+
+            const gridInterval = 100;
+            for (let m = 0; m <= 2500; m += gridInterval) {
+                const screenX = m * scale + offsetX;
+                if (screenX >= -20 && screenX <= width + 20) {
+                    ctx.strokeStyle = (m % 500 === 0) ? '#64748b' : '#1e293b';
+                    ctx.lineWidth = (m % 500 === 0) ? 2 : 1;
+                    ctx.beginPath();
+                    ctx.moveTo(screenX, railY - 8);
+                    ctx.lineTo(screenX, railY + 8);
+                    ctx.stroke();
+
+                    if (m % 500 === 0 || cameraMode === 'FOLLOW') {
+                        ctx.fillStyle = '#94a3b8';
+                        ctx.font = '11px Pretendard';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(`${m}m`, screenX, railY + 22);
+                    }
+                }
+            }
+
+            // 정밀 계산된 배웅 종료 시점(최고속도 도달 시점) 경과 시에만 깃발 표시
+            const tPersonMax = PHYSICS.PERSON_ACCEL_TIME;
+            const posPersonMax = 0.5 * PHYSICS.ACCEL * tPersonMax * tPersonMax;
+
+            if (currentTime >= tPersonMax) {
+                const flagX = posPersonMax * scale + offsetX;
+                if (flagX >= -50 && flagX <= width + 50) {
+                    ctx.setLineDash([4, 4]);
+                    ctx.strokeStyle = '#f59e0b';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(flagX, railY - 100);
+                    ctx.lineTo(flagX, railY + 10);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    ctx.fillStyle = '#f59e0b';
+                    ctx.font = 'bold 12px Pretendard';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`🚩 ${posPersonMax.toFixed(0)}m (배웅 종료 지점)`, flagX, railY - 108);
+                }
+            }
+
+            // 기차 및 사람 화면 좌표
+            const trainX = state.trainPos * scale + offsetX;
+            const personX = state.personPos * scale + offsetX;
+
+            // 기차 그리기
+            const trainY = railY - 22;
+            const trainWidth = (cameraMode === 'OVERVIEW') ? Math.max(28, 45 * scale) : 60;
+            const trainHeight = 22;
+
+            ctx.fillStyle = '#3b82f6';
+            ctx.beginPath();
+            if (ctx.roundRect) {
+                ctx.roundRect(trainX - trainWidth, trainY - trainHeight, trainWidth, trainHeight, [5, 5, 2, 2]);
+            } else {
+                ctx.rect(trainX - trainWidth, trainY - trainHeight, trainWidth, trainHeight);
+            }
+            ctx.fill();
+
+            // 기차 바퀴
+            ctx.fillStyle = '#0f172a';
+            const wheelRadius = 4;
+            ctx.beginPath();
+            ctx.arc(trainX - trainWidth + 8, trainY, wheelRadius, 0, Math.PI * 2);
+            ctx.arc(trainX - 10, trainY, wheelRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 기차 실시간 속력 밀착 표시
+            ctx.fillStyle = '#60a5fa';
+            ctx.font = 'bold 12px Pretendard';
+            ctx.textAlign = 'center';
+            ctx.fillText(`🚂 기차: ${state.trainSpeed.toFixed(2)} m/s`, trainX - (trainWidth / 2), trainY - trainHeight - 12);
+
+            // 사람 그리기
+            const personY = railY - 16;
+            ctx.fillStyle = '#10b981';
+            ctx.beginPath();
+            ctx.arc(personX, personY - 16, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(personX, personY - 10);
+            ctx.lineTo(personX, personY - 2);
+
+            const legOffset = isRunning ? Math.sin(currentTime * 15) * 5 : 0;
+            ctx.moveTo(personX, personY - 2);
+            ctx.lineTo(personX - legOffset, personY + 8);
+            ctx.moveTo(personX, personY - 2);
+            ctx.lineTo(personX + legOffset, personY + 8);
+            ctx.stroke();
+
+            // 사람 실시간 속력 밀착 표시
+            ctx.fillStyle = '#34d399';
+            ctx.font = 'bold 12px Pretendard';
+            ctx.textAlign = 'center';
+            ctx.fillText(`🏃 사람: ${state.personSpeed.toFixed(2)} m/s`, personX, personY - 28);
+
+            // 실시간 타이머 오버레이 (캔버스 좌상단)
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+            ctx.beginPath();
+            if (ctx.roundRect) {
+                ctx.roundRect(12, 12, 160, 36, 8);
+            } else {
+                ctx.rect(12, 12, 160, 36);
+            }
+            ctx.fill();
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.fillStyle = '#fbbf24';
+            ctx.font = 'bold 15px Pretendard';
+            ctx.textAlign = 'left';
+            ctx.fillText(`⏱️ 시간: ${currentTime.toFixed(1)}초`, 24, 35);
+
+            // 사람 최고 속도 도달 시 메시지 오버레이 (캔버스 상단 중앙)
+            if (currentTime >= tPersonMax) {
+                ctx.fillStyle = 'rgba(220, 38, 38, 0.9)';
+                ctx.beginPath();
+                if (ctx.roundRect) {
+                    ctx.roundRect(width / 2 - 190, 12, 380, 36, 18);
+                } else {
+                    ctx.rect(width / 2 - 190, 12, 380, 36);
+                }
+                ctx.fill();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 13px Pretendard';
+                ctx.textAlign = 'center';
+                ctx.fillText(`👋 [${tPersonMax.toFixed(1)}초 달성] 사람 최고속력 도달! (배웅 종료)`, width / 2, 34);
+            }
+        }
+
+        /** 시간-속력 (v-t) 그래프 */
+        function drawVTGraph() {
+            const w = vtCanvas.width;
+            const h = vtCanvas.height;
+            const pad = 35;
+
+            vtCtx.clearRect(0, 0, w, h);
+
+            // 축
+            vtCtx.strokeStyle = '#475569';
+            vtCtx.lineWidth = 1;
+            vtCtx.beginPath();
+            vtCtx.moveTo(pad, 10);
+            vtCtx.lineTo(pad, h - pad);
+            vtCtx.lineTo(w - 10, h - pad);
+            vtCtx.stroke();
+
+            const maxX = 120, maxY = 40;
+            const toX = (t) => pad + (t / maxX) * (w - pad - 15);
+            const toY = (v) => (h - pad) - (v / maxY) * (h - pad - 15);
+
+            const tPersonMax = PHYSICS.PERSON_ACCEL_TIME;
+
+            // 계산된 시점 가이드 점선
+            vtCtx.setLineDash([3, 3]);
+            vtCtx.strokeStyle = '#f59e0b';
+            vtCtx.beginPath();
+            vtCtx.moveTo(toX(tPersonMax), 10);
+            vtCtx.lineTo(toX(tPersonMax), h - pad);
+            vtCtx.stroke();
+            vtCtx.setLineDash([]);
+
+            // 눈금 텍스트
+            vtCtx.fillStyle = '#94a3b8';
+            vtCtx.font = '10px Pretendard';
+            vtCtx.fillText(`${tPersonMax.toFixed(1)}s`, toX(tPersonMax) - 8, h - pad + 14);
+            vtCtx.fillText('120s', toX(120) - 10, h - pad + 14);
+            vtCtx.fillText(`${PHYSICS.TRAIN_MAX_SPEED.toFixed(1)}m/s`, 2, toY(PHYSICS.TRAIN_MAX_SPEED) + 3);
+            vtCtx.fillText(`${PHYSICS.PERSON_MAX_SPEED.toFixed(1)}m/s`, 2, toY(PHYSICS.PERSON_MAX_SPEED) + 3);
+
+            const tCap = Math.min(currentTime, 120);
+
+            // 기차 v-t 선 (파란색)
+            vtCtx.strokeStyle = '#3b82f6';
+            vtCtx.lineWidth = 2.5;
+            vtCtx.beginPath();
+            vtCtx.moveTo(toX(0), toY(0));
+            vtCtx.lineTo(toX(tCap), toY(calculatePhysics(tCap).trainSpeed));
+            vtCtx.stroke();
+
+            // 사람 v-t 선 (에메랄드색)
+            vtCtx.strokeStyle = '#10b981';
+            vtCtx.lineWidth = 2.5;
+            vtCtx.beginPath();
+            vtCtx.moveTo(toX(0), toY(0));
+            if (tCap <= tPersonMax) {
+                vtCtx.lineTo(toX(tCap), toY(calculatePhysics(tCap).personSpeed));
+            } else {
+                vtCtx.lineTo(toX(tPersonMax), toY(PHYSICS.PERSON_MAX_SPEED));
+                vtCtx.lineTo(toX(tCap), toY(PHYSICS.PERSON_MAX_SPEED));
+            }
+            vtCtx.stroke();
+        }
+
+        /** 시간-거리 (x-t) 그래프 */
+        function drawXTGraph() {
+            const w = xtCanvas.width;
+            const h = xtCanvas.height;
+            const pad = 40;
+
+            xtCtx.clearRect(0, 0, w, h);
+
+            // 축
+            xtCtx.strokeStyle = '#475569';
+            xtCtx.lineWidth = 1;
+            xtCtx.beginPath();
+            xtCtx.moveTo(pad, 10);
+            xtCtx.lineTo(pad, h - pad);
+            xtCtx.lineTo(w - 10, h - pad);
+            xtCtx.stroke();
+
+            const maxX = 120, maxY = 2200;
+            const toX = (t) => pad + (t / maxX) * (w - pad - 15);
+            const toY = (x) => (h - pad) - (x / maxY) * (h - pad - 15);
+
+            const tPersonMax = PHYSICS.PERSON_ACCEL_TIME;
+            const posPersonMax = 0.5 * PHYSICS.ACCEL * tPersonMax * tPersonMax;
+
+            // 눈금 텍스트
+            xtCtx.fillStyle = '#94a3b8';
+            xtCtx.font = '10px Pretendard';
+            xtCtx.fillText(`${tPersonMax.toFixed(1)}s`, toX(tPersonMax) - 8, h - pad + 14);
+            xtCtx.fillText('120s', toX(120) - 10, h - pad + 14);
+            xtCtx.fillText('2000m', 2, toY(2000) + 3);
+            xtCtx.fillText(`${posPersonMax.toFixed(0)}m`, 2, toY(posPersonMax) + 3);
+
+            // 가이드 점선
+            xtCtx.setLineDash([3, 3]);
+            xtCtx.strokeStyle = '#f59e0b';
+            xtCtx.beginPath();
+            xtCtx.moveTo(toX(tPersonMax), 10);
+            xtCtx.lineTo(toX(tPersonMax), h - pad);
+            xtCtx.stroke();
+            xtCtx.setLineDash([]);
+
+            // 실시간 기차 x-t 선
+            xtCtx.strokeStyle = '#3b82f6';
+            xtCtx.lineWidth = 2.5;
+            xtCtx.beginPath();
+            for (let step = 0; step <= currentTime; step += 1) {
+                const p = calculatePhysics(step);
+                const px = toX(step);
+                const py = toY(p.trainPos);
+                if (step === 0) xtCtx.moveTo(px, py);
+                else xtCtx.lineTo(px, py);
+            }
+            xtCtx.stroke();
+
+            // 실시간 사람 x-t 선
+            xtCtx.strokeStyle = '#10b981';
+            xtCtx.lineWidth = 2.5;
+            xtCtx.beginPath();
+            for (let step = 0; step <= currentTime; step += 1) {
+                const p = calculatePhysics(step);
+                const px = toX(step);
+                const py = toY(p.personPos);
+                if (step === 0) xtCtx.moveTo(px, py);
+                else xtCtx.lineTo(px, py);
+            }
+            xtCtx.stroke();
+        }
+
+        /** 두 그래프 통합 렌더링 호출 */
+        function drawGraphs(state) {
+            drawVTGraph();
+            drawXTGraph();
+        }
+
+        // ==========================================
+        // [8] UI 대시보드 및 상단 상태 업데이트
+        // ==========================================
+        function updateUI(state) {
+            uiTime.textContent = `${currentTime.toFixed(1)}초`;
+            uiTrainSpeed.textContent = `${state.trainSpeed.toFixed(2)} m/s`;
+            uiPersonSpeed.textContent = `${state.personSpeed.toFixed(2)} m/s`;
+            uiTrainPos.textContent = `${state.trainPos.toFixed(1)}m`;
+            uiPersonPos.textContent = `${state.personPos.toFixed(1)}m`;
+            uiDistanceDiff.textContent = `${state.distanceDiff.toFixed(1)}m`;
+
+            const tPersonMax = PHYSICS.PERSON_ACCEL_TIME;
+
+            // 상단 상태 배지 업데이트
+            if (currentTime === 0) {
+                statusBadge.textContent = "준비 상태 (0.0초)";
+                statusBadge.className = "bg-slate-900 text-slate-300 font-bold px-4 py-2.5 rounded-xl border border-slate-700 text-center text-sm min-w-[180px]";
+            } else if (currentTime < tPersonMax) {
+                statusBadge.textContent = `나란히 배웅 중 (0~${tPersonMax.toFixed(1)}초)`;
+                statusBadge.className = "bg-emerald-950/80 text-emerald-300 font-bold px-4 py-2.5 rounded-xl border border-emerald-700 text-center text-sm min-w-[180px]";
+            } else if (currentTime < PHYSICS.TOTAL_SIM_TIME) {
+                statusBadge.textContent = "사람 최고속력 / 거리 벌어짐";
+                statusBadge.className = "bg-amber-950/80 text-amber-300 font-bold px-4 py-2.5 rounded-xl border border-amber-700 text-center text-sm min-w-[180px]";
+            } else {
+                statusBadge.textContent = "시뮬레이션 완료 (120초)";
+                statusBadge.className = "bg-blue-950/80 text-blue-300 font-bold px-4 py-2.5 rounded-xl border border-blue-700 text-center text-sm min-w-[180px]";
+            }
+        }
+
+        // ==========================================
+        // [9] 애니메이션 메인 루프 (Animation Loop)
+        // ==========================================
+        function animate(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const deltaTime = (timestamp - lastTimestamp) / 1000;
+            lastTimestamp = timestamp;
+
+            if (isRunning) {
+                currentTime += deltaTime * simSpeed;
+
+                // 120초 도달 시 완료 정지
+                if (currentTime >= PHYSICS.TOTAL_SIM_TIME) {
+                    currentTime = PHYSICS.TOTAL_SIM_TIME;
+                    isRunning = false;
+                }
+            }
+
+            const state = calculatePhysics(currentTime);
+
+            drawSimulationCanvas(state);
+            drawGraphs(state);
+            updateUI(state);
+
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        // ==========================================
+        // [10] 버튼 이벤트 핸들러 바인딩
+        // ==========================================
+        btnStart.addEventListener('click', () => {
+            if (currentTime >= PHYSICS.TOTAL_SIM_TIME) {
+                currentTime = 0;
+            }
+            isRunning = true;
+        });
+
+        btnPause.addEventListener('click', () => {
+            isRunning = false;
+        });
+
+        btnRestart.addEventListener('click', () => {
+            currentTime = 0;
+            isRunning = true;
+        });
+
+        btnReset.addEventListener('click', () => {
+            currentTime = 0;
+            isRunning = false;
+            const state = calculatePhysics(0);
+            drawSimulationCanvas(state);
+            drawGraphs(state);
+            updateUI(state);
+        });
+
+        // 카메라 모드 변경
+        btnCamOverview.addEventListener('click', () => {
+            cameraMode = 'OVERVIEW';
+            btnCamOverview.className = "cam-btn bg-blue-600 text-white px-3 py-1.5 rounded-lg font-bold transition shadow hover:bg-blue-500";
+            btnCamFollow.className = "cam-btn text-slate-400 px-3 py-1.5 rounded-lg font-medium hover:text-white transition";
+        });
+
+        btnCamFollow.addEventListener('click', () => {
+            cameraMode = 'FOLLOW';
+            btnCamFollow.className = "cam-btn bg-blue-600 text-white px-3 py-1.5 rounded-lg font-bold transition shadow hover:bg-blue-500";
+            btnCamOverview.className = "cam-btn text-slate-400 px-3 py-1.5 rounded-lg font-medium hover:text-white transition";
+        });
+
+        // 재생 속도 버튼
+        speedButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                speedButtons.forEach(b => {
+                    b.className = "speed-btn px-2.5 py-1 rounded-lg hover:bg-slate-800 text-slate-400";
+                });
+                e.target.className = "speed-btn px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold shadow";
+                simSpeed = parseFloat(e.target.getAttribute('data-speed'));
+            });
+        });
+
+        // 실행 초기화
+        window.onload = function() {
+            updateSummaryCards();
+            animationFrameId = requestAnimationFrame(animate);
+        };
+    </script>
+</body>
+</html>

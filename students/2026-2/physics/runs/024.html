@@ -1,0 +1,365 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>오사카성 돌림힘·지진 시뮬레이션</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,"Malgun Gothic",sans-serif;background:#eef2f7;color:#172033}
+.container{max-width:1000px;margin:30px auto;padding:20px}
+h1{margin-bottom:8px}
+.subtitle{color:#64748b;margin-bottom:20px}
+.tabs{display:flex;gap:8px;margin-bottom:16px}
+.tab,button{border:1px solid #cbd5e1;background:white;border-radius:9px;padding:11px 16px;font-weight:bold;cursor:pointer}
+.tab.active,.primary{background:#2563eb;color:white;border-color:#2563eb}
+.danger{background:#dc2626;color:white;border-color:#dc2626}
+.panel{background:#f8fafc;border:1px solid #dbe3ee;border-radius:16px;padding:16px}
+.card{background:white;border:1px solid #dbe3ee;border-radius:12px;padding:14px;margin-bottom:12px}
+.hidden{display:none}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.forceRow{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end}
+label,.label{display:block;font-size:13px;color:#64748b;margin-bottom:5px}
+input,select{width:100%;min-height:42px;border:1px solid #cbd5e1;border-radius:8px;padding:8px;font-size:16px}
+.value{font-size:23px;font-weight:bold}
+.small{font-size:13px;color:#64748b}
+.status{padding:12px;border-radius:10px;font-weight:bold;margin-bottom:12px}
+svg{width:100%;height:auto;background:#eef2f7;border-radius:12px}
+@media(max-width:650px){
+ .grid2,.grid3,.forceRow{grid-template-columns:1fr}
+ .container{padding:10px;margin:10px auto}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>오사카성 구조물 물리 시뮬레이션</h1>
+<div class="subtitle">돌림힘 평형과 지진 발생 시 구조물의 흔들림을 간단한 물리 모델로 확인합니다.</div>
+
+<div class="tabs">
+<button id="tabTorque" class="tab active">① 돌림힘 평형</button>
+<button id="tabEarthquake" class="tab">② 지진 시뮬레이션</button>
+</div>
+
+<section id="torquePanel" class="panel">
+<div class="card">
+<svg id="torqueScene" viewBox="0 0 720 360">
+<defs>
+<marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3z" fill="#166534"/></marker>
+<marker id="arrowRed" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3z" fill="#b91c1c"/></marker>
+</defs>
+<rect width="720" height="360" rx="12" fill="#eef2f7"/>
+<line x1="55" y1="300" x2="665" y2="300" stroke="#64748b" stroke-width="5"/>
+<g id="castleTorque" stroke="#475569" stroke-width="3">
+<rect x="260" y="135" width="200" height="165" fill="#e5e7eb"/>
+<rect x="300" y="95" width="120" height="40" fill="#f8fafc"/>
+<rect x="325" y="55" width="70" height="40" fill="#e5e7eb"/>
+<path d="M245 135 L475 135 L455 112 L265 112 Z" fill="#94a3b8"/>
+<path d="M285 95 L435 95 L420 77 L300 77 Z" fill="#94a3b8"/>
+<path d="M315 55 L405 55 L395 40 L325 40 Z" fill="#94a3b8"/>
+<rect x="295" y="235" width="45" height="65" fill="#cbd5e1"/>
+<rect x="380" y="235" width="45" height="65" fill="#cbd5e1"/>
+<rect x="325" y="180" width="70" height="55" fill="#cbd5e1"/>
+</g>
+<g>
+<line id="axisLine" x1="360" y1="30" x2="360" y2="315" stroke="#dc2626" stroke-width="4" stroke-dasharray="8 6"/>
+<circle id="axisPoint" cx="360" cy="300" r="9" fill="#dc2626"/>
+<text id="axisText" x="370" y="330" fill="#b91c1c" font-weight="bold">회전축</text>
+</g>
+<g id="forceLayer"></g>
+<text x="20" y="28" font-weight="bold">오사카성 모형 — 돌림힘 방향</text>
+</svg>
+<div class="small">녹색 화살표 = 반시계방향 · 빨간색 화살표 = 시계방향</div>
+</div>
+
+<div class="grid2">
+<div class="card">
+<div class="label">회전축 위치 (0~10 m)</div>
+<input id="axisInput" type="number" min="0" max="10" step="0.1" value="5">
+</div>
+<div class="card">
+<div class="label">사용한 공식</div>
+<strong>τ = F × r</strong>
+<div class="small">힘이 회전축에 수직으로 작용한다고 단순화했습니다.</div>
+</div>
+</div>
+
+<div class="card">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+<strong>힘 설정</strong>
+<button id="addForce" class="primary">+ 힘 추가</button>
+</div>
+<div id="forceRows"></div>
+</div>
+
+<div class="grid3">
+<div class="card"><div class="label">시계방향</div><div id="cw" class="value">0.00 N·m</div></div>
+<div class="card"><div class="label">반시계방향</div><div id="ccw" class="value">0.00 N·m</div></div>
+<div class="card"><div class="label">알짜 돌림힘</div><div id="net" class="value">0.00 N·m</div></div>
+</div>
+
+<div id="torqueStatus" class="status" style="background:#dcfce7;color:#166534">⚖️ 현재 돌림힘 평형</div>
+<button id="moveTorque" class="primary">▶ 건물 움직임 시작</button>
+</section>
+
+<section id="earthquakePanel" class="panel hidden">
+<div class="card">
+<svg id="earthScene" viewBox="0 0 720 360">
+<rect width="720" height="360" rx="12" fill="#eef2f7"/>
+<g id="earthCastle" stroke="#475569" stroke-width="3">
+<rect x="260" y="135" width="200" height="165" fill="#e5e7eb"/>
+<rect x="300" y="95" width="120" height="40" fill="#f8fafc"/>
+<rect x="325" y="55" width="70" height="40" fill="#e5e7eb"/>
+<path d="M245 135 L475 135 L455 112 L265 112 Z" fill="#94a3b8"/>
+<path d="M285 95 L435 95 L420 77 L300 77 Z" fill="#94a3b8"/>
+<path d="M315 55 L405 55 L395 40 L325 40 Z" fill="#94a3b8"/>
+<rect x="295" y="235" width="45" height="65" fill="#cbd5e1"/>
+<rect x="380" y="235" width="45" height="65" fill="#cbd5e1"/>
+<rect x="325" y="180" width="70" height="55" fill="#cbd5e1"/>
+</g>
+<line id="earthGround" x1="55" y1="300" x2="665" y2="300" stroke="#64748b" stroke-width="6"/>
+<path id="groundWave" d="M80 320 Q120 300 160 320 T240 320 T320 320 T400 320 T480 320 T560 320 T640 320" fill="none" stroke="#2563eb" stroke-width="3"/>
+<text x="20" y="28" font-weight="bold">지진 발생 → 지반 흔들림 → 건물 흔들림</text>
+</svg>
+</div>
+
+<div class="grid2">
+<div class="card">
+<div class="label">지진 세기</div>
+<input id="magnitude" type="range" min="1" max="8" step="0.1" value="3">
+<div id="magText" class="small">3.0</div>
+</div>
+<div class="card">
+<div class="label">진동수</div>
+<input id="frequency" type="range" min="0.5" max="5" step="0.1" value="2">
+<div id="freqText" class="small">2.0 Hz</div>
+</div>
+</div>
+
+<div class="grid3">
+<div class="card"><div class="label">현재 흔들림</div><div id="shakeValue" class="value">0.0 cm</div></div>
+<div class="card"><div class="label">건물 반응</div><div id="buildingResponse" class="value">안정</div></div>
+<div class="card"><div class="label">상태</div><div id="earthState" class="value">정지</div></div>
+</div>
+
+<button id="earthStart" class="danger">▶ 지진 발생</button>
+<button id="earthStop">■ 지진 정지</button>
+
+<div id="earthInfo" class="status" style="margin-top:12px;background:#f1f5f9;color:#334155">
+지진을 발생시키면 지반과 건물이 좌우로 흔들립니다. 실제 오사카성의 내진성능을 계산하는 모델은 아닙니다.
+</div>
+</section>
+</div>
+
+<script>
+const forceRows=document.getElementById("forceRows");
+let forces=[
+ {f:100,r:3,dir:"ccw"},
+ {f:60,r:5,dir:"cw"}
+];
+
+function syncForces(){
+ forces=[...forceRows.children].map(row=>({
+  f:Math.max(0,parseFloat(row.querySelector(".f").value)||0),
+  r:Math.max(0,parseFloat(row.querySelector(".r").value)||0),
+  dir:row.querySelector(".dir").value
+ }));
+}
+
+function renderForceRows(){
+ forceRows.innerHTML="";
+ forces.forEach((p,i)=>{
+  const row=document.createElement("div");
+  row.className="forceRow card";
+  row.innerHTML=`
+   <div><label>힘 F (N)</label><input class="f" type="number" min="0" value="${p.f}"></div>
+   <div><label>거리 r (m)</label><input class="r" type="number" min="0" step="0.1" value="${p.r}"></div>
+   <div><label>방향</label>
+    <select class="dir">
+     <option value="ccw" ${p.dir==="ccw"?"selected":""}>↺ 반시계방향</option>
+     <option value="cw" ${p.dir==="cw"?"selected":""}>↻ 시계방향</option>
+    </select>
+   </div>
+   <button class="remove">삭제</button>`;
+  row.querySelectorAll("input,select").forEach(el=>el.addEventListener("input",()=>{
+   syncForces();drawTorque();
+  }));
+  row.querySelector(".remove").addEventListener("click",()=>{
+   forces.splice(i,1);renderForceRows();drawTorque();
+  });
+  forceRows.appendChild(row);
+ });
+}
+
+function drawTorque(){
+ syncForces();
+ const axis=Math.max(0,Math.min(10,parseFloat(document.getElementById("axisInput").value)||0));
+ const ax=70+axis*58;
+
+ document.getElementById("axisLine").setAttribute("x1",ax);
+ document.getElementById("axisLine").setAttribute("x2",ax);
+ document.getElementById("axisPoint").setAttribute("cx",ax);
+ document.getElementById("axisText").setAttribute("x",ax+10);
+
+ const layer=document.getElementById("forceLayer");
+ layer.innerHTML="";
+ let cw=0,ccw=0;
+
+ forces.forEach((p,i)=>{
+  const tau=p.f*p.r;
+  if(p.dir==="cw")cw+=tau;else ccw+=tau;
+
+  const x=Math.max(80,Math.min(640,ax+(i%2===0?-p.r*35:p.r*35)));
+  const y=245-(i%3)*50;
+
+  const ns="http://www.w3.org/2000/svg";
+  const line=document.createElementNS(ns,"line");
+  line.setAttribute("x1",x);line.setAttribute("y1",y);
+  line.setAttribute("x2",x);line.setAttribute("y2",y-65);
+  line.setAttribute("stroke",p.dir==="cw"?"#b91c1c":"#166534");
+  line.setAttribute("stroke-width","5");
+  line.setAttribute("marker-end",p.dir==="cw"?"url(#arrowRed)":"url(#arrowGreen)");
+  layer.appendChild(line);
+
+  const text=document.createElementNS(ns,"text");
+  text.setAttribute("x",x+7);text.setAttribute("y",y-70);
+  text.setAttribute("font-size","14");
+  text.setAttribute("font-weight","bold");
+  text.setAttribute("fill",p.dir==="cw"?"#b91c1c":"#166534");
+  text.textContent="F"+(i+1);
+  layer.appendChild(text);
+ });
+
+ const net=ccw-cw;
+ document.getElementById("cw").textContent=cw.toFixed(2)+" N·m";
+ document.getElementById("ccw").textContent=ccw.toFixed(2)+" N·m";
+ document.getElementById("net").textContent=net.toFixed(2)+" N·m";
+
+ const status=document.getElementById("torqueStatus");
+ if(Math.abs(net)<0.01){
+  status.textContent="⚖️ 현재 돌림힘 평형: Στ = 0";
+  status.style.background="#dcfce7";status.style.color="#166534";
+ }else if(net>0){
+  status.textContent="↺ 반시계방향으로 회전하려는 경향";
+  status.style.background="#dcfce7";status.style.color="#166534";
+ }else{
+  status.textContent="↻ 시계방향으로 회전하려는 경향";
+  status.style.background="#fee2e2";status.style.color="#991b1b";
+ }
+}
+
+document.getElementById("addForce").addEventListener("click",()=>{
+ syncForces();
+ forces.push({f:50,r:2,dir:"ccw"});
+ renderForceRows();drawTorque();
+});
+
+document.getElementById("axisInput").addEventListener("input",drawTorque);
+
+document.getElementById("moveTorque").addEventListener("click",()=>{
+ document.getElementById("castleTorque").animate(
+  [
+   {transform:"translateX(0)"},
+   {transform:"translateX(8px)"},
+   {transform:"translateX(-8px)"},
+   {transform:"translateX(0)"}
+  ],
+  {duration:900,iterations:3}
+ );
+});
+
+/* 탭 */
+document.getElementById("tabTorque").addEventListener("click",()=>{
+ document.getElementById("torquePanel").classList.remove("hidden");
+ document.getElementById("earthquakePanel").classList.add("hidden");
+ document.getElementById("tabTorque").classList.add("active");
+ document.getElementById("tabEarthquake").classList.remove("active");
+});
+
+document.getElementById("tabEarthquake").addEventListener("click",()=>{
+ document.getElementById("earthquakePanel").classList.remove("hidden");
+ document.getElementById("torquePanel").classList.add("hidden");
+ document.getElementById("tabEarthquake").classList.add("active");
+ document.getElementById("tabTorque").classList.remove("active");
+});
+
+/* 지진 */
+let shaking=false;
+let animationId=null;
+let startTime=0;
+
+function earthquakeAnimation(time){
+ if(!shaking)return;
+
+ if(!startTime)startTime=time;
+
+ const elapsed=(time-startTime)/1000;
+ const magnitude=parseFloat(document.getElementById("magnitude").value);
+ const frequency=parseFloat(document.getElementById("frequency").value);
+
+ const groundMove=magnitude*4*Math.sin(elapsed*frequency*Math.PI*2);
+ const buildingMove=groundMove+magnitude*magnitude*0.18*
+   Math.sin(elapsed*frequency*Math.PI*2+0.35);
+
+ document.getElementById("earthCastle").setAttribute(
+  "transform",
+  `translate(${buildingMove.toFixed(2)},0) rotate(${(buildingMove*0.12).toFixed(2)} 360 300)`
+ );
+
+ document.getElementById("earthGround").setAttribute(
+  "transform",`translate(${(groundMove*0.55).toFixed(2)},0)`
+ );
+
+ document.getElementById("groundWave").setAttribute(
+  "transform",`translate(${(groundMove*0.75).toFixed(2)},0)`
+ );
+
+ document.getElementById("shakeValue").textContent=
+  Math.abs(buildingMove).toFixed(1)+" cm";
+
+ let response;
+ if(magnitude<3)response="안정";
+ else if(magnitude<5)response="흔들림";
+ else if(magnitude<7)response="큰 흔들림";
+ else response="매우 큰 흔들림";
+
+ document.getElementById("buildingResponse").textContent=response;
+ animationId=requestAnimationFrame(earthquakeAnimation);
+}
+
+document.getElementById("earthStart").addEventListener("click",()=>{
+ if(shaking)return;
+ shaking=true;
+ startTime=0;
+ document.getElementById("earthState").textContent="진행 중";
+ document.getElementById("earthInfo").textContent=
+ "지진이 발생했습니다. 지반이 움직이고 건물도 관성 때문에 흔들립니다.";
+ animationId=requestAnimationFrame(earthquakeAnimation);
+});
+
+document.getElementById("earthStop").addEventListener("click",()=>{
+ shaking=false;
+ if(animationId)cancelAnimationFrame(animationId);
+ animationId=null;
+ document.getElementById("earthCastle").removeAttribute("transform");
+ document.getElementById("earthGround").removeAttribute("transform");
+ document.getElementById("groundWave").removeAttribute("transform");
+ document.getElementById("shakeValue").textContent="0.0 cm";
+ document.getElementById("buildingResponse").textContent="안정";
+ document.getElementById("earthState").textContent="정지";
+});
+
+document.getElementById("magnitude").addEventListener("input",e=>{
+ document.getElementById("magText").textContent=parseFloat(e.target.value).toFixed(1);
+});
+document.getElementById("frequency").addEventListener("input",e=>{
+ document.getElementById("freqText").textContent=parseFloat(e.target.value).toFixed(1)+" Hz";
+});
+
+renderForceRows();
+drawTorque();
+</script>
+</body>
+</html><script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

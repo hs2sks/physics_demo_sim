@@ -1,0 +1,876 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><!DOCTYPE html>
+<!--
+  등가속도 운동 계산기 (비행기 모션 버전)
+  - 처음 속도, 나중 속도, 걸린 시간을 넣고 [계산하기]를 누르면
+    가속도를 계산하고 속도-시간(v-t) 그래프를 그려 줍니다.
+  - [계속하기]를 누르면 활주로 위에서 비행기가 등가속도로 달리는 모습을
+    움직이는 그림으로 볼 수 있어요. 그래프의 점도 같이 움직여요.
+  - 이 파일 하나만 있으면 됩니다. 더블클릭해서 브라우저로 열어 보세요.
+
+  이 파일은 세 부분으로 이루어져 있어요.
+    1) HTML  : 화면에 무엇이 있는지 (입력칸, 버튼, 그림 자리)
+    2) CSS   : 화면을 어떻게 꾸밀지 (색, 글자 크기, 배치)
+    3) JavaScript : 버튼을 눌렀을 때 무엇을 할지 (계산, 그림 그리기, 움직이기)
+-->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <!-- 휴대폰 화면에서도 크기가 알맞게 보이도록 하는 설정 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>가속도 계산기</title>
+
+  <!-- ==================== 2) CSS: 화면 꾸미기 ==================== -->
+  <style>
+    /* 자주 쓰는 색을 이름표(변수)로 만들어 둡니다.
+       나중에 색을 바꾸고 싶으면 여기 숫자만 고치면 돼요. */
+    :root {
+      --paper: #EDF2F5;   /* 배경색 (방안지 느낌) */
+      --panel: #FBFDFE;   /* 흰 종이 색 */
+      --ink: #12263A;     /* 글자색 (진한 남색) */
+      --muted: #55677A;   /* 설명 글자색 (회색) */
+      --grid: #D3DEE6;    /* 눈금선 색 */
+      --line: #0A7C86;    /* 그래프 선 / 속도 화살표 색 (청록) */
+      --amber: #C77800;   /* 가속도 화살표 색 (주황) */
+      --error: #B3261E;   /* 오류 메시지 색 */
+    }
+
+    /* 모든 요소의 크기 계산 방식을 통일 (padding을 넣어도 폭이 늘어나지 않게) */
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo",
+                   "Malgun Gothic", system-ui, sans-serif;
+      line-height: 1.6;
+      background-color: var(--paper);
+      /* 배경에 방안지 같은 격자무늬 넣기 */
+      background-image:
+        linear-gradient(#E0E8EE 1px, transparent 1px),
+        linear-gradient(90deg, #E0E8EE 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+
+    /* 화면 가운데 놓이는 흰 종이 */
+    main {
+      max-width: 780px;
+      margin: 32px auto;
+      padding: 28px;
+      background: var(--panel);
+      border: 1px solid var(--grid);
+      border-radius: 12px;
+    }
+
+    h1 { margin: 0 0 4px; font-size: 1.8rem; }
+    h2 { margin: 0 0 12px; font-size: 1.15rem; }
+    .intro { margin: 0 0 24px; color: var(--muted); }
+
+    /* 입력칸들을 배치하는 부분 */
+    .fields {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr); /* 세 칸을 나란히 */
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .fields .wide { grid-column: 1 / -1; }   /* '상황' 칸은 한 줄 전체 사용 */
+
+    label { display: block; margin-bottom: 4px; font-weight: 600; font-size: 0.95rem; }
+
+    input {
+      width: 100%;
+      font: inherit;
+      padding: 10px 12px;
+      color: var(--ink);
+      background: #fff;
+      border: 1px solid #AFC0CC;
+      border-radius: 8px;
+    }
+    /* 키보드로 칸을 선택했을 때 테두리를 눈에 띄게 */
+    input:focus-visible {
+      outline: 3px solid rgba(10, 124, 134, 0.35);
+      border-color: var(--line);
+    }
+
+    button {
+      font: inherit;
+      font-weight: 700;
+      padding: 12px 28px;
+      color: #fff;
+      background: var(--ink);
+      border: 0;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:hover { background: #1D3B58; }
+    button:focus-visible { outline: 3px solid rgba(10, 124, 134, 0.5); outline-offset: 2px; }
+    button:disabled { opacity: 0.65; cursor: default; }
+
+    /* [계속하기] 버튼은 청록색으로 구분해요 */
+    .play { background: var(--line); }
+    .play:hover { background: #08636B; }
+    .play:disabled:hover { background: var(--line); }
+
+    /* 잘못 입력했을 때 나오는 메시지 */
+    .error { margin: 12px 0 0; color: var(--error); font-weight: 600; }
+
+    /* 결과와 그림 영역 */
+    .section { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--grid); }
+    .answer { margin: 0 0 8px; font-size: 1.1rem; }
+    .answer strong { font-size: 2.4rem; }
+    .detail { margin: 4px 0; color: var(--muted); }
+
+    canvas {
+      display: block;
+      width: 100%;            /* 가로 폭은 화면에 맞춰 늘어나요 */
+      background: #fff;
+      border: 1px solid var(--grid);
+      border-radius: 8px;
+    }
+    .caption { margin: 10px 0 0; color: var(--muted); font-size: 0.95rem; }
+
+    /* 버튼과 시간/속도/거리 숫자를 나란히 놓는 줄 */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px 20px;
+      margin-top: 14px;
+    }
+    .readout {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 18px;
+      margin: 0;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;  /* 숫자 폭을 똑같게 해서 흔들리지 않게 */
+    }
+    .readout b {
+      display: inline-block;
+      min-width: 3.6em;
+      text-align: right;
+      color: var(--ink);
+    }
+
+    /* 화면이 좁은 휴대폰에서는 입력칸을 한 줄씩 */
+    @media (max-width: 560px) {
+      main { margin: 0; border-radius: 0; border-left: 0; border-right: 0; padding: 20px 16px; }
+      .fields { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- ==================== 1) HTML: 화면에 보이는 내용 ==================== -->
+  <main>
+    <h1>가속도 계산기</h1>
+    <p class="intro">속도가 일정하게 변할 때, 가속도를 구하고 비행기가 달리는 모습과 속도–시간 그래프로 확인해요.</p>
+
+    <!-- form 안에 넣으면 입력칸에서 Enter 키를 눌러도 계산돼요 -->
+    <form id="calcForm" novalidate>
+      <div class="fields">
+        <div class="wide">
+          <label for="situation">상황 설명</label>
+          <!-- value="..." 가 처음에 들어 있는 기본값이에요. 바꾸고 싶으면 여기를 고치세요. -->
+          <input id="situation" type="text" value="비행기가 활주로에서 이륙하는 상황">
+        </div>
+        <div>
+          <label for="v0">처음 속도 v₀ (m/s)</label>
+          <input id="v0" type="number" step="any" inputmode="decimal" value="0">
+        </div>
+        <div>
+          <label for="v">나중 속도 v (m/s)</label>
+          <input id="v" type="number" step="any" inputmode="decimal" value="75">
+        </div>
+        <div>
+          <label for="t">걸린 시간 t (초)</label>
+          <input id="t" type="number" step="any" inputmode="decimal" value="30">
+        </div>
+      </div>
+
+      <button type="submit">계산하기</button>
+      <!-- 오류가 생기면 여기에 글이 나타나요 (평소에는 숨김) -->
+      <p id="error" class="error" role="alert" hidden></p>
+    </form>
+
+    <!-- 계산 결과 (aria-live: 결과가 바뀌면 화면 낭독 프로그램이 읽어 줘요) -->
+    <section class="section" aria-live="polite">
+      <h2>계산 결과</h2>
+      <p class="answer">a = <strong id="aValue">–</strong> m/s²</p>
+      <p class="detail" id="formula"></p>
+      <p class="detail" id="meaning"></p>
+      <p class="detail" id="distance"></p>
+    </section>
+
+    <!-- 활주로 위 비행기 그림 -->
+    <section class="section">
+      <h2>활주로 시뮬레이션</h2>
+      <!-- canvas: 자바스크립트로 그림을 그릴 수 있는 도화지 (여기에 하늘, 활주로, 비행기를 그려요) -->
+      <canvas id="scene" role="img" aria-label="활주로 위에서 비행기가 가속하는 장면"></canvas>
+      <div class="toolbar">
+        <button type="button" id="playBtn" class="play">계속하기</button>
+        <p class="readout">
+          <span>시간 <b id="rt">0</b> 초</span>
+          <span>속도 <b id="rv">0</b> m/s</span>
+          <span>이동 거리 <b id="rs">0</b> m</span>
+        </p>
+      </div>
+      <p class="caption" id="playNote"></p>
+    </section>
+
+    <!-- 속도-시간 그래프 -->
+    <section class="section">
+      <h2 id="graphTitle">속도–시간 그래프</h2>
+      <canvas id="graph" role="img" aria-label="속도–시간 그래프"></canvas>
+      <p class="caption" id="caption"></p>
+    </section>
+  </main>
+
+  <!-- ==================== 3) JavaScript: 계산하고 그림 그리기 ==================== -->
+  <script>
+    // ----- (1) HTML 요소들을 이름표로 붙잡아 두기 -----
+    // document.getElementById('이름') : HTML에서 id가 그 이름인 요소를 찾아와요.
+    const form = document.getElementById('calcForm');
+    const situationInput = document.getElementById('situation');
+    const v0Input = document.getElementById('v0');
+    const vInput = document.getElementById('v');
+    const tInput = document.getElementById('t');
+    const errorEl = document.getElementById('error');
+
+    const aValueEl = document.getElementById('aValue');
+    const formulaEl = document.getElementById('formula');
+    const meaningEl = document.getElementById('meaning');
+    const distanceEl = document.getElementById('distance');
+    const graphTitleEl = document.getElementById('graphTitle');
+    const captionEl = document.getElementById('caption');
+
+    const playBtn = document.getElementById('playBtn');
+    const playNoteEl = document.getElementById('playNote');
+    const readTimeEl = document.getElementById('rt');
+    const readSpeedEl = document.getElementById('rv');
+    const readDistEl = document.getElementById('rs');
+
+    // 도화지(canvas) 두 개와, 각각에 그림을 그리는 붓(ctx)
+    const canvas = document.getElementById('graph');       // 그래프용
+    const ctx = canvas.getContext('2d');
+    const sceneCanvas = document.getElementById('scene');  // 비행기 장면용
+    const sctx = sceneCanvas.getContext('2d');
+
+    const FONT = '"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif';
+    const TAU = Math.PI * 2;   // 원 한 바퀴(360도)를 라디안으로 나타낸 값
+
+    let lastData = null;                    // 가장 최근에 계산한 값 { v0, v, t, a }
+    let sceneState = { tau: 0, fly: 0 };    // 지금 장면의 상태 (tau: 흐른 시간, fly: 이륙 진행도 0~1)
+    let animationId = null;                 // 그래프가 그려지는 애니메이션 번호표
+    let playId = null;                      // 비행기 움직임 애니메이션 번호표
+
+    // 사용자가 "움직임 줄이기" 설정을 켰는지 확인 (켰다면 애니메이션 없이 바로 그려요)
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // ----- (2) 도우미 함수들 -----
+
+    // 숫자를 보기 좋게 바꾸기: 소수점 둘째 자리까지만, 불필요한 0은 없애요.
+    // 예) 2.50 -> "2.5",  75 -> "75"
+    function fmt(n) {
+      return String(Number(n.toFixed(2)));
+    }
+
+    // 음수는 괄호로 감싸기: 수식에서 (75 − (−3)) 처럼 보이게 하려는 용도
+    function paren(n) {
+      return n < 0 ? '(' + fmt(n) + ')' : fmt(n);
+    }
+
+    // 오류 메시지 보여주기
+    function showError(message) {
+      errorEl.textContent = message;
+      errorEl.hidden = false;
+    }
+
+    // 눈금 간격을 "깔끔한 숫자"(1, 2, 5, 10, 20, 50 ...)로 정해 주는 함수
+    // range: 눈금으로 나눌 전체 길이, target: 대략 몇 칸으로 나눌지
+    function niceStep(range, target) {
+      const raw = range / target;
+      const magnitude = Math.pow(10, Math.floor(Math.log10(raw)));
+      const normalized = raw / magnitude;
+      let nice;
+      if (normalized <= 1) nice = 1;
+      else if (normalized <= 2) nice = 2;
+      else if (normalized <= 5) nice = 5;
+      else nice = 10;
+      return nice * magnitude;
+    }
+
+    // 도화지를 그림 그릴 준비 상태로 만들어 주는 함수
+    // - 화면 크기에 맞게 도화지 크기를 정하고, 예전 그림을 지워요.
+    // - ratio: 세로는 가로의 몇 배로 할지, minH/maxH: 세로 길이의 최소/최대
+    function prepareCanvas(cv, cx, ratio, minH, maxH) {
+      const dpr = window.devicePixelRatio || 1;   // 선명한 화면(레티나 등)을 위한 배율
+      const width = cv.clientWidth;
+      const height = Math.round(Math.min(maxH, Math.max(minH, width * ratio)));
+      const pw = Math.round(width * dpr);
+      const ph = Math.round(height * dpr);
+      if (cv.width !== pw || cv.height !== ph) {  // 크기가 바뀌었을 때만 다시 설정
+        cv.width = pw;
+        cv.height = ph;
+        cv.style.height = height + 'px';
+      }
+      cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      cx.clearRect(0, 0, width, height);
+      return { width: width, height: height };
+    }
+
+    // 등가속도 운동에서 시간 tau까지 움직인 거리(변위): s = v₀·τ + ½·a·τ²
+    function displacement(tau) {
+      return lastData.v0 * tau + 0.5 * lastData.a * tau * tau;
+    }
+
+    // 비행기 움직임을 보여 줄 시간(초): 너무 빠르거나 느리지 않게 4~8초 사이로 맞춰요.
+    function runSeconds(t) {
+      return Math.min(8, Math.max(4, t));
+    }
+
+    // 옆에 있는 시간/속도/거리 숫자 갱신하기
+    function updateReadout(tau) {
+      readTimeEl.textContent = fmt(tau);
+      readSpeedEl.textContent = fmt(lastData.v0 + lastData.a * tau);  // v = v₀ + a·τ
+      readDistEl.textContent = fmt(displacement(tau));
+    }
+
+    // ----- (3) 계산하기 -----
+    function calculate() {
+      // 입력칸의 글자를 숫자로 바꿔요. 비어 있거나 숫자가 아니면 NaN(숫자 아님)이 돼요.
+      const v0 = parseFloat(v0Input.value);
+      const v = parseFloat(vInput.value);
+      const t = parseFloat(tInput.value);
+
+      // 입력값 검사
+      if (isNaN(v0) || isNaN(v) || isNaN(t)) {
+        showError('처음 속도, 나중 속도, 걸린 시간 칸에 모두 숫자를 입력해 주세요.');
+        return;
+      }
+      if (t <= 0) {
+        showError('걸린 시간은 0보다 커야 해요. 0으로는 나눌 수 없어요.');
+        return;
+      }
+      errorEl.hidden = true; // 문제가 없으면 오류 메시지를 숨겨요
+
+      // ★ 핵심 공식: 가속도 = (나중 속도 − 처음 속도) ÷ 걸린 시간
+      const a = (v - v0) / t;
+      // 보너스: 움직인 거리 = 평균 속도 × 시간 = (처음 속도 + 나중 속도) ÷ 2 × 시간
+      const s = (v0 + v) / 2 * t;
+
+      // 결과 글자 화면에 표시하기 (textContent: 요소 안의 글자를 바꿔요)
+      aValueEl.textContent = fmt(a);
+      formulaEl.textContent =
+        'a = (v − v₀) ÷ t = (' + fmt(v) + ' − ' + paren(v0) + ') ÷ ' + fmt(t) + ' = ' + fmt(a) + ' m/s²';
+
+      let arrowText;  // 장면 아래 설명에 쓸 문장
+      if (a > 0) {
+        meaningEl.textContent = '속도가 1초마다 ' + fmt(a) + ' m/s씩 빨라져요.';
+        arrowText = '가속도(주황 화살표)는 일정한데, 속도(청록 화살표)는 점점 길어져요.';
+      } else if (a < 0) {
+        meaningEl.textContent = '속도가 1초마다 ' + fmt(-a) + ' m/s씩 느려져요. (가속도가 음수이면 속도가 줄어드는 운동이에요.)';
+        arrowText = '가속도(주황 화살표)는 일정한데, 속도(청록 화살표)는 점점 짧아져요.';
+      } else {
+        meaningEl.textContent = '속도가 변하지 않아요. 가속도가 0이면 등속 운동이에요.';
+        arrowText = '가속도가 0이라서 주황 화살표가 없고, 속도(청록 화살표)는 그대로예요.';
+      }
+
+      distanceEl.textContent =
+        '이동 거리: s = (v₀ + v) ÷ 2 × t = ' + fmt(s) + ' m';
+
+      // 그래프 제목과 설명 글
+      const situation = situationInput.value.trim();
+      graphTitleEl.textContent = situation ? situation : '속도–시간 그래프';
+      captionEl.textContent =
+        '처음(0초, ' + fmt(v0) + ' m/s)에서 나중(' + fmt(t) + '초, ' + fmt(v) +
+        ' m/s)까지 속도가 일정하게 변해서 직선이 돼요. 이 직선의 기울기가 바로 가속도예요.';
+      canvas.setAttribute('aria-label',
+        '속도–시간 그래프: ' + fmt(t) + '초 동안 속도가 ' + fmt(v0) + ' m/s에서 ' + fmt(v) + ' m/s로 변함');
+
+      // 비행기 장면 아래 안내 글 (실제 시간을 몇 초로 보여 주는지 알려줘요)
+      const runSec = runSeconds(t);
+      let timeText;
+      if (runSec === t) timeText = '실제 시간 그대로 보여줘요.';
+      else if (t > runSec) timeText = '실제 ' + fmt(t) + '초를 ' + fmt(runSec) + '초로 줄여서 보여줘요.';
+      else timeText = '실제 ' + fmt(t) + '초를 ' + fmt(runSec) + '초로 늘려서 보여줘요.';
+      playNoteEl.textContent = timeText + ' ' + arrowText;
+
+      // 그림을 그리려면 값이 필요하니까 기억해 두고, 장면을 처음 상태로 되돌려요.
+      lastData = { v0: v0, v: v, t: t, a: a };
+      cancelAnimationFrame(playId);              // 움직이던 중이면 멈추기
+      sceneState = { tau: 0, fly: 0 };
+      drawScene(0, 0);
+      updateReadout(0);
+      playBtn.disabled = false;
+      playBtn.textContent = '계속하기';
+
+      animateGraph();  // 그래프 선이 그려지는 애니메이션 시작
+    }
+
+    // ----- (4) 속도–시간 그래프 그리기 -----
+    // progress: 0이면 아직 아무것도 안 그린 상태, 1이면 선을 끝까지 다 그린 상태
+    // markerTau: 비행기가 움직이는 동안 그래프 위에 찍을 점의 시간 (없으면 null)
+    function drawGraph(progress, markerTau) {
+      const v0 = lastData.v0, v = lastData.v, t = lastData.t;
+
+      const size = prepareCanvas(canvas, ctx, 0.58, 260, 440);
+      const width = size.width, height = size.height;
+
+      // 그래프 그림이 들어갈 영역 (바깥 여백은 눈금 글자를 쓸 자리)
+      const left = 58, right = 26, top = 20, bottom = 50;
+      const plotW = width - left - right;
+      const plotH = height - top - bottom;
+      const plotBottom = top + plotH;
+
+      // 가로축(시간)과 세로축(속도)의 범위 정하기
+      const xStep = niceStep(t, 6);
+      const xMax = Math.ceil(t / xStep - 1e-9) * xStep;
+
+      let yMin = Math.min(0, v0, v);
+      let yMax = Math.max(0, v0, v);
+      if (yMax === yMin) yMax = yMin + 1;
+      const yStep = niceStep(yMax - yMin, 5);
+      yMin = Math.floor(yMin / yStep + 1e-9) * yStep;
+      yMax = Math.ceil(yMax / yStep - 1e-9) * yStep;
+
+      // "실제 값"을 "도화지 위 위치(픽셀)"로 바꿔 주는 함수 두 개
+      function toX(time) { return left + (time / xMax) * plotW; }
+      function toY(speed) { return top + ((yMax - speed) / (yMax - yMin)) * plotH; }
+
+      ctx.font = '12px ' + FONT;
+      ctx.lineWidth = 1;
+
+      // (a) 눈금선과 눈금 숫자 그리기
+      const xCount = Math.round(xMax / xStep);
+      for (let i = 0; i <= xCount; i++) {
+        const value = i * xStep;
+        const x = toX(value);
+        ctx.strokeStyle = '#E1E9EE';
+        ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, plotBottom); ctx.stroke();
+        ctx.fillStyle = '#55677A';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(fmt(value), x, plotBottom + 8);
+      }
+      const yCount = Math.round((yMax - yMin) / yStep);
+      for (let i = 0; i <= yCount; i++) {
+        const value = yMin + i * yStep;
+        const y = toY(value);
+        ctx.strokeStyle = '#E1E9EE';
+        ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(left + plotW, y); ctx.stroke();
+        ctx.fillStyle = '#55677A';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(fmt(value), left - 8, y);
+      }
+
+      // (b) 가로축, 세로축 (진한 선)
+      const zeroY = toY(Math.max(yMin, Math.min(0, yMax)));  // 속도 0인 높이
+      ctx.strokeStyle = '#12263A';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(left, top); ctx.lineTo(left, plotBottom);   // 세로축
+      ctx.moveTo(left, zeroY); ctx.lineTo(left + plotW, zeroY);
+      ctx.stroke();
+
+      // (c) 축 이름
+      ctx.fillStyle = '#12263A';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('시간 t (초)', left + plotW / 2, height - 6);
+      ctx.save();                                   // 지금 붓 상태를 저장
+      ctx.translate(14, top + plotH / 2);
+      ctx.rotate(-Math.PI / 2);                     // 글자를 세로로 눕히기
+      ctx.textBaseline = 'middle';
+      ctx.fillText('속도 v (m/s)', 0, 0);
+      ctx.restore();                                // 저장했던 붓 상태로 되돌리기
+
+      // (d) 속도 변화 직선 그리기 (progress만큼만 그려요)
+      const nowT = t * progress;
+      const nowV = v0 + (v - v0) * progress;
+      ctx.strokeStyle = '#0A7C86';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(toX(0), toY(v0));
+      ctx.lineTo(toX(nowT), toY(nowV));
+      ctx.stroke();
+
+      // (e) 시작점과 현재 끝점에 동그라미 찍기
+      ctx.fillStyle = '#0A7C86';
+      ctx.beginPath(); ctx.arc(toX(0), toY(v0), 5, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(toX(nowT), toY(nowV), 5, 0, TAU); ctx.fill();
+
+      // (f) 선을 다 그렸으면, 끝점에서 축까지 점선을 긋고 값을 적어요
+      if (progress >= 1) {
+        const ex = toX(t), ey = toY(v);
+        ctx.strokeStyle = '#0A7C86';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 5]);                      // 점선 모양
+        ctx.beginPath();
+        ctx.moveTo(ex, ey); ctx.lineTo(left, ey);       // 세로축 쪽으로
+        ctx.moveTo(ex, ey); ctx.lineTo(ex, plotBottom); // 가로축 쪽으로
+        ctx.stroke();
+        ctx.setLineDash([]);                          // 점선 끄기
+
+        ctx.font = 'bold 13px ' + FONT;
+        // 글자 뒤에 흰 테두리를 먼저 그리면 선 위에서도 잘 읽혀요.
+        drawLabel(fmt(v) + ' m/s', left + 8, ey - 8 < 14 ? ey + 16 : ey - 8, 'left');
+        drawLabel(fmt(t) + ' 초', ex - 8, plotBottom - 8, 'right');
+      }
+
+      // (g) 비행기가 움직이는 동안: 지금 시간에 해당하는 점을 주황색으로 표시
+      if (markerTau !== null && markerTau !== undefined) {
+        const mx = toX(markerTau);
+        const my = toY(v0 + (v - v0) / t * markerTau);
+        ctx.strokeStyle = '#8AA0B2';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(mx, plotBottom); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#E08A00';
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(mx, my, 7, 0, TAU); ctx.fill(); ctx.stroke();
+      }
+    }
+
+    // 흰 테두리가 있는 글자 쓰기
+    function drawLabel(text, x, y, align) {
+      ctx.textAlign = align;
+      ctx.textBaseline = 'alphabetic';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#fff';
+      ctx.strokeText(text, x, y);
+      ctx.fillStyle = '#07555C';
+      ctx.fillText(text, x, y);
+    }
+
+    // 그래프 선이 왼쪽에서 오른쪽으로 쭉 그려지는 애니메이션
+    function animateGraph() {
+      cancelAnimationFrame(animationId);   // 진행 중이던 애니메이션이 있으면 멈추기
+      if (reduceMotion) {                  // 움직임 줄이기 설정이면 바로 완성된 그래프
+        drawGraph(1, null);
+        return;
+      }
+      const startTime = performance.now();
+      const duration = 800;                // 0.8초 동안 그려요
+      function step(now) {
+        const p = Math.min((now - startTime) / duration, 1);   // 0 ~ 1
+        const eased = 1 - Math.pow(1 - p, 3);                  // 끝에서 살짝 느려지게
+        drawGraph(eased, null);
+        if (p < 1) animationId = requestAnimationFrame(step);  // 아직 안 끝났으면 다음 프레임 예약
+      }
+      animationId = requestAnimationFrame(step);
+    }
+
+    // ----- (5) 비행기와 활주로 그리기 -----
+
+    // 구름 하나 그리기 (동그라미 세 개를 겹쳐서)
+    function drawCloud(c, x, y, size) {
+      c.fillStyle = '#F8FCFD';
+      c.beginPath(); c.arc(x, y, size * 0.5, 0, TAU); c.fill();
+      c.beginPath(); c.arc(x + size * 0.55, y - size * 0.18, size * 0.62, 0, TAU); c.fill();
+      c.beginPath(); c.arc(x + size * 1.15, y, size * 0.48, 0, TAU); c.fill();
+    }
+
+    // 화살표 그리기 (len이 화살표 길이, 음수이면 왼쪽으로)
+    function drawArrow(c, x, y, len, color, label) {
+      if (Math.abs(len) < 2) return;             // 너무 짧으면 그리지 않아요
+      const dir = len > 0 ? 1 : -1;
+      c.strokeStyle = color;
+      c.fillStyle = color;
+      c.lineWidth = 3;
+      c.lineCap = 'round';
+      c.beginPath(); c.moveTo(x, y); c.lineTo(x + len - dir * 6, y); c.stroke();   // 몸통
+      c.beginPath();                                                                // 삼각형 머리
+      c.moveTo(x + len, y);
+      c.lineTo(x + len - dir * 10, y - 5);
+      c.lineTo(x + len - dir * 10, y + 5);
+      c.closePath();
+      c.fill();
+      c.font = 'italic bold 14px ' + FONT;       // 화살표 옆에 v 또는 a 글자
+      c.textAlign = 'right';
+      c.textBaseline = 'middle';
+      c.fillText(label, x - 8, y);
+    }
+
+    // 비행기 그리기
+    // (x, y): 비행기 몸통 가운데 위치, scale: 크기, angle: 기울기(라디안), showGear: 바퀴를 보여줄지
+    function drawPlane(c, x, y, scale, angle, showGear) {
+      const INK = '#12263A', TEAL = '#0A7C86';
+      c.save();
+      c.translate(x, y);      // 그림의 기준점을 비행기 위치로 옮기고
+      c.rotate(angle);        // 기울인 다음
+      c.scale(scale, scale);  // 크기를 조절해요. 이제부터는 비행기 몸통 길이가 약 120인 상태로 그리면 돼요.
+      c.lineJoin = 'round';
+      c.lineWidth = 2;
+      c.strokeStyle = INK;
+
+      // 바퀴 (몸통 뒤에 먼저 그려요)
+      if (showGear) {
+        c.lineCap = 'round';
+        c.lineWidth = 3;
+        c.beginPath();
+        c.moveTo(32, 8); c.lineTo(32, 22);     // 앞바퀴 다리
+        c.moveTo(-12, 8); c.lineTo(-12, 22);   // 뒷바퀴 다리
+        c.stroke();
+        c.fillStyle = INK;
+        c.beginPath(); c.arc(32, 23, 5, 0, TAU); c.fill();
+        c.beginPath(); c.arc(-12, 23, 5, 0, TAU); c.fill();
+        c.lineWidth = 2;
+      }
+
+      // 꼬리 날개 (수직 꼬리)
+      c.fillStyle = TEAL;
+      c.beginPath();
+      c.moveTo(-58, -9); c.lineTo(-68, -36); c.lineTo(-50, -36); c.lineTo(-34, -11);
+      c.closePath(); c.fill(); c.stroke();
+
+      // 몸통
+      c.fillStyle = '#FFFFFF';
+      c.beginPath();
+      c.moveTo(-58, -4);
+      c.quadraticCurveTo(-60, -10, -52, -11);        // 꼬리 위쪽
+      c.lineTo(30, -11);
+      c.bezierCurveTo(48, -11, 62, -5, 62, 0);        // 앞쪽 둥근 코 (위)
+      c.bezierCurveTo(62, 5, 50, 10, 30, 10);         // 앞쪽 둥근 코 (아래)
+      c.lineTo(-40, 10);
+      c.quadraticCurveTo(-56, 8, -58, -4);            // 꼬리 아래쪽
+      c.closePath(); c.fill(); c.stroke();
+
+      // 몸통 줄무늬
+      c.strokeStyle = TEAL;
+      c.lineWidth = 3;
+      c.beginPath(); c.moveTo(-50, 5); c.lineTo(42, 5); c.stroke();
+      c.strokeStyle = INK;
+      c.lineWidth = 2;
+
+      // 앞유리(조종석 창문)
+      c.fillStyle = '#8FD0D6';
+      c.beginPath();
+      c.moveTo(38, -9); c.lineTo(50, -9); c.lineTo(56, -4); c.lineTo(38, -4);
+      c.closePath(); c.fill(); c.stroke();
+
+      // 승객 창문들
+      c.fillStyle = '#8FD0D6';
+      for (let i = 0; i < 7; i++) {
+        c.beginPath(); c.arc(-30 + i * 10, -3, 2.4, 0, TAU); c.fill();
+      }
+
+      // 날개 (몸통 위에 겹쳐서 그려요)
+      c.fillStyle = '#A9BFCC';
+      c.beginPath();
+      c.moveTo(0, 2); c.lineTo(-30, 22); c.lineTo(-18, 22); c.lineTo(18, 2);
+      c.closePath(); c.fill(); c.stroke();
+
+      c.restore();  // 옮기고 기울이고 키운 것을 원래대로 되돌려요
+    }
+
+    // 하늘, 활주로, 비행기를 모두 그리는 함수
+    // tau: 출발 후 흐른 시간(초), fly: 이륙 진행도 (0이면 땅 위, 1이면 하늘로 떠오른 상태)
+    function drawScene(tau, fly) {
+      const v0 = lastData.v0, v = lastData.v, t = lastData.t, a = lastData.a;
+      const size = prepareCanvas(sceneCanvas, sctx, 0.34, 210, 270);
+      const W = size.width, H = size.height;
+      const c = sctx;
+      const sc = Math.min(1.15, Math.max(0.6, W / 760));   // 화면 크기에 따라 비행기 크기 조절
+
+      // (a) 하늘: 위는 진한 하늘색, 아래로 갈수록 연하게
+      const sky = c.createLinearGradient(0, 0, 0, H);
+      sky.addColorStop(0, '#BFDDEB');
+      sky.addColorStop(0.7, '#E6F2F6');
+      sky.addColorStop(1, '#F1F8F8');
+      c.fillStyle = sky;
+      c.fillRect(0, 0, W, H);
+
+      const runwayH = 58;                   // 활주로 두께
+      const runwayTop = H - runwayH;        // 활주로 윗선 위치
+      const horizonY = runwayTop - 26;      // 멀리 있는 언덕과 풀밭의 경계
+
+      // (b) 해와 구름
+      c.fillStyle = '#FFF3C4';
+      c.beginPath(); c.arc(W * 0.86, 46, 20, 0, TAU); c.fill();
+      drawCloud(c, W * 0.14, 44, 26);
+      drawCloud(c, W * 0.52, 30, 20);
+
+      // (c) 멀리 있는 언덕, 풀밭, 활주로
+      c.fillStyle = '#A7C7B0';
+      c.beginPath();
+      c.moveTo(0, horizonY);
+      c.quadraticCurveTo(W * 0.15, horizonY - 34, W * 0.32, horizonY - 8);
+      c.quadraticCurveTo(W * 0.5, horizonY - 40, W * 0.7, horizonY - 10);
+      c.quadraticCurveTo(W * 0.88, horizonY - 30, W, horizonY - 6);
+      c.lineTo(W, horizonY);
+      c.closePath();
+      c.fill();
+      c.fillStyle = '#B9D6AE';
+      c.fillRect(0, horizonY, W, runwayTop - horizonY);
+      c.fillStyle = '#3B4753';
+      c.fillRect(0, runwayTop, W, runwayH);
+      c.fillStyle = '#E9EEF1';
+      c.fillRect(0, runwayTop, W, 3);                                  // 활주로 가장자리 흰 선
+      c.fillStyle = '#F4F7F8';
+      for (let x = 10; x < W; x += 36) c.fillRect(x, runwayTop + 26, 20, 3);   // 가운데 점선
+
+      // (d) 비행기가 움직이는 범위 정하기
+      // 시간 0~t 동안 비행기가 갔던 가장 왼쪽(dmin)과 가장 오른쪽(dmax) 위치를 구해요.
+      let dmin = Math.min(0, displacement(t));
+      let dmax = Math.max(0, displacement(t));
+      if (a !== 0) {
+        const turnT = -v0 / a;   // 속도가 0이 되는 순간 (방향이 바뀌는 순간)
+        if (turnT > 0 && turnT < t) {
+          dmin = Math.min(dmin, displacement(turnT));
+          dmax = Math.max(dmax, displacement(turnT));
+        }
+      }
+      const span = dmax - dmin;
+      // 그 범위를 화면의 xa ~ xb 픽셀 사이에 맞춰 넣어요.
+      const xa = 30 + 100 * sc;
+      const xb = Math.max(xa, W - 30 - 130 * sc);
+      const k = span > 1e-9 ? (xb - xa) / span : 0;        // 1m가 몇 픽셀인지
+      function toPx(d) { return xa + (d - dmin) * k; }     // 거리(m) → 화면 위치(픽셀)
+
+      // (e) 활주로 위 거리 눈금 (몇 m 지점인지 알 수 있게)
+      c.font = '11px ' + FONT;
+      c.textBaseline = 'alphabetic';
+      c.fillStyle = '#C9D3DA';
+      c.textAlign = 'left';
+      c.fillText('거리(m)', 10, H - 5);
+      c.textAlign = 'center';
+      if (span > 1e-9) {
+        const step = niceStep(span, 5);
+        const first = Math.ceil(dmin / step - 1e-9);
+        const last = Math.floor(dmax / step + 1e-9);
+        for (let i = first; i <= last; i++) {
+          const d = i * step;
+          const x = toPx(d);
+          c.fillStyle = '#E9EEF1';
+          c.fillRect(x - 1, H - 24, 2, 6);
+          c.fillText(fmt(d), x, H - 5);
+        }
+      } else {
+        c.fillStyle = '#E9EEF1';
+        c.fillText('0', xa, H - 5);
+      }
+
+      // (f) 비행기의 현재 위치와 속도 계산
+      const vNow = v0 + a * tau;                            // 지금 속도: v = v₀ + a·τ
+      const vmax = Math.max(Math.abs(v0), Math.abs(v), 1e-9);
+      const fe = 1 - Math.pow(1 - fly, 2);                  // 이륙 진행도를 부드럽게 바꾼 값
+      const groundY = runwayTop + 14;                       // 바퀴가 닿는 높이
+      const px = toPx(displacement(tau)) + fe * 60 * sc;    // 비행기 가로 위치 (이륙하면 조금 더 앞으로)
+      const py = groundY - 28 * sc - fe * 70 * sc;          // 비행기 세로 위치 (이륙하면 위로)
+
+      // 그림자 (하늘로 뜨면 옅어지고 작아져요)
+      c.fillStyle = 'rgba(0,0,0,' + (0.28 * (1 - 0.6 * fe)) + ')';
+      c.beginPath();
+      c.ellipse(toPx(displacement(tau)) + fe * 60 * sc, groundY + 1, 54 * sc * (1 - 0.3 * fe), 5 * sc, 0, 0, TAU);
+      c.fill();
+
+      // 속도선: 빠를수록 꼬리 뒤에 긴 선이 생겨요
+      const speedRatio = Math.min(1, Math.abs(vNow) / vmax);
+      if (speedRatio > 0.02) {
+        const len = (10 + 46 * speedRatio) * sc;
+        c.strokeStyle = 'rgba(18,38,58,0.25)';
+        c.lineWidth = 2;
+        c.lineCap = 'round';
+        [-8, 2, 12].forEach(function (dy) {
+          c.beginPath();
+          c.moveTo(px - 74 * sc - len, py + dy * sc);
+          c.lineTo(px - 74 * sc, py + dy * sc);
+          c.stroke();
+        });
+      }
+
+      // 비행기 (이륙할 때는 코가 위로 들리고 바퀴가 들어가요)
+      drawPlane(c, px, py, sc, -fe * 0.25, fe < 0.3);
+
+      // (g) 속도 화살표(v)와 가속도 화살표(a): 이륙 장면에서는 서서히 사라져요
+      const arrowAlpha = Math.max(0, 1 - fe * 3);
+      if (arrowAlpha > 0) {
+        c.globalAlpha = arrowAlpha;
+        const ax = px - 20 * sc;
+        drawArrow(c, ax, py - 46 * sc, 90 * sc * (vNow / vmax), '#0A7C86', 'v');   // 속도: 점점 길어져요
+        drawArrow(c, ax, py - 64 * sc, a === 0 ? 0 : (a > 0 ? 1 : -1) * 44 * sc, '#C77800', 'a'); // 가속도: 늘 같은 길이
+        c.globalAlpha = 1;
+      }
+    }
+
+    // 장면, 그래프의 점, 옆의 숫자를 한꺼번에 갱신하는 함수
+    function setSceneState(tau, fly) {
+      sceneState = { tau: tau, fly: fly };
+      drawScene(tau, fly);
+      drawGraph(1, tau > 0 ? tau : null);
+      updateReadout(tau);
+    }
+
+    // ----- (6) [계속하기] 버튼: 비행기 움직이기 -----
+    function playMotion() {
+      if (!lastData) return;
+      cancelAnimationFrame(animationId);   // 그래프 그리기가 진행 중이면 멈추기
+      cancelAnimationFrame(playId);
+
+      const t = lastData.t;
+      const runMs = runSeconds(t) * 1000;          // 활주로를 달리는 시간
+      const flyMs = lastData.a > 0 ? 1400 : 0;     // 속도가 늘어난 경우에만 마지막에 이륙 장면
+
+      // 움직임 줄이기 설정이면 애니메이션 없이 마지막 장면만 보여줘요.
+      if (reduceMotion) {
+        setSceneState(t, 0);
+        playBtn.textContent = '다시 보기';
+        return;
+      }
+
+      playBtn.disabled = true;
+      playBtn.textContent = '움직이는 중…';
+      const startTime = performance.now();
+
+      function step(now) {
+        const elapsed = now - startTime;
+        let tau, fly;
+        if (elapsed < runMs) {
+          tau = t * elapsed / runMs;               // 시간이 일정한 빠르기로 흘러요
+          fly = 0;
+        } else {
+          tau = t;                                 // 달리기 끝, 이제 이륙 장면
+          fly = flyMs ? Math.min((elapsed - runMs) / flyMs, 1) : 0;
+        }
+        setSceneState(tau, fly);
+
+        if (elapsed < runMs + flyMs) {
+          playId = requestAnimationFrame(step);    // 아직 안 끝났으면 다음 프레임 예약
+        } else {
+          playBtn.disabled = false;                // 끝! 버튼을 다시 누를 수 있게 해요
+          playBtn.textContent = '다시 보기';
+        }
+      }
+      playId = requestAnimationFrame(step);
+    }
+
+    // ----- (7) 이벤트: "언제 무엇을 할지" 연결하기 -----
+
+    // [계산하기] 버튼을 누르거나 Enter 키를 누르면 calculate() 실행
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();  // 페이지가 새로고침되는 기본 동작을 막아요
+      calculate();
+    });
+
+    // [계속하기] 버튼을 누르면 비행기가 움직여요
+    playBtn.addEventListener('click', playMotion);
+
+    // 창 크기가 바뀌면 그림을 다시 그려요
+    window.addEventListener('resize', function () {
+      if (!lastData) return;
+      drawGraph(1, sceneState.tau > 0 ? sceneState.tau : null);
+      drawScene(sceneState.tau, sceneState.fly);
+    });
+
+    // 페이지를 처음 열었을 때: 기본값으로 한 번 계산해서 보여줘요
+    calculate();
+  </script>
+</body>
+</html>
+<script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

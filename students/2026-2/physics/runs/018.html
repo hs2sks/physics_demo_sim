@@ -1,0 +1,869 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><h1>롤러코스터 등가속도 운동</h1>
+<p><!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>더 플라잉 다이노소어의 곡선 운동에서 미시 구간의 등가속도 운동 근사 분석</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- MathJax for LaTeX rendering -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.4); border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(156, 163, 175, 0.7); }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+
+    <header class="bg-slate-800/90 backdrop-blur border-b border-slate-700/80 sticky top-0 z-50 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <div class="p-2.5 bg-indigo-600/20 text-indigo-400 rounded-xl border border-indigo-500/30">
+                <i class="fa-solid fa-chart-line text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-base md:text-lg font-bold text-white tracking-wide">더 플라잉 다이노소어 미시 구간 등가속도 운동 근사 분석</h1>
+                <p class="text-xs text-slate-400">탐구 질문: "곡선 운동을 0.03초 단위의 짧은 구간으로 나누었을 때 각 구간을 등가속도 운동으로 근사할 수 있는가?"</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <button id="btnPresetDino" class="px-3 py-1.5 bg-indigo-700/60 hover:bg-indigo-600 text-indigo-100 text-xs font-medium rounded-lg transition border border-indigo-500/50 flex items-center gap-1.5">
+                <i class="fa-solid fa-rotate text-xs"></i> 0.03초 실측 데이터 초기화
+            </button>
+            <button id="btnExportCSV" class="px-3 py-1.5 bg-slate-700/80 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg transition border border-slate-600 flex items-center gap-1.5">
+                <i class="fa-solid fa-file-csv"></i> CSV 내보내기
+            </button>
+            <button id="btnShowCode" class="px-3 py-1.5 bg-slate-700/80 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg transition border border-slate-600 flex items-center gap-1.5">
+                <i class="fa-solid fa-code"></i> Python 스크립트
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 p-4 md:p-6 max-w-[1650px] w-full mx-auto space-y-6">
+        <!-- Step 1 & Step 2 Panel: Segment Selector & Regression Analysis Result -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Control Box: Interval Selection & Input -->
+            <div class="lg:col-span-5 bg-slate-800/70 border border-indigo-500/40 rounded-2xl p-5 shadow-xl backdrop-blur-sm flex flex-col justify-between space-y-4">
+                <div>
+                    <div class="flex justify-between items-center border-b border-slate-700 pb-3 mb-4">
+                        <h2 class="text-sm font-bold text-indigo-300 flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-amber-400"></i> [Step 1] 미시 구간 선택 및 실측 변위 설정
+                        </h2>
+                        <span class="text-[11px] bg-indigo-950 text-indigo-300 px-2 py-0.5 rounded border border-indigo-700/60 font-mono">$\Delta t = 0.03\text{s}$ 고정</span>
+                    </div>
+
+                    <!-- Range Selector Buttons -->
+                    <div class="space-y-2 mb-4">
+                        <label class="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+                            <i class="fa-solid fa-vector-square text-emerald-400"></i> 분석할 연속 미시 구간 선택 (0.09초 단위 비교 포함)
+                        </label>
+                        <div class="grid grid-cols-3 sm:grid-cols-4 gap-1.5 text-xs font-mono" id="segmentBtnGroup">
+                            <button data-range="all" class="btn-range px-2 py-1.5 rounded-lg border bg-indigo-600 border-indigo-400 text-white font-bold transition">전체 (1~9)</button>
+                            <button data-range="1-3" class="btn-range px-2 py-1.5 rounded-lg border bg-slate-700/80 border-slate-600 text-slate-300 hover:bg-slate-700 transition">구간 1~3 (0.09s)</button>
+                            <button data-range="2-4" class="btn-range px-2.5 py-1.5 rounded-lg border bg-slate-700/80 border-slate-600 text-slate-300 hover:bg-slate-700 transition">구간 2~4 (0.09s)</button>
+                            <button data-range="3-5" class="btn-range px-2.5 py-1.5 rounded-lg border bg-slate-700/80 border-slate-600 text-slate-300 hover:bg-slate-700 transition">구간 3~5 (0.09s)</button>
+                            <button data-range="4-6" class="btn-range px-2.5 py-1.5 rounded-lg border bg-slate-700/80 border-slate-600 text-slate-300 hover:bg-slate-700 transition">구간 4~6 (0.09s)</button>
+                            <button data-range="5-7" class="btn-range px-2.5 py-1.5 rounded-lg border bg-slate-700/80 border-slate-600 text-slate-300 hover:bg-slate-700 transition">구간 5~7 (0.09s)</button>
+                            <button data-range="6-8" class="btn-range px-2.5 py-1.5 rounded-lg border bg-slate-700/80 border-slate-600 text-slate-300 hover:bg-slate-700 transition">구간 6~8 (0.09s)</button>
+                            <button data-range="7-9" class="btn-range px-2.5 py-1.5 rounded-lg border bg-slate-700/80 border-slate-600 text-slate-300 hover:bg-slate-700 transition">구간 7~9 (0.09s)</button>
+                        </div>
+                    </div>
+
+                    <!-- Custom Distance Input -->
+                    <div class="space-y-3">
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-xs font-semibold text-amber-300 flex items-center gap-1">
+                                    <i class="fa-solid fa-ruler-horizontal"></i> 각 0.03초 구간별 실측 이동거리 배열 $s_i$ (m)
+                                </label>
+                                <span class="text-[10px] font-mono text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-700/50">9개 데이터</span>
+                            </div>
+                            <textarea id="inputDistances" rows="2" class="w-full bg-slate-900 border border-amber-500/50 rounded-lg p-2.5 text-xs text-emerald-300 font-mono focus:outline-none focus:border-emerald-400 transition resize-none">0.540, 0.615, 0.690, 0.750, 0.795, 0.822, 0.831, 0.828, 0.819</textarea>
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium text-slate-300 mb-1 block">시간 간격 $\Delta t$ (s)</label>
+                            <input type="number" id="inputDt" step="0.005" min="0.005" max="0.10" value="0.03" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 font-mono focus:outline-none focus:border-indigo-500 transition">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-3 bg-indigo-950/40 border border-indigo-600/40 rounded-xl space-y-1 text-xs text-indigo-200">
+                    <p class="font-bold flex items-center gap-1.5 text-indigo-300">
+                        <i class="fa-solid fa-lightbulb text-amber-400"></i> 탐구 핵심 안내
+                    </p>
+                    <p class="text-[11px] leading-tight text-slate-300">
+                        각 구간의 구간 평균속도($\bar{v}_i = s_i / \Delta t$)를 중간 시각에 대응시키고 선형 회귀 분석을 수행합니다. $R^2$는 속도-시간 관계의 선형성을 비교하는 지표로 활용되며, 궤도 곡률에 따른 등가속도 운동 근사 타당성을 객관적으로 비교합니다.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Analysis Dashboard for Selected Interval -->
+            <div class="lg:col-span-7 bg-slate-800/70 border border-slate-700/80 rounded-2xl p-5 shadow-xl backdrop-blur-sm flex flex-col justify-between space-y-4">
+                <div>
+                    <div class="flex justify-between items-center border-b border-slate-700 pb-3 mb-3">
+                        <h2 class="text-sm font-bold text-emerald-300 flex items-center gap-2">
+                            <i class="fa-solid fa-square-poll-vertical text-emerald-400"></i> [Step 2] 선택 구간 평균속도 및 선형 회귀 분석 리포트
+                        </h2>
+                        <span id="badgeSelectedRangeName" class="text-xs font-mono font-bold bg-indigo-600 text-white px-2.5 py-1 rounded-full shadow">
+                            선택: 전체 구간 (1~9)
+                        </span>
+                    </div>
+
+                    <!-- Metrics Grid -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                        <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-700">
+                            <span class="text-[10px] text-slate-400 block mb-0.5">선택 구간 시간 범위</span>
+                            <p id="resTimeRange" class="text-xs font-mono font-bold text-indigo-300">0.000 ~ 0.270 s</p>
+                        </div>
+                        <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-700">
+                            <span class="text-[10px] text-slate-400 block mb-0.5">구간 평균속도 변화 ($\bar{v}_{\text{start}} \to \bar{v}_{\text{end}}$)</span>
+                            <p id="resVelocityChange" class="text-xs font-mono font-bold text-blue-400">18.00 $\to$ 27.30 m/s</p>
+                        </div>
+                        <div class="p-3 bg-slate-900/90 rounded-xl border border-amber-500/40">
+                            <span class="text-[10px] text-amber-300/90 block mb-0.5">회귀 근사 가속도 ($a$)</span>
+                            <p id="resAccelSlope" class="text-sm font-mono font-bold text-amber-400">39.06 m/s²</p>
+                        </div>
+                        <div class="p-3 bg-slate-900/90 rounded-xl border border-emerald-500/40">
+                            <span class="text-[10px] text-emerald-300/90 block mb-0.5">선형 적합도 지표 ($R^2$)</span>
+                            <p id="resR2" class="text-sm font-mono font-bold text-emerald-400">0.822</p>
+                        </div>
+                    </div>
+
+                    <!-- Core Evidence Box: Linearity & R2 -->
+                    <div class="p-4 bg-slate-900/80 rounded-xl border border-slate-700/80 space-y-2">
+                        <h3 class="text-xs font-bold text-slate-200 border-b border-slate-800 pb-1.5 flex items-center justify-between">
+                            <span><i class="fa-solid fa-atom text-blue-400 mr-1"></i> 탐구 핵심 검증: $\bar{v}-t$ 그래프의 선형성과 $R^2$ 지표의 의미</span>
+                            <span class="font-mono text-[10px] text-purple-300 font-normal">선형 관계 비교 지표</span>
+                        </h3>
+                        <p class="text-[11px] text-slate-300 leading-relaxed">
+                            본 탐구에서는 $R^2$를 절대적인 등가속도 판정 기준으로 삼지 않고, <strong class="text-amber-300">속도-시간 관계의 선형성을 비교하기 위한 지표</strong>로 활용합니다. $R^2$가 높을수록 해당 구간에서 속도와 시간이 선형적인 관계를 보인다는 것을 의미하며, 이를 바탕으로 각 구간의 등가속도 운동 근사 정도를 비교합니다. 즉, "$R^2$가 높다 = 등가속도 운동"이 아니라, "<strong class="text-emerald-300">$R^2$가 높다 = 등가속도 운동으로 근사하기에 적합한 선형성이 나타났다</strong>"로 표현합니다.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Final Judgment Verdict Box -->
+                <div id="verdictBox" class="p-3.5 rounded-xl border text-xs flex items-start gap-3 transition">
+                    <!-- Dynamic Verdict Content -->
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-4">
+            <div class="flex justify-between items-center flex-wrap gap-2">
+                <div class="flex items-center gap-2">
+                    <span class="p-2 bg-indigo-500/20 text-indigo-400 rounded-lg">
+                        <i class="fa-solid fa-chart-line text-sm"></i>
+                    </span>
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-100">[Step 3] 구간 평균속도-시간 ($\bar{v}-t$) 그래프 및 선형성 분석</h3>
+                        <p class="text-[11px] text-slate-400">각 미시 구간의 중간 시각에 대응시킨 구간 평균속도 변화와 선택 구간 선형 회귀선 비교</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Chart 1: Speed-Time with Regression Line -->
+                <div class="bg-slate-800/70 border border-slate-700/80 rounded-2xl p-4 shadow-xl backdrop-blur-sm flex flex-col">
+                    <div class="flex justify-between items-center mb-2">
+                        <h4 class="text-xs font-bold text-blue-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-chart-line text-blue-400"></i> (1) 구간 평균속도-시간 ($\bar{v}-t$) 선형 회귀 그래프
+                        </h4>
+                        <span class="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-700">m/s</span>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mb-2">● 구간별 평균속도 실측값 / ── 선택 구간 선형 회귀선 ($v = v_0 + at$)</p>
+                    <div class="relative flex-1 min-h-[250px]">
+                        <canvas id="chartSpeedRegression"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart 2: Accel-Time Chart -->
+                <div class="bg-slate-800/70 border border-slate-700/80 rounded-2xl p-4 shadow-xl backdrop-blur-sm flex flex-col">
+                    <div class="flex justify-between items-center mb-2">
+                        <h4 class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-bolt text-amber-400"></i> (2) 인접 구간 평균속도 변화율 (근사 가속도 $a_t$) 분포
+                        </h4>
+                        <span class="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-700">m/s²</span>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mb-2">시간에 따른 근사 가속도 변동 추이 관찰 (첫 구간은 앞 구간 부재로 계산 제외)</p>
+                    <div class="relative flex-1 min-h-[250px]">
+                        <canvas id="chartAccel"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Real Physics Data Table -->
+            <div class="lg:col-span-8 bg-slate-800/70 border border-slate-700/80 rounded-2xl p-5 shadow-xl backdrop-blur-sm">
+                <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="p-2 bg-emerald-500/20 text-emerald-400 rounded-lg">
+                            <i class="fa-solid fa-table text-xs"></i>
+                        </span>
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-100">0.03초 미시 구간별 운동 분석 데이터표</h3>
+                            <p class="text-[11px] text-slate-400">실측 변위 $s_i$, 대응 중간 시각 $t_i$, 구간 평균속도 $\bar{v}_i$, 근사 가속도 $a_t$ 목록</p>
+                        </div>
+                    </div>
+                    <span class="text-xs font-mono text-slate-300">총 이동거리: <strong id="statTotalDistMain" class="text-emerald-400">6.690 m</strong></span>
+                </div>
+                <div class="overflow-x-auto rounded-xl border border-slate-700/80">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-slate-900/90 text-slate-300 font-mono border-b border-slate-700">
+                                <th class="py-2.5 px-3 font-semibold">구간번호</th>
+                                <th class="py-2.5 px-3 font-semibold">시간 구간(s)</th>
+                                <th class="py-2.5 px-3 font-semibold text-center">중간 시각 $t_i$ (s)</th>
+                                <th class="py-2.5 px-3 font-semibold text-right text-amber-300">실측변위 $s_i$ (m)</th>
+                                <th class="py-2.5 px-3 font-semibold text-right text-blue-400">구간 평균속도 $\bar{v}_i$ (m/s)</th>
+                                <th class="py-2.5 px-3 font-semibold text-right text-emerald-400">km/h</th>
+                                <th class="py-2.5 px-3 font-semibold text-right text-amber-400">근사 가속도 $a_t$ (m/s²)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTableBody" class="divide-y divide-slate-700/50 font-mono text-slate-200">
+                            <!-- Dynamic Rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Coaster Simulator Mini View -->
+            <div class="lg:col-span-4 bg-slate-800/70 border border-slate-700/80 rounded-2xl p-5 shadow-xl backdrop-blur-sm flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-center border-b border-slate-700 pb-2 mb-3">
+                        <h3 class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                            <i class="fa-solid fa-roller-coaster text-indigo-400"></i> 루프 궤도 주행 모션 시뮬레이터
+                        </h3>
+                        <button id="btnPlayOrbit" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs rounded-lg transition flex items-center gap-1.5 shadow">
+                            <i class="fa-solid fa-play text-[10px]" id="playIcon"></i> <span id="playText">재생</span>
+                        </button>
+                    </div>
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex justify-center items-center relative overflow-hidden">
+                        <canvas id="canvasOrbit" width="340" height="230" class="w-full max-w-[340px] h-[220px]"></canvas>
+                    </div>
+                </div>
+
+                <div class="p-2.5 bg-slate-900/80 rounded-xl border border-slate-700/80 text-[11px] font-mono space-y-1 mt-3">
+                    <div class="flex justify-between text-slate-400">
+                        <span>경과 시간 $t$:</span>
+                        <span id="animTime" class="text-blue-400 font-bold">0.000 s</span>
+                    </div>
+                    <div class="flex justify-between text-slate-400">
+                        <span>구간 평균속도 $\bar{v}$:</span>
+                        <span id="animSpeed" class="text-emerald-400 font-bold">0.00 m/s</span>
+                    </div>
+                    <div class="flex justify-between text-slate-400">
+                        <span>근사 가속도 $a_t$:</span>
+                        <span id="animAccel" class="text-amber-400 font-bold">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-slate-800/80 border border-indigo-500/30 rounded-2xl p-5 shadow-xl text-xs space-y-4">
+            <h4 class="text-sm font-bold text-indigo-300 flex items-center gap-2 border-b border-slate-700 pb-2.5">
+                <i class="fa-solid fa-graduation-cap text-indigo-400 text-base"></i> 탐구 보고서 최종 결론 및 물리적 해석 근거
+            </h4>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-slate-300 leading-relaxed">
+                <!-- Short interval approximation explanation without specific segment numbers -->
+                <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-700/80 space-y-2">
+                    <p class="font-bold text-amber-300 flex items-center gap-1.5 text-xs">
+                        <i class="fa-solid fa-clock text-amber-400"></i> 미시 구간 분할과 등가속도 근사 타당성
+                    </p>
+                    <p class="text-[11px] text-slate-300">
+                        곡선 운동을 충분히 짧은 구간으로 나누면 일부 구간에서는 등가속도 운동으로 근사할 수 있지만, 모든 구간에서 동일한 수준의 근사가 성립하는 것은 아닙니다. 궤도 곡률과 가속도 변화에 따라 선형성에 차이가 발생함을 유의해야 합니다.
+                    </p>
+                </div>
+
+                <!-- Scientific phrasing & limitations -->
+                <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-700/80 space-y-2">
+                    <p class="font-bold text-indigo-300 flex items-center gap-1.5 text-xs">
+                        <i class="fa-solid fa-square-root-variable text-indigo-400"></i> $v-t$ 그래프 선형성과 $R^2$ 판정의 의의
+                    </p>
+                    <p class="text-[11px] text-slate-300">
+                        결정계수 $R^2$는 절대적인 물리 법칙이 아니라 속도와 시간의 선형 관계를 비교하기 위한 지표입니다. $R^2$가 높을수록 해당 구간이 등가속도 운동으로 근사하기에 적합한 선형성을 보임을 객관적으로 나타냅니다.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="codeModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl">
+            <div class="p-4 border-b border-slate-700 flex justify-between items-center">
+                <div class="flex items-center gap-2 text-white font-semibold text-sm">
+                    <i class="fa-brands fa-python text-amber-400 text-lg"></i> 미시 구간 등가속도 근사 분석 Python 스크립트
+                </div>
+                <button id="btnCloseModal" class="text-slate-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-4 flex-1 overflow-y-auto">
+                <pre class="bg-slate-900 border border-slate-700/80 p-4 rounded-xl font-mono text-xs text-blue-300 overflow-x-auto" id="pythonCodeContainer"></pre>
+            </div>
+            <div class="p-4 border-t border-slate-700 flex justify-end gap-3">
+                <button id="btnCopyCode" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs rounded-lg transition flex items-center gap-2">
+                    <i class="fa-regular fa-copy"></i> 코드 복사
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const DEFAULT_STATE = {
+            dt: 0.03,
+            baseS03: [0.540, 0.615, 0.690, 0.750, 0.795, 0.822, 0.831, 0.828, 0.819],
+            selectedRangeKey: 'all' // 'all', '1-3', '2-4', '3-5', '4-6', '5-7', '6-8', '7-9'
+        };
+
+        let currentState = JSON.parse(JSON.stringify(DEFAULT_STATE));
+        let chartSpeedInstance = null;
+        let chartAccelInstance = null;
+        let orbitAnimId = null;
+        let isAnimating = false;
+
+        // DOM Elements
+        const inputDistances = document.getElementById('inputDistances');
+        const inputDt = document.getElementById('inputDt');
+        const btnPresetDino = document.getElementById('btnPresetDino');
+        const btnExportCSV = document.getElementById('btnExportCSV');
+        const btnShowCode = document.getElementById('btnShowCode');
+        const btnCloseModal = document.getElementById('btnCloseModal');
+        const btnCopyCode = document.getElementById('btnCopyCode');
+        const codeModal = document.getElementById('codeModal');
+        const canvasOrbit = document.getElementById('canvasOrbit');
+
+        // Calculate physics values and linear regression for a specified sub-range
+        function analyzeKinematics(state) {
+            const dt = parseFloat(state.dt) || 0.03;
+            const sList = state.baseS03.map(Number);
+            const N = sList.length;
+
+            // 1. Interval average speeds v_bar_i = s_i / dt
+            const vList = sList.map(s => s / dt);
+            const vKmList = vList.map(v => v * 3.6);
+
+            // 2. Midpoint times for each interval: t_mid = i*dt + dt/2
+            const tMidList = vList.map((_, i) => (i + 0.5) * dt);
+            const tStartList = vList.map((_, i) => i * dt);
+            const tEndList = vList.map((_, i) => (i + 1) * dt);
+
+            // 3. Approximate accelerations a_t with null for the first element
+            const aList = [null];
+            for (let i = 1; i < N; i++) {
+                aList.push((vList[i] - vList[i - 1]) / dt);
+            }
+
+            // Determine start and end indices for selected range
+            let startIdx = 0;
+            let endIdx = N - 1;
+            if (state.selectedRangeKey !== 'all') {
+                const parts = state.selectedRangeKey.split('-');
+                startIdx = parseInt(parts[0]) - 1;
+                endIdx = parseInt(parts[1]) - 1;
+            }
+
+            // Subset for Linear Regression Analysis
+            const subT = [];
+            const subV = [];
+            const subS = [];
+            for (let i = startIdx; i <= endIdx; i++) {
+                subT.push(tMidList[i]);
+                subV.push(vList[i]);
+                subS.push(sList[i]);
+            }
+            const subN = subT.length;
+
+            // Linear Regression on (subT, subV) -> v = v0 + a * t
+            let sumT = 0, sumV = 0, sumTV = 0, sumT2 = 0, sumV2 = 0;
+            for (let i = 0; i < subN; i++) {
+                sumT += subT[i];
+                sumV += subV[i];
+                sumTV += subT[i] * subV[i];
+                sumT2 += subT[i] * subT[i];
+                sumV2 += subV[i] * subV[i];
+            }
+
+            const meanT = sumT / subN;
+            const meanV = sumV / subN;
+            let a_reg = 0;
+            let v0_reg = meanV;
+            const denom = (subN * sumT2 - sumT * sumT);
+            if (Math.abs(denom) > 1e-9) {
+                a_reg = (subN * sumTV - sumT * sumV) / denom;
+                v0_reg = (sumV - a_reg * sumT) / subN;
+            }
+
+            // Calculate R^2 (Linearity fit index)
+            let ssTot = 0;
+            let ssRes = 0;
+            for (let i = 0; i < subN; i++) {
+                const vPred = v0_reg + a_reg * subT[i];
+                ssTot += Math.pow(subV[i] - meanV, 2);
+                ssRes += Math.pow(subV[i] - vPred, 2);
+            }
+
+            let r2 = ssTot > 1e-9 ? (1 - (ssRes / ssTot)) : 1.0;
+            if (r2 < 0) r2 = 0;
+
+            const totalDistAll = sList.reduce((a, b) => a + b, 0);
+
+            return {
+                dt, sList, vList, vKmList, aList, tMidList, tStartList, tEndList,
+                startIdx, endIdx, subT, subV, subS, subN, a_reg, v0_reg, r2, totalDistAll
+            };
+        }
+
+        function updateDashboard() {
+            const res = analyzeKinematics(currentState);
+
+            // 1. Badge update
+            const badgeSelected = document.getElementById('badgeSelectedRangeName');
+            if (currentState.selectedRangeKey === 'all') {
+                badgeSelected.textContent = "선택: 전체 구간 (1~9)";
+            } else {
+                badgeSelected.textContent = `선택: 구간 ${currentState.selectedRangeKey} (${(res.startIdx*res.dt).toFixed(2)}~${((res.endIdx+1)*res.dt).toFixed(2)}s)`;
+            }
+
+            // 2. Metrics values
+            document.getElementById('resTimeRange').textContent = `${(res.startIdx * res.dt).toFixed(3)} ~ ${((res.endIdx + 1) * res.dt).toFixed(3)} s`;
+            document.getElementById('resVelocityChange').textContent = `${res.vList[res.startIdx].toFixed(2)} → ${res.vList[res.endIdx].toFixed(2)} m/s`;
+            document.getElementById('resAccelSlope').textContent = `${res.a_reg.toFixed(2)} m/s²`;
+            document.getElementById('resR2').textContent = res.r2.toFixed(3);
+            document.getElementById('statTotalDistMain').textContent = `${res.totalDistAll.toFixed(3)} m`;
+
+            // 3. Judgment Verdict Box with Updated Phrasing
+            const verdictBox = document.getElementById('verdictBox');
+
+            if (res.r2 >= 0.95) {
+                verdictBox.className = "p-3.5 rounded-xl border text-xs flex items-start gap-3 bg-emerald-950/80 border-emerald-500/60 text-emerald-200 shadow-md";
+                verdictBox.innerHTML = `
+                    <i class="fa-solid fa-circle-check text-emerald-400 text-lg mt-0.5"></i>
+                    <div>
+                        <p class="font-bold text-emerald-300 text-sm">판정: 선형성이 매우 높음 ($R^2 = ${res.r2.toFixed(3)}$)</p>
+                        <p class="mt-0.5 text-[11px] leading-relaxed text-slate-200">
+                            선택된 미시 구간에서 결정계수 $R^2$가 매우 높게 나타납니다. 이는 해당 구간에서 속도와 시간이 뚜렷한 선형 관계를 보여주며, <strong>등가속도 운동으로 근사하기에 적합한 선형성을 보인다</strong>고 평가할 수 있습니다.
+                        </p>
+                    </div>`;
+            } else if (res.r2 >= 0.80) {
+                verdictBox.className = "p-3.5 rounded-xl border text-xs flex items-start gap-3 bg-indigo-950/80 border-indigo-500/60 text-indigo-200 shadow-md";
+                verdictBox.innerHTML = `
+                    <i class="fa-solid fa-circle-info text-indigo-400 text-lg mt-0.5"></i>
+                    <div>
+                        <p class="font-bold text-indigo-300 text-sm">판정: 선형성이 비교적 높음 ($R^2 = ${res.r2.toFixed(3)}$)</p>
+                        <p class="mt-0.5 text-[11px] leading-relaxed text-slate-200">
+                            전반적인 경향성은 존재하나 궤도 변화에 따른 가속도 변동이 일부 포함되어 있어 국소적 근사 시 편차가 발생합니다. 탐구 내 비교 지표로서 유효합니다.
+                        </p>
+                    </div>`;
+            } else {
+                verdictBox.className = "p-3.5 rounded-xl border text-xs flex items-start gap-3 bg-amber-950/80 border-amber-500/60 text-amber-200 shadow-md";
+                verdictBox.innerHTML = `
+                    <i class="fa-solid fa-triangle-exclamation text-amber-400 text-lg mt-0.5"></i>
+                    <div>
+                        <p class="font-bold text-amber-300 text-sm">판정: 선형성이 낮음 ($R^2 = ${res.r2.toFixed(3)}$)</p>
+                        <p class="mt-0.5 text-[11px] leading-relaxed text-slate-200">
+                            결정계수 $R^2$가 낮으므로, 이 구간에서는 곡선 궤도 특성상 단일 직선(등가속도)으로 단순화하기에 부적합함을 보여줍니다.
+                        </p>
+                    </div>`;
+            }
+
+            if (window.MathJax && MathJax.typesetPromise) {
+                MathJax.typesetPromise();
+            }
+
+            updateDataTable(res);
+            updateCharts(res);
+        }
+
+        function updateDataTable(res) {
+            const tbody = document.getElementById('dataTableBody');
+            if (!tbody) return;
+
+            tbody.innerHTML = res.vList.map((speed, i) => {
+                const isSelected = (i >= res.startIdx && i <= res.endIdx);
+                const rowBg = isSelected ? 'bg-indigo-950/60 font-semibold' : 'hover:bg-slate-800/60';
+                const highlightBorder = isSelected ? 'border-l-4 border-indigo-400' : '';
+                const accelVal = res.aList[i] == null ? '--' : res.aList[i].toFixed(2);
+
+                return `
+                    <tr class="${rowBg} ${highlightBorder} transition">
+                        <td class="py-2.5 px-3 font-mono text-slate-300">구간 ${i + 1}</td>
+                        <td class="py-2.5 px-3 font-mono text-slate-400">${res.tStartList[i].toFixed(2)}~${res.tEndList[i].toFixed(2)}s</td>
+                        <td class="py-2.5 px-3 text-center font-mono text-indigo-300">${res.tMidList[i].toFixed(3)}s</td>
+                        <td class="py-2.5 px-3 text-right font-mono text-amber-300">${res.sList[i].toFixed(3)} m</td>
+                        <td class="py-2.5 px-3 text-right font-mono font-bold text-blue-400">${speed.toFixed(2)} m/s</td>
+                        <td class="py-2.5 px-3 text-right font-mono text-emerald-400">${res.vKmList[i].toFixed(1)}</td>
+                        <td class="py-2.5 px-3 text-right font-mono text-amber-400">${accelVal}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updateCharts(res) {
+            // 1. Chart 1: Speed Regression Line Chart
+            const ctxSpeed = document.getElementById('chartSpeedRegression').getContext('2d');
+            if (chartSpeedInstance) chartSpeedInstance.destroy();
+
+            const regressionPoints = res.tMidList.map((t, idx) => {
+                if (idx >= res.startIdx && idx <= res.endIdx) {
+                    return res.v0_reg + res.a_reg * t;
+                }
+                return null;
+            });
+
+            chartSpeedInstance = new Chart(ctxSpeed, {
+                type: 'line',
+                data: {
+                    labels: res.tMidList.map(t => `${t.toFixed(3)}s`),
+                    datasets: [
+                        {
+                            label: '구간 평균속도 v̄ (m/s)',
+                            data: res.vList,
+                            borderColor: '#38bdf8',
+                            backgroundColor: 'rgba(56, 189, 248, 0.2)',
+                            pointBackgroundColor: '#38bdf8',
+                            pointRadius: 5,
+                            showLine: true,
+                            tension: 0.2
+                        },
+                        {
+                            label: `선형회귀선 (v = ${res.v0_reg.toFixed(1)} + ${res.a_reg.toFixed(1)}t)`,
+                            data: regressionPoints,
+                            borderColor: '#f59e0b',
+                            borderWidth: 2.5,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: { display: true, text: '중간 시각 t_mid (s)', color: '#94a3b8', font: { size: 10 } },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
+                        y: {
+                            title: { display: true, text: '구간 평균속도 v̄ (m/s)', color: '#94a3b8', font: { size: 10 } },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#cbd5e1', font: { size: 10 } } }
+                    }
+                }
+            });
+
+            // 2. Chart 2: Accel Chart
+            const ctxAccel = document.getElementById('chartAccel').getContext('2d');
+            if (chartAccelInstance) chartAccelInstance.destroy();
+
+            const chartAccelData = res.aList.map(val => val === null ? 0 : val);
+
+            chartAccelInstance = new Chart(ctxAccel, {
+                type: 'bar',
+                data: {
+                    labels: res.tMidList.map(t => `${t.toFixed(3)}s`),
+                    datasets: [{
+                        label: '근사 가속도 a_t (m/s²)',
+                        data: chartAccelData,
+                        backgroundColor: res.aList.map((val, i) => {
+                            if (val === null) return 'rgba(100, 116, 139, 0.2)';
+                            return (i >= res.startIdx && i <= res.endIdx) ? 'rgba(245, 158, 11, 0.85)' : 'rgba(100, 116, 139, 0.4)';
+                        }),
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: { display: true, text: '중간 시각 t_mid (s)', color: '#94a3b8', font: { size: 10 } },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
+                        y: {
+                            title: { display: true, text: '근사 가속도 a_t (m/s²)', color: '#94a3b8', font: { size: 10 } },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#cbd5e1', font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        function drawCoasterOrbit(progressAngle = 0) {
+            const canvas = canvasOrbit;
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+
+            ctx.clearRect(0, 0, width, height);
+
+            const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
+            bgGrad.addColorStop(0, '#0f172a');
+            bgGrad.addColorStop(1, '#022c22');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, width, height);
+
+            const originX = width / 2;
+            const originY = height / 2 + 10;
+            const scale = Math.min(width, height) * 0.36;
+
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            const numPts = 100;
+            for (let i = 0; i <= numPts; i++) {
+                const ang = (i / numPts) * 2 * Math.PI;
+                const rMod = 1.0 - 0.22 * Math.sin(ang / 2);
+                const px = originX + rMod * scale * Math.cos(ang);
+                const py = originY - rMod * scale * Math.sin(ang);
+                if (i === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.stroke();
+
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            const rModCur = 1.0 - 0.22 * Math.sin(progressAngle / 2);
+            const cx = originX + rModCur * scale * Math.cos(progressAngle);
+            const cy = originY - rModCur * scale * Math.sin(progressAngle);
+
+            ctx.fillStyle = '#10b981';
+            ctx.strokeStyle = '#34d399';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(cx, cy, 7, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        function toggleAnimation() {
+            const playText = document.getElementById('playText');
+            const playIcon = document.getElementById('playIcon');
+
+            if (isAnimating) {
+                isAnimating = false;
+                if (orbitAnimId) cancelAnimationFrame(orbitAnimId);
+                playText.textContent = '재생';
+                playIcon.className = 'fa-solid fa-play text-[10px]';
+                return;
+            }
+
+            isAnimating = true;
+            playText.textContent = '정지';
+            playIcon.className = 'fa-solid fa-pause text-[10px]';
+
+            const res = analyzeKinematics(currentState);
+            const totalDuration = res.dt * res.vList.length;
+            let startTime = null;
+
+            function step(timestamp) {
+                if (!isAnimating) return;
+                if (!startTime) startTime = timestamp;
+                const elapsed = (timestamp - startTime) / 1000;
+                const progress = (elapsed % totalDuration) / totalDuration;
+                const currentAngle = progress * 2 * Math.PI;
+
+                const stepIndex = Math.min(Math.floor(progress * res.vList.length), res.vList.length - 1);
+                const curVel = res.vList[stepIndex] || 0;
+                const curAccel = res.aList[stepIndex];
+
+                document.getElementById('animTime').textContent = `${elapsed.toFixed(3)} s`;
+                document.getElementById('animSpeed').textContent = `${curVel.toFixed(2)} m/s`;
+                document.getElementById('animAccel').textContent = curAccel == null ? '--' : `${curAccel.toFixed(2)} m/s²`;
+
+                drawCoasterOrbit(currentAngle);
+                orbitAnimId = requestAnimationFrame(step);
+            }
+            orbitAnimId = requestAnimationFrame(step);
+        }
+
+        document.querySelectorAll('.btn-range').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.btn-range').forEach(b => {
+                    b.className = 'btn-range px-2.5 py-1.5 rounded-lg border bg-slate-700/80 border-slate-600 text-slate-300 hover:bg-slate-700 transition';
+                });
+                e.target.className = 'btn-range px-2.5 py-1.5 rounded-lg border bg-indigo-600 border-indigo-400 text-white font-bold transition';
+                currentState.selectedRangeKey = e.target.getAttribute('data-range');
+                updateDashboard();
+            });
+        });
+
+        inputDistances.addEventListener('input', (e) => {
+            const rawS = e.target.value.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+            if (rawS.length > 0) {
+                currentState.baseS03 = rawS;
+                updateDashboard();
+            }
+        });
+
+        inputDt.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            if (val > 0) {
+                currentState.dt = val;
+                updateDashboard();
+            }
+        });
+
+        btnPresetDino.addEventListener('click', () => {
+            currentState = JSON.parse(JSON.stringify(DEFAULT_STATE));
+            inputDistances.value = currentState.baseS03.join(', ');
+            inputDt.value = currentState.dt;
+            document.querySelectorAll('.btn-range').forEach(b => {
+                b.className = 'btn-range px-2.5 py-1.5 rounded-lg border bg-slate-700/80 border-slate-600 text-slate-300 hover:bg-slate-700 transition';
+            });
+            document.querySelector('[data-range="all"]').className = 'btn-range px-2.5 py-1.5 rounded-lg border bg-indigo-600 border-indigo-400 text-white font-bold transition';
+            updateDashboard();
+        });
+
+        document.getElementById('btnPlayOrbit').addEventListener('click', toggleAnimation);
+
+        btnExportCSV.addEventListener('click', () => {
+            const res = analyzeKinematics(currentState);
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+            csvContent += "구간번호,시작시간(s),종료시간(s),중간시각(s),실측변위_s(m),구간평균속도_v_bar(m/s),속력(km/h),근사가속도_a_t(m/s2)\n";
+
+            res.vList.forEach((speed, i) => {
+                const accelStr = res.aList[i] == null ? "N/A" : res.aList[i].toFixed(3);
+                csvContent += `"구간${i+1}",${res.tStartList[i].toFixed(3)},${res.tEndList[i].toFixed(3)},${res.tMidList[i].toFixed(3)},${res.sList[i].toFixed(3)},${speed.toFixed(3)},${res.vKmList[i].toFixed(2)},${accelStr}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "the_flying_dinosaur_micro_interval_analysis.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        btnShowCode.addEventListener('click', () => {
+            const sArrayStr = currentState.baseS03.map(val => val.toFixed(3)).join(', ');
+            const pythonCode = `# ============================================================
+# 더 플라잉 다이노소어 미시 구간 등가속도 근사 분석 스크립트
+# - 0.03초 구간별 평균속도 및 중간 시각 대응
+# - 선형회귀 분석을 통한 v-t 그래프 선형성(R²) 비교
+# ============================================================
+import numpy as np
+import pandas as pd
+
+# 1. 0.03초 실측 이동거리 데이터 s (m), 간격 dt (s)
+s_actual = np.array([${sArrayStr}])
+dt = ${currentState.dt}
+
+# 2. 각 구간별 구간 평균속도 v_bar (m/s) 및 중간 시각 t_mid (s)
+v_bar = s_actual / dt
+t_mid = np.array([(i + 0.5) * dt for i in range(len(s_actual))])
+
+# 3. 인접 구간 평균속도 변화율 (근사 가속도) a_t (m/s²), 첫 값은 None 처리
+a_t = [None] + list(np.diff(v_bar) / dt)
+
+# 4. 데이터프레임 구성
+df = pd.DataFrame({
+    '구간': [f"구간 {i+1}" for i in range(len(s_actual))],
+    '중간시각 t_mid(s)': t_mid,
+    '실측변위 s(m)': s_actual,
+    '구간평균속도 v_bar(m/s)': v_bar,
+    '근사 가속도 a_t(m/s²)': a_t
+})
+print("=== [1] 미시 구간별 평균속도 및 근사 가속도 목록 ===")
+print(df)
+
+# 5. 선택 구간 회귀분석 함수
+def analyze_sub_range(start_idx, end_idx):
+    sub_t = t_mid[start_idx:end_idx+1]
+    sub_v = v_bar[start_idx:end_idx+1]
+    
+    # 선형 회귀: v = a * t + v0
+    poly = np.polyfit(sub_t, sub_v, 1)
+    a_reg, v0_reg = poly[0], poly[1]
+    
+    # R^2 산출
+    v_pred = a_reg * sub_t + v0_reg
+    ss_res = np.sum((sub_v - v_pred)**2)
+    ss_tot = np.sum((sub_v - np.mean(sub_v))**2)
+    r2 = 1 - (ss_res / ss_tot) if ss_tot > 0 else 1.0
+    
+    print(f"\\n=== [2] 선택 구간 {start_idx+1}~{end_idx+1} 회귀분석 결과 ===")
+    print(f"회귀 가속도 a: {a_reg:.2f} m/s²")
+    print(f"직선 적합도 지표(R²): {r2:.3f}")
+
+analyze_sub_range(0, 2)
+`;
+            document.getElementById('pythonCodeContainer').textContent = pythonCode;
+            codeModal.classList.remove('hidden');
+        });
+
+        btnCloseModal.addEventListener('click', () => {
+            codeModal.classList.add('hidden');
+        });
+
+        btnCopyCode.addEventListener('click', () => {
+            const code = document.getElementById('pythonCodeContainer').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                btnCopyCode.innerHTML = `<i class="fa-solid fa-check"></i> 코드가 복사되었습니다!`;
+                setTimeout(() => {
+                    btnCopyCode.innerHTML = `<i class="fa-regular fa-copy"></i> 코드 복사`;
+                }, 2000);
+            });
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            updateDashboard();
+            drawCoasterOrbit(0);
+        });
+    </script>
+</body>
+</html></p><script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

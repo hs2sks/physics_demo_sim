@@ -1,0 +1,417 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><h1>안녕하세요</h1>
+<p>여기에 내용을 작성하세요.</p>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>물리 도르래와 용수철 시뮬레이션</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        canvas { background: #f8fafc; border-radius: 0.75rem; box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.05); }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+    <header class="bg-slate-800 border-b border-slate-700 py-4 px-6 shadow-md">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
+                    도르래 & 용수철 힘의 평형 시뮬레이터
+                </h1>
+                <p class="text-sm text-slate-400">물체 질량과 모드를 변경하여 작용하는 힘(장력, 탄성력, 수직항력)을 실시간으로 확인하세요.</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button id="modeGaBtn" onclick="setMode('ga')" class="px-4 py-2 rounded-lg font-semibold text-sm transition-all bg-blue-600 text-white shadow-lg shadow-blue-600/30">
+                    (가) 상황
+                </button>
+                <button id="modeNaBtn" onclick="setMode('na')" class="px-4 py-2 rounded-lg font-semibold text-sm transition-all bg-slate-700 text-slate-300 hover:bg-slate-600">
+                    (나) 상황
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Controls Sidebar -->
+        <div class="bg-slate-800/80 backdrop-blur border border-slate-700 rounded-2xl p-5 flex flex-col gap-6 shadow-xl">
+            <h2 class="text-lg font-semibold text-blue-300 border-b border-slate-700 pb-2">시뮬레이션 파라미터 조절</h2>
+            
+            <div class="flex flex-col gap-4">
+                <div>
+                    <label class="text-sm text-slate-300 font-medium flex justify-between">
+                        <span>물체 A 질량 ($3m$ 기준)</span>
+                        <span id="valMassA" class="text-blue-400 font-bold">3.0 kg</span>
+                    </label>
+                    <input type="range" id="rangeMassA" min="1" max="6" step="0.5" value="3" class="w-full mt-1 accent-blue-500 cursor-pointer" oninput="updateParams()">
+                </div>
+
+                <div>
+                    <label class="text-sm text-slate-300 font-medium flex justify-between">
+                        <span>물체 B 질량 ($m_B$)</span>
+                        <span id="valMassB" class="text-blue-400 font-bold">1.0 kg</span>
+                    </label>
+                    <input type="range" id="rangeMassB" min="0.5" max="5" step="0.5" value="1" class="w-full mt-1 accent-blue-500 cursor-pointer" oninput="updateParams()">
+                </div>
+
+                <div>
+                    <label class="text-sm text-slate-300 font-medium flex justify-between">
+                        <span>물체 C 질량 ($m_C$)</span>
+                        <span id="valMassC" class="text-blue-400 font-bold">2.0 kg</span>
+                    </label>
+                    <input type="range" id="rangeMassC" min="0.5" max="5" step="0.5" value="2" class="w-full mt-1 accent-blue-500 cursor-pointer" oninput="updateParams()">
+                </div>
+
+                <div>
+                    <label class="text-sm text-slate-300 font-medium flex justify-between">
+                        <span>용수철 변형 길이 ($d$)</span>
+                        <span id="valD" class="text-blue-400 font-bold">1.0 m</span>
+                    </label>
+                    <input type="range" id="rangeD" min="0.2" max="3" step="0.2" value="1" class="w-full mt-1 accent-blue-500 cursor-pointer" oninput="updateParams()">
+                </div>
+            </div>
+
+            <!-- Calculated Force Breakdown Box -->
+            <div class="bg-slate-900/60 border border-slate-700/80 rounded-xl p-4 flex flex-col gap-2">
+                <h3 class="text-sm font-semibold text-indigo-300">실시간 역학적 분석</h3>
+                <div id="analysisContent" class="text-xs text-slate-300 flex flex-col gap-1.5 leading-relaxed">
+                    <!-- Dynamic analysis loaded via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Canvas Display Area -->
+        <div class="lg:col-span-2 bg-slate-800/80 backdrop-blur border border-slate-700 rounded-2xl p-5 flex flex-col items-center justify-center relative shadow-xl min-h-[500px]">
+            <div class="absolute top-4 left-5 text-sm font-semibold text-slate-400" id="canvasTitleIndicator">
+                현재 모드: (가) 상황
+            </div>
+            <canvas id="simCanvas" class="w-full h-[550px] max-w-full"></canvas>
+            <p class="text-xs text-slate-500 mt-3 text-center">
+                * 화살표와 크기값은 각 물체에 작용하는 중력, 장력, 탄성력, 수직항력을 나타냅니다.
+            </p>
+        </div>
+    </main>
+
+    <script>
+        let currentMode = 'ga'; // 'ga' or 'na'
+        let params = {
+            mA: 3.0,
+            mB: 1.0,
+            mC: 2.0,
+            d: 1.0,
+            g: 9.8
+        };
+
+        function setMode(mode) {
+            currentMode = mode;
+            const gaBtn = document.getElementById('modeGaBtn');
+            const naBtn = document.getElementById('modeNaBtn');
+            const indicator = document.getElementById('canvasTitleIndicator');
+
+            if (mode === 'ga') {
+                gaBtn.className = "px-4 py-2 rounded-lg font-semibold text-sm transition-all bg-blue-600 text-white shadow-lg shadow-blue-600/30";
+                naBtn.className = "px-4 py-2 rounded-lg font-semibold text-sm transition-all bg-slate-700 text-slate-300 hover:bg-slate-600";
+                indicator.innerText = "현재 모드: (가) 상황 (좌: A, 우: B - S - C on 수평면)";
+            } else {
+                naBtn.className = "px-4 py-2 rounded-lg font-semibold text-sm transition-all bg-blue-600 text-white shadow-lg shadow-blue-600/30";
+                gaBtn.className = "px-4 py-2 rounded-lg font-semibold text-sm transition-all bg-slate-700 text-slate-300 hover:bg-slate-600";
+                indicator.innerText = "현재 모드: (나) 상황 (좌: C, 우: A - S - B on 수평면)";
+            }
+            drawSimulation();
+        }
+
+        function updateParams() {
+            params.mA = parseFloat(document.getElementById('rangeMassA').value);
+            params.mB = parseFloat(document.getElementById('rangeMassB').value);
+            params.mC = parseFloat(document.getElementById('rangeMassC').value);
+            params.d = parseFloat(document.getElementById('rangeD').value);
+
+            document.getElementById('valMassA').innerText = params.mA.toFixed(1) + ' kg';
+            document.getElementById('valMassB').innerText = params.mB.toFixed(1) + ' kg';
+            document.getElementById('valMassC').innerText = params.mC.toFixed(1) + ' kg';
+            document.getElementById('valD').innerText = params.d.toFixed(1) + ' m';
+
+            drawSimulation();
+        }
+
+        function drawSimulation() {
+            const canvas = document.getElementById('simCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Handle high DPI displays for sharp rendering
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+
+            const width = rect.width;
+            const height = rect.height;
+
+            ctx.clearRect(0, 0, width, height);
+
+            // Calculations based on current mode
+            let analysisHTML = "";
+            const g = params.g;
+
+            if (currentMode === 'ga') {
+                // (가) 상황: 좌측 A(mA), 우측 B(mB) - S(d) - C(mC on ground)
+                // 장력 T = mA * g
+                const T = params.mA * g;
+                // B에 대한 평형: T = mB*g + F_spring => F_spring = T - mB*g
+                const F_spring = T - (params.mB * g);
+                // C에 대한 평형: 수직항력 N_C = mC*g - F_spring (만약 늘어난 경우 F_spring이 위로 당김)
+                // 용수철이 늘어났을 때(d > 0), C는 위로 F_spring만큼 당겨짐. 아래로 mC*g. N_C + F_spring = mC*g => N_C = mC*g - F_spring
+                const N_C = (params.mC * g) - F_spring;
+
+                analysisHTML = `
+                    <div>• <b>실의 장력 (T):</b> ${T.toFixed(1)} N (${params.mA}mg)</div>
+                    <div>• <b>용수철 탄성력 (F<sub>s</sub>):</b> ${Math.abs(F_spring).toFixed(1)} N (${F_spring >= 0 ? '당기는 힘' : '미는 힘'})</div>
+                    <div>• <b>C에 작용하는 수직항력 (N<sub>C</sub>):</b> ${N_C.toFixed(1)} N ${N_C < 0 ? '<span class="text-red-400">(공중에 뜸/비현실적)</span>' : ''}</div>
+                    <div>• <b>용수철 상수 추정 (k):</b> ${(Math.abs(F_spring)/params.d).toFixed(1)} N/m</div>
+                `;
+
+                drawLayoutGa(ctx, width, height, T, F_spring, N_C);
+            } else {
+                // (나) 상황: 좌측 C(mC), 우측 A(mA) - S(d) - B(mB on ground)
+                // C가 매달려 있으므로 장력 T = mC * g
+                const T = params.mC * g;
+                // A에 대한 평형: T = mA * g + F_spring => F_spring = T - mA*g
+                const F_spring = T - (params.mA * g);
+                // B에 대한 평형 (수면 위): N_B + F_spring = mB*g (압축되어 있다면 F_spring은 B를 위로 밂)
+                // 줄어든 길이 d이므로 F_spring은 미는 힘. N_B = mB*g - F_spring
+                const N_B = (params.mB * g) - F_spring;
+
+                analysisHTML = `
+                    <div>• <b>실의 장력 (T):</b> ${T.toFixed(1)} N (${params.mC}mg)</div>
+                    <div>• <b>용수철 탄성력 (F<sub>s</sub>):</b> ${Math.abs(F_spring).toFixed(1)} N (${F_spring >= 0 ? '미는 힘(압축)' : '당기는 힘(인장)'})</div>
+                    <div>• <b>B에 작용하는 수직항력 (N<sub>B</sub>):</b> ${N_B.toFixed(1)} N ${N_B < 0 ? '<span class="text-red-400">(바닥 이탈/비현실적)</span>' : ''}</div>
+                    <div>• <b>용수철 상수 추정 (k):</b> ${(Math.abs(F_spring)/params.d).toFixed(1)} N/m</div>
+                `;
+
+                drawLayoutNa(ctx, width, height, T, F_spring, N_B);
+            }
+
+            document.getElementById('analysisContent').innerHTML = analysisHTML;
+        }
+
+        function drawLayoutGa(ctx, w, h, T, F_spring, N_C) {
+            const centerX = w / 2;
+            const pulleyX = centerX;
+            const pulleyY = 80;
+            const pulleyR = 25;
+
+            // Ceiling support
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(centerX - 80, pulleyY - 20, 160, 10);
+
+            // Pulley
+            ctx.beginPath();
+            ctx.arc(pulleyX, pulleyY, pulleyR, 0, Math.PI * 2);
+            ctx.fillStyle = '#334155';
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#94a3b8';
+            ctx.stroke();
+
+            // Strings
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 2;
+            // Left string (A)
+            const leftX = pulleyX - 100;
+            const aY = 240;
+            ctx.beginPath();
+            ctx.moveTo(pulleyX - pulleyR, pulleyY);
+            ctx.lineTo(leftX, pulleyY);
+            ctx.lineTo(leftX, aY - 30);
+            ctx.stroke();
+
+            // Right string (B)
+            const rightX = pulleyX + 100;
+            const bY = 180;
+            ctx.beginPath();
+            ctx.moveTo(pulleyX + pulleyR, pulleyY);
+            ctx.lineTo(rightX, pulleyY);
+            ctx.lineTo(rightX, bY - 30);
+            ctx.stroke();
+
+            // Object A (Left)
+            drawBox(ctx, leftX - 35, aY - 30, 70, 60, `A (${params.mA}kg)`, '#3b82f6');
+            // Force vectors on A
+            drawVector(ctx, leftX, aY + 30, 0, 50, '#ef4444', `중력 ${params.mA*9.8|0}N`);
+            drawVector(ctx, leftX, aY - 30, 0, -50, '#10b981', `장력 T`);
+
+            // Object B (Right top)
+            drawBox(ctx, rightX - 35, bY - 25, 70, 50, `B (${params.mB}kg)`, '#6366f1');
+            drawVector(ctx, rightX, bY + 25, 0, 40, '#ef4444', `중력`);
+            drawVector(ctx, rightX, bY - 25, 0, -40, '#10b981', `장력 T`);
+
+            // Spring S
+            const springTopY = bY + 25;
+            const springBotY = springTopY + 70 + (params.d * 15);
+            drawSpring(ctx, rightX, springTopY, springBotY, `용수철 (d=${params.d}m)`);
+
+            // Object C (Right bottom on ground)
+            const cY = springBotY + 40;
+            const groundY = cY + 30;
+            
+            // Ground
+            ctx.fillStyle = '#64748b';
+            ctx.fillRect(rightX - 90, groundY, 180, 12);
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '12px Inter';
+            ctx.fillText('수평면', rightX - 20, groundY + 25);
+
+            drawBox(ctx, rightX - 45, cY - 30, 90, 60, `C (${params.mC}kg)`, '#8b5cf6');
+            drawVector(ctx, rightX, cY + 30, 0, 50, '#ef4444', `중력`);
+            drawVector(ctx, rightX, cY - 30, 0, -35, '#f59e0b', `수직항력 N`);
+        }
+
+        function drawLayoutNa(ctx, w, h, T, F_spring, N_B) {
+            const centerX = w / 2;
+            const pulleyX = centerX;
+            const pulleyY = 80;
+            const pulleyR = 25;
+
+            // Ceiling support
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(centerX - 80, pulleyY - 20, 160, 10);
+
+            // Pulley
+            ctx.beginPath();
+            ctx.arc(pulleyX, pulleyY, pulleyR, 0, Math.PI * 2);
+            ctx.fillStyle = '#334155';
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#94a3b8';
+            ctx.stroke();
+
+            // Strings
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 2;
+            // Left string (C)
+            const leftX = pulleyX - 100;
+            const cY = 240;
+            ctx.beginPath();
+            ctx.moveTo(pulleyX - pulleyR, pulleyY);
+            ctx.lineTo(leftX, pulleyY);
+            ctx.lineTo(leftX, cY - 30);
+            ctx.stroke();
+
+            // Right string (A)
+            const rightX = pulleyX + 100;
+            const aY = 160;
+            ctx.beginPath();
+            ctx.moveTo(pulleyX + pulleyR, pulleyY);
+            ctx.lineTo(rightX, pulleyY);
+            ctx.lineTo(rightX, aY - 30);
+            ctx.stroke();
+
+            // Object C (Left)
+            drawBox(ctx, leftX - 35, cY - 30, 70, 60, `C (${params.mC}kg)`, '#8b5cf6');
+            drawVector(ctx, leftX, cY + 30, 0, 50, '#ef4444', `중력`);
+            drawVector(ctx, leftX, cY - 30, 0, -50, '#10b981', `장력 T`);
+
+            // Object A (Right top)
+            drawBox(ctx, rightX - 35, aY - 25, 70, 50, `A (${params.mA}kg)`, '#3b82f6');
+            drawVector(ctx, rightX, aY + 25, 0, 40, '#ef4444', `중력`);
+            drawVector(ctx, rightX, aY - 25, 0, -40, '#10b981', `장력 T`);
+
+            // Spring S (Compressed)
+            const springTopY = aY + 25;
+            const springBotY = springTopY + 50 - (params.d * 10);
+            drawSpring(ctx, rightX, springTopY, springBotY, `용수철 압축 (d=${params.d}m)`);
+
+            // Object B (Right bottom on ground)
+            const bY = springBotY + 35;
+            const groundY = bY + 30;
+            
+            // Ground
+            ctx.fillStyle = '#64748b';
+            ctx.fillRect(rightX - 90, groundY, 180, 12);
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '12px Inter';
+            ctx.fillText('수평면', rightX - 20, groundY + 25);
+
+            drawBox(ctx, rightX - 45, bY - 30, 90, 60, `B (${params.mB}kg)`, '#6366f1');
+            drawVector(ctx, rightX, bY + 30, 0, 50, '#ef4444', `중력`);
+            drawVector(ctx, rightX, bY - 30, 0, -35, '#f59e0b', `수직항력 N`);
+        }
+
+        function drawBox(ctx, x, y, width, height, label, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.roundRect(x, y, width, height, 8);
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#ffffff33';
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 13px Inter';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(label, x + width / 2, y + height / 2);
+        }
+
+        function drawVector(ctx, x, y, dx, dy, color, label) {
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 2.5;
+
+            // Line
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + dx, y + dy);
+            ctx.stroke();
+
+            // Arrowhead
+            const angle = Math.atan2(dy, dx);
+            ctx.beginPath();
+            ctx.moveTo(x + dx, y + dy);
+            ctx.lineTo(x + dx - 8 * Math.cos(angle - Math.PI / 6), y + dy - 8 * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(x + dx - 8 * Math.cos(angle + Math.PI / 6), y + dy - 8 * Math.sin(angle + Math.PI / 6));
+            ctx.fill();
+
+            // Label
+            ctx.font = '11px Inter';
+            ctx.textAlign = 'left';
+            ctx.fillText(label, x + dx + 6, y + dy / 2);
+        }
+
+        function drawSpring(ctx, x, y1, y2, label) {
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(x, y1);
+
+            const coils = 8;
+            const height = y2 - y1;
+            const coilHeight = height / coils;
+            
+            for (let i = 0; i < coils; i++) {
+                const cy = y1 + i * coilHeight;
+                ctx.lineTo(x + 12, cy + coilHeight * 0.25);
+                ctx.lineTo(x - 12, cy + coilHeight * 0.75);
+            }
+            ctx.lineTo(x, y2);
+            ctx.stroke();
+
+            ctx.fillStyle = '#fde047';
+            ctx.font = '11px Inter';
+            ctx.textAlign = 'right';
+            ctx.fillText(label, x - 18, (y1 + y2) / 2);
+        }
+
+        window.onload = function() {
+            updateParams();
+        };
+
+        window.onresize = function() {
+            drawSimulation();
+        };
+    </script>
+</body>
+</html><script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

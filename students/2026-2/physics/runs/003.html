@@ -1,0 +1,1187 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 엘리베이터 등가속도 운동 및 장력 시뮬레이터</title>
+    <!-- Tailwind CSS 로드 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700;800&display=swap');
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: #0b0f19;
+            color: #f8fafc;
+        }
+        canvas {
+            image-rendering: antialiased;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #6366f1;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.6);
+        }
+    </style>
+</head>
+<body class="p-3 md:p-6 min-h-screen">
+    <div class="max-w-7xl mx-auto space-y-5">
+        
+        <!-- 상단 헤더 & 물리학 가이드 -->
+        <header class="bg-slate-800/90 backdrop-blur border border-slate-700 rounded-2xl p-5 shadow-2xl">
+            <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                <div>
+                    <span class="inline-block px-3 py-1 bg-indigo-500/20 text-indigo-300 text-xs font-semibold rounded-full mb-2 border border-indigo-500/30">
+                        물리 I - 등가속도 운동 & 3D 권상기 장력 물리 시뮬레이션
+                    </span>
+                    <h1 class="text-2xl md:text-3xl font-extrabold text-white flex items-center gap-2">
+                        🏢 3D 건물 엘리베이터 등가속도 운동 & 케이블 장력 시뮬레이터
+                    </h1>
+                    <p class="text-slate-400 text-sm mt-1">
+                        선생님 코멘트: 엘리베이터의 상승/하강 조건에 따른 관성력과 실시간 케이블 장력 변화(T = M(g ± a))를 직관적으로 비교·분석해보렴!
+                    </p>
+                </div>
+                <div class="bg-indigo-950/80 border border-indigo-500/40 p-3.5 rounded-xl text-left lg:text-right text-xs text-indigo-200 shadow-inner w-full lg:w-auto">
+                    <p class="font-bold text-sm text-indigo-100 mb-1">💡 상승 vs 하강 장력 공식 비교</p>
+                    <p>• 상승 가속 / 하강 감속: <span class="text-rose-300 font-bold">T = M(g + a)</span> (장력 ⬆️ 과하중)</p>
+                    <p>• 정지 / 등속 운동: <span class="text-slate-300 font-bold">T = Mg</span> (기본 중력 하중)</p>
+                    <p>• 상승 감속 / 하강 가속: <span class="text-cyan-300 font-bold">T = M(g - a)</span> (장력 🔻 감량)</p>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            
+            <!-- [1열] 왼쪽: 실험 조건 입력 조작 패널 -->
+            <div class="lg:col-span-4 bg-slate-800/90 border border-slate-700 rounded-2xl p-5 flex flex-col justify-between shadow-xl space-y-5">
+                <div>
+                    <h2 class="text-base font-bold text-indigo-400 mb-4 flex items-center gap-2 border-b border-slate-700 pb-2">
+                        ⚙️ 실험 조건 및 방향 설정
+                    </h2>
+                    
+                    <div class="space-y-3.5 text-sm">
+                        <!-- 운행 방향 선택 (상승 / 하강 / 왕복) -->
+                        <div>
+                            <label class="block text-slate-300 font-medium mb-1.5">운행 방향 선택</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button type="button" id="btnDirUp" class="dir-btn py-2 px-1 text-xs font-bold rounded-xl border border-indigo-500 bg-indigo-600 text-white transition shadow-md">
+                                    ⬆️ 상승 (UP)
+                                </button>
+                                <button type="button" id="btnDirDown" class="dir-btn py-2 px-1 text-xs font-bold rounded-xl border border-slate-700 bg-slate-900 text-slate-400 hover:text-white transition">
+                                    ⬇️ 하강 (DOWN)
+                                </button>
+                                <button type="button" id="btnDirRound" class="dir-btn py-2 px-1 text-xs font-bold rounded-xl border border-slate-700 bg-slate-900 text-slate-400 hover:text-white transition">
+                                    🔄 왕복 (UP&DOWN)
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 이동 거리 -->
+                        <div>
+                            <label class="block text-slate-300 font-medium mb-1">이동 거리 (m)</label>
+                            <input type="number" id="inputDistance" value="200" min="50" max="500" step="10" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500 font-semibold">
+                        </div>
+
+                        <!-- 총 이동 시간 -->
+                        <div>
+                            <label class="block text-slate-300 font-medium mb-1">한 방향 이동 시간 (초)</label>
+                            <input type="number" id="inputTime" value="40" min="10" max="100" step="2" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500 font-semibold">
+                        </div>
+
+                        <!-- 처음 속도 & 나중 속도 -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-slate-300 font-medium mb-1">처음 속도 (m/s)</label>
+                                <input type="number" id="inputV0" value="0" readonly class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2 text-slate-400 cursor-not-allowed">
+                            </div>
+                            <div>
+                                <label class="block text-slate-300 font-medium mb-1">나중 속도 (m/s)</label>
+                                <input type="number" id="inputVend" value="0" readonly class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2 text-slate-400 cursor-not-allowed">
+                            </div>
+                        </div>
+
+                        <!-- 엘리베이터 & 승객 무게 -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-slate-300 font-medium mb-1">엘리베이터 자체 무게</label>
+                                <input type="text" value="2050 kg" readonly class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2 text-slate-400 cursor-not-allowed">
+                            </div>
+                            <div>
+                                <label class="block text-slate-300 font-medium mb-1">승객 1인당 평균 무게</label>
+                                <input type="text" value="60 kg" readonly class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2 text-slate-400 cursor-not-allowed">
+                            </div>
+                        </div>
+
+                        <!-- 승객 수 슬라이더 조작 (최대 정원 31명, 32명 탑승 시 절단) -->
+                        <div class="pt-3 border-t border-slate-700">
+                            <div class="flex justify-between items-center mb-1.5">
+                                <label class="block text-slate-200 font-bold">
+                                    승객 수 조절 (정원 31인승)
+                                </label>
+                                <span id="passengerCountText" class="text-xl font-extrabold text-indigo-400">10명</span>
+                            </div>
+                            <input type="range" id="passengerSlider" min="0" max="32" value="10" class="w-full accent-indigo-500 cursor-pointer h-2 bg-slate-700 rounded-lg">
+                            <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+                                <span>0명 (빈 카)</span>
+                                <span class="text-amber-400">정원 31명</span>
+                                <span class="text-rose-400 font-bold">32명 (초과)</span>
+                            </div>
+                            
+                            <!-- 32명 초과 하중 경고 -->
+                            <div id="overloadWarning" class="hidden mt-2 p-2.5 bg-rose-500/20 border border-rose-500/50 rounded-xl text-rose-300 text-xs font-bold animate-pulse text-center shadow-lg">
+                                ⚠️ [케이블 허용 장력 초과] 32명 탑승! 주행 중 강철 케이블 4개 전단 파단 및 자유낙하 발생!
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 실행 버튼 영역 -->
+                <div class="space-y-2.5 pt-2">
+                    <button id="btnStart" class="w-full bg-indigo-600 hover:bg-indigo-500 active:scale-[0.99] text-white font-bold py-3 rounded-xl transition duration-200 shadow-lg shadow-indigo-600/30 text-base flex items-center justify-center gap-2">
+                        ▶️ 시뮬레이션 시작
+                    </button>
+                    <button id="btnReset" class="w-full bg-slate-700 hover:bg-slate-600 active:scale-[0.99] text-slate-200 font-medium py-2 rounded-xl transition duration-200 text-sm flex items-center justify-center gap-2">
+                        🔄 처음 상태로 초기화
+                    </button>
+                </div>
+            </div>
+
+            <!-- [2열] 중앙: 3D 건물 승강로 & 권상기 모터 캔버스 -->
+            <div class="lg:col-span-4 bg-slate-800/90 border border-slate-700 rounded-2xl p-4 flex flex-col items-center justify-between shadow-xl relative overflow-hidden">
+                <div class="w-full flex items-center justify-between mb-2">
+                    <h2 class="text-sm font-bold text-slate-200 flex items-center gap-1.5">
+                        <span>🏗️ 3D 승강로 & 실시간 권상기 모터</span>
+                    </h2>
+                    <span id="statusBadge" class="text-xs px-2.5 py-1 rounded-full bg-slate-700 text-slate-300 font-medium">대기 중</span>
+                </div>
+                
+                <!-- 3D 애니메이션 캔버스 -->
+                <div class="w-full flex-1 flex justify-center items-center relative min-h-[500px]">
+                    <canvas id="elevatorCanvas" width="380" height="520" class="bg-slate-950 rounded-xl border border-slate-800 shadow-inner w-full h-full"></canvas>
+                </div>
+            </div>
+
+            <!-- [3열] 오른쪽: v-t 그래프 & 실시간 물리학 데이터 -->
+            <div class="lg:col-span-4 space-y-4 flex flex-col justify-between">
+                
+                <!-- v-t 그래프 패널 -->
+                <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-4 shadow-xl">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-sm font-bold text-indigo-400">📈 속도-시간 (v-t) 그래프</h2>
+                        <span id="graphAreaText" class="text-[11px] text-slate-400">면적 = 200m</span>
+                    </div>
+                    <canvas id="vtGraphCanvas" width="340" height="180" class="bg-slate-950 rounded-xl border border-slate-800 w-full"></canvas>
+                </div>
+
+                <!-- 실시간 물리학 대시보드 -->
+                <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-4 shadow-xl space-y-3">
+                    <h3 class="text-xs font-bold text-slate-300 border-b border-slate-700 pb-2 flex justify-between items-center">
+                        <span>📊 실시간 물리 계측 데이터</span>
+                        <span class="text-[10px] text-slate-400 font-normal">중력가속도 g = 9.80 m/s²</span>
+                    </h3>
+                    
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-700/50">
+                            <span class="text-[11px] text-slate-400 block">현재 높이 (s)</span>
+                            <span id="dataHeight" class="text-base font-bold text-emerald-400">0.0 m</span>
+                        </div>
+                        <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-700/50">
+                            <span class="text-[11px] text-slate-400 block">현재 속도 (v)</span>
+                            <span id="dataVelocity" class="text-base font-bold text-cyan-400">0.0 m/s</span>
+                        </div>
+                        <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-700/50">
+                            <span class="text-[11px] text-slate-400 block">현재 가속도 (a)</span>
+                            <span id="dataAccel" class="text-base font-bold text-amber-400">0.00 m/s²</span>
+                        </div>
+                        <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-700/50">
+                            <span class="text-[11px] text-slate-400 block">전체 질량 (M)</span>
+                            <span id="dataMass" class="text-base font-bold text-indigo-300">2650 kg</span>
+                        </div>
+                    </div>
+
+                    <!-- 장력 비교 지표 패널 -->
+                    <div class="bg-slate-900/90 border border-slate-700 p-3 rounded-xl space-y-2">
+                        <div class="flex justify-between items-center text-xs font-bold text-slate-300 border-b border-slate-800 pb-1.5">
+                            <span>⚡ 상승/하강 조건별 장력 상태</span>
+                            <span id="tensionStatusTag" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400">정지 (T = Mg)</span>
+                        </div>
+
+                        <!-- 실시간 필요 장력 카드 -->
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <span class="text-[11px] text-slate-400 block">현재 총 장력 (T)</span>
+                                <span id="dataTension" class="text-xl font-extrabold text-indigo-200">0.0 kN</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[10px] text-slate-400 block">정지 대비 비율</span>
+                                <span id="dataTensionRatio" class="text-sm font-bold text-emerald-400">100.0%</span>
+                            </div>
+                        </div>
+
+                        <!-- 3단계 장력 비교 게이지 바 -->
+                        <div class="space-y-1 pt-1 text-[11px]">
+                            <div class="flex items-center justify-between text-[10px] text-slate-400">
+                                <span>T = M(g-a) [감량]</span>
+                                <span>Mg [기본]</span>
+                                <span>T = M(g+a) [과하중]</span>
+                            </div>
+                            <div class="relative w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                                <div id="gaugeIndicator" class="absolute top-0 bottom-0 bg-indigo-500 transition-all duration-100 rounded-full" style="left: 50%; width: 6px; transform: translateX(-50%);"></div>
+                            </div>
+                            <div class="grid grid-cols-3 text-[9px] text-center text-slate-400 pt-0.5">
+                                <span id="lblTensionLow" class="text-cyan-400">하강가속 / 상승감속</span>
+                                <span id="lblTensionBase" class="text-slate-300 font-bold">등속 / 정지</span>
+                                <span id="lblTensionHigh" class="text-rose-400">상승가속 / 하강감속</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 구간별 장력 수치 계산 -->
+                    <div class="bg-slate-900/90 border border-slate-700 p-3 rounded-xl space-y-2">
+                        <div class="flex justify-between items-center text-xs font-bold text-indigo-300 border-b border-slate-800 pb-1.5">
+                            <span>📐 구간별 장력 수식 계산</span>
+                            <span class="text-[10px] text-slate-400 font-normal">M = <span id="calcMassText" class="text-indigo-300 font-bold">2650</span> kg</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-2 text-xs">
+                            <!-- 1. 가속 구간 -->
+                            <div id="cardPhaseAccel" class="p-2 rounded-lg border border-slate-800 bg-slate-950/60 transition-all duration-200">
+                                <div class="flex justify-between items-center mb-0.5">
+                                    <span id="lblPhaseAccelTitle" class="font-bold text-rose-300 flex items-center gap-1">1️⃣ 가속 구간</span>
+                                    <span id="tagPhaseAccel" class="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">대기</span>
+                                </div>
+                                <p class="text-[10.5px] text-slate-300 font-mono" id="formulaAccel">T = M(g + a)</p>
+                                <div class="flex justify-between items-center mt-1 pt-1 border-t border-slate-800/60 text-[10px]">
+                                    <span class="text-slate-400">총 장력: <strong id="valTensionAccel" class="text-rose-300">27.30 kN</strong></span>
+                                    <span class="text-slate-400">와이어당(1/4): <strong id="valCableAccel" class="text-slate-200">6.82 kN</strong></span>
+                                </div>
+                            </div>
+
+                            <!-- 2. 정지 / 등속 구간 -->
+                            <div id="cardPhaseBase" class="p-2 rounded-lg border border-slate-800 bg-slate-950/60 transition-all duration-200">
+                                <div class="flex justify-between items-center mb-0.5">
+                                    <span class="font-bold text-slate-200 flex items-center gap-1">2️⃣ 정지 / 등속 구간</span>
+                                    <span id="tagPhaseBase" class="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">대기</span>
+                                </div>
+                                <p class="text-[10.5px] text-slate-300 font-mono" id="formulaBase">T = Mg</p>
+                                <div class="flex justify-between items-center mt-1 pt-1 border-t border-slate-800/60 text-[10px]">
+                                    <span class="text-slate-400">총 장력: <strong id="valTensionBase" class="text-slate-200">25.97 kN</strong></span>
+                                    <span class="text-slate-400">와이어당(1/4): <strong id="valCableBase" class="text-slate-200">6.49 kN</strong></span>
+                                </div>
+                            </div>
+
+                            <!-- 3. 감속 구간 -->
+                            <div id="cardPhaseDecel" class="p-2 rounded-lg border border-slate-800 bg-slate-950/60 transition-all duration-200">
+                                <div class="flex justify-between items-center mb-0.5">
+                                    <span id="lblPhaseDecelTitle" class="font-bold text-cyan-300 flex items-center gap-1">3️⃣ 감속 구간</span>
+                                    <span id="tagPhaseDecel" class="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">대기</span>
+                                </div>
+                                <p class="text-[10.5px] text-slate-300 font-mono" id="formulaDecel">T = M(g - a)</p>
+                                <div class="flex justify-between items-center mt-1 pt-1 border-t border-slate-800/60 text-[10px]">
+                                    <span class="text-slate-400">총 장력: <strong id="valTensionDecel" class="text-cyan-300">24.65 kN</strong></span>
+                                    <span class="text-slate-400">와이어당(1/4): <strong id="valCableDecel" class="text-slate-200">6.16 kN</strong></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. 변수 선언 및 초기 설정
+        // ==========================================
+        const GRAVITY = 9.8; // 중력 가속도 (m/s²)
+        const BASE_ELEVATOR_MASS = 2050; // 엘리베이터 기본 자중 (kg)
+        const PASSENGER_MASS = 60; // 승객 1인당 평균 무게 (kg)
+        const MAX_PASSENGERS = 31; // 정원 (31인승)
+
+        // 방향 상태 ('UP' | 'DOWN' | 'ROUND')
+        let currentDirection = 'UP'; 
+
+        // 시뮬레이션 상태 변수
+        let targetDistance = 200; // 이동거리 (m)
+        let totalDuration = 40;   // 편도 이동시간 (초)
+        let accelDuration = 20;   // 가속 시간 (초)
+        let decelDuration = 20;   // 감속 시간 (초)
+        let accelValue = 0.5;     // 가속도 크기 (m/s²)
+        let peakVelocity = 10;    // 최고 속력 (m/s)
+
+        let passengerCount = 10;  // 현재 탑승 인원
+        let totalMass = BASE_ELEVATOR_MASS + passengerCount * PASSENGER_MASS;
+
+        let currentTime = 0;       // 현재 진행 시간 (초)
+        let isRunning = false;     // 실행 상태
+        let isCableBroken = false; // 케이블 절단 여부
+        let breakStartTime = 0;    // 케이블 절단 발생 시간
+        let breakStartVel = 0;     // 케이블 절단 시 속도
+        let breakStartHeight = 0;  // 케이블 절단 시 높이
+        let sparkParticles = [];   // 끊어질 때 불꽃 효과 파티클
+        let pulleyAngle = 0;       // 도르래 회전각
+        let animationFrameId = null;
+
+        // DOM 요소 바인딩
+        const inputDistance = document.getElementById('inputDistance');
+        const inputTime = document.getElementById('inputTime');
+        const passengerSlider = document.getElementById('passengerSlider');
+        const passengerCountText = document.getElementById('passengerCountText');
+        const overloadWarning = document.getElementById('overloadWarning');
+
+        const btnDirUp = document.getElementById('btnDirUp');
+        const btnDirDown = document.getElementById('btnDirDown');
+        const btnDirRound = document.getElementById('btnDirRound');
+
+        const btnStart = document.getElementById('btnStart');
+        const btnReset = document.getElementById('btnReset');
+        const statusBadge = document.getElementById('statusBadge');
+        const graphAreaText = document.getElementById('graphAreaText');
+
+        const dataHeight = document.getElementById('dataHeight');
+        const dataVelocity = document.getElementById('dataVelocity');
+        const dataAccel = document.getElementById('dataAccel');
+        const dataMass = document.getElementById('dataMass');
+        const dataTension = document.getElementById('dataTension');
+        const dataTensionRatio = document.getElementById('dataTensionRatio');
+        const tensionStatusTag = document.getElementById('tensionStatusTag');
+        const gaugeIndicator = document.getElementById('gaugeIndicator');
+
+        // 조건별 상세 장력 요소
+        const calcMassText = document.getElementById('calcMassText');
+        const lblPhaseAccelTitle = document.getElementById('lblPhaseAccelTitle');
+        const lblPhaseDecelTitle = document.getElementById('lblPhaseDecelTitle');
+        const formulaAccel = document.getElementById('formulaAccel');
+        const formulaBase = document.getElementById('formulaBase');
+        const formulaDecel = document.getElementById('formulaDecel');
+        const valTensionAccel = document.getElementById('valTensionAccel');
+        const valCableAccel = document.getElementById('valCableAccel');
+        const valTensionBase = document.getElementById('valTensionBase');
+        const valCableBase = document.getElementById('valCableBase');
+        const valTensionDecel = document.getElementById('valTensionDecel');
+        const valCableDecel = document.getElementById('valCableDecel');
+
+        const cardPhaseAccel = document.getElementById('cardPhaseAccel');
+        const cardPhaseBase = document.getElementById('cardPhaseBase');
+        const cardPhaseDecel = document.getElementById('cardPhaseDecel');
+        const tagPhaseAccel = document.getElementById('tagPhaseAccel');
+        const tagPhaseBase = document.getElementById('tagPhaseBase');
+        const tagPhaseDecel = document.getElementById('tagPhaseDecel');
+
+        // 캔버스 설정
+        const eleCanvas = document.getElementById('elevatorCanvas');
+        const eleCtx = eleCanvas.getContext('2d');
+        const vtCanvas = document.getElementById('vtGraphCanvas');
+        const vtCtx = vtCanvas.getContext('2d');
+
+        // ==========================================
+        // 2. 물리 상태 계산 엔진 (getPhysicsStateAt)
+        // ==========================================
+        function getPhysicsStateAt(t) {
+            // 1. 케이블 파단 시: 중력만 작용하는 자유낙하 운동 (a = -g, T = 0)
+            if (isCableBroken) {
+                const dt = Math.max(0, t - breakStartTime);
+                const curVel = breakStartVel - GRAVITY * dt;
+                let curH = breakStartHeight + breakStartVel * dt - 0.5 * GRAVITY * dt * dt;
+                if (curH <= 0) {
+                    curH = 0;
+                    return { height: 0, velocity: 0, accel: 0, tension: 0, phase: 'CRASH' };
+                }
+                return {
+                    height: curH,
+                    velocity: curVel,
+                    accel: -GRAVITY,
+                    tension: 0,
+                    phase: 'FREE_FALL'
+                };
+            }
+
+            // 2. 정상 운행 물리 운동 상태 계산
+            let h = 0, v = 0, a = 0, phase = 'IDLE';
+
+            if (currentDirection === 'UP') {
+                if (t <= 0) {
+                    h = 0; v = 0; a = 0; phase = 'IDLE';
+                } else if (t <= accelDuration) {
+                    a = accelValue;
+                    v = a * t;
+                    h = 0.5 * a * t * t;
+                    phase = 'UP_ACCEL';
+                } else if (t <= totalDuration) {
+                    const dt = t - accelDuration;
+                    a = -accelValue;
+                    v = peakVelocity + a * dt;
+                    const hMid = 0.5 * accelValue * accelDuration * accelDuration;
+                    h = hMid + peakVelocity * dt + 0.5 * a * dt * dt;
+                    phase = 'UP_DECEL';
+                } else {
+                    h = targetDistance; v = 0; a = 0; phase = 'FINISHED';
+                }
+            } else if (currentDirection === 'DOWN') {
+                if (t <= 0) {
+                    h = targetDistance; v = 0; a = 0; phase = 'IDLE';
+                } else if (t <= accelDuration) {
+                    a = -accelValue;
+                    v = a * t;
+                    h = targetDistance + 0.5 * a * t * t;
+                    phase = 'DOWN_ACCEL';
+                } else if (t <= totalDuration) {
+                    const dt = t - accelDuration;
+                    a = accelValue;
+                    v = -peakVelocity + a * dt;
+                    const hMid = targetDistance - 0.5 * accelValue * accelDuration * accelDuration;
+                    h = hMid - peakVelocity * dt + 0.5 * a * dt * dt;
+                    phase = 'DOWN_DECEL';
+                } else {
+                    h = 0; v = 0; a = 0; phase = 'FINISHED';
+                }
+            } else if (currentDirection === 'ROUND') {
+                const pauseTime = 2; // 상층부 정지 대기 시간 2초
+                const roundMidTime = totalDuration;
+                const roundDownStartTime = totalDuration + pauseTime;
+                const roundEndTime = totalDuration * 2 + pauseTime;
+
+                if (t <= 0) {
+                    h = 0; v = 0; a = 0; phase = 'IDLE';
+                } else if (t <= accelDuration) {
+                    a = accelValue;
+                    v = a * t;
+                    h = 0.5 * a * t * t;
+                    phase = 'UP_ACCEL';
+                } else if (t <= roundMidTime) {
+                    const dt = t - accelDuration;
+                    a = -accelValue;
+                    v = peakVelocity + a * dt;
+                    const hMid = 0.5 * accelValue * accelDuration * accelDuration;
+                    h = hMid + peakVelocity * dt + 0.5 * a * dt * dt;
+                    phase = 'UP_DECEL';
+                } else if (t <= roundDownStartTime) {
+                    h = targetDistance; v = 0; a = 0; phase = 'IDLE';
+                } else if (t <= roundDownStartTime + accelDuration) {
+                    const dt = t - roundDownStartTime;
+                    a = -accelValue;
+                    v = a * dt;
+                    h = targetDistance + 0.5 * a * dt * dt;
+                    phase = 'DOWN_ACCEL';
+                } else if (t <= roundEndTime) {
+                    const dt = t - (roundDownStartTime + accelDuration);
+                    a = accelValue;
+                    v = -peakVelocity + a * dt;
+                    const hMid = targetDistance - 0.5 * accelValue * accelDuration * accelDuration;
+                    h = hMid - peakVelocity * dt + 0.5 * a * dt * dt;
+                    phase = 'DOWN_DECEL';
+                } else {
+                    h = 0; v = 0; a = 0; phase = 'FINISHED';
+                }
+            }
+
+            // 뉴턴 제2법칙: T - Mg = Ma => T = M(g + a)
+            const tension = totalMass * (GRAVITY + a);
+
+            return {
+                height: Math.max(0, Math.min(targetDistance, h)),
+                velocity: v,
+                accel: a,
+                tension: Math.max(0, tension),
+                phase: phase
+            };
+        }
+
+        // ==========================================
+        // 3. 파라미터 갱신 및 장력 카드 표기
+        // ==========================================
+        function updateCalculations() {
+            targetDistance = parseFloat(inputDistance.value) || 200;
+            totalDuration = parseFloat(inputTime.value) || 40;
+            passengerCount = parseInt(passengerSlider.value) || 0;
+
+            accelDuration = totalDuration / 2;
+            decelDuration = totalDuration / 2;
+
+            peakVelocity = (2 * targetDistance) / totalDuration;
+            accelValue = peakVelocity / accelDuration;
+
+            totalMass = BASE_ELEVATOR_MASS + passengerCount * PASSENGER_MASS;
+            dataMass.innerText = `${totalMass} kg`;
+            if (calcMassText) calcMassText.innerText = totalMass;
+            if (graphAreaText) graphAreaText.innerText = `면적 = ${targetDistance}m`;
+
+            updatePhaseTensionBreakdown();
+        }
+
+        function updatePhaseTensionBreakdown() {
+            if (!formulaAccel) return;
+
+            const m = totalMass;
+            const g = GRAVITY;
+            const a = accelValue;
+
+            // 정지 / 등속 구간 (T = Mg)
+            const tBase = m * g;
+            formulaBase.innerText = `T = Mg = ${m} × ${g.toFixed(2)} = ${(tBase / 1000).toFixed(2)} kN`;
+            valTensionBase.innerText = `${(tBase / 1000).toFixed(2)} kN`;
+            valCableBase.innerText = `${(tBase / 4000).toFixed(2)} kN`;
+
+            if (currentDirection === 'UP' || currentDirection === 'ROUND') {
+                // 상승 가속 (T = M(g + a))
+                const tAccel = m * (g + a);
+                lblPhaseAccelTitle.innerHTML = `<span>1️⃣ 상승 가속 (0~${accelDuration.toFixed(0)}초)</span>`;
+                formulaAccel.innerText = `T = M(g + a) = ${m} × (${g.toFixed(2)} + ${a.toFixed(2)})`;
+                valTensionAccel.innerText = `${(tAccel / 1000).toFixed(2)} kN`;
+                valCableAccel.innerText = `${(tAccel / 4000).toFixed(2)} kN`;
+
+                // 상승 감속 (T = M(g - a))
+                const tDecel = m * (g - a);
+                lblPhaseDecelTitle.innerHTML = `<span>3️⃣ 상승 감속 (${accelDuration.toFixed(0)}~${totalDuration.toFixed(0)}초)</span>`;
+                formulaDecel.innerText = `T = M(g - a) = ${m} × (${g.toFixed(2)} - ${a.toFixed(2)})`;
+                valTensionDecel.innerText = `${(tDecel / 1000).toFixed(2)} kN`;
+                valCableDecel.innerText = `${(tDecel / 4000).toFixed(2)} kN`;
+            } else if (currentDirection === 'DOWN') {
+                // 하강 가속 (T = M(g - a))
+                const tAccel = m * (g - a);
+                lblPhaseAccelTitle.innerHTML = `<span>1️⃣ 하강 가속 (0~${accelDuration.toFixed(0)}초)</span>`;
+                formulaAccel.innerText = `T = M(g - a) = ${m} × (${g.toFixed(2)} - ${a.toFixed(2)})`;
+                valTensionAccel.innerText = `${(tAccel / 1000).toFixed(2)} kN`;
+                valCableAccel.innerText = `${(tAccel / 4000).toFixed(2)} kN`;
+
+                // 하강 감속 (T = M(g + a))
+                const tDecel = m * (g + a);
+                lblPhaseDecelTitle.innerHTML = `<span>3️⃣ 하강 감속 (${accelDuration.toFixed(0)}~${totalDuration.toFixed(0)}초)</span>`;
+                formulaDecel.innerText = `T = M(g + a) = ${m} × (${g.toFixed(2)} + ${a.toFixed(2)})`;
+                valTensionDecel.innerText = `${(tDecel / 1000).toFixed(2)} kN`;
+                valCableDecel.innerText = `${(tDecel / 4000).toFixed(2)} kN`;
+            }
+        }
+
+        // ==========================================
+        // 4. 3D 승강로 & 권상기 모터 렌더링 (draw3DElevatorScene)
+        // ==========================================
+        function draw3DElevatorScene(state) {
+            const w = eleCanvas.width;
+            const h = eleCanvas.height;
+            eleCtx.clearRect(0, 0, w, h);
+
+            // 승강로 기하 수치
+            const shaftX = w * 0.15;
+            const shaftW = w * 0.70;
+            const shaftTopY = 80;
+            const shaftBottomY = h - 35;
+            const shaftHeight = shaftBottomY - shaftTopY;
+
+            // 3D 건물 기둥 및 배경 격자선
+            eleCtx.fillStyle = '#060a12';
+            eleCtx.fillRect(shaftX, shaftTopY, shaftW, shaftHeight);
+
+            // 층수 눈금선 및 층수 텍스트
+            const floors = 8;
+            for (let i = 0; i <= floors; i++) {
+                const fy = shaftBottomY - (i / floors) * shaftHeight;
+                eleCtx.strokeStyle = '#1e293b';
+                eleCtx.lineWidth = 1;
+                eleCtx.beginPath();
+                eleCtx.moveTo(shaftX - 20, fy);
+                eleCtx.lineTo(shaftX + shaftW + 20, fy);
+                eleCtx.stroke();
+
+                eleCtx.fillStyle = '#64748b';
+                eleCtx.font = '9px monospace';
+                eleCtx.fillText(`${i * (targetDistance / floors).toFixed(0)}m (${i * 5}F)`, shaftX + shaftW + 4, fy + 3);
+            }
+
+            // 양쪽 강철 가이드 레일 (3D 음영)
+            eleCtx.fillStyle = '#334155';
+            eleCtx.fillRect(shaftX - 4, shaftTopY, 6, shaftHeight);
+            eleCtx.fillRect(shaftX + shaftW - 2, shaftTopY, 6, shaftHeight);
+
+            // 엘리베이터 카의 Y좌표 계산
+            const carW = shaftW * 0.52;
+            const carH = 68;
+            const travelSpan = shaftHeight - carH - 20;
+            const carY = shaftBottomY - 10 - carH - (state.height / targetDistance) * travelSpan;
+
+            // 균형추 (Counterweight) Y좌표 계산 (카와 정반대 이동)
+            const cwW = 24;
+            const cwH = 50;
+            const cwX = shaftX + shaftW - cwW - 10;
+            const cwY = shaftTopY + 15 + (state.height / targetDistance) * travelSpan;
+
+            // 엘리베이터 카의 수평 위치 및 중앙 히치 포인트
+            const carX = shaftX + 16;
+            const carCenterX = carX + carW / 2; // 카 수직 중심선
+
+            // 권상기 모터 룸 (상단 기계실)
+            // 실제 승강기 구조: 메인 트랙션 시브(구동 도르래)는 카 상단 수직 중심선에 정확히 정렬
+            const pulleyRadius = 24;
+            const mainSheaveX = carCenterX; // 휠 중심이 카 중심에 정렬
+            const mainSheaveY = 48;
+
+            // 균형추 보조 도르래(Deflector Sheave): 균형추 수직 중심선에 정렬
+            const cwCenterX = cwX + cwW / 2;
+            const deflectorRadius = 14;
+            const deflectorSheaveX = cwCenterX;
+            const deflectorSheaveY = 48;
+
+            // 1. 모터 하우징 및 마운트 베드
+            eleCtx.fillStyle = '#1e293b';
+            eleCtx.strokeStyle = '#475569';
+            eleCtx.lineWidth = 2;
+            eleCtx.beginPath();
+            eleCtx.roundRect(mainSheaveX - 44, mainSheaveY - 32, (deflectorSheaveX - mainSheaveX) + 68, 26, 6);
+            eleCtx.fill();
+            eleCtx.stroke();
+
+            // 2. 도르래 사이를 잇는 상부 수평 연결 케이블
+            eleCtx.strokeStyle = '#64748b';
+            eleCtx.lineWidth = 2.5;
+            eleCtx.beginPath();
+            eleCtx.moveTo(mainSheaveX, mainSheaveY - pulleyRadius);
+            eleCtx.lineTo(deflectorSheaveX, deflectorSheaveY - deflectorRadius);
+            eleCtx.stroke();
+
+            // 3. 메인 트랙션 시브(구동 도르래) 렌더링
+            pulleyAngle += (state.velocity * 0.05);
+            eleCtx.save();
+            eleCtx.translate(mainSheaveX, mainSheaveY);
+            eleCtx.rotate(pulleyAngle);
+            eleCtx.fillStyle = '#334155';
+            eleCtx.beginPath();
+            eleCtx.arc(0, 0, pulleyRadius, 0, Math.PI * 2);
+            eleCtx.fill();
+            eleCtx.strokeStyle = '#94a3b8';
+            eleCtx.lineWidth = 3;
+            eleCtx.stroke();
+            // 휠 스포크
+            for (let s = 0; s < 4; s++) {
+                eleCtx.rotate(Math.PI / 2);
+                eleCtx.strokeStyle = '#cbd5e1';
+                eleCtx.lineWidth = 2;
+                eleCtx.beginPath();
+                eleCtx.moveTo(0, 0);
+                eleCtx.lineTo(pulleyRadius - 3, 0);
+                eleCtx.stroke();
+            }
+            eleCtx.restore();
+
+            // 4. 균형추 디플렉터 보조 도르래 렌더링
+            eleCtx.save();
+            eleCtx.translate(deflectorSheaveX, deflectorSheaveY);
+            eleCtx.rotate(-pulleyAngle * (pulleyRadius / deflectorRadius));
+            eleCtx.fillStyle = '#334155';
+            eleCtx.beginPath();
+            eleCtx.arc(0, 0, deflectorRadius, 0, Math.PI * 2);
+            eleCtx.fill();
+            eleCtx.strokeStyle = '#64748b';
+            eleCtx.lineWidth = 2;
+            eleCtx.stroke();
+            // 보조 휠 스포크
+            for (let s = 0; s < 4; s++) {
+                eleCtx.rotate(Math.PI / 2);
+                eleCtx.strokeStyle = '#94a3b8';
+                eleCtx.lineWidth = 1.5;
+                eleCtx.beginPath();
+                eleCtx.moveTo(0, 0);
+                eleCtx.lineTo(deflectorRadius - 2, 0);
+                eleCtx.stroke();
+            }
+            eleCtx.restore();
+
+            // 5. 균형추 드롭 케이블 (보조 도르래 중심에서 100% 수직 낙하)
+            eleCtx.strokeStyle = '#64748b';
+            eleCtx.lineWidth = 2;
+            eleCtx.beginPath();
+            eleCtx.moveTo(cwCenterX, deflectorSheaveY);
+            eleCtx.lineTo(cwCenterX, cwY);
+            eleCtx.stroke();
+
+            // 균형추 본체 (웨이트 블록 적층 형태)
+            eleCtx.fillStyle = '#475569';
+            eleCtx.strokeStyle = '#94a3b8';
+            eleCtx.lineWidth = 1.5;
+            eleCtx.beginPath();
+            eleCtx.roundRect(cwX, cwY, cwW, cwH, 4);
+            eleCtx.fill();
+            eleCtx.stroke();
+            for (let k = 1; k < 4; k++) {
+                eleCtx.strokeStyle = '#334155';
+                eleCtx.beginPath();
+                eleCtx.moveTo(cwX, cwY + k * 12);
+                eleCtx.lineTo(cwX + cwW, cwY + k * 12);
+                eleCtx.stroke();
+            }
+
+            // 6. 엘리베이터 카 연결 4가닥 주 강철 케이블 (완벽한 100% 수직 드롭)
+            // 메인 도르래 하단 접점 X와 카 상단 히치 플레이트 X를 완벽히 일치 (dX = 0)
+            const cableSpacing = 4.5; // 가닥 간격
+            const cableStartX = carCenterX - ((4 - 1) * cableSpacing) / 2;
+
+            if (!isCableBroken) {
+                // 장력 상태에 따른 와이어 색상 실시간 반영
+                let cableColor = '#94a3b8'; // 평상시 은회색
+                if (state.phase === 'UP_ACCEL' || state.phase === 'DOWN_DECEL') {
+                    cableColor = '#f43f5e'; // 과하중 붉은색
+                } else if (state.phase === 'UP_DECEL' || state.phase === 'DOWN_ACCEL') {
+                    cableColor = '#38bdf8'; // 감량 하늘색
+                }
+
+                for (let c = 0; c < 4; c++) {
+                    const lineX = cableStartX + c * cableSpacing; // 상단과 하단 X가 동일하여 완벽한 수직(90도) 형성
+                    eleCtx.strokeStyle = cableColor;
+                    eleCtx.lineWidth = 1.8;
+                    eleCtx.beginPath();
+                    eleCtx.moveTo(lineX, mainSheaveY); // 도르래 하단 출구
+                    eleCtx.lineTo(lineX, carY);        // 카 상단 히치
+                    eleCtx.stroke();
+                }
+            } else {
+                // 케이블 절단 파단 연출 (수직선 상에서 절단 및 끝단 굽힘)
+                eleCtx.strokeStyle = '#ef4444';
+                eleCtx.lineWidth = 2;
+                for (let c = 0; c < 4; c++) {
+                    const lineX = cableStartX + c * cableSpacing;
+                    const spread = (c - 1.5) * 4;
+
+                    // 상단 끊긴 가닥
+                    eleCtx.beginPath();
+                    eleCtx.moveTo(lineX, mainSheaveY);
+                    eleCtx.lineTo(lineX + spread * 0.8, mainSheaveY + 45 + (c % 2) * 12);
+                    eleCtx.stroke();
+
+                    // 카 쪽 끊긴 가닥
+                    eleCtx.beginPath();
+                    eleCtx.moveTo(lineX, carY);
+                    eleCtx.lineTo(lineX + spread * 1.2, carY - 22 - (c % 2) * 10);
+                    eleCtx.stroke();
+                }
+            }
+
+            // 3D 엘리베이터 카(Car) 렌더링
+            // 외부 프레임 & 광택
+            const gradCar = eleCtx.createLinearGradient(carX, carY, carX + carW, carY + carH);
+            gradCar.addColorStop(0, '#312e81');
+            gradCar.addColorStop(0.5, '#1e1b4b');
+            gradCar.addColorStop(1, '#0f172a');
+
+            eleCtx.fillStyle = gradCar;
+            eleCtx.strokeStyle = '#6366f1';
+            eleCtx.lineWidth = 2;
+            eleCtx.beginPath();
+            eleCtx.roundRect(carX, carY, carW, carH, 8);
+            eleCtx.fill();
+            eleCtx.stroke();
+
+            // 상단 크로스헤드 히치 플레이트 (4가닥 수직 와이어 수용 부싱)
+            eleCtx.fillStyle = '#4f46e5';
+            eleCtx.strokeStyle = '#818cf8';
+            eleCtx.lineWidth = 1.2;
+            eleCtx.beginPath();
+            eleCtx.roundRect(carCenterX - 14, carY - 6, 28, 7, 3);
+            eleCtx.fill();
+            eleCtx.stroke();
+
+            // 내부 전망창 (유리)
+            const winMargin = 8;
+            const winW = carW - winMargin * 2;
+            const winH = carH - winMargin * 2;
+            const winX = carX + winMargin;
+            const winY = carY + winMargin;
+
+            eleCtx.fillStyle = '#0f172a';
+            eleCtx.fillRect(winX, winY, winW, winH);
+            eleCtx.strokeStyle = 'rgba(99, 102, 241, 0.4)';
+            eleCtx.strokeRect(winX, winY, winW, winH);
+
+            // 승객 실루엣 표현
+            const maxVisible = Math.min(passengerCount, 12);
+            for (let p = 0; p < maxVisible; p++) {
+                const px = winX + 8 + (p % 6) * 11;
+                const py = winY + 12 + Math.floor(p / 6) * 18;
+
+                // 머리
+                eleCtx.fillStyle = passengerCount >= 32 ? '#f87171' : '#a5b4fc';
+                eleCtx.beginPath();
+                eleCtx.arc(px, py, 3.2, 0, Math.PI * 2);
+                eleCtx.fill();
+                // 몸통
+                eleCtx.beginPath();
+                eleCtx.roundRect(px - 3, py + 4, 6, 8, 2);
+                eleCtx.fill();
+            }
+
+            if (passengerCount > 12) {
+                eleCtx.fillStyle = '#e0e7ff';
+                eleCtx.font = 'bold 9px Pretendard';
+                eleCtx.fillText(`+${passengerCount - 12}`, winX + winW - 20, winY + winH - 6);
+            }
+
+            // 절단 시 튀는 스파크 파티클 업데이트 및 렌더링
+            if (isCableBroken && sparkParticles.length > 0) {
+                for (let i = sparkParticles.length - 1; i >= 0; i--) {
+                    const sp = sparkParticles[i];
+                    sp.x += sp.vx;
+                    sp.y += sp.vy;
+                    sp.vy += 0.2; // 중력
+                    sp.alpha -= 0.02;
+
+                    if (sp.alpha <= 0) {
+                        sparkParticles.splice(i, 1);
+                    } else {
+                        eleCtx.fillStyle = `rgba(251, 191, 36, ${sp.alpha})`;
+                        eleCtx.beginPath();
+                        eleCtx.arc(sp.x, sp.y, sp.size, 0, Math.PI * 2);
+                        eleCtx.fill();
+                    }
+                }
+            }
+        }
+
+        // ==========================================
+        // 5. v-t 그래프 캔버스 그리기 (drawVTGraph)
+        // ==========================================
+        function drawVTGraph(currentT) {
+            const width = vtCanvas.width;
+            const height = vtCanvas.height;
+            const padding = 34;
+
+            vtCtx.clearRect(0, 0, width, height);
+
+            const maxT = currentDirection === 'ROUND' ? totalDuration * 2 + 2 : totalDuration;
+            const maxV = peakVelocity * 1.35 || 15;
+
+            const zeroY = height / 2; // 속도 0m/s 중앙 기준선
+            const getX = (t) => padding + (t / maxT) * (width - 2 * padding);
+            const getY = (v) => zeroY - (v / maxV) * (zeroY - padding);
+
+            // 축 격자선
+            vtCtx.strokeStyle = '#334155';
+            vtCtx.lineWidth = 1;
+
+            // t축 (zeroY)
+            vtCtx.beginPath();
+            vtCtx.moveTo(padding, zeroY);
+            vtCtx.lineTo(width - padding + 10, zeroY);
+            vtCtx.stroke();
+
+            // v축
+            vtCtx.beginPath();
+            vtCtx.moveTo(padding, padding - 10);
+            vtCtx.lineTo(padding, height - padding + 10);
+            vtCtx.stroke();
+
+            // 레이블
+            vtCtx.fillStyle = '#94a3b8';
+            vtCtx.font = '10px Pretendard';
+            vtCtx.fillText('t (s)', width - padding, zeroY + 14);
+            vtCtx.fillText('v (m/s)', 4, padding - 4);
+
+            vtCtx.fillText('0', padding - 10, zeroY + 12);
+            vtCtx.fillText(`+${peakVelocity.toFixed(1)}`, 2, getY(peakVelocity) + 3);
+            vtCtx.fillText(`-${peakVelocity.toFixed(1)}`, 2, getY(-peakVelocity) + 3);
+
+            // 이상적인 이론 궤적 가이드 점선
+            vtCtx.strokeStyle = '#475569';
+            vtCtx.setLineDash([3, 3]);
+
+            if (currentDirection === 'UP' || currentDirection === 'ROUND') {
+                vtCtx.beginPath();
+                vtCtx.moveTo(getX(0), getY(0));
+                vtCtx.lineTo(getX(totalDuration / 2), getY(peakVelocity));
+                vtCtx.lineTo(getX(totalDuration), getY(0));
+                vtCtx.stroke();
+            }
+            if (currentDirection === 'DOWN') {
+                vtCtx.beginPath();
+                vtCtx.moveTo(getX(0), getY(0));
+                vtCtx.lineTo(getX(totalDuration / 2), getY(-peakVelocity));
+                vtCtx.lineTo(getX(totalDuration), getY(0));
+                vtCtx.stroke();
+            }
+            if (currentDirection === 'ROUND') {
+                const startDown = totalDuration + 2;
+                vtCtx.beginPath();
+                vtCtx.moveTo(getX(startDown), getY(0));
+                vtCtx.lineTo(getX(startDown + totalDuration / 2), getY(-peakVelocity));
+                vtCtx.lineTo(getX(startDown + totalDuration), getY(0));
+                vtCtx.stroke();
+            }
+            vtCtx.setLineDash([]);
+
+            // 실시간 진행 궤적 곡선
+            vtCtx.beginPath();
+            vtCtx.strokeStyle = isCableBroken ? '#ef4444' : '#38bdf8';
+            vtCtx.lineWidth = 2.5;
+
+            const step = 0.4;
+            const drawLimit = Math.min(currentT, maxT);
+            let first = true;
+            for (let time = 0; time <= drawLimit; time += step) {
+                const st = getPhysicsStateAt(time);
+                const px = getX(time);
+                const py = getY(st.velocity);
+
+                if (first) {
+                    vtCtx.moveTo(px, py);
+                    first = false;
+                } else {
+                    vtCtx.lineTo(px, py);
+                }
+            }
+            vtCtx.stroke();
+
+            // 현재 위치 포인트 인디케이터
+            const currentState = getPhysicsStateAt(currentT);
+            const curX = getX(Math.min(currentT, maxT));
+            const curY = getY(currentState.velocity);
+
+            vtCtx.beginPath();
+            vtCtx.arc(curX, curY, 4.5, 0, Math.PI * 2);
+            vtCtx.fillStyle = isCableBroken ? '#ef4444' : '#f59e0b';
+            vtCtx.fill();
+            vtCtx.strokeStyle = '#ffffff';
+            vtCtx.lineWidth = 1.5;
+            vtCtx.stroke();
+        }
+
+        // ==========================================
+        // 6. 종합 렌더링 및 UI 게이지 패널 업데이트
+        // ==========================================
+        function renderAll() {
+            const state = getPhysicsStateAt(currentTime);
+
+            // 계측 패널 수치 갱신
+            dataHeight.innerText = `${state.height.toFixed(1)} m`;
+            dataVelocity.innerText = `${state.velocity.toFixed(1)} m/s`;
+            dataAccel.innerText = `${state.accel.toFixed(2)} m/s²`;
+            dataTension.innerText = `${(state.tension / 1000).toFixed(2)} kN`;
+
+            // 정지 중력 대비 비율 (T / Mg * 100)
+            const baseStaticTension = totalMass * GRAVITY;
+            const ratio = baseStaticTension > 0 ? (state.tension / baseStaticTension) * 100 : 0;
+            dataTensionRatio.innerText = `${ratio.toFixed(1)}%`;
+
+            // 장력 게이지 위치
+            const maxGaugeA = accelValue > 0 ? accelValue : 1;
+            const normA = state.accel / maxGaugeA; // -1.0 ~ +1.0
+            const gaugePercent = Math.min(95, Math.max(5, 50 + normA * 42));
+            gaugeIndicator.style.left = `${gaugePercent}%`;
+
+            // 카드 스타일 초기화
+            cardPhaseAccel.className = 'p-2 rounded-lg border border-slate-800 bg-slate-950/60 transition-all duration-200';
+            cardPhaseBase.className = 'p-2 rounded-lg border border-slate-800 bg-slate-950/60 transition-all duration-200';
+            cardPhaseDecel.className = 'p-2 rounded-lg border border-slate-800 bg-slate-950/60 transition-all duration-200';
+            
+            tagPhaseAccel.className = 'text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400';
+            tagPhaseAccel.innerText = '대기';
+            tagPhaseBase.className = 'text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400';
+            tagPhaseBase.innerText = '대기';
+            tagPhaseDecel.className = 'text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400';
+            tagPhaseDecel.innerText = '대기';
+
+            // 상태별 장력 태그 및 하이라이트 연출
+            if (isCableBroken) {
+                tensionStatusTag.innerText = '🚨 장력 0 kN (케이블 절단)';
+                tensionStatusTag.className = 'text-[10px] px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-500/40 font-bold';
+                gaugeIndicator.className = 'absolute top-0 bottom-0 bg-rose-600 transition-all duration-100 rounded-full';
+            } else if (state.phase === 'UP_ACCEL' || state.phase === 'DOWN_ACCEL') {
+                const isInc = state.phase === 'UP_ACCEL';
+                tensionStatusTag.innerText = isInc ? '🔺 장력 증가 T = M(g+a)' : '🔻 장력 감소 T = M(g-a)';
+                tensionStatusTag.className = isInc ? 'text-[10px] px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold' : 'text-[10px] px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold';
+                gaugeIndicator.className = isInc ? 'absolute top-0 bottom-0 bg-rose-500 transition-all duration-100 rounded-full' : 'absolute top-0 bottom-0 bg-cyan-400 transition-all duration-100 rounded-full';
+                
+                cardPhaseAccel.className = 'p-2 rounded-lg border-2 border-indigo-500 bg-indigo-950/40 shadow-lg shadow-indigo-500/20 transition-all duration-200';
+                tagPhaseAccel.className = 'text-[10px] px-1.5 py-0.2 rounded bg-indigo-500 text-white font-bold animate-pulse';
+                tagPhaseAccel.innerText = '진행 중';
+            } else if (state.phase === 'UP_DECEL' || state.phase === 'DOWN_DECEL') {
+                const isInc = state.phase === 'DOWN_DECEL';
+                tensionStatusTag.innerText = isInc ? '🔺 장력 증가 T = M(g+a)' : '🔻 장력 감소 T = M(g-a)';
+                tensionStatusTag.className = isInc ? 'text-[10px] px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold' : 'text-[10px] px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold';
+                gaugeIndicator.className = isInc ? 'absolute top-0 bottom-0 bg-rose-500 transition-all duration-100 rounded-full' : 'absolute top-0 bottom-0 bg-cyan-400 transition-all duration-100 rounded-full';
+                
+                cardPhaseDecel.className = 'p-2 rounded-lg border-2 border-indigo-500 bg-indigo-950/40 shadow-lg shadow-indigo-500/20 transition-all duration-200';
+                tagPhaseDecel.className = 'text-[10px] px-1.5 py-0.2 rounded bg-indigo-500 text-white font-bold animate-pulse';
+                tagPhaseDecel.innerText = '진행 중';
+            } else {
+                tensionStatusTag.innerText = '⚖️ 기본 장력 T = Mg';
+                tensionStatusTag.className = 'text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300';
+                gaugeIndicator.className = 'absolute top-0 bottom-0 bg-indigo-500 transition-all duration-100 rounded-full';
+                
+                if (isRunning) {
+                    cardPhaseBase.className = 'p-2 rounded-lg border-2 border-indigo-500 bg-indigo-950/40 shadow-lg shadow-indigo-500/20 transition-all duration-200';
+                    tagPhaseBase.className = 'text-[10px] px-1.5 py-0.2 rounded bg-indigo-500 text-white font-bold animate-pulse';
+                    tagPhaseBase.innerText = '진행 중';
+                }
+            }
+
+            // 캔버스 2개 다시 그리기
+            draw3DElevatorScene(state);
+            drawVTGraph(currentTime);
+        }
+
+        // ==========================================
+        // 7. 애니메이션 루프 및 케이블 절단 트리거
+        // ==========================================
+        let lastTimestamp = null;
+        function animateLoop(timestamp) {
+            if (!isRunning) return;
+
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const dt = (timestamp - lastTimestamp) / 1000;
+            lastTimestamp = timestamp;
+
+            currentTime += dt;
+
+            // 정원 초과 탑승(32명) 시 운행 개시 직후(t >= 0.5s) 케이블 파단 트리거
+            if (passengerCount >= 32 && !isCableBroken && currentTime >= 0.5) {
+                triggerCableBreak();
+            }
+
+            renderAll();
+
+            const maxT = currentDirection === 'ROUND' ? totalDuration * 2 + 2 : totalDuration;
+
+            // 정상 도착 완료 시
+            if (!isCableBroken && currentTime >= maxT) {
+                currentTime = maxT;
+                isRunning = false;
+                statusBadge.innerText = '✅ 목적지 운행 완료';
+                statusBadge.className = 'text-xs px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+                renderAll();
+                return;
+            }
+
+            // 자유낙하 추락 완료 시
+            if (isCableBroken) {
+                const state = getPhysicsStateAt(currentTime);
+                const elapsedSinceBreak = currentTime - breakStartTime;
+                if (state.height <= 0 && elapsedSinceBreak >= 1.8) {
+                    isRunning = false;
+                    statusBadge.innerText = '💥 지면 추락 충돌 완료';
+                    statusBadge.className = 'text-xs px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold';
+                    renderAll();
+                    return;
+                }
+            }
+
+            animationFrameId = requestAnimationFrame(animateLoop);
+        }
+
+        function triggerCableBreak() {
+            const currentState = getPhysicsStateAt(currentTime);
+
+            isCableBroken = true;
+            breakStartTime = currentTime;
+            breakStartVel = currentState.velocity || 0;
+            breakStartHeight = currentState.height || 0;
+
+            statusBadge.innerText = '🚨 케이블 파단! 자유낙하 발생';
+            statusBadge.className = 'text-xs px-2.5 py-1 rounded-full bg-rose-600 text-white font-bold animate-bounce';
+
+            // 권상기 지점 불꽃 파티클 생성 (수직 와이어 드롭 포인트에 정확히 배치)
+            const shaftX = eleCanvas.width * 0.15;
+            const carW = eleCanvas.width * 0.70 * 0.52;
+            const carCenterX = shaftX + 16 + carW / 2;
+            sparkParticles = [];
+            for (let i = 0; i < 45; i++) {
+                sparkParticles.push({
+                    x: carCenterX + (Math.random() * 20 - 10),
+                    y: 48 + (Math.random() * 20 - 10),
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.8) * 7,
+                    size: Math.random() * 3 + 1.5,
+                    alpha: 1.0
+                });
+            }
+        }
+
+        // ==========================================
+        // 8. 이벤트 바인딩 및 초기화
+        // ==========================================
+        function setDirection(dir) {
+            currentDirection = dir;
+            btnDirUp.className = dir === 'UP' ? 'dir-btn py-2 px-1 text-xs font-bold rounded-xl border border-indigo-500 bg-indigo-600 text-white transition shadow-md' : 'dir-btn py-2 px-1 text-xs font-bold rounded-xl border border-slate-700 bg-slate-900 text-slate-400 hover:text-white transition';
+            btnDirDown.className = dir === 'DOWN' ? 'dir-btn py-2 px-1 text-xs font-bold rounded-xl border border-indigo-500 bg-indigo-600 text-white transition shadow-md' : 'dir-btn py-2 px-1 text-xs font-bold rounded-xl border border-slate-700 bg-slate-900 text-slate-400 hover:text-white transition';
+            btnDirRound.className = dir === 'ROUND' ? 'dir-btn py-2 px-1 text-xs font-bold rounded-xl border border-indigo-500 bg-indigo-600 text-white transition shadow-md' : 'dir-btn py-2 px-1 text-xs font-bold rounded-xl border border-slate-700 bg-slate-900 text-slate-400 hover:text-white transition';
+
+            updateCalculations();
+            if (!isRunning) {
+                currentTime = 0;
+                renderAll();
+            }
+        }
+
+        btnDirUp.addEventListener('click', () => setDirection('UP'));
+        btnDirDown.addEventListener('click', () => setDirection('DOWN'));
+        btnDirRound.addEventListener('click', () => setDirection('ROUND'));
+
+        passengerSlider.addEventListener('input', () => {
+            passengerCount = parseInt(passengerSlider.value);
+            passengerCountText.innerText = `${passengerCount}명`;
+
+            if (passengerCount >= 32) {
+                passengerCountText.className = 'text-xl font-extrabold text-rose-400 animate-pulse';
+                overloadWarning.classList.remove('hidden');
+            } else {
+                passengerCountText.className = 'text-xl font-extrabold text-indigo-400';
+                overloadWarning.classList.add('hidden');
+            }
+
+            updateCalculations();
+            if (!isRunning) renderAll();
+        });
+
+        inputDistance.addEventListener('change', () => { updateCalculations(); if (!isRunning) renderAll(); });
+        inputTime.addEventListener('change', () => { updateCalculations(); if (!isRunning) renderAll(); });
+
+        btnStart.addEventListener('click', () => {
+            if (isRunning) return;
+
+            updateCalculations();
+            isCableBroken = false;
+            currentTime = 0;
+            isRunning = true;
+            lastTimestamp = null;
+
+            statusBadge.innerText = '🚀 엘리베이터 운행 중';
+            statusBadge.className = 'text-xs px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30';
+
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            animationFrameId = requestAnimationFrame(animateLoop);
+        });
+
+        btnReset.addEventListener('click', () => {
+            isRunning = false;
+            isCableBroken = false;
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            currentTime = 0;
+            passengerCount = 10;
+            passengerSlider.value = 10;
+            passengerCountText.innerText = '10명';
+            passengerCountText.className = 'text-xl font-extrabold text-indigo-400';
+            overloadWarning.classList.add('hidden');
+
+            statusBadge.innerText = '대기 중';
+            statusBadge.className = 'text-xs px-2.5 py-1 rounded-full bg-slate-700 text-slate-300 font-medium';
+
+            updateCalculations();
+            renderAll();
+        });
+
+        // 앱 초기 로드 실행
+        function initApp() {
+            updateCalculations();
+            renderAll();
+        }
+
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            setTimeout(initApp, 20);
+        } else {
+            window.addEventListener('DOMContentLoaded', initApp);
+        }
+    </script>
+</body>
+</html>
+<script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

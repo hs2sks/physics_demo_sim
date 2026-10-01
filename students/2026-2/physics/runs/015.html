@@ -1,0 +1,261 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><h1>안녕하세요</h1>
+<p><!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>전통 공포 구조 지진 시뮬레이터</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: #f0f4f8;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-between py-8 px-4">
+
+    <!-- Header -->
+    <header class="text-center max-w-2xl mb-6">
+        <div class="flex items-center justify-center gap-2 mb-2">
+            <span class="text-2xl">🏛️</span>
+            <h1 class="text-2xl font-bold text-slate-800">전통 공포 구조 지진 시뮬레이터</h1>
+        </div>
+        <p class="text-sm text-slate-500 leading-relaxed">
+            밝은 배경의 전통 목조 건물에서 공포 구조의 유무가 지진 시 돌림힘(토크) 분산과 안전성에 미치는 영향을 실험해 보세요.
+        </p>
+    </header>
+
+    <!-- Main Simulator View -->
+    <main class="w-full max-w-3xl bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col items-center mb-6">
+        <!-- Canvas Container -->
+        <div class="w-full bg-slate-50 rounded-xl border border-slate-200/60 overflow-hidden relative flex items-center justify-center" style="height: 380px;">
+            <canvas id="simCanvas" width="700" height="350" class="w-full h-full object-contain"></canvas>
+        </div>
+    </main>
+
+    <!-- Control Panel -->
+    <section class="w-full max-w-3xl bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col md:flex-row items-center justify-around gap-6 mb-6">
+        
+        <!-- 공포 구조 설정 -->
+        <div class="flex flex-col items-center gap-2">
+            <span class="text-xs font-semibold text-slate-600">공포 구조 설정</span>
+            <button id="toggleGongpoBtn" onclick="toggleGongpo()" class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition shadow-sm">
+                공포 구조 포함 (ON)
+            </button>
+        </div>
+
+        <!-- 지진 강도 조절 -->
+        <div class="flex flex-col items-center gap-2 w-48">
+            <span id="intensityLabel" class="text-xs font-semibold text-slate-600">지진 강도 조절 (5)</span>
+            <div class="flex items-center gap-2 w-full">
+                <input id="intensityRange" type="range" min="1" max="10" value="5" oninput="updateIntensity(this.value)" class="w-full accent-blue-600 cursor-pointer">
+            </div>
+        </div>
+
+        <!-- 지진 시뮬레이션 -->
+        <div class="flex flex-col items-center gap-2">
+            <span class="text-xs font-semibold text-slate-600">지진 시뮬레이션</span>
+            <button id="triggerBtn" onclick="toggleEarthquake()" class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition shadow-sm">
+                지진 발생 시작
+            </button>
+        </div>
+
+    </section>
+
+    <!-- Status Alert Box -->
+    <div id="statusBox" class="w-full max-w-3xl bg-amber-50/70 border border-amber-200/70 rounded-xl py-3.5 px-5 text-center text-amber-800 text-sm font-medium shadow-sm transition-all duration-300">
+        현재 상태: 안정 - 지진이 발생하지 않은 상태입니다. '지진 발생 시작'을 눌러보세요.
+    </div>
+
+    <!-- JavaScript Simulation Logic -->
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let isGongpoOn = true;
+        let isEarthquakeRunning = false;
+        let intensity = 5;
+        let animFrame = 0;
+        let earthquakeTimer = null;
+
+        function toggleGongpo() {
+            isGongpoOn = !isGongpoOn;
+            const btn = document.getElementById('toggleGongpoBtn');
+            if (isGongpoOn) {
+                btn.textContent = "공포 구조 포함 (ON)";
+                btn.className = "px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition shadow-sm";
+            } else {
+                btn.textContent = "공포 구조 제외 (OFF)";
+                btn.className = "px-5 py-2.5 rounded-xl bg-slate-500 hover:bg-slate-600 text-white font-medium text-sm transition shadow-sm";
+            }
+            updateStatusText();
+            draw();
+        }
+
+        function updateIntensity(val) {
+            intensity = parseInt(val);
+            document.getElementById('intensityLabel').textContent = `지진 강도 조절 (${intensity})`;
+        }
+
+        function toggleEarthquake() {
+            isEarthquakeRunning = !isEarthquakeRunning;
+            const btn = document.getElementById('triggerBtn');
+            if (isEarthquakeRunning) {
+                btn.textContent = "지진 중지";
+                btn.className = "px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-medium text-sm transition shadow-sm";
+                startEarthquakeLoop();
+            } else {
+                btn.textContent = "지진 발생 시작";
+                btn.className = "px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition shadow-sm";
+                stopEarthquakeLoop();
+            }
+            updateStatusText();
+        }
+
+        function updateStatusText() {
+            const box = document.getElementById('statusBox');
+            if (!isEarthquakeRunning) {
+                box.className = "w-full max-w-3xl bg-amber-50/70 border border-amber-200/70 rounded-xl py-3.5 px-5 text-center text-amber-800 text-sm font-medium shadow-sm transition-all duration-300";
+                box.textContent = "현재 상태: 안정 - 지진이 발생하지 않은 상태입니다. '지진 발생 시작'을 눌러보세요.";
+            } else {
+                if (isGongpoOn) {
+                    box.className = "w-full max-w-3xl bg-blue-50/70 border border-blue-200/70 rounded-xl py-3.5 px-5 text-center text-blue-800 text-sm font-medium shadow-sm transition-all duration-300";
+                    box.textContent = `현재 상태: 지진 발생 중 (강도 ${intensity}) - 공포 구조가 처마 하중과 돌림힘(토크)을 유연하게 분산하여 안정적으로 버티고 있습니다!`;
+                } else {
+                    box.className = "w-full max-w-3xl bg-rose-50/70 border border-rose-200/70 rounded-xl py-3.5 px-5 text-center text-rose-800 text-sm font-medium shadow-sm transition-all duration-300";
+                    box.textContent = `현재 상태: 지진 발생 중 (강도 ${intensity}) - 공포 구조가 없어 하중이 집중되며 심한 뒤틀림(토크)과 불안정성이 발생합니다!`;
+                }
+            }
+        }
+
+        function startEarthquakeLoop() {
+            function loop() {
+                if (!isEarthquakeRunning) return;
+                animFrame++;
+                draw();
+                requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
+        function stopEarthquakeLoop() {
+            animFrame = 0;
+            draw();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Ground & Foundation Base
+            ctx.fillStyle = '#e2e8f0';
+            ctx.fillRect(50, 310, 600, 15);
+
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillRect(260, 290, 180, 20);
+
+            // Earthquake ground shake offset
+            let offsetX = 0;
+            let offsetAngle = 0;
+            let roofShear = 0;
+
+            if (isEarthquakeRunning) {
+                const factor = intensity * 0.6;
+                offsetX = Math.sin(animFrame * 0.4) * factor;
+                offsetAngle = Math.sin(animFrame * 0.3) * (factor * 0.008);
+                
+                if (!isGongpoOn) {
+                    // 공포가 없으면 상단부(지붕 및 보)가 더 크게 흔들리며 뒤틀림 발생
+                    roofShear = Math.sin(animFrame * 0.5) * (factor * 2.5);
+                } else {
+                    roofShear = Math.sin(animFrame * 0.4) * (factor * 0.8);
+                }
+            }
+
+            ctx.save();
+            ctx.translate(350, 290); // 기준점 (건물 중앙 하단)
+            ctx.rotate(offsetAngle);
+            ctx.translate(-350, -290);
+
+            // 기단 위 흔들림 적용 영역 시작
+            ctx.save();
+            ctx.translate(offsetX, 0);
+
+            // 1. 기둥 (Columns)
+            ctx.fillStyle = '#ea580c'; // 주황빛 목재 색상
+            ctx.fillRect(250, 170, 22, 120);
+            ctx.fillRect(428, 170, 22, 120);
+
+            // 2. 공포 구조 또는 일반 보
+            if (isGongpoOn) {
+                // 공포 부재들 (초서/중방 등의 다층적 결합 구조 표현)
+                ctx.fillStyle = '#0f766e'; // 청록색 공포 블록
+                ctx.fillRect(230, 155, 240, 18);
+                
+                ctx.fillStyle = '#1e3a8a'; // 파란색 상단 횡보
+                ctx.fillRect(220, 138, 260, 18);
+
+                // 공포 구조 강조 서클 마크 (스크린샷 참고 디자인)
+                ctx.strokeStyle = '#0284c7';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(285, 147, 28, 0, Math.PI * 2);
+                ctx.stroke();
+            } else {
+                // 공포 구조가 없는 경우 단순하고 얇은 보만 얹혀짐
+                ctx.fillStyle = '#1e3a8a';
+                ctx.fillRect(220, 145, 260, 12);
+            }
+
+            // 3. 지붕 (Roof) - 기와 형태의 곡선 삼각형 지붕
+            ctx.save();
+            ctx.translate(roofShear, 0); // 지붕의 뒤틀림 차이
+            
+            ctx.fillStyle = '#334155'; // 어두운 슬레이트 지붕 색상
+            ctx.beginPath();
+            ctx.moveTo(350, 70);
+            ctx.quadraticCurveTo(500, 105, 560, 120); // 우측 처마 끝
+            ctx.lineTo(140, 120);                      // 좌측 처마 끝
+            ctx.quadraticCurveTo(200, 105, 350, 70);
+            ctx.closePath();
+            ctx.fill();
+
+            // 처마 하중(F) & 돌림힘 표시선 (좌측 처마 아래)
+            if (isEarthquakeRunning || !isGongpoOn) {
+                ctx.strokeStyle = '#e11d48';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.moveTo(150, 125);
+                ctx.lineTo(150, 195);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // 하중 텍스트
+                ctx.fillStyle = '#e11d48';
+                ctx.font = 'bold 11px Pretendard';
+                ctx.fillText('처마 하중(F) & 돌림힘', 105, 165);
+            }
+
+            // 우측 처마 대칭 가이드라인
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(550, 125);
+            ctx.lineTo(550, 195);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.restore(); // 지붕 복원
+            ctx.restore(); // 흔들림 복원
+            ctx.restore(); // 회전 복원
+        }
+
+        // 초기 드로잉 실행
+        draw();
+    </script>
+</body>
+</html></p><script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

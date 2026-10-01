@@ -1,0 +1,408 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>비행기 착륙 시뮬레이션</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#eaf1f6;color:#17212b;font-family:Arial,"Noto Sans KR",sans-serif}
+.container{max-width:1150px;margin:auto;padding:20px}
+h1{margin:0 0 6px}.sub{margin:0 0 18px;color:#596773}
+.layout{display:grid;grid-template-columns:300px 1fr;gap:18px}
+.card{background:white;border-radius:16px;padding:18px;box-shadow:0 4px 18px #0001}
+label{display:block;font-weight:bold;margin:12px 0 6px}
+input{width:100%;padding:10px;border:1px solid #c8d2dc;border-radius:8px;font-size:16px}
+button{padding:11px 16px;border:0;border-radius:9px;font-weight:bold;cursor:pointer;margin-top:12px}
+#start{background:#1769aa;color:white}#reset{background:#e8edf1;margin-left:5px}
+.result{background:#f4f7fa;border-radius:10px;padding:12px;margin-top:15px;line-height:1.8}
+.big{font-size:22px;font-weight:bold}.status{margin-top:12px;font-weight:bold}
+.note{font-size:12px;color:#687681;line-height:1.55;margin-top:12px}
+canvas{width:100%;height:auto;background:#f7fafc;border-radius:12px;display:block}
+#graph{margin-top:15px}
+@media(max-width:800px){.layout{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>✈️ 비행기 착륙 시뮬레이션</h1>
+<p class="sub">최종 접근 → 활주로 접지 → 스포일러 전개 → 역추력·제동 → 감속 → 정지</p>
+
+<div class="layout">
+<div class="card">
+<h2>착륙 조건</h2>
+
+<label>착륙 직전 속도 (km/h)</label>
+<input id="speed" type="number" value="259" min="50" max="350">
+
+<label>착륙 후 정지까지 감속 시간 (초)</label>
+<input id="brakeTime" type="number" value="30" min="5" max="120">
+
+<button id="start">▶ 착륙 시작</button>
+<button id="reset">↻ 초기화</button>
+
+<div class="result">
+<div>속도: <b id="speedKm">259 km/h</b></div>
+<div>속도: <b id="speedMs">72.0 m/s</b></div>
+<div>평균 가속도: <b id="acc">−2.40 m/s²</b></div>
+<div>감속 거리: <b id="distance">1080 m</b></div>
+</div>
+
+<div class="status" id="status">최종 접근 중</div>
+
+<div class="note">
+※ 실제 Boeing 737-800의 착륙을 그대로 재현한 것이 아니라,
+실제 착륙 과정의 순서를 참고하여 만든 교육용 단순화 시뮬레이션입니다.
+실제 감속도는 기체 중량, 바람, 활주로 상태, 제동 설정 등에 따라 달라집니다.
+</div>
+</div>
+
+<div class="card">
+<canvas id="scene" width="800" height="400"></canvas>
+<canvas id="graph" width="800" height="300"></canvas>
+</div>
+</div>
+</div>
+
+<script>
+const scene=document.getElementById("scene");
+const ctx=scene.getContext("2d");
+const graph=document.getElementById("graph");
+const g=graph.getContext("2d");
+
+const speedInput=document.getElementById("speed");
+const timeInput=document.getElementById("brakeTime");
+const speedKm=document.getElementById("speedKm");
+const speedMs=document.getElementById("speedMs");
+const acc=document.getElementById("acc");
+const distance=document.getElementById("distance");
+const status=document.getElementById("status");
+
+let running=false;
+let startTime=0;
+let animationId;
+
+function getData(){
+    const kmh=Math.max(1,Number(speedInput.value)||259);
+    const T=Math.max(1,Number(timeInput.value)||30);
+    const v0=kmh/3.6;
+    const a=-v0/T;
+    const d=v0*T/2;
+
+    speedKm.textContent=kmh.toFixed(0)+" km/h";
+    speedMs.textContent=v0.toFixed(1)+" m/s";
+    acc.textContent="−"+Math.abs(a).toFixed(2)+" m/s²";
+    distance.textContent=d.toFixed(0)+" m";
+
+    return {kmh,T,v0,a,d};
+}
+
+/* Boeing 737-800을 단순화한 그림 */
+function drawPlane(x,y,scale,gear){
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.scale(scale,scale);
+
+    // 기체
+    ctx.fillStyle="#f4f5f6";
+    ctx.beginPath();
+    ctx.ellipse(0,0,70,13,0,0,Math.PI*2);
+    ctx.fill();
+
+    // 동체 줄무늬
+    ctx.fillStyle="#23639b";
+    ctx.fillRect(-46,-5,83,4);
+
+    // 기수
+    ctx.fillStyle="#e0e5e9";
+    ctx.beginPath();
+    ctx.arc(61,0,12,-Math.PI/2,Math.PI/2);
+    ctx.fill();
+
+    // 꼬리
+    ctx.fillStyle="#315d8b";
+    ctx.beginPath();
+    ctx.moveTo(-52,-8);
+    ctx.lineTo(-66,-33);
+    ctx.lineTo(-37,-9);
+    ctx.closePath();
+    ctx.fill();
+
+    // 주 날개
+    ctx.fillStyle="#d2d9df";
+    ctx.beginPath();
+    ctx.moveTo(-8,0);
+    ctx.lineTo(-36,31);
+    ctx.lineTo(8,9);
+    ctx.lineTo(35,1);
+    ctx.closePath();
+    ctx.fill();
+
+    // 엔진 2개
+    ctx.fillStyle="#596771";
+    ctx.beginPath();
+    ctx.ellipse(-17,18,12,6,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(18,9,11,5.5,0,0,Math.PI*2);
+    ctx.fill();
+
+    // 랜딩기어
+    if(gear){
+        ctx.strokeStyle="#30363b";
+        ctx.lineWidth=2;
+        ctx.beginPath();
+        ctx.moveTo(-8,9);ctx.lineTo(-8,23);
+        ctx.moveTo(22,8);ctx.lineTo(22,20);
+        ctx.stroke();
+
+        ctx.fillStyle="#30363b";
+        ctx.beginPath();
+        ctx.arc(-8,26,4,0,Math.PI*2);
+        ctx.arc(22,23,4,0,Math.PI*2);
+        ctx.fill();
+    }
+
+    ctx.restore();
+}
+
+function drawScene(brakeElapsed,totalElapsed,p){
+    const W=scene.width,H=scene.height;
+    ctx.clearRect(0,0,W,H);
+
+    // 하늘
+    const sky=ctx.createLinearGradient(0,0,0,H);
+    sky.addColorStop(0,"#82c7f1");
+    sky.addColorStop(1,"#eef9ff");
+    ctx.fillStyle=sky;
+    ctx.fillRect(0,0,W,H);
+
+    // 구름
+    ctx.fillStyle="rgba(255,255,255,.8)";
+    [[110,75,35],[150,75,25],[650,65,40],[695,68,25]].forEach(q=>{
+        ctx.beginPath();
+        ctx.arc(q[0],q[1],q[2],0,Math.PI*2);
+        ctx.fill();
+    });
+
+    // 산
+    ctx.fillStyle="#78a06c";
+    ctx.beginPath();
+    ctx.moveTo(0,255);
+    ctx.lineTo(120,190);
+    ctx.lineTo(245,255);
+    ctx.lineTo(390,180);
+    ctx.lineTo(560,255);
+    ctx.lineTo(690,195);
+    ctx.lineTo(800,240);
+    ctx.lineTo(800,400);
+    ctx.lineTo(0,400);
+    ctx.closePath();
+    ctx.fill();
+
+    // 활주로
+    ctx.fillStyle="#4d555c";
+    ctx.fillRect(0,255,W,145);
+
+    // 활주로 중앙선
+    ctx.fillStyle="#fff";
+    for(let x=15;x<W;x+=105) ctx.fillRect(x,327,60,5);
+
+    // 활주로 가장자리
+    ctx.fillStyle="#d8d8d8";
+    ctx.fillRect(0,253,W,3);
+
+    // 활주로 등
+    ctx.fillStyle="#ffd84d";
+    for(let x=25;x<W;x+=45){
+        ctx.beginPath();
+        ctx.arc(x,277,3,0,Math.PI*2);
+        ctx.fill();
+    }
+
+    const approachT=4;
+    const progress=Math.min(brakeElapsed/p.T,1);
+    const approachProgress=Math.min(totalElapsed/approachT,1);
+    let x,y,gear=false,phase;
+
+    // 접근 구간은 감속 시간과 분리한다. 따라서 활주로 접지 순간의 속도는 입력한 착륙 속도와 같다.
+    if(totalElapsed<approachT){
+        const q=approachProgress;
+        x=80+q*260;
+        y=190-q*18;
+        gear=true;
+        phase="최종 접근 중";
+    }else{
+        const q=progress;
+        x=340+q*390;
+        y=224;
+        gear=true;
+
+        if(brakeElapsed<1.5) phase="활주로 접지";
+        else if(brakeElapsed<5) phase="스포일러 전개";
+        else if(progress<1) phase="역추력 + 브레이크로 감속";
+        else phase="착륙 완료 — 정지";
+    }
+
+    if(totalElapsed>=approachT+p.T) phase="착륙 완료 — 정지";
+
+    drawPlane(x,y,1,gear);
+
+    // 스포일러 시각 효과
+    if(totalElapsed>=approachT+1.5 && totalElapsed<approachT+p.T*0.95){
+        ctx.strokeStyle="#252a2e";
+        ctx.lineWidth=4;
+        ctx.beginPath();
+        ctx.moveTo(x-10,y-7);
+        ctx.lineTo(x-27,y-20);
+        ctx.stroke();
+        ctx.font="13px Arial";
+        ctx.fillStyle="#17212b";
+        ctx.fillText("스포일러 전개",x-55,y-34);
+    }
+
+    ctx.font="bold 18px Arial";
+    ctx.fillStyle="#1d2b35";
+    ctx.fillText(phase,25,32);
+}
+
+function drawGraph(t,p){
+    const W=graph.width,H=graph.height;
+    const left=55,right=55,top=35,bottom=45;
+
+    g.clearRect(0,0,W,H);
+    g.fillStyle="#f7fafc";
+    g.fillRect(0,0,W,H);
+
+    // 격자
+    g.strokeStyle="#dce3e9";
+    g.lineWidth=1;
+    for(let i=0;i<=5;i++){
+        const y=H-bottom-(H-top-bottom)*i/5;
+        g.beginPath();
+        g.moveTo(left,y);
+        g.lineTo(W-right,y);
+        g.stroke();
+    }
+
+    for(let i=0;i<=6;i++){
+        const x=left+(W-left-right)*i/6;
+        g.beginPath();
+        g.moveTo(x,top);
+        g.lineTo(x,H-bottom);
+        g.stroke();
+    }
+
+    // 축
+    g.strokeStyle="#303b45";
+    g.lineWidth=2;
+    g.beginPath();
+    g.moveTo(left,top);
+    g.lineTo(left,H-bottom);
+    g.lineTo(W-right,H-bottom);
+    g.stroke();
+
+    g.fillStyle="#273640";
+    g.font="13px Arial";
+    g.fillText("속도 (m/s)",8,18);
+    g.fillText("시간 (초)",W-95,H-10);
+
+    g.fillText(p.v0.toFixed(0),20,top+5);
+    g.fillText("0",35,H-bottom+5);
+    g.fillText("0",left-4,H-bottom+22);
+    g.fillText(p.T.toFixed(0),W-right-12,H-bottom+22);
+
+    const elapsed=Math.min(t,p.T);
+    const maxV=p.v0*1.08;
+
+    // 속도 그래프
+    g.strokeStyle="#1769aa";
+    g.lineWidth=4;
+    g.beginPath();
+
+    for(let i=0;i<=150;i++){
+        const tt=elapsed*i/150;
+        const v=Math.max(0,p.v0+p.a*tt);
+        const x=left+(W-left-right)*tt/p.T;
+        const y=H-bottom-(H-top-bottom)*v/maxV;
+
+        if(i===0) g.moveTo(x,y);
+        else g.lineTo(x,y);
+    }
+    g.stroke();
+
+    const v=Math.max(0,p.v0+p.a*elapsed);
+    const x=left+(W-left-right)*elapsed/p.T;
+    const y=H-bottom-(H-top-bottom)*v/maxV;
+
+    g.fillStyle="#d33";
+    g.beginPath();
+    g.arc(x,y,6,0,Math.PI*2);
+    g.fill();
+
+    g.font="bold 14px Arial";
+    g.fillStyle="#26343d";
+    g.fillText(
+        v.toFixed(1)+" m/s  ("+(v*3.6).toFixed(1)+" km/h)",
+        Math.min(x+10,W-235),
+        Math.max(30,y-10)
+    );
+
+    // km/h 안내
+    g.font="12px Arial";
+    g.fillStyle="#1769aa";
+    g.fillText("※ 1 m/s = 3.6 km/h",left,top+25);
+}
+
+function reset(){
+    running=false;
+    if(animationId) cancelAnimationFrame(animationId);
+
+    const p=getData();
+    drawScene(0,0,p);
+    drawGraph(0,p);
+    status.textContent="최종 접근 중 · 착륙 속도 "+p.kmh.toFixed(0)+" km/h ("+p.v0.toFixed(1)+" m/s)";
+}
+
+function animate(now){
+    if(!running)return;
+
+    const p=getData();
+    const totalElapsed=(now-startTime)/1000;
+    const approachT=4;
+    const brakeElapsed=Math.max(0,Math.min(totalElapsed-approachT,p.T));
+
+    drawScene(brakeElapsed,totalElapsed,p);
+    drawGraph(brakeElapsed,p);
+
+    const v=Math.max(0,p.v0+p.a*brakeElapsed);
+
+    if(totalElapsed<approachT){
+        status.textContent="최종 접근 중 · 접지 예정 속도 "+p.kmh.toFixed(0)+" km/h ("+p.v0.toFixed(1)+" m/s)";
+        animationId=requestAnimationFrame(animate);
+    }else if(brakeElapsed<p.T){
+        status.textContent="착륙 후 감속 중 · "+v.toFixed(1)+" m/s ("+(v*3.6).toFixed(1)+" km/h)";
+        animationId=requestAnimationFrame(animate);
+    }else{
+        status.textContent="착륙 완료 · 0 km/h = 0 m/s";
+        running=false;
+    }
+}
+
+document.getElementById("start").addEventListener("click",()=>{
+    getData();
+    running=true;
+    startTime=performance.now();
+    animationId=requestAnimationFrame(animate);
+});
+
+document.getElementById("reset").addEventListener("click",reset);
+speedInput.addEventListener("input",reset);
+timeInput.addEventListener("input",reset);
+
+reset();
+</script>
+</body>
+</html>
+<script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

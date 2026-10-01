@@ -1,0 +1,405 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>청수사 2D 무대 돌림힘 시뮬레이터</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&display=swap');
+        body {
+            font-family: 'Noto Serif KR', serif;
+            touch-action: manipulation;
+        }
+    </style>
+</head>
+<body class="bg-stone-900 text-stone-100 min-h-screen flex flex-col items-center justify-between p-2 md:p-4 select-none">
+
+    <header class="text-center my-1">
+        <h1 class="text-xl md:text-2xl font-bold text-amber-500">⛩️ 청수사 본당 2D 돌림힘 시뮬레이터</h1>
+        <p class="text-xs text-stone-400">본당 절벽 구조와 무대 아래 우케이즈쿠리(목재 기둥군)의 돌림힘 평형 시뮬레이션</p>
+    </header>
+
+    <main class="w-full max-w-5xl bg-stone-800/90 shadow-2xl rounded-2xl p-3 md:p-5 flex flex-col items-center border border-stone-700">
+        
+        <!-- 실시간 물리 데이터 대시보드 -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 w-full mb-3 text-center">
+            <div class="bg-stone-900/80 p-2.5 rounded-xl border border-stone-700 shadow-sm">
+                <span class="block text-[11px] text-amber-400 font-medium">무대 하중 돌림힘 ($\tau_{stage}$)</span>
+                <span id="stageTorque" class="text-sm md:text-base font-bold text-amber-200">0 Nm</span>
+            </div>
+            <div class="bg-stone-900/80 p-2.5 rounded-xl border border-stone-700 shadow-sm">
+                <span class="block text-[11px] text-blue-400 font-medium">본당 복원력 ($\tau_{counter}$)</span>
+                <span id="counterTorque" class="text-sm md:text-base font-bold text-blue-300">420,000 Nm</span>
+            </div>
+            <div class="bg-stone-900/80 p-2.5 rounded-xl border border-stone-700 shadow-sm">
+                <span class="block text-[11px] text-emerald-400 font-medium">순 돌림힘 상태</span>
+                <span id="netTorque" class="text-sm md:text-base font-bold text-emerald-400">0 Nm (안정)</span>
+            </div>
+            <div class="bg-stone-900/80 p-2.5 rounded-xl border border-stone-700 shadow-sm">
+                <span class="block text-[11px] text-stone-400 font-medium">목재 응력 및 안정도</span>
+                <span id="stabilityStatus" class="text-sm md:text-base font-bold text-emerald-400">안전 (100%)</span>
+            </div>
+        </div>
+
+        <!-- 환경 및 날씨 설정 컨트롤러 -->
+        <div class="flex flex-wrap items-center justify-between w-full bg-stone-900/90 p-2.5 rounded-xl mb-3 border border-stone-700 gap-2">
+            <div class="flex flex-wrap items-center gap-1.5">
+                <span class="text-xs font-bold text-stone-300">🌤️ 날씨 설정:</span>
+                <button onclick="setWeather('sunny')" id="btnSunny" class="px-2.5 py-1 bg-amber-600 text-white text-xs font-bold rounded-lg shadow transition">맑음</button>
+                <button onclick="setWeather('windy')" id="btnWindy" class="px-2.5 py-1 bg-stone-700 text-stone-300 text-xs font-bold rounded-lg shadow transition">강풍 (15m/s)</button>
+                <button onclick="setWeather('storm')" id="btnStorm" class="px-2.5 py-1 bg-stone-700 text-stone-300 text-xs font-bold rounded-lg shadow transition">태풍 (30m/s)</button>
+            </div>
+            <div class="flex items-center gap-2">
+                <span id="windDisplay" class="text-xs text-stone-400 font-semibold">바람: 0 N</span>
+                <button onclick="toggleWindEffect()" id="btnToggleWind" class="px-2.5 py-1 bg-sky-700 hover:bg-sky-600 text-white text-xs font-bold rounded-lg shadow transition">
+                    💨 바람 외력
+                </button>
+            </div>
+        </div>
+
+        <div class="relative w-full overflow-hidden rounded-xl border border-stone-700 shadow-inner bg-stone-950" style="height: 380px;">
+            <canvas id="simCanvas" class="w-full h-full block"></canvas>
+            
+            <!-- 스트레스 경고 배너 -->
+            <div id="stressBanner" class="absolute top-3 left-3 bg-red-950/80 border border-red-500 text-red-200 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity duration-300 hidden">
+                ⚠️ 주의: 무대 기둥과 결구 부위에 응력이 집중되고 있습니다!
+            </div>
+
+            <!-- 붕괴 오버레이 메시지 -->
+            <div id="messageOverlay" class="absolute inset-0 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center text-white hidden transition-opacity duration-700 opacity-0 z-20">
+                <h2 id="overlayTitle" class="text-2xl md:text-3xl font-bold mb-2 text-rose-500">무대가 붕괴되었습니다!</h2>
+                <p id="overlayDesc" class="text-xs md:text-sm mb-4 text-stone-300 text-center px-4 max-w-md">
+                    관광객 하중과 바람 외력에 의한 무대 돌림힘이 복원력 한계치(420,000 Nm)를 초과하여 못 없는 목구조 결구가 파괴되었습니다.
+                </p>
+                <button onclick="resetSimulation()" class="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl shadow-lg transition-transform transform active:scale-95 text-xs md:text-sm">
+                    시뮬레이터 재설정
+                </button>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-2.5 mt-3 w-full items-center">
+            <div class="flex flex-wrap gap-1.5 justify-center items-center">
+                <span class="text-xs font-bold text-stone-300 mr-1">👥 관광객 입장:</span>
+                <button onclick="addVisitorsBatch(1)" id="btnAdd1" class="px-3 py-1.5 bg-amber-700 hover:bg-amber-600 text-white font-medium text-xs rounded-xl shadow transition">+1명</button>
+                <button onclick="addVisitorsBatch(10)" id="btnAdd10" class="px-3 py-1.5 bg-amber-700 hover:bg-amber-600 text-white font-medium text-xs rounded-xl shadow transition">+10명</button>
+                <button onclick="addVisitorsBatch(100)" id="btnAdd100" class="px-3 py-1.5 bg-amber-800 hover:bg-amber-700 text-white font-medium text-xs rounded-xl shadow transition">+100명🔥</button>
+            </div>
+            <div class="flex flex-wrap gap-1.5 justify-center items-center">
+                <span class="text-xs font-bold text-stone-300 mr-1">🚪 관광객 퇴장:</span>
+                <button onclick="removeVisitorsBatch(1)" id="btnRemove1" class="px-3 py-1.5 bg-stone-700 hover:bg-stone-600 text-white font-medium text-xs rounded-xl shadow transition">-1명</button>
+                <button onclick="removeVisitorsBatch(10)" id="btnRemove10" class="px-3 py-1.5 bg-stone-700 hover:bg-stone-600 text-white font-medium text-xs rounded-xl shadow transition">-10명</button>
+                <button onclick="removeVisitorsBatch(100)" id="btnRemove100" class="px-3 py-1.5 bg-stone-700 hover:bg-stone-600 text-white font-medium text-xs rounded-xl shadow transition">-100명</button>
+                <button onclick="resetSimulation()" class="px-3.5 py-1.5 bg-rose-800 hover:bg-rose-700 text-white font-medium text-xs rounded-xl shadow transition ml-2">전체 초기화</button>
+            </div>
+            <div class="text-xs text-stone-400 mt-0.5">
+                현재 무대 위 인원: <span id="visitorCount" class="font-bold text-amber-400 text-sm">0</span>명 (평균 체중 70kg 기준)
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="text-[11px] text-stone-500 text-center mt-2">
+        <p>🏛️ <b>돌림힘 원리:</b> $\tau_{stage} = \sum (m_i \cdot g \cdot r_i) + \tau_{wind}$ vs $\tau_{counter} (420,000\text{ Nm})$</p>
+    </footer>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let visitors = [];
+        let isCollapsed = false;
+        let collapseProgress = 0;
+        let weatherType = 'sunny';
+        let windActive = false;
+        const MAX_COUNTER_TORQUE = 420000;
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function setWeather(type) {
+            if (isCollapsed) return;
+            weatherType = type;
+            
+            ['sunny', 'windy', 'storm'].forEach(t => {
+                const btn = document.getElementById(`btn${t.charAt(0).toUpperCase() + t.slice(1)}`);
+                if (t === type) {
+                    btn.className = "px-2.5 py-1 bg-amber-600 text-white text-xs font-bold rounded-lg shadow transition";
+                } else {
+                    btn.className = "px-2.5 py-1 bg-stone-700 text-stone-300 text-xs font-bold rounded-lg shadow transition";
+                }
+            });
+
+            if (type === 'windy') windActive = true;
+            else if (type === 'storm') windActive = true;
+            else windActive = false;
+
+            updateWindUI();
+            calculatePhysics();
+        }
+
+        function toggleWindEffect() {
+            if (isCollapsed) return;
+            windActive = !windActive;
+            if (windActive && weatherType === 'sunny') {
+                weatherType = 'windy';
+                setWeather('windy');
+            } else if (!windActive) {
+                weatherType = 'sunny';
+                setWeather('sunny');
+            } else {
+                updateWindUI();
+                calculatePhysics();
+            }
+        }
+
+        function updateWindUI() {
+            const btn = document.getElementById('btnToggleWind');
+            const display = document.getElementById('windDisplay');
+            if (windActive) {
+                btn.className = "px-2.5 py-1 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-lg shadow transition animate-pulse";
+                let desc = weatherType === 'storm' ? '태풍 (약 4,500 N)' : '강풍 (약 2,000 N)';
+                display.innerText = `바람: ${desc}`;
+            } else {
+                btn.className = "px-2.5 py-1 bg-sky-700 hover:bg-sky-600 text-white text-xs font-bold rounded-lg shadow transition";
+                display.innerText = `바람: 0 N`;
+            }
+        }
+
+        function addVisitorsBatch(count) {
+            if (isCollapsed) return;
+            for (let i = 0; i < count; i++) {
+                const weight = Math.random() > 0.3 ? 70 : 85;
+                const distance = parseFloat((Math.random() * 4.5 + 0.5).toFixed(1)); // 무대 위 상대 거리 (0.5m ~ 5.0m)
+                visitors.push({
+                    weight,
+                    distance,
+                    type: weight > 75 ? 'heavy' : 'light',
+                    yOffset: Math.random() * 15 - 7.5
+                });
+            }
+            calculatePhysics();
+        }
+
+        function removeVisitorsBatch(count) {
+            if (isCollapsed || visitors.length === 0) return;
+            const removeCount = Math.min(count, visitors.length);
+            for (let i = 0; i < removeCount; i++) {
+                visitors.pop();
+            }
+            calculatePhysics();
+        }
+
+        function calculatePhysics() {
+            let totalStageTorque = 0;
+
+            visitors.forEach(v => {
+                const force = v.weight * 9.8;
+                totalStageTorque += force * v.distance;
+            });
+
+            let windTorque = 0;
+            if (windActive) {
+                const windPressure = weatherType === 'storm' ? 450 : 200;
+                windTorque = windPressure * 3.5;
+            }
+            totalStageTorque += windTorque;
+
+            const netTorque = totalStageTorque - MAX_COUNTER_TORQUE;
+            const stabilityPercent = Math.max(0, Math.round((1 - (totalStageTorque / MAX_COUNTER_TORQUE)) * 100));
+
+            document.getElementById('stageTorque').innerText = Math.round(totalStageTorque).toLocaleString() + ' Nm';
+            document.getElementById('counterTorque').innerText = MAX_COUNTER_TORQUE.toLocaleString() + ' Nm';
+            document.getElementById('visitorCount').innerText = visitors.length.toLocaleString();
+            
+            const netEl = document.getElementById('netTorque');
+            const statusEl = document.getElementById('stabilityStatus');
+            const banner = document.getElementById('stressBanner');
+
+            if (stabilityPercent < 30 && stabilityPercent > 0) {
+                banner.classList.remove('hidden');
+            } else {
+                banner.classList.add('hidden');
+            }
+
+            if (totalStageTorque >= MAX_COUNTER_TORQUE) {
+                netEl.innerText = `한계 초과 (+${Math.round(netTorque).toLocaleString()} Nm)`;
+                netEl.className = 'text-sm md:text-base font-bold text-rose-500 animate-pulse';
+                statusEl.innerText = '붕괴 위험 (0%)';
+                statusEl.className = 'text-sm md:text-base font-bold text-rose-500 animate-pulse';
+                
+                if (!isCollapsed) {
+                    triggerCollapseSequence();
+                }
+            } else {
+                netEl.innerText = `${Math.abs(Math.round(MAX_COUNTER_TORQUE - totalStageTorque)).toLocaleString()} Nm 여유`;
+                netEl.className = 'text-sm md:text-base font-bold text-emerald-400';
+                statusEl.innerText = `안정 (${stabilityPercent}%)`;
+                statusEl.className = 'text-sm md:text-base font-bold text-emerald-400';
+            }
+        }
+
+        function triggerCollapseSequence() {
+            isCollapsed = true;
+            collapseProgress = 0;
+            document.getElementById('stressBanner').classList.add('hidden');
+
+            ['1', '10', '100'].forEach(n => {
+                document.getElementById(`btnAdd${n}`).disabled = true;
+                document.getElementById(`btnRemove${n}`).disabled = true;
+            });
+        }
+
+        function resetSimulation() {
+            visitors = [];
+            isCollapsed = false;
+            collapseProgress = 0;
+            
+            const overlay = document.getElementById('messageOverlay');
+            overlay.classList.add('opacity-0');
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+            }, 300);
+
+            ['1', '10', '100'].forEach(n => {
+                document.getElementById(`btnAdd${n}`).disabled = false;
+                document.getElementById(`btnRemove${n}`).disabled = false;
+            });
+
+            calculatePhysics();
+        }
+
+        function drawScene() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const w = canvas.width;
+            const h = canvas.height;
+
+            // 기준 좌표계 설정 (화면 좌측 중앙 하단 부근)
+            const groundY = h - 60;
+            const mainHallX = w * 0.35;
+            const pivotX = mainHallX + 50; // 회전축 (본당과 무대가 만나는 지점)
+
+            let tiltAngle = 0;
+            let sinkOffsetY = 0;
+            if (isCollapsed) {
+                if (collapseProgress < 1) collapseProgress += 0.025;
+                tiltAngle = collapseProgress * 0.45; // 아래로 꺾이는 각도
+                sinkOffsetY = collapseProgress * 40;
+            }
+
+            ctx.save();
+
+            // 1. 절벽 및 배경 산 배경
+            ctx.fillStyle = '#292524';
+            ctx.beginPath();
+            ctx.moveTo(0, groundY);
+            ctx.lineTo(mainHallX + 30, groundY);
+            ctx.lineTo(mainHallX + 30, groundY - 140);
+            ctx.lineTo(0, groundY - 140);
+            ctx.fill();
+
+            // 2. 본당 아래 절벽 지형 (단단한 기반)
+            ctx.fillStyle = '#44403c';
+            ctx.fillRect(20, groundY - 140, mainHallX, 140);
+
+            // 3. 본당 건물 (안쪽 고정부)
+            ctx.fillStyle = '#881337';
+            ctx.fillRect(mainHallX - 140, groundY - 230, 160, 90);
+            // 본당 기와 지붕
+            ctx.fillStyle = '#1c1917';
+            ctx.beginPath();
+            ctx.moveTo(mainHallX - 160, groundY - 230);
+            ctx.lineTo(mainHallX + 40, groundY - 230);
+            ctx.lineTo(mainHallX - 60, groundY - 275);
+            ctx.fill();
+
+            // 4. 무대 및 우케이즈쿠리 (목재 기둥군) 영역 회전 변환 적용 (붕괴 시)
+            ctx.save();
+            ctx.translate(pivotX, groundY - 140);
+            ctx.rotate(tiltAngle);
+            ctx.translate(-pivotX, -(groundY - 140));
+
+            // 무대 바닥 (외팔보 플랫폼)
+            ctx.fillStyle = '#b45309';
+            ctx.fillRect(pivotX, groundY - 145, 220, 15);
+
+            // 무대 아래 거대한 목재 지지 기둥군 (우케이즈쿠리)
+            ctx.fillStyle = '#78350f';
+            const pillarXPositions = [pivotX + 40, pivotX + 110, pivotX + 180];
+            pillarXPositions.forEach(px => {
+                // 수직 기둥
+                ctx.fillRect(px - 8, groundY - 130, 16, 130);
+                // 사선 보 및 결구
+                ctx.strokeStyle = '#58260a';
+                ctx.lineWidth = 6;
+                ctx.beginPath();
+                ctx.moveTo(pivotX, groundY - 140);
+                ctx.lineTo(px, groundY);
+                ctx.stroke();
+            });
+
+            // 5. 무대 위 관광객들 그리기
+            visitors.forEach(v => {
+                // v.distance (0.5 ~ 5.0) -> 화면 X 좌표로 환산
+                const visitorScreenX = pivotX + 20 + (v.distance / 5.0) * 180;
+                const visitorScreenY = groundY - 160;
+
+                ctx.fillStyle = v.type === 'heavy' ? '#d97706' : '#2563eb';
+                // 사람 머리
+                ctx.beginPath();
+                ctx.arc(visitorScreenX, visitorScreenY, 5, 0, Math.PI * 2);
+                ctx.fill();
+                // 사람 몸통
+                ctx.fillRect(visitorScreenX - 3, visitorScreenY + 5, 6, 12);
+            });
+
+            ctx.restore(); // 회전 복원
+
+            // 6. 골짜기 바닥
+            ctx.fillStyle = '#1c1917';
+            ctx.fillRect(0, groundY, w, h - groundY);
+
+            // 바람 외력 시각화 (바람 애니메이션 선)
+            if (windActive && !isCollapsed) {
+                ctx.strokeStyle = 'rgba(125, 211, 252, 0.4)';
+                ctx.lineWidth = 2;
+                const time = Date.now() * 0.01;
+                for (let i = 0; i < 5; i++) {
+                    let wx = (time * 20 + i * 50) % w;
+                    let wy = groundY - 180 + (i * 15);
+                    ctx.beginPath();
+                    ctx.moveTo(wx, wy);
+                    ctx.lineTo(wx + 30, wy);
+                    ctx.stroke();
+                }
+            }
+
+            ctx.restore();
+
+            // 붕괴 완료 후 오버레이 표시
+            if (isCollapsed && collapseProgress >= 1) {
+                const overlay = document.getElementById('messageOverlay');
+                overlay.classList.remove('hidden');
+                setTimeout(() => {
+                    overlay.classList.remove('opacity-0');
+                }, 50);
+            }
+
+            requestAnimationFrame(drawScene);
+        }
+
+        window.onload = function() {
+            calculatePhysics();
+            requestAnimationFrame(drawScene);
+        };
+    </script>
+</body>
+</html><script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

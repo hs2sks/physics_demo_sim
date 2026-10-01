@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#191d30">
+  <meta name="description" content="복셀 아트로 보는 힘의 평형. 용수철 P의 압축과 작용·반작용을 직접 조작하며 이해하는 물리학Ⅱ 실험실.">
+  <title>힘의 아틀리에 | 용수철과 힘의 평형</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --ink: #222839;
+      --paper: #f5f3ed;
+      --line: #dcdcd5;
+      --muted: #78808a;
+      --orange: #ecaa69;
+      --coral: #e87562;
+      --mint: #45b8ad;
+      --violet: #8584ab;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Noto Sans KR", sans-serif; -webkit-font-smoothing: antialiased; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid #e99c57; outline-offset: 4px; }
+    ::selection { background: #eaa88b; color: #192134; }
+
+    .topbar {
+      height: 70px; padding: 0 clamp(22px, 3vw, 50px); display: flex; align-items: center; justify-content: space-between;
+      background: #191d30; color: #f8f4e9; border-bottom: 1px solid rgba(255,255,255,.11);
+    }
+    .brand { display: inline-flex; align-items: center; gap: 13px; color: inherit; text-decoration: none; font-size: 17px; font-weight: 800; letter-spacing: -.055em; }
+    .brand-icon { width: 27px; height: 27px; position: relative; flex: none; }
+    .brand-icon::before, .brand-icon::after { content: ""; position: absolute; width: 9px; height: 9px; background: #f1ad79; box-shadow: 10px 0 #f1ad79, 0 10px #f1ad79, 10px 10px #f1ad79; }
+    .brand-icon::before { left: 1px; top: 1px; }
+    .brand-icon::after { left: 6px; top: 6px; background: #78d4c9; box-shadow: none; }
+    .topbar-right { display: flex; align-items: center; gap: 34px; }
+    .topbar-note { font: 600 10px "DM Sans", sans-serif; letter-spacing: .19em; color: #9398a9; }
+    .topbar-link { color: #f8f4e9; text-decoration: none; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 9px; }
+    .topbar-link span { color: #ecaa69; font-size: 17px; line-height: 1; }
+    .topbar-link:hover { color: #ecaa69; }
+
+    .workspace { display: grid; grid-template-columns: minmax(0, 1fr) clamp(350px, 28vw, 420px); height: calc(100svh - 70px); min-height: 680px; }
+    .stage {
+      position: relative; min-width: 0; height: 100%; overflow: hidden; isolation: isolate;
+      background: radial-gradient(ellipse at 54% 40%, #40405b 0%, #292d47 38%, #1c243b 71%, #141d32 100%);
+    }
+    .stage::after {
+      content: ""; pointer-events: none; position: absolute; inset: 0; z-index: 1;
+      background: linear-gradient(90deg, rgba(19,26,43,.2), transparent 39%), linear-gradient(0deg, rgba(12,20,34,.48), transparent 24%);
+    }
+    #scene-container { position: absolute; inset: 0; z-index: 0; touch-action: none; cursor: grab; }
+    #scene-container:active { cursor: grabbing; }
+    #scene-container canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+    #scene-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #efe9dc; font-size: 13px; letter-spacing: .04em; pointer-events: none; z-index: 1; }
+    .stage-heading { position: absolute; top: clamp(30px, 5.2vh, 58px); left: clamp(25px, 5vw, 75px); z-index: 2; pointer-events: none; color: #f8f5eb; animation: rise-in .8s both; }
+    .eyebrow { margin: 0; font: 700 10px "DM Sans", sans-serif; letter-spacing: .23em; text-transform: uppercase; }
+    .stage-heading .eyebrow { color: #e9ba94; }
+    .stage-heading h1 { margin: 17px 0 13px; font-size: clamp(37px, 4.25vw, 65px); font-weight: 800; letter-spacing: -.09em; line-height: 1.13; }
+    .stage-heading p:last-child { max-width: 320px; margin: 0; color: #c5c9d4; font-size: 13px; font-weight: 500; line-height: 1.85; word-break: keep-all; }
+    .stage-bottom { position: absolute; z-index: 2; bottom: clamp(26px, 4.5vh, 48px); left: clamp(25px, 5vw, 75px); right: clamp(25px, 4vw, 56px); display: flex; align-items: flex-end; justify-content: space-between; gap: 15px; color: #e4e5e9; }
+    .gesture-hint { margin: 0; color: #bfc7d1; font-size: 11px; font-weight: 600; letter-spacing: -.02em; line-height: 1.7; }
+    .gesture-hint::before { content: "+"; display: inline-block; margin-right: 10px; color: #e8af87; font-size: 17px; font-weight: 700; animation: slow-turn 14s linear infinite; }
+    .gesture-hint .mobile-hint { display: none; }
+    .view-button { color: #f5f1e8; border: 0; border-bottom: 1px solid #a3a6b1; padding: 0 0 7px; background: none; white-space: nowrap; font-size: 11px; font-weight: 700; transition: color .2s, border-color .2s; }
+    .view-button:hover { color: #f2b882; border-color: #f2b882; }
+    .view-button span { display: inline-block; margin-right: 6px; font-size: 18px; vertical-align: -2px; }
+
+    .inspector { overflow-y: auto; overscroll-behavior: contain; background: var(--paper); border-left: 1px solid #e7e5dd; scrollbar-width: thin; scrollbar-color: #bfc1bb transparent; }
+    .inspector-inner { padding: 30px clamp(25px, 2.7vw, 40px) 40px; }
+    .inspector-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .small-index { color: #9a857a; font: 700 10px "DM Sans", sans-serif; letter-spacing: .18em; }
+    .text-button { border: 0; background: none; padding: 2px 0; color: #5e6770; font-size: 11px; font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+    .text-button:hover { color: var(--coral); }
+    .inspector h2 { font-size: 24px; letter-spacing: -.075em; line-height: 1.35; margin: 14px 0 4px; font-weight: 800; }
+    .inspector-lead { color: #7c8185; font-size: 11px; margin: 0 0 25px; line-height: 1.7; }
+    .control-row { margin-bottom: 21px; }
+    .control-label { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 12px; font-weight: 700; }
+    .control-label small { color: #888e91; font: 600 11px "DM Sans", sans-serif; margin-left: 5px; }
+    .control-label output { color: #1f2839; font: 700 17px "DM Sans", sans-serif; white-space: nowrap; letter-spacing: -.035em; }
+    .control-row input[type="range"] { --pct: 25%; --accent: var(--orange); appearance: none; -webkit-appearance: none; width: 100%; height: 5px; margin: 15px 0 7px; border-radius: 0; background: linear-gradient(90deg, var(--accent) var(--pct), #d9dcd8 var(--pct)); cursor: pointer; display: block; }
+    .control-row input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 17px; height: 17px; border-radius: 2px; background: #252d3c; border: 3px solid var(--paper); box-shadow: 0 0 0 1px #252d3c; }
+    .control-row input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 2px; background: #252d3c; border: 3px solid var(--paper); box-shadow: 0 0 0 1px #252d3c; }
+    .range-ends { display: flex; justify-content: space-between; font: 600 10px "DM Sans", sans-serif; color: #a3a8a9; }
+    .preset-button { display: inline-flex; align-items: center; justify-content: space-between; gap: 20px; width: 100%; padding: 10px 0 13px; border: 0; border-bottom: 1px solid var(--line); background: none; color: #34434c; font-size: 11px; font-weight: 700; text-align: left; }
+    .preset-button:hover { color: var(--coral); }
+    .preset-button span { font: 500 18px "DM Sans", sans-serif; }
+    .vector-controls { padding: 20px 0 21px; border-bottom: 1px solid var(--line); }
+    .section-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+    .section-row h3 { margin: 0; font-size: 12px; font-weight: 800; letter-spacing: -.04em; }
+    .section-row > span { color: #9b9fa1; font-size: 10px; font-weight: 600; }
+    .force-options { display: flex; justify-content: space-between; gap: 8px; margin-top: 17px; }
+    .force-option { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; white-space: nowrap; color: #5b6570; font-size: 11px; font-weight: 700; }
+    .force-option input { appearance: none; -webkit-appearance: none; width: 13px; height: 13px; border: 1.5px solid var(--option-color); border-radius: 2px; margin: 0; display: grid; place-items: center; }
+    .force-option input:checked { background: var(--option-color); }
+    .force-option input:checked::after { content: ""; width: 5px; height: 5px; background: #fff; }
+    .spring-readout { padding: 22px 0 22px; border-bottom: 1px solid var(--line); }
+    .readout-kicker { display: block; color: #848b8e; font-size: 11px; font-weight: 700; }
+    .readout-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 6px 0 8px; }
+    .readout-head strong { color: var(--coral); font-size: 34px; font-weight: 800; letter-spacing: -.085em; line-height: 1.2; }
+    .readout-head span { color: #31384a; font: 600 17px "DM Sans", sans-serif; }
+    .spring-readout[data-state="stretched"] .readout-head strong { color: var(--mint); }
+    .spring-readout[data-state="natural"] .readout-head strong { color: #8387a5; }
+    .readout-explain { min-height: 55px; margin: 0 0 17px; color: #5e6771; font-size: 11px; line-height: 1.75; word-break: keep-all; }
+    .length-row { display: grid; grid-template-columns: 57px 1fr; align-items: center; gap: 10px; margin-top: 8px; color: #8e9699; font-size: 10px; font-weight: 700; }
+    .length-track { position: relative; height: 6px; background: #e0e2dc; }
+    .length-track i { display: block; height: 6px; background: #adb2b9; transition: width .45s ease, background-color .3s; }
+    .length-row.current i { background: var(--coral); }
+    .spring-readout[data-state="stretched"] .length-row.current i { background: var(--mint); }
+    .spring-readout[data-state="natural"] .length-row.current i { background: #8387a5; }
+    .length-note { color: #929a9a; font-size: 10px; margin: 8px 0 0 67px; }
+    .fbd-section { padding-top: 22px; }
+    .fbd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; margin-top: 13px; }
+    .fbd-grid figure { margin: 0; min-width: 0; }
+    .fbd-grid figcaption { color: #626b73; font-size: 11px; font-weight: 800; }
+    .fbd-svg { display: block; width: 100%; aspect-ratio: 160 / 174; margin-top: 1px; overflow: visible; }
+    .fbd-svg text { font-family: "DM Sans", "Noto Sans KR", sans-serif; font-size: 11px; font-weight: 700; }
+    .fbd-eq { color: #49525e; text-align: center; font: 700 11px "DM Sans", sans-serif; margin-top: -6px; white-space: nowrap; }
+    .q-summary { margin: 18px 0 0; padding-top: 13px; border-top: 1px solid var(--line); color: #647078; font-size: 11px; line-height: 1.6; }
+    .q-summary strong { color: #229e96; }
+
+    .lesson { padding: clamp(70px, 9vw, 125px) clamp(25px, 8vw, 132px); border-top: 1px solid #dcddd7; }
+    .lesson-inner { max-width: 1320px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: clamp(36px, 8vw, 125px); align-items: center; }
+    .lesson .eyebrow { color: #bb7962; }
+    .lesson h2 { margin: 21px 0 17px; font-size: clamp(29px, 3.25vw, 49px); font-weight: 800; letter-spacing: -.085em; line-height: 1.35; word-break: keep-all; }
+    .lesson-copy > p:last-child { max-width: 455px; color: #6c7378; font-size: 14px; line-height: 1.9; word-break: keep-all; }
+    .equation-area { border-top: 2px solid #263043; padding-top: 25px; }
+    .equation-area .equation-label { font: 700 11px "DM Sans", sans-serif; letter-spacing: .12em; color: #8c939a; }
+    .big-equation { display: block; margin: 16px 0 12px; font: 600 clamp(26px, 3.8vw, 56px) "DM Sans", sans-serif; letter-spacing: -.06em; white-space: nowrap; }
+    .equation-area p { margin: 0; color: #687077; font-size: 13px; line-height: 1.8; word-break: keep-all; }
+    .equation-foot { margin-top: 30px; padding-top: 18px; border-top: 1px solid #d5d8d4; font-size: 11px; color: #858b8d; line-height: 1.7; }
+    .lesson-third { background: #222a40; color: #f7f2e8; border-top: 0; }
+    .lesson-third .eyebrow { color: #f2b590; }
+    .lesson-third .lesson-copy > p:last-child { color: #b8c2ce; }
+    .pairs { border-top: 1px solid rgba(255,255,255,.26); }
+    .pair { padding: 21px 0 23px; border-bottom: 1px solid rgba(255,255,255,.2); }
+    .pair-label { color: #b7c0cb; font-size: 11px; font-weight: 700; }
+    .pair-label.good { color: #82d7c7; }
+    .pair-flow { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 13px 0 9px; font: 600 clamp(14px, 1.55vw, 19px) "DM Sans", "Noto Sans KR", sans-serif; letter-spacing: -.025em; }
+    .pair-flow .relation { color: #8d9aad; font-size: 13px; }
+    .pair-flow .force-a { color: #ffab94; }
+    .pair-flow .force-b { color: #e8bf8c; }
+    .pair > p { margin: 0; color: #aeb9c7; font-size: 11px; line-height: 1.7; }
+    .pair > p strong { color: #fff0d9; font-weight: 700; }
+    .answer-section { background: #eddfd1; border-top: 0; }
+    .answer-section .eyebrow { color: #ae6752; }
+    .answer-section h2 em { color: #ad5445; font-style: normal; }
+    .answer-checks { border-top: 2px solid #a98877; }
+    .answer-check { display: grid; grid-template-columns: 35px 56px 1fr; align-items: start; gap: 12px; border-bottom: 1px solid #cfbdb0; padding: 19px 0; font-size: 12px; line-height: 1.7; }
+    .answer-check .choice { font-weight: 800; }
+    .answer-check .verdict { font: 700 12px "DM Sans", sans-serif; color: #aa5d4c; }
+    .answer-check.correct .verdict { color: #278f84; }
+    .answer-check p { margin: 0; color: #5f6164; word-break: keep-all; }
+    .site-footer { padding: 25px clamp(25px, 8vw, 132px); background: #191d30; color: #9fa7b6; display: flex; justify-content: space-between; gap: 20px; font-size: 11px; }
+    .site-footer strong { color: #f8f4e9; }
+    .site-footer a { color: #d2d8db; text-decoration: none; }
+
+    @keyframes rise-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slow-turn { to { transform: rotate(360deg); } }
+
+    @media (max-width: 980px) {
+      .workspace { display: block; height: auto; min-height: 0; }
+      .stage { height: min(72svh, 680px); min-height: 490px; }
+      .inspector { height: auto; overflow: visible; border-left: 0; }
+      .inspector-inner { max-width: 720px; margin: 0 auto; padding: 37px 34px 44px; }
+      .stage-heading { left: 6vw; }
+      .stage-bottom { left: 6vw; right: 6vw; }
+    }
+    @media (max-width: 640px) {
+      .topbar { height: 62px; padding: 0 21px; }
+      .brand { font-size: 15px; }
+      .topbar-note { display: none; }
+      .topbar-link { font-size: 11px; }
+      .workspace { min-height: 0; }
+      .stage { height: 59svh; min-height: 420px; max-height: 560px; }
+      .stage-heading { top: 22px; left: 23px; }
+      .stage-heading .eyebrow { font-size: 9px; }
+      .stage-heading h1 { font-size: clamp(31px, 9vw, 42px); margin: 10px 0 8px; }
+      .stage-heading p:last-child { font-size: 10px; max-width: 185px; line-height: 1.6; }
+      .stage-bottom { bottom: 20px; left: 23px; right: 23px; align-items: flex-end; }
+      .gesture-hint { max-width: 220px; font-size: 10px; }
+      .gesture-hint .desktop-hint { display: none; }
+      .gesture-hint .mobile-hint { display: inline; }
+      .view-button { font-size: 10px; }
+      .inspector-inner { padding: 34px 25px 46px; }
+      .inspector-lead, .readout-explain, .q-summary, .preset-button { font-size: 12px; }
+      .control-label, .force-option { font-size: 12px; }
+      .length-note { font-size: 11px; }
+      .lesson { padding: 70px 26px; }
+      .lesson-inner { grid-template-columns: 1fr; gap: 34px; }
+      .lesson h2 { font-size: 32px; }
+      .lesson-copy > p:last-child { font-size: 13px; }
+      .big-equation { font-size: clamp(27px, 7vw, 39px); }
+      .site-footer { flex-direction: column; padding: 26px; }
+    }
+    @media (max-width: 360px) {
+      .stage-heading p:last-child { max-width: 160px; }
+      .force-options { gap: 5px; }
+      .force-option { font-size: 10px; gap: 5px; }
+      .fbd-grid { gap: 4px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body id="top">
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="힘의 아틀리에, 맨 위로"><span class="brand-icon" aria-hidden="true"></span><span>힘의 아틀리에</span></a>
+    <div class="topbar-right"><span class="topbar-note">PHYSICS II / INTERACTIVE STUDY</span><a class="topbar-link" href="#learn-compression">개념 읽기 <span aria-hidden="true">↗</span></a></div>
+  </header>
+
+  <main>
+    <div class="workspace">
+      <section class="stage" aria-label="용수철과 두 물체의 3D 복셀 실험 장면">
+        <div id="scene-container" aria-label="A와 B, 용수철 P와 Q가 놓인 회전 가능한 3D 실험 장면"></div>
+        <div id="scene-loading" role="status">3D 실험 장면을 준비하고 있습니다...</div>
+        <div class="stage-heading">
+          <p class="eyebrow">A VOXEL PHYSICS EXPERIMENT</p>
+          <h1>힘의 아틀리에</h1>
+          <p>보이지 않는 힘의 방향을 돌려 보고, 당겨 보고, 직접 확인하세요.</p>
+        </div>
+        <div class="stage-bottom">
+          <p class="gesture-hint"><span class="desktop-hint">드래그 회전 · 휠 확대/축소 · 우클릭 이동</span><span class="mobile-hint">한 손가락 회전 · 두 손가락 확대/축소 및 이동</span></p>
+          <button class="view-button" id="reset-view" type="button"><span aria-hidden="true">↺</span>시점 초기화</button>
+        </div>
+      </section>
+
+      <aside class="inspector" aria-label="실험 조건과 힘 분석">
+        <div class="inspector-inner">
+          <div class="inspector-top"><span class="small-index">01 / EXPERIMENT</span><button type="button" class="text-button" id="reset-values">원문 조건 복원</button></div>
+          <h2>힘을 바꿔 보세요.</h2>
+          <p class="inspector-lead">모든 값은 정지한 평형 상태를 나타냅니다.</p>
+
+          <div class="control-row">
+            <div class="control-label"><label for="force-input">A를 위로 당기는 외력 <small>F</small></label><output id="force-output" for="force-input">10 N</output></div>
+            <input id="force-input" type="range" min="0" max="40" value="10" step="1" style="--accent: var(--orange)" aria-label="A를 위로 당기는 외력">
+            <div class="range-ends"><span>0 N</span><span>40 N</span></div>
+          </div>
+          <div class="control-row">
+            <div class="control-label"><label for="weight-a-input">물체 A의 무게 <small>W<sub>A</sub></small></label><output id="weight-a-output" for="weight-a-input">20 N</output></div>
+            <input id="weight-a-input" type="range" min="10" max="30" value="20" step="1" style="--accent: var(--violet)" aria-label="물체 A의 무게">
+            <div class="range-ends"><span>10 N</span><span>30 N</span></div>
+          </div>
+          <div class="control-row">
+            <div class="control-label"><label for="weight-b-input">물체 B의 무게 <small>W<sub>B</sub></small></label><output id="weight-b-output" for="weight-b-input">10 N</output></div>
+            <input id="weight-b-input" type="range" min="5" max="25" value="10" step="1" style="--accent: var(--violet)" aria-label="물체 B의 무게">
+            <div class="range-ends"><span>5 N</span><span>25 N</span></div>
+          </div>
+          <button type="button" class="preset-button" id="stretch-preset">P가 늘어나는 조건을 보고 싶다면 <span aria-hidden="true">↗</span></button>
+
+          <section class="vector-controls" aria-label="힘 화살표 표시 설정">
+            <div class="section-row"><h3>힘 화살표</h3><span>3D 장면 표시</span></div>
+            <div class="force-options">
+              <label class="force-option" style="--option-color: #e5a566"><input type="checkbox" data-vector="external" checked><span>외력</span></label>
+              <label class="force-option" style="--option-color: #8888ad"><input type="checkbox" data-vector="weight" checked><span>중력</span></label>
+              <label class="force-option" style="--option-color: #e87d69"><input type="checkbox" data-vector="spring" checked><span>탄성력</span></label>
+            </div>
+          </section>
+
+          <section class="spring-readout" id="spring-readout" data-state="compressed" aria-label="용수철 P의 변형 상태">
+            <span class="readout-kicker">지금, 용수철 P는</span>
+            <div class="readout-head"><strong id="p-state" aria-live="polite">압축</strong><span id="p-force-value">10 N</span></div>
+            <p class="readout-explain" id="p-reason">A에는 위쪽 힘이 10 N 부족합니다. P가 A를 위로, B를 아래로 밉니다. 둘 다 P가 가한 힘이므로 작용·반작용은 아닙니다.</p>
+            <div class="length-row"><span>자연 길이</span><div class="length-track"><i id="rest-length"></i></div></div>
+            <div class="length-row current"><span>지금 P</span><div class="length-track"><i id="current-length"></i></div></div>
+            <p class="length-note" id="length-note">자연 길이보다 0.31 모형단위 짧습니다.</p>
+          </section>
+
+          <section class="fbd-section" aria-label="물체 A와 B의 자유 물체도">
+            <div class="section-row"><h3>자유 물체도</h3><span>각 물체의 알짜힘 = 0 N</span></div>
+            <div class="fbd-grid">
+              <figure><figcaption>물체 A</figcaption><svg class="fbd-svg" id="fbd-a" viewBox="0 0 160 174" role="img" aria-label="물체 A에 작용하는 힘"></svg><div class="fbd-eq" id="equation-a">10 + 10 - 20 = 0 N</div></figure>
+              <figure><figcaption>물체 B</figcaption><svg class="fbd-svg" id="fbd-b" viewBox="0 0 160 174" role="img" aria-label="물체 B에 작용하는 힘"></svg><div class="fbd-eq" id="equation-b">20 - 10 - 10 = 0 N</div></figure>
+            </div>
+            <p class="q-summary" id="q-summary">Q가 B에 가하는 힘: <strong>위로 20 N</strong></p>
+          </section>
+        </div>
+      </aside>
+    </div>
+
+    <section class="lesson" id="learn-compression">
+      <div class="lesson-inner">
+        <div class="lesson-copy">
+          <p class="eyebrow">02 / COMPRESSION OR STRETCH?</p>
+          <h2>압축일까, 늘어남일까?<br>A만 떼어 보세요.</h2>
+          <p>위쪽을 양(+)의 방향으로 정하고 A에 작용하는 힘만 적습니다. 정지해 있다면 알짜힘은 반드시 0 N입니다.</p>
+        </div>
+        <div class="equation-area">
+          <span class="equation-label">ΣF<sub>A</sub> = F + F<sub>P→A</sub> - W<sub>A</sub> = 0</span>
+          <strong class="big-equation" id="large-equation">10 + 10 - 20 = 0</strong>
+          <p id="lesson-diagnosis">외력 10 N만으로는 A의 무게 20 N을 버티지 못합니다. P가 A를 위로 밀어야 하므로 P는 압축되어 있습니다.</p>
+          <div class="equation-foot">용수철의 질량을 무시하고 훅의 법칙 F = kΔx를 사용합니다. 모형의 탄성 계수는 P: 32 N/모형단위, Q: 44 N/모형단위이며 Q의 아래쪽은 바닥에 고정되어 있습니다.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="lesson lesson-third" id="learn-third-law">
+      <div class="lesson-inner">
+        <div class="lesson-copy">
+          <p class="eyebrow">03 / NEWTON'S THIRD LAW</p>
+          <h2>방향이 반대라도<br>무조건 한 쌍은 아닙니다.</h2>
+          <p>작용·반작용은 힘을 주는 물체와 받는 물체가 서로 바뀐 두 힘입니다. 두 힘의 작용 주체부터 확인하세요.</p>
+        </div>
+        <div class="pairs">
+          <div class="pair">
+            <span class="pair-label">작용·반작용이 아님</span>
+            <div class="pair-flow"><span class="force-a" id="pair-pa">P → A &nbsp;↑ 10 N</span><span class="relation">와</span><span class="force-b" id="pair-pb">P → B &nbsp;↓ 10 N</span></div>
+            <p>두 힘을 가하는 주체가 <strong>모두 P</strong>입니다. 질량을 무시한 P의 평형 때문에 크기와 방향이 서로 반대여도 제3법칙의 짝은 아닙니다.</p>
+          </div>
+          <div class="pair">
+            <span class="pair-label good">진짜 작용·반작용 한 쌍</span>
+            <div class="pair-flow"><span class="force-a" id="pair-true-a">P → A &nbsp;↑ 10 N</span><span class="relation">↔</span><span class="force-b" id="pair-ap">A → P &nbsp;↓ 10 N</span></div>
+            <p>여기서는 <strong>P와 A가 서로</strong>에게 힘을 가합니다. 힘의 작용 대상이 서로 바뀝니다.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="lesson answer-section" id="original-answer">
+      <div class="lesson-inner">
+        <div class="lesson-copy">
+          <p class="eyebrow">04 / THE ORIGINAL QUESTION</p>
+          <h2>원문 조건에서는<br>정답이 <em>② ㄴ</em>입니다.</h2>
+          <p>외력 10 N, A의 무게 20 N, B의 무게 10 N일 때의 판단입니다. 값을 바꾸어 실험한 뒤 위의 '원문 조건 복원'을 눌러 다시 비교해 보세요.</p>
+        </div>
+        <div class="answer-checks">
+          <div class="answer-check"><span class="choice">ㄱ</span><span class="verdict">FALSE</span><p>P→A와 P→B는 모두 P가 가하는 힘이므로 작용·반작용이 아닙니다.</p></div>
+          <div class="answer-check correct"><span class="choice">ㄴ</span><span class="verdict">TRUE</span><p>압축된 P는 B를 아래로 밉니다. B의 중력도 아래쪽입니다.</p></div>
+          <div class="answer-check"><span class="choice">ㄷ</span><span class="verdict">FALSE</span><p>B에서 위쪽 Q의 힘은 10 N이 아닌 20 N입니다. (20 - 10 - 10 = 0)</p></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer"><span><strong>힘의 아틀리에</strong> · 물리학Ⅱ를 손끝으로 이해하는 작은 실험실</span><a href="#top">맨 위로 ↑</a></footer>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    const DEFAULTS = { F: 10, WA: 20, WB: 10 };
+    const state = { ...DEFAULTS, vectors: { external: true, weight: true, spring: true } };
+    const MODEL = { ground: 0.30, restP: 2.15, restQ: 2.35, kP: 32, kQ: 44, bodyH: 0.912 };
+    const colors = { external: '#e7b273', weight: '#a5a5d1', p: '#f39278', q: '#71d9c8' };
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const autoFrame = { zoom: 1, targetY: 3.48 };
+    let cameraTouched = false;
+
+    function calculate() {
+      const pOnA = state.WA - state.F;
+      const qOnB = state.WA + state.WB - state.F;
+      const lengthP = MODEL.restP - pOnA / MODEL.kP;
+      const lengthQ = MODEL.restQ - qOnB / MODEL.kQ;
+      const bY = MODEL.ground + lengthQ + MODEL.bodyH / 2;
+      const aY = bY + MODEL.bodyH + lengthP;
+      return { pOnA, qOnB, lengthP, lengthQ, aY, bY };
+    }
+
+    let equilibrium = calculate();
+    const visual = { aY: equilibrium.aY, bY: equilibrium.bY };
+    const $ = (id) => document.getElementById(id);
+    const ranges = { F: $('force-input'), WA: $('weight-a-input'), WB: $('weight-b-input') };
+    const outputs = { F: $('force-output'), WA: $('weight-a-output'), WB: $('weight-b-output') };
+
+    function signedTerm(value) { return `${value < 0 ? ' - ' : ' + '}${Math.abs(value)}`; }
+    function leadingNumber(value) { return value < 0 ? `-${Math.abs(value)}` : `${value}`; }
+    function direction(value) { return value > 0 ? '↑' : value < 0 ? '↓' : '·'; }
+    function forceText(source, target, force) { return `${source} → ${target}  ${direction(force)} ${Math.abs(force)} N`; }
+    function spokenForce(value) { return value > 0 ? `위로 ${value} 뉴턴` : value < 0 ? `아래로 ${-value} 뉴턴` : '0 뉴턴'; }
+
+    function svgArrow(x, signedForce, label, color) {
+      if (signedForce === 0) return '';
+      const up = signedForce > 0;
+      const line = up ? `x1="${x}" y1="71" x2="${x}" y2="33"` : `x1="${x}" y1="100" x2="${x}" y2="145"`;
+      const head = up ? `${x},25 ${x - 5},37 ${x + 5},37` : `${x},153 ${x - 5},141 ${x + 5},141`;
+      return `<line ${line} stroke="${color}" stroke-width="3.5" stroke-linecap="square"/><polygon points="${head}" fill="${color}"/><text x="${x}" y="${up ? 14 : 170}" text-anchor="middle" fill="${color}">${label} ${Math.abs(signedForce)}</text>`;
+    }
+
+    function bodyDiagram(letter, fill, arrows) {
+      return `<rect x="66" y="73" width="28" height="28" fill="${fill}"/><rect x="71" y="78" width="18" height="18" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="1"/><text x="80" y="92" fill="#fff" text-anchor="middle" font-size="14">${letter}</text>${arrows.join('')}`;
+    }
+
+    function updateReadouts() {
+      equilibrium = calculate();
+      // Keep the pull arrow visible until the learner chooses a camera angle.
+      const highest = equilibrium.aY + MODEL.bodyH / 2 + .9 + state.F * .017;
+      autoFrame.zoom = Math.min(1, 9.45 / Math.max(9.45, highest + 1.35));
+      autoFrame.targetY = Math.max(3.48, (highest - .8) / 2);
+      for (const [key, input] of Object.entries(ranges)) {
+        outputs[key].textContent = `${state[key]} N`;
+        input.style.setProperty('--pct', `${(state[key] - Number(input.min)) / (Number(input.max) - Number(input.min)) * 100}%`);
+      }
+
+      const p = equilibrium.pOnA;
+      const q = equilibrium.qOnB;
+      const pState = p > 0 ? 'compressed' : p < 0 ? 'stretched' : 'natural';
+      $('spring-readout').dataset.state = pState;
+      $('p-state').textContent = p > 0 ? '압축' : p < 0 ? '늘어남' : '자연 길이';
+      $('p-force-value').textContent = `${Math.abs(p)} N`;
+      $('p-reason').textContent = p > 0
+        ? `A에는 위쪽 힘이 ${p} N 부족합니다. P가 A를 위로, B를 아래로 밉니다. 둘 다 P가 가한 힘이므로 작용·반작용은 아닙니다.`
+        : p < 0
+          ? `외력이 A의 무게보다 ${-p} N 큽니다. P가 A를 아래로, B를 위로 당깁니다. 두 힘은 작용·반작용이 아닙니다.`
+          : '외력과 A의 무게가 같아 P의 탄성력은 0 N입니다. P는 변형되지 않습니다. P→A와 P→B는 작용·반작용 쌍이 아닙니다.';
+      $('rest-length').style.width = `${MODEL.restP / 3.15 * 100}%`;
+      $('current-length').style.width = `${Math.min(equilibrium.lengthP / 3.15 * 100, 100)}%`;
+      const deformation = (Math.abs(p) / MODEL.kP).toFixed(2);
+      $('length-note').textContent = p > 0
+        ? `자연 길이보다 ${deformation} 모형단위 짧습니다.`
+        : p < 0 ? `자연 길이보다 ${deformation} 모형단위 깁니다.` : '변형량 0.00, 자연 길이와 같습니다.';
+
+      $('fbd-a').innerHTML = bodyDiagram('A', '#e88972', [
+        svgArrow(29, state.F, 'F', colors.external),
+        svgArrow(80, -state.WA, 'W', colors.weight),
+        svgArrow(131, p, 'P', colors.p)
+      ]);
+      $('fbd-b').innerHTML = bodyDiagram('B', '#49b9b0', [
+        svgArrow(29, -state.WB, 'W', colors.weight),
+        svgArrow(80, q, 'Q', colors.q),
+        svgArrow(131, -p, 'P', colors.p)
+      ]);
+      $('fbd-a').setAttribute('aria-label', `A: 외력 ${spokenForce(state.F)}, 중력 ${spokenForce(-state.WA)}, P의 힘 ${spokenForce(p)}`);
+      $('fbd-b').setAttribute('aria-label', `B: 중력 ${spokenForce(-state.WB)}, P의 힘 ${spokenForce(-p)}, Q의 힘 ${spokenForce(q)}`);
+      const eqA = `${state.F}${signedTerm(p)} - ${state.WA} = 0`;
+      const eqB = `${leadingNumber(q)}${signedTerm(-p)} - ${state.WB} = 0`;
+      $('equation-a').textContent = `${eqA} N`;
+      $('equation-b').textContent = `${eqB} N`;
+      $('large-equation').textContent = eqA;
+      $('q-summary').innerHTML = `Q가 B에 가하는 힘: <strong>${q > 0 ? '위로' : q < 0 ? '아래로' : '힘 없음'} ${Math.abs(q)} N</strong>`;
+      $('lesson-diagnosis').textContent = p > 0
+        ? `외력 ${state.F} N만으로는 A의 무게 ${state.WA} N을 버티지 못합니다. P가 A를 위로 ${p} N 밀어야 하므로 P는 압축되어 있습니다.`
+        : p < 0
+          ? `외력 ${state.F} N이 A의 무게 ${state.WA} N보다 큽니다. P가 A를 아래로 ${-p} N 당겨야 하므로 P는 늘어나 있습니다.`
+          : `외력과 A의 무게가 각각 ${state.F} N으로 같으므로 P에 필요한 힘은 0 N입니다. 이 모형에서 P는 자연 길이입니다.`;
+      $('pair-pa').textContent = forceText('P', 'A', p);
+      $('pair-pb').textContent = forceText('P', 'B', -p);
+      $('pair-true-a').textContent = forceText('P', 'A', p);
+      $('pair-ap').textContent = forceText('A', 'P', -p);
+    }
+
+    for (const [key, input] of Object.entries(ranges)) {
+      input.addEventListener('input', () => { state[key] = Number(input.value); updateReadouts(); });
+    }
+    document.querySelectorAll('[data-vector]').forEach((input) => {
+      input.addEventListener('change', () => { state.vectors[input.dataset.vector] = input.checked; });
+    });
+    function setValues(values) {
+      for (const key of ['F', 'WA', 'WB']) { state[key] = values[key]; ranges[key].value = values[key]; }
+      updateReadouts();
+    }
+    $('reset-values').addEventListener('click', () => setValues(DEFAULTS));
+    $('stretch-preset').addEventListener('click', () => setValues({ F: 26, WA: 20, WB: 10 }));
+    updateReadouts();
+
+    let renderer, scene, camera, controls, bodyA, bodyB, springP, springQ, pGuide, guideCurrent;
+    const arrows = {};
+    const springLabels = {};
+    const motes = [];
+    const tempObject = new THREE.Object3D();
+    const unitCube = new THREE.BoxGeometry(1, 1, 1);
+    const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: .78, metalness: .04, ...extra });
+    const materials = {
+      plinth: mat('#252b46'), trim: mat('#d3a979', { metalness: .38, roughness: .43 }),
+      dark: mat('#333954'), console: mat('#454c67'), screen: mat('#70cabe', { emissive: '#367b83', emissiveIntensity: .55 }),
+      light: mat('#f5d49c', { emissive: '#e8a76c', emissiveIntensity: .5 }),
+      aqua: mat('#7de0d3', { emissive: '#4fa49b', emissiveIntensity: .4 }),
+      guide: mat('#a8aec7', { transparent: true, opacity: .64, depthWrite: false }),
+      guideNow: mat('#f29b80', { emissive: '#e58069', emissiveIntensity: .28 })
+    };
+
+    function box(parent, w, h, d, x, y, z, material) {
+      const mesh = new THREE.Mesh(unitCube, material);
+      mesh.scale.set(w, h, d);
+      mesh.position.set(x, y, z);
+      parent.add(mesh);
+      return mesh;
+    }
+
+    function makeBody(letter, baseHex) {
+      const group = new THREE.Group();
+      const nx = 10, ny = 6, nz = 8, cell = .152;
+      const core = mat(new THREE.Color(baseHex).multiplyScalar(.55));
+      box(group, nx * cell - .07, ny * cell - .07, nz * cell - .07, 0, 0, 0, core);
+      const positions = [];
+      for (let ix = 0; ix < nx; ix++) for (let iy = 0; iy < ny; iy++) for (let iz = 0; iz < nz; iz++) {
+        if (ix !== 0 && ix !== nx - 1 && iy !== 0 && iy !== ny - 1 && iz !== 0 && iz !== nz - 1) continue;
+        positions.push([ix, iy, iz]);
+      }
+      const voxels = new THREE.InstancedMesh(new THREE.BoxGeometry(.144, .144, .144), mat('#ffffff', { roughness: .66 }), positions.length);
+      const base = new THREE.Color(baseHex);
+      positions.forEach(([ix, iy, iz], index) => {
+        tempObject.position.set((ix - (nx - 1) / 2) * cell, (iy - (ny - 1) / 2) * cell, (iz - (nz - 1) / 2) * cell);
+        tempObject.rotation.set(0, 0, 0);
+        tempObject.scale.set(1, 1, 1);
+        tempObject.updateMatrix();
+        voxels.setMatrixAt(index, tempObject.matrix);
+        const shade = .84 + (iy === ny - 1 ? .20 : 0) + (iz === nz - 1 ? .10 : 0) + ((ix * 7 + iy * 13 + iz * 5) % 7) * .018;
+        voxels.setColorAt(index, base.clone().multiplyScalar(shade));
+      });
+      voxels.instanceMatrix.needsUpdate = true;
+      voxels.castShadow = true;
+      group.add(voxels);
+
+      const glyphs = {
+        A: ['01110', '10001', '11111', '10001', '10001'],
+        B: ['11110', '10001', '11110', '10001', '11110']
+      };
+      const glyphMat = mat('#fff0cf', { emissive: '#d69b7d', emissiveIntensity: .18, roughness: .5 });
+      glyphs[letter].forEach((row, r) => [...row].forEach((pixel, c) => {
+        if (pixel !== '1') return;
+        const horizontal = (c - 2) * .135, vertical = (2 - r) * .135;
+        box(group, .106, .106, .055, horizontal, vertical, nz * cell / 2 + .049, glyphMat);
+        box(group, .106, .106, .055, -horizontal, vertical, -nz * cell / 2 - .049, glyphMat);
+        box(group, .055, .106, .106, nx * cell / 2 + .049, vertical, -horizontal, glyphMat);
+        box(group, .055, .106, .106, -nx * cell / 2 - .049, vertical, horizontal, glyphMat);
+      }));
+      for (const x of [-.56, .56]) for (const z of [-.4, .4]) {
+        box(group, .10, .047, .10, x, MODEL.bodyH / 2 + .023, z, materials.trim);
+      }
+      return group;
+    }
+
+    function makeCap(parent, colorMaterial) {
+      const cap = new THREE.Group();
+      box(cap, .61, .10, .61, 0, 0, 0, materials.dark);
+      box(cap, .49, .045, .49, 0, .075, 0, colorMaterial);
+      for (const x of [-.23, .23]) for (const z of [-.23, .23]) box(cap, .072, .085, .072, x, .067, z, materials.trim);
+      parent.add(cap);
+      return cap;
+    }
+
+    const squareLoop = [];
+    for (let x = -2; x <= 2; x++) squareLoop.push([x, -2]);
+    for (let z = -1; z <= 2; z++) squareLoop.push([2, z]);
+    for (let x = 1; x >= -2; x--) squareLoop.push([x, 2]);
+    for (let z = 1; z >= -1; z--) squareLoop.push([-2, z]);
+
+    function makeSpring(color, turns) {
+      const group = new THREE.Group();
+      const count = turns * squareLoop.length;
+      const wireMat = mat('#ffffff', { roughness: .36, metalness: .25, emissive: color, emissiveIntensity: .11 });
+      const coil = new THREE.InstancedMesh(new THREE.BoxGeometry(.125, .105, .125), wireMat, count);
+      const coilColor = new THREE.Color(color);
+      for (let i = 0; i < count; i++) coil.setColorAt(i, coilColor.clone().multiplyScalar(.85 + (i % 5) * .045));
+      group.add(coil);
+      const lower = makeCap(group, materials.trim);
+      const upper = makeCap(group, materials.trim);
+      scene.add(group);
+      return { group, coil, lower, upper, count };
+    }
+
+    function moveSpring(spring, bottom, top) {
+      const length = top - bottom;
+      spring.group.position.y = bottom;
+      spring.lower.position.y = .065;
+      spring.upper.position.y = length - .065;
+      for (let i = 0; i < spring.count; i++) {
+        const [x, z] = squareLoop[i % squareLoop.length];
+        tempObject.position.set(x * .119, .17 + (length - .34) * i / (spring.count - 1), z * .119);
+        tempObject.rotation.set(0, 0, 0);
+        tempObject.scale.set(1, 1, 1);
+        tempObject.updateMatrix();
+        spring.coil.setMatrixAt(i, tempObject.matrix);
+      }
+      spring.coil.instanceMatrix.needsUpdate = true;
+    }
+
+    function makeLabel(text, color) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 320; canvas.height = 90;
+      const ctx = canvas.getContext('2d');
+      ctx.font = '700 49px "DM Sans", sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.shadowColor = '#101629'; ctx.shadowBlur = 9;
+      ctx.fillStyle = color; ctx.fillText(text, 160, 44);
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false }));
+      sprite.scale.set(text.length > 2 ? .76 : .51, .22, 1);
+      sprite.renderOrder = 20;
+      return sprite;
+    }
+
+    function makeArrow(name, color, labelSide) {
+      const group = new THREE.Group();
+      const material = mat(color, { emissive: color, emissiveIntensity: .35, roughness: .47 });
+      const shaft = box(group, .10, 1, .10, 0, 0, 0, material);
+      const head = [box(group, .14, .14, .14, 0, 0, 0, material)];
+      for (const x of [-.13, .13]) head.push(box(group, .13, .13, .13, x, 0, 0, material));
+      for (const x of [-.25, .25]) head.push(box(group, .12, .12, .12, x, 0, 0, material));
+      const label = makeLabel(name, color);
+      group.add(label);
+      scene.add(group);
+      return { group, shaft, head, label, labelSide };
+    }
+
+    function placeArrow(arrow, magnitude, sign, x, y, z, enabled) {
+      arrow.group.visible = enabled && magnitude > 0;
+      if (!arrow.group.visible) return;
+      const length = .34 + Math.min(magnitude, 45) * .017;
+      const stem = length - .19;
+      arrow.group.position.set(x, y, z);
+      arrow.shaft.scale.y = stem;
+      arrow.shaft.position.y = sign * stem / 2;
+      arrow.head[0].position.y = sign * length;
+      arrow.head[1].position.y = arrow.head[2].position.y = sign * (length - .115);
+      arrow.head[3].position.y = arrow.head[4].position.y = sign * (length - .225);
+      arrow.label.position.set(arrow.labelSide * .46, sign * (length + .035), .04);
+    }
+
+    function makeFloor() {
+      const slab = box(scene, 8.15, .35, 6.15, 0, -.32, 0, materials.plinth);
+      slab.receiveShadow = true;
+      box(scene, 8.38, .11, 6.38, 0, -.53, 0, materials.dark);
+      box(scene, 8.24, .045, 6.24, 0, -.12, 0, materials.trim);
+      const tileColors = ['#38405d', '#3d4562', '#424a67', '#333c59'];
+      const tiles = new THREE.InstancedMesh(new THREE.BoxGeometry(.47, .115, .47), mat('#ffffff', { roughness: .87 }), 16 * 12);
+      let i = 0;
+      for (let x = 0; x < 16; x++) for (let z = 0; z < 12; z++) {
+        tempObject.position.set((x - 7.5) * .49, .016, (z - 5.5) * .49);
+        tempObject.rotation.set(0, 0, 0); tempObject.scale.set(1, 1, 1); tempObject.updateMatrix();
+        tiles.setMatrixAt(i, tempObject.matrix);
+        tiles.setColorAt(i, new THREE.Color(tileColors[(x * 3 + z * 7 + (x * z) % 3) % tileColors.length]));
+        i++;
+      }
+      tiles.receiveShadow = true;
+      scene.add(tiles);
+
+      for (const z of [-3.08, 3.08]) {
+        box(scene, 8.12, .075, .05, 0, -.115, z, materials.trim);
+        for (let x = -3.6; x <= 3.6; x += .6) box(scene, .055, .038, .055, x, -.068, z, materials.light);
+      }
+      for (const x of [-4.05, 4.05]) box(scene, .05, .075, 6.1, x, -.115, 0, materials.trim);
+
+      // The floor details establish a miniature laboratory without touching the isolated bodies.
+      box(scene, .70, .12, .70, 0, .13, 0, materials.dark);
+      box(scene, .48, .07, .48, 0, .247, 0, materials.trim);
+      for (const x of [-1, 1]) {
+        box(scene, 1.2, .018, .035, x * 1.04, .084, 0, materials.aqua);
+        box(scene, .035, .018, 1.0, x * 1.65, .084, -.48, materials.aqua);
+      }
+
+      const consoleGroup = new THREE.Group();
+      consoleGroup.position.set(-3.03, .12, -1.6);
+      scene.add(consoleGroup);
+      box(consoleGroup, 1.05, .14, .83, 0, .07, 0, materials.trim);
+      box(consoleGroup, .89, .54, .68, 0, .39, 0, materials.console);
+      box(consoleGroup, .68, .30, .025, 0, .43, .356, materials.dark);
+      box(consoleGroup, .57, .18, .035, 0, .46, .38, materials.screen);
+      const bars = [.05, .09, .15, .08, .13, .06, .1];
+      bars.forEach((height, index) => box(consoleGroup, .037, height, .025, -.22 + index * .073, .46 - (.15 - height) / 2, .405, materials.light));
+      for (let j = 0; j < 3; j++) box(consoleGroup, .09, .045, .09, -.27 + j * .27, .69, -.06, j === 1 ? materials.aqua : materials.light);
+
+      box(scene, .26, 5.65, .26, 3.12, 2.94, -1.35, materials.dark);
+      box(scene, .52, .24, .52, 3.12, .23, -1.35, materials.trim);
+      for (let j = 1; j <= 21; j++) {
+        const y = .38 + j * .236;
+        box(scene, j % 5 === 0 ? .40 : .23, .035, .045, 3.12, y, -1.19, j % 5 === 0 ? materials.light : materials.guide);
+      }
+      box(scene, .34, .34, .34, 3.12, 5.89, -1.35, materials.aqua);
+      for (const x of [-3.66, 3.66]) for (const z of [-2.56, 2.56]) {
+        box(scene, .3, .23, .3, x, .21, z, materials.dark);
+        box(scene, .19, .19, .19, x, .40, z, materials.light);
+        box(scene, .11, .11, .11, x, .57, z, materials.aqua);
+      }
+      for (let j = 0; j < 22; j++) {
+        const mote = box(scene, .035 + (j % 3) * .015, .035 + (j % 3) * .015, .035 + (j % 3) * .015,
+          Math.sin(j * 12.3) * 4.5, 1.3 + (j * .83) % 6.5, -2.4 - (j % 4) * .65, j % 3 === 0 ? materials.light : materials.aqua);
+        motes.push({ mesh: mote, originalY: mote.position.y, phase: j * .79 });
+      }
+    }
+
+    function makeGuide() {
+      pGuide = new THREE.Group();
+      pGuide.position.x = 2.12;
+      pGuide.position.z = -.30;
+      for (let j = 0; j <= 18; j++) box(pGuide, .037, .045, .037, 0, j * MODEL.restP / 18, 0, materials.guide);
+      box(pGuide, .33, .043, .055, -.04, MODEL.restP, 0, materials.guide);
+      box(pGuide, .18, .043, .055, .04, 0, 0, materials.guide);
+      guideCurrent = box(pGuide, .38, .065, .065, -.04, MODEL.restP, .05, materials.guideNow);
+      const label = makeLabel('L0', '#cdd0db');
+      label.position.set(.30, MODEL.restP + .07, 0);
+      label.scale.set(.41, .18, 1);
+      pGuide.add(label);
+      scene.add(pGuide);
+    }
+
+    function layoutScene() {
+      bodyA.position.y = visual.aY;
+      bodyB.position.y = visual.bY;
+      const bTop = visual.bY + MODEL.bodyH / 2;
+      const bBottom = visual.bY - MODEL.bodyH / 2;
+      const aBottom = visual.aY - MODEL.bodyH / 2;
+      moveSpring(springP, bTop, aBottom);
+      moveSpring(springQ, MODEL.ground, bBottom);
+      pGuide.position.y = bTop;
+      guideCurrent.position.y = aBottom - bTop;
+      materials.guideNow.color.set(equilibrium.pOnA < 0 ? '#78d9c8' : equilibrium.pOnA === 0 ? '#b5bad1' : '#f29b80');
+      materials.guideNow.emissive.set(equilibrium.pOnA < 0 ? '#4fa49b' : equilibrium.pOnA === 0 ? '#777b9b' : '#e58069');
+      springLabels.p.position.set(.79, (bTop + aBottom) / 2, .57);
+      springLabels.q.position.set(.79, (MODEL.ground + bBottom) / 2, .57);
+
+      placeArrow(arrows.external, state.F, 1, 0, visual.aY + MODEL.bodyH / 2 + .15, .03, state.vectors.external);
+      placeArrow(arrows.weightA, state.WA, -1, -1.42, visual.aY + .21, .20, state.vectors.weight);
+      placeArrow(arrows.weightB, state.WB, -1, -1.42, visual.bY + .21, .20, state.vectors.weight);
+      placeArrow(arrows.pA, Math.abs(equilibrium.pOnA), Math.sign(equilibrium.pOnA), 1.41, visual.aY - .16, .18, state.vectors.spring);
+      placeArrow(arrows.pB, Math.abs(equilibrium.pOnA), -Math.sign(equilibrium.pOnA), 1.41, visual.bY + .15, .18, state.vectors.spring);
+      placeArrow(arrows.qB, Math.abs(equilibrium.qOnB), Math.sign(equilibrium.qOnB), 0, visual.bY - .14, .94, state.vectors.spring);
+    }
+
+    function resizeScene() {
+      if (!renderer) return;
+      const host = $('scene-container');
+      const width = host.clientWidth, height = host.clientHeight;
+      if (!width || !height) return;
+      const aspect = width / height;
+      const heightWorld = 9.45;
+      camera.left = -heightWorld * aspect / 2;
+      camera.right = heightWorld * aspect / 2;
+      camera.top = heightWorld / 2;
+      camera.bottom = -heightWorld / 2;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height, false);
+    }
+
+    function initScene() {
+      try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' }); }
+      catch (error) { $('scene-loading').textContent = '이 브라우저에서는 WebGL 3D 장면을 표시할 수 없습니다. 오른쪽 자유 물체도와 해설은 계속 이용할 수 있습니다.'; return false; }
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth < 700 ? 1.5 : 2));
+      renderer.setClearColor(0x000000, 0);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.65;
+      renderer.shadowMap.enabled = window.innerWidth > 720;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      $('scene-container').appendChild(renderer.domElement);
+      renderer.domElement.setAttribute('aria-label', '한 손가락으로 회전, 두 손가락으로 확대와 이동이 가능한 복셀 실험 장면');
+      scene = new THREE.Scene();
+      const hemisphere = new THREE.HemisphereLight(0xfff3de, 0x586886, 2.0);
+      scene.add(hemisphere);
+      const key = new THREE.DirectionalLight(0xffe9cb, 2.7);
+      key.position.set(-4, 10, 7); key.castShadow = renderer.shadowMap.enabled;
+      key.shadow.mapSize.set(1024, 1024);
+      key.shadow.camera.left = -8; key.shadow.camera.right = 8;
+      key.shadow.camera.top = 11; key.shadow.camera.bottom = -5;
+      key.shadow.bias = -.0005;
+      scene.add(key);
+      const fill = new THREE.DirectionalLight(0x8baaff, 1.35);
+      fill.position.set(4, 5, -5); scene.add(fill);
+
+      camera = new THREE.OrthographicCamera(-5, 5, 5, -5, .1, 100);
+      camera.position.set(9.4, 8.0, 12.8);
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.target.set(0, 3.48, 0);
+      controls.enableDamping = true;
+      controls.dampingFactor = .075;
+      controls.enablePan = true;
+      controls.screenSpacePanning = true;
+      controls.minZoom = .62;
+      controls.maxZoom = 3.3;
+      controls.minPolarAngle = .08;
+      controls.maxPolarAngle = Math.PI - .12;
+      controls.touches.ONE = THREE.TOUCH.ROTATE;
+      controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
+      controls.update();
+      controls.saveState();
+      controls.addEventListener('start', () => { cameraTouched = true; });
+
+      makeFloor();
+      bodyA = makeBody('A', '#ed8d76');
+      bodyB = makeBody('B', '#54beb5');
+      scene.add(bodyA, bodyB);
+      springP = makeSpring('#f1bc83', 9);
+      springQ = makeSpring('#78d8cf', 10);
+      makeGuide();
+      springLabels.p = makeLabel('P', '#f4c491');
+      springLabels.q = makeLabel('Q', '#8ae0d6');
+      springLabels.p.scale.set(.42, .25, 1);
+      springLabels.q.scale.set(.42, .25, 1);
+      scene.add(springLabels.p, springLabels.q);
+      arrows.external = makeArrow('F', colors.external, 1);
+      arrows.weightA = makeArrow('W A', colors.weight, -1);
+      arrows.weightB = makeArrow('W B', colors.weight, -1);
+      arrows.pA = makeArrow('P>A', colors.p, 1);
+      arrows.pB = makeArrow('P>B', colors.p, 1);
+      arrows.qB = makeArrow('Q>B', colors.q, 1);
+      layoutScene();
+      resizeScene();
+      new ResizeObserver(resizeScene).observe($('scene-container'));
+      $('scene-loading').style.display = 'none';
+      $('reset-view').addEventListener('click', () => { controls.reset(); cameraTouched = false; controls.update(); });
+      return true;
+    }
+
+    if (initScene()) {
+      const clock = new THREE.Clock();
+      function animate() {
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), .05);
+        const speed = reducedMotion ? 1 : 1 - Math.exp(-dt * 6.5);
+        visual.aY += (equilibrium.aY - visual.aY) * speed;
+        visual.bY += (equilibrium.bY - visual.bY) * speed;
+        if (Math.abs(visual.aY - equilibrium.aY) < .0005) visual.aY = equilibrium.aY;
+        if (Math.abs(visual.bY - equilibrium.bY) < .0005) visual.bY = equilibrium.bY;
+        layoutScene();
+        if (!cameraTouched) {
+          const framingSpeed = reducedMotion ? 1 : 1 - Math.exp(-dt * 4);
+          const shift = (autoFrame.targetY - controls.target.y) * framingSpeed;
+          controls.target.y += shift;
+          camera.position.y += shift;
+          camera.zoom += (autoFrame.zoom - camera.zoom) * framingSpeed;
+          camera.updateProjectionMatrix();
+        }
+        if (!reducedMotion) {
+          const time = clock.elapsedTime;
+          for (const mote of motes) mote.mesh.position.y = mote.originalY + Math.sin(time * .65 + mote.phase) * .10;
+          materials.light.emissiveIntensity = .43 + Math.sin(time * 1.7) * .11;
+          materials.aqua.emissiveIntensity = .38 + Math.sin(time * 1.3 + 1.2) * .09;
+        }
+        controls.update();
+        renderer.render(scene, camera);
+      }
+      animate();
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,1565 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><h1>안녕하세요</h1>
+<p><!DOCTYPE html>
+
+<html lang="ko">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>도월교 물리 시뮬레이터 (완벽 대칭 등간격 에디션)</title>
+
+    <!-- Tailwind CSS 로드 -->
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+
+        body { margin: 0; overflow: hidden; touch-action: none; font-family: 'Pretendard', sans-serif; background-color: white; }
+
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+
+        #ui-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: flex; flex-direction: column; }
+
+        @media (min-width: 768px) { #ui-container { flex-direction: row; } }
+
+        .interactive-panel { pointer-events: auto; }
+
+       
+
+        .force-label {
+
+            background-color: rgba(255, 255, 255, 0.95);
+
+            color: #1f2937;
+
+            padding: 4px 8px;
+
+            border-radius: 8px;
+
+            font-size: 12px;
+
+            font-weight: bold;
+
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+
+            border: 2px solid #e5e7eb;
+
+            white-space: nowrap;
+
+            pointer-events: none;
+
+            transition: opacity 0.2s;
+
+        }
+
+        .force-label.down { border-color: #ef4444; color: #b91c1c; }
+
+        .force-label.up { border-color: #10b981; color: #047857; }
+
+        .force-label.bridge { border-color: #6b7280; color: #374151; }
+
+       
+
+        .gauge-bg { background-color: #e5e7eb; border-radius: 9999px; height: 12px; width: 100%; overflow: hidden; position: relative; }
+
+        .gauge-fill { height: 100%; transition: width 0.3s ease, background-color 0.3s ease; }
+
+
+
+        #game-over-screen {
+
+            display: none; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px);
+
+            z-index: 50; flex-direction: column; justify-content: center; align-items: center; color: white; text-align: center;
+
+        }
+
+    </style>
+
+    <!-- Three.js 라이브러리 임포트 -->
+
+    <script type="importmap">
+
+        {
+
+            "imports": {
+
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+
+            }
+
+        }
+
+    </script>
+
+</head>
+
+<body>
+
+
+
+<div id="canvas-container"></div>
+
+
+
+<!-- 붕괴 시 나타나는 복구 화면 -->
+
+<div id="game-over-screen" class="interactive-panel">
+
+    <div class="bg-white text-gray-900 p-8 rounded-2xl shadow-2xl max-w-md w-full border-t-8 border-red-500">
+
+        <h1 class="text-5xl mb-4" id="collapse-emoji">💥</h1>
+
+        <h2 class="text-3xl font-black mb-2 text-gray-800" id="collapse-title">다리가 무너졌습니다!</h2>
+
+        <p class="text-lg text-gray-600 mb-8 font-medium" id="collapse-desc">하중 초과로 인해 기둥이 주저앉았습니다.</p>
+
+        <button onclick="resetBridge()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl text-xl shadow-lg transition-transform transform hover:scale-105 active:scale-95">
+
+            🔄 다리 다시 짓기
+
+        </button>
+
+    </div>
+
+</div>
+
+
+
+<!-- 메인 UI 오버레이 -->
+
+<div id="ui-container">
+
+    <div class="interactive-panel w-full md:w-[420px] bg-white/95 backdrop-blur-sm h-[50vh] md:h-screen overflow-y-auto shadow-[4px_0_24px_rgba(0,0,0,0.1)] p-6 flex flex-col gap-5 border-r border-gray-200">
+
+        <!-- 제목 및 설명 -->
+
+        <div>
+
+            <h1 class="text-2xl font-black text-gray-800 tracking-tight flex items-center gap-2">🌉 15칸 등간격 완벽 대칭 모드</h1>
+
+            <p class="text-sm text-gray-500 mt-1">길이: 155m | 다리 무게: 41,772,500 N</p>
+
+            <p class="text-[11px] text-emerald-600 font-bold mt-2 bg-emerald-50 p-2 rounded border border-emerald-100">
+
+                ✔️ 155m를 15칸으로 정확히 나누어 기둥 간격이 모두 10.33m로 동일합니다.
+
+            </p>
+
+        </div>
+
+
+
+        <!-- 물리 스트레스 게이지 -->
+
+        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm">
+
+            <h3 class="font-bold text-gray-700 mb-3 text-sm flex items-center gap-2">🚨 구조물 스트레스 레벨</h3>
+
+            <div class="mb-3">
+
+                <div class="flex justify-between text-xs mb-1 font-semibold text-gray-600">
+
+                    <span>중앙부 하중 (붕괴 위험)</span>
+
+                    <span id="load-percent">0%</span>
+
+                </div>
+
+                <div class="gauge-bg">
+
+                    <div id="load-gauge" class="gauge-fill bg-green-500" style="width: 0%;"></div>
+
+                </div>
+
+            </div>
+
+            <div>
+
+                <div class="flex justify-between text-xs mb-1 font-semibold text-gray-600">
+
+                    <span>돌림힘 불균형 (기울어짐 위험)</span>
+
+                    <span id="torque-percent">0%</span>
+
+                </div>
+
+                <div class="gauge-bg">
+
+                    <div id="torque-gauge" class="gauge-fill bg-blue-500" style="width: 0%; left: 50%; position: absolute; transform: translateX(-50%);"></div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- 사람 추가 버튼 -->
+
+        <button onclick="addPerson()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-md transition-colors flex justify-center items-center gap-2 active:scale-95">
+
+            <span class="text-xl leading-none">+</span> 동하중(트럭 등) 추가하기
+
+        </button>
+
+
+
+        <!-- 사람 목록 컨테이너 -->
+
+        <div id="people-list" class="flex flex-col gap-3"></div>
+
+       
+
+        <!-- 하단 제어 메뉴 -->
+
+        <div class="mt-auto space-y-4 pt-4 border-t border-gray-200">
+
+            <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-200">
+
+                <span class="font-bold text-gray-700 text-sm">🏷️ 전체 3D 라벨 끄기/켜기</span>
+
+                <label class="relative inline-flex items-center cursor-pointer">
+
+                    <input type="checkbox" id="toggle-labels" class="sr-only peer" checked onchange="toggleLabels()">
+
+                    <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+
+                </label>
+
+            </div>
+
+
+
+            <!-- 기둥 개별 제어 아코디언 -->
+
+            <div class="bg-indigo-50 rounded-xl border border-indigo-100 overflow-hidden">
+
+                <button onclick="toggleAccordion('pillar-accordion')" class="w-full p-3 text-left font-bold text-indigo-900 flex justify-between items-center text-sm hover:bg-indigo-100 transition-colors">
+
+                    <span>👁️ 등간격 기둥 힘(수치) 끄기/켜기</span>
+
+                    <span id="pillar-accordion-icon">▼</span>
+
+                </button>
+
+                <div id="pillar-accordion" class="px-3 pb-3 space-y-2 max-h-48 overflow-y-auto">
+
+                    <p class="text-[11px] text-indigo-700 mb-2 leading-tight">간격: 약 10.33m (총 15칸 분할)</p>
+
+                    <div id="pillar-toggles-container" class="grid grid-cols-2 gap-2 text-sm">
+
+                        <!-- 자바스크립트로 생성됨 -->
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- 우측 하단 알짜 돌림힘 계산기 -->
+
+    <div class="absolute bottom-6 right-6 interactive-panel pointer-events-none md:pointer-events-auto w-[calc(100%-3rem)] md:w-80 hidden md:block">
+
+        <div class="bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-2xl border border-gray-200">
+
+            <h2 class="text-sm font-bold text-gray-800 mb-3 flex items-center justify-between">
+
+                <span>⚖️ 구조물 유효 돌림힘 (축: 77.5m)</span>
+
+            </h2>
+
+            <div class="space-y-2">
+
+                <div class="flex justify-between items-center p-2 bg-red-50 rounded-lg border border-red-100">
+
+                    <span class="text-red-700 font-bold text-xs">반시계 (왼쪽)</span>
+
+                    <span class="font-mono font-bold text-red-600 text-sm" id="ccw-torque">0 N·m</span>
+
+                </div>
+
+                <div class="flex justify-between items-center p-2 bg-blue-50 rounded-lg border border-blue-100">
+
+                    <span class="text-blue-700 font-bold text-xs">시계 (오른쪽)</span>
+
+                    <span class="font-mono font-bold text-blue-600 text-sm" id="cw-torque">0 N·m</span>
+
+                </div>
+
+                <div class="border-t border-gray-200 pt-2 flex justify-between items-center">
+
+                    <span class="text-gray-800 font-black text-sm">알짜 돌림힘</span>
+
+                    <span class="font-mono font-black text-lg text-gray-900" id="net-torque">0 N·m</span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<script type="module">
+
+    import * as THREE from 'three';
+
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+
+
+    const BRIDGE_LENGTH = 155;
+
+    const BRIDGE_CENTER = BRIDGE_LENGTH / 2; // 77.5m
+
+    const BRIDGE_WEIGHT = 41772500;
+
+    const G = 9.8;
+
+   
+
+    // =========================================================================
+
+    // [핵심 변경 사항] 16개의 받침점(교대 2개 + 교각 14개)을 155m에 완벽한 등간격으로 배치!
+
+    // 155m를 15칸으로 나누면 간격은 정확히 155 / 15 = 10.333333333333334m
+
+    // =========================================================================
+
+    const NUM_SUPPORTS = 16;
+
+    const SPACING = BRIDGE_LENGTH / (NUM_SUPPORTS - 1); // 약 10.333m
+
+   
+
+    const PILLAR_POSITIONS = [];
+
+    for (let i = 0; i < NUM_SUPPORTS; i++) {
+
+        PILLAR_POSITIONS.push(i * SPACING);
+
+    }
+
+   
+
+    // 선하중: 41,772,500 N / 155 m = 269,500 N/m
+
+    const LINEAR_LOAD = BRIDGE_WEIGHT / BRIDGE_LENGTH;
+
+   
+
+    // 등간격 배치 시 각 받침점이 담당하는 수직항력 (Tributary Area 완벽 대칭)
+
+    // - 양 끝 교대(0m, 155m): (SPACING / 2) 구간 담당 -> 약 1,392,416.66 N
+
+    // - 중간 14개 기둥: (SPACING) 온전한 1칸 구간 담당 -> 약 2,784,833.33 N
+
+    const BASELINE_FORCES = PILLAR_POSITIONS.map((pos, index) => {
+
+        if (index === 0 || index === NUM_SUPPORTS - 1) {
+
+            return LINEAR_LOAD * (SPACING / 2);
+
+        } else {
+
+            return LINEAR_LOAD * SPACING;
+
+        }
+
+    });
+
+
+
+    const MAX_TOTAL_LOAD = 41772500 + 30000000;
+
+    const MAX_NET_TORQUE = 3237368750 * 1.5;
+
+
+
+    let people = [];
+
+    let personIdCounter = 0;
+
+    let showLabels = true;
+
+    let pillarVisibility = Array(PILLAR_POSITIONS.length).fill(true);
+
+   
+
+    let isCollapsed = false;
+
+    let fallSpeed = 0;
+
+    let tiltDirection = 0;
+
+
+
+    let scene, camera, renderer, labelRenderer, controls;
+
+    let bridgeGroup, bridgeDeckGroup, bridgePillarGroup;
+
+    let labels = { people: {}, pillars: {}, bridge: null };
+
+    let dragControls = { active: false, id: null, plane: new THREE.Plane(), raycaster: new THREE.Raycaster() };
+
+   
+
+    let initialPillarStates = [];
+
+
+
+    init();
+
+    animate();
+
+
+
+    function init() {
+
+        scene = new THREE.Scene();
+
+
+
+        camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 1000);
+
+        camera.position.set(0, 30, 160);
+
+
+
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        renderer.shadowMap.enabled = true;
+
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+
+
+        labelRenderer = new CSS2DRenderer();
+
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+
+        labelRenderer.domElement.style.position = 'absolute';
+
+        labelRenderer.domElement.style.top = '0px';
+
+        labelRenderer.domElement.style.pointerEvents = 'none';
+
+        document.getElementById('canvas-container').appendChild(labelRenderer.domElement);
+
+
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+
+        dirLight.position.set(50, 100, 50);
+
+        dirLight.castShadow = true;
+
+        scene.add(dirLight);
+
+
+
+        bridgeGroup = new THREE.Group();
+
+        bridgeDeckGroup = new THREE.Group();
+
+        bridgePillarGroup = new THREE.Group();
+
+        bridgeGroup.add(bridgeDeckGroup);
+
+        bridgeGroup.add(bridgePillarGroup);
+
+        scene.add(bridgeGroup);
+
+       
+
+        buildTogetsukyoBridge();
+
+
+
+        controls = new OrbitControls(camera, renderer.domElement);
+
+        controls.enableDamping = true;
+
+        controls.maxPolarAngle = Math.PI / 2 + 0.1;
+
+        controls.target.set(0, 0, 0);
+
+
+
+        window.addEventListener('resize', onWindowResize);
+
+        setupDragEvents();
+
+        createPillarToggles();
+
+       
+
+        window.addPerson = addPerson;
+
+        window.removePerson = removePerson;
+
+        window.updatePerson = updatePerson;
+
+        window.toggleLabels = toggleLabels;
+
+        window.toggleAccordion = toggleAccordion;
+
+        window.togglePillarLabel = togglePillarLabel;
+
+        window.resetBridge = resetBridge;
+
+       
+
+        // 초기 로딩 시 평형 계산
+
+        updatePhysics();
+
+    }
+
+
+
+    function buildTogetsukyoBridge() {
+
+        const woodMat = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.9 });
+
+        const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x5C4033, roughness: 0.9 });
+
+        const groundMat = new THREE.MeshStandardMaterial({ color: 0x7a8a72, roughness: 1.0 });
+
+
+
+        const deckGeo = new THREE.BoxGeometry(BRIDGE_LENGTH, 1.5, 12);
+
+        const deckMesh = new THREE.Mesh(deckGeo, woodMat);
+
+        deckMesh.position.set(0, -0.75, 0);
+
+        deckMesh.receiveShadow = true;
+
+        deckMesh.castShadow = true;
+
+        bridgeDeckGroup.add(deckMesh);
+
+
+
+        const railingMat = new THREE.MeshStandardMaterial({ color: 0x9e7b56 });
+
+        for (let i = 0; i <= BRIDGE_LENGTH; i += 2) {
+
+            let xPos = i - BRIDGE_CENTER;
+
+            let postGeo = new THREE.BoxGeometry(0.3, 2, 0.3);
+
+            let frontPost = new THREE.Mesh(postGeo, railingMat);
+
+            frontPost.position.set(xPos, 1, 5.8);
+
+            let backPost = new THREE.Mesh(postGeo, railingMat);
+
+            backPost.position.set(xPos, 1, -5.8);
+
+            bridgeDeckGroup.add(frontPost, backPost);
+
+        }
+
+
+
+        const div = document.createElement('div');
+
+        div.className = 'force-label bridge';
+
+        div.textContent = `다리 자중: ${BRIDGE_WEIGHT.toLocaleString()} N`;
+
+        labels.bridge = new CSS2DObject(div);
+
+        labels.bridge.position.set(0, -2, 0);
+
+        bridgeDeckGroup.add(labels.bridge);
+
+
+
+        PILLAR_POSITIONS.forEach((pos, index) => {
+
+            const xOffset = pos - BRIDGE_CENTER;
+
+            let isGround = (index === 0 || index === PILLAR_POSITIONS.length - 1);
+
+           
+
+            if (isGround) {
+
+                const abutmentGeo = new THREE.BoxGeometry(10, 15, 14);
+
+                const abutment = new THREE.Mesh(abutmentGeo, groundMat);
+
+                abutment.position.set(xOffset > 0 ? xOffset + 4 : xOffset - 4, -9, 0);
+
+                abutment.userData.isGround = true;
+
+                bridgePillarGroup.add(abutment);
+
+            } else {
+
+                const pillarGeo = new THREE.CylinderGeometry(0.6, 0.6, 12, 16);
+
+                for (let z of [-4, -1.5, 1.5, 4]) {
+
+                    const pillar = new THREE.Mesh(pillarGeo, darkWoodMat);
+
+                    pillar.position.set(xOffset, -7.5, z);
+
+                    pillar.userData.isGround = false;
+
+                    bridgePillarGroup.add(pillar);
+
+                }
+
+                const beamGeo = new THREE.BoxGeometry(1.5, 0.8, 11);
+
+                const beam = new THREE.Mesh(beamGeo, darkWoodMat);
+
+                beam.position.set(xOffset, -10, 0);
+
+                beam.userData.isGround = false;
+
+                bridgePillarGroup.add(beam);
+
+            }
+
+
+
+            const pDiv = document.createElement('div');
+
+            pDiv.className = 'force-label up';
+
+            labels.pillars[index] = new CSS2DObject(pDiv);
+
+            labels.pillars[index].position.set(xOffset, -14, 0);
+
+            bridgePillarGroup.add(labels.pillars[index]);
+
+        });
+
+
+
+        bridgePillarGroup.children.forEach(child => {
+
+            initialPillarStates.push({
+
+                scaleY: child.scale.y,
+
+                rotX: child.rotation.x,
+
+                rotZ: child.rotation.z
+
+            });
+
+        });
+
+    }
+
+
+
+    function updatePhysics() {
+
+        if (isCollapsed) return;
+
+
+
+        let totalForce = BRIDGE_WEIGHT;
+
+        let structuralLoad = BRIDGE_WEIGHT;
+
+        let cwTorque = 0;
+
+        let ccwTorque = 0;
+
+       
+
+        let addedForces = Array(PILLAR_POSITIONS.length).fill(0);
+
+
+
+        people.forEach(p => {
+
+            const force = p.mass * G;
+
+            totalForce += force;
+
+           
+
+            // 안전지대 설정 (양 끝 교대가 받치는 공간은 SPACING/2 만큼)
+
+            const safeZone = SPACING / 2;
+
+            const isOnGround = (p.pos <= safeZone || p.pos >= BRIDGE_LENGTH - safeZone);
+
+
+
+            if (!isOnGround) {
+
+                structuralLoad += force;
+
+                const distFromCenter = p.pos - BRIDGE_CENTER;
+
+                const torque = force * Math.abs(distFromCenter);
+
+                if (distFromCenter > 0) cwTorque += torque;
+
+                else if (distFromCenter < 0) ccwTorque += torque;
+
+            }
+
+           
+
+            // 단순보 원리에 의한 완벽한 하중 분배
+
+            let p1_idx = 0;
+
+            for (let i = 0; i < NUM_SUPPORTS - 1; i++) {
+
+                if (p.pos >= PILLAR_POSITIONS[i] && p.pos <= PILLAR_POSITIONS[i+1]) {
+
+                    p1_idx = i;
+
+                    break;
+
+                }
+
+            }
+
+            let p2_idx = p1_idx + 1;
+
+            let distTotal = SPACING;
+
+            let distToP1 = p.pos - PILLAR_POSITIONS[p1_idx];
+
+           
+
+            let f2 = force * (distToP1 / distTotal);
+
+            let f1 = force - f2;
+
+           
+
+            addedForces[p1_idx] += f1;
+
+            addedForces[p2_idx] += f2;
+
+
+
+            labels.people[p.id].element.textContent = `↓ ${Math.round(force).toLocaleString()} N`;
+
+        });
+
+
+
+        for (let i = 0; i < PILLAR_POSITIONS.length; i++) {
+
+            let currentPillarForce = BASELINE_FORCES[i] + addedForces[i];
+
+           
+
+            if (labels.pillars[i]) {
+
+                if (pillarVisibility[i] && showLabels) {
+
+                    labels.pillars[i].visible = true;
+
+                    labels.pillars[i].element.textContent = `↑ ${Math.round(currentPillarForce).toLocaleString()} N`;
+
+                } else {
+
+                    labels.pillars[i].visible = false;
+
+                }
+
+            }
+
+        }
+
+
+
+        const netTorque = ccwTorque - cwTorque;
+
+       
+
+        if (structuralLoad > MAX_TOTAL_LOAD) {
+
+            updateGauges(structuralLoad, netTorque);
+
+            triggerCollapse('load');
+
+            return;
+
+        } else if (Math.abs(netTorque) > MAX_NET_TORQUE * 0.5 && structuralLoad > MAX_TOTAL_LOAD * 0.8) {
+
+            updateGauges(structuralLoad, netTorque);
+
+            triggerCollapse('torque', netTorque > 0 ? 1 : -1);
+
+            return;
+
+        }
+
+
+
+        document.getElementById('ccw-torque').textContent = Math.round(ccwTorque).toLocaleString() + ' N·m';
+
+        document.getElementById('cw-torque').textContent = Math.round(cwTorque).toLocaleString() + ' N·m';
+
+        document.getElementById('net-torque').textContent =
+
+            (Math.abs(netTorque) < 10 ? `0 N·m (평형)` : (netTorque > 0 ? `반시계 ` : `시계 `) + Math.abs(Math.round(netTorque)).toLocaleString() + ' N·m');
+
+           
+
+        updateGauges(structuralLoad, netTorque);
+
+    }
+
+
+
+    function updateGauges(structuralLoad, netTorque) {
+
+        let loadRatio = Math.min(structuralLoad / MAX_TOTAL_LOAD, 1);
+
+        let loadPercent = (loadRatio * 100).toFixed(1);
+
+        const loadBar = document.getElementById('load-gauge');
+
+        loadBar.style.width = `${loadPercent}%`;
+
+        document.getElementById('load-percent').textContent = `${loadPercent}%`;
+
+       
+
+        if (loadRatio < 0.5) loadBar.className = 'gauge-fill bg-green-500';
+
+        else if (loadRatio < 0.8) loadBar.className = 'gauge-fill bg-yellow-500';
+
+        else loadBar.className = 'gauge-fill bg-red-600 animate-pulse';
+
+
+
+        let torqueRatio = Math.min(Math.abs(netTorque) / MAX_NET_TORQUE, 1);
+
+        let torquePercent = (torqueRatio * 100).toFixed(1);
+
+        const torqueBar = document.getElementById('torque-gauge');
+
+        document.getElementById('torque-percent').textContent = `${torquePercent}%`;
+
+       
+
+        torqueBar.style.width = `${torquePercent / 2}%`;
+
+        if (netTorque > 0) {
+
+            torqueBar.style.transform = `translateX(-100%)`;
+
+            torqueBar.style.left = '50%';
+
+        } else {
+
+            torqueBar.style.transform = `translateX(0)`;
+
+            torqueBar.style.left = '50%';
+
+        }
+
+
+
+        if (torqueRatio < 0.5) torqueBar.className = 'gauge-fill bg-blue-500';
+
+        else if (torqueRatio < 0.8) torqueBar.className = 'gauge-fill bg-orange-500';
+
+        else torqueBar.className = 'gauge-fill bg-red-600 animate-pulse';
+
+    }
+
+
+
+    function triggerCollapse(reason, dir = 1) {
+
+        if (isCollapsed) return;
+
+        isCollapsed = true;
+
+        tiltDirection = dir;
+
+       
+
+        labelRenderer.domElement.style.display = 'none';
+
+       
+
+        let shakeIntensity = 5;
+
+        let shakeInterval = setInterval(() => {
+
+            if (shakeIntensity <= 0) { clearInterval(shakeInterval); return; }
+
+            controls.target.set( (Math.random()-0.5)*shakeIntensity, (Math.random()-0.5)*shakeIntensity, (Math.random()-0.5)*shakeIntensity );
+
+            shakeIntensity -= 0.5;
+
+        }, 50);
+
+
+
+        setTimeout(() => {
+
+            controls.target.set(0,0,0);
+
+            const screen = document.getElementById('game-over-screen');
+
+            const title = document.getElementById('collapse-title');
+
+            const desc = document.getElementById('collapse-desc');
+
+           
+
+            screen.style.display = 'flex';
+
+            if (reason === 'load') {
+
+                title.textContent = "다리가 붕괴되었습니다!";
+
+                desc.textContent = `중앙부 하중이 한계를 초과하여 기둥이 주저앉았습니다.`;
+
+            } else {
+
+                title.textContent = "다리가 심하게 기울었습니다!";
+
+                desc.textContent = `돌림힘 불균형으로 구조물이 뒤틀리며 파손되었습니다.`;
+
+            }
+
+        }, 2500);
+
+    }
+
+
+
+    function resetBridge() {
+
+        isCollapsed = false;
+
+        fallSpeed = 0;
+
+        tiltDirection = 0;
+
+       
+
+        bridgeDeckGroup.position.set(0, 0, 0);
+
+        bridgeDeckGroup.rotation.set(0, 0, 0);
+
+       
+
+        bridgePillarGroup.children.forEach((child, idx) => {
+
+            child.scale.y = initialPillarStates[idx].scaleY;
+
+            child.rotation.set(initialPillarStates[idx].rotX, 0, initialPillarStates[idx].rotZ);
+
+            child.position.y = child.userData.isGround ? -9 : -7.5;
+
+        });
+
+
+
+        document.getElementById('game-over-screen').style.display = 'none';
+
+        labelRenderer.domElement.style.display = 'block';
+
+       
+
+        people.forEach(p => {
+
+            bridgeDeckGroup.remove(p.mesh);
+
+            bridgeDeckGroup.remove(labels.people[p.id]);
+
+            document.getElementById(`person-${p.id}`).remove();
+
+        });
+
+        people = [];
+
+        labels.people = {};
+
+       
+
+        updatePhysics();
+
+    }
+
+
+
+    function addPerson() {
+
+        if (isCollapsed) return;
+
+        const id = personIdCounter++;
+
+        const pos = 77.5;
+
+        const mass = 100000; // 눈에 잘 띄도록 100톤으로 기본 세팅
+
+        const color = `hsl(${Math.random() * 360}, 70%, 50%)`;
+
+
+
+        const person = { id, pos, mass, color, mesh: createPersonMesh(color, mass) };
+
+        people.push(person);
+
+
+
+        bridgeDeckGroup.add(person.mesh);
+
+       
+
+        const div = document.createElement('div');
+
+        div.className = 'force-label down';
+
+        labels.people[id] = new CSS2DObject(div);
+
+        labels.people[id].visible = showLabels;
+
+        bridgeDeckGroup.add(labels.people[id]);
+
+
+
+        updatePersonVisual(person);
+
+        addPersonUI(person);
+
+        updatePhysics();
+
+    }
+
+
+
+    function createPersonMesh(color, mass) {
+
+        const size = Math.max(1.0, Math.min(mass / 20000, 3.0));
+
+        const geo = new THREE.BoxGeometry(size, size*1.5, size);
+
+        const mat = new THREE.MeshStandardMaterial({ color: color });
+
+        const mesh = new THREE.Mesh(geo, mat);
+
+        mesh.castShadow = true;
+
+        mesh.userData = { isPerson: true };
+
+        return mesh;
+
+    }
+
+
+
+    function removePerson(id) {
+
+        if (isCollapsed) return;
+
+        const index = people.findIndex(p => p.id === id);
+
+        if (index > -1) {
+
+            const p = people[index];
+
+            bridgeDeckGroup.remove(p.mesh);
+
+            bridgeDeckGroup.remove(labels.people[id]);
+
+            people.splice(index, 1);
+
+            delete labels.people[id];
+
+            document.getElementById(`person-${id}`).remove();
+
+            updatePhysics();
+
+        }
+
+    }
+
+
+
+    function updatePersonVisual(person) {
+
+        const xPos = person.pos - BRIDGE_CENTER;
+
+        const size = Math.max(1.0, Math.min(person.mass / 20000, 3.0));
+
+       
+
+        person.mesh.scale.set(size, size, size);
+
+        const currentY = size * 0.75;
+
+        person.mesh.position.set(xPos, currentY, 0);
+
+        labels.people[person.id].position.set(xPos, currentY + 1.5, 0);
+
+        person.mesh.userData.id = person.id;
+
+    }
+
+
+
+    function updatePerson(id, field, value) {
+
+        if (isCollapsed) return;
+
+        const person = people.find(p => p.id === id);
+
+        if (person) {
+
+            person[field] = parseFloat(value);
+
+            document.getElementById(`${field}-val-${id}`).textContent = person[field].toLocaleString() + (field === 'mass' ? ' kg' : ' m');
+
+            updatePersonVisual(person);
+
+            updatePhysics();
+
+        }
+
+    }
+
+
+
+    function addPersonUI(person) {
+
+        const div = document.createElement('div');
+
+        div.id = `person-${person.id}`;
+
+        div.className = "bg-white p-4 rounded-xl border border-gray-100 shadow-sm relative overflow-hidden group";
+
+        div.innerHTML = `
+
+            <div class="absolute left-0 top-0 bottom-0 w-2" style="background-color: ${person.color}"></div>
+
+            <div class="pl-4">
+
+                <div class="flex justify-between items-center mb-3">
+
+                    <span class="font-bold text-gray-700 text-sm">🚚 외부 하중 ${person.id + 1}</span>
+
+                    <button onclick="removePerson(${person.id})" class="text-red-400 hover:text-red-600 transition-colors">
+
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+
+                    </button>
+
+                </div>
+
+                <div class="space-y-3">
+
+                    <div>
+
+                        <div class="flex justify-between text-xs text-gray-500 mb-1">
+
+                            <span>질량 (드래그하여 조절)</span>
+
+                            <span id="mass-val-${person.id}" class="font-bold text-gray-700">${person.mass.toLocaleString()} kg</span>
+
+                        </div>
+
+                        <input type="range" min="1000" max="1000000" step="1000" value="${person.mass}"
+
+                            oninput="updatePerson(${person.id}, 'mass', this.value)"
+
+                            class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+
+                    </div>
+
+                    <div>
+
+                        <div class="flex justify-between text-xs text-gray-500 mb-1">
+
+                            <span>다리 위 위치 (0m ~ 155m)</span>
+
+                            <span id="pos-val-${person.id}" class="font-bold text-gray-700">${person.pos} m</span>
+
+                        </div>
+
+                        <input type="range" min="0" max="${BRIDGE_LENGTH}" step="0.5" value="${person.pos}" id="slider-pos-${person.id}"
+
+                            oninput="updatePerson(${person.id}, 'pos', this.value)"
+
+                            class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500">
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        `;
+
+        document.getElementById('people-list').prepend(div);
+
+    }
+
+
+
+    function toggleAccordion(id) {
+
+        const el = document.getElementById(id);
+
+        const icon = document.getElementById(id + '-icon');
+
+        if (el.style.display === 'none') {
+
+            el.style.display = 'block';
+
+            icon.textContent = '▼';
+
+        } else {
+
+            el.style.display = 'none';
+
+            icon.textContent = '▶';
+
+        }
+
+    }
+
+
+
+    function toggleLabels() {
+
+        showLabels = document.getElementById('toggle-labels').checked;
+
+        if (labels.bridge) labels.bridge.visible = showLabels;
+
+        Object.values(labels.people).forEach(label => { label.visible = showLabels; });
+
+        updatePhysics();
+
+    }
+
+
+
+    function createPillarToggles() {
+
+        const container = document.getElementById('pillar-toggles-container');
+
+        if (!container) return;
+
+        PILLAR_POSITIONS.forEach((pos, idx) => {
+
+            const isGround = (idx === 0 || idx === PILLAR_POSITIONS.length - 1);
+
+            const label = isGround ? `땅 (${pos.toFixed(1)}m)` : `기둥 (${pos.toFixed(1)}m)`;
+
+           
+
+            const div = document.createElement('div');
+
+            div.className = "flex items-center gap-1.5 bg-white p-1.5 rounded border border-indigo-100";
+
+            div.innerHTML = `
+
+                <input type="checkbox" id="pillar-toggle-${idx}" checked
+
+                    onchange="togglePillarLabel(${idx})"
+
+                    class="w-3.5 h-3.5 text-indigo-600 rounded focus:ring-indigo-500 cursor-pointer">
+
+                <label for="pillar-toggle-${idx}" class="text-[10px] text-gray-700 cursor-pointer flex-1 whitespace-nowrap">${label}</label>
+
+            `;
+
+            container.appendChild(div);
+
+        });
+
+    }
+
+
+
+    function togglePillarLabel(idx) {
+
+        pillarVisibility[idx] = document.getElementById(`pillar-toggle-${idx}`).checked;
+
+        updatePhysics();
+
+    }
+
+
+
+    function setupDragEvents() {
+
+        const dom = renderer.domElement;
+
+       
+
+        const getPointerPos = (e) => {
+
+            const rect = dom.getBoundingClientRect();
+
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            return {
+
+                x: ((clientX - rect.left) / rect.width) * 2 - 1,
+
+                y: -((clientY - rect.top) / rect.height) * 2 + 1
+
+            };
+
+        };
+
+
+
+        const onDown = (e) => {
+
+            if (isCollapsed) return;
+
+            const pointer = getPointerPos(e);
+
+            dragControls.raycaster.setFromCamera(pointer, camera);
+
+           
+
+            const intersects = dragControls.raycaster.intersectObjects(people.map(p => p.mesh));
+
+            if (intersects.length > 0) {
+
+                controls.enabled = false;
+
+                dragControls.active = true;
+
+                dragControls.id = intersects[0].object.userData.id;
+
+                document.body.style.cursor = 'grabbing';
+
+               
+
+                dragControls.plane.setFromNormalAndCoplanarPoint(
+
+                    camera.getWorldDirection(new THREE.Vector3()),
+
+                    intersects[0].point
+
+                );
+
+            }
+
+        };
+
+
+
+        const onMove = (e) => {
+
+            if (isCollapsed) return;
+
+            if (!dragControls.active) {
+
+                const pointer = getPointerPos(e);
+
+                dragControls.raycaster.setFromCamera(pointer, camera);
+
+                const intersects = dragControls.raycaster.intersectObjects(people.map(p => p.mesh));
+
+                document.body.style.cursor = intersects.length > 0 ? 'grab' : 'default';
+
+                return;
+
+            }
+
+
+
+            const pointer = getPointerPos(e);
+
+            dragControls.raycaster.setFromCamera(pointer, camera);
+
+            const intersect = new THREE.Vector3();
+
+            dragControls.raycaster.ray.intersectPlane(dragControls.plane, intersect);
+
+           
+
+            let newX = intersect.x;
+
+            let newPos = newX + BRIDGE_CENTER;
+
+            newPos = Math.max(0, Math.min(BRIDGE_LENGTH, newPos));
+
+           
+
+            updatePerson(dragControls.id, 'pos', newPos.toFixed(1));
+
+            const slider = document.getElementById(`slider-pos-${dragControls.id}`);
+
+            if(slider) slider.value = newPos;
+
+        };
+
+
+
+        const onUp = () => {
+
+            dragControls.active = false;
+
+            controls.enabled = true;
+
+            document.body.style.cursor = 'default';
+
+        };
+
+
+
+        dom.addEventListener('mousedown', onDown);
+
+        dom.addEventListener('mousemove', onMove);
+
+        window.addEventListener('mouseup', onUp);
+
+        dom.addEventListener('touchstart', onDown, {passive: false});
+
+        dom.addEventListener('touchmove', (e) => { if(dragControls.active) e.preventDefault(); onMove(e); }, {passive: false});
+
+        window.addEventListener('touchend', onUp);
+
+    }
+
+
+
+    function onWindowResize() {
+
+        camera.aspect = window.innerWidth / window.innerHeight;
+
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+
+    }
+
+
+
+    function animate() {
+
+        requestAnimationFrame(animate);
+
+
+
+        if (isCollapsed) {
+
+            fallSpeed += 0.08;
+
+            bridgeDeckGroup.position.y -= fallSpeed;
+
+           
+
+            if (tiltDirection !== 0) {
+
+                const targetRotation = 0.25 * tiltDirection;
+
+                bridgeDeckGroup.rotation.z += (targetRotation - bridgeDeckGroup.rotation.z) * 0.1;
+
+            }
+
+           
+
+            if (bridgeDeckGroup.position.y < -15) {
+
+                bridgeDeckGroup.position.y = -15;
+
+                if (fallSpeed > 1) {
+
+                    fallSpeed = -fallSpeed * 0.2;
+
+                } else {
+
+                    fallSpeed = 0;
+
+                }
+
+            }
+
+           
+
+            bridgePillarGroup.children.forEach(child => {
+
+                if (!child.userData.isGround) {
+
+                    child.scale.y = Math.max(0.1, child.scale.y - 0.05);
+
+                    child.rotation.x += (Math.random() - 0.5) * 0.05;
+
+                    child.rotation.z += (Math.random() - 0.5) * 0.05;
+
+                }
+
+            });
+
+           
+
+            people.forEach(p => {
+
+                p.mesh.position.y -= fallSpeed * 1.5;
+
+                p.mesh.rotation.x += 0.1;
+
+                p.mesh.rotation.z += 0.1;
+
+            });
+
+        }
+
+
+
+        controls.update();
+
+        renderer.render(scene, camera);
+
+        labelRenderer.render(scene, camera);
+
+    }
+
+</script>
+
+</body>
+
+</html></p><script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

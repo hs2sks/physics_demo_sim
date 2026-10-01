@@ -1,0 +1,668 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>비행기 착륙 등가속도 운동 시뮬레이션</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Arial, "Malgun Gothic", sans-serif;
+    background: #f4f7fb;
+    color: #222;
+  }
+  .container {
+    max-width: 1100px;
+    margin: 30px auto;
+    padding: 20px;
+  }
+  h1 { text-align: center; }
+  .card {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,.08);
+  }
+  .inputs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+  }
+  label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 7px;
+  }
+  input {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #bbb;
+    border-radius: 8px;
+  }
+  button {
+    border: 0;
+    border-radius: 9px;
+    padding: 11px 18px;
+    margin: 15px 7px 0 0;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  #calculateBtn { background: #222; color: white; }
+  #startBtn { background: #1976d2; color: white; }
+  #resetBtn { background: #ddd; }
+  .results {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 15px;
+  }
+  .result {
+    background: #f1f4f8;
+    border-radius: 10px;
+    padding: 15px;
+    text-align: center;
+  }
+  .result strong {
+    display: block;
+    font-size: 25px;
+    margin-top: 5px;
+  }
+  .formula {
+    text-align: center;
+    font-size: 20px;
+    padding: 12px;
+    background: #fafafa;
+    border-radius: 10px;
+    margin-top: 15px;
+  }
+  canvas {
+    width: 100%;
+    max-width: 1000px;
+    height: auto;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    display: block;
+    margin: auto;
+    background: white;
+  }
+  .status {
+    text-align: center;
+    font-weight: bold;
+    margin: 12px 0;
+    min-height: 24px;
+  }
+  .note {
+    font-size: 14px;
+    line-height: 1.7;
+    color: #555;
+  }
+  @media (max-width: 700px) {
+    .inputs, .results { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+
+<body>
+<div class="container">
+  <h1>✈️ 비행기 착륙 등가속도 운동 시뮬레이션</h1>
+
+  <div class="card">
+    <h2>1. 착륙 조건 입력</h2>
+
+    <div class="inputs">
+      <div>
+        <label for="vi">착륙 직전 속도 (m/s)</label>
+        <input id="vi" type="number" value="70" min="0" step="0.1">
+      </div>
+
+      <div>
+        <label for="vf">착륙 후 정지할 때 속도 (m/s)</label>
+        <input id="vf" type="number" value="0" min="0" step="0.1">
+      </div>
+
+      <div>
+        <label for="time">정지까지 걸린 시간 (s)</label>
+        <input id="time" type="number" value="14" min="0.1" step="0.1">
+      </div>
+    </div>
+
+    <button id="calculateBtn">계산하기</button>
+    <button id="startBtn">착륙 시뮬레이션 시작</button>
+    <button id="resetBtn">초기화</button>
+
+    <div class="formula">
+      가속도 공식: <b>a = (v<sub>f</sub> - v<sub>i</sub>) / t</b>
+    </div>
+
+    <div class="results">
+      <div class="result">
+        가속도
+        <strong id="accel">-</strong>
+        m/s²
+      </div>
+      <div class="result">
+        현재 속도
+        <strong id="currentVelocity">-</strong>
+        m/s
+      </div>
+      <div class="result">
+        진행 시간
+        <strong id="elapsedTime">-</strong>
+        s
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2. 비행기 착륙 모습</h2>
+    <div class="status" id="status">시뮬레이션을 시작하면 비행기가 공중에서 접근합니다.</div>
+    <canvas id="scene" width="1000" height="430"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>3. 시간에 따른 속도 변화</h2>
+    <canvas id="graph" width="1000" height="430"></canvas>
+  </div>
+
+  <div class="card note">
+    <b>물리 모델:</b><br>
+    이 시뮬레이션에서는 비행기가 처음에는 활주로 위 공중에서 일정한 높이로 접근하고,
+    착륙 지점에 가까워질수록 천천히 고도가 낮아져 활주로에 착륙한다고 가정합니다.
+    바퀴가 활주로에 닿은 뒤에는 등가속도 운동으로 속도가 감소하여 정지합니다.<br><br>
+    실제 비행기의 착륙은 항공기 종류, 활주로 상태, 바람, 제동 장치, 역추력,
+    공기 저항 등에 영향을 받으므로 이 시뮬레이션은 물리 학습을 위한 단순화된 모델입니다.
+  </div>
+</div>
+
+<script>
+// -----------------------------
+// 필요한 HTML 요소 가져오기
+// -----------------------------
+const viInput = document.getElementById("vi");
+const vfInput = document.getElementById("vf");
+const timeInput = document.getElementById("time");
+
+const accelText = document.getElementById("accel");
+const currentVelocityText = document.getElementById("currentVelocity");
+const elapsedTimeText = document.getElementById("elapsedTime");
+const statusText = document.getElementById("status");
+
+const scene = document.getElementById("scene");
+const ctx = scene.getContext("2d");
+
+const graph = document.getElementById("graph");
+const gctx = graph.getContext("2d");
+
+let animationId = null;
+let animationStart = null;
+let simulation = null;
+
+
+// -----------------------------
+// 계산하기
+// -----------------------------
+function calculate() {
+  const vi = Number(viInput.value);
+  const vf = Number(vfInput.value);
+  const t = Number(timeInput.value);
+
+  if (vi < vf || vi < 0 || vf < 0 || t <= 0) {
+    alert("속도와 시간을 올바르게 입력하세요. 착륙 직전 속도는 정지 속도보다 크거나 같아야 합니다.");
+    return null;
+  }
+
+  const a = (vf - vi) / t;
+
+  accelText.textContent = a.toFixed(2);
+  currentVelocityText.textContent = vi.toFixed(2);
+  elapsedTimeText.textContent = "0.00";
+
+  drawScene(0, "approach");
+  drawGraph(0);
+
+  return { vi, vf, t, a };
+}
+
+
+// -----------------------------
+// 비행기 모양 그리기
+// -----------------------------
+function drawAirplane(x, y, scale = 1) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+
+  // 비행기 몸통
+  ctx.beginPath();
+  ctx.moveTo(-65, 0);
+  ctx.lineTo(45, 0);
+  ctx.quadraticCurveTo(65, 0, 75, -8);
+  ctx.lineTo(45, -10);
+  ctx.lineTo(20, -8);
+  ctx.lineTo(5, -30);
+  ctx.lineTo(-5, -30);
+  ctx.lineTo(0, -8);
+  ctx.lineTo(-45, -12);
+  ctx.lineTo(-62, -5);
+  ctx.closePath();
+  ctx.fillStyle = "#ffffff";
+  ctx.fill();
+  ctx.strokeStyle = "#333";
+  ctx.stroke();
+
+  // 날개
+  ctx.beginPath();
+  ctx.moveTo(-5, -3);
+  ctx.lineTo(-28, 30);
+  ctx.lineTo(-15, 30);
+  ctx.lineTo(15, 2);
+  ctx.closePath();
+  ctx.fillStyle = "#d7dce2";
+  ctx.fill();
+  ctx.stroke();
+
+  // 꼬리날개
+  ctx.beginPath();
+  ctx.moveTo(-45, -7);
+  ctx.lineTo(-58, -25);
+  ctx.lineTo(-47, -25);
+  ctx.lineTo(-32, -5);
+  ctx.closePath();
+  ctx.fillStyle = "#d7dce2";
+  ctx.fill();
+  ctx.stroke();
+
+  // 창문
+  for (let i = 0; i < 5; i++) {
+    ctx.beginPath();
+    ctx.arc(-25 + i * 12, -5, 3, 0, Math.PI * 2);
+    ctx.fillStyle = "#333";
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+
+// -----------------------------
+// 착륙 장면 그리기
+// -----------------------------
+function drawScene(progress, phase) {
+  const W = scene.width;
+  const H = scene.height;
+
+  // 하늘
+  const sky = ctx.createLinearGradient(0, 0, 0, H * 0.72);
+  sky.addColorStop(0, "#bfe7ff");
+  sky.addColorStop(1, "#eef9ff");
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, H);
+
+  // 구름
+  drawCloud(130, 90, 1);
+  drawCloud(720, 80, 0.8);
+  drawCloud(470, 145, 0.65);
+
+  // 멀리 있는 지면
+  ctx.fillStyle = "#b9d89b";
+  ctx.fillRect(0, 250, W, 180);
+
+  // 활주로
+  const runwayY = 315;
+  ctx.fillStyle = "#555";
+  ctx.fillRect(0, runwayY, W, 115);
+
+  // 활주로 중앙선
+  ctx.strokeStyle = "#f7f7f7";
+  ctx.lineWidth = 5;
+  ctx.setLineDash([35, 25]);
+  ctx.beginPath();
+  ctx.moveTo(0, runwayY + 58);
+  ctx.lineTo(W, runwayY + 58);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 착륙 목표 지점
+  ctx.strokeStyle = "#ff3333";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(720, runwayY);
+  ctx.lineTo(720, runwayY + 115);
+  ctx.stroke();
+
+  ctx.fillStyle = "#222";
+  ctx.font = "16px Arial";
+  ctx.fillText("착륙 지점", 680, runwayY - 12);
+
+  let x, y;
+
+  if (phase === "approach") {
+    // 처음에는 공중에서 왼쪽에서 오른쪽으로 접근
+    x = 120 + progress * 500;
+
+    // 공중 높이에서 서서히 하강
+    // progress가 0일 때 높고, 1에 가까워질수록 활주로에 가까워짐
+    const startY = 135;
+    const landingY = runwayY - 38;
+    y = startY + (landingY - startY) * progress;
+  } else if (phase === "landed") {
+    // 착륙 후에는 활주로 위를 이동
+    x = 620 + progress * 300;
+    y = runwayY - 38;
+  } else if (phase === "stopped") {
+    x = 920;
+    y = runwayY - 38;
+  }
+
+  drawAirplane(x, y, 0.95);
+
+  // 고도 안내선
+  if (phase === "approach") {
+    ctx.strokeStyle = "rgba(0,0,0,0.2)";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([8, 8]);
+    ctx.beginPath();
+    ctx.moveTo(x, y + 35);
+    ctx.lineTo(x, runwayY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = "#333";
+    ctx.font = "15px Arial";
+    ctx.fillText("서서히 하강 중", x - 45, y - 55);
+  }
+
+  // 현재 단계 표시
+  ctx.fillStyle = "#222";
+  ctx.font = "bold 18px Arial";
+
+  if (phase === "approach") {
+    ctx.fillText("① 공중에서 착륙 접근", 25, 35);
+  } else if (phase === "landed") {
+    ctx.fillText("② 활주로 착륙 → 감속", 25, 35);
+  } else {
+    ctx.fillText("③ 정지", 25, 35);
+  }
+}
+
+
+// 구름 그리기
+function drawCloud(x, y, scale) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+
+  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.beginPath();
+  ctx.arc(0, 0, 25, 0, Math.PI * 2);
+  ctx.arc(30, -10, 32, 0, Math.PI * 2);
+  ctx.arc(65, 0, 25, 0, Math.PI * 2);
+  ctx.fillRect(-5, 0, 75, 25);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+
+// -----------------------------
+// 속도-시간 그래프
+// -----------------------------
+function drawGraph(progress) {
+  const data = calculateData();
+
+  if (!data) return;
+
+  const { vi, vf, t } = data;
+  const W = graph.width;
+  const H = graph.height;
+
+  gctx.clearRect(0, 0, W, H);
+
+  const left = 75;
+  const right = 35;
+  const top = 35;
+  const bottom = 60;
+
+  const graphW = W - left - right;
+  const graphH = H - top - bottom;
+
+  const maxV = Math.max(vi, 1) * 1.15;
+
+  // 배경
+  gctx.fillStyle = "#fff";
+  gctx.fillRect(0, 0, W, H);
+
+  // 축
+  gctx.strokeStyle = "#333";
+  gctx.lineWidth = 2;
+  gctx.beginPath();
+  gctx.moveTo(left, top);
+  gctx.lineTo(left, H - bottom);
+  gctx.lineTo(W - right, H - bottom);
+  gctx.stroke();
+
+  // 축 이름
+  gctx.fillStyle = "#222";
+  gctx.font = "16px Arial";
+  gctx.fillText("속도 v (m/s)", 15, 25);
+  gctx.fillText("시간 t (s)", W - 95, H - 18);
+
+  // 전체 속도 그래프
+  gctx.strokeStyle = "#8aa0b5";
+  gctx.lineWidth = 3;
+  gctx.beginPath();
+
+  const steps = 100;
+  for (let i = 0; i <= steps; i++) {
+    const tt = t * i / steps;
+    const v = vi + (vf - vi) * (tt / t);
+
+    const px = left + graphW * (tt / t);
+    const py = H - bottom - graphH * (v / maxV);
+
+    if (i === 0) gctx.moveTo(px, py);
+    else gctx.lineTo(px, py);
+  }
+  gctx.stroke();
+
+  // 현재 진행 구간
+  const currentT = t * progress;
+  const currentV = vi + (vf - vi) * progress;
+
+  gctx.strokeStyle = "#1976d2";
+  gctx.lineWidth = 5;
+  gctx.beginPath();
+
+  const currentX = left + graphW * progress;
+  const currentY = H - bottom - graphH * (currentV / maxV);
+
+  gctx.moveTo(left, H - bottom - graphH * (vi / maxV));
+  gctx.lineTo(currentX, currentY);
+  gctx.stroke();
+
+  // 현재 위치 점
+  gctx.fillStyle = "#d32f2f";
+  gctx.beginPath();
+  gctx.arc(currentX, currentY, 7, 0, Math.PI * 2);
+  gctx.fill();
+
+  // 눈금
+  gctx.fillStyle = "#333";
+  gctx.font = "13px Arial";
+
+  for (let i = 0; i <= 5; i++) {
+    const tt = t * i / 5;
+    const x = left + graphW * i / 5;
+
+    gctx.fillText(tt.toFixed(1), x - 10, H - bottom + 25);
+
+    gctx.strokeStyle = "#ddd";
+    gctx.lineWidth = 1;
+    gctx.beginPath();
+    gctx.moveTo(x, top);
+    gctx.lineTo(x, H - bottom);
+    gctx.stroke();
+  }
+
+  for (let i = 0; i <= 5; i++) {
+    const v = maxV * i / 5;
+    const y = H - bottom - graphH * i / 5;
+
+    gctx.fillStyle = "#333";
+    gctx.fillText(v.toFixed(1), 25, y + 5);
+
+    gctx.strokeStyle = "#eee";
+    gctx.beginPath();
+    gctx.moveTo(left, y);
+    gctx.lineTo(W - right, y);
+    gctx.stroke();
+  }
+}
+
+
+// 입력값을 읽어서 계산 데이터 만들기
+function calculateData() {
+  const vi = Number(viInput.value);
+  const vf = Number(vfInput.value);
+  const t = Number(timeInput.value);
+
+  if (vi < vf || vi < 0 || vf < 0 || t <= 0) return null;
+
+  return {
+    vi: vi,
+    vf: vf,
+    t: t,
+    a: (vf - vi) / t
+  };
+}
+
+
+// -----------------------------
+// 시뮬레이션 시작
+// -----------------------------
+function startSimulation() {
+  const data = calculate();
+
+  if (!data) return;
+
+  simulation = data;
+  animationStart = null;
+
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+  }
+
+  statusText.textContent = "비행기가 공중에서 착륙 지점으로 접근합니다.";
+
+  animationId = requestAnimationFrame(animate);
+}
+
+
+// 애니메이션
+function animate(timestamp) {
+  if (!animationStart) {
+    animationStart = timestamp;
+  }
+
+  const realTime = (timestamp - animationStart) / 1000;
+
+  // 전체 애니메이션은 실제 시간보다 보기 좋게 10초로 표시
+  const approachDuration = 4.0; // 공중에서 서서히 내려오는 시간
+  const groundDuration = 6.0;   // 착륙 후 감속하는 시간
+  const totalDuration = approachDuration + groundDuration;
+
+  let phase;
+  let progress;
+
+  if (realTime < approachDuration) {
+    // ① 공중에서 서서히 하강
+    phase = "approach";
+    progress = realTime / approachDuration;
+
+    currentVelocityText.textContent = simulation.vi.toFixed(2);
+    elapsedTimeText.textContent = "착륙 접근";
+    statusText.textContent = "✈️ 공중에서 서서히 고도를 낮추며 착륙하고 있습니다.";
+
+  } else if (realTime < totalDuration) {
+    // ② 착륙 후 등가속도 운동으로 감속
+    phase = "landed";
+    const groundProgress = (realTime - approachDuration) / groundDuration;
+
+    progress = groundProgress;
+
+    const currentT = simulation.t * groundProgress;
+    const currentV = simulation.vi +
+      (simulation.vf - simulation.vi) * groundProgress;
+
+    currentVelocityText.textContent = currentV.toFixed(2);
+    elapsedTimeText.textContent = currentT.toFixed(2);
+
+    statusText.textContent =
+      "🛬 착륙 완료! 바퀴가 활주로에 닿은 후 속도가 감소하고 있습니다.";
+
+  } else {
+    // ③ 완전히 정지
+    phase = "stopped";
+    progress = 1;
+
+    currentVelocityText.textContent = simulation.vf.toFixed(2);
+    elapsedTimeText.textContent = simulation.t.toFixed(2);
+    statusText.textContent = "🛑 비행기가 활주로에서 완전히 정지했습니다.";
+
+    drawScene(1, "stopped");
+    drawGraph(1);
+    return;
+  }
+
+  drawScene(progress, phase);
+
+  // 그래프는 공중 접근 중에는 시작점에 머물게 하고,
+  // 착륙 후 감속부터 실제 속도 변화가 진행되도록 함
+  if (phase === "approach") {
+    drawGraph(0);
+  } else {
+    drawGraph(progress);
+  }
+
+  animationId = requestAnimationFrame(animate);
+}
+
+
+// -----------------------------
+// 초기화
+// -----------------------------
+function resetSimulation() {
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+  }
+
+  animationId = null;
+  animationStart = null;
+  simulation = null;
+
+  viInput.value = 70;
+  vfInput.value = 0;
+  timeInput.value = 14;
+
+  calculate();
+
+  statusText.textContent =
+    "시뮬레이션을 시작하면 비행기가 공중에서 서서히 내려와 착륙합니다.";
+}
+
+
+// 버튼 연결
+document.getElementById("calculateBtn").addEventListener("click", calculate);
+document.getElementById("startBtn").addEventListener("click", startSimulation);
+document.getElementById("resetBtn").addEventListener("click", resetSimulation);
+
+
+// 처음 화면 표시
+calculate();
+</script>
+</body>
+</html><script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

@@ -1,0 +1,498 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body>
+<p><!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>처마 돌림힘 평형 시뮬레이션</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+        }
+        /* Custom range slider styling */
+        input[type=range] {
+            accent-color: #0284c7;
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-12 bg-slate-50">
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 py-6 px-4 shadow-sm mb-6">
+        <div class="max-w-4xl mx-auto space-y-3">
+            <span class="inline-block px-2.5 py-1 text-xs font-semibold rounded-md bg-sky-100 text-sky-800">물리학 Ⅰ · 돌림힘(토크) 평형</span>
+            <h1 class="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">
+                📐 처마의 돌림힘(토크) 평형 시뮬레이션
+            </h1>
+            
+            <!-- Top summary note box matching user requested design -->
+            <div class="bg-slate-100 rounded-xl p-4 text-xs md:text-sm text-slate-700 space-y-1.5 border border-slate-200">
+                <div class="font-bold text-slate-800">📌 웹앱 기본 설정 및 계산값</div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-1 text-slate-600">
+                    <div>• <b>힘1 (반시계)</b>: 2,000 N × 1.0 m = <b>2,000 N·m</b></div>
+                    <div>• <b>힘2 (시계)</b>: 4,000 N × 0.5 m = <b>2,000 N·m</b></div>
+                </div>
+                <p class="text-slate-500 pt-1 border-t border-slate-200">
+                    반시계 돌림힘과 시계 돌림힘의 크기가 같아 알짜 돌림힘 $\Sigma\tau = 0$이며, 막대는 완벽한 수평 평형 상태를 유지합니다. 슬라이더를 움직여 직접 제어해 보세요.
+                </p>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 space-y-6">
+
+        <!-- Controls Section -->
+        <section class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                    하중 및 회전거리 슬라이더
+                </h2>
+
+                <button id="resetBtn" class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-colors border border-slate-300">
+                    🔄 웹앱 값으로 되돌리기
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                <!-- Force 1 Slider -->
+                <div class="space-y-1.5 bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-200/80">
+                    <div class="flex justify-between items-center text-sm">
+                        <label for="f1" class="font-bold text-emerald-900 flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
+                            힘1 (반시계)
+                        </label>
+                        <span class="font-bold text-emerald-800 bg-white px-2.5 py-0.5 rounded-md border border-emerald-300 shadow-sm text-sm" id="f1Val">2,000 N</span>
+                    </div>
+                    <input type="range" id="f1" min="0" max="10000" step="100" value="2000" class="w-full h-2 bg-emerald-200 rounded-lg appearance-none cursor-pointer">
+                </div>
+
+                <!-- Distance 1 Slider -->
+                <div class="space-y-1.5 bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-200/80">
+                    <div class="flex justify-between items-center text-sm">
+                        <label for="d1" class="font-bold text-emerald-900 flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
+                            거리1 ($d_1$)
+                        </label>
+                        <span class="font-bold text-emerald-800 bg-white px-2.5 py-0.5 rounded-md border border-emerald-300 shadow-sm text-sm" id="d1Val">1.0 m</span>
+                    </div>
+                    <input type="range" id="d1" min="0.1" max="3.0" step="0.1" value="1.0" class="w-full h-2 bg-emerald-200 rounded-lg appearance-none cursor-pointer">
+                </div>
+
+                <!-- Force 2 Slider -->
+                <div class="space-y-1.5 bg-purple-50/60 p-3.5 rounded-xl border border-purple-200/80">
+                    <div class="flex justify-between items-center text-sm">
+                        <label for="f2" class="font-bold text-purple-900 flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
+                            힘2 (시계)
+                        </label>
+                        <span class="font-bold text-purple-800 bg-white px-2.5 py-0.5 rounded-md border border-purple-300 shadow-sm text-sm" id="f2Val">4,000 N</span>
+                    </div>
+                    <input type="range" id="f2" min="0" max="10000" step="100" value="4000" class="w-full h-2 bg-purple-200 rounded-lg appearance-none cursor-pointer">
+                </div>
+
+                <!-- Distance 2 Slider -->
+                <div class="space-y-1.5 bg-purple-50/60 p-3.5 rounded-xl border border-purple-200/80">
+                    <div class="flex justify-between items-center text-sm">
+                        <label for="d2" class="font-bold text-purple-900 flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
+                            거리2 ($d_2$)
+                        </label>
+                        <span class="font-bold text-purple-800 bg-white px-2.5 py-0.5 rounded-md border border-purple-300 shadow-sm text-sm" id="d2Val">0.5 m</span>
+                    </div>
+                    <input type="range" id="d2" min="0.1" max="3.0" step="0.1" value="0.5" class="w-full h-2 bg-purple-200 rounded-lg appearance-none cursor-pointer">
+                </div>
+            </div>
+        </section>
+
+        <!-- Canvas Viewport Section -->
+        <section class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col items-center">
+            <div class="w-full h-80 overflow-hidden rounded-xl bg-slate-50 border border-slate-200 relative">
+                <canvas id="simCanvas" class="w-full h-full block"></canvas>
+            </div>
+        </section>
+
+        <!-- Calculation Results Table Section -->
+        <section class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
+            <h2 class="text-base font-bold text-slate-800 border-b border-slate-100 pb-2.5 flex items-center gap-2">
+                <svg class="w-5 h-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                실시간 돌림힘 및 알짜힘 계산표
+            </h2>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left border-collapse">
+                    <tbody class="divide-y divide-slate-100">
+                        <tr class="hover:bg-slate-50">
+                            <td class="py-2.5 px-3 font-medium text-slate-600">힘1 (반시계)</td>
+                            <td class="py-2.5 px-3 font-bold text-emerald-700 text-right" id="resF1">2,000 N × 1.0 m = 2,000 N·m</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50">
+                            <td class="py-2.5 px-3 font-medium text-slate-600">힘2 (시계)</td>
+                            <td class="py-2.5 px-3 font-bold text-purple-700 text-right" id="resF2">4,000 N × 0.5 m = 2,000 N·m</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50">
+                            <td class="py-2.5 px-3 font-medium text-slate-600">반시계 합</td>
+                            <td class="py-2.5 px-3 font-semibold text-slate-800 text-right" id="resCcwSum">2,000 N·m</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50">
+                            <td class="py-2.5 px-3 font-medium text-slate-600">시계 합</td>
+                            <td class="py-2.5 px-3 font-semibold text-slate-800 text-right" id="resCwSum">2,000 N·m</td>
+                        </tr>
+                        <tr class="bg-slate-50/80 hover:bg-slate-100/80">
+                            <td class="py-2.5 px-3 font-bold text-slate-800">전체 합 $\Sigma\tau$</td>
+                            <td class="py-2.5 px-3 font-bold text-slate-900 text-right" id="resNetTorque">반시계 - 시계 = 2,000 - 2,000 = 0 N·m</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50">
+                            <td class="py-2.5 px-3 font-medium text-slate-600">지지력 N</td>
+                            <td class="py-2.5 px-3 font-semibold text-sky-700 text-right" id="resNormalForce">2,000 + 4,000 = 6,000 N (O 위에 있어서 돌림힘 0)</td>
+                        </tr>
+                        <tr class="bg-sky-50/50 hover:bg-sky-50">
+                            <td class="py-2.5 px-3 font-bold text-sky-950">평형이 되는 힘2</td>
+                            <td class="py-2.5 px-3 font-bold text-sky-900 text-right" id="resEquilF2">2,000 × 1.0 ÷ 0.5 = 4,000 N</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Dynamic Balance Status Banner -->
+            <div id="statusBanner" class="mt-2 p-3.5 rounded-xl border font-bold text-center text-sm transition-all duration-200">
+                <!-- Text inserted dynamically via JS -->
+            </div>
+
+            <p class="text-xs text-slate-500 leading-relaxed text-center">
+                청록 화살표는 반시계 돌림힘을 만드는 힘1, 보라 화살표는 시계 돌림힘을 만드는 힘2, 파란 화살표는 O에서 위로 받치는 지지력 N이에요.
+            </p>
+        </section>
+    </main>
+
+    <!-- JavaScript Application Engine -->
+    <script>
+        // Default initial parameters matching the exact user prompt
+        const DEFAULTS = {
+            f1: 2000,
+            d1: 1.0,
+            f2: 4000,
+            d2: 0.5
+        };
+
+        // Application State
+        const state = { ...DEFAULTS };
+
+        // DOM elements
+        const inputs = {
+            f1: document.getElementById('f1'),
+            d1: document.getElementById('d1'),
+            f2: document.getElementById('f2'),
+            d2: document.getElementById('d2')
+        };
+
+        const labels = {
+            f1: document.getElementById('f1Val'),
+            d1: document.getElementById('d1Val'),
+            f2: document.getElementById('f2Val'),
+            d2: document.getElementById('d2Val')
+        };
+
+        const outputs = {
+            resF1: document.getElementById('resF1'),
+            resF2: document.getElementById('resF2'),
+            resCcwSum: document.getElementById('resCcwSum'),
+            resCwSum: document.getElementById('resCwSum'),
+            resNetTorque: document.getElementById('resNetTorque'),
+            resNormalForce: document.getElementById('resNormalForce'),
+            resEquilF2: document.getElementById('resEquilF2'),
+            statusBanner: document.getElementById('statusBanner')
+        };
+
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Smooth rotation animation state
+        let currentAngle = 0;
+        let targetAngle = 0;
+
+        function formatNum(num) {
+            return Math.round(num).toLocaleString('ko-KR');
+        }
+
+        function updateState() {
+            state.f1 = parseFloat(inputs.f1.value);
+            state.d1 = parseFloat(inputs.d1.value);
+            state.f2 = parseFloat(inputs.f2.value);
+            state.d2 = parseFloat(inputs.d2.value);
+
+            // Update UI control labels
+            labels.f1.textContent = `${formatNum(state.f1)} N`;
+            labels.d1.textContent = `${state.d1.toFixed(1)} m`;
+            labels.f2.textContent = `${formatNum(state.f2)} N`;
+            labels.d2.textContent = `${state.d2.toFixed(1)} m`;
+
+            // Torque Calculations
+            const t1 = state.f1 * state.d1; // CCW torque
+            const t2 = state.f2 * state.d2; // CW torque
+            const netTorque = t1 - t2;      // Net torque
+            const normalForce = state.f1 + state.f2;
+            const equilF2 = state.d2 > 0 ? (t1 / state.d2) : 0;
+
+            // Target tilt angle (max ±0.18 radians)
+            if (Math.abs(netTorque) < 1) {
+                targetAngle = 0;
+            } else {
+                targetAngle = Math.max(-0.18, Math.min(0.18, -netTorque * 0.00006));
+            }
+
+            // Update result table text
+            outputs.resF1.textContent = `${formatNum(state.f1)} N × ${state.d1.toFixed(1)} m = ${formatNum(t1)} N·m`;
+            outputs.resF2.textContent = `${formatNum(state.f2)} N × ${state.d2.toFixed(1)} m = ${formatNum(t2)} N·m`;
+            outputs.resCcwSum.textContent = `${formatNum(t1)} N·m`;
+            outputs.resCwSum.textContent = `${formatNum(t2)} N·m`;
+
+            if (Math.abs(netTorque) < 1) {
+                outputs.resNetTorque.textContent = `반시계 - 시계 = ${formatNum(t1)} - ${formatNum(t2)} = 0 N·m`;
+            } else if (netTorque > 0) {
+                outputs.resNetTorque.textContent = `반시계 - 시계 = ${formatNum(t1)} - ${formatNum(t2)} = +${formatNum(netTorque)} N·m (반시계 우세 ↺)`;
+            } else {
+                outputs.resNetTorque.textContent = `반시계 - 시계 = ${formatNum(t1)} - ${formatNum(t2)} = ${formatNum(netTorque)} N·m (시계 우세 ↻)`;
+            }
+
+            outputs.resNormalForce.textContent = `${formatNum(state.f1)} + ${formatNum(state.f2)} = ${formatNum(normalForce)} N (O 위에 있어서 돌림힘 0)`;
+            outputs.resEquilF2.textContent = `${formatNum(state.f1)} × ${state.d1.toFixed(1)} ÷ ${state.d2.toFixed(1)} = ${formatNum(equilF2)} N`;
+
+            // Status Banner update
+            if (Math.abs(netTorque) < 1) {
+                outputs.statusBanner.className = "mt-2 p-3.5 rounded-xl border font-bold text-center text-sm bg-emerald-50 border-emerald-300 text-emerald-800 shadow-sm";
+                outputs.statusBanner.textContent = "Στ = 0 이므로 돌림힘 평형이에요. 막대가 수평을 유지해요.";
+            } else if (netTorque > 0) {
+                outputs.statusBanner.className = "mt-2 p-3.5 rounded-xl border font-bold text-center text-sm bg-emerald-100 border-emerald-400 text-emerald-900";
+                outputs.statusBanner.textContent = "↺ 반시계 방향 돌림힘(처마 쪽)이 더 커서 막대가 왼쪽으로 기웁니다.";
+            } else {
+                outputs.statusBanner.className = "mt-2 p-3.5 rounded-xl border font-bold text-center text-sm bg-purple-100 border-purple-400 text-purple-900";
+                outputs.statusBanner.textContent = "↻ 시계 방향 돌림힘(안쪽 지붕)이 더 커서 막대가 오른쪽으로 기웁니다.";
+            }
+        }
+
+        // Reset Button Handler
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            inputs.f1.value = DEFAULTS.f1;
+            inputs.d1.value = DEFAULTS.d1;
+            inputs.f2.value = DEFAULTS.f2;
+            inputs.d2.value = DEFAULTS.d2;
+            updateState();
+        });
+
+        Object.values(inputs).forEach(input => input.addEventListener('input', updateState));
+
+        function drawArrow(ctx, fromX, fromY, toX, toY, color, width = 2.5, headLength = 9) {
+            const dx = toX - fromX;
+            const dy = toY - fromY;
+            const angle = Math.atan2(dy, dx);
+
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = width;
+
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI / 6), toY - headLength * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI / 6), toY - headLength * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function render() {
+            const rect = canvas.getBoundingClientRect();
+            if (canvas.width !== rect.width || canvas.height !== rect.height) {
+                canvas.width = rect.width;
+                canvas.height = rect.height;
+            }
+
+            const width = canvas.width;
+            const height = canvas.height;
+
+            ctx.clearRect(0, 0, width, height);
+
+            // Interpolate rotation angle smoothly
+            currentAngle += (targetAngle - currentAngle) * 0.1;
+
+            const pivotX = width / 2;
+            const pivotY = height * 0.52;
+
+            const meterScale = Math.min(width * 0.24, 115);
+
+            // 1. Base Support & Pillar (기둥 및 공포)
+            const pillarWidth = 44;
+            const pillarHeight = 70;
+            const gongpoWidth = 70;
+            const gongpoHeight = 22;
+
+            // Pillar
+            ctx.fillStyle = '#e2e8f0';
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 2;
+            ctx.fillRect(pivotX - pillarWidth / 2, pivotY + gongpoHeight, pillarWidth, pillarHeight);
+            ctx.strokeRect(pivotX - pillarWidth / 2, pivotY + gongpoHeight, pillarWidth, pillarHeight);
+
+            ctx.fillStyle = '#64748b';
+            ctx.font = 'bold 12px Pretendard';
+            ctx.textAlign = 'center';
+            ctx.fillText('기둥', pivotX, pivotY + gongpoHeight + 40);
+
+            // Bracket (공포)
+            ctx.fillStyle = '#fecdd3';
+            ctx.strokeStyle = '#f43f5e';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(pivotX - gongpoWidth / 2, pivotY, gongpoWidth, gongpoHeight, 4);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#9f1239';
+            ctx.font = 'bold 12px Pretendard';
+            ctx.fillText('공포', pivotX, pivotY + 15);
+
+            // 2. Rotating Wooden Beam
+            ctx.save();
+            ctx.translate(pivotX, pivotY);
+            ctx.rotate(currentAngle);
+
+            const beamLength = width * 0.76;
+            const beamHeight = 20;
+
+            // Main Beam Body
+            ctx.fillStyle = '#f3f4f6';
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(-beamLength / 2, -beamHeight / 2, beamLength, beamHeight, 4);
+            ctx.fill();
+            ctx.stroke();
+
+            // Labels on Beam
+            ctx.fillStyle = '#64748b';
+            ctx.font = 'bold 12px Pretendard';
+            ctx.textAlign = 'left';
+            ctx.fillText('처마 쪽', -beamLength / 2 + 15, -beamHeight / 2 - 8);
+            ctx.textAlign = 'right';
+            ctx.fillText('안쪽 지붕', beamLength / 2 - 15, -beamHeight / 2 - 8);
+
+            // Pivot Point O Marker
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.arc(0, 0, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Label O
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 15px Pretendard';
+            ctx.textAlign = 'left';
+            ctx.fillText('O', 10, -4);
+
+            // Force 1 Arrow (Left, Emerald ↓)
+            const f1LocalX = -state.d1 * meterScale;
+            const f1ArrowLen = Math.max(30, Math.min(70, (state.f1 / 10000) * 60 + 20));
+            drawArrow(ctx, f1LocalX, beamHeight / 2, f1LocalX, beamHeight / 2 + f1ArrowLen, '#059669', 3, 8);
+
+            ctx.fillStyle = '#047857';
+            ctx.font = 'bold 13px Pretendard';
+            ctx.textAlign = 'center';
+            ctx.fillText('힘1', f1LocalX, beamHeight / 2 + f1ArrowLen + 16);
+
+            // Force 2 Arrow (Right, Purple ↓)
+            const f2LocalX = state.d2 * meterScale;
+            const f2ArrowLen = Math.max(30, Math.min(70, (state.f2 / 10000) * 60 + 20));
+            drawArrow(ctx, f2LocalX, beamHeight / 2, f2LocalX, beamHeight / 2 + f2ArrowLen, '#7c3aed', 3, 8);
+
+            ctx.fillStyle = '#6d28d9';
+            ctx.font = 'bold 13px Pretendard';
+            ctx.textAlign = 'center';
+            ctx.fillText('힘2', f2LocalX, beamHeight / 2 + f2ArrowLen + 16);
+
+            // Normal Force N Arrow (Upward, Blue ↑)
+            const normalForceVal = state.f1 + state.f2;
+            const nArrowLen = Math.max(35, Math.min(80, (normalForceVal / 20000) * 65 + 25));
+            drawArrow(ctx, 0, -beamHeight / 2, 0, -beamHeight / 2 - nArrowLen, '#0284c7', 3, 8);
+
+            ctx.fillStyle = '#0369a1';
+            ctx.font = 'bold 14px Pretendard';
+            ctx.textAlign = 'left';
+            ctx.fillText('N', 8, -beamHeight / 2 - nArrowLen + 4);
+
+            ctx.restore();
+
+            // 3. Dimension Lines (d1, d2)
+            const cosA = Math.cos(currentAngle);
+            const sinA = Math.sin(currentAngle);
+
+            const distOffsetY = 58;
+
+            const d1StartX = pivotX + (-state.d1 * meterScale) * cosA - (-distOffsetY) * sinA;
+            const d1StartY = pivotY + (-state.d1 * meterScale) * sinA + (-distOffsetY) * cosA;
+            const d1EndX = pivotX + (0) * cosA - (-distOffsetY) * sinA;
+            const d1EndY = pivotY + (0) * sinA + (-distOffsetY) * cosA;
+
+            const d2StartX = pivotX + (0) * cosA - (-distOffsetY) * sinA;
+            const d2StartY = pivotY + (0) * sinA + (-distOffsetY) * cosA;
+            const d2EndX = pivotX + (state.d2 * meterScale) * cosA - (-distOffsetY) * sinA;
+            const d2EndY = pivotY + (state.d2 * meterScale) * sinA + (-distOffsetY) * cosA;
+
+            // Dashed Extension Guides
+            ctx.save();
+            ctx.setLineDash([3, 3]);
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 1;
+
+            ctx.beginPath();
+            ctx.moveTo(d1StartX, d1StartY);
+            ctx.lineTo(pivotX + (-state.d1 * meterScale) * cosA, pivotY + (-state.d1 * meterScale) * sinA);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(d2EndX, d2EndY);
+            ctx.lineTo(pivotX + (state.d2 * meterScale) * cosA, pivotY + (state.d2 * meterScale) * sinA);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(d1EndX, d1EndY);
+            ctx.lineTo(pivotX, pivotY);
+            ctx.stroke();
+            ctx.restore();
+
+            // Dimension Arrow 1
+            drawArrow(ctx, d1EndX, d1EndY, d1StartX, d1StartY, '#64748b', 1.5, 5);
+            drawArrow(ctx, d1StartX, d1StartY, d1EndX, d1EndY, '#64748b', 1.5, 5);
+            ctx.fillStyle = '#475569';
+            ctx.font = 'bold 12px Pretendard';
+            ctx.textAlign = 'center';
+            ctx.fillText(`거리1 ${state.d1.toFixed(1)} m`, (d1StartX + d1EndX) / 2, (d1StartY + d1EndY) / 2 - 5);
+
+            // Dimension Arrow 2
+            drawArrow(ctx, d2StartX, d2StartY, d2EndX, d2EndY, '#64748b', 1.5, 5);
+            drawArrow(ctx, d2EndX, d2EndY, d2StartX, d2StartY, '#64748b', 1.5, 5);
+            ctx.fillStyle = '#475569';
+            ctx.font = 'bold 12px Pretendard';
+            ctx.textAlign = 'center';
+            ctx.fillText(`거리2 ${state.d2.toFixed(1)} m`, (d2StartX + d2EndX) / 2, (d2StartY + d2EndY) / 2 - 5);
+
+            requestAnimationFrame(render);
+        }
+
+        // Initialize application on window load
+        window.addEventListener('load', () => {
+            updateState();
+            requestAnimationFrame(render);
+        });
+    </script>
+</body>
+</html></p><script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

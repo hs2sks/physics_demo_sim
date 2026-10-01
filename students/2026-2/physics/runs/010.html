@@ -1,0 +1,192 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><h1>안녕하세요</h1>
+<p><!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>비행기 이륙 등가속도 운동 시뮬레이터</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Pretendard', sans-serif; background-color: #f0f4f8; color: #1e293b; padding: 20px; }
+        .container { max-width: 850px; margin: 0 auto; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); }
+        h2 { color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-top: 0; }
+        .input-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 15px; }
+        label { font-size: 0.9em; font-weight: bold; color: #475569; display: flex; flex-direction: column; }
+        input { padding: 8px 12px; border: 1px solid #cbd5e0; border-radius: 6px; margin-top: 4px; font-size: 1em; }
+        button { width: 100%; padding: 12px; background-color: #2563eb; color: white; border: none; border-radius: 8px; font-size: 1em; font-weight: bold; cursor: pointer; }
+        button:hover { background-color: #1d4ed8; }
+        .result-box { margin-top: 15px; padding: 15px; background: #eff6ff; border-left: 4px solid #2563eb; border-radius: 6px; }
+        canvas { width: 100%; height: 220px; background: #f8fafc; border: 1px solid #cbd5e0; border-radius: 8px; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🛫 비행기 이륙 등가속도 분석 시뮬레이터</h2>
+    
+    <div class="input-group">
+        <label>처음 속도 v0 (m/s)
+            <input type="number" id="v0" value="0">
+        </label>
+        <label>이륙 속도 v (m/s)
+            <input type="number" id="v" value="70">
+        </label>
+        <label>이륙 시간 t (초)
+            <input type="number" id="t" value="35">
+        </label>
+    </div>
+    
+    <button onclick="runSimulation()">이륙 애니메이션 및 시뮬레이션 실행</button>
+
+    <div class="result-box" id="resultText">
+        버튼을 누르면 비행기 이륙 계산 및 그래프가 표시됩니다.
+    </div>
+
+    <!-- 비행기 이륙 시각화 화면 -->
+    <canvas id="animCanvas"></canvas>
+    
+    <!-- v-t 그래프 화면 -->
+    <canvas id="graphCanvas"></canvas>
+</div>
+
+<script>
+let animId;
+
+function runSimulation() {
+    const v0 = parseFloat(document.getElementById('v0').value);
+    const v = parseFloat(document.getElementById('v').value);
+    const t = parseFloat(document.getElementById('t').value);
+
+    const a = (v - v0) / t;
+    const s = v0 * t + 0.5 * a * t * t;
+
+    document.getElementById('resultText').innerHTML = `
+        • <strong>가속도 (a)</strong>: ${a.toFixed(2)} m/s²<br>
+        • <strong>필요 활주로 거리 (s)</strong>: ${s.toFixed(1)} m<br>
+        • <strong>v-t 그래프 기울기</strong>: ${a.toFixed(2)}
+    `;
+
+    drawGraph(v0, v, t);
+    animateAirplane(v0, v, t, a);
+}
+
+// 비행기 애니메이션
+function animateAirplane(v0, v, t, a) {
+    const canvas = document.getElementById('animCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+
+    let startTime = null;
+
+    function step(timestamp) {
+        if (!startTime) startTime = timestamp;
+        let progressTime = (timestamp - startTime) / 1000; 
+        if (progressTime > 5) progressTime = 5; 
+
+        let simTime = (progressTime / 5) * t; 
+        let currentV = v0 + a * simTime;
+        let currentS = v0 * simTime + 0.5 * a * simTime * simTime;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 하늘과 활주로 배경
+        ctx.fillStyle = '#e0f2fe';
+        ctx.fillRect(0, 0, canvas.width, canvas.height - 40);
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(0, canvas.height - 40, canvas.width, 40);
+
+        // 활주로 점선
+        ctx.strokeStyle = '#ffffff';
+        ctx.setLineDash([15, 15]);
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height - 20);
+        ctx.lineTo(canvas.width, canvas.height - 20);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 비행기 위치 계산
+        let xRatio = (simTime / t);
+        let planeX = 50 + xRatio * (canvas.width - 150);
+        let planeY = canvas.height - 50;
+
+        // 이륙 양력 발생 시 상승
+        if (xRatio > 0.8) {
+            planeY -= (xRatio - 0.8) * 150;
+        }
+
+        // 비행기 그려주기 ✈️
+        ctx.font = '36px serif';
+        ctx.fillText('✈️', planeX, planeY);
+
+        // 현재 속도 및 이동거리 표시
+        ctx.fillStyle = '#0f172a';
+        ctx.font = '14px sans-serif';
+        ctx.fillText(`시간: ${simTime.toFixed(1)}s / 속도: ${currentV.toFixed(1)}m/s / 거리: ${currentS.toFixed(0)}m`, 15, 25);
+
+        if (progressTime < 5) {
+            animId = requestAnimationFrame(step);
+        }
+    }
+
+    if (animId) cancelAnimationFrame(animId);
+    animId = requestAnimationFrame(step);
+}
+
+// v-t 그래프 
+function drawGraph(v0, v, t) {
+    const canvas = document.getElementById('graphCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const m = 40;
+    const w = canvas.width - m * 2;
+    const h = canvas.height - m * 2;
+
+    // 축
+    ctx.beginPath();
+    ctx.strokeStyle = '#94a3b8';
+    ctx.moveTo(m, m);
+    ctx.lineTo(m, canvas.height - m);
+    ctx.lineTo(canvas.width - m, canvas.height - m);
+    ctx.stroke();
+
+    // 좌표값
+    const maxV = Math.max(v, 10) * 1.2;
+    const x0 = m;
+    const y0 = canvas.height - m - (v0 / maxV * h);
+    const x1 = m + w;
+    const y1 = canvas.height - m - (v / maxV * h);
+
+    // 면적 (거리)
+    ctx.fillStyle = 'rgba(37, 99, 235, 0.15)';
+    ctx.beginPath();
+    ctx.moveTo(x0, canvas.height - m);
+    ctx.lineTo(x0, y0);
+    ctx.lineTo(x1, y1);
+    ctx.lineTo(x1, canvas.height - m);
+    ctx.fill();
+
+    // v-t 직선
+    ctx.strokeStyle = '#2563eb';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x1, y1);
+    ctx.stroke();
+
+    ctx.fillStyle = '#1e293b';
+    ctx.font = '12px sans-serif';
+    ctx.fillText('속도(v)', m - 10, m - 10);
+    ctx.fillText('시간(t)', canvas.width - m - 20, canvas.height - m + 25);
+}
+
+window.onload = runSimulation;
+</script>
+
+</body>
+</html></p><script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

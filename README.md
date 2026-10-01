@@ -48,8 +48,13 @@ lectures/                      📚 수업 자료 (수업용 프레젠테이션 
 └── index.json                 자료 목록
 students/                      🎓 학생 제출자료 (년도·학기별 누적)
 ├── index.html                 학생 자료 허브 (목록)
-└── 2026-1/
-    └── physics2-mechanics.html   2026학년도 1학기 물리학2 역학 (31명)
+├── 2026-1/
+│   └── physics2-mechanics.html   2026학년도 1학기 물리학2 역학 (31명)
+└── 2026-2/                       2026학년도 2학기 (과제방 제출작)
+    ├── physics/                  2학년 물리학
+    ├── physics2/                 3학년 물리학2
+    └── mechanics-energy/         2학년 역학과 에너지
+        (각 폴더: index.html 갤러리 · items.json 목록 · runs/NNN.html 작품)
 ```
 
 각 시뮬레이션 폴더에는 `index.html`과 기획 문서 `PRD.md`가 함께 있습니다.
@@ -57,8 +62,8 @@ students/                      🎓 학생 제출자료 (년도·학기별 누�
 ### 학생 자료 추가 방법
 
 1. `students/<년도>-<학기>/` 폴더에 갤러리 HTML 파일을 넣습니다
-   (예: `students/2026-2/physics2-waves.html`).
-2. `students/index.html`의 `submissions` 배열에 항목을 한 줄 추가합니다.
+   (예: `students/2026-2/physics/index.html`).
+2. `students/index.json` 배열에 항목을 한 줄 추가합니다.
 
 ### 수업 자료(프레젠테이션) 추가 방법
 

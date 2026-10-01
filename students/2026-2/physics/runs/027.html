@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>12m 다리 구조물 돌림힘 평형 시뮬레이션</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter & Noto Sans KR -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 260px;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .math-box {
+            background-color: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(8px);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-2">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-600 p-2 rounded-lg text-white">
+                    <i class="fa-solid me-1 fa-archway text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg sm:text-xl text-slate-100">12m 다리 구조물 돌림힘 평형 시뮬레이터</h1>
+                    <p class="text-xs text-slate-400">고등학교 물리학 Ⅰ - 돌림힘과 구조물의 정적 평형 탐구</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-xs bg-slate-800 text-indigo-300 border border-indigo-500/30 px-3 py-1.5 rounded-full font-medium">
+                    <i class="fa-solid fa-atom mr-1"></i> $g = 9.8 \text{ m/s}^2$ 고정
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto w-full p-4 grid grid-cols-1 lg:grid-cols-12 gap-6 my-auto">
+        
+        <!-- Left Side: Simulation Viewport & Controls (8 cols) -->
+        <section class="lg:col-span-8 flex flex-col gap-4">
+            
+            <!-- Canvas Visualizer & Immediate Control Card -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-2xl overflow-hidden relative">
+                <!-- Status Overlay Badge -->
+                <div class="absolute top-6 left-6 z-10 flex items-center gap-2">
+                    <div id="statusBadge" class="px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg transition-all duration-300 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                        <i id="statusIcon" class="fa-solid fa-circle-check"></i>
+                        <span id="statusText">돌림힘 평형 상태 (안정)</span>
+                    </div>
+                </div>
+
+                <!-- Canvas Visual Component -->
+                <div class="canvas-container rounded-xl overflow-hidden bg-gradient-to-b from-slate-950 to-slate-900 border border-slate-800/60 mt-2">
+                    <canvas id="bridgeCanvas"></canvas>
+                </div>
+
+                <!-- Quick Legend & Info Bar -->
+                <div class="mt-2.5 flex flex-wrap justify-between items-center text-xs text-slate-400 px-1 gap-2 pb-3 border-b border-slate-800/80">
+                    <div class="flex items-center gap-4">
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 bg-indigo-500 rounded-xs inline-block"></span> 다리 막대(12m)</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 bg-red-500 rounded-xs inline-block"></span> 무게중심(6m)</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 bg-amber-500 rounded-xs inline-block"></span> 지지대(기둥)</span>
+                    </div>
+                    <div>
+                        <i class="fa-solid fa-circle-info text-indigo-400 mr-1"></i> 균일한 질량 분포 막대
+                    </div>
+                </div>
+
+                <!-- Pillar Removal Control Panel (Positioned right below Animation Canvas) -->
+                <div class="mt-3">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-xs sm:text-sm font-bold text-slate-200 flex items-center gap-2">
+                            <i class="fa-solid fa-building-columns text-amber-400"></i> 기둥 제어 (클릭 시 실시간 제거 / 복원)
+                        </h3>
+                        <button id="resetBtn" class="bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30 text-xs px-2.5 py-1 rounded-lg transition duration-200 flex items-center gap-1 active:scale-95">
+                            <i class="fa-solid fa-rotate-left"></i> 전체 초기화 (4개 복원)
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <!-- 0m Pillar -->
+                        <button id="btnPillar0" onclick="togglePillar(0)" class="relative p-2.5 rounded-xl border border-emerald-500/50 bg-emerald-950/30 text-emerald-300 hover:bg-emerald-900/40 transition text-left group">
+                            <div class="text-[11px] text-slate-400">위치: 0m</div>
+                            <div class="font-bold text-sm text-emerald-400 group-hover:text-white flex justify-between items-center mt-0.5">
+                                <span>0m 기둥</span>
+                                <i class="fa-solid fa-check text-xs pillar-icon"></i>
+                            </div>
+                            <div class="text-[10px] text-slate-400 mt-0.5 pillar-status">설치됨</div>
+                        </button>
+
+                        <!-- 4m Pillar -->
+                        <button id="btnPillar4" onclick="togglePillar(4)" class="relative p-2.5 rounded-xl border border-emerald-500/50 bg-emerald-950/30 text-emerald-300 hover:bg-emerald-900/40 transition text-left group">
+                            <div class="text-[11px] text-slate-400">위치: 4m</div>
+                            <div class="font-bold text-sm text-emerald-400 group-hover:text-white flex justify-between items-center mt-0.5">
+                                <span>4m 기둥</span>
+                                <i class="fa-solid fa-check text-xs pillar-icon"></i>
+                            </div>
+                            <div class="text-[10px] text-slate-400 mt-0.5 pillar-status">설치됨</div>
+                        </button>
+
+                        <!-- 8m Pillar -->
+                        <button id="btnPillar8" onclick="togglePillar(8)" class="relative p-2.5 rounded-xl border border-emerald-500/50 bg-emerald-950/30 text-emerald-300 hover:bg-emerald-900/40 transition text-left group">
+                            <div class="text-[11px] text-slate-400">위치: 8m</div>
+                            <div class="font-bold text-sm text-emerald-400 group-hover:text-white flex justify-between items-center mt-0.5">
+                                <span>8m 기둥</span>
+                                <i class="fa-solid fa-check text-xs pillar-icon"></i>
+                            </div>
+                            <div class="text-[10px] text-slate-400 mt-0.5 pillar-status">설치됨</div>
+                        </button>
+
+                        <!-- 12m Pillar -->
+                        <button id="btnPillar12" onclick="togglePillar(12)" class="relative p-2.5 rounded-xl border border-emerald-500/50 bg-emerald-950/30 text-emerald-300 hover:bg-emerald-900/40 transition text-left group">
+                            <div class="text-[11px] text-slate-400">위치: 12m</div>
+                            <div class="font-bold text-sm text-emerald-400 group-hover:text-white flex justify-between items-center mt-0.5">
+                                <span>12m 기둥</span>
+                                <i class="fa-solid fa-check text-xs pillar-icon"></i>
+                            </div>
+                            <div class="text-[10px] text-slate-400 mt-0.5 pillar-status">설치됨</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Controls Panel (Mass & Presets) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-4">
+                
+                <!-- Mass Inputs -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3">
+                        <label class="block text-xs font-semibold text-slate-300 mb-1" for="bridgeMass">
+                            <i class="fa-solid fa-weight-hanging text-indigo-400 mr-1.5"></i>다리 막대 질량 ($m_{bridge}$)
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="bridgeMass" value="1000" min="10" max="10000" step="50"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white font-mono focus:outline-none focus:border-indigo-500 transition text-sm">
+                            <span class="text-xs font-semibold text-slate-400">kg</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3">
+                        <label class="block text-xs font-semibold text-slate-300 mb-1" for="pillarMass">
+                            <i class="fa-solid fa-cube text-indigo-400 mr-1.5"></i>기둥 1개 질량 ($m_{support}$)
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="pillarMass" value="100" min="0" max="5000" step="10"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white font-mono focus:outline-none focus:border-indigo-500 transition text-sm">
+                            <span class="text-xs font-semibold text-slate-400">kg</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Required 6 Test Cases Shortcuts -->
+                <div class="pt-2 border-t border-slate-800">
+                    <div class="text-xs font-semibold text-slate-400 mb-2 flex items-center gap-1.5">
+                        <i class="fa-solid fa-flask text-indigo-400"></i> 주요 검증 상황 프리셋 (6가지 필수 요구 조건)
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <button onclick="applyPreset([4,8,12])" class="text-left text-xs p-2 bg-slate-800/80 hover:bg-indigo-900/40 border border-slate-700/60 hover:border-indigo-500/50 rounded-lg text-slate-300 transition">
+                            <span class="text-indigo-400 font-bold block mb-0.5">① 0m 기둥 제거</span>
+                            <span class="text-[11px] text-slate-400">(남은 기둥: 4, 8, 12m)</span>
+                        </button>
+                        <button onclick="applyPreset([0,8,12])" class="text-left text-xs p-2 bg-slate-800/80 hover:bg-indigo-900/40 border border-slate-700/60 hover:border-indigo-500/50 rounded-lg text-slate-300 transition">
+                            <span class="text-indigo-400 font-bold block mb-0.5">② 4m 기둥 제거</span>
+                            <span class="text-[11px] text-slate-400">(남은 기둥: 0, 8, 12m)</span>
+                        </button>
+                        <button onclick="applyPreset([4,8])" class="text-left text-xs p-2 bg-slate-800/80 hover:bg-indigo-900/40 border border-slate-700/60 hover:border-indigo-500/50 rounded-lg text-slate-300 transition">
+                            <span class="text-indigo-400 font-bold block mb-0.5">③ 양쪽 끝 2개 제거</span>
+                            <span class="text-[11px] text-slate-400">(남은 기둥: 4, 8m)</span>
+                        </button>
+                        <button onclick="applyPreset([0,12])" class="text-left text-xs p-2 bg-slate-800/80 hover:bg-indigo-900/40 border border-slate-700/60 hover:border-indigo-500/50 rounded-lg text-slate-300 transition">
+                            <span class="text-indigo-400 font-bold block mb-0.5">④ 가운데 2개 제거</span>
+                            <span class="text-[11px] text-slate-400">(남은 기둥: 0, 12m)</span>
+                        </button>
+                        <button onclick="applyPreset([0])" class="text-left text-xs p-2 bg-slate-800/80 hover:bg-rose-900/40 border border-slate-700/60 hover:border-rose-500/50 rounded-lg text-slate-300 transition">
+                            <span class="text-rose-400 font-bold block mb-0.5">⑤ 끝 기둥 1개만</span>
+                            <span class="text-[11px] text-slate-400">(남은 기둥: 0m → 넘어짐)</span>
+                        </button>
+                        <button onclick="applyPreset([4])" class="text-left text-xs p-2 bg-slate-800/80 hover:bg-rose-900/40 border border-slate-700/60 hover:border-rose-500/50 rounded-lg text-slate-300 transition">
+                            <span class="text-rose-400 font-bold block mb-0.5">⑥ 가운데 기둥 1개만</span>
+                            <span class="text-[11px] text-slate-400">(남은 기둥: 4m → 넘어짐)</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Right Side: Physics Calculation & Telemetry Dashboard (4 cols) -->
+        <section class="lg:col-span-4 flex flex-col gap-4">
+            
+            <!-- Realtime Telemetry Data Card -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+                <h2 class="text-base font-bold text-slate-100 border-b border-slate-800 pb-2.5 flex items-center justify-between">
+                    <span><i class="fa-solid fa-chart-line text-indigo-400 mr-2"></i>실시간 물리 정보</span>
+                    <span class="text-xs font-normal text-slate-400">Physical Data</span>
+                </h2>
+
+                <div class="space-y-2.5 text-xs">
+                    <div class="flex justify-between items-center p-2.5 rounded-lg bg-slate-800/50">
+                        <span class="text-slate-400">막대 질량 ($m_{bridge}$)</span>
+                        <span id="infoBridgeMass" class="font-mono font-bold text-slate-100">1000 kg</span>
+                    </div>
+
+                    <div class="flex justify-between items-center p-2.5 rounded-lg bg-slate-800/50">
+                        <span class="text-slate-400">기둥 1개 질량 ($m_{support}$)</span>
+                        <span id="infoPillarMass" class="font-mono font-bold text-slate-100">100 kg</span>
+                    </div>
+
+                    <div class="flex justify-between items-center p-2.5 rounded-lg bg-slate-800/50">
+                        <span class="text-slate-400">막대의 무게 ($W = mg$)</span>
+                        <span id="infoWeight" class="font-mono font-bold text-indigo-300">9800 N</span>
+                    </div>
+
+                    <div class="flex justify-between items-center p-2.5 rounded-lg bg-slate-800/50">
+                        <span class="text-slate-400">무게중심 위치 ($x_{cm}$)</span>
+                        <span class="font-mono font-bold text-red-400">6.0 m (균일 막대)</span>
+                    </div>
+
+                    <div class="flex justify-between items-center p-2.5 rounded-lg bg-slate-800/50">
+                        <span class="text-slate-400">현재 남은 기둥</span>
+                        <span id="infoPillarsList" class="font-mono font-bold text-amber-300">0m, 4m, 8m, 12m</span>
+                    </div>
+
+                    <div class="flex justify-between items-center p-2.5 rounded-lg bg-slate-800/50">
+                        <span class="text-slate-400">기둥 지지 범위</span>
+                        <span id="infoSupportRange" class="font-mono font-bold text-emerald-300">[ 0.0m ~ 12.0m ]</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step-by-Step Mathematical Analysis Panel -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex-1 flex flex-col justify-between">
+                <div>
+                    <h2 class="text-base font-bold text-slate-100 border-b border-slate-800 pb-2.5 mb-3 flex items-center justify-between">
+                        <span><i class="fa-solid fa-square-root-variable text-indigo-400 mr-2"></i>돌림힘 및 지지력 계산</span>
+                        <span class="text-xs font-normal text-indigo-400">Physics Step</span>
+                    </h2>
+
+                    <div id="mathOutput" class="space-y-3 text-xs leading-relaxed text-slate-300">
+                        <!-- Content dynamically rendered via JS -->
+                    </div>
+                </div>
+
+                <!-- Formula Reference Footer -->
+                <div class="mt-4 pt-3 border-t border-slate-800/80 text-[11px] text-slate-400 space-y-1">
+                    <p><strong class="text-slate-300">알짜 힘:</strong> $\sum F_y = \sum N_i - W = 0$</p>
+                    <p><strong class="text-slate-300">알짜 돌림힘:</strong> $\sum \tau = \sum (F_i \times r_i) = 0$</p>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800/80 bg-slate-950 py-3 text-center text-xs text-slate-400">
+        12m Bridge Torque & Static Equilibrium Physics Educational Simulation &copy; 2026
+    </footer>
+
+    <script>
+        // Global Simulation State
+        const STATE = {
+            bridgeLength: 12, // meters
+            centerOfMass: 6, // meters (uniform bar)
+            g: 9.8, // m/s^2
+            bridgeMass: 1000, // kg
+            pillarMass: 100, // kg
+            // Active pillars (initially all 4 present: 0, 4, 8, 12)
+            pillars: [0, 4, 8, 12],
+            allPillarPositions: [0, 4, 8, 12],
+            
+            // Physics & Animation State
+            isEquilibrium: true,
+            angle: 0, // Bridge tilt angle in radians
+            angleVelocity: 0,
+            pivotPoint: 6, // Rotation axis position in meters
+            fallDirection: 0, // +1 for clockwise (right fall), -1 for counter-clockwise (left fall)
+            animId: null
+        };
+
+        // Canvas Setup
+        const canvas = document.getElementById('bridgeCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth * window.devicePixelRatio;
+            canvas.height = container.clientHeight * window.devicePixelRatio;
+        }
+
+        /**
+         * Computes static equilibrium, support reaction forces, and tilt condition.
+         */
+        function calculatePhysics() {
+            // Read inputs
+            const bMassInput = parseFloat(document.getElementById('bridgeMass').value);
+            const pMassInput = parseFloat(document.getElementById('pillarMass').value);
+
+            STATE.bridgeMass = isNaN(bMassInput) || bMassInput <= 0 ? 1000 : bMassInput;
+            STATE.pillarMass = isNaN(pMassInput) || pMassInput < 0 ? 0 : pMassInput;
+
+            const W = STATE.bridgeMass * STATE.g;
+            const activePillars = [...STATE.pillars].sort((a, b) => a - b);
+            const k = activePillars.length;
+
+            let isEquilibrium = false;
+            let pivot = 6;
+            let fallDir = 0; // 1: right fall (CW), -1: left fall (CCW)
+
+            let mathHTML = "";
+
+            if (k === 0) {
+                // Case 0: No pillars left
+                isEquilibrium = false;
+                pivot = 6; // Falls downwards / slightly tilts right
+                fallDir = 1;
+                mathHTML = `
+                    <div class="p-3 bg-red-950/40 border border-red-500/40 rounded-xl text-red-300">
+                        <strong class="block text-red-400 mb-1 font-bold">⚠️ 지지 기둥 없음</strong>
+                        지탱할 기둥이 전혀 없으므로 중력에 의해 다리가 수직 아래로 낙하 및 수평을 잃고 추락합니다.
+                    </div>
+                `;
+            } else {
+                const minPillar = activePillars[0];
+                const maxPillar = activePillars[activePillars.length - 1];
+
+                // Equilibrium condition: Center of Mass (6m) must lie within support interval [minPillar, maxPillar]
+                if (STATE.centerOfMass >= minPillar && STATE.centerOfMass <= maxPillar) {
+                    isEquilibrium = true;
+                } else {
+                    isEquilibrium = false;
+                    if (STATE.centerOfMass > maxPillar) {
+                        // Center of mass is to the right of support range -> Rotates around maxPillar clockwise
+                        pivot = maxPillar;
+                        fallDir = 1; // Clockwise tilt
+                    } else if (STATE.centerOfMass < minPillar) {
+                        // Center of mass is to the left of support range -> Rotates around minPillar counter-clockwise
+                        pivot = minPillar;
+                        fallDir = -1; // Counter-clockwise tilt
+                    }
+                }
+
+                // Generate Step-by-Step Educational Math Explanations
+                if (isEquilibrium) {
+                    if (k === 1) {
+                        // Single pillar exactly at 6m? (Not in preset options 0,4,8,12, but theoretically checked)
+                        mathHTML = `
+                            <p class="text-emerald-400 font-bold">✅ 단일 기둥 중심 지지</p>
+                            <p>기둥 하나가 무게중심인 6m에 위치하여 지지하고 있습니다.</p>
+                            <p class="font-mono bg-slate-800 p-2 rounded mt-1">지지 반력 N = W = ${W.toFixed(0)} N</p>
+                        `;
+                    } else if (k === 2) {
+                        const pA = activePillars[0];
+                        const pB = activePillars[1];
+                        const distAB = pB - pA;
+                        const distA_CM = STATE.centerOfMass - pA;
+                        const distB_CM = pB - STATE.centerOfMass;
+
+                        // Reaction forces calculation
+                        const NB = (W * distA_CM) / distAB;
+                        const NA = W - NB;
+
+                        mathHTML = `
+                            <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700 space-y-2">
+                                <div class="font-bold text-indigo-300">2개 기둥 지지 (정역학 정정 구조)</div>
+                                <p>두 기둥의 위치: <span class="font-mono text-amber-300">${pA}m</span> 및 <span class="font-mono text-amber-300">${pB}m</span></p>
+                                
+                                <div class="border-t border-slate-700/80 pt-2 space-y-1">
+                                    <p class="text-slate-400 font-semibold">1. 돌림힘 평형 (기준점 ${pA}m 기둥):</p>
+                                    <p class="font-mono text-slate-200 pl-2">
+                                        &Sigma; &tau; = N<sub>${pB}</sub> &times; ${distAB}m - W &times; ${distA_CM}m = 0
+                                    </p>
+                                    <p class="font-mono text-indigo-300 pl-2">
+                                        N<sub>${pB}</sub> = W &times; (${distA_CM} / ${distAB}) = ${NB.toFixed(0)} N
+                                    </p>
+                                </div>
+
+                                <div class="border-t border-slate-700/80 pt-2 space-y-1">
+                                    <p class="text-slate-400 font-semibold">2. 연직 힘의 평형:</p>
+                                    <p class="font-mono text-slate-200 pl-2">
+                                        &Sigma; F<sub>y</sub> = N<sub>${pA}</sub> + N<sub>${pB}</sub> - W = 0
+                                    </p>
+                                    <p class="font-mono text-indigo-300 pl-2">
+                                        N<sub>${pA}</sub> = W - N<sub>${pB}</sub> = ${NA.toFixed(0)} N
+                                    </p>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        // k === 3 or k === 4 (Indeterminate static structure)
+                        mathHTML = `
+                            <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700 space-y-2">
+                                <div class="font-bold text-emerald-400 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-shield-halved"></i> ${k}개 기둥 평형 유지 (부정정 구조)
+                                </div>
+                                <p>현재 지지 범위 [<span class="font-mono text-amber-300">${minPillar}m ~ ${maxPillar}m</span>] 내에 무게중심(<span class="font-mono text-red-400">6m</span>)이 위치하므로 돌림힘 평형이 완벽히 유지됩니다.</p>
+                                
+                                <div class="p-2.5 bg-amber-950/30 border border-amber-500/30 rounded-lg text-amber-200 text-[11px] leading-relaxed">
+                                    <strong>💡 고교 물리 참고 (정역학 부정정):</strong><br>
+                                    지지 기둥이 3개 이상인 경우, 단순한 힘과 돌림힘 평형 방정식(방정식 2개)만으로는 각 기둥에 걸리는 개별 지지력을 유일하게 결정할 수 없습니다.<br>
+                                    (실제 구조물에서는 다리의 변형률과 탄성계수로 결정됨)
+                                </div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    // Unbalanced state calculation details
+                    const actPillarText = activePillars.map(p => `${p}m`).join(', ');
+                    mathHTML = `
+                        <div class="bg-rose-950/40 border border-rose-500/40 p-3 rounded-xl space-y-2 text-rose-200">
+                            <div class="font-bold text-rose-400 flex items-center gap-1.5">
+                                <i class="fa-solid fa-triangle-exclamation"></i> 돌림힘 평형 깨짐 (넘어짐!)
+                            </div>
+                            <p>남은 기둥: <span class="font-mono text-amber-300">${actPillarText}</span></p>
+                            <p>현재 기둥 지지 범위는 <span class="font-mono text-amber-300">[${minPillar}m ~ ${maxPillar}m]</span> 입니다.</p>
+                            <p class="text-rose-300">
+                                무게중심(<span class="font-mono text-red-400 font-bold">6.0m</span>)이 지지 범위를 벗어났으므로 회전축(<span class="font-mono font-bold text-yellow-300">${pivot}m</span>)에 대해 알짜 돌림힘이 발생하여 ${fallDir > 0 ? '오른쪽(시계 방향)' : '왼쪽(시계 반대 방향)'}으로 넘어집니다!
+                            </p>
+                        </div>
+                    `;
+                }
+            }
+
+            // Update STATE
+            STATE.isEquilibrium = isEquilibrium;
+            STATE.pivotPoint = pivot;
+            STATE.fallDirection = fallDir;
+
+            // Reset animation angle if physics condition changed to equilibrium
+            if (isEquilibrium) {
+                STATE.angle = 0;
+                STATE.angleVelocity = 0;
+            }
+
+            // Update UI elements
+            updateUI(W, activePillars, mathHTML);
+        }
+
+        function updateUI(W, activePillars, mathHTML) {
+            // Update info displays
+            document.getElementById('infoBridgeMass').textContent = `${STATE.bridgeMass} kg`;
+            document.getElementById('infoPillarMass').textContent = `${STATE.pillarMass} kg`;
+            document.getElementById('infoWeight').textContent = `${W.toFixed(0)} N`;
+            document.getElementById('infoPillarsList').textContent = activePillars.length > 0 ? activePillars.map(p => `${p}m`).join(', ') : '없음';
+
+            const minP = activePillars.length > 0 ? activePillars[0] : '-';
+            const maxP = activePillars.length > 0 ? activePillars[activePillars.length - 1] : '-';
+            document.getElementById('infoSupportRange').textContent = activePillars.length > 0 ? `[ ${minP}.0m ~ ${maxP}.0m ]` : '지지 불가';
+
+            // Update Math Panel
+            document.getElementById('mathOutput').innerHTML = mathHTML;
+
+            // Update Status Badge
+            const badge = document.getElementById('statusBadge');
+            const icon = document.getElementById('statusIcon');
+            const text = document.getElementById('statusText');
+
+            if (STATE.isEquilibrium) {
+                badge.className = "px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg transition-all duration-300 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40";
+                icon.className = "fa-solid fa-circle-check text-emerald-400";
+                text.textContent = "돌림힘 평형 상태 (안정)";
+            } else {
+                badge.className = "px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg transition-all duration-300 bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse";
+                icon.className = "fa-solid fa-triangle-exclamation text-rose-400";
+                text.textContent = "⚠️ 돌림힘 평형 깨짐! (넘어짐!)";
+            }
+
+            // Update Pillar Buttons Appearance
+            STATE.allPillarPositions.forEach(pos => {
+                const btn = document.getElementById(`btnPillar${pos}`);
+                const isPresent = STATE.pillars.includes(pos);
+                const iconElem = btn.querySelector('.pillar-icon');
+                const statusElem = btn.querySelector('.pillar-status');
+
+                if (isPresent) {
+                    btn.className = "relative p-3 rounded-xl border border-emerald-500/50 bg-emerald-950/30 text-emerald-300 hover:bg-emerald-900/40 transition text-left group";
+                    iconElem.className = "fa-solid fa-check text-xs text-emerald-400";
+                    statusElem.textContent = "설치됨";
+                    statusElem.className = "text-[10px] text-emerald-400/80 mt-1";
+                } else {
+                    btn.className = "relative p-3 rounded-xl border border-rose-500/30 bg-slate-900/60 text-slate-500 hover:bg-slate-800/60 transition text-left group opacity-75";
+                    iconElem.className = "fa-solid fa-xmark text-xs text-rose-400";
+                    statusElem.textContent = "제거됨";
+                    statusElem.className = "text-[10px] text-rose-400/80 mt-1";
+                }
+            });
+        }
+
+        // Toggle Pillar Removal/Addition
+        function togglePillar(pos) {
+            const idx = STATE.pillars.indexOf(pos);
+            if (idx > -1) {
+                STATE.pillars.splice(idx, 1);
+            } else {
+                STATE.pillars.push(pos);
+                STATE.pillars.sort((a, b) => a - b);
+            }
+            calculatePhysics();
+        }
+
+        // Apply Preset Configurations
+        function applyPreset(pillarArray) {
+            STATE.pillars = [...pillarArray];
+            calculatePhysics();
+        }
+
+        // Reset to default 4 pillars
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            STATE.pillars = [0, 4, 8, 12];
+            calculatePhysics();
+        });
+
+        // Event Listeners for inputs
+        document.getElementById('bridgeMass').addEventListener('input', calculatePhysics);
+        document.getElementById('pillarMass').addEventListener('input', calculatePhysics);
+
+        /**
+         * Canvas Rendering Engine with Dynamic Rotational Physics Animation
+         */
+        function drawSimulation() {
+            // Update Canvas Dimensions
+            resizeCanvas();
+
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            // Simulation Coordinates Mapping
+            const marginX = w * 0.12;
+            const bridgeWidthPx = w * 0.76;
+            const bridgeY = h * 0.52; // Neutral height of bridge top surface
+            const pillarHeight = h * 0.28;
+            const groundY = bridgeY + pillarHeight;
+
+            // Convert meters (0m to 12m) to pixels X
+            function mToPx(m) {
+                return marginX + (m / STATE.bridgeLength) * bridgeWidthPx;
+            }
+
+            // Draw Ground / Base Structure
+            ctx.strokeStyle = "#334155";
+            ctx.lineWidth = 4 * window.devicePixelRatio;
+            ctx.beginPath();
+            ctx.moveTo(marginX - 30, groundY);
+            ctx.lineTo(marginX + bridgeWidthPx + 30, groundY);
+            ctx.stroke();
+
+            // Ground Hatching Effect
+            ctx.strokeStyle = "#1e293b";
+            ctx.lineWidth = 1.5 * window.devicePixelRatio;
+            for (let x = marginX - 30; x <= marginX + bridgeWidthPx + 30; x += 15) {
+                ctx.beginPath();
+                ctx.moveTo(x, groundY);
+                ctx.lineTo(x - 10, groundY + 12);
+                ctx.stroke();
+            }
+
+            // Physics Animation Step for Unbalanced Fall
+            if (!STATE.isEquilibrium) {
+                STATE.angleVelocity += 0.002 * STATE.fallDirection; // Gravitational acceleration angular increment
+                STATE.angle += STATE.angleVelocity;
+
+                // Limit maximum fall angle (stop when bridge hits ground approx 60 degrees)
+                const maxAngle = Math.PI / 3.2;
+                if (Math.abs(STATE.angle) > maxAngle) {
+                    STATE.angle = Math.sign(STATE.angle) * maxAngle;
+                    STATE.angleVelocity = 0;
+                }
+            } else {
+                STATE.angle = 0;
+                STATE.angleVelocity = 0;
+            }
+
+            // 1. Draw Pillars (Ground Supports)
+            STATE.allPillarPositions.forEach(pos => {
+                const pxX = mToPx(pos);
+                const isPresent = STATE.pillars.includes(pos);
+
+                if (isPresent) {
+                    // Concrete Pillar Styling
+                    const pillarW = 24 * window.devicePixelRatio;
+                    ctx.fillStyle = "#f59e0b"; // Warm Amber
+                    ctx.strokeStyle = "#b45309";
+                    ctx.lineWidth = 2 * window.devicePixelRatio;
+
+                    // Pillar Column
+                    ctx.beginPath();
+                    ctx.roundRect(pxX - pillarW / 2, bridgeY + 6, pillarW, pillarHeight - 6, 4);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Pillar Cap
+                    ctx.fillStyle = "#d97706";
+                    ctx.fillRect(pxX - pillarW * 0.7, bridgeY, pillarW * 1.4, 8 * window.devicePixelRatio);
+
+                    // Position Label (0m, 4m, 8m, 12m)
+                    ctx.fillStyle = "#f8fafc";
+                    ctx.font = `bold ${13 * window.devicePixelRatio}px 'Noto Sans KR'`;
+                    ctx.textAlign = "center";
+                    ctx.fillText(`${pos}m`, pxX, groundY + 24 * window.devicePixelRatio);
+                } else {
+                    // Ghost outline for removed pillar
+                    ctx.setLineDash([4, 4]);
+                    ctx.strokeStyle = "rgba(239, 68, 68, 0.4)";
+                    ctx.lineWidth = 1.5 * window.devicePixelRatio;
+                    const pillarW = 20 * window.devicePixelRatio;
+                    ctx.strokeRect(pxX - pillarW / 2, bridgeY + 8, pillarW, pillarHeight - 8);
+                    ctx.setLineDash([]);
+
+                    // Removed Label
+                    ctx.fillStyle = "#64748b";
+                    ctx.font = `${11 * window.devicePixelRatio}px 'Noto Sans KR'`;
+                    ctx.textAlign = "center";
+                    ctx.fillText(`${pos}m (제거)`, pxX, groundY + 24 * window.devicePixelRatio);
+                }
+            });
+
+            // 2. Draw Bridge Beam with Rotational Transformation
+            ctx.save();
+
+            // Calculate pivot origin point in Canvas coordinates
+            let pivotPxX = mToPx(STATE.pivotPoint);
+            let pivotPxY = bridgeY;
+
+            if (STATE.pillars.length === 0) {
+                // If no pillars, pivot around middle (6m)
+                pivotPxX = mToPx(6);
+            }
+
+            // Translate context to pivot point and rotate
+            ctx.translate(pivotPxX, pivotPxY);
+            ctx.rotate(STATE.angle);
+
+            // Calculate local offsets for drawing bridge beam
+            const bridgeLocalStartX = marginX - pivotPxX;
+            const bridgeLocalEndX = (marginX + bridgeWidthPx) - pivotPxX;
+            const bridgeThickness = 22 * window.devicePixelRatio;
+
+            // Bridge Beam Body Gradient
+            const beamGrad = ctx.createLinearGradient(0, -bridgeThickness / 2, 0, bridgeThickness / 2);
+            beamGrad.addColorStop(0, "#6366f1"); // Indigo
+            beamGrad.addColorStop(1, "#4338ca");
+
+            ctx.fillStyle = beamGrad;
+            ctx.strokeStyle = "#818cf8";
+            ctx.lineWidth = 2 * window.devicePixelRatio;
+            ctx.beginPath();
+            ctx.roundRect(bridgeLocalStartX, -bridgeThickness / 2, bridgeWidthPx, bridgeThickness, 6);
+            ctx.fill();
+            ctx.stroke();
+
+            // Bridge Scale Ticks (0m to 12m along beam)
+            ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+            ctx.font = `${9 * window.devicePixelRatio}px Inter`;
+            ctx.textAlign = "center";
+
+            for (let m = 0; m <= 12; m++) {
+                const tickLocalX = mToPx(m) - pivotPxX;
+                ctx.beginPath();
+                ctx.moveTo(tickLocalX, -bridgeThickness / 2);
+                ctx.lineTo(tickLocalX, -bridgeThickness / 2 + 6);
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+                ctx.lineWidth = 1 * window.devicePixelRatio;
+                ctx.stroke();
+
+                if (m % 2 === 0) {
+                    ctx.fillText(`${m}m`, tickLocalX, bridgeThickness / 2 - 4);
+                }
+            }
+
+            // 3. Draw Center of Mass (무게중심 - 6m)
+            const cmLocalX = mToPx(STATE.centerOfMass) - pivotPxX;
+            const cmRadius = 7 * window.devicePixelRatio;
+
+            // Center of Mass Circle (Red/Yellow)
+            ctx.fillStyle = "#ef4444";
+            ctx.beginPath();
+            ctx.arc(cmLocalX, 0, cmRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 2 * window.devicePixelRatio;
+            ctx.stroke();
+
+            // Downward Weight Vector Arrow (W = mg)
+            const arrowLen = 50 * window.devicePixelRatio;
+            ctx.strokeStyle = "#f87171";
+            ctx.lineWidth = 3 * window.devicePixelRatio;
+            ctx.beginPath();
+            ctx.moveTo(cmLocalX, cmRadius);
+            ctx.lineTo(cmLocalX, cmRadius + arrowLen);
+            ctx.stroke();
+
+            // Arrow Head
+            ctx.fillStyle = "#f87171";
+            ctx.beginPath();
+            ctx.moveTo(cmLocalX - 6 * window.devicePixelRatio, cmRadius + arrowLen - 2);
+            ctx.lineTo(cmLocalX + 6 * window.devicePixelRatio, cmRadius + arrowLen - 2);
+            ctx.lineTo(cmLocalX, cmRadius + arrowLen + 8 * window.devicePixelRatio);
+            ctx.fill();
+
+            // Center of Mass Label Box
+            ctx.fillStyle = "#ef4444";
+            ctx.font = `bold ${11 * window.devicePixelRatio}px 'Noto Sans KR'`;
+            ctx.textAlign = "center";
+            ctx.fillText(`무게중심 (6m)`, cmLocalX, -bridgeThickness / 2 - 12);
+
+            ctx.restore();
+
+            // Loop Animation Frame
+            requestAnimationFrame(drawSimulation);
+        }
+
+        // Initialize Simulation on Window Load
+        window.onload = function () {
+            calculatePhysics();
+            drawSimulation();
+        };
+
+        // Window Resize Handler
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+        });
+    </script>
+</body>
+</html>

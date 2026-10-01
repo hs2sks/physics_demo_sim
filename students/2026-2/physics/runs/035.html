@@ -1,0 +1,2536 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>청수사 무대 돌림힘·지진 시뮬레이션</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, "Malgun Gothic", sans-serif;
+      background: #eef2ed;
+      color: #222;
+    }
+
+    header {
+      background: #234f3e;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    header p {
+      margin: 8px 0 0;
+      font-size: 14px;
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+
+      max-width: 1400px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 5px 18px rgba(0,0,0,0.08);
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    /* =========================
+       3D 화면
+       ========================= */
+
+    .viewer {
+      position: relative;
+
+      background:
+        linear-gradient(
+          #dcecf0 0%,
+          #dcecf0 62%,
+          #b9c5a2 62%,
+          #b9c5a2 100%
+        );
+
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    canvas {
+      width: 100%;
+      height: 650px;
+      display: block;
+
+      touch-action: none;
+      cursor: grab;
+    }
+
+    canvas:active {
+      cursor: grabbing;
+    }
+
+    /* =========================
+       위쪽 버튼
+       ========================= */
+
+    .toolbar {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    button,
+    select,
+    input {
+      font: inherit;
+    }
+
+    button {
+      border: none;
+      border-radius: 9px;
+      padding: 10px 13px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .mainButton {
+      background: #234f3e;
+      color: white;
+    }
+
+    .softButton {
+      background: white;
+      color: #222;
+      border: 1px solid #ccc;
+    }
+
+    .quakeButton {
+      background: #a94a3d;
+      color: white;
+    }
+
+    .repairButton {
+      background: #d99b42;
+      color: white;
+    }
+
+    .toolbar select {
+      width: auto;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid #aaa;
+    }
+
+    /* =========================
+       범례
+       ========================= */
+
+    .legend {
+      position: absolute;
+      left: 12px;
+      bottom: 12px;
+
+      background: rgba(255,255,255,0.9);
+
+      padding: 10px;
+      border-radius: 10px;
+
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    /* =========================
+       오른쪽 설정창
+       ========================= */
+
+    .control {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      font-size: 13px;
+      margin-bottom: 5px;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 9px;
+      border-radius: 8px;
+      border: 1px solid #bbb;
+    }
+
+    .forceBox {
+      background: #f5f3eb;
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+
+    .forceGrid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 7px;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .buttons button {
+      flex: 1;
+    }
+
+    #result {
+      margin-top: 15px;
+      background: #eef3ea;
+      padding: 12px;
+      border-radius: 10px;
+      line-height: 1.7;
+    }
+
+    #quakeInfo {
+      padding: 12px;
+      margin-top: 12px;
+      border-radius: 10px;
+      background: #fff4d9;
+    }
+
+    .warning {
+      margin-top: 14px;
+      padding: 10px;
+
+      background: #fff2dd;
+      border-left: 4px solid #d99b42;
+
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 900px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+
+      canvas {
+        height: 520px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+
+  <h1>
+    청수사 무대 돌림힘·지진 시뮬레이션
+  </h1>
+
+  <p>
+    돌림힘 평형과 지진에 의한 구조물 변형을 관찰하는 학습용 모델
+  </p>
+
+</header>
+
+
+<div class="container">
+
+  <!-- =========================
+       왼쪽 구조물 화면
+       ========================= -->
+
+  <section class="card">
+
+    <h2>
+      1. 청수사 무대 구조 모델
+    </h2>
+
+    <div class="viewer">
+
+      <canvas id="scene"></canvas>
+
+      <div class="toolbar">
+
+        <button
+          id="peopleBtn"
+          class="mainButton">
+          사람 숨기기
+        </button>
+
+        <button
+          id="roofBtn"
+          class="softButton">
+          지붕: 투명
+        </button>
+
+        <button
+          id="resetView"
+          class="softButton">
+          시점 초기화
+        </button>
+
+        <button
+          id="zoomIn"
+          class="softButton">
+          확대
+        </button>
+
+        <button
+          id="zoomOut"
+          class="softButton">
+          축소
+        </button>
+
+        <select id="quakeLevel">
+
+          <option value="1">지진 1단계</option>
+          <option value="2">지진 2단계</option>
+          <option value="3">지진 3단계</option>
+          <option value="4" selected>지진 4단계</option>
+          <option value="5">지진 5단계</option>
+          <option value="6">지진 6단계</option>
+          <option value="7">지진 7단계</option>
+
+        </select>
+
+        <button
+          id="quakeBtn"
+          class="quakeButton">
+          지진 시작
+        </button>
+
+        <button
+          id="repairBtn"
+          class="repairButton">
+          모형 복원
+        </button>
+
+      </div>
+
+
+      <div class="legend">
+
+        🟫 산 경사면<br>
+        🟤 무대 바닥<br>
+        🟠 18개 지지 기둥<br>
+        🟨 무대 위 기둥 4개<br>
+        👤 사람 150명<br>
+        🔵 회전축
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- =========================
+       오른쪽 설정 부분
+       ========================= -->
+
+  <aside>
+
+    <section class="card">
+
+      <h2>
+        2. 돌림힘 계산
+      </h2>
+
+      <div class="control">
+
+        <label>
+          회전축
+        </label>
+
+        <input
+          id="pivotName"
+          value="무대를 받치는 안쪽 기둥">
+
+      </div>
+
+
+      <div class="forceBox">
+
+        <strong>
+          힘 1
+        </strong>
+
+        <div class="forceGrid">
+
+          <div>
+
+            <label>
+              힘(N)
+            </label>
+
+            <input
+              id="force1"
+              type="number"
+              value="500">
+
+          </div>
+
+
+          <div>
+
+            <label>
+              거리(m)
+            </label>
+
+            <input
+              id="distance1"
+              type="number"
+              value="2">
+
+          </div>
+
+
+          <div>
+
+            <label>
+              방향
+            </label>
+
+            <select id="direction1">
+
+              <option value="ccw">
+                반시계
+              </option>
+
+              <option value="cw">
+                시계
+              </option>
+
+            </select>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="forceBox">
+
+        <strong>
+          힘 2
+        </strong>
+
+        <div class="forceGrid">
+
+          <div>
+
+            <label>
+              힘(N)
+            </label>
+
+            <input
+              id="force2"
+              type="number"
+              value="400">
+
+          </div>
+
+
+          <div>
+
+            <label>
+              거리(m)
+            </label>
+
+            <input
+              id="distance2"
+              type="number"
+              value="2.5">
+
+          </div>
+
+
+          <div>
+
+            <label>
+              방향
+            </label>
+
+            <select id="direction2">
+
+              <option value="cw">
+                시계
+              </option>
+
+              <option value="ccw">
+                반시계
+              </option>
+
+            </select>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="buttons">
+
+        <button
+          id="calculateBtn"
+          class="mainButton">
+
+          돌림힘 계산
+
+        </button>
+
+      </div>
+
+
+      <div id="result"></div>
+
+    </section>
+
+
+    <section class="card">
+
+      <h2>
+        3. 지진 구조 실험
+      </h2>
+
+      <div class="control">
+
+        <label>
+          구조물 질량(kg)
+        </label>
+
+        <input
+          id="buildingMass"
+          type="number"
+          value="60000">
+
+      </div>
+
+
+      <div class="control">
+
+        <label>
+          구조물이 견딜 수 있는 기준 지진력(kN)
+        </label>
+
+        <input
+          id="capacity"
+          type="number"
+          value="200">
+
+      </div>
+
+
+      <div id="quakeInfo">
+
+        지진을 시작하면 예상 지진력을 계산합니다.
+
+      </div>
+
+
+      <div class="warning">
+
+        ※ 지진 파손 조건은 실제 청수사의 구조 안전성을
+        판정하는 값이 아니라 물리 원리를 확인하기 위한
+        학습용 단순 모델입니다.
+
+      </div>
+
+    </section>
+
+  </aside>
+
+</div>
+
+
+<!--
+index.html과 script.js를
+같은 폴더에 넣어야 합니다.
+-->
+
+<script src="script.js"></script>
+
+</body>
+</html><script>/*
+==========================================================
+청수사 무대 돌림힘 + 지진 시뮬레이션
+==========================================================
+
+x = 좌우
+y = 높이
+z = 앞뒤
+
+Canvas에 3차원 좌표를 2차원 화면으로 투영해서
+3D처럼 표현합니다.
+*/
+
+
+/* ========================================================
+   1. HTML 요소 가져오기
+   ======================================================== */
+
+const canvas =
+  document.getElementById("scene");
+
+const ctx =
+  canvas.getContext("2d");
+
+
+const peopleBtn =
+  document.getElementById("peopleBtn");
+
+const roofBtn =
+  document.getElementById("roofBtn");
+
+const quakeBtn =
+  document.getElementById("quakeBtn");
+
+const repairBtn =
+  document.getElementById("repairBtn");
+
+const resetView =
+  document.getElementById("resetView");
+
+const zoomIn =
+  document.getElementById("zoomIn");
+
+const zoomOut =
+  document.getElementById("zoomOut");
+
+const quakeLevelSelect =
+  document.getElementById("quakeLevel");
+
+const result =
+  document.getElementById("result");
+
+const quakeInfo =
+  document.getElementById("quakeInfo");
+
+
+/* ========================================================
+   2. 화면 상태
+   ======================================================== */
+
+let yaw = 0.7;
+
+let pitch = 0.45;
+
+let zoom = 1;
+
+
+let showPeople = true;
+
+
+/*
+지붕 상태
+
+0 = 투명
+1 = 숨김
+2 = 불투명
+*/
+
+let roofMode = 0;
+
+
+let quakeRunning = false;
+
+
+let broken = false;
+
+
+let dragging = false;
+
+let lastX = 0;
+
+let lastY = 0;
+
+
+let sceneWidth = 800;
+
+let sceneHeight = 650;
+
+
+/* ========================================================
+   3. Canvas 크기 맞추기
+   ======================================================== */
+
+function resizeCanvas() {
+
+  const rect =
+    canvas.getBoundingClientRect();
+
+
+  const dpr =
+    Math.min(
+      window.devicePixelRatio || 1,
+      2
+    );
+
+
+  sceneWidth =
+    rect.width;
+
+  sceneHeight =
+    rect.height;
+
+
+  canvas.width =
+    sceneWidth * dpr;
+
+  canvas.height =
+    sceneHeight * dpr;
+
+
+  ctx.setTransform(
+    dpr,
+    0,
+    0,
+    dpr,
+    0,
+    0
+  );
+}
+
+
+window.addEventListener(
+  "resize",
+  resizeCanvas
+);
+
+
+resizeCanvas();
+
+
+/* ========================================================
+   4. 3D 좌표를 화면 좌표로 변환
+   ======================================================== */
+
+function project(
+  x,
+  y,
+  z,
+  shakeX = 0,
+  shakeZ = 0,
+  sway = 0
+) {
+
+  const heightRatio =
+    Math.max(0, y) / 15;
+
+
+  x +=
+    shakeX +
+    sway * heightRatio;
+
+
+  z +=
+    shakeZ;
+
+
+  const cosY =
+    Math.cos(yaw);
+
+  const sinY =
+    Math.sin(yaw);
+
+
+  const rotatedX =
+    x * cosY -
+    z * sinY;
+
+
+  const rotatedZ =
+    x * sinY +
+    z * cosY;
+
+
+  const cosP =
+    Math.cos(pitch);
+
+  const sinP =
+    Math.sin(pitch);
+
+
+  const rotatedY =
+    y * cosP -
+    rotatedZ * sinP;
+
+
+  const depth =
+    y * sinP +
+    rotatedZ * cosP;
+
+
+  const scale =
+    Math.min(
+      sceneWidth / 28,
+      sceneHeight / 22
+    ) * zoom;
+
+
+  return {
+
+    x:
+      sceneWidth / 2 +
+      rotatedX * scale,
+
+    y:
+      sceneHeight * 0.55 -
+      rotatedY * scale,
+
+    depth: depth
+
+  };
+
+}
+
+
+/* ========================================================
+   5. 선 그리기
+   ======================================================== */
+
+function drawLine(
+  a,
+  b,
+  color = "#333",
+  width = 2
+) {
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    a.x,
+    a.y
+  );
+
+  ctx.lineTo(
+    b.x,
+    b.y
+  );
+
+  ctx.strokeStyle =
+    color;
+
+  ctx.lineWidth =
+    width;
+
+  ctx.stroke();
+
+}
+
+
+/* ========================================================
+   6. 산 경사면 그리기
+   ======================================================== */
+
+function drawMountain(quake) {
+
+  /*
+  건물 쪽은 높고
+  무대 바깥쪽은 낮은 경사면입니다.
+  */
+
+  const point1 =
+    project(
+      -8,
+      6,
+      -6,
+      quake.x,
+      quake.z,
+      0
+    );
+
+
+  const point2 =
+    project(
+      15,
+      -5,
+      -6,
+      quake.x,
+      quake.z,
+      0
+    );
+
+
+  const point3 =
+    project(
+      15,
+      -5,
+      6,
+      quake.x,
+      quake.z,
+      0
+    );
+
+
+  const point4 =
+    project(
+      -8,
+      6,
+      6,
+      quake.x,
+      quake.z,
+      0
+    );
+
+
+  /*
+  산 전체 면
+  */
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    point1.x,
+    point1.y
+  );
+
+  ctx.lineTo(
+    point2.x,
+    point2.y
+  );
+
+  ctx.lineTo(
+    point3.x,
+    point3.y
+  );
+
+  ctx.lineTo(
+    point4.x,
+    point4.y
+  );
+
+  ctx.closePath();
+
+
+  ctx.fillStyle =
+    "#8a7654";
+
+
+  ctx.fill();
+
+
+  ctx.strokeStyle =
+    "#5c6647";
+
+  ctx.lineWidth =
+    3;
+
+
+  ctx.stroke();
+
+
+  /*
+  산 표면에 초록색 경계선을 넣습니다.
+  */
+
+  const top1 =
+    project(
+      -8,
+      6.1,
+      -6,
+      quake.x,
+      quake.z,
+      0
+    );
+
+
+  const top2 =
+    project(
+      15,
+      -4.9,
+      -6,
+      quake.x,
+      quake.z,
+      0
+    );
+
+
+  const top3 =
+    project(
+      15,
+      -4.9,
+      6,
+      quake.x,
+      quake.z,
+      0
+    );
+
+
+  const top4 =
+    project(
+      -8,
+      6.1,
+      6,
+      quake.x,
+      quake.z,
+      0
+    );
+
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    top1.x,
+    top1.y
+  );
+
+  ctx.lineTo(
+    top2.x,
+    top2.y
+  );
+
+  ctx.lineTo(
+    top3.x,
+    top3.y
+  );
+
+  ctx.lineTo(
+    top4.x,
+    top4.y
+  );
+
+  ctx.closePath();
+
+
+  ctx.strokeStyle =
+    "#61734c";
+
+
+  ctx.lineWidth =
+    5;
+
+
+  ctx.stroke();
+
+}
+
+
+/* ========================================================
+   7. 기둥 그리기
+   ======================================================== */
+
+function drawPillar(
+  x,
+  bottomY,
+  topY,
+  z,
+  quake
+) {
+
+  const bottom =
+    project(
+      x,
+      bottomY,
+      z,
+      quake.x,
+      quake.z,
+      0
+    );
+
+
+  const top =
+    project(
+      x,
+      topY,
+      z,
+      quake.x,
+      quake.z,
+      quake.sway
+    );
+
+
+  /*
+  파손 상태에서는
+  기둥을 기울어지게 표현합니다.
+  */
+
+  if (broken) {
+
+    top.x +=
+      (x - 6) * 2.5;
+
+    top.y +=
+      18;
+
+  }
+
+
+  drawLine(
+    bottom,
+    top,
+
+    broken
+      ? "#a84235"
+      : "#725039",
+
+    7
+  );
+
+}
+
+
+/* ========================================================
+   8. 무대 바닥
+   ======================================================== */
+
+function drawStage(quake) {
+
+  const corners = [
+
+    project(
+      0,
+      broken ? 7 : 8,
+      -4,
+      quake.x,
+      quake.z,
+      quake.sway
+    ),
+
+    project(
+      12,
+      broken ? 6.7 : 8,
+      -4,
+      quake.x,
+      quake.z,
+      quake.sway
+    ),
+
+    project(
+      12,
+      broken ? 6.7 : 8,
+      4,
+      quake.x,
+      quake.z,
+      quake.sway
+    ),
+
+    project(
+      0,
+      broken ? 7 : 8,
+      4,
+      quake.x,
+      quake.z,
+      quake.sway
+    )
+
+  ];
+
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    corners[0].x,
+    corners[0].y
+  );
+
+
+  for (
+    let i = 1;
+    i < corners.length;
+    i++
+  ) {
+
+    ctx.lineTo(
+      corners[i].x,
+      corners[i].y
+    );
+
+  }
+
+
+  ctx.closePath();
+
+
+  ctx.fillStyle =
+    broken
+      ? "#9b6656"
+      : "#a47750";
+
+
+  ctx.fill();
+
+
+  ctx.strokeStyle =
+    "#60442f";
+
+  ctx.lineWidth =
+    2;
+
+
+  ctx.stroke();
+
+
+  /*
+  무대 바닥 마룻널 선
+  */
+
+  for (
+    let x = 0.5;
+    x < 12;
+    x += 0.7
+  ) {
+
+    const front =
+      project(
+        x,
+        8.03,
+        -4,
+        quake.x,
+        quake.z,
+        quake.sway
+      );
+
+
+    const back =
+      project(
+        x,
+        8.03,
+        4,
+        quake.x,
+        quake.z,
+        quake.sway
+      );
+
+
+    drawLine(
+      front,
+      back,
+      "rgba(80,45,25,0.35)",
+      1
+    );
+
+  }
+
+}
+
+
+/* ========================================================
+   9. 사람 한 명 그리기
+   ======================================================== */
+
+function drawPerson(
+  x,
+  z,
+  quake
+) {
+
+  const floorHeight =
+    broken
+      ? 7.1
+      : 8.1;
+
+
+  const foot =
+    project(
+      x,
+      floorHeight,
+      z,
+      quake.x,
+      quake.z,
+      quake.sway
+    );
+
+
+  const head =
+    project(
+      x,
+      floorHeight + 1.75,
+      z,
+      quake.x,
+      quake.z,
+      quake.sway
+    );
+
+
+  drawLine(
+    foot,
+    head,
+    "#284d7a",
+    2
+  );
+
+
+  ctx.beginPath();
+
+  ctx.arc(
+    head.x,
+    head.y,
+    2.3,
+    0,
+    Math.PI * 2
+  );
+
+
+  ctx.fillStyle =
+    "#d7a57b";
+
+
+  ctx.fill();
+
+}
+
+
+/* ========================================================
+   10. 무대 위 기둥과 지붕
+   ======================================================== */
+
+function drawUpperStructure(quake) {
+
+  const positions = [
+
+    [0.5, -3.3],
+
+    [0.5, 3.3],
+
+    [11.5, -3.3],
+
+    [11.5, 3.3]
+
+  ];
+
+
+  positions.forEach(
+    position => {
+
+      const x =
+        position[0];
+
+      const z =
+        position[1];
+
+
+      const bottom =
+        project(
+          x,
+          broken ? 7 : 8,
+          z,
+          quake.x,
+          quake.z,
+          quake.sway
+        );
+
+
+      const top =
+        project(
+          x,
+          broken ? 8.5 : 11,
+          z,
+          quake.x,
+          quake.z,
+          quake.sway
+        );
+
+
+      drawLine(
+        bottom,
+        top,
+
+        broken
+          ? "#a84235"
+          : "#d99b42",
+
+        5
+      );
+
+    }
+  );
+
+
+  /*
+  지붕 숨김이면 그리지 않습니다.
+  */
+
+  if (
+    roofMode === 1
+  ) {
+
+    return;
+
+  }
+
+
+  const roofHeight =
+    broken
+      ? 8.8
+      : 12;
+
+
+  const corners = [
+
+    project(
+      0,
+      roofHeight,
+      -4,
+      quake.x,
+      quake.z,
+      quake.sway
+    ),
+
+    project(
+      12,
+      roofHeight,
+      -4,
+      quake.x,
+      quake.z,
+      quake.sway
+    ),
+
+    project(
+      12,
+      roofHeight,
+      4,
+      quake.x,
+      quake.z,
+      quake.sway
+    ),
+
+    project(
+      0,
+      roofHeight,
+      4,
+      quake.x,
+      quake.z,
+      quake.sway
+    )
+
+  ];
+
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    corners[0].x,
+    corners[0].y
+  );
+
+
+  for (
+    let i = 1;
+    i < corners.length;
+    i++
+  ) {
+
+    ctx.lineTo(
+      corners[i].x,
+      corners[i].y
+    );
+
+  }
+
+
+  ctx.closePath();
+
+
+  ctx.fillStyle =
+    roofMode === 0
+
+      ? "rgba(75,53,42,0.15)"
+
+      : "rgba(75,53,42,0.9)";
+
+
+  ctx.fill();
+
+
+  ctx.strokeStyle =
+    "#4d352c";
+
+
+  ctx.stroke();
+
+}
+
+
+/* ========================================================
+   11. 옆 건물 그리기
+   ======================================================== */
+
+function drawBuilding(quake) {
+
+  /*
+  벽 높이 약 3m
+  */
+
+  const leftBottom =
+    project(
+      -5,
+      8,
+      -3,
+      quake.x,
+      quake.z,
+      quake.sway
+    );
+
+
+  const leftTop =
+    project(
+      -5,
+      11,
+      -3,
+      quake.x,
+      quake.z,
+      quake.sway
+    );
+
+
+  const rightBottom =
+    project(
+      0,
+      8,
+      -3,
+      quake.x,
+      quake.z,
+      quake.sway
+    );
+
+
+  const rightTop =
+    project(
+      0,
+      11,
+      -3,
+      quake.x,
+      quake.z,
+      quake.sway
+    );
+
+
+  /*
+  벽과 기둥
+  */
+
+  drawLine(
+    leftBottom,
+    leftTop,
+    "#66543c",
+    7
+  );
+
+
+  drawLine(
+    rightBottom,
+    rightTop,
+    "#66543c",
+    7
+  );
+
+
+  drawLine(
+    leftTop,
+    rightTop,
+    "#66543c",
+    5
+  );
+
+
+  /*
+  지붕
+  */
+
+  const roofTop =
+    project(
+      -2.5,
+      broken ? 11 : 14,
+      -3,
+      quake.x,
+      quake.z,
+      quake.sway
+    );
+
+
+  drawLine(
+    leftTop,
+    roofTop,
+    "#26372f",
+    8
+  );
+
+
+  drawLine(
+    roofTop,
+    rightTop,
+    "#26372f",
+    8
+  );
+
+}
+
+
+/* ========================================================
+   12. 지진 가속도 설정
+   ======================================================== */
+
+/*
+실제 청수사의 지진 안전 기준이 아닙니다.
+
+학습용으로 단계에 따라
+가상의 수평 가속도를 설정했습니다.
+*/
+
+const earthquakeAcceleration = {
+
+  1: 0.05,
+
+  2: 0.10,
+
+  3: 0.18,
+
+  4: 0.28,
+
+  5: 0.40,
+
+  6: 0.55,
+
+  7: 0.75
+
+};
+
+
+/* ========================================================
+   13. 지진 힘 계산
+   ======================================================== */
+
+function calculateEarthquakeForce() {
+
+  const level =
+    Number(
+      quakeLevelSelect.value
+    );
+
+
+  const mass =
+    Number(
+      document.getElementById(
+        "buildingMass"
+      ).value
+    ) || 0;
+
+
+  const capacity =
+    Number(
+      document.getElementById(
+        "capacity"
+      ).value
+    ) || 0;
+
+
+  /*
+  F = m × a
+
+  g = 9.8m/s²
+  */
+
+  const acceleration =
+    earthquakeAcceleration[level]
+    * 9.8;
+
+
+  const forceNewton =
+    mass *
+    acceleration;
+
+
+  const forceKN =
+    forceNewton /
+    1000;
+
+
+  quakeInfo.innerHTML =
+
+    "지진 단계: <b>"
+    + level
+    + "</b><br>"
+
+    +
+
+    "가정한 수평 가속도: <b>"
+    + acceleration.toFixed(2)
+    + " m/s²</b><br>"
+
+    +
+
+    "예상 지진력: <b>"
+    + forceKN.toFixed(1)
+    + " kN</b><br>"
+
+    +
+
+    "구조물 저항 기준: <b>"
+    + capacity
+    + " kN</b>";
+
+
+  /*
+  예상 지진력이 저항 기준보다 크면
+  파손 상태로 바꿉니다.
+  */
+
+  if (
+    forceKN >
+    capacity
+  ) {
+
+    broken =
+      true;
+
+
+    quakeInfo.innerHTML +=
+
+      "<br><strong style='color:#a33;'>"
+
+      +
+
+      "⚠ 모형의 저항 한계를 넘어 구조물이 파손되었습니다."
+
+      +
+
+      "</strong>";
+
+  }
+
+}
+
+
+/* ========================================================
+   14. 전체 장면 그리기
+   ======================================================== */
+
+function drawScene(time = 0) {
+
+  ctx.clearRect(
+    0,
+    0,
+    sceneWidth,
+    sceneHeight
+  );
+
+
+  const level =
+    quakeRunning
+
+      ? Number(
+          quakeLevelSelect.value
+        )
+
+      : 0;
+
+
+  const amplitude =
+    level *
+    0.015;
+
+
+  /*
+  지진 흔들림
+  */
+
+  const quake = {
+
+    x:
+      Math.sin(
+        time * 0.025
+      )
+      * amplitude,
+
+    z:
+      Math.sin(
+        time * 0.031
+      )
+      * amplitude
+      * 0.5,
+
+    sway:
+      Math.sin(
+        time * 0.018
+      )
+      * amplitude
+      * 3
+
+  };
+
+
+  /*
+  산을 가장 먼저 그립니다.
+  */
+
+  drawMountain(
+    quake
+  );
+
+
+  /*
+  18개 지지 기둥
+
+  6 × 3 = 18
+  */
+
+  const xs = [
+
+    0.7,
+
+    2.8,
+
+    4.9,
+
+    7,
+
+    9.1,
+
+    11.2
+
+  ];
+
+
+  const zs = [
+
+    -2.7,
+
+    0,
+
+    2.7
+
+  ];
+
+
+  xs.forEach(
+    x => {
+
+      zs.forEach(
+        z => {
+
+          /*
+          산 경사에 따라
+          바깥쪽 기둥이 더 길어집니다.
+          */
+
+          const ground =
+            5 -
+            (x + 1) * 0.625;
+
+
+          drawPillar(
+            x,
+            ground,
+            7.6,
+            z,
+            quake
+          );
+
+        }
+      );
+
+    }
+  );
+
+
+  /*
+  무대
+  */
+
+  drawStage(
+    quake
+  );
+
+
+  /*
+  옆 건물
+  */
+
+  drawBuilding(
+    quake
+  );
+
+
+  /*
+  무대 위 4개 기둥 + 지붕
+  */
+
+  drawUpperStructure(
+    quake
+  );
+
+
+  /*
+  사람 150명
+
+  15 × 10 = 150
+  */
+
+  if (
+    showPeople &&
+    !broken
+  ) {
+
+    for (
+      let x = 0;
+      x < 15;
+      x++
+    ) {
+
+      for (
+        let z = 0;
+        z < 10;
+        z++
+      ) {
+
+        drawPerson(
+
+          1 +
+          x * 0.68,
+
+          -2.8 +
+          z * 0.62,
+
+          quake
+
+        );
+
+      }
+
+    }
+
+  }
+
+
+  /*
+  회전축
+  */
+
+  const axis =
+    project(
+      0.7,
+      8.3,
+      -4.2,
+      quake.x,
+      quake.z,
+      quake.sway
+    );
+
+
+  ctx.beginPath();
+
+  ctx.arc(
+    axis.x,
+    axis.y,
+    7,
+    0,
+    Math.PI * 2
+  );
+
+
+  ctx.fillStyle =
+    "#3e73c9";
+
+
+  ctx.fill();
+
+
+  ctx.font =
+    "bold 12px Arial";
+
+
+  ctx.fillStyle =
+    "#1c2b42";
+
+
+  ctx.fillText(
+    "회전축",
+    axis.x + 10,
+    axis.y
+  );
+
+
+  /*
+  계속 그림을 갱신합니다.
+  */
+
+  requestAnimationFrame(
+    drawScene
+  );
+
+}
+
+
+/* ========================================================
+   15. 돌림힘 계산
+   ======================================================== */
+
+function calculateTorque() {
+
+  const force1 =
+    Number(
+      document.getElementById(
+        "force1"
+      ).value
+    ) || 0;
+
+
+  const distance1 =
+    Number(
+      document.getElementById(
+        "distance1"
+      ).value
+    ) || 0;
+
+
+  const direction1 =
+    document.getElementById(
+      "direction1"
+    ).value;
+
+
+  const force2 =
+    Number(
+      document.getElementById(
+        "force2"
+      ).value
+    ) || 0;
+
+
+  const distance2 =
+    Number(
+      document.getElementById(
+        "distance2"
+      ).value
+    ) || 0;
+
+
+  const direction2 =
+    document.getElementById(
+      "direction2"
+    ).value;
+
+
+  /*
+  돌림힘
+
+  τ = F × r
+  */
+
+  let torque1 =
+    force1 *
+    distance1;
+
+
+  let torque2 =
+    force2 *
+    distance2;
+
+
+  /*
+  반시계 = +
+  시계 = -
+  */
+
+  if (
+    direction1 ===
+    "cw"
+  ) {
+
+    torque1 *=
+      -1;
+
+  }
+
+
+  if (
+    direction2 ===
+    "cw"
+  ) {
+
+    torque2 *=
+      -1;
+
+  }
+
+
+  const total =
+    torque1 +
+    torque2;
+
+
+  let state;
+
+
+  if (
+    Math.abs(
+      total
+    ) < 0.0001
+  ) {
+
+    state =
+      "✅ 돌림힘 평형";
+
+  }
+
+  else {
+
+    state =
+      "⚠ 돌림힘 평형이 아님";
+
+  }
+
+
+  result.innerHTML =
+
+    "힘 1 돌림힘 = "
+
+    +
+
+    torque1.toLocaleString()
+
+    +
+
+    " N·m"
+
+    +
+
+    "<br>"
+
+    +
+
+    "힘 2 돌림힘 = "
+
+    +
+
+    torque2.toLocaleString()
+
+    +
+
+    " N·m"
+
+    +
+
+    "<hr>"
+
+    +
+
+    "<strong>전체 돌림힘 = "
+
+    +
+
+    total.toLocaleString()
+
+    +
+
+    " N·m</strong>"
+
+    +
+
+    "<br>"
+
+    +
+
+    state;
+
+}
+
+
+/* ========================================================
+   16. 사람 표시 버튼
+   ======================================================== */
+
+peopleBtn.addEventListener(
+  "click",
+  function () {
+
+    showPeople =
+      !showPeople;
+
+
+    peopleBtn.textContent =
+
+      showPeople
+
+        ? "사람 숨기기"
+
+        : "사람 보이기";
+
+  }
+);
+
+
+/* ========================================================
+   17. 지붕 버튼
+   ======================================================== */
+
+roofBtn.addEventListener(
+  "click",
+  function () {
+
+    roofMode++;
+
+
+    if (
+      roofMode >
+      2
+    ) {
+
+      roofMode =
+        0;
+
+    }
+
+
+    const names = [
+
+      "투명",
+
+      "숨김",
+
+      "불투명"
+
+    ];
+
+
+    roofBtn.textContent =
+
+      "지붕: "
+
+      +
+
+      names[
+        roofMode
+      ];
+
+  }
+);
+
+
+/* ========================================================
+   18. 지진 버튼
+   ======================================================== */
+
+quakeBtn.addEventListener(
+  "click",
+  function () {
+
+    quakeRunning =
+      !quakeRunning;
+
+
+    if (
+      quakeRunning
+    ) {
+
+      quakeBtn.textContent =
+        "지진 멈추기";
+
+
+      calculateEarthquakeForce();
+
+    }
+
+    else {
+
+      quakeBtn.textContent =
+        "지진 시작";
+
+    }
+
+  }
+);
+
+
+/* ========================================================
+   19. 모형 복원
+   ======================================================== */
+
+repairBtn.addEventListener(
+  "click",
+  function () {
+
+    broken =
+      false;
+
+
+    quakeRunning =
+      false;
+
+
+    quakeBtn.textContent =
+      "지진 시작";
+
+
+    quakeInfo.innerHTML =
+      "모형이 복원되었습니다.";
+
+  }
+);
+
+
+/* ========================================================
+   20. 시점 초기화
+   ======================================================== */
+
+resetView.addEventListener(
+  "click",
+  function () {
+
+    yaw =
+      0.7;
+
+    pitch =
+      0.45;
+
+    zoom =
+      1;
+
+  }
+);
+
+
+/* ========================================================
+   21. 확대 / 축소
+   ======================================================== */
+
+zoomIn.addEventListener(
+  "click",
+  function () {
+
+    zoom *=
+      1.15;
+
+
+    if (
+      zoom >
+      1.8
+    ) {
+
+      zoom =
+        1.8;
+
+    }
+
+  }
+);
+
+
+zoomOut.addEventListener(
+  "click",
+  function () {
+
+    zoom /=
+      1.15;
+
+
+    if (
+      zoom <
+      0.5
+    ) {
+
+      zoom =
+        0.5;
+
+    }
+
+  }
+);
+
+
+/* ========================================================
+   22. 화면 드래그 회전
+   ======================================================== */
+
+canvas.addEventListener(
+  "pointerdown",
+  function (event) {
+
+    dragging =
+      true;
+
+
+    lastX =
+      event.clientX;
+
+    lastY =
+      event.clientY;
+
+
+    canvas.setPointerCapture(
+      event.pointerId
+    );
+
+  }
+);
+
+
+canvas.addEventListener(
+  "pointermove",
+  function (event) {
+
+    if (
+      !dragging
+    ) {
+
+      return;
+
+    }
+
+
+    const moveX =
+      event.clientX -
+      lastX;
+
+
+    const moveY =
+      event.clientY -
+      lastY;
+
+
+    yaw +=
+      moveX *
+      0.009;
+
+
+    pitch +=
+      moveY *
+      0.006;
+
+
+    pitch =
+      Math.max(
+        0.1,
+
+        Math.min(
+          1.1,
+          pitch
+        )
+      );
+
+
+    lastX =
+      event.clientX;
+
+    lastY =
+      event.clientY;
+
+  }
+);
+
+
+canvas.addEventListener(
+  "pointerup",
+  function () {
+
+    dragging =
+      false;
+
+  }
+);
+
+
+canvas.addEventListener(
+  "pointercancel",
+  function () {
+
+    dragging =
+      false;
+
+  }
+);
+
+
+/* ========================================================
+   23. 마우스 휠 확대 / 축소
+   ======================================================== */
+
+canvas.addEventListener(
+  "wheel",
+  function (event) {
+
+    event.preventDefault();
+
+
+    if (
+      event.deltaY <
+      0
+    ) {
+
+      zoom *=
+        1.08;
+
+    }
+
+    else {
+
+      zoom /=
+        1.08;
+
+    }
+
+
+    zoom =
+      Math.max(
+        0.5,
+
+        Math.min(
+          1.8,
+          zoom
+        )
+      );
+
+  },
+
+  {
+    passive: false
+  }
+);
+
+
+/* ========================================================
+   24. 돌림힘 계산 버튼
+   ======================================================== */
+
+document
+  .getElementById(
+    "calculateBtn"
+  )
+  .addEventListener(
+    "click",
+    calculateTorque
+  );
+
+
+/* ========================================================
+   25. 프로그램 처음 실행
+   ======================================================== */
+
+calculateTorque();
+
+
+requestAnimationFrame(
+  drawScene
+);</script></body></html>

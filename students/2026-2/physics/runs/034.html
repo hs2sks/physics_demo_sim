@@ -1,0 +1,492 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>버스 등가속도 운동 및 바람 시뮬레이터</title>
+    <!-- CSS 스타일 영역: 디자인, 레이아웃, 애니메이션 효과 정의 -->
+    <style>
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            background-color: #f0f4f8;
+            color: #333;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            font-size: 24px;
+        }
+        .info-box {
+            background: #e8f4fd;
+            border-left: 5px solid #3498db;
+            padding: 10px 15px;
+            margin-bottom: 20px;
+            text-align: left;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .input-group {
+            margin: 12px 0;
+            text-align: left;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        label {
+            font-weight: bold;
+            font-size: 14px;
+        }
+        input[type="number"], input[type="range"] {
+            width: 50%;
+            padding: 6px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        input[type="number"] {
+            text-align: right;
+        }
+        .btn-container {
+            margin-top: 20px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            font-size: 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #start-btn {
+            background-color: #27ae60;
+        }
+        #start-btn:hover {
+            background-color: #219653;
+        }
+        #toggle-people-btn {
+            background-color: #e67e22;
+        }
+        #toggle-people-btn:hover {
+            background-color: #d35400;
+        }
+        .result-box {
+            margin-top: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #e74c3c;
+        }
+        
+        /* 버스 시각화 및 도로 컨테이너 */
+        .road-container {
+            position: relative;
+            width: 100%;
+            height: 140px;
+            background: #34495e;
+            border-radius: 8px;
+            margin-top: 20px;
+            overflow: hidden;
+            border: 2px solid #2c3e50;
+        }
+        /* 도로 중앙선 */
+        .road-line {
+            position: absolute;
+            top: 70px;
+            width: 100%;
+            height: 4px;
+            border-bottom: 4px dashed #f1c40f;
+        }
+        /* 바람 입자 스타일 */
+        .wind-particle {
+            position: absolute;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.6);
+            pointer-events: none;
+        }
+        
+        /* 버스 본체 */
+        .bus-body {
+            position: absolute;
+            bottom: 25px;
+            left: 30px;
+            width: 280px;
+            height: 55px;
+            background: #f1c40f;
+            border-radius: 8px 8px 4px 4px;
+            border: 2px solid #d4ac0d;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            transition: transform 0.1s ease;
+        }
+        .bus-window {
+            width: 35px;
+            height: 25px;
+            background: #a9dfbf;
+            border-radius: 3px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 11px;
+        }
+        .wheel {
+            position: absolute;
+            bottom: 8px;
+            width: 22px;
+            height: 22px;
+            background: #2c3e50;
+            border-radius: 50%;
+            border: 2px solid #7f8c8d;
+        }
+        .wheel.front { left: 50px; }
+        .wheel.rear { left: 240px; }
+        
+        .passenger {
+            transition: opacity 0.3s;
+        }
+        .hidden {
+            opacity: 0;
+        }
+
+        /* 흔들림 및 날아가는 애니메이션 효과 클래스 */
+        @keyframes shake {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            20% { transform: translate(-4px, 2px) rotate(-1deg); }
+            40% { transform: translate(4px, -2px) rotate(1deg); }
+            60% { transform: translate(-3px, -1px) rotate(-0.5deg); }
+            80% { transform: translate(3px, 2px) rotate(0.5deg); }
+            100% { transform: translate(0, 0) rotate(0deg); }
+        }
+        .shaking {
+            animation: shake 0.15s infinite;
+        }
+        .blown-away {
+            transform: translateX(-80px) rotate(-15deg) translateY(-20px);
+            transition: transform 0.5s ease-out;
+        }
+
+        canvas {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🚌 버스 등가속도 운동 및 바람 시뮬레이터</h1>
+    
+    <div class="info-box">
+        <strong>상황 설명:</strong> 버스가 정지하는 상황 (고정 무게: 30t)<br>
+        역방향 바람의 강도(1~10)에 따른 외력 가속도와 추가 감속 효과를 관찰하고, 출발 버튼을 눌러 시뮬레이션을 실행해 보세요.
+    </div>
+
+    <!-- 입력 영역 -->
+    <div class="input-group">
+        <label for="v0">처음 속도 ($v_0$, m/s):</label>
+        <input type="number" id="v0" value="2.78" step="0.01">
+    </div>
+    
+    <div class="input-group">
+        <label for="v">나중 속도 ($v$, m/s):</label>
+        <input type="number" id="v" value="0" step="0.01">
+    </div>
+    
+    <div class="input-group">
+        <label for="t">걸린 시간 ($t$, 초):</label>
+        <input type="number" id="t" value="6" step="0.1">
+    </div>
+
+    <div class="input-group">
+        <label>버스 총 무게 (질량):</label>
+        <span style="font-weight: bold; color: #27ae60;">30 t (고정)</span>
+    </div>
+
+    <div class="input-group">
+        <label for="wind-power">바람 강도 (1 ~ 10단): <span id="wind-val" style="color: #2980b9; font-weight:bold;">0</span></label>
+        <input type="range" id="wind-power" min="0" max="10" value="0" oninput="updateWindValue()">
+    </div>
+
+    <!-- 조작 버튼 영역 -->
+    <div class="btn-container">
+        <button id="start-btn" onclick="startSimulation()">버스 출발 및 주행 시작</button>
+        <button onclick="calculateOnly()">계산 및 그래프 갱신</button>
+        <button id="toggle-people-btn" onclick="togglePeople()">사람 태우기/내리기 (시각용)</button>
+    </div>
+
+    <!-- 결과 표시 텍스트 -->
+    <div class="result-box" id="result-text">
+        기본 가속도: -0.46 m/s² | 바람 외력 가속도: 0.00 m/s² | 총 가속도: -0.46 m/s²
+    </div>
+
+    <!-- 도로 및 버스 애니메이션 시각화 영역 -->
+    <div class="road-container" id="road">
+        <div class="road-line"></div>
+        <div class="bus-body" id="bus">
+            <div class="bus-window"><span class="passenger">🧍</span></div>
+            <div class="bus-window"><span class="passenger">🧍</span></div>
+            <div class="bus-window"><span class="passenger">🧍</span></div>
+            <div class="bus-window"><span class="passenger">🧍</span></div>
+        </div>
+        <div class="wheel front" id="wheel-front"></div>
+        <div class="wheel rear" id="wheel-rear"></div>
+    </div>
+
+    <!-- v-t 속도 그래프 캔버스 -->
+    <canvas id="graphCanvas" width="620" height="200"></canvas>
+</div>
+
+<!-- JavaScript 로직 영역 -->
+<script>
+    let isFull = true; // 승객 탑승 상태 표시 여부
+    let isAnimating = false;
+
+    window.onload = function() {
+        calculateOnly();
+        initWindParticles();
+    };
+
+    // 바람 강도 슬라이더 조절 시 실행
+    function updateWindValue() {
+        let val = document.getElementById('wind-power').value;
+        document.getElementById('wind-val').innerText = val;
+        calculateOnly();
+    }
+
+    // 사람 아이콘 시각 상태 토글 (버스 무게 30t은 고정 유지)
+    function togglePeople() {
+        isFull = !isFull;
+        const passengers = document.querySelectorAll('.passenger');
+        const btn = document.getElementById('toggle-people-btn');
+
+        passengers.forEach(p => {
+            if (isFull) p.classList.remove('hidden');
+            else p.classList.add('hidden');
+        });
+
+        btn.innerText = isFull ? "사람 내리기 (시각용)" : "사람 태우기 (시각용)";
+    }
+
+    // 가속도 계산 및 결과/그래프 업데이트 수행
+    function calculateOnly() {
+        let v0 = parseFloat(document.getElementById('v0').value);
+        let v = parseFloat(document.getElementById('v').value);
+        let t = parseFloat(document.getElementById('t').value);
+        let windPower = parseInt(document.getElementById('wind-power').value);
+
+        if (isNaN(v0) || isNaN(v) || isNaN(t) || t <= 0) {
+            return;
+        }
+
+        // 1. 기본 제동 가속도 계산 (a = (v - v0) / t)
+        let baseAccel = (v - v0) / t;
+
+        // 2. 바람에 의한 추가 감속 외력 계산 (바람 강도 1당 -0.08 m/s² 역방향 추가 가속도 부여)
+        let windAccel = - (windPower * 0.08);
+
+        // 3. 총 가속도 (제동 가속도 + 바람 외력)
+        let totalAccel = baseAccel + windAccel;
+
+        // 결과 텍스트 출력
+        let resultDiv = document.getElementById('result-text');
+        resultDiv.innerHTML = `기본 가속도: ${baseAccel.toFixed(2)} m/s² | 바람 외력: ${windAccel.toFixed(2)} m/s² | 총 가속도: <strong>${totalAccel.toFixed(2)} m/s²</strong>`;
+
+        // 그래프 갱신
+        drawGraph(v0, totalAccel, t);
+
+        return { v0, totalAccel, t, windPower };
+    }
+
+    // [시작] 버튼을 눌렀을 때 실행되는 주행 및 감속 애니메이션
+    function startSimulation() {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        let data = calculateOnly();
+        if (!data) {
+            isAnimating = false;
+            return;
+        }
+
+        const bus = document.getElementById('bus');
+        // 애니메이션 전 위치 및 효과 초기화
+        bus.classList.remove('shaking', 'blown-away');
+        bus.style.left = '30px';
+
+        let startTime = null;
+        let duration = data.t * 1000; // 초 단위를 밀리초로 변환
+        let startPos = 30;
+        let maxPos = 400; // 버스가 이동하는 최대 거리 픽셀
+
+        // 바람 강도에 따른 시각적 연출 적용
+        if (data.windPower >= 7 && data.windPower < 10) {
+            bus.classList.add('shaking'); // 강한 진동
+        } else if (data.windPower === 10) {
+            setTimeout(() => {
+                bus.classList.add('blown-away'); // 최고 단계에서 버스가 밀려나거나 밀림
+            }, duration * 0.5);
+        }
+
+        function animate(currentTime) {
+            if (!startTime) startTime = currentTime;
+            let elapsed = currentTime - startTime;
+            let progress = Math.min(elapsed / duration, 1);
+
+            // 등가속도 운동 변위 공식: x = v0*t + 0.5 * a * t^2
+            let currentT = progress * data.t;
+            let distanceCovered = (data.v0 * currentT + 0.5 * data.totalAccel * Math.pow(currentT, 2)) * 30;
+            
+            let newLeft = startPos + distanceCovered;
+            if (newLeft < 10) newLeft = 10; // 화면 이탈 방지
+            if (newLeft > maxPos) newLeft = maxPos;
+
+            bus.style.left = newLeft + 'px';
+
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                isAnimating = false;
+            }
+        }
+
+        requestAnimationFrame(animate);
+    }
+
+    // 도로 배경에 역방향(오른쪽 -> 왼쪽) 바람 입자를 생성하고 움직이는 함수
+    function initWindParticles() {
+        const road = document.getElementById('road');
+        const particleCount = 25;
+        let particles = [];
+
+        for (let i = 0; i < particleCount; i++) {
+            let p = document.createElement('div');
+            p.className = 'wind-particle';
+            p.style.top = Math.random() * 130 + 'px';
+            p.style.left = Math.random() * 700 + 'px';
+            p.style.width = (Math.random() * 30 + 15) + 'px';
+            road.appendChild(p);
+
+            particles.push({
+                element: p,
+                x: parseFloat(p.style.left),
+                y: parseFloat(p.style.top)
+            });
+        }
+
+        function updateWind() {
+            let windPower = parseInt(document.getElementById('wind-power').value) || 0;
+            // 바람 강도가 0이면 바람 입자 속도를 0으로 설정
+            let speedFactor = windPower === 0 ? 0 : (windPower * 1.5 + 2);
+
+            particles.forEach(p => {
+                p.x -= speedFactor;
+                if (p.x < -40) {
+                    p.x = 720; // 오른쪽 끝에서 다시 시작
+                    p.y = Math.random() * 130;
+                    p.element.style.top = p.y + 'px';
+                }
+                p.element.style.left = p.x + 'px';
+            });
+
+            requestAnimationFrame(updateWind);
+        }
+        requestAnimationFrame(updateWind);
+    }
+
+    // 캔버스에 v-t(속도-시간) 그래프를 그려주는 함수
+    function drawGraph(v0, acceleration, totalTime) {
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const padding = 45;
+        const graphWidth = canvas.width - padding * 2;
+        const graphHeight = canvas.height - padding * 2;
+
+        // 축 그리기
+        ctx.strokeStyle = '#bdc3c7';
+        ctx.lineWidth = 1;
+
+        // Y축
+        ctx.beginPath();
+        ctx.moveTo(padding, padding);
+        ctx.lineTo(padding, canvas.height - padding);
+        ctx.stroke();
+
+        // X축
+        ctx.beginPath();
+        ctx.moveTo(padding, canvas.height - padding);
+        ctx.lineTo(canvas.width - padding, canvas.height - padding);
+        ctx.stroke();
+
+        // 라벨 표시
+        ctx.fillStyle = '#7f8c8d';
+        ctx.font = '12px Malgun Gothic';
+        ctx.fillText("속도(m/s)", padding - 35, padding - 10);
+        ctx.fillText("시간(s)", canvas.width - padding - 20, canvas.height - padding + 20);
+
+        let maxTime = Math.max(totalTime, 5);
+        let v_final = v0 + acceleration * totalTime;
+        let maxSpeed = Math.max(Math.abs(v0), Math.abs(v_final), 3) * 1.3;
+
+        function getXPixel(t) {
+            return padding + (t / maxTime) * graphWidth;
+        }
+        function getYPixel(v) {
+            return (canvas.height - padding) - (v / maxSpeed) * graphHeight;
+        }
+
+        // 0 m/s 기준선 (점선)
+        ctx.strokeStyle = '#f5b041';
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(padding, getYPixel(0));
+        ctx.lineTo(canvas.width - padding, getYPixel(0));
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 속도 변화 그래프 선 (파란색)
+        ctx.strokeStyle = '#2980b9';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+
+        let startX = getXPixel(0);
+        let startY = getYPixel(v0);
+        ctx.moveTo(startX, startY);
+
+        let endX = getXPixel(totalTime);
+        let endY = getYPixel(v_final);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+
+        // 시작점과 끝점 포인트 표시
+        ctx.fillStyle = '#e74c3c';
+        ctx.beginPath();
+        ctx.arc(startX, startY, 4, 0, Math.PI * 2);
+        ctx.arc(endX, endY, 4, 0, Math.PI * 2);
+        ctx.fill();
+    }
+</script>
+
+</body>
+</html>
+<script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

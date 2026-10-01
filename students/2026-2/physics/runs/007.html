@@ -1,0 +1,484 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>도월교 · 힘의 평형 구조 시뮬레이터</title>
+<style>
+:root{
+  --bg:#eef3f2;--ink:#172321;--muted:#667572;--line:#dce5e2;--card:#fff;
+  --navy:#1b3034;--water:#6e9eaa;--beam:#354846;--beam2:#4e625e;
+  --load:#d85b52;--reaction:#25a47d;--moment:#4d86b8;--warn:#d39a3b;
+}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#edf3f2 0,#e8efed 100%);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR","Malgun Gothic",sans-serif}
+.app{max-width:1440px;margin:auto;padding:22px 18px 40px}
+.top{display:flex;justify-content:space-between;gap:20px;align-items:flex-end;margin-bottom:14px}
+h1{font-size:27px;line-height:1.1;margin:0 0 7px;font-weight:850;letter-spacing:-.045em}
+.sub{font-size:13px;color:var(--muted);letter-spacing:-.02em}
+.status{display:flex;align-items:center;gap:8px;font-size:12px;color:#51615d;white-space:nowrap}
+.dot{width:9px;height:9px;border-radius:50%;background:#26a47d;box-shadow:0 0 0 4px #d7eee7}
+.stage{position:relative;overflow:hidden;border-radius:22px;background:#9ebfc9;box-shadow:0 18px 45px rgba(26,48,44,.16)}
+canvas{display:block;width:100%;height:auto;cursor:grab}
+canvas.dragging{cursor:grabbing}
+.hud{position:absolute;left:18px;top:18px;display:flex;gap:9px;flex-wrap:wrap;max-width:78%}
+.chip{background:rgba(255,255,255,.9);border:1px solid rgba(255,255,255,.85);backdrop-filter:blur(9px);border-radius:12px;padding:9px 12px;font-size:11px;box-shadow:0 5px 18px rgba(18,38,35,.08)}
+.chip b{display:block;font-size:15px;margin-top:2px;letter-spacing:-.03em}
+.chip .small{display:inline;font-size:10px;color:#71807c;margin:0}
+.stage-badge{position:absolute;right:18px;top:18px;padding:8px 11px;border-radius:999px;background:rgba(25,48,52,.86);color:#fff;font-size:10px;letter-spacing:.04em}
+.grid{display:grid;grid-template-columns:1.35fr .65fr;gap:12px;margin-top:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 7px 22px rgba(40,55,52,.06)}
+.card h2{font-size:14px;margin:0 0 13px;letter-spacing:-.025em}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.metric{background:#f5f8f7;border:1px solid #e8efec;border-radius:11px;padding:11px 12px}
+.metric .label{font-size:10px;color:#74817e;margin-bottom:5px}
+.metric .value{font-size:18px;font-weight:850;letter-spacing:-.03em}
+.unit{font-size:10px;color:#7b8885;margin-left:2px;font-weight:600}
+.balance-head{display:flex;justify-content:space-between;font-size:10px;color:#697773;margin-top:12px}
+.balance{height:8px;border-radius:10px;background:#e7eeeb;overflow:hidden;margin-top:6px}
+.balance>div{height:100%;width:50%;background:var(--reaction);transition:width .18s,background .18s}
+.support-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:11px}
+.support{border:1px solid #e1e9e6;border-radius:11px;padding:10px;background:#fbfcfc}
+.support .shead{font-size:10px;color:#6c7975}
+.support .sval{font-size:16px;font-weight:850;margin-top:4px}
+.mini-bar{height:5px;background:#e8eeec;border-radius:5px;margin-top:7px;overflow:hidden}
+.mini-bar i{display:block;height:100%;background:var(--reaction);border-radius:5px}
+.note{font-size:10px;color:#74817e;margin-top:11px;line-height:1.55}
+.eq{font-size:12px;line-height:2;color:#52615d}
+.eq b{color:#243330}
+.good{color:#208064;font-weight:800}
+.warning{color:#b67820;font-weight:800}
+.people-list{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:11px}
+.person-card{background:#f7faf9;border:1px solid #e1e8e5;border-radius:10px;padding:9px}
+.person-card b{font-size:11px}.person-card span{font-size:10px;color:#71807c}
+.legend{display:flex;gap:13px;flex-wrap:wrap;margin-top:11px;font-size:10px;color:#687471}
+.legend span{display:inline-flex;align-items:center;gap:5px}.sw{width:20px;height:4px;border-radius:3px;background:var(--load)}.sw.green{background:var(--reaction)}.sw.blue{background:var(--moment)}.sw.white{background:#edf5f7;border:1px solid #aac0c5}
+.controls{margin-top:12px}
+.control-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+label{display:block;font-size:11px;color:#5f6b68;margin-bottom:5px}
+input[type=number],select{width:100%;border:1px solid #d4dfdb;background:#fbfcfc;border-radius:9px;padding:9px 10px;font-size:13px;color:#24322f;outline:none}
+input:focus,select:focus{border-color:#79aa9a;box-shadow:0 0 0 3px #e3f1ec}
+.actions{display:flex;gap:8px;margin-top:11px;align-items:center;flex-wrap:wrap}
+button{border:0;border-radius:9px;padding:9px 14px;font-size:12px;font-weight:780;cursor:pointer;background:#286f5d;color:#fff}
+button.secondary{background:#edf2f0;color:#4c5956}
+.toggle-row{display:flex;gap:14px;align-items:center;margin-left:auto;font-size:11px;color:#62706d}
+.toggle-row label{display:flex;align-items:center;gap:5px;margin:0;font-size:11px}
+.toggle-row input{accent-color:#2d7a66}
+.model{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}
+.model-item{padding:10px;border-radius:10px;background:#f5f8f7;border:1px solid #e5ece9}
+.model-item b{display:block;font-size:11px;margin-bottom:3px}.model-item span{font-size:10px;color:#6d7976;line-height:1.45}
+@media(max-width:1050px){.grid{grid-template-columns:1fr}.control-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:700px){.top{align-items:flex-start;flex-direction:column}.metrics{grid-template-columns:repeat(2,1fr)}.support-grid{grid-template-columns:repeat(2,1fr)}.control-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:480px){.control-grid{grid-template-columns:1fr}.people-list{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div>
+      <h1>도월교 · 힘의 평형 구조 시뮬레이터</h1>
+      <div class="sub">사람마다 다른 위치·속도·하중을 만들고, 4개 지지점의 반력과 보의 변형을 실시간으로 관찰합니다.</div>
+    </div>
+    <div class="status"><span class="dot" id="statusDot"></span><span id="runState">실시간 구조해석</span></div>
+  </div>
+
+  <section class="stage">
+    <canvas id="scene" width="1400" height="700"></canvas>
+    <div class="hud">
+      <div class="chip">하중 중심 <b id="hudCenter">—</b><span class="small">전체 하중의 합력 작용점</span></div>
+      <div class="chip">평형 오차 <b id="hudEquilibrium">—</b><span class="small">ΣFy / Στ</span></div>
+      <div class="chip">최대 처짐 <b id="hudDeflection">—</b><span class="small">모델상의 상대 변형</span></div>
+      <div class="chip">안정 상태 <b id="hudStable">—</b><span class="small">접촉·반력 기준</span></div>
+    </div>
+    <div class="stage-badge">LIVE · EULER–BERNOULLI BEAM MODEL</div>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <h2>실시간 힘의 평형</h2>
+      <div class="metrics">
+        <div class="metric"><div class="label">알짜힘 ΣFᵧ</div><div class="value" id="netF">0<span class="unit"> N</span></div></div>
+        <div class="metric"><div class="label">알짜돌림힘 Στ</div><div class="value" id="netT">0<span class="unit"> N·m</span></div></div>
+        <div class="metric"><div class="label">전체 하중 ΣW</div><div class="value" id="totalLoad">0<span class="unit"> N</span></div></div>
+        <div class="metric"><div class="label">최대 처짐</div><div class="value" id="maxDef">0<span class="unit"> mm</span></div></div>
+      </div>
+      <div class="balance-head"><span>반력 균형</span><b id="balanceText">계산 중</b></div>
+      <div class="balance"><div id="balanceBar"></div></div>
+      <div class="support-grid" id="supportGrid"></div>
+      <div class="note">※ 교량은 균일한 Euler–Bernoulli 보, 4개의 수직 지지조건, 설정된 탄성계수(EI)를 갖는 이상화 모델입니다. 실제 교량의 접합부·재료 비선형성·기초 지반·동적 하중까지 포함하는 구조해석 프로그램은 아닙니다.</div>
+    </section>
+
+    <section class="card">
+      <h2>해석 모델 & 현재 상태</h2>
+      <div class="eq">
+        <div><b>수직 평형:</b> ΣRᵢ − ΣW = <span class="good" id="eqF">0 N</span></div>
+        <div><b>모멘트 평형:</b> Σ(Rᵢxᵢ) − Σ(Wⱼxⱼ) = <span class="good" id="eqT">0 N·m</span></div>
+        <div><b>구조 모델:</b> 3개 경간 + 4개 수직 구속 + 보 굽힘 강성 EI</div>
+        <div><b>하중 모델:</b> 교량 자중 + 사람별 점하중 + 비/눈 등분포하중</div>
+        <div><b>판정:</b> 반력의 접촉 여부와 합력 작용점이 외측 지지구간 안에 있는지 함께 표시</div>
+      </div>
+      <div class="people-list" id="peopleList"></div>
+      <div class="model">
+        <div class="model-item"><b>현재 하중 중심</b><span id="centerDetail">—</span></div>
+        <div class="model-item"><b>가장 큰 반력</b><span id="maxReactionDetail">—</span></div>
+      </div>
+    </section>
+  </div>
+
+  <section class="card controls">
+    <h2>상황 설정 · 실험 변수</h2>
+    <div class="control-grid">
+      <div><label>사람 수</label><input id="people" type="number" min="0" max="12" step="1" value="4"></div>
+      <div><label>1명 질량</label><input id="mass" type="number" min="0" max="150" step="1" value="60"></div>
+      <div><label>강수 하중</label><input id="weather" type="number" min="0" max="50000" step="100" value="6000"></div>
+      <div><label>강수 종류</label><select id="weatherType"><option value="rain">비</option><option value="snow">눈</option></select></div>
+      <div><label>보의 굽힘강성 EI</label><select id="stiffness"><option value="0.7">유연 · 0.7×</option><option value="1" selected>기준 · 1.0×</option><option value="2">강성 · 2.0×</option><option value="5">매우 강성 · 5.0×</option></select></div>
+      <div><label>자동 이동 속도</label><input id="speedScale" type="number" min="0" max="3" step="0.1" value="1"></div>
+    </div>
+    <div class="actions">
+      <button id="toggle">⏸ 자동 이동 중</button>
+      <button class="secondary" id="reset">초기화</button>
+      <button class="secondary" id="scatter">사람 위치 무작위 배치</button>
+      <div class="toggle-row">
+        <label><input type="checkbox" id="showForces" checked> 힘 벡터</label>
+        <label><input type="checkbox" id="showLabels" checked> 수치 라벨</label>
+        <label><input type="checkbox" id="showDef" checked> 변형 강조</label>
+      </div>
+    </div>
+    <div class="legend">
+      <span><i class="sw"></i> ↓ 하중 / 사람별 점하중</span>
+      <span><i class="sw green"></i> ↑ R₁~R₄ 지지반력</span>
+      <span><i class="sw blue"></i> 합력 작용점·모멘트 기준</span>
+      <span><i class="sw white"></i> 눈 누적층</span>
+    </div>
+  </section>
+</div>
+
+<script>
+const canvas=document.getElementById("scene"),ctx=canvas.getContext("2d");
+const G=9.81,L=155,bridgeMass=12000,bridgeWeight=bridgeMass*G;
+const supports=[8,47,108,147];
+const EI_BASE=1.65e10;
+let running=true,lastTime=performance.now(),dragIndex=-1,people=[];
+let cache=null,lastSolve=0;
+
+const $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const fmt=n=>Math.abs(n)<0.05?"0.0":n.toLocaleString("ko-KR",{maximumFractionDigits:1});
+const rand=(a,b)=>a+Math.random()*(b-a);
+
+function makePerson(i){
+  return {id:i,x:rand(12,143),v:rand(.35,1.25)*(Math.random()<.5?-1:1),phase:Math.random()*6.28};
+}
+function syncPeople(n){
+  n=Math.round(clamp(n,0,12));
+  while(people.length<n)people.push(makePerson(people.length));
+  if(people.length>n)people.length=n;
+  people.forEach((p,i)=>p.id=i);
+}
+function getLoads(){
+  const n=Math.round(clamp(+$("people").value||0,0,12));
+  const mass=Math.max(0,+$("mass").value||0);
+  const weather=Math.max(0,+$("weather").value||0);
+  syncPeople(n);
+  const loads=[{w:bridgeWeight,x:L/2,label:"교량 자체",type:"dead"}];
+  people.forEach((p,i)=>loads.push({w:mass*G,x:p.x,label:"사람 "+(i+1),type:"person"}));
+  if(weather>0)loads.push({w:weather,x:L/2,label:$("weatherType").value==="snow"?"눈":"비",type:"weather"});
+  const total=loads.reduce((s,q)=>s+q.w,0);
+  const moment=loads.reduce((s,q)=>s+q.w*q.x,0);
+  return {n,mass,weather,loads,total,center:moment/Math.max(total,1)};
+}
+
+/* 1D Euler–Bernoulli beam FEM.
+   각 절점은 수직변위 v와 회전 θ를 가지며, 4개 지점에서 v=0을 구속한다.
+   이 모델로 정정/부정정 여부와 관계없이 반력을 구조강성에서 계산한다. */
+function mesh(){
+  const pts=[];
+  const div=12;
+  for(let s=0;s<supports.length-1;s++){
+    const a=supports[s],b=supports[s+1];
+    for(let j=0;j<div;j++)pts.push(a+(b-a)*j/div);
+  }
+  pts.push(supports[supports.length-1]);
+  return pts;
+}
+const X=mesh(),N=X.length,DOF=N*2;
+
+function solveLinear(A,b){
+  const n=b.length;
+  for(let k=0;k<n;k++){
+    let piv=k,max=Math.abs(A[k][k]);
+    for(let i=k+1;i<n;i++){const v=Math.abs(A[i][k]);if(v>max){max=v;piv=i}}
+    if(max<1e-12)continue;
+    if(piv!==k){const t=A[k];A[k]=A[piv];A[piv]=t;const q=b[k];b[k]=b[piv];b[piv]=q}
+    for(let i=k+1;i<n;i++){
+      const f=A[i][k]/A[k][k]; if(Math.abs(f)<1e-14)continue;
+      for(let j=k;j<n;j++)A[i][j]-=f*A[k][j];
+      b[i]-=f*b[k];
+    }
+  }
+  const x=new Array(n).fill(0);
+  for(let i=n-1;i>=0;i--){
+    let s=b[i];
+    for(let j=i+1;j<n;j++)s-=A[i][j]*x[j];
+    x[i]=Math.abs(A[i][i])<1e-12?0:s/A[i][i];
+  }
+  return x;
+}
+function nearestNode(x){
+  let best=0,bd=Infinity;
+  X.forEach((q,i)=>{const d=Math.abs(q-x);if(d<bd){bd=d;best=i}});
+  return best;
+}
+function addPointLoad(F,x,w){
+  /* 선형 shape-function으로 인접 절점에 하중 분배 */
+  let i=0;
+  while(i<X.length-2 && X[i+1]<x)i++;
+  const a=X[i],b=X[i+1],t=clamp((x-a)/(b-a),0,1);
+  F[2*i]+= -w*(1-t); F[2*(i+1)]+= -w*t;
+}
+function analyze(d){
+  const EI=EI_BASE*+$("stiffness").value;
+  const K=Array.from({length:DOF},()=>new Float64Array(DOF));
+  const F=new Float64Array(DOF);
+  for(let e=0;e<N-1;e++){
+    const le=X[e+1]-X[e],c=EI/Math.pow(le,3);
+    const k=[
+      [12,6*le,-12,6*le],[6*le,4*le*le,-6*le,2*le*le],
+      [-12,-6*le,12,-6*le],[6*le,2*le*le,-6*le,4*le*le]
+    ];
+    const ids=[2*e,2*e+1,2*e+2,2*e+3];
+    for(let a=0;a<4;a++)for(let b=0;b<4;b++)K[ids[a]][ids[b]]+=c*k[a][b];
+    const q=-(bridgeWeight/L + d.weather/L);
+    const fe=[q*le/2,q*le*le/12,q*le/2,-q*le*le/12];
+    for(let a=0;a<4;a++)F[ids[a]]+=fe[a];
+  }
+  d.loads.filter(q=>q.type==="person").forEach(q=>addPointLoad(F,q.x,q.w));
+
+  const originalK=K.map(r=>Float64Array.from(r)),originalF=Float64Array.from(F);
+  const fixed=[];
+  supports.forEach(x=>fixed.push(2*nearestNode(x)));
+  const fixedSet=new Set(fixed);
+  const A=K.map((r,i)=>Array.from(r,(v,j)=>fixedSet.has(i)||fixedSet.has(j)?(i===j?1:0):v));
+  const B=Array.from(F,(v,i)=>fixedSet.has(i)?0:v);
+  const u=solveLinear(A,B);
+  const reactions=supports.map((x,si)=>{
+    const node=nearestNode(x),dof=2*node;
+    let r=0;
+    for(let j=0;j<DOF;j++)r+=originalK[dof][j]*u[j];
+    r-=originalF[dof];
+    return Math.max(0,r);
+  });
+
+  const totalR=reactions.reduce((a,b)=>a+b,0);
+  const totalM=reactions.reduce((s,r,i)=>s+r*supports[i],0);
+  const netF=totalR-d.total,netT=totalM-d.total*d.center;
+  let maxDef=0,maxX=0;
+  for(let i=0;i<N;i++){if(Math.abs(u[2*i])>Math.abs(maxDef)){maxDef=u[2*i];maxX=X[i]}}
+  const outerSpan=supports[3]-supports[0];
+  const margin=Math.min(d.center-supports[0],supports[3]-d.center)/outerSpan;
+  const positive=reactions.every(r=>r>=-0.01);
+  const contact=Math.min(...reactions)>0;
+  const stability=clamp(100*(0.62*clamp(margin*2,0,1)+0.38*(contact?1:0)),0,100);
+  return {R:reactions,u,maxDef,maxX,netF,netT,stability,positive,totalR,totalM};
+}
+function data(){
+  const d=getLoads();
+  const now=performance.now();
+  if(!cache || now-lastSolve>55){cache={...d,...analyze(d)};lastSolve=now}
+  else Object.assign(cache,d);
+  return cache;
+}
+
+function updateUI(d){
+  $("hudCenter").textContent=fmt(d.center)+" m";
+  const err=Math.max(Math.abs(d.netF),Math.abs(d.netT)/Math.max(L,1));
+  $("hudEquilibrium").textContent=fmt(err)+" N";
+  $("hudDeflection").textContent=fmt(Math.abs(d.maxDef)*1000)+" mm";
+  const state=d.positive&&d.stability>65?"안정":d.stability>30?"주의":"불안정";
+  $("hudStable").textContent=state+" · "+fmt(d.stability)+"%";
+  $("netF").innerHTML=fmt(d.netF)+'<span class="unit"> N</span>';
+  $("netT").innerHTML=fmt(d.netT)+'<span class="unit"> N·m</span>';
+  $("totalLoad").innerHTML=fmt(d.total)+'<span class="unit"> N</span>';
+  $("maxDef").innerHTML=fmt(Math.abs(d.maxDef)*1000)+'<span class="unit"> mm</span>';
+  $("eqF").textContent=fmt(d.netF)+" N";$("eqT").textContent=fmt(d.netT)+" N·m";
+  $("balanceText").textContent=state;
+  const bar=$("balanceBar");bar.style.width=d.stability+"%";
+  bar.style.background=d.stability>65?"#25a47d":d.stability>30?"#d39a3b":"#d85b52";
+  $("supportGrid").innerHTML=d.R.map((r,i)=>{
+    const pct=d.total?100*r/d.total:0;
+    return `<div class="support"><div class="shead">지지점 R${i+1} · x=${supports[i]} m</div><div class="sval">${fmt(r)} N</div><div class="mini-bar"><i style="width:${clamp(pct*2,0,100)}%"></i></div></div>`;
+  }).join("");
+  $("peopleList").innerHTML=people.map((p,i)=>`<div class="person-card"><b>사람 ${i+1}</b><br><span>x = ${fmt(p.x)} m · v = ${fmt(Math.abs(p.v))} m/s · P = ${fmt(d.mass*G)} N</span></div>`).join("");
+  $("centerDetail").textContent=`x = ${fmt(d.center)} m · 외측 지지구간 ${supports[0]}–${supports[3]} m`;
+  const mx=Math.max(...d.R),mi=d.R.indexOf(mx);
+  $("maxReactionDetail").textContent=`R${mi+1} = ${fmt(mx)} N · 전체 반력의 ${(100*mx/Math.max(d.total,1)).toFixed(1)}%`;
+}
+
+function xCanvas(x,left,right){return left+(right-left)*x/L}
+function arrow(x,y,len,up,color,label,wide=3){
+  ctx.save();ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=wide;ctx.lineCap="round";
+  const ey=up?y-len:y+len;
+  ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,ey);ctx.stroke();
+  ctx.beginPath();
+  if(up){ctx.moveTo(x,ey);ctx.lineTo(x-8,ey+12);ctx.lineTo(x+8,ey+12)}
+  else{ctx.moveTo(x,ey);ctx.lineTo(x-8,ey-12);ctx.lineTo(x+8,ey-12)}
+  ctx.closePath();ctx.fill();
+  if(label && $("showLabels").checked){ctx.font="800 11px sans-serif";ctx.textAlign="center";ctx.fillText(label,x,up?ey-10:ey+20)}
+  ctx.restore();
+}
+function drawPerson(x,y,scale,i,selected=false){
+  ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);
+  ctx.shadowColor="rgba(0,0,0,.18)";ctx.shadowBlur=8;ctx.shadowOffsetY=4;
+  ctx.fillStyle=i%3===0?"#425c6c":i%3===1?"#516d61":"#705b58";
+  ctx.beginPath();ctx.roundRect(-9,-20,18,24,5);ctx.fill();
+  ctx.shadowColor="transparent";ctx.fillStyle="#d8a783";ctx.beginPath();ctx.arc(0,-30,8,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle="#26363b";ctx.lineWidth=4;ctx.lineCap="round";
+  const sway=Math.sin(performance.now()/350+i)*2;
+  ctx.beginPath();ctx.moveTo(-3,4);ctx.lineTo(-8+sway,22);ctx.moveTo(3,4);ctx.lineTo(8-sway,22);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(-7,-14);ctx.lineTo(-15,-4+sway);ctx.moveTo(7,-14);ctx.lineTo(15,-4-sway);ctx.stroke();
+  if(selected){ctx.strokeStyle="#4d86b8";ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,-12,25,0,Math.PI*2);ctx.stroke()}
+  ctx.restore();
+}
+function drawWeather(W,H,left,right,deckY){
+  const amount=+$("weather").value||0,type=$("weatherType").value;
+  if(amount<=0)return;
+  const intensity=clamp(amount/50000,0,1),snow=type==="snow";
+  ctx.save();
+  if(snow){
+    const layers=1+Math.round(intensity*8);
+    for(let k=0;k<layers;k++){ctx.fillStyle=`rgba(246,250,252,${.25+.07*k})`;ctx.fillRect(left,deckY-4-k*3,right-left,3)}
+    ctx.fillStyle="rgba(250,253,255,.95)";
+    for(let i=0;i<Math.round(55+intensity*130);i++){
+      const x=(i*97+performance.now()*.015)%W,y=(i*53+performance.now()*.025)%(deckY-45);
+      ctx.beginPath();ctx.arc(x,y,1.5+(i%3)*.5,0,Math.PI*2);ctx.fill();
+    }
+  }else{
+    ctx.strokeStyle="rgba(185,222,238,.78)";ctx.lineWidth=1.5;
+    for(let i=0;i<Math.round(75+intensity*100);i++){const x=(i*83+performance.now()*.11)%W,y=(i*47+performance.now()*.32)%(deckY-35);ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-3,y+13);ctx.stroke()}
+  }
+  ctx.restore();
+}
+function draw(d){
+  updateUI(d);
+  const W=canvas.width,H=canvas.height,left=58,right=W-58,deckY=355;
+  ctx.clearRect(0,0,W,H);
+  const sky=ctx.createLinearGradient(0,0,0,H);sky.addColorStop(0,"#88b8ca");sky.addColorStop(.52,"#dbe8e7");sky.addColorStop(1,"#afc1bb");
+  ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+  // mountains
+  ctx.fillStyle="rgba(61,83,79,.52)";ctx.beginPath();ctx.moveTo(0,265);
+  [0,.08,.18,.29,.4,.52,.65,.77,.89,1].forEach((q,i)=>ctx.lineTo(q*W,265-[0,72,142,82,150,92,137,75,128,60][i]));
+  ctx.lineTo(W,310);ctx.lineTo(0,310);ctx.fill();
+  // water
+  ctx.fillStyle="#6595a2";ctx.fillRect(0,385,W,H-385);
+  ctx.strokeStyle="rgba(255,255,255,.22)";ctx.lineWidth=2;
+  for(let y=414;y<680;y+=31)for(let x=(y%83)*2;x<W;x+=115){ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo(x+24,y-5,x+49,y);ctx.stroke()}
+  // bridge shadow
+  ctx.fillStyle="rgba(27,45,43,.15)";ctx.fillRect(left,deckY+30,right-left,15);
+  // deformation curve
+  const scaleDef=$("showDef").checked?clamp(1600/(+$("stiffness").value||1),180,900):0;
+  ctx.beginPath();
+  for(let i=0;i<N;i++){
+    const x=xCanvas(X[i],left,right),yy=deckY+d.u[2*i]*scaleDef;
+    if(i===0)ctx.moveTo(x,yy);else ctx.lineTo(x,yy);
+  }
+  ctx.strokeStyle="rgba(38,83,73,.28)";ctx.lineWidth=12;ctx.stroke();
+  // main deck
+  ctx.fillStyle="#394d4a";ctx.fillRect(left,deckY-2,right-left,25);
+  ctx.fillStyle="#566a66";ctx.fillRect(left,deckY-7,right-left,5);
+  ctx.strokeStyle="#243735";ctx.lineWidth=2;
+  for(let x=left;x<right;x+=22){ctx.beginPath();ctx.moveTo(x,deckY-2);ctx.lineTo(x,deckY+22);ctx.stroke()}
+  // support piers
+  supports.forEach((sx,i)=>{
+    const x=xCanvas(sx,left,right);
+    ctx.fillStyle="#465854";ctx.fillRect(x-11,deckY+18,22,105);
+    ctx.fillStyle="#62726e";ctx.fillRect(x-31,deckY+119,62,12);
+    ctx.fillStyle="#354642";ctx.beginPath();ctx.moveTo(x-34,deckY+132);ctx.lineTo(x+34,deckY+132);ctx.lineTo(x+23,deckY+145);ctx.lineTo(x-23,deckY+145);ctx.closePath();ctx.fill();
+    ctx.fillStyle="#fff";ctx.font="800 11px sans-serif";ctx.textAlign="center";ctx.fillText("R"+(i+1),x,deckY+163);
+    ctx.font="10px sans-serif";ctx.fillStyle="rgba(255,255,255,.78)";ctx.fillText(sx+" m",x,deckY+178);
+  });
+  // load center / resultant
+  const cx=xCanvas(d.center,left,right);
+  ctx.save();ctx.setLineDash([9,7]);ctx.strokeStyle="#4d86b8";ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(cx,205);ctx.lineTo(cx,620);ctx.stroke();ctx.restore();
+  ctx.fillStyle="#4d86b8";ctx.beginPath();ctx.arc(cx,deckY,7,0,Math.PI*2);ctx.fill();
+  if($("showLabels").checked){ctx.font="800 12px sans-serif";ctx.textAlign="center";ctx.fillText("합력 작용점  x = "+fmt(d.center)+" m",cx,190)}
+  // people
+  const py=deckY-6;
+  people.forEach((p,i)=>{
+    const px=xCanvas(p.x,left,right);
+    drawPerson(px,py,1.35,i,i===dragIndex);
+    if($("showLabels").checked){ctx.fillStyle="#233633";ctx.font="800 10px sans-serif";ctx.textAlign="center";ctx.fillText("P"+(i+1)+" · "+fmt(p.x)+" m",px,py-48)}
+    if($("showForces").checked)arrow(px,deckY+22,40+clamp(d.mass*G/150,0,35),false,"#d85b52","P"+(i+1)+"  "+fmt(d.mass*G)+" N",2.7);
+  });
+  // distributed loads
+  if($("showForces").checked){
+    ctx.save();ctx.strokeStyle="rgba(216,91,82,.55)";ctx.fillStyle="rgba(216,91,82,.7)";
+    for(let x=left+22;x<right;x+=58)arrow(x,deckY+23,27,false,"rgba(216,91,82,.58)","",1.5);
+    ctx.restore();
+  }
+  drawWeather(W,H,left,right,deckY);
+  // reactions
+  if($("showForces").checked)d.R.forEach((r,i)=>{
+    const sx=xCanvas(supports[i],left,right);
+    const len=40+clamp(r/(d.total||1)*260,0,145);
+    arrow(sx,deckY+18,len,true,r>1?"#25a47d":"#d85b52","R"+(i+1)+"  "+fmt(r)+" N",4);
+  });
+  // ruler
+  const ry=H-54;
+  ctx.strokeStyle="rgba(255,255,255,.7)";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(left,ry);ctx.lineTo(right,ry);ctx.stroke();
+  ctx.fillStyle="rgba(255,255,255,.9)";ctx.font="10px sans-serif";ctx.textAlign="center";
+  [0,25,50,75,100,125,155].forEach(m=>{const x=xCanvas(m,left,right);ctx.beginPath();ctx.moveTo(x,ry-5);ctx.lineTo(x,ry+5);ctx.stroke();ctx.fillText(m+" m",x,ry+18)});
+  // corner info
+  ctx.fillStyle="rgba(255,255,255,.9)";ctx.fillRect(20,H-105,270,67);
+  ctx.fillStyle="#253936";ctx.textAlign="left";ctx.font="800 11px sans-serif";ctx.fillText("구조 상태",34,H-82);
+  ctx.font="10px sans-serif";ctx.fillText("4지점 반력 · 보 변형 · 개별 사람 하중",34,H-64);
+  ctx.fillText("드래그하여 사람 위치를 직접 변경",34,H-48);
+}
+function animate(t){
+  const dt=Math.min((t-lastTime)/1000,.05);lastTime=t;
+  if(running){
+    const scale=clamp(+$("speedScale").value||1,0,3);
+    people.forEach(p=>{
+      p.x+=p.v*scale*dt;
+      if(p.x>145){p.x=145;p.v=-Math.abs(p.v)*(0.8+Math.random()*.4)}
+      if(p.x<10){p.x=10;p.v=Math.abs(p.v)*(0.8+Math.random()*.4)}
+      p.v+=Math.sin(t/1800+p.phase)*.0005;
+    });
+  }
+  draw(data());requestAnimationFrame(animate);
+}
+function scatter(){people.forEach(p=>{p.x=rand(10,145);p.v=rand(.35,1.3)*(Math.random()<.5?-1:1)});cache=null}
+$("toggle").onclick=()=>{
+  running=!running;$("toggle").textContent=running?"⏸ 자동 이동 중":"▶ 자동 이동 시작";
+  $("runState").textContent=running?"실시간 구조해석":"수동 위치 조정";
+  $("statusDot").style.background=running?"#26a47d":"#d39a3b";
+};
+$("reset").onclick=()=>{
+  $("people").value=4;$("mass").value=60;$("weather").value=6000;$("weatherType").value="rain";
+  $("stiffness").value="1";$("speedScale").value=1;
+  people=[0,1,2,3].map(makePerson);running=true;cache=null;
+  $("toggle").textContent="⏸ 자동 이동 중";$("runState").textContent="실시간 구조해석";$("statusDot").style.background="#26a47d";
+};
+$("scatter").onclick=scatter;
+$("people").oninput=()=>{syncPeople(+$("people").value||0);cache=null};
+["mass","weather","weatherType","stiffness","speedScale"].forEach(id=>$(id).addEventListener("input",()=>{cache=null}));
+canvas.addEventListener("pointerdown",e=>{
+  const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)*(canvas.width/r.width),left=58,right=canvas.width-58;
+  let best=-1,bd=30;
+  people.forEach((p,i)=>{const px=xCanvas(p.x,left,right),dd=Math.abs(px-x);if(dd<bd){bd=dd;best=i}});
+  if(best>=0){dragIndex=best;canvas.classList.add("dragging");canvas.setPointerCapture(e.pointerId)}
+});
+canvas.addEventListener("pointermove",e=>{
+  if(dragIndex<0)return;
+  const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)*(canvas.width/r.width),left=58,right=canvas.width-58;
+  people[dragIndex].x=clamp((x-left)/(right-left)*L,10,145);people[dragIndex].v=0;cache=null;
+});
+canvas.addEventListener("pointerup",()=>{dragIndex=-1;canvas.classList.remove("dragging")});
+canvas.addEventListener("pointercancel",()=>{dragIndex=-1;canvas.classList.remove("dragging")});
+people=[0,1,2,3].map(makePerson);
+requestAnimationFrame(animate);
+</script>
+</body>
+</html><script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

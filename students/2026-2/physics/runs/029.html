@@ -1,0 +1,875 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>아베노 하루카스 3D 300m 셔틀 엘리베이터 시뮬레이터</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        harukas: {
+                            50: '#f8fafc',
+                            500: '#0284c7',
+                            900: '#0f172a',
+                            light: '#f1f5f9',
+                            card: '#ffffff',
+                            border: '#cbd5e1'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Three.js 3D 라이브러리 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Chart.js 실시간 텔레메트리 차트 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome 아이콘 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+            color: #1e293b;
+            overflow-x: hidden;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #e2e8f0;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+    <header class="bg-white/90 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 px-4 py-3 shadow-sm">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-sky-500/10 border border-sky-500/30 p-2.5 rounded-xl text-sky-600">
+                    <i class="fa-solid fa-elevator text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg tracking-wider text-slate-800">아베노 하루카스 <span class="text-sky-600">3D 셔틀 & 재난 등가속도 시뮬레이터</span></h1>
+                    <p class="text-xs text-slate-500">실시간 3D 기네마틱스, 건물 흔들림과 등가속도(G-Force) 상관관계 분석</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-3 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 shadow-inner">
+                <div id="status-indicator" class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
+                <div>
+                    <div class="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">구조 및 엘리베이터 상태</div>
+                    <div id="status-text" class="text-sm font-bold text-emerald-600">정상 가동 중</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-6 my-2">
+        
+        <!-- 왼쪽 패널: 컨트롤, 목적지 디스패치, 재난 설정 (5열) -->
+        <div class="lg:col-span-5 flex flex-col space-y-6">
+            
+            <!-- 목적지 디스패치 -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-lg shadow-slate-200/50 backdrop-blur-sm">
+                <h2 class="text-xs font-bold uppercase tracking-widest text-sky-600 mb-4 flex items-center justify-between">
+                    <span><i class="fa-solid fa-map-location-dot mr-2"></i>목적지 디스패치 (층 선택)</span>
+                    <span id="current-floor-badge" class="bg-sky-50 text-sky-700 text-xs px-2.5 py-0.5 rounded-full font-mono border border-sky-200">1층 (0.0m)</span>
+                </h2>
+
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <button onclick="dispatchTo(300, '60층 전망대')" class="destination-btn bg-slate-50 hover:bg-sky-50 hover:border-sky-300 border border-slate-200 p-3 rounded-xl text-left transition-all group">
+                        <div class="text-xs text-sky-600 font-mono font-bold">300.0m</div>
+                        <div class="text-sm font-semibold text-slate-700 group-hover:text-sky-900">60층 전망대 (Harukas 300)</div>
+                    </button>
+                    <button onclick="dispatchTo(280, '58층 테라스')" class="destination-btn bg-slate-50 hover:bg-sky-50 hover:border-sky-300 border border-slate-200 p-3 rounded-xl text-left transition-all group">
+                        <div class="text-xs text-sky-600 font-mono font-bold">280.0m</div>
+                        <div class="text-sm font-semibold text-slate-700 group-hover:text-sky-900">58층 스카이 정원</div>
+                    </button>
+                    <button onclick="dispatchTo(80, '16층 뮤지엄')" class="destination-btn bg-slate-50 hover:bg-sky-50 hover:border-sky-300 border border-slate-200 p-3 rounded-xl text-left transition-all group">
+                        <div class="text-xs text-sky-600 font-mono font-bold">80.0m</div>
+                        <div class="text-sm font-semibold text-slate-700 group-hover:text-sky-900">16층 미술관 로비</div>
+                    </button>
+                    <button onclick="dispatchTo(0, '1층 로비')" class="destination-btn bg-slate-50 hover:bg-sky-50 hover:border-sky-300 border border-slate-200 p-3 rounded-xl text-left transition-all group">
+                        <div class="text-xs text-sky-600 font-mono font-bold">0.0m</div>
+                        <div class="text-sm font-semibold text-slate-700 group-hover:text-sky-900">1층 그랜드 로비</div>
+                    </button>
+                </div>
+
+                <div class="flex items-center space-x-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <span class="text-xs text-slate-600 font-medium whitespace-nowrap">사용자 고도:</span>
+                    <input type="range" id="custom-altitude-slider" min="0" max="300" step="1" value="0" class="w-full accent-sky-500 bg-slate-200 cursor-pointer" oninput="updateCustomAltitude(this.value)">
+                    <span id="custom-altitude-label" class="font-mono text-xs text-sky-600 w-12 text-right font-bold">0 m</span>
+                </div>
+                <div class="mt-3 flex space-x-2">
+                    <button onclick="dispatchCustom()" class="flex-1 bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition-all shadow-md shadow-sky-600/20 flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-play"></i>
+                        <span>운행 시작</span>
+                    </button>
+                    <button onclick="triggerEmergencyBrake()" id="emergency-btn" class="bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-300 font-bold py-2.5 px-4 rounded-xl text-xs transition-all flex items-center justify-center space-x-1">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span>비상 정지</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 태풍 및 지진 재난 설정 패널 -->
+            <div class="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-5 shadow-lg shadow-amber-100/50 backdrop-blur-sm space-y-4">
+                <h2 class="text-xs font-bold uppercase tracking-widest text-amber-700 flex items-center justify-between">
+                    <span><i class="fa-solid fa-house-crack mr-2"></i>재난 및 극한 기상 시뮬레이터</span>
+                    <span id="disaster-status-badge" class="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-bold">구조 안전</span>
+                </h2>
+
+                <div>
+                    <label class="text-xs text-slate-700 block mb-1 font-semibold">극한 기상 이벤트 (태풍 풍속)</label>
+                    <select id="disaster-typhoon-select" class="w-full bg-white border border-amber-300 rounded-xl p-2.5 text-sm text-slate-700 font-medium focus:outline-none focus:border-amber-500" onchange="updateTyphoonLevel()">
+                        <option value="0">평상시 (미풍 / 10 m/s)</option>
+                        <option value="35">강력 태풍 (초속 35m - 나뭇가지 꺾임)</option>
+                        <option value="55">초강력 태풍 (초속 55m - 건물 강풍 진동)</option>
+                        <option value="80">극한 슈퍼태풍 (초속 80m - 유리창 파손 위기)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="text-xs text-slate-700 block mb-1 font-semibold">지진 규모 (일본 기상청 진도 / 매그니튜드)</label>
+                    <select id="disaster-quake-select" class="w-full bg-white border border-amber-300 rounded-xl p-2.5 text-sm text-slate-700 font-medium focus:outline-none focus:border-amber-500" onchange="updateQuakeLevel()">
+                        <option value="0">지진 없음 (진도 0)</option>
+                        <option value="4.5">중규모 지진 (진도 4 - 실내 물건 흔들림)</option>
+                        <option value="6.2">강진 (진도 6약 - 서 있기 곤란)</option>
+                        <option value="7.8">초대형 대지진 (진도 7 - 구조물 극한 한계)</option>
+                    </select>
+                </div>
+
+                <div class="bg-white/80 p-3 rounded-xl border border-amber-200 space-y-2">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-600 font-medium">하루카스 구조 한계 스트레스:</span>
+                        <span id="stress-label" class="font-mono text-emerald-600 font-bold">0% (안전)</span>
+                    </div>
+                    <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden flex">
+                        <div id="stress-bar" class="bg-emerald-500 h-full transition-all duration-300" style="width: 0%;"></div>
+                    </div>
+                    <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                        <span>안전 (0%)</span>
+                        <span>탄성 한계 (70%)</span>
+                        <span>구조 붕괴 (100%)</span>
+                    </div>
+                </div>
+
+                <div class="flex space-x-2">
+                    <button onclick="triggerCombinedDisaster()" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-all shadow-md shadow-amber-600/20 flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span>복합 재난 (태풍+지진) 발령</span>
+                    </button>
+                    <button onclick="resetDisaster()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 px-3 rounded-xl text-xs transition-all">
+                        재난 초기화
+                    </button>
+                </div>
+            </div>
+
+            <!-- 구동 파라미터 및 승객 하중 -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-lg shadow-slate-200/50 backdrop-blur-sm space-y-4">
+                <h2 class="text-xs font-bold uppercase tracking-widest text-sky-600">
+                    <i class="fa-solid fa-gears mr-2"></i>구동 파라미터 및 승객 하중
+                </h2>
+
+                <div>
+                    <label class="text-xs text-slate-600 block mb-1.5 font-medium">최고 속도 프로필 선택</label>
+                    <select id="speed-profile" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm text-slate-700 focus:outline-none focus:border-sky-500 font-medium" onchange="updateSpeedProfile()">
+                        <option value="4.8">하루카스 표준 (288 m/min | 4.8 m/s)</option>
+                        <option value="8.0" selected>특급 드라이브 (480 m/min | 8.0 m/s)</option>
+                        <option value="12.0">하이버 스피드 (720 m/min | 12.0 m/s)</option>
+                        <option value="2.0">정기 점검 모드 (120 m/min | 2.0 m/s)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-xs mb-1.5">
+                        <span class="text-slate-600 font-medium">최대 가속도 (a_max)</span>
+                        <span id="accel-label" class="font-mono text-sky-600 font-bold">1.2 m/s²</span>
+                    </div>
+                    <input type="range" id="accel-slider" min="0.5" max="2.5" step="0.1" value="1.2" class="w-full accent-sky-500 bg-slate-200 cursor-pointer" oninput="updateAccel(this.value)">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-xs mb-1.5">
+                        <span class="text-slate-600 font-medium">탑승객 하중</span>
+                        <span id="load-label" class="font-mono text-sky-600 font-bold">1200 kg (16명)</span>
+                    </div>
+                    <input type="range" id="load-slider" min="200" max="2500" step="100" value="1200" class="w-full accent-sky-500 bg-slate-200 cursor-pointer" oninput="updateLoad(this.value)">
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 오른쪽 패널: 3D 구조 뷰 및 텔레메트리 차트 (7열) -->
+        <div class="lg:col-span-7 flex flex-col space-y-6">
+            
+            <!-- 3D 뷰어 컨테이너 -->
+            <div id="viewer-wrapper" class="bg-white border border-slate-200 rounded-2xl p-4 shadow-lg shadow-slate-200/50 backdrop-blur-sm flex flex-col relative overflow-hidden group transition-all duration-300">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3 z-10">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xs font-bold uppercase tracking-widest text-sky-600"><i class="fa-solid fa-city mr-2"></i>아베노 하루카스 & 오사카 도심 3D 뷰</span>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        <!-- 날씨 환경 모드 -->
+                        <div class="flex items-center space-x-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 mr-2">
+                            <span class="text-[10px] text-slate-500 font-bold px-1.5"><i class="fa-solid fa-cloud-sun"></i> 날씨:</span>
+                            <button onclick="setWeather('sunny')" id="weather-sunny" title="맑음" class="px-2 py-0.5 bg-sky-600 text-white rounded text-xs transition-all">맑음</button>
+                            <button onclick="setWeather('cloudy')" id="weather-cloudy" title="흐림" class="px-2 py-0.5 hover:bg-white text-slate-600 rounded text-xs transition-all">흐림</button>
+                            <button onclick="setWeather('sunset')" id="weather-sunset" title="노을" class="px-2 py-0.5 hover:bg-white text-slate-600 rounded text-xs transition-all">노을</button>
+                            <button onclick="setWeather('night')" id="weather-night" title="야간" class="px-2 py-0.5 hover:bg-white text-slate-600 rounded text-xs transition-all">야간</button>
+                        </div>
+
+                        <!-- 뷰어 크기 조절 -->
+                        <div class="flex items-center space-x-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 mr-2">
+                            <button onclick="resizeViewer('small')" title="축소" class="px-2 py-0.5 hover:bg-white text-slate-600 rounded text-xs transition-all"><i class="fa-solid fa-compress"></i></button>
+                            <button onclick="resizeViewer('default')" title="기본 크기" class="px-2 py-0.5 hover:bg-white text-slate-600 rounded text-xs transition-all">기본</button>
+                            <button onclick="resizeViewer('large')" title="확대" class="px-2 py-0.5 hover:bg-white text-slate-600 rounded text-xs transition-all"><i class="fa-solid fa-expand"></i></button>
+                        </div>
+                        <button onclick="setCameraMode('free')" id="cam-free" class="px-2.5 py-1 bg-sky-600 text-white rounded-lg text-xs font-semibold transition-all shadow-sm">자유 회전</button>
+                        <button onclick="setCameraMode('cabin')" id="cam-cabin" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-all">캐빈 추적</button>
+                        <button onclick="setCameraMode('observatory')" id="cam-observatory" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-all">전망대 시점</button>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between text-xs px-3 py-1.5 bg-slate-50 rounded-lg mb-2 border border-slate-200 z-10">
+                    <div class="space-x-3">
+                        <span class="text-slate-500">와이어프레임: <strong id="wf-status" class="text-slate-800">꺼짐</strong></span>
+                        <button onclick="toggleWireframe()" class="text-sky-600 underline hover:text-sky-700 font-semibold">[전환]</button>
+                    </div>
+                    <div class="space-x-3">
+                        <span class="text-slate-500">도심 스카이라인: <strong class="text-sky-600">활성화됨</strong></span>
+                    </div>
+                </div>
+
+                <!-- Three.js 캔버스 랩퍼 -->
+                <div id="canvas-container" class="w-full h-[380px] rounded-xl overflow-hidden relative bg-gradient-to-b from-slate-100 to-slate-200 border border-slate-200 shadow-inner transition-all duration-300">
+                    <!-- 오버레이 HUD -->
+                    <div class="absolute top-3 left-3 bg-white/90 backdrop-blur-md border border-slate-200 p-2.5 rounded-xl font-mono text-[11px] space-y-1 z-10 pointer-events-none shadow-md">
+                        <div class="flex justify-between space-x-4"><span class="text-slate-500">출입문:</span> <span id="hud-doors" class="text-sky-600 font-bold">닫힘</span></div>
+                        <div class="flex justify-between space-x-4"><span class="text-slate-500">현재 높이:</span> <span id="hud-pos" class="text-slate-800 font-bold">0.0 m</span></div>
+                        <div class="flex justify-between space-x-4"><span class="text-slate-500">속도:</span> <span id="hud-speed" class="text-slate-800 font-bold">0.00 m/s</span></div>
+                        <div class="flex justify-between space-x-4"><span class="text-slate-500">수직 G-Force:</span> <span id="hud-gforce" class="text-sky-600 font-bold">1.00 g</span></div>
+                        <div class="flex justify-between space-x-4"><span class="text-slate-500">구조 스트레스:</span> <span id="hud-stress" class="text-emerald-600 font-bold">0.0%</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 실시간 기네마틱스 차트 -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-lg shadow-slate-200/50 backdrop-blur-sm space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xs font-bold uppercase tracking-widest text-sky-600">
+                        <i class="fa-solid fa-chart-line mr-2"></i>실시간 기네마틱스 및 구조 진동 그래프
+                    </h2>
+                    <div class="flex space-x-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
+                        <button onclick="setGraphMetric('y')" id="btn-graph-y" class="px-2.5 py-1 bg-sky-600 text-white rounded-md text-[11px] font-semibold transition-all">위치 (y-t)</button>
+                        <button onclick="setGraphMetric('v')" id="btn-graph-v" class="px-2.5 py-1 bg-transparent text-slate-600 hover:text-slate-900 rounded-md text-[11px] font-semibold transition-all">속도 (v-t)</button>
+                        <button onclick="setGraphMetric('stress')" id="btn-graph-stress" class="px-2.5 py-1 bg-transparent text-slate-600 hover:text-slate-900 rounded-md text-[11px] font-semibold transition-all">구조 스트레스 (%)</button>
+                    </div>
+                </div>
+
+                <div class="h-44 w-full bg-slate-50 p-2 rounded-xl border border-slate-200 relative">
+                    <canvas id="telemetryChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 등가속도 운동과 재난 진동의 물리학 설명 -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-lg shadow-slate-200/50 backdrop-blur-sm space-y-2">
+                <h3 class="text-xs font-bold uppercase tracking-widest text-sky-600 flex items-center">
+                    <i class="fa-solid fa-graduation-cap mr-2"></i>등가속도 운동과 태풍·지진 진동의 상관관계
+                </h3>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    엘리베이터가 수직으로 출발하고 멈출 때 발생하는 수직 가속도($a$)는 체감 무게($G = 1 + a/g$)를 변화시키는 대표적인 **등가속도 운동($v = v_0 + at, y = v_0 t + \frac{1}{2}at^2$)**의 사례입니다. 반면, 태풍이나 지진으로 인해 건물이 좌우로 주기적으로 흔들릴 때(횡방향 진동), 승강로 내부의 프트와 매달린 엘리베이터 케이블 역시 관성과 건물 구조 변형에 따라 **조화 진동(Harmonic Oscillation)** 운동을 하게 됩니다. 이로 인해 승객은 수직 가속에 따른 G-Force 외에도 횡방향 관성력과 요동을 동시에 체험하게 됩니다.
+                </p>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        // --- 시뮬레이션 상태 변수 ---
+        const sim = {
+            pos: 0,          // 현재 고도 (미터, 0 ~ 300)
+            targetPos: 0,    // 목표 고도 (미터)
+            speed: 0,        // 현재 속도 (m/s)
+            accel: 0,        // 현재 가속도 (m/s^2)
+            maxSpeed: 8.0,   // 최고 허용 속도
+            maxAccel: 1.2,   // 최대 가속도
+            loadKg: 1200,    // 탑승객 하중
+            status: '정지 상태',
+            doorsOpen: true,
+            wireframe: false,
+            cameraMode: 'free',
+            emergency: false,
+            time: 0,
+            // 재난 변수
+            typhoonWindSpeed: 0, // 초속 (m/s)
+            earthquakeMag: 0,     // 지진 규모 (Magnitude)
+            structuralStress: 0,  // 0 ~ 100%
+            isCollapsed: false,   // 붕괴 여부
+            collapseProgress: 0   // 붕괴 애니메이션 진행도
+        };
+
+        // --- Three.js 3D 씬 설정 ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf1f5f9);
+        scene.fog = new THREE.FogExp2(0xf1f5f9, 0.008);
+
+        const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(35, 25, 45);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.95);
+        dirLight.position.set(30, 70, 40);
+        scene.add(dirLight);
+
+        // --- 날씨 환경 설정 함수 ---
+        let currentWeather = 'sunny';
+        function setWeather(weather) {
+            currentWeather = weather;
+            ['sunny', 'cloudy', 'sunset', 'night'].forEach(function(w) {
+                const btn = document.getElementById('weather-' + w);
+                if (w === weather) {
+                    btn.className = 'px-2 py-0.5 bg-sky-600 text-white rounded text-xs transition-all';
+                } else {
+                    btn.className = 'px-2 py-0.5 hover:bg-white text-slate-600 rounded text-xs transition-all';
+                }
+            });
+
+            if (weather === 'sunny') {
+                scene.background = new THREE.Color(0xf1f5f9);
+                scene.fog.color = new THREE.Color(0xf1f5f9);
+                ambientLight.color.setHex(0xffffff);
+                ambientLight.intensity = 0.85;
+                dirLight.color.setHex(0xffffff);
+            } else if (weather === 'cloudy') {
+                scene.background = new THREE.Color(0xcbcfd4);
+                scene.fog.color = new THREE.Color(0xcbcfd4);
+                ambientLight.color.setHex(0x94a3b8);
+                ambientLight.intensity = 0.7;
+                dirLight.color.setHex(0xcbd5e1);
+            } else if (weather === 'sunset') {
+                scene.background = new THREE.Color(0xfed7aa);
+                scene.fog.color = new THREE.Color(0xfed7aa);
+                ambientLight.color.setHex(0xf97316);
+                ambientLight.intensity = 0.8;
+                dirLight.color.setHex(0xea580c);
+            } else if (weather === 'night') {
+                scene.background = new THREE.Color(0x0f172a);
+                scene.fog.color = new THREE.Color(0x0f172a);
+                ambientLight.color.setHex(0x38bdf8);
+                ambientLight.intensity = 0.35;
+                dirLight.color.setHex(0x1e3a8a);
+            }
+        }
+
+        // --- 지면 생성 ---
+        const groundGeo = new THREE.PlaneGeometry(250, 250);
+        const groundMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.9 });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -0.1;
+        scene.add(ground);
+
+        // --- 주변 도심 건물들 (오사카 스카이라인 블록) 구축 ---
+        const cityGroup = new THREE.Group();
+        scene.add(cityGroup);
+
+        const buildingColors = [0x94a3b8, 0x64748b, 0x475569, 0x334155, 0xcbd5e1];
+        
+        const buildingPositions = [
+            { x: -18, z: -18, w: 7, h: 22, d: 7 },
+            { x: 18, z: -18, w: 9, h: 30, d: 8 },
+            { x: -20, z: 15, w: 8, h: 18, d: 9 },
+            { x: 22, z: 18, w: 10, h: 26, d: 10 },
+            { x: -28, z: -2, w: 7, h: 14, d: 12 },
+            { x: 28, z: -5, w: 8, h: 20, d: 8 },
+            { x: -12, z: -28, w: 12, h: 35, d: 8 },
+            { x: 12, z: -26, w: 10, h: 28, d: 10 },
+            { x: -15, z: 28, w: 9, h: 16, d: 9 },
+            { x: 16, z: 26, w: 11, h: 24, d: 11 },
+            { x: -35, z: 20, w: 8, h: 12, d: 8 },
+            { x: 35, z: -22, w: 9, h: 19, d: 9 },
+            { x: -32, z: -25, w: 10, h: 25, d: 10 },
+            { x: 32, z: 25, w: 8, h: 15, d: 8 }
+        ];
+
+        buildingPositions.forEach(function(b, idx) {
+            const bGeo = new THREE.BoxGeometry(b.w, b.h, b.d);
+            const bMat = new THREE.MeshStandardMaterial({
+                color: buildingColors[idx % buildingColors.length],
+                roughness: 0.4,
+                metalness: 0.5
+            });
+            const bMesh = new THREE.Mesh(bGeo, bMat);
+            bMesh.position.set(b.x, b.h / 2, b.z);
+            cityGroup.add(bMesh);
+        });
+
+        // --- 아베노 하루카스 타워 및 엘리베이터 3D 오브젝트 구축 ---
+        const towerGroup = new THREE.Group();
+        scene.add(towerGroup);
+
+        const shaftGeo = new THREE.BoxGeometry(8, 62, 8);
+        const shaftMat = new THREE.MeshPhysicalMaterial({
+            color: 0xe2e8f0,
+            transparent: true,
+            opacity: 0.35,
+            roughness: 0.1,
+            metalness: 0.1
+        });
+        const shaftMesh = new THREE.Mesh(shaftGeo, shaftMat);
+        shaftMesh.position.y = 31;
+        towerGroup.add(shaftMesh);
+
+        const pillarGeo = new THREE.BoxGeometry(0.6, 62, 0.6);
+        const pillarMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.8, roughness: 0.2 });
+        [-3.7, 3.7].forEach(function(x) {
+            [-3.7, 3.7].forEach(function(z) {
+                const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+                pillar.position.set(x, 31, z);
+                towerGroup.add(pillar);
+            });
+        });
+
+        // 엘리베이터 캐빈 (타워 그룹 내부에 배치하여 타워 흔들림에 연동되도록 수정)
+        const cabinGroup = new THREE.Group();
+        towerGroup.add(cabinGroup); // 기존 scene.add 에서 towerGroup.add로 변경하여 재난 시 동반 흔들림 구현
+
+        const cabinMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.8, roughness: 0.2 });
+        const glassCabinMat = new THREE.MeshPhysicalMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.6, roughness: 0.05, metalness: 0.9 });
+
+        const deckGeo = new THREE.BoxGeometry(5.2, 4.5, 5.2);
+        const lowerDeck = new THREE.Mesh(deckGeo, cabinMat);
+        lowerDeck.position.y = 2.25;
+        cabinGroup.add(lowerDeck);
+
+        const upperDeck = new THREE.Mesh(deckGeo, cabinMat);
+        upperDeck.position.y = 7.25;
+        cabinGroup.add(upperDeck);
+
+        const glassGeo = new THREE.BoxGeometry(4.8, 3.8, 0.1);
+        [2.25, 7.25].forEach(function(y) {
+            const glass = new THREE.Mesh(glassGeo, glassCabinMat);
+            glass.position.set(0, y, 2.6);
+            cabinGroup.add(glass);
+        });
+
+        const cableGeo = new THREE.CylinderGeometry(0.05, 0.05, 60, 8);
+        const cableMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.9 });
+        const cable1 = new THREE.Mesh(cableGeo, cableMat);
+        cable1.position.set(-2, 30, -2);
+        towerGroup.add(cable1); // 케이블도 타워 그룹에 동기화
+
+        const cable2 = new THREE.Mesh(cableGeo, cableMat);
+        cable2.position.set(2, 30, -2);
+        towerGroup.add(cable2);
+
+        // --- 마우스 및 터치 컨트롤 ---
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let orbitAngleX = 0.6;
+        let orbitAngleY = 0.35;
+        let orbitRadius = 55;
+
+        renderer.domElement.addEventListener('mousedown', function(e) {
+            isDragging = true;
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+
+        renderer.domElement.addEventListener('mousemove', function(e) {
+            if (!isDragging) return;
+            const deltaX = e.clientX - previousMousePosition.x;
+            const deltaY = e.clientY - previousMousePosition.y;
+            orbitAngleX -= deltaX * 0.008;
+            orbitAngleY = Math.max(0.05, Math.min(1.4, orbitAngleY + deltaY * 0.008));
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+
+        window.addEventListener('mouseup', function() { isDragging = false; });
+
+        // --- 재난 제어 함수 ---
+        function updateTyphoonLevel() {
+            sim.typhoonWindSpeed = parseFloat(document.getElementById('disaster-typhoon-select').value);
+            recalculateStress();
+        }
+
+        function updateQuakeLevel() {
+            sim.earthquakeMag = parseFloat(document.getElementById('disaster-quake-select').value);
+            recalculateStress();
+        }
+
+        function triggerCombinedDisaster() {
+            document.getElementById('disaster-typhoon-select').value = "80";
+            document.getElementById('disaster-quake-select').value = "7.8";
+            sim.typhoonWindSpeed = 80;
+            sim.earthquakeMag = 7.8;
+            recalculateStress();
+        }
+
+        function resetDisaster() {
+            document.getElementById('disaster-typhoon-select').value = "0";
+            document.getElementById('disaster-quake-select').value = "0";
+            sim.typhoonWindSpeed = 0;
+            sim.earthquakeMag = 0;
+            sim.isCollapsed = false;
+            sim.collapseProgress = 0;
+            towerGroup.rotation.z = 0;
+            towerGroup.rotation.x = 0;
+            shaftMesh.scale.set(1, 1, 1);
+            shaftMat.color.setHex(0xe2e8f0);
+            recalculateStress();
+        }
+
+        function recalculateStress() {
+            const typhoonFactor = (sim.typhoonWindSpeed / 80) * 45;
+            const quakeFactor = (sim.earthquakeMag / 7.8) * 65;
+            sim.structuralStress = Math.min(100, typhoonFactor + quakeFactor);
+
+            const stressBar = document.getElementById('stress-bar');
+            const stressLabel = document.getElementById('stress-label');
+            const disasterBadge = document.getElementById('disaster-status-badge');
+
+            stressBar.style.width = sim.structuralStress + '%';
+            stressLabel.innerText = sim.structuralStress.toFixed(1) + '%';
+
+            if (sim.structuralStress >= 100) {
+                stressBar.className = 'bg-red-600 h-full transition-all duration-300 animate-pulse';
+                stressLabel.className = 'font-mono text-red-600 font-bold';
+                disasterBadge.className = 'bg-red-100 text-red-800 text-[10px] px-2 py-0.5 rounded-full font-bold animate-ping';
+                disasterBadge.innerText = '구조 붕괴 발생!';
+                if (!sim.isCollapsed) {
+                    sim.isCollapsed = true;
+                    sim.emergency = true;
+                }
+            } else if (sim.structuralStress >= 70) {
+                stressBar.className = 'bg-amber-500 h-full transition-all duration-300';
+                stressLabel.className = 'font-mono text-amber-600 font-bold';
+                disasterBadge.className = 'bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded-full font-bold';
+                disasterBadge.innerText = '위험 경보';
+            } else if (sim.structuralStress > 20) {
+                stressBar.className = 'bg-sky-500 h-full transition-all duration-300';
+                stressLabel.className = 'font-mono text-sky-600 font-bold';
+                disasterBadge.className = 'bg-sky-100 text-sky-800 text-[10px] px-2 py-0.5 rounded-full font-bold';
+                disasterBadge.innerText = '재난 주의';
+            } else {
+                stressBar.className = 'bg-emerald-500 h-full transition-all duration-300';
+                stressLabel.className = 'font-mono text-emerald-600 font-bold';
+                disasterBadge.className = 'bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-bold';
+                disasterBadge.innerText = '구조 안전';
+            }
+        }
+
+        // --- 텔레메트리 차트 설정 ---
+        const ctxChart = document.getElementById('telemetryChart').getContext('2d');
+        let currentGraphMetric = 'y';
+
+        const telemetryChart = new Chart(ctxChart, {
+            type: 'line',
+            data: {
+                labels: Array(30).fill(''),
+                datasets: [{
+                    label: '위치 (m)',
+                    data: Array(30).fill(0),
+                    borderColor: '#0284c7',
+                    backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                scales: {
+                    x: { display: false },
+                    y: {
+                        grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                        ticks: { color: '#64748b', font: { size: 10 } }
+                    }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        const chartHistory = { y: Array(30).fill(0), v: Array(30).fill(0), stress: Array(30).fill(0) };
+        let chartTimeCounter = 0;
+
+        function setGraphMetric(metric) {
+            currentGraphMetric = metric;
+            ['y', 'v', 'stress'].forEach(function(m) {
+                const btn = document.getElementById('btn-graph-' + m);
+                if (m === metric) {
+                    btn.className = 'px-2.5 py-1 bg-sky-600 text-white rounded-md text-[11px] font-semibold transition-all shadow-sm';
+                } else {
+                    btn.className = 'px-2.5 py-1 bg-transparent text-slate-600 hover:text-slate-900 rounded-md text-[11px] font-semibold transition-all';
+                }
+            });
+
+            if (metric === 'y') {
+                telemetryChart.data.datasets[0].label = '위치 (m)';
+                telemetryChart.data.datasets[0].borderColor = '#0284c7';
+                telemetryChart.data.datasets[0].backgroundColor = 'rgba(2, 132, 199, 0.1)';
+            } else if (metric === 'v') {
+                telemetryChart.data.datasets[0].label = '속도 (m/s)';
+                telemetryChart.data.datasets[0].borderColor = '#0ea5e9';
+                telemetryChart.data.datasets[0].backgroundColor = 'rgba(14, 165, 233, 0.1)';
+            } else {
+                telemetryChart.data.datasets[0].label = '구조 스트레스 (%)';
+                telemetryChart.data.datasets[0].borderColor = '#ef4444';
+                telemetryChart.data.datasets[0].backgroundColor = 'rgba(239, 68, 68, 0.1)';
+            }
+        }
+
+        // --- 컨트롤러 함수 ---
+        function dispatchTo(alt, name) {
+            if (sim.isCollapsed) return;
+            sim.targetPos = alt;
+            sim.emergency = false;
+        }
+
+        function updateCustomAltitude(val) {
+            document.getElementById('custom-altitude-label').innerText = val + ' m';
+        }
+
+        function dispatchCustom() {
+            if (sim.isCollapsed) return;
+            const val = parseFloat(document.getElementById('custom-altitude-slider').value);
+            dispatchTo(val, '사용자 지정');
+        }
+
+        function updateSpeedProfile() {
+            sim.maxSpeed = parseFloat(document.getElementById('speed-profile').value);
+        }
+
+        function updateAccel(val) {
+            sim.maxAccel = parseFloat(val);
+            document.getElementById('accel-label').innerText = val + ' m/s²';
+        }
+
+        function updateLoad(val) {
+            sim.loadKg = parseInt(val, 10);
+            const pax = Math.round(val / 75);
+            document.getElementById('load-label').innerText = val + ' kg (' + pax + '명)';
+        }
+
+        function triggerEmergencyBrake() {
+            sim.emergency = true;
+            sim.status = '비상 정지';
+        }
+
+        function toggleWireframe() {
+            sim.wireframe = !sim.wireframe;
+            document.getElementById('wf-status').innerText = sim.wireframe ? '켜짐' : '꺼짐';
+            shaftMat.wireframe = sim.wireframe;
+        }
+
+        function setCameraMode(mode) {
+            sim.cameraMode = mode;
+            ['free', 'cabin', 'observatory'].forEach(function(m) {
+                const btn = document.getElementById('cam-' + m);
+                if (m === mode) {
+                    btn.className = 'px-2.5 py-1 bg-sky-600 text-white rounded-lg text-xs font-semibold transition-all shadow-sm';
+                } else {
+                    btn.className = 'px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-all';
+                }
+            });
+        }
+
+        function resizeViewer(size) {
+            const containerEl = document.getElementById('canvas-container');
+            if (size === 'small') containerEl.style.height = '260px';
+            else if (size === 'default') containerEl.style.height = '380px';
+            else if (size === 'large') containerEl.style.height = '580px';
+            setTimeout(function() {
+                const width = containerEl.clientWidth;
+                const height = containerEl.clientHeight;
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
+            }, 50);
+        }
+
+        // --- 물리 엔진 ---
+        let lastTime = performance.now();
+
+        function updatePhysics(dt) {
+            if (sim.isCollapsed) {
+                sim.collapseProgress = Math.min(1.0, sim.collapseProgress + dt * 0.4);
+                towerGroup.rotation.z = sim.collapseProgress * 0.35;
+                towerGroup.rotation.x = sim.collapseProgress * 0.15;
+                shaftMesh.scale.y = Math.max(0.2, 1.0 - (sim.collapseProgress * 0.7));
+                shaftMat.color.setHex(0xef4444);
+                sim.speed = 0;
+                sim.status = '구조 붕괴됨';
+                return;
+            }
+
+            if (sim.emergency) {
+                if (sim.speed > 0) sim.speed = Math.max(0, sim.speed - 4.0 * dt);
+                else if (sim.speed < 0) sim.speed = Math.min(0, sim.speed + 4.0 * dt);
+                else { sim.accel = 0; sim.status = '정지 상태'; }
+                sim.pos += sim.speed * dt;
+                sim.pos = Math.max(0, Math.min(300, sim.pos));
+                return;
+            }
+
+            const distanceToGo = sim.targetPos - sim.pos;
+            const stoppingDist = (sim.speed * sim.speed) / (2 * sim.maxAccel);
+
+            if (Math.abs(distanceToGo) < 0.1 && Math.abs(sim.speed) < 0.05) {
+                sim.pos = sim.targetPos;
+                sim.speed = 0;
+                sim.accel = 0;
+                sim.status = '정지 상태';
+                sim.doorsOpen = true;
+            } else {
+                sim.doorsOpen = false;
+                const direction = Math.sign(distanceToGo);
+
+                if (Math.abs(distanceToGo) <= stoppingDist && Math.abs(sim.speed) > 0) {
+                    sim.status = '감속 중';
+                    sim.accel = -direction * sim.maxAccel;
+                    sim.speed += sim.accel * dt;
+                } else if (Math.abs(sim.speed) < sim.maxSpeed) {
+                    sim.status = '가속 중';
+                    sim.accel = direction * sim.maxAccel;
+                    sim.speed += sim.accel * dt;
+                } else {
+                    sim.status = '순항 중';
+                    sim.accel = 0;
+                    sim.speed = direction * sim.maxSpeed;
+                }
+
+                sim.pos += sim.speed * dt;
+                sim.pos = Math.max(0, Math.min(300, sim.pos));
+            }
+        }
+
+        // --- 애니메이션 루프 ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const now = performance.now();
+            const dt = Math.min(0.1, (now - lastTime) / 1000);
+            lastTime = now;
+            sim.time += dt;
+
+            updatePhysics(dt);
+
+            // 태풍 및 지진 시 타워와 엘리베이터 동반 흔들림 연출
+            let swayX = 0;
+            let swayZ = 0;
+            if (sim.typhoonWindSpeed > 0 || sim.earthquakeMag > 0) {
+                const intensityFactor = (sim.typhoonWindSpeed / 80) + (sim.earthquakeMag / 7.8);
+                swayX = Math.sin(sim.time * (5 + sim.earthquakeMag)) * 0.18 * intensityFactor;
+                swayZ = Math.cos(sim.time * (4 + sim.earthquakeMag)) * 0.18 * intensityFactor;
+                if (!sim.isCollapsed) {
+                    towerGroup.rotation.z = swayX;
+                    towerGroup.rotation.x = swayZ;
+                }
+            } else {
+                if (!sim.isCollapsed) {
+                    towerGroup.rotation.z = 0;
+                    towerGroup.rotation.x = 0;
+                }
+            }
+
+            const y3dCoord = (sim.pos / 300) * 60;
+            cabinGroup.position.y = y3dCoord;
+
+            cable1.position.y = 30 + (y3dCoord / 2);
+            cable1.scale.y = (60 - y3dCoord) / 60;
+            cable2.position.y = 30 + (y3dCoord / 2);
+            cable2.scale.y = (60 - y3dCoord) / 60;
+
+            if (sim.cameraMode === 'free') {
+                const targetCamX = Math.cos(orbitAngleX) * orbitRadius * Math.cos(orbitAngleY);
+                const targetCamZ = Math.sin(orbitAngleX) * orbitRadius * Math.cos(orbitAngleY);
+                const targetCamY = 30 + (orbitRadius * Math.sin(orbitAngleY));
+                camera.position.set(targetCamX, targetCamY, targetCamZ);
+                camera.lookAt(0, 30, 0);
+            } else if (sim.cameraMode === 'cabin') {
+                camera.position.set(0, y3dCoord + 2, 16);
+                camera.lookAt(0, y3dCoord + 5, 0);
+            } else if (sim.cameraMode === 'observatory') {
+                camera.position.set(15, 62, 15);
+                camera.lookAt(0, 60, 0);
+            }
+
+            // G-Force 계산 (중력 가속도 9.8기반 수직 가속도 성분)
+            const gForce = 1.0 + (sim.accel / 9.8);
+
+            document.getElementById('hud-doors').innerText = sim.doorsOpen ? '열림' : '닫힘';
+            document.getElementById('hud-pos').innerText = sim.pos.toFixed(1) + ' m';
+            document.getElementById('hud-speed').innerText = sim.speed.toFixed(2) + ' m/s';
+            document.getElementById('hud-gforce').innerText = gForce.toFixed(2) + ' g';
+            document.getElementById('hud-stress').innerText = sim.structuralStress.toFixed(1) + '%';
+            document.getElementById('hud-stress').className = sim.structuralStress >= 100 ? 'text-red-600 font-bold animate-pulse' : 'text-emerald-600 font-bold';
+
+            const statusIndicator = document.getElementById('status-indicator');
+            const statusText = document.getElementById('status-text');
+            statusText.innerText = sim.status;
+            if (sim.isCollapsed) {
+                statusIndicator.className = 'w-3 h-3 rounded-full bg-red-600 animate-ping';
+                statusText.className = 'text-sm font-bold text-red-600';
+            } else if (sim.status === '정지 상태') {
+                statusIndicator.className = 'w-3 h-3 rounded-full bg-emerald-500';
+                statusText.className = 'text-sm font-bold text-emerald-600';
+            } else {
+                statusIndicator.className = 'w-3 h-3 rounded-full bg-amber-500 animate-pulse';
+                statusText.className = 'text-sm font-bold text-amber-600';
+            }
+
+            chartTimeCounter++;
+            if (chartTimeCounter % 10 === 0) {
+                chartHistory.y.shift(); chartHistory.y.push(sim.pos);
+                chartHistory.v.shift(); chartHistory.v.push(sim.speed);
+                chartHistory.stress.shift(); chartHistory.stress.push(sim.structuralStress);
+
+                if (currentGraphMetric === 'y') telemetryChart.data.datasets[0].data = [].concat(chartHistory.y);
+                else if (currentGraphMetric === 'v') telemetryChart.data.datasets[0].data = [].concat(chartHistory.v);
+                else telemetryChart.data.datasets[0].data = [].concat(chartHistory.stress);
+
+                telemetryChart.update('none');
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', function() {
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        });
+
+        window.onload = function() {
+            animate();
+        };
+    </script>
+</body>
+</html><script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

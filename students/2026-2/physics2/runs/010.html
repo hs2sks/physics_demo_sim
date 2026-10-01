@@ -1,0 +1,310 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>물리학 I 핵심 개념 시뮬레이터</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; color: #333; }
+    h1 { text-align: center; color: #2c3e50; }
+    .container { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; max-width: 1200px; margin: 0 auto; }
+    .card { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); padding: 20px; flex: 1 1 500px; }
+    h2 { border-bottom: 2px solid #3498db; padding-bottom: 8px; color: #2980b9; margin-top: 0; }
+    canvas { background: #1e1e1e; border-radius: 8px; display: block; margin: 15px auto; cursor: default; }
+    .controls { display: flex; gap: 10px; justify-content: center; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+    button { padding: 8px 16px; border: none; border-radius: 6px; background: #3498db; color: white; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    button:hover { background: #2980b9; }
+    button.active { background: #e74c3c; }
+    .info-box { background: #ecf0f1; border-left: 4px solid #3498db; padding: 10px 15px; border-radius: 0 6px 6px 0; font-size: 0.95em; line-height: 1.5; }
+    .highlight { color: #e74c3c; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<h1>물리학 I 개념 완벽 이해 시뮬레이션</h1>
+
+<div class="container">
+  <div class="card">
+    <h2>1. 자성체 반응 (마우스로 자석을 드래그해보세요!)</h2>
+    <div class="controls">
+      <button id="btn-paramag" class="active" onclick="setMaterial('paramagnetic')">상자성체</button>
+      <button id="btn-diamag" onclick="setMaterial('diamagnetic')">반자성체</button>
+      <button id="btn-ferromag" onclick="setMaterial('ferromagnetic')">강자성체</button>
+    </div>
+    <canvas id="canvas1" width="480" height="220"></canvas>
+    <div class="info-box" id="info1">
+      </div>
+  </div>
+
+  <div class="card">
+    <h2>2. 전자기파의 진동수 vs 속력 (진공)</h2>
+    <div class="controls">
+      <label><input type="checkbox" id="chk-radio" checked> 라디오파 (긴 파장, 낮은 진동수)</label><br>
+      <label><input type="checkbox" id="chk-ir" checked> 적외선 (중간)</label><br>
+      <label><input type="checkbox" id="chk-vis" checked> 가시광선 (짧은 파장, 높은 진동수)</label>
+    </div>
+    <canvas id="canvas2" width="480" height="220"></canvas>
+    <div class="info-box">
+      * <b>진동수:</b> 가시광선 > 적외선 > 라디오파<br>
+      * <span class="highlight">진공 속력: 모두 c (빛의 속도)로 완벽히 동일!</span><br>
+      (파장이 길면 진동수가 작아져 곱한 값인 속도는 일정하게 유지됩니다.)
+    </div>
+  </div>
+</div>
+
+<script>
+  // --- 1번 문제: 마우스 드래그 및 거리 판단 자성체 시뮬레이션 ---
+  const canvas1 = document.getElementById('canvas1');
+  const ctx1 = canvas1.getContext('2d');
+  
+  let currentMaterial = 'paramagnetic';
+
+  let magnet = {
+    x: 80,
+    y: 110,
+    w: 100,
+    h: 60,
+    isDragging: false,
+    dragOffsetX: 0,
+    dragOffsetY: 0
+  };
+
+  const sampleBox = { x: 280, y: 50, w: 170, h: 120 };
+  const thresholdDistance = 180; // 자기력이 영향을 미치는 유효 범위
+
+  let domains = [];
+  for(let i=0; i<15; i++) {
+    domains.push({
+      x: sampleBox.x + 25 + (i % 5) * 30,
+      y: sampleBox.y + 25 + Math.floor(i / 5) * 35,
+      angle: (Math.random() - 0.5) * Math.PI * 2,
+      randomTarget: (Math.random() - 0.5) * Math.PI * 2
+    });
+  }
+
+  canvas1.addEventListener('mousedown', (e) => {
+    const rect = canvas1.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    if (
+      mouseX >= magnet.x - magnet.w/2 &&
+      mouseX <= magnet.x + magnet.w/2 &&
+      mouseY >= magnet.y - magnet.h/2 &&
+      mouseY <= magnet.y + magnet.h/2
+    ) {
+      magnet.isDragging = true;
+      magnet.dragOffsetX = mouseX - magnet.x;
+      magnet.dragOffsetY = mouseY - magnet.y;
+      canvas1.style.cursor = 'grabbing';
+    }
+  });
+
+  canvas1.addEventListener('mousemove', (e) => {
+    const rect = canvas1.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    if (
+      mouseX >= magnet.x - magnet.w/2 &&
+      mouseX <= magnet.x + magnet.w/2 &&
+      mouseY >= magnet.y - magnet.h/2 &&
+      mouseY <= magnet.y + magnet.h/2
+    ) {
+      if (!magnet.isDragging) canvas1.style.cursor = 'grab';
+    } else if (!magnet.isDragging) {
+      canvas1.style.cursor = 'default';
+    }
+
+    if (magnet.isDragging) {
+      magnet.x = mouseX - magnet.dragOffsetX;
+      magnet.y = mouseY - magnet.dragOffsetY;
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (magnet.isDragging) {
+      magnet.isDragging = false;
+      canvas1.style.cursor = 'grab';
+    }
+  });
+
+  function setMaterial(type) {
+    currentMaterial = type;
+    document.getElementById('btn-paramag').classList.remove('active');
+    document.getElementById('btn-diamag').classList.remove('active');
+    document.getElementById('btn-ferromag').classList.remove('active');
+    
+    if(type === 'paramagnetic') document.getElementById('btn-paramag').classList.add('active');
+    if(type === 'diamagnetic') document.getElementById('btn-diamag').classList.add('active');
+    if(type === 'ferromagnetic') document.getElementById('btn-ferromag').classList.add('active');
+
+    domains.forEach(d => {
+      d.randomTarget = (Math.random() - 0.5) * Math.PI * 2;
+    });
+
+    updateInfo1();
+  }
+
+  function updateInfo1() {
+    const info = document.getElementById('info1');
+    if(currentMaterial === 'paramagnetic') {
+      info.innerHTML = "<b>상자성체:</b> 자기력이 미치는 영역 안에서는 자기화되지만, <span class='highlight'>자기력이 미치지 않을 정도로 떨어지면 바로 자성을 잃고 무작위 상태로 되돌아갑니다.</span>";
+    } else if(currentMaterial === 'diamagnetic') {
+      info.innerHTML = "<b>반자성체:</b> 자기력이 미치는 영역 안에서 외부 자기장과 <span class='highlight'>반대(反) 방향</span>으로 자기화되고, 멀어지면 자성을 잃습니다.";
+    } else {
+      info.innerHTML = "<b>강자성체:</b> 한 번 자기화되면, <span class='highlight'>자기력이 미치지 않는 곳으로 멀리 떨어져도 자성을 계속 유지</span>합니다!";
+    }
+  }
+
+  function render1() {
+    ctx1.clearRect(0, 0, canvas1.width, canvas1.height);
+
+    let magnetN_x = magnet.x + magnet.w / 4; 
+    let magnetN_y = magnet.y;
+
+    let sampleCenter_x = sampleBox.x + sampleBox.w / 2;
+    let sampleCenter_y = sampleBox.y + sampleBox.h / 2;
+
+    let dist = Math.hypot(sampleCenter_x - magnetN_x, sampleCenter_y - magnetN_y);
+    let isNear = dist <= thresholdDistance; 
+
+    // 자기력이 미치는 영역(자기장 영역) 표시
+    ctx1.save();
+    ctx1.beginPath();
+    ctx1.arc(magnetN_x, magnetN_y, thresholdDistance, 0, Math.PI * 2);
+    ctx1.strokeStyle = isNear ? 'rgba(46, 204, 113, 0.3)' : 'rgba(231, 76, 60, 0.2)';
+    ctx1.lineWidth = 1.5;
+    ctx1.setLineDash([4, 4]);
+    ctx1.stroke();
+    ctx1.restore();
+
+    let mx = magnet.x - magnet.w / 2;
+    let my = magnet.y - magnet.h / 2;
+
+    ctx1.fillStyle = '#3498db'; 
+    ctx1.fillRect(mx, my, magnet.w / 2, magnet.h);
+    ctx1.fillStyle = '#e74c3c'; 
+    ctx1.fillRect(mx + magnet.w / 2, my, magnet.w / 2, magnet.h);
+
+    ctx1.fillStyle = '#fff';
+    ctx1.font = 'bold 18px sans-serif';
+    ctx1.textAlign = 'center';
+    ctx1.textBaseline = 'middle';
+    ctx1.fillText('S', mx + magnet.w / 4, magnet.y);
+    ctx1.fillText('N', mx + (3 * magnet.w) / 4, magnet.y);
+
+    ctx1.strokeStyle = isNear ? '#2ecc71' : '#fff';
+    ctx1.lineWidth = 2;
+    ctx1.strokeRect(sampleBox.x, sampleBox.y, sampleBox.w, sampleBox.h);
+    ctx1.fillStyle = '#aaa';
+    ctx1.globalAlpha = 0.2;
+    ctx1.fillRect(sampleBox.x, sampleBox.y, sampleBox.w, sampleBox.h);
+    ctx1.globalAlpha = 1.0;
+
+    domains.forEach(d => {
+      let targetAngle = d.angle;
+
+      if (isNear) {
+        let dx = d.x - magnetN_x;
+        let dy = d.y - magnetN_y;
+        let angleToMagnet = Math.atan2(dy, dx);
+
+        if (currentMaterial === 'paramagnetic' || currentMaterial === 'ferromagnetic') {
+          targetAngle = angleToMagnet;
+        } else if (currentMaterial === 'diamagnetic') {
+          targetAngle = angleToMagnet + Math.PI;
+        }
+      } else {
+        if (currentMaterial === 'ferromagnetic') {
+          targetAngle = d.angle; 
+        } else {
+          targetAngle = d.randomTarget;
+          d.randomTarget += (Math.random() - 0.5) * 0.02;
+        }
+      }
+
+      d.angle += (targetAngle - d.angle) * 0.08;
+
+      ctx1.save();
+      ctx1.translate(d.x, d.y);
+      ctx1.rotate(d.angle);
+      ctx1.beginPath();
+      ctx1.moveTo(-10, 0);
+      ctx1.lineTo(10, 0);
+      ctx1.lineTo(5, -5);
+      ctx1.moveTo(10, 0);
+      ctx1.lineTo(5, 5);
+      ctx1.strokeStyle = (currentMaterial === 'diamagnetic' && isNear) ? '#e74c3c' : '#2ecc71';
+      ctx1.lineWidth = 3;
+      ctx1.stroke();
+      ctx1.restore();
+    });
+
+    requestAnimationFrame(render1);
+  }
+
+  // --- 2번 문제: 전자기파 시뮬레이션 ---
+  const canvas2 = document.getElementById('canvas2');
+  const ctx2 = canvas2.getContext('2d');
+  let time = 0;
+
+  function render2() {
+    ctx2.clearRect(0, 0, canvas2.width, canvas2.height);
+    time += 0.03;
+
+    const waves = [
+      { id: 'chk-radio', color: '#e74c3c', freq: 0.02, name: '라디오파', y: 50 },
+      { id: 'chk-ir', color: '#f1c40f', freq: 0.05, name: '적외선', y: 110 },
+      { id: 'chk-vis', color: '#2ecc71', freq: 0.1, name: '가시광선', y: 170 }
+    ];
+
+    waves.forEach(w => {
+      if(document.getElementById(w.id).checked) {
+        ctx2.beginPath();
+        ctx2.strokeStyle = w.color;
+        ctx2.lineWidth = 2;
+
+        for(let x = 0; x < canvas2.width; x++) {
+          let y = w.y + Math.sin((x - time * 100) * w.freq) * 20;
+          if(x === 0) ctx2.moveTo(x, y);
+          else ctx2.lineTo(x, y);
+        }
+        ctx2.stroke();
+
+        let frontX = (time * 100) % canvas2.width;
+        ctx2.fillStyle = w.color;
+        ctx2.beginPath();
+        ctx2.arc(frontX, w.y + Math.sin((frontX - time * 100) * w.freq) * 20, 5, 0, Math.PI * 2);
+        ctx2.fill();
+
+        ctx2.fillStyle = '#fff';
+        ctx2.font = '12px sans-serif';
+        ctx2.textAlign = 'left';
+        ctx2.fillText(w.name, 10, w.y - 25);
+      }
+    });
+
+    let frontX = (time * 100) % canvas2.width;
+    ctx2.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx2.setLineDash([5, 5]);
+    ctx2.beginPath();
+    ctx2.moveTo(frontX, 0);
+    ctx2.lineTo(frontX, canvas2.height);
+    ctx2.stroke();
+    ctx2.setLineDash([]);
+
+    ctx2.fillStyle = '#3498db';
+    ctx2.font = '12px sans-serif';
+    ctx2.textAlign = 'left';
+    ctx2.fillText(`동일 속력 (c) 파면 위치`, frontX + 5, 20);
+
+    requestAnimationFrame(render2);
+  }
+
+  updateInfo1();
+  render1();
+  render2();
+</script>
+</body>
+</html><script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

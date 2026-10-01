@@ -1,0 +1,476 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><h1>안녕하세요</h1>
+<p><!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>청수사 본당 목조 구조물 돌림힘 평형 시뮬레이션</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Malgun Gothic', '맑은 고딕', AppleSDGothicNeo, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #f1f5f9;
+            color: #1e293b;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #0f172a;
+            margin-bottom: 6px;
+        }
+
+        p.subtitle {
+            font-size: 14px;
+            color: #64748b;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .card {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        /* 수식 현황판 */
+        .math-board {
+            background-color: #f8fafc;
+            border-left: 4px solid #2563eb;
+            padding: 16px;
+            border-radius: 6px;
+        }
+
+        .board-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #0f172a;
+            margin-bottom: 10px;
+        }
+
+        .calc-item {
+            font-size: 15px;
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+
+        .highlight {
+            font-weight: bold;
+            color: #2563eb;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 15px;
+            font-weight: bold;
+            margin-top: 8px;
+        }
+
+        .badge-stable {
+            background-color: #dcfce7;
+            color: #15803d;
+            border: 1px solid #86efac;
+        }
+
+        .badge-unstable {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fca5a5;
+        }
+
+        /* 캔버스 */
+        .canvas-container {
+            display: flex;
+            justify-content: center;
+            background: #f8fafc;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+
+        canvas {
+            background-color: #ffffff;
+        }
+
+        /* 컨트롤러 */
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .control-group label {
+            font-size: 14px;
+            font-weight: bold;
+            color: #334155;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        input[type=range] {
+            width: 100%;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        .btn-box {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        button {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background-color: #1d4ed8;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>⛩️ 청수사(기요미즈데라) 본당 무대 돌림힘 평형 시뮬레이션</h1>
+        <p class="subtitle">물리 수행평가: 지붕 무게(400N) 및 목조 지지점 받침력(FA, FB) 평형 구조 분석</p>
+    </header>
+
+    <div class="container">
+        <!-- 수식 계산판 -->
+        <div class="card math-board">
+            <div class="board-title">📐 실시간 구조물 평형 수식 계산</div>
+            
+            <div class="calc-item">
+                <b>1. 위아래 알짜힘 계산 (병진 평형):</b><br>
+                (왼쪽 지지력 FA) + (오른쪽 지지력 FB) - (건물 지붕 무게 W) = <span id="text-force" class="highlight">200 + 200 - 400 = 0 N</span>
+            </div>
+
+            <div class="calc-item">
+                <b>2. 알짜 돌림힘 계산 (회전 평형, 왼쪽 지지점 A 기준):</b><br>
+                (오른쪽 지지력 FB × 4m) - (건물 지붕 무게 W × 거리 x) = <span id="text-torque" class="highlight">(200 × 4) - (400 × 2.0) = 0 N·m</span>
+            </div>
+
+            <div>
+                <b>구조 상태:</b> <span id="status-badge" class="status-badge badge-stable">★ 정적 평형 상태 (돌아가지도 무너지지도 않음)</span>
+            </div>
+        </div>
+
+        <!-- 시뮬레이션 캔버스 -->
+        <div class="card canvas-container">
+            <canvas id="simCanvas" width="850" height="420"></canvas>
+        </div>
+
+        <!-- 조작 슬라이더 -->
+        <div class="card controls">
+            <div class="control-group">
+                <label>왼쪽 지지력 (FA): <span id="val-fa">200</span> N</label>
+                <input type="range" id="slider-fa" min="0" max="400" value="200" step="10">
+            </div>
+
+            <div class="control-group">
+                <label>오른쪽 지지력 (FB): <span id="val-fb">200</span> N</label>
+                <input type="range" id="slider-fb" min="0" max="400" value="200" step="10">
+            </div>
+
+            <div class="control-group">
+                <label>지붕/건물 무게 (W): <span id="val-w">400</span> N</label>
+                <input type="range" id="slider-w" min="100" max="600" value="400" step="10">
+            </div>
+
+            <div class="control-group">
+                <label>무게중심 위치 (x): <span id="val-x">2.0</span> m</label>
+                <input type="range" id="slider-x" min="0.5" max="3.5" value="2.0" step="0.1">
+            </div>
+
+            <div class="btn-box">
+                <button onclick="resetData()">내 계산 데이터로 초기화 (FA=200N, FB=200N, W=400N, x=2m)</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // 슬라이더 요소
+        const sliderFA = document.getElementById('slider-fa');
+        const sliderFB = document.getElementById('slider-fb');
+        const sliderW = document.getElementById('slider-w');
+        const sliderX = document.getElementById('slider-x');
+
+        // 수치 변수
+        let FA = 200;
+        let FB = 200;
+        let W = 400;
+        let x_pos = 2.0;
+        const L = 4.0; // 4미터
+
+        let tiltAngle = 0; // 기울기 각도
+
+        function updateValues() {
+            FA = parseFloat(sliderFA.value);
+            FB = parseFloat(sliderFB.value);
+            W = parseFloat(sliderW.value);
+            x_pos = parseFloat(sliderX.value);
+
+            document.getElementById('val-fa').innerText = FA;
+            document.getElementById('val-fb').innerText = FB;
+            document.getElementById('val-w').innerText = W;
+            document.getElementById('val-x').innerText = x_pos.toFixed(1);
+
+            calculatePhysics();
+            draw();
+        }
+
+        function calculatePhysics() {
+            const netForce = FA + FB - W;
+            const netTorque = (W * x_pos) - (FB * L); // 기준점 A (시계방향 +, 반시계방향 -)
+
+            document.getElementById('text-force').innerText = `${FA} + ${FB} - ${W} = ${netForce} N`;
+            document.getElementById('text-torque').innerText = `(${FB} × 4) - (${W} × ${x_pos.toFixed(1)}) = ${-netTorque} N·m`;
+
+            const badge = document.getElementById('status-badge');
+
+            if (Math.abs(netForce) === 0 && Math.abs(netTorque) === 0) {
+                badge.className = "status-badge badge-stable";
+                badge.innerText = "★ 완벽한 정적 평형 상태 (돌아가지도 무너지지도 않음)";
+                tiltAngle = 0;
+            } else {
+                badge.className = "status-badge badge-unstable";
+                if (netTorque > 0) {
+                    badge.innerText = "⚠ 오른쪽으로 기울어짐 (알짜 돌림힘 발생)";
+                    tiltAngle = Math.min(20, netTorque / 25);
+                } else if (netTorque < 0) {
+                    badge.innerText = "⚠ 왼쪽으로 기울어짐 (알짜 돌림힘 발생)";
+                    tiltAngle = Math.max(-20, netTorque / 25);
+                } else {
+                    badge.innerText = "⚠ 수직 평형 불균형 (위아래 알짜힘 발생)";
+                    tiltAngle = 0;
+                }
+            }
+        }
+
+        function resetData() {
+            sliderFA.value = 200;
+            sliderFB.value = 200;
+            sliderW.value = 400;
+            sliderX.value = 2.0;
+            updateValues();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const startX = 200; // 지지점 A 픽셀 위치
+            const endX = 650;   // 지지점 B 픽셀 위치 (4m = 450px)
+            const stageY = 240; // 무대 바닥 Y 좌표
+            const beamPx = endX - startX;
+
+            // 1. 산 및 지면 배경 드로잉
+            ctx.fillStyle = "#e2e8f0";
+            ctx.beginPath();
+            ctx.moveTo(50, 360);
+            ctx.lineTo(800, 360);
+            ctx.lineTo(800, 370);
+            ctx.lineTo(50, 370);
+            ctx.fill();
+
+            // 2. 고정 하부 기둥 (절벽 아래 목조 뼈대)
+            drawWoodenSupportPillars(startX, endX, stageY);
+
+            // 3. 회전하는 청수사 건물 구조물 (지지점 A 기준으로 회전)
+            ctx.save();
+            ctx.translate(startX, stageY);
+            ctx.rotate((tiltAngle * Math.PI) / 180);
+
+            // 청수사 본당 건물 & 무대 상판 그리기
+            drawKiyomizuTemple(0, 0, beamPx, x_pos / L * beamPx);
+
+            // 힘 화살표 그리기
+            // (1) 지붕 무게 W (아래 방향)
+            const wPx = (x_pos / L) * beamPx;
+            drawArrow(wPx, -110, wPx, -110 + (W / 4), "#dc2626", `건물 무게 W = ${W}N`);
+
+            // (2) 지지력 FA (위 방향)
+            if (FA > 0) {
+                drawArrow(0, 20, 0, 20 - (FA / 4), "#2563eb", `FA = ${FA}N`);
+            }
+
+            // (3) 지지력 FB (위 방향)
+            if (FB > 0) {
+                drawArrow(beamPx, 20, beamPx, 20 - (FB / 4), "#2563eb", `FB = ${FB}N`);
+            }
+
+            ctx.restore();
+        }
+
+        // 청수사 목조 격자 하부 지지대
+        function drawWoodenSupportPillars(x1, x2, y) {
+            ctx.strokeStyle = "#78350f";
+            ctx.lineWidth = 4;
+
+            // 메인 vertical 기둥 A, B
+            ctx.beginPath();
+            ctx.moveTo(x1, y);
+            ctx.lineTo(x1, y + 120);
+            ctx.moveTo(x2, y);
+            ctx.lineTo(x2, y + 120);
+            
+            // 중간 기둥 2개
+            const mid1 = x1 + (x2 - x1) * 0.33;
+            const mid2 = x1 + (x2 - x1) * 0.66;
+            ctx.moveTo(mid1, y);
+            ctx.lineTo(mid1, y + 120);
+            ctx.moveTo(mid2, y);
+            ctx.lineTo(mid2, y + 120);
+
+            // 가로 격자 들보
+            ctx.moveTo(x1 - 15, y + 40);
+            ctx.lineTo(x2 + 15, y + 40);
+            ctx.moveTo(x1 - 15, y + 80);
+            ctx.lineTo(x2 + 15, y + 80);
+            ctx.stroke();
+
+            // 주춧돌/기준점 표시
+            ctx.fillStyle = "#475569";
+            ctx.fillRect(x1 - 15, y + 120, 30, 10);
+            ctx.fillRect(x2 - 15, y + 120, 30, 10);
+
+            ctx.fillStyle = "#0f172a";
+            ctx.font = "bold 13px sans-serif";
+            ctx.fillText("왼쪽 지지점 A (0m)", x1 - 50, y + 145);
+            ctx.fillText("오른쪽 지지점 B (4m)", x2 - 40, y + 145);
+        }
+
+        // 청수사 본당 건물 및 무대
+        function drawKiyomizuTemple(x1, y, lengthPx, wPx) {
+            // (1) 목조 무대 마루 (Platform)
+            ctx.fillStyle = "#92400e";
+            ctx.fillRect(-20, -10, lengthPx + 40, 15);
+            ctx.strokeStyle = "#451a03";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(-20, -10, lengthPx + 40, 15);
+
+            // (2) 본당 전면 기둥
+            ctx.fillStyle = "#b45309";
+            ctx.fillRect(20, -90, 12, 80);
+            ctx.fillRect(lengthPx - 30, -90, 12, 80);
+            ctx.fillRect(wPx - 6, -90, 12, 80);
+
+            // (3) 청수사 특징인 전통 기와지붕 (Roof)
+            ctx.fillStyle = "#334155";
+            ctx.beginPath();
+            ctx.moveTo(-30, -90);
+            ctx.lineTo(lengthPx / 2, -140); // 지붕 고점
+            ctx.lineTo(lengthPx + 30, -90);
+            ctx.lineTo(lengthPx + 20, -80);
+            ctx.lineTo(-20, -80);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = "#1e293b";
+            ctx.stroke();
+
+            // 지붕 장식라인
+            ctx.strokeStyle = "#94a3b8";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(-35, -92);
+            ctx.quadraticCurveTo(lengthPx / 2, -145, lengthPx + 35, -92);
+            ctx.stroke();
+
+            // 무게중심 위치 점선 및 표시
+            ctx.strokeStyle = "#dc2626";
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.moveTo(wPx, -110);
+            ctx.lineTo(wPx, 0);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = "#dc2626";
+            ctx.beginPath();
+            ctx.arc(wPx, -110, 5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // 힘 벡터 화살표 그리기 함수
+        function drawArrow(fromx, fromy, tox, toy, color, label) {
+            const headlen = 9;
+            const angle = Math.atan2(toy - fromy, tox - fromx);
+
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 3;
+
+            ctx.beginPath();
+            ctx.moveTo(fromx, fromy);
+            ctx.lineTo(tox, toy);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(tox, toy);
+            ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.font = "bold 13px sans-serif";
+            if (toy < fromy) {
+                ctx.fillText(label, tox - 35, toy - 8);
+            } else {
+                ctx.fillText(label, tox - 45, toy + 18);
+            }
+        }
+
+        // 슬라이더 이벤트 연결
+        sliderFA.addEventListener('input', updateValues);
+        sliderFB.addEventListener('input', updateValues);
+        sliderW.addEventListener('input', updateValues);
+        sliderX.addEventListener('input', updateValues);
+
+        // 초기 실행
+        updateValues();
+    </script>
+</body>
+</html></p><script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

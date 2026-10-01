@@ -1,0 +1,182 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>포물선 운동 및 역학적 에너지 보존 시뮬레이션</title>
+    <style>
+        body { font-family: sans-serif; background: #f5f5f5; margin: 20px; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #333; }
+        .control-panel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; background: #eee; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
+        .control-group { display: flex; flex-direction: column; }
+        label { font-size: 14px; font-weight: bold; margin-bottom: 5px; }
+        .btn-container { grid-column: span 3; text-align: center; margin-top: 10px; }
+        button { padding: 10px 25px; font-size: 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .display-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        canvas { background: #1e1e1e; border-radius: 6px; width: 100%; height: auto; }
+        .data-box { background: #fdfdfd; border: 1px solid #ddd; padding: 15px; border-radius: 6px; font-size: 14px; }
+        .data-item { margin-bottom: 8px; display: flex; justify-content: space-between; border-bottom: 1px dashed #eee; padding-bottom: 4px; }
+        .data-val { font-weight: bold; color: #28a745; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>포물선 운동 및 역학적 에너지 보존 가상실험</h2>
+    
+    <!-- 컨트롤 패널 (안내서 요구조건 반영) -->
+    <div class="control-panel">
+        <div class="control-group">
+            <label>초기속도 (v₀): <span id="v0_val">10</span> m/s</label>
+            <input type="range" id="v0" min="5" max="30" value="10" step="1" oninput="updateLabel()">
+        </div>
+        <div class="control-group">
+            <label>발사각도 (θ): <span id="theta_val">45</span>°</label>
+            <input type="range" id="theta" min="10" max="80" value="45" step="5" oninput="updateLabel()">
+        </div>
+        <div class="control-group">
+            <label>물체 질량 (m): <span id="mass_val">1</span> kg</label>
+            <input type="range" id="mass" min="0.5" max="5" value="1" step="0.5" oninput="updateLabel()">
+        </div>
+        <div class="btn-container">
+            <button onclick="startSimulation()">시뮬레이션 발사</button>
+        </div>
+    </div>
+
+    <!-- 시각화 및 실시간 데이터 표시 패널 -->
+    <div class="display-panel">
+        <div>
+            <h3 style="margin-top:0;">운동 궤적 모니터</h3>
+            <canvas id="simCanvas" width="420" height="300"></canvas>
+        </div>
+        <div>
+            <h3 style="margin-top:0;">실시간 물리량 및 에너지 항</h3>
+            <div class="data-box">
+                <div class="data-item"><span>현재 시간 (t)</span><span id="res_t" class="data-val">0.00 s</span></div>
+                <div class="data-item"><span>수평 위치 (x)</span><span id="res_x" class="data-val">0.00 m</span></div>
+                <div class="data-item"><span>수직 높이 (y)</span><span id="res_y" class="data-val">0.00 m</span></div>
+                <div class="data-item"><span>수평 속도 (vx)</span><span id="res_vx" class="data-val">0.00 m/s</span></div>
+                <div class="data-item"><span>수직 속도 (vy)</span><span id="res_vy" class="data-val">0.00 m/s</span></div>
+                <div class="data-item" style="color:#d9534f;"><span>운동에너지 (KE = 0.5mv²)</span><span id="res_ke" class="data-val" style="color:#d9534f;">0.00 J</span></div>
+                <div class="data-item" style="color:#f0ad4e;"><span>위치에너지 (PE = mgh)</span><span id="res_pe" class="data-val" style="color:#f0ad4e;">0.00 J</span></div>
+                <div class="data-item" style="background:#e9ecef; font-weight:bold; border-bottom:none; padding:4px;">
+                    <span style="color:#0275d8;">역학적 에너지 (KE + PE)</span><span id="res_te" class="data-val" style="color:#0275d8;">0.00 J</span></div>
+            </div>
+            
+            <h3 style="margin-bottom:5px;">검증 및 분석 결과값</h3>
+            <div class="data-box" style="background:#eec;">
+                <div class="data-item"><span>최고점 도달 시간</span><span id="out_top_t" class="data-val" style="color:#333;">-</span></div>
+                <div class="data-item"><span>최고점 높이 (h_max)</span><span id="out_top_h" class="data-val" style="color:#333;">-</span></div>
+                <div class="data-item"><span>착지 시 최종 속력</span><span id="out_end_v" class="data-val" style="color:#333;">-</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById('simCanvas');
+const ctx = canvas.getContext('2d');
+
+let animationId;
+const g = 9.8; // 중력가속도 상수 고정 (안내서 기준)
+
+function updateLabel() {
+    document.getElementById('v0_val').innerText = document.getElementById('v0').value;
+    document.getElementById('theta_val').innerText = document.getElementById('theta').value;
+    document.getElementById('mass_val').innerText = document.getElementById('mass').value;
+}
+
+function startSimulation() {
+    cancelAnimationFrame(animationId);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    const v0 = parseFloat(document.getElementById('v0').value);
+    const angleDeg = parseFloat(document.getElementById('theta').value);
+    const m = parseFloat(document.getElementById('mass').value);
+    
+    const angleRad = angleDeg * Math.PI / 180;
+    
+    // 수평, 수직 초기 속도 성분 분리
+    const v0x = v0 * Math.cos(angleRad);
+    const v0y = v0 * Math.sin(angleRad);
+    
+    let t = 0;
+    const dt = 0.01; // 정밀한 데이터 연산을 위한 조밀한 시간 변화량
+    
+    let maxH = 0;
+    let timeToMaxH = 0;
+    let maxHFound = false;
+
+    // 그리기 스케일 조정 (화면 맞춤용)
+    const scale = 250 / ((v0*v0)/g); 
+
+    function draw() {
+        // 물리 방정식 연산 (이상 가상환경)
+        let x = v0x * t;
+        let vy = v0y - g * t;
+        let y = (v0y * t) - (0.5 * g * t * t);
+        
+        // 최고점 탐색 논리
+        if(vy <= 0 && !maxHFound) {
+            maxH = y;
+            timeToMaxH = t;
+            maxHFound = true;
+        }
+
+        // 바닥 착지 시 시뮬레이션 종료 논리
+        if (y < 0 && t > 0) {
+            y = 0;
+            let finalV = Math.sqrt(v0x*v0x + vy*vy);
+            
+            // 검증표용 결과값 화면 출력
+            document.getElementById('out_top_t').innerText = timeToMaxH.toFixed(2) + " s";
+            document.getElementById('out_top_h').innerText = maxH.toFixed(2) + " m";
+            document.getElementById('out_end_v').innerText = finalV.toFixed(2) + " m/s";
+            return;
+        }
+
+        // 에너지 항 실시간 계산 (질량 소거 없이 반영)
+        let currentV = Math.sqrt(v0x*v0x + vy*vy);
+        let ke = 0.5 * m * currentV * currentV;
+        let pe = m * g * y;
+        let te = ke + pe;
+
+        // 실시간 모니터 UI 업데이트
+        document.getElementById('res_t').innerText = t.toFixed(2) + " s";
+        document.getElementById('res_x').innerText = x.toFixed(2) + " m";
+        document.getElementById('res_y').innerText = y.toFixed(2) + " m";
+        document.getElementById('res_vx').innerText = v0x.toFixed(2) + " m/s";
+        document.getElementById('res_vy').innerText = vy.toFixed(2) + " m/s";
+        document.getElementById('res_ke').innerText = ke.toFixed(1) + " J";
+        document.getElementById('res_pe').innerText = pe.toFixed(1) + " J";
+        document.getElementById('res_te').innerText = te.toFixed(1) + " J";
+
+        // 캔버스 궤적 드로잉
+        ctx.fillStyle = '#28a745';
+        // 컴퓨터 그래픽스 좌표계 보정 (y축 반전 및 바닥 오프셋 적용)
+        ctx.beginPath();
+        ctx.arc(10 + x * scale, canvas.height - 20 - y * scale, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        t += dt;
+        animationId = requestAnimationFrame(draw);
+    }
+    
+    // 지면(바닥선) 그리기
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, canvas.height - 20);
+    ctx.lineTo(canvas.width, canvas.height - 20);
+    ctx.stroke();
+
+    draw();
+}
+updateLabel();
+</script>
+
+</body>
+</html>
+<script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

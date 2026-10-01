@@ -1,0 +1,645 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><h1>안녕하세요</h1>
+<p><!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>롤러코스터 등가속도 운동 시뮬레이션</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        font-family: Arial, "Noto Sans KR", sans-serif;
+        background: #f5f8fc;
+        color: #172b4d;
+    }
+
+    .container {
+        display: flex;
+        gap: 36px;
+        padding: 35px;
+        min-width: 1200px;
+    }
+
+    /* 왼쪽 계산 조건 */
+    .left {
+        width: 530px;
+        background: white;
+        border: 1px solid #dce5ef;
+        border-radius: 24px;
+        padding: 30px;
+        box-shadow: 0 8px 25px rgba(30, 60, 90, 0.08);
+    }
+
+    .title {
+        font-size: 25px;
+        font-weight: bold;
+        margin-bottom: 25px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #e5ebf2;
+    }
+
+    .box {
+        height: 88px;
+        background: #f7faff;
+        border: 1px solid #e6edf5;
+        border-radius: 18px;
+        margin-bottom: 18px;
+        padding: 0 20px;
+
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .label {
+        font-size: 20px;
+        color: #64748b;
+    }
+
+    .value {
+        font-size: 25px;
+        font-weight: bold;
+        color: #0789ca;
+    }
+
+    .green {
+        color: #00a36c;
+    }
+
+    /* 버튼 */
+    button {
+        width: 100%;
+        height: 68px;
+        border: none;
+        border-radius: 18px;
+        background: #078dcc;
+        color: white;
+        font-size: 21px;
+        font-weight: bold;
+        cursor: pointer;
+        margin-top: 105px;
+        box-shadow: 0 5px 12px rgba(0, 130, 190, 0.2);
+    }
+
+    button:hover {
+        background: #067bb3;
+    }
+
+    button:active {
+        transform: scale(0.99);
+    }
+
+    /* 오른쪽 */
+    .right {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 36px;
+    }
+
+    .panel {
+        background: white;
+        border: 1px solid #dce5ef;
+        border-radius: 24px;
+        padding: 25px;
+        box-shadow: 0 8px 25px rgba(30, 60, 90, 0.08);
+    }
+
+    .panel-title {
+        font-size: 23px;
+        font-weight: bold;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #e5ebf2;
+        margin-bottom: 18px;
+    }
+
+    /* 롤러코스터 화면 */
+    .track-area {
+        position: relative;
+        height: 260px;
+        overflow: hidden;
+        border-radius: 18px;
+        background: #f8fbff;
+        border: 1px solid #e1e9f2;
+    }
+
+    .track {
+        position: absolute;
+        left: 30px;
+        right: 0;
+        top: 120px;
+        height: 80px;
+    }
+
+    svg {
+        width: 100%;
+        height: 150px;
+        overflow: visible;
+    }
+
+    .axis {
+        stroke: #0794d1;
+        stroke-width: 3;
+        stroke-dasharray: 7 7;
+    }
+
+    .finish {
+        stroke: #ef4444;
+        stroke-width: 3;
+        stroke-dasharray: 7 7;
+    }
+
+    .support {
+        stroke: #9aa9bd;
+        stroke-width: 3;
+    }
+
+    .train {
+        position: absolute;
+        left: 10px;
+        top: 94px;
+        display: flex;
+        gap: 3px;
+        transition: left 0.05s linear;
+    }
+
+    .car {
+        width: 25px;
+        height: 22px;
+        background: #0794d1;
+        border-radius: 5px 5px 3px 3px;
+        position: relative;
+        border: 2px solid #0876a8;
+    }
+
+    .car::before {
+        content: "";
+        position: absolute;
+        width: 9px;
+        height: 9px;
+        background: #ffd84d;
+        border-radius: 50%;
+        left: 5px;
+        top: 3px;
+    }
+
+    .wheel {
+        position: absolute;
+        width: 7px;
+        height: 7px;
+        background: #172b4d;
+        border-radius: 50%;
+        bottom: -7px;
+    }
+
+    .wheel.left {
+        left: 3px;
+    }
+
+    .wheel.right {
+        right: 3px;
+    }
+
+    .axis-label {
+        position: absolute;
+        top: 8px;
+        left: 55px;
+        color: #60758e;
+        font-size: 16px;
+    }
+
+    .finish-label {
+        position: absolute;
+        top: 8px;
+        right: 25px;
+        color: #60758e;
+        font-size: 16px;
+    }
+
+    /* 그래프 */
+    .graph-area {
+        height: 300px;
+        position: relative;
+        border: 1px solid #e1e9f2;
+        border-radius: 18px;
+        background: #f8fbff;
+        padding: 30px 25px 30px 80px;
+    }
+
+    .graph {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        border-left: 3px solid #62758e;
+        border-bottom: 3px solid #62758e;
+
+        background-image:
+            linear-gradient(#dfe7f0 1px, transparent 1px),
+            linear-gradient(90deg, #dfe7f0 1px, transparent 1px);
+
+        background-size: 20% 25%;
+    }
+
+    .y-label {
+        position: absolute;
+        left: -60px;
+        font-size: 15px;
+        color: #60758e;
+    }
+
+    .y1 { top: -8px; }
+    .y2 { top: 20%; }
+    .y3 { top: 45%; }
+    .y4 { top: 70%; }
+    .y5 { bottom: -8px; }
+
+    .x-label {
+        position: absolute;
+        bottom: -30px;
+        font-size: 15px;
+        color: #60758e;
+    }
+
+    .x1 { left: 20%; }
+    .x2 { left: 40%; }
+    .x3 { left: 60%; }
+    .x4 { left: 80%; }
+
+    canvas {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+    }
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- =========================
+         왼쪽 물리 계산 조건
+    ========================== -->
+    <div class="left">
+
+        <div class="title">📋 물리 계산 조건</div>
+
+        <div class="box">
+            <span class="label">열차 규격</span>
+            <span class="value">9량 하이퍼코스터</span>
+        </div>
+
+        <div class="box">
+            <span class="label">이동 거리 (S)</span>
+            <span class="value">15.0 m</span>
+        </div>
+
+        <div class="box">
+            <span class="label">통과 시간 (t)</span>
+            <span class="value">2.0 s</span>
+        </div>
+
+        <div class="box">
+            <span class="label">산출 가속도 (a)</span>
+            <span class="value green">7.5 m/s²</span>
+        </div>
+
+        <div class="box">
+            <span class="label">2초 후 속도 (v)</span>
+            <span class="value green">15.0 m/s</span>
+        </div>
+
+        <button onclick="startSimulation()">
+            ▶ 시뮬레이션 시작 (Play)
+        </button>
+
+    </div>
+
+
+    <!-- =========================
+         오른쪽 시뮬레이션
+    ========================== -->
+    <div class="right">
+
+        <!-- 롤러코스터 -->
+        <div class="panel">
+
+            <div class="panel-title">
+                🚂 9량 롤러코스터 열차 통과 시뮬레이션 (곡선 레일)
+            </div>
+
+            <div class="track-area">
+
+                <div class="axis-label">
+                    기준점 (0m)
+                </div>
+
+                <div class="finish-label">
+                    통과 완료 (15m)
+                </div>
+
+                <svg viewBox="0 0 1000 170"
+                     preserveAspectRatio="none">
+
+                    <!-- 레일 -->
+                    <path
+                        d="M0,95
+                           C100,125 160,125 250,95
+                           S420,60 500,80
+                           S680,130 800,105
+                           S920,75 1000,95"
+                        fill="none"
+                        stroke="#344258"
+                        stroke-width="6"
+                    />
+
+                    <!-- 지지대 -->
+                    <line x1="80" y1="115" x2="80" y2="165"
+                          class="support"/>
+                    <line x1="160" y1="115" x2="160" y2="165"
+                          class="support"/>
+                    <line x1="240" y1="105" x2="240" y2="165"
+                          class="support"/>
+                    <line x1="320" y1="90" x2="320" y2="165"
+                          class="support"/>
+                    <line x1="400" y1="70" x2="400" y2="165"
+                          class="support"/>
+                    <line x1="480" y1="75" x2="480" y2="165"
+                          class="support"/>
+                    <line x1="560" y1="90" x2="560" y2="165"
+                          class="support"/>
+                    <line x1="640" y1="115" x2="640" y2="165"
+                          class="support"/>
+                    <line x1="720" y1="120" x2="720" y2="165"
+                          class="support"/>
+                    <line x1="800" y1="110" x2="800" y2="165"
+                          class="support"/>
+                    <line x1="880" y1="95" x2="880" y2="165"
+                          class="support"/>
+
+                </svg>
+
+                <!-- 기준점 -->
+                <div style="
+                    position:absolute;
+                    left:90px;
+                    top:20px;
+                    height:210px;
+                    border-left:3px dashed #0794d1;
+                "></div>
+
+                <!-- 도착점 -->
+                <div style="
+                    position:absolute;
+                    right:35px;
+                    top:20px;
+                    height:210px;
+                    border-left:3px dashed #ef4444;
+                "></div>
+
+                <!-- 9량 열차 -->
+                <div class="train" id="train">
+
+                    <div class="car">
+                        <div class="wheel left"></div>
+                        <div class="wheel right"></div>
+                    </div>
+
+                    <div class="car">
+                        <div class="wheel left"></div>
+                        <div class="wheel right"></div>
+                    </div>
+
+                    <div class="car">
+                        <div class="wheel left"></div>
+                        <div class="wheel right"></div>
+                    </div>
+
+                    <div class="car">
+                        <div class="wheel left"></div>
+                        <div class="wheel right"></div>
+                    </div>
+
+                    <div class="car">
+                        <div class="wheel left"></div>
+                        <div class="wheel right"></div>
+                    </div>
+
+                    <div class="car">
+                        <div class="wheel left"></div>
+                        <div class="wheel right"></div>
+                    </div>
+
+                    <div class="car">
+                        <div class="wheel left"></div>
+                        <div class="wheel right"></div>
+                    </div>
+
+                    <div class="car">
+                        <div class="wheel left"></div>
+                        <div class="wheel right"></div>
+                    </div>
+
+                    <div class="car">
+                        <div class="wheel left"></div>
+                        <div class="wheel right"></div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+
+        <!-- 속도-시간 그래프 -->
+        <div class="panel">
+
+            <div class="panel-title">
+                📈 실시간 속도-시간 그래프 (v-t 그래프)
+            </div>
+
+            <div class="graph-area">
+
+                <div class="graph">
+
+                    <canvas id="speedGraph"></canvas>
+
+                    <span class="y-label y1">20m/s</span>
+                    <span class="y-label y2">15m/s</span>
+                    <span class="y-label y3">10m/s</span>
+                    <span class="y-label y4">5m/s</span>
+                    <span class="y-label y5">0m/s</span>
+
+                    <span class="x-label x1">0.5s</span>
+                    <span class="x-label x2">1s</span>
+                    <span class="x-label x3">1.5s</span>
+                    <span class="x-label x4">2s</span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+
+<script>
+
+    /*
+    ==========================================
+    롤러코스터 시뮬레이션
+    ==========================================
+    */
+
+    const train = document.getElementById("train");
+    const canvas = document.getElementById("speedGraph");
+    const ctx = canvas.getContext("2d");
+
+    let animation;
+    let startTime;
+
+    function startSimulation() {
+
+        // 기존 애니메이션이 있다면 정지
+        cancelAnimationFrame(animation);
+
+        // 열차 위치 초기화
+        train.style.left = "10px";
+
+        // 그래프 초기화
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        startTime = performance.now();
+
+        animate();
+    }
+
+
+    function animate() {
+
+        const now = performance.now();
+
+        // 경과 시간
+        let t = (now - startTime) / 1000;
+
+        // 최대 2초까지만 계산
+        if (t > 2) {
+            t = 2;
+        }
+
+        /*
+        등가속도 운동
+
+        a = 7.5 m/s²
+        v = at
+        */
+
+        const acceleration = 7.5;
+
+        let velocity = acceleration * t;
+
+        /*
+        이동 거리
+
+        S = 1/2 × a × t²
+        */
+
+        let distance = 0.5 * acceleration * t * t;
+
+        /*
+        15m를 화면 전체 이동 거리로 변환
+        */
+
+        const trackWidth =
+            document.querySelector(".track-area").clientWidth - 100;
+
+        let position =
+            (distance / 15) * trackWidth;
+
+        if (position > trackWidth) {
+            position = trackWidth;
+        }
+
+        train.style.left = (10 + position) + "px";
+
+
+        /*
+        ==========================
+        속도-시간 그래프
+        ==========================
+        */
+
+        drawGraph(t, velocity);
+
+
+        if (t < 2) {
+            animation = requestAnimationFrame(animate);
+        }
+    }
+
+
+    function drawGraph(time, velocity) {
+
+        const rect = canvas.parentElement.getBoundingClientRect();
+
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        /*
+        시간 0~2초
+        속도 0~20m/s
+        */
+
+        const x =
+            (time / 2) * canvas.width;
+
+        const y =
+            canvas.height -
+            (velocity / 20) * canvas.height;
+
+
+        /*
+        그래프 선
+        */
+
+        ctx.beginPath();
+
+        ctx.moveTo(0, canvas.height);
+
+        ctx.lineTo(x, y);
+
+        ctx.strokeStyle = "#078dcc";
+        ctx.lineWidth = 5;
+        ctx.stroke();
+
+
+        /*
+        현재 위치 점
+        */
+
+        ctx.beginPath();
+
+        ctx.arc(x, y, 6, 0, Math.PI * 2);
+
+        ctx.fillStyle = "#078dcc";
+        ctx.fill();
+    }
+
+</script>
+
+</body>
+</html></p><script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

@@ -1,0 +1,994 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><h1>자전거 돌림힘 평형</h1>
+<p><!DOCTYPE html>
+<html lang="ko" class="h-full bg-slate-900 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>자전거 기울기에 따른 전도 조건 및 돌림힘 분석 3D 시뮬레이터</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js 3D Engine CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Three.js OrbitControls -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        physics: {
+                            blue: '#0284c7',
+                            sky: '#38bdf8',
+                            red: '#ef4444',
+                            green: '#10b981',
+                            amber: '#f59e0b',
+                            purple: '#8b5cf6'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+            user-select: none;
+            overflow-x: hidden;
+            background-color: #0f172a;
+        }
+        canvas {
+            touch-action: none;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+        .overlay-label {
+            position: absolute;
+            transform: translate(-50%, -100%);
+            pointer-events: none;
+            transition: all 0.05s ease-out;
+            white-space: nowrap;
+            z-index: 20;
+            display: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between text-slate-100">
+
+    <!-- Header Toolbar -->
+    <header class="border-b border-slate-800 bg-slate-900/95 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-sky-500/20 border border-sky-400/40 flex items-center justify-center text-sky-400 font-mono font-bold text-xl shadow-lg">
+                    τ
+                </div>
+                <div>
+                    <h1 class="text-base font-bold text-white tracking-tight flex items-center gap-2">
+                        자전거 기울기에 따른 전도 조건 및 돌림힘 분석기
+                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            지지면(2b) & 정적 평형/전도 모델
+                        </span>
+                    </h1>
+                    <p class="text-xs text-slate-400">무게중심(G) 수직 작용선(x=h sinθ)이 지지면 내부(x ≤ b, θ ≤ θc) 시 정적 평형 유지 | 외부(x > b, θ > θc) 시 전도 돌림힘 작용</p>
+                </div>
+            </div>
+
+            <!-- Header Quick Action Buttons -->
+            <div class="flex items-center gap-2">
+                <button onclick="toggleDynamicSimulation()" id="playBtn" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-semibold text-xs text-white shadow-lg transition flex items-center gap-1.5">
+                    <span id="playIcon">▶</span> <span id="playBtnText">동적 물리 시뮬레이션</span>
+                </button>
+                <button onclick="resetSimulation()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 font-semibold text-xs text-slate-300 border border-slate-700 transition">
+                    🔄 초기화
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="max-w-7xl mx-auto px-4 py-5 w-full flex-grow grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left Column: 3D Visualization Viewport & Graph (7 cols) -->
+        <div class="lg:col-span-7 flex flex-col gap-4">
+
+            <!-- 3D Viewport Box -->
+            <div class="bg-slate-900/90 rounded-2xl border border-slate-800 p-4 shadow-xl flex flex-col relative">
+                
+                <!-- Viewport Control Header -->
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3 px-1">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <h2 class="font-bold text-slate-100 text-xs sm:text-sm">3D 전도 조건 뷰포트 <span class="text-slate-400 font-normal text-[11px]">(지지면 및 알짜 돌림힘)</span></h2>
+                    </div>
+
+                    <!-- Camera View Angle Preset & Physics Toggle Buttons -->
+                    <div class="flex items-center gap-1 text-[11px] flex-wrap">
+                        <span class="text-slate-400 mr-1 hidden sm:inline">📷 시점:</span>
+                        <button onclick="setCameraView('rear')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold transition">후면</button>
+                        <button onclick="setCameraView('frontSide')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold transition">45° 정측면</button>
+                        <button onclick="setCameraView('side')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold transition">90° 측면</button>
+                        <button onclick="setCameraView('front')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold transition">정면</button>
+                        <button onclick="togglePhysicsOverlays()" id="toggleOverlayBtn" class="px-2.5 py-1 rounded bg-sky-600 hover:bg-sky-500 text-white border border-sky-400 font-semibold transition">👁️ 물리 요소 표시 (ON)</button>
+                    </div>
+                </div>
+
+                <!-- 3D Canvas Area -->
+                <div class="relative w-full aspect-[16/11] bg-slate-950 rounded-xl border border-slate-800 overflow-hidden shadow-inner" id="canvasContainer">
+                    <div id="threejsCanvas" class="w-full h-full block"></div>
+
+                    <!-- 3D Vector Overlay Label Pins -->
+                    <div id="labelPivot" class="overlay-label px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-bold text-[10px] shadow border border-amber-300">
+                        ① 회전축 Pivot
+                    </div>
+                    <div id="labelCG" class="overlay-label px-2 py-0.5 rounded bg-purple-500 text-white font-bold text-[10px] shadow border border-purple-300">
+                        ② 무게중심 G
+                    </div>
+                    <div id="labelFg" class="overlay-label px-2 py-0.5 rounded bg-rose-500 text-white font-bold text-[10px] shadow border border-rose-300">
+                        ③ 중력 F_g = mg
+                    </div>
+                    <div id="labelBase" class="overlay-label px-2 py-0.5 rounded bg-emerald-500 text-slate-950 font-bold text-[10px] shadow border border-emerald-300">
+                        ④ 지지면 범위 [-b, +b]
+                    </div>
+                    <div id="labelTheta" class="overlay-label px-2 py-0.5 rounded bg-sky-500 text-white font-bold text-[10px] shadow border border-sky-300">
+                        ⑤ 기울기 각도 θ
+                    </div>
+
+                    <!-- Visual Legend Overlay -->
+                    <div id="visualLegend" class="absolute bottom-3 left-3 bg-slate-900/90 backdrop-blur border border-slate-800 p-2.5 rounded-xl text-[10px] space-y-1 shadow-lg pointer-events-none z-10">
+                        <div class="font-bold text-slate-300 text-[11px] border-b border-slate-800 pb-1 mb-1">
+                            📌 지지면(2b) 물리 요소 시각화 안내
+                        </div>
+                        <div class="grid grid-cols-2 gap-x-3 gap-y-0.5 text-slate-300">
+                            <div>🟩 지지면 영역: [-b, +b] 범위 (녹색)</div>
+                            <div>🔴 중력 작용선: 무게중심 수직선</div>
+                            <div>🔵 수직항력 N1, N2: 양쪽 접지력</div>
+                            <div>🟡 회전축 Pivot: 기울임 접지 모서리</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Net Torque vs Tilt Angle Graph -->
+            <div class="bg-slate-900/90 rounded-2xl border border-slate-800 p-4 shadow-xl flex flex-col">
+                <div class="flex items-center justify-between mb-2 px-1">
+                    <div>
+                        <h3 class="font-bold text-slate-200 text-xs flex items-center gap-2">
+                            📈 [돌림힘 곡선] 기울기(θ) vs 전도 돌림힘(τ)
+                            <span class="text-slate-400 font-normal text-[10px]">(정적 평형 vs 전도 영역)</span>
+                        </h3>
+                        <p class="text-[10px] text-slate-400">0: 정적 평형 영역 (θ ≤ θc) | 임계점(θc): 전도 한계 | 양수(+): 전도 돌림힘 τ_tip = mg(h sinθ - b)</p>
+                    </div>
+                    <div class="flex items-center gap-3 text-[10px] font-mono">
+                        <span class="text-emerald-400 font-bold">🟩 정적 평형 (θ ≤ θc)</span>
+                        <span class="text-amber-400 font-bold">📍 임계 한계 (θc)</span>
+                        <span class="text-rose-400 font-bold">🟥 전도 영역 (θ > θc)</span>
+                    </div>
+                </div>
+                <div class="relative w-full h-44 bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
+                    <canvas id="graphCanvas" class="w-full h-full block"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Column: Control Parameters & Real-time Telemetry (5 cols) -->
+        <div class="lg:col-span-5 flex flex-col gap-4">
+
+            <!-- Primary Control Panel: Tilt Angle & Action Buttons -->
+            <div class="bg-slate-900/90 rounded-2xl border border-slate-800 p-4 shadow-xl space-y-4 text-xs">
+                <h2 class="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-2">
+                    🎮 탐구 변인 조절 및 시뮬레이션
+                    <span class="text-[10px] text-slate-400 font-mono">g = 9.8 m/s²</span>
+                </h2>
+
+                <!-- Independent Variable: Tilt Angle Slider -->
+                <div class="p-3 bg-slate-950/90 rounded-xl border border-amber-500/40 space-y-2">
+                    <div class="flex justify-between font-bold">
+                        <label class="text-amber-300 flex items-center gap-1.5" id="thetaLabel">
+                            🎯 기울기 각도 설정 (θ)
+                        </label>
+                        <span class="text-amber-400 font-mono text-base font-extrabold" id="thetaVal">0.0°</span>
+                    </div>
+                    <input type="range" id="inputTheta" min="0" max="45" step="0.2" value="0" class="w-full h-2.5 bg-slate-800 rounded-lg cursor-pointer accent-amber-400">
+                    <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                        <span>0° (직선)</span>
+                        <span id="sliderCritAngleMark" class="text-amber-400 font-bold">임계각 θc = sin⁻¹(b/h)</span>
+                        <span>45° (과도 기울임)</span>
+                    </div>
+                    <p class="text-[10px] text-slate-400">
+                        💡 각도를 설정한 후 아래 <strong>'동적 물리 시뮬레이션'</strong>을 실행해보세요.<br>
+                        • <strong class="text-emerald-400">θ ≤ θc일 때:</strong> 무게중심 수직 작용선(x ≤ b)이 지지면 내부 → 수직항력 분포 조정으로 <strong>정적 평형 유지</strong><br>
+                        • <strong class="text-rose-400">θ > θc일 때:</strong> 무게중심 작용선이 지지면 외부(x > b) 탈출 → 바깥쪽 접점을 축으로 <strong>전도 돌림힘 발생</strong>
+                    </p>
+                </div>
+
+                <!-- Big Primary Simulation Launch Button -->
+                <button onclick="toggleDynamicSimulation()" id="mainPlayBtn" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-sm text-white shadow-lg transition flex items-center justify-center gap-2">
+                    <span id="mainPlayIcon">▶</span> <span id="mainPlayBtnText">동적 물리 시뮬레이션 시작</span>
+                </button>
+
+                <!-- Support Base Width & Mass Parameters -->
+                <div class="grid grid-cols-3 gap-2 pt-1 border-t border-slate-800">
+                    
+                    <!-- Support Base Half Width Slider (b) -->
+                    <div class="space-y-1">
+                        <div class="flex justify-between font-medium">
+                            <label class="text-amber-300 font-bold">지지면 반폭 (b)</label>
+                            <span class="text-amber-400 font-mono font-bold text-[11px]" id="baseWidthVal">0.15 m</span>
+                        </div>
+                        <input type="range" id="inputBaseWidth" min="0.03" max="0.35" step="0.01" value="0.15" class="w-full h-1.5 bg-slate-800 rounded cursor-pointer accent-amber-500">
+                        <div class="text-[9px] text-slate-400">지면 접지 폭 (2b)</div>
+                    </div>
+
+                    <!-- CG Height Slider (h) -->
+                    <div class="space-y-1">
+                        <div class="flex justify-between font-medium">
+                            <label class="text-purple-300 font-bold">무게중심 높이 (h)</label>
+                            <span class="text-purple-400 font-mono font-bold text-[11px]" id="heightVal">1.05 m</span>
+                        </div>
+                        <input type="range" id="inputHeight" min="0.5" max="1.8" step="0.05" value="1.05" class="w-full h-1.5 bg-slate-800 rounded cursor-pointer accent-purple-500">
+                        <div class="text-[9px] text-slate-400">접지면~무게중심</div>
+                    </div>
+
+                    <!-- Mass Slider (m) -->
+                    <div class="space-y-1">
+                        <div class="flex justify-between font-medium">
+                            <label class="text-sky-300 font-bold">총 질량 (m)</label>
+                            <span class="text-sky-400 font-mono font-bold text-[11px]" id="massVal">75 kg</span>
+                        </div>
+                        <input type="range" id="inputMass" min="30" max="150" step="1" value="75" class="w-full h-1.5 bg-slate-800 rounded cursor-pointer accent-sky-500">
+                        <div class="text-[9px] text-slate-400">자전거 + 운전자</div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Real-time Numerical Telemetry Panel -->
+            <div class="bg-slate-900/90 rounded-2xl border border-slate-800 p-4 shadow-xl space-y-3 text-xs">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <h3 class="font-bold text-slate-200 flex items-center gap-1.5">
+                        <span>📊</span> 실시간 전도 및 돌림힘 계측 <span class="text-slate-400 font-normal text-[10px]">(평형 판정)</span>
+                    </h3>
+                    <span id="statusBadge" class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        🟢 정적 평형 유지 (안정)
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-[11px]">
+                    
+                    <!-- CG Horizontal Displacement x -->
+                    <div class="p-2 bg-slate-950 rounded-lg border border-slate-800">
+                        <div class="text-slate-400 text-[10px]">무게중심 작용선 이동거리 (x)</div>
+                        <div class="font-mono font-bold text-cyan-400 text-sm" id="calcOffset">0.000 m</div>
+                    </div>
+
+                    <!-- Critical Angle theta_c -->
+                    <div class="p-2 bg-slate-950 rounded-lg border border-slate-800">
+                        <div class="text-slate-400 text-[10px]">전도 임계 각도 (θc = sin⁻¹(b/h))</div>
+                        <div class="font-mono font-bold text-amber-400 text-sm" id="calcCriticalAngle">8.2°</div>
+                    </div>
+
+                    <!-- Left Normal Force N1 -->
+                    <div class="p-2 bg-slate-950 rounded-lg border border-slate-800">
+                        <div class="text-slate-400 text-[10px]">반대측 수직항력 (N_inner)</div>
+                        <div class="font-mono font-bold text-sky-400 text-sm" id="calcN1">367.5 N</div>
+                    </div>
+
+                    <!-- Right Normal Force N2 -->
+                    <div class="p-2 bg-slate-950 rounded-lg border border-slate-800">
+                        <div class="text-slate-400 text-[10px]">기울임측 수직항력 (N_outer)</div>
+                        <div class="font-mono font-bold text-indigo-400 text-sm" id="calcN2">367.5 N</div>
+                    </div>
+
+                    <!-- Net Torque display -->
+                    <div class="p-2 bg-slate-950 rounded-lg border border-slate-800 col-span-2 bg-slate-900/60" id="netTorqueCard">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-300 text-[10px] font-bold" id="netTorqueLabel">알짜 돌림힘 (정적 평형)</span>
+                            <span class="font-mono font-bold text-emerald-400 text-base" id="calcTauNet">0.0 N·m (정적 평형)</span>
+                        </div>
+                    </div>
+
+                    <div class="p-2 bg-slate-950 rounded-lg border border-slate-800 col-span-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400 text-[10px]">회전 각가속도 (α = τ_net / I)</span>
+                            <span class="font-mono font-bold text-purple-400 text-sm" id="calcAlpha">0.00 rad/s²</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Real-Time Physics Explanation Box -->
+                <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 text-[11px] leading-relaxed text-slate-300">
+                    <strong class="text-amber-300 block mb-0.5" id="analysisHeader">💡 물리적 원리 및 평형 해석:</strong>
+                    <span id="analysisText">
+                        무게중심 수직 작용선이 지지면 바닥 영역 [-b, +b] 내부에 위치하므로 양쪽 수직항력이 분배되어 **정적 평형**을 유지합니다.
+                    </span>
+                </div>
+
+                <!-- Report Model Note -->
+                <div class="text-[10px] text-slate-400 bg-slate-950 p-2 rounded-lg border border-slate-800">
+                    <strong>📌 지지면(Support Base) 돌림힘 정리:</strong><br>
+                    • θ &lt; θc: N_inner &gt; 0 이며 중력 작용선이 지지면 안쪽에 있어 <strong>정적 평형 가능</strong><br>
+                    • θ = θc: N_inner = 0 이 되며 <strong>전도 한계</strong>에 도달<br>
+                    • θ &gt; θc: 중력 작용선이 지지면 외부로 벗어나 <strong>전도 돌림힘</strong> 발생
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- JavaScript Physics & Rendering Logic -->
+    <script>
+        const state = {
+            // Physical Parameters
+            mass: 75.0,              // m (kg)
+            height: 1.05,            // h (m) CG height
+            gravity: 9.8,            // g (m/s^2)
+            baseHalfWidth: 0.15,     // b (m) 지지면 반폭
+
+            // Calculated Thresholds & Forces
+            criticalAngle: 0.0,      // theta_c = asin(b/h) (deg)
+            cgOffset: 0.0,           // x = h * sin(theta)
+            N1: 0.0,                 // Inner normal force (N)
+            N2: 0.0,                 // Outer normal force (N)
+            tauNet: 0.0,             // Net torque (N*m) - 0: equilibrium, positive: tipping
+            alpha: 0.0,              // Angular acceleration (rad/s^2)
+            isStable: true,          // Is CG inside support base?
+
+            // Dynamic Motion State
+            rollDeg: 0.0,            // current angle theta (deg)
+            rollVel: 0.0,            // angular velocity d(theta)/dt (rad/s)
+            showOverlays: true,
+            isRunning: false
+        };
+
+        const dom = {
+            inputTheta: document.getElementById('inputTheta'),
+            inputMass: document.getElementById('inputMass'),
+            inputHeight: document.getElementById('inputHeight'),
+            inputBaseWidth: document.getElementById('inputBaseWidth'),
+
+            thetaVal: document.getElementById('thetaVal'),
+            massVal: document.getElementById('massVal'),
+            heightVal: document.getElementById('heightVal'),
+            baseWidthVal: document.getElementById('baseWidthVal'),
+            sliderCritAngleMark: document.getElementById('sliderCritAngleMark'),
+
+            calcOffset: document.getElementById('calcOffset'),
+            calcCriticalAngle: document.getElementById('calcCriticalAngle'),
+            calcN1: document.getElementById('calcN1'),
+            calcN2: document.getElementById('calcN2'),
+            calcTauNet: document.getElementById('calcTauNet'),
+            calcAlpha: document.getElementById('calcAlpha'),
+
+            netTorqueCard: document.getElementById('netTorqueCard'),
+            netTorqueLabel: document.getElementById('netTorqueLabel'),
+
+            statusBadge: document.getElementById('statusBadge'),
+            analysisText: document.getElementById('analysisText'),
+            analysisHeader: document.getElementById('analysisHeader'),
+            
+            playBtn: document.getElementById('playBtn'),
+            playBtnText: document.getElementById('playBtnText'),
+            playIcon: document.getElementById('playIcon'),
+
+            mainPlayBtn: document.getElementById('mainPlayBtn'),
+            mainPlayBtnText: document.getElementById('mainPlayBtnText'),
+            mainPlayIcon: document.getElementById('mainPlayIcon'),
+
+            labelPivot: document.getElementById('labelPivot'),
+            labelCG: document.getElementById('labelCG'),
+            labelFg: document.getElementById('labelFg'),
+            labelBase: document.getElementById('labelBase'),
+            labelTheta: document.getElementById('labelTheta'),
+
+            graphCanvas: document.getElementById('graphCanvas')
+        };
+
+        let scene, camera, renderer, controls;
+        let bikeRootGroup, bikeLeanGroup;
+        let cgMarkerMesh, pivotMarkerMesh, fgArrowMesh;
+        let n1ArrowMesh, n2ArrowMesh;
+        let gravityLineMesh, baseZoneMesh, thetaArcMesh;
+
+        function init3DScene() {
+            const container = document.getElementById('canvasContainer');
+            const canvasDiv = document.getElementById('threejsCanvas');
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f172a);
+
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+            camera.position.set(0, 1.2, 3.6);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            canvasDiv.innerHTML = '';
+            canvasDiv.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.target.set(0, 0.75, 0);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+            scene.add(ambientLight);
+
+            const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.2);
+            dirLight1.position.set(5, 10, 7);
+            scene.add(dirLight1);
+
+            const dirLight2 = new THREE.DirectionalLight(0x38bdf8, 0.7);
+            dirLight2.position.set(-5, 5, -5);
+            scene.add(dirLight2);
+
+            // Floor Grid
+            const grid = new THREE.GridHelper(10, 20, 0x475569, 0x1e293b);
+            grid.position.y = 0;
+            scene.add(grid);
+
+            // Hierarchy setup
+            bikeRootGroup = new THREE.Group();
+            scene.add(bikeRootGroup);
+
+            bikeLeanGroup = new THREE.Group();
+            bikeRootGroup.add(bikeLeanGroup);
+
+            createBicycleMesh();
+            buildPhysicsVectorElements();
+
+            setCameraView('rear');
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function createBicycleMesh() {
+            const metallicMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.8, roughness: 0.2 });
+            const darkMat = new THREE.MeshStandardMaterial({ color: 0x020617, roughness: 0.8 });
+            const chromeMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.9, roughness: 0.1 });
+            const tireMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.9 });
+            const riderMat = new THREE.MeshStandardMaterial({ color: 0x8b5cf6, roughness: 0.5 });
+            const spokeMat = new THREE.MeshStandardMaterial({ color: 0xc084fc, metalness: 0.8, roughness: 0.2 });
+
+            const wheelRadius = 0.35;
+            const wheelTube = 0.035;
+
+            const wheelGeo = new THREE.TorusGeometry(wheelRadius, wheelTube, 16, 32);
+            
+            const buildWheelWithSpokes = (zPos) => {
+                const wheelGroup = new THREE.Group();
+                const tireMesh = new THREE.Mesh(wheelGeo, tireMat);
+                wheelGroup.add(tireMesh);
+
+                const hubGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.1, 16);
+                const hubMesh = new THREE.Mesh(hubGeo, chromeMat);
+                hubMesh.rotation.z = Math.PI / 2;
+                wheelGroup.add(hubMesh);
+
+                const spokeNum = 12;
+                for (let i = 0; i < spokeNum; i++) {
+                    const angle = (i / spokeNum) * Math.PI * 2;
+                    const spokeGeo = new THREE.CylinderGeometry(0.003, 0.003, wheelRadius - 0.02, 6);
+                    const spoke = new THREE.Mesh(spokeGeo, spokeMat);
+                    spoke.position.set((wheelRadius / 2) * Math.cos(angle), (wheelRadius / 2) * Math.sin(angle), 0);
+                    spoke.rotation.z = angle + Math.PI / 2;
+                    wheelGroup.add(spoke);
+                }
+
+                wheelGroup.rotation.y = Math.PI / 2;
+                wheelGroup.position.set(0, wheelRadius + 0.02, zPos);
+                return wheelGroup;
+            };
+
+            bikeLeanGroup.add(buildWheelWithSpokes(-0.65));
+            bikeLeanGroup.add(buildWheelWithSpokes(0.65));
+
+            const createTube = (p1, p2, radius, mat) => {
+                const dist = p1.distanceTo(p2);
+                const geo = new THREE.CylinderGeometry(radius, radius, dist, 8);
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.copy(p1).add(p2).multiplyScalar(0.5);
+                mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), p2.clone().sub(p1).normalize());
+                return mesh;
+            };
+
+            const pRearHub = new THREE.Vector3(0, wheelRadius + 0.02, -0.65);
+            const pFrontHub = new THREE.Vector3(0, wheelRadius + 0.02, 0.65);
+            const pBB = new THREE.Vector3(0, wheelRadius + 0.02, -0.1);
+            const pSeat = new THREE.Vector3(0, 0.8, -0.25);
+            const pHead = new THREE.Vector3(0, 0.85, 0.5);
+
+            bikeLeanGroup.add(createTube(pRearHub, pBB, 0.02, metallicMat));
+            bikeLeanGroup.add(createTube(pRearHub, pSeat, 0.02, metallicMat));
+            bikeLeanGroup.add(createTube(pBB, pSeat, 0.025, metallicMat));
+            bikeLeanGroup.add(createTube(pBB, pHead, 0.025, metallicMat));
+            bikeLeanGroup.add(createTube(pSeat, pHead, 0.022, metallicMat));
+            bikeLeanGroup.add(createTube(pFrontHub, pHead, 0.02, metallicMat));
+
+            // Rider Torso Silhouette
+            const torsoGeo = new THREE.CylinderGeometry(0.15, 0.12, 0.5, 12);
+            const torsoMesh = new THREE.Mesh(torsoGeo, riderMat);
+            torsoMesh.position.set(0, 1.1, -0.15);
+            torsoMesh.rotation.x = 0.2;
+            bikeLeanGroup.add(torsoMesh);
+
+            const headGeo = new THREE.SphereGeometry(0.1, 16, 16);
+            const headMesh = new THREE.Mesh(headGeo, riderMat);
+            headMesh.position.set(0, 1.42, -0.05);
+            bikeLeanGroup.add(headMesh);
+        }
+
+        function buildPhysicsVectorElements() {
+            // Pivot Point Marker
+            const pivotGeo = new THREE.SphereGeometry(0.06, 16, 16);
+            const pivotMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+            pivotMarkerMesh = new THREE.Mesh(pivotGeo, pivotMat);
+            scene.add(pivotMarkerMesh);
+
+            // Center of Gravity G
+            const cgGeo = new THREE.SphereGeometry(0.085, 16, 16);
+            const cgMat = new THREE.MeshStandardMaterial({ color: 0x8b5cf6, emissive: 0x4c1d95, roughness: 0.2 });
+            cgMarkerMesh = new THREE.Mesh(cgGeo, cgMat);
+            bikeLeanGroup.add(cgMarkerMesh);
+
+            // Gravity Arrow F_g
+            fgArrowMesh = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(0, 0, 0), 0.85, 0xef4444, 0.15, 0.08);
+            scene.add(fgArrowMesh);
+
+            // Normal Force Arrows N1, N2
+            n1ArrowMesh = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), 0.5, 0x38bdf8, 0.12, 0.06);
+            n2ArrowMesh = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), 0.5, 0x818cf8, 0.12, 0.06);
+            scene.add(n1ArrowMesh);
+            scene.add(n2ArrowMesh);
+
+            // Gravity Line of Action
+            const lineMat = new THREE.LineDashedMaterial({ color: 0xf87171, dashSize: 0.05, gapSize: 0.03, linewidth: 2 });
+            const lineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 2.0, 0), new THREE.Vector3(0, -0.2, 0)]);
+            gravityLineMesh = new THREE.Line(lineGeo, lineMat);
+            gravityLineMesh.computeLineDistances();
+            scene.add(gravityLineMesh);
+
+            // Support Base Visual Polygon
+            const basePlaneGeo = new THREE.PlaneGeometry(1, 1.5);
+            const basePlaneMat = new THREE.MeshBasicMaterial({ color: 0x10b981, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
+            baseZoneMesh = new THREE.Mesh(basePlaneGeo, basePlaneMat);
+            baseZoneMesh.rotation.x = Math.PI / 2;
+            baseZoneMesh.position.y = 0.005;
+            scene.add(baseZoneMesh);
+
+            // Theta Arc
+            const arcMat = new THREE.LineBasicMaterial({ color: 0x38bdf8, linewidth: 3 });
+            thetaArcMesh = new THREE.Line(new THREE.BufferGeometry(), arcMat);
+            scene.add(thetaArcMesh);
+        }
+
+        function updatePhysics(dt) {
+            const m = state.mass;
+            const g = state.gravity;
+            const h = state.height;
+            const b = state.baseHalfWidth;
+
+            // 1. Critical tipping angle theta_c = asin(b / h)
+            state.criticalAngle = Math.asin(Math.min(1.0, b / h)) * (180 / Math.PI);
+            dom.sliderCritAngleMark.textContent = `임계각 θc = sin⁻¹(b/h) (${state.criticalAngle.toFixed(1)}°)`;
+
+            const absRollDeg = Math.abs(state.rollDeg);
+            const rollRad = (state.rollDeg * Math.PI) / 180;
+            const sign = Math.sign(state.rollDeg) || 1;
+
+            // 2. Center of Gravity horizontal displacement x = h * sin(theta)
+            state.cgOffset = h * Math.sin(Math.abs(rollRad));
+
+            // 3. Stability assessment (Is CG line of action x <= b?)
+            state.isStable = state.cgOffset <= b;
+
+            // 4. Normal forces distribution & Net Torque calculation
+            const Fg = m * g;
+
+            if (state.isStable) {
+                // Static Equilibrium Zone (theta <= theta_c)
+                // Shift factor for normal forces within support base
+                const shiftFactor = (Fg * state.cgOffset) / (2 * b);
+                state.N1 = Math.max(0, Fg / 2 - shiftFactor); // Inner edge normal force
+                state.N2 = Fg / 2 + shiftFactor;              // Outer edge normal force
+
+                state.tauNet = 0.0; // Static equilibrium counteracts tipping torque
+                state.alpha = 0.0;
+            } else {
+                // Overturning Zone (theta > theta_c)
+                // Inner edge lifts off ground (N1 = 0)
+                state.N1 = 0.0;
+                state.N2 = Fg;
+
+                // Overturning torque around outer edge pivot b: tau_tip = Mg(h sin(theta) - b)
+                const overArm = state.cgOffset - b;
+                state.tauNet = Fg * overArm * sign;
+
+                const I = m * h * h;
+                state.alpha = Math.abs(state.tauNet) / I;
+            }
+
+            // 5. Dynamic Integration (If simulation is running)
+            if (state.isRunning) {
+                if (state.isStable) {
+                    // Stays in static equilibrium
+                    state.rollVel = 0;
+                    state.alpha = 0;
+                } else {
+                    // Accelerates outward to tipping over
+                    state.rollVel += state.alpha * dt;
+                    state.rollDeg += (state.rollVel * 180 / Math.PI) * dt * sign;
+
+                    if (Math.abs(state.rollDeg) >= 50.0) {
+                        state.rollDeg = Math.sign(state.rollDeg) * 50.0;
+                        state.isRunning = false;
+                        updatePlayButtonUI(false, "다시 시뮬레이션 실행");
+                    }
+                }
+
+                dom.inputTheta.value = Math.abs(state.rollDeg).toFixed(1);
+                dom.thetaVal.textContent = `${Math.abs(state.rollDeg).toFixed(1)}°`;
+            } else {
+                state.rollDeg = parseFloat(dom.inputTheta.value);
+                state.rollVel = 0;
+            }
+
+            // Update Telemetry Panel
+            dom.calcOffset.textContent = `${state.cgOffset.toFixed(3)} m`;
+            dom.calcCriticalAngle.textContent = `${state.criticalAngle.toFixed(1)}°`;
+            dom.calcN1.textContent = `${state.N1.toFixed(1)} N`;
+            dom.calcN2.textContent = `${state.N2.toFixed(1)} N`;
+            dom.calcAlpha.textContent = `${state.alpha.toFixed(2)} rad/s²`;
+
+            // Display Net Torque & Status
+            if (state.isStable) {
+                dom.statusBadge.textContent = "🟢 정적 평형 유지 (안정)";
+                dom.statusBadge.className = "text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+                
+                dom.netTorqueLabel.textContent = "알짜 돌림힘 (정적 평형)";
+                dom.calcTauNet.textContent = "0.0 N·m (정적 평형)";
+                dom.calcTauNet.className = "font-mono font-bold text-emerald-400 text-base";
+                dom.netTorqueCard.className = "p-2 bg-slate-950 rounded-lg border border-emerald-500/40 col-span-2 bg-emerald-950/20";
+
+                dom.analysisHeader.textContent = "💡 정적 평형 상태 (θ ≤ θc):";
+                dom.analysisText.innerHTML = `무게중심 수직 작용선($x = h \\sin\\theta = ${state.cgOffset.toFixed(3)}$ m)이 지지면 내부($b = ${b.toFixed(2)}$ m)에 위치합니다.<br>양쪽 수직항력($N_1 = ${state.N1.toFixed(1)}$ N, $N_2 = ${state.N2.toFixed(1)}$ N)이 분배되어 중력 돌림힘을 상쇄하며 <strong>정적 평형($\\tau_{net} = 0$)</strong>을 유지합니다.`;
+            } else {
+                dom.statusBadge.textContent = "🔴 지지면 이탈 → 전도 발생";
+                dom.statusBadge.className = "text-[10px] px-2 py-0.5 rounded-full font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30";
+
+                dom.netTorqueLabel.textContent = "알짜 돌림힘 (전도 돌림힘)";
+                dom.calcTauNet.textContent = `+${Math.abs(state.tauNet).toFixed(1)} N·m (전도)`;
+                dom.calcTauNet.className = "font-mono font-bold text-rose-400 text-base";
+                dom.netTorqueCard.className = "p-2 bg-slate-950 rounded-lg border border-rose-500/40 col-span-2 bg-rose-950/20";
+
+                dom.analysisHeader.textContent = "⚠️ 전도 상태 (θ > θc):";
+                dom.analysisText.innerHTML = `무게중심 수직 작용선($x = ${state.cgOffset.toFixed(3)}$ m)이 지지면 경계($b = ${b.toFixed(2)}$ m)를 벗어났습니다!<br>반대쪽 수직항력 $N_1 = 0$ N이 되며 접지력을 잃고, 바깥쪽 접점을 회전축으로 <strong>전도 돌림힘($\\tau_{tip} = mg(h\\sin\\theta - b) = ${Math.abs(state.tauNet).toFixed(1)}$ N·m)</strong>이 발생하여 회전 가속도(α = ${state.alpha.toFixed(2)} rad/s²)로 쓰러집니다.`;
+            }
+        }
+
+        function update3DObjectsAndLabels() {
+            if (!bikeLeanGroup || !cgMarkerMesh) return;
+
+            // 1. Roll Angle Rotation
+            const rollRad = (state.rollDeg * Math.PI) / 180;
+            bikeLeanGroup.rotation.z = -rollRad;
+
+            // 2. Adjust CG height position
+            cgMarkerMesh.position.set(0, state.height, 0);
+
+            // 3. Update Pivot Marker Position
+            const tiltDir = Math.sign(state.rollDeg) || 1;
+            const pivotX = state.rollDeg !== 0 ? tiltDir * state.baseHalfWidth : 0;
+            if (pivotMarkerMesh) {
+                pivotMarkerMesh.position.set(pivotX, 0.02, 0);
+                pivotMarkerMesh.visible = state.showOverlays;
+            }
+
+            // 4. Update Support Base Plane Mesh
+            if (baseZoneMesh) {
+                baseZoneMesh.scale.set(state.baseHalfWidth * 2, 1.2, 1);
+                baseZoneMesh.position.set(0, 0.002, 0);
+                baseZoneMesh.visible = state.showOverlays;
+            }
+
+            // 5. World CG Position & Gravity Line
+            const worldCG = new THREE.Vector3();
+            cgMarkerMesh.getWorldPosition(worldCG);
+
+            if (fgArrowMesh) {
+                fgArrowMesh.position.copy(worldCG);
+                fgArrowMesh.setLength(Math.min(1.2, 0.3 + (state.mass * state.gravity) / 1200), 0.12, 0.06);
+                fgArrowMesh.visible = state.showOverlays;
+            }
+
+            if (gravityLineMesh) {
+                gravityLineMesh.position.set(worldCG.x, worldCG.y / 2, worldCG.z);
+                gravityLineMesh.scale.set(1, worldCG.y + 0.2, 1);
+                gravityLineMesh.visible = state.showOverlays;
+            }
+
+            // 6. Normal Force Arrows (N1 & N2)
+            if (n1ArrowMesh && n2ArrowMesh) {
+                n1ArrowMesh.position.set(-state.baseHalfWidth, 0, 0);
+                const len1 = Math.max(0.05, (state.N1 / (state.mass * state.gravity)) * 0.8);
+                n1ArrowMesh.setLength(len1, 0.08, 0.04);
+                n1ArrowMesh.visible = state.showOverlays && state.N1 > 0;
+
+                n2ArrowMesh.position.set(state.baseHalfWidth, 0, 0);
+                const len2 = Math.max(0.05, (state.N2 / (state.mass * state.gravity)) * 0.8);
+                n2ArrowMesh.setLength(len2, 0.08, 0.04);
+                n2ArrowMesh.visible = state.showOverlays && state.N2 > 0;
+            }
+
+            // 7. Update 2D Screen Coordinate Pin Labels
+            const projectToScreen = (worldPos, labelEl) => {
+                if (!labelEl) return;
+                if (!state.showOverlays) {
+                    labelEl.style.display = 'none';
+                    return;
+                }
+                const projVec = worldPos.clone().project(camera);
+                const container = document.getElementById('canvasContainer');
+                if (!container) return;
+
+                const halfW = container.clientWidth / 2;
+                const halfH = container.clientHeight / 2;
+                const x = (projVec.x * halfW) + halfW;
+                const y = -(projVec.y * halfH) + halfH;
+
+                if (projVec.z < 1) {
+                    labelEl.style.display = 'block';
+                    labelEl.style.left = `${x}px`;
+                    labelEl.style.top = `${y}px`;
+                } else {
+                    labelEl.style.display = 'none';
+                }
+            };
+
+            projectToScreen(new THREE.Vector3(pivotX, 0.05, 0), dom.labelPivot);
+            projectToScreen(worldCG, dom.labelCG);
+            projectToScreen(new THREE.Vector3(worldCG.x, worldCG.y - 0.4, worldCG.z), dom.labelFg);
+            projectToScreen(new THREE.Vector3(0, 0.02, 0), dom.labelBase);
+            projectToScreen(new THREE.Vector3(0, state.height * 0.5, 0), dom.labelTheta);
+        }
+
+        function drawTorqueGraph() {
+            const canvas = dom.graphCanvas;
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const rect = canvas.getBoundingClientRect();
+            
+            // Adjust canvas resolution for high-DPI retina displays
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+
+            const w = rect.width;
+            const h = rect.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const padL = 40, padR = 20, padT = 20, padB = 30;
+            const graphW = w - padL - padR;
+            const graphH = h - padT - padB;
+
+            const m = state.mass;
+            const g = state.gravity;
+            const height = state.height;
+            const b = state.baseHalfWidth;
+            const critDeg = state.criticalAngle;
+
+            // Render coordinate axes
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+
+            const zeroY = padT + graphH * 0.8;
+            ctx.beginPath();
+            ctx.moveTo(padL, zeroY);
+            ctx.lineTo(padL + graphW, zeroY);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(padL, padT);
+            ctx.lineTo(padL, padT + graphH);
+            ctx.stroke();
+
+            // Label axes
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '10px Pretendard, sans-serif';
+            ctx.fillText('0°', padL - 5, zeroY + 12);
+            ctx.fillText('45° (θ)', padL + graphW - 20, zeroY + 12);
+            ctx.fillText('τ (N·m)', padL - 35, padT + 10);
+
+            // Draw critical angle threshold indicator
+            const critX = padL + (Math.min(45, critDeg) / 45) * graphW;
+            ctx.strokeStyle = '#f59e0b';
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(critX, padT);
+            ctx.lineTo(critX, padT + graphH);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = '#f59e0b';
+            ctx.fillText(`θc=${critDeg.toFixed(1)}°`, Math.min(critX - 15, w - 55), padT + 12);
+
+            // Compute maximum tipping torque scale
+            const maxTau = Math.max(1, m * g * (height * Math.sin((45 * Math.PI) / 180) - b));
+
+            ctx.beginPath();
+            ctx.lineWidth = 2.5;
+
+            for (let px = 0; px <= graphW; px++) {
+                const deg = (px / graphW) * 45;
+                const rad = (deg * Math.PI) / 180;
+                const x = height * Math.sin(rad);
+
+                let tau = 0;
+                if (x > b) {
+                    tau = m * g * (x - b);
+                }
+
+                const py = zeroY - (tau / maxTau) * (zeroY - padT - 10);
+                const screenX = padL + px;
+
+                if (px === 0) ctx.moveTo(screenX, py);
+                else ctx.lineTo(screenX, py);
+            }
+
+            ctx.strokeStyle = '#ef4444';
+            ctx.stroke();
+
+            // Draw current angle operating point
+            const curDeg = Math.abs(state.rollDeg);
+            const curRad = (curDeg * Math.PI) / 180;
+            const curX = height * Math.sin(curRad);
+            const curTau = curX > b ? m * g * (curX - b) : 0;
+
+            const pointX = padL + (Math.min(45, curDeg) / 45) * graphW;
+            const pointY = zeroY - (curTau / maxTau) * (zeroY - padT - 10);
+
+            ctx.beginPath();
+            ctx.arc(pointX, pointY, 5, 0, Math.PI * 2);
+            ctx.fillStyle = state.isStable ? '#10b981' : '#ef4444';
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        }
+
+        function toggleDynamicSimulation() {
+            state.isRunning = !state.isRunning;
+            updatePlayButtonUI(state.isRunning, state.isRunning ? "시뮬레이션 중단" : "동적 물리 시뮬레이션 시작");
+        }
+
+        function updatePlayButtonUI(running, text) {
+            dom.playBtnText.textContent = running ? "중단" : "동적 물리 시뮬레이션";
+            dom.playIcon.textContent = running ? "⏸" : "▶";
+            dom.mainPlayBtnText.textContent = text;
+            dom.mainPlayIcon.textContent = running ? "⏸" : "▶";
+
+            const runBtnStyle = "px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 font-semibold text-xs text-white shadow-lg transition flex items-center gap-1.5";
+            const stopBtnStyle = "px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-semibold text-xs text-white shadow-lg transition flex items-center gap-1.5";
+            dom.playBtn.className = running ? runBtnStyle : stopBtnStyle;
+
+            const runMainBtnStyle = "w-full py-3 rounded-xl bg-amber-600 hover:bg-amber-500 font-bold text-sm text-white shadow-lg transition flex items-center justify-center gap-2";
+            const stopMainBtnStyle = "w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-sm text-white shadow-lg transition flex items-center justify-center gap-2";
+            dom.mainPlayBtn.className = running ? runMainBtnStyle : stopMainBtnStyle;
+        }
+
+        function resetSimulation() {
+            state.isRunning = false;
+            state.rollDeg = 0.0;
+            state.rollVel = 0.0;
+            dom.inputTheta.value = 0;
+            dom.thetaVal.textContent = "0.0°";
+            updatePlayButtonUI(false, "동적 물리 시뮬레이션 시작");
+        }
+
+        function setCameraView(preset) {
+            if (!camera || !controls) return;
+            switch (preset) {
+                case 'rear':
+                    camera.position.set(0, 1.2, 3.6);
+                    controls.target.set(0, 0.75, 0);
+                    break;
+                case 'frontSide':
+                    camera.position.set(2.5, 1.5, 2.5);
+                    controls.target.set(0, 0.75, 0);
+                    break;
+                case 'side':
+                    camera.position.set(3.6, 1.0, 0);
+                    controls.target.set(0, 0.75, 0);
+                    break;
+                case 'front':
+                    camera.position.set(0, 1.2, -3.6);
+                    controls.target.set(0, 0.75, 0);
+                    break;
+            }
+            controls.update();
+        }
+
+        function togglePhysicsOverlays() {
+            state.showOverlays = !state.showOverlays;
+            const btn = document.getElementById('toggleOverlayBtn');
+            if (btn) {
+                btn.textContent = state.showOverlays ? "👁️ 물리 요소 표시 (ON)" : "🙈 물리 요소 숨기기 (OFF)";
+                btn.className = state.showOverlays 
+                    ? "px-2.5 py-1 rounded bg-sky-600 hover:bg-sky-500 text-white border border-sky-400 font-semibold transition"
+                    : "px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 border border-slate-700 font-semibold transition";
+            }
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvasContainer');
+            if (!container || !renderer || !camera) return;
+            const w = container.clientWidth;
+            const h = container.clientHeight;
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+        }
+
+        // Attach event listeners to input sliders
+        dom.inputTheta.addEventListener('input', (e) => {
+            state.rollDeg = parseFloat(e.target.value);
+            dom.thetaVal.textContent = `${state.rollDeg.toFixed(1)}°`;
+        });
+
+        dom.inputBaseWidth.addEventListener('input', (e) => {
+            state.baseHalfWidth = parseFloat(e.target.value);
+            dom.baseWidthVal.textContent = `${state.baseHalfWidth.toFixed(2)} m`;
+        });
+
+        dom.inputHeight.addEventListener('input', (e) => {
+            state.height = parseFloat(e.target.value);
+            dom.heightVal.textContent = `${state.height.toFixed(2)} m`;
+        });
+
+        dom.inputMass.addEventListener('input', (e) => {
+            state.mass = parseFloat(e.target.value);
+            dom.massVal.textContent = `${state.mass.toFixed(0)} kg`;
+        });
+
+        let lastTime = performance.now();
+        function animate(now = performance.now()) {
+            requestAnimationFrame(animate);
+
+            const dt = Math.min((now - lastTime) / 1000, 0.05);
+            lastTime = now;
+
+            updatePhysics(dt);
+            update3DObjectsAndLabels();
+            drawTorqueGraph();
+
+            if (controls) controls.update();
+            if (renderer && scene && camera) renderer.render(scene, camera);
+        }
+
+        // Initialize 3D scene and start loop upon window load
+        window.onload = function () {
+            init3DScene();
+            animate();
+        };
+    </script>
+</body>
+</html></p><script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

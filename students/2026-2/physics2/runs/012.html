@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#07171e">
+  <meta name="description" content="파면의 각도와 진동수 불변을 직접 관찰하는 3D 파동 굴절 실험실">
+  <title>파동의 굴절 | 인터랙티브 파면 실험실</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.178.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.178.0/examples/jsm/"
+      }
+    }
+  </script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07171e;
+      --ink: #edf5f1;
+      --muted: #91aab1;
+      --line: rgba(174, 219, 222, .17);
+      --a: #9df2e5;
+      --b: #f7c58c;
+      --mono: 'DM Mono', monospace;
+      --sans: 'Noto Sans KR', sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      -webkit-font-smoothing: antialiased;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 20;
+      opacity: .19;
+      background-image: radial-gradient(rgba(162, 217, 216, .24) .55px, transparent .7px);
+      background-size: 31px 31px;
+      mask-image: linear-gradient(to bottom, transparent, black 20%, black 75%, transparent);
+    }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, a:focus-visible {
+      outline: 2px solid var(--a);
+      outline-offset: 4px;
+    }
+    [hidden] { display: none !important; }
+    .site-shell { width: min(100%, 1660px); margin: 0 auto; padding: 0 clamp(20px, 4.3vw, 72px); }
+
+    .topbar {
+      height: 78px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--line);
+    }
+    .identity { display: inline-flex; align-items: center; gap: 12px; color: var(--ink); text-decoration: none; }
+    .identity-mark { width: 30px; height: 30px; display: flex; align-items: center; gap: 4px; transform: rotate(-24deg); }
+    .identity-mark i { display: block; width: 5px; height: 13px; background: var(--a); border-radius: 1px; }
+    .identity-mark i:nth-child(2) { height: 26px; }
+    .identity-mark i:nth-child(3) { height: 18px; }
+    .identity-name { font-size: 15px; font-weight: 700; letter-spacing: -.04em; }
+    .identity-sub { margin-left: 10px; color: #7899a0; font: 10px var(--mono); letter-spacing: .1em; }
+    .topbar-right { display: flex; align-items: center; gap: 12px; font: 10px var(--mono); letter-spacing: .13em; color: #a8c0c1; }
+    .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--a); box-shadow: 0 0 14px rgba(157, 242, 229, .8); animation: statusGlow 2.5s ease-in-out infinite; }
+
+    .intro { padding: clamp(30px, 3vw, 46px) 0 30px; display: flex; align-items: end; justify-content: space-between; gap: 35px; }
+    .eyebrow { display: flex; align-items: center; gap: 12px; color: var(--a); font: 11px var(--mono); letter-spacing: .13em; text-transform: uppercase; }
+    .eyebrow-line { width: 34px; height: 1px; background: currentColor; opacity: .55; }
+    h1, h2, h3, p { margin-top: 0; }
+    .intro h1 { margin: 15px 0 0; font-size: clamp(50px, 6vw, 84px); line-height: 1.11; font-weight: 700; letter-spacing: -.09em; white-space: nowrap; }
+    .intro h1 span { color: var(--a); }
+    .intro-copy { max-width: 390px; padding: 0 0 4px 24px; border-left: 1px solid rgba(157, 242, 229, .46); }
+    .intro-copy p { margin: 0 0 10px; font-size: clamp(15px, 1.3vw, 18px); line-height: 1.75; letter-spacing: -.035em; }
+    .intro-copy strong { color: var(--a); font-weight: 600; }
+    .intro-copy small { color: var(--muted); font-size: 12px; line-height: 1.6; }
+
+    .workbench { display: grid; grid-template-columns: minmax(0, 1fr) 316px; gap: clamp(26px, 3vw, 46px); align-items: start; }
+    .scene-column { min-width: 0; }
+    .scene-frame {
+      position: relative;
+      height: clamp(460px, 56vh, 650px);
+      overflow: hidden;
+      border: 1px solid rgba(135, 196, 200, .29);
+      border-radius: 3px;
+      background: radial-gradient(ellipse at 50% 42%, #163a45 0%, #0b2631 46%, #071923 100%);
+      box-shadow: 0 29px 80px rgba(0, 0, 0, .19);
+      isolation: isolate;
+    }
+    .scene-frame::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 4;
+      box-shadow: inset 0 0 80px rgba(3, 15, 23, .34);
+      border: 9px solid rgba(213, 248, 246, .015);
+    }
+    #webgl { position: absolute; inset: 0; }
+    #webgl canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+    #webgl canvas:active { cursor: grabbing; }
+    .scene-loading { position: absolute; inset: 0; display: grid; place-items: center; padding: 25px; color: #a7c8c9; font-size: 12px; text-align: center; }
+    .stage-head {
+      position: absolute;
+      z-index: 6;
+      top: 19px;
+      left: 22px;
+      right: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      pointer-events: none;
+    }
+    .stage-caption { display: flex; align-items: center; gap: 10px; color: #a7cbd0; font: 10px var(--mono); letter-spacing: .11em; text-shadow: 0 2px 12px #06151e; }
+    .stage-caption b { color: var(--a); font-weight: 500; }
+    .stage-caption .tiny-rule { width: 20px; height: 1px; background: #89b6bd; opacity: .6; }
+    .view-reset {
+      pointer-events: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 10px;
+      background: rgba(9, 33, 43, .7);
+      border: 1px solid rgba(189, 231, 229, .23);
+      border-radius: 2px;
+      color: #dfefed;
+      font-size: 11px;
+      white-space: nowrap;
+      transition: background .2s, border-color .2s;
+    }
+    .view-reset:hover { background: rgba(31, 79, 84, .85); border-color: var(--a); }
+    .view-reset svg { width: 14px; height: 14px; }
+    .scene-anchor { position: absolute; z-index: 3; pointer-events: none; transform: translate(-50%, -50%); white-space: nowrap; text-shadow: 0 2px 7px #061822, 0 1px 15px #061822; }
+    .medium-label { display: flex; flex-direction: column; align-items: start; padding-left: 10px; border-left: 2px solid currentColor; }
+    .medium-label.a { color: var(--a); }
+    .medium-label.b { color: var(--b); }
+    .medium-label span { font: 9px var(--mono); letter-spacing: .14em; opacity: .78; }
+    .medium-label strong { margin-top: 3px; font-size: 19px; font-weight: 600; letter-spacing: -.05em; }
+    .angle-label { display: flex; align-items: baseline; gap: 5px; color: #f6f6ed; }
+    .angle-label strong { font: 500 20px var(--mono); }
+    .angle-label small { font-size: 10px; color: #dae6e4; }
+    .angle-label.refract strong { color: var(--b); }
+    .angle-label.incident strong { color: var(--a); }
+    .pair-label { font-size: 11px; font-weight: 600; letter-spacing: -.04em; }
+    .pair-label.a { color: var(--a); }
+    .pair-label.b { color: var(--b); }
+    .structure-label { color: #c0d2d1; font-size: 10px; }
+    .reflect-label { color: var(--b); font-size: 11px; }
+    .stage-hint, .stage-legend {
+      position: absolute;
+      z-index: 5;
+      bottom: 17px;
+      pointer-events: none;
+      color: #b5d0d1;
+      font-size: 10px;
+      text-shadow: 0 2px 10px #06151e;
+    }
+    .stage-hint { left: 22px; }
+    .stage-legend { right: 22px; display: flex; gap: 15px; align-items: center; }
+    .stage-legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .legend-stroke { width: 17px; height: 2px; display: inline-block; background: var(--a); box-shadow: 0 0 8px var(--a); }
+    .legend-stroke.b { background: var(--b); box-shadow: 0 0 8px var(--b); }
+    .stage-alert {
+      position: absolute;
+      z-index: 6;
+      top: 68px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: max-content;
+      max-width: calc(100% - 30px);
+      padding: 8px 12px;
+      background: rgba(29, 38, 48, .87);
+      border: 1px solid rgba(247, 197, 140, .5);
+      color: #ffe0b8;
+      font-size: 11px;
+      line-height: 1.5;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .transport { min-height: 73px; display: flex; align-items: center; gap: 17px; border-bottom: 1px solid var(--line); }
+    .play-button {
+      flex: 0 0 42px;
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      background: var(--a);
+      color: #09232a;
+      transition: transform .2s, background .2s;
+    }
+    .play-button:hover { transform: scale(1.07); background: #c5fff2; }
+    .play-button svg { width: 17px; height: 17px; fill: currentColor; }
+    .play-button .icon-play { display: none; }
+    .play-button.is-paused .icon-play { display: block; }
+    .play-button.is-paused .icon-pause { display: none; }
+    .timeline-wrap { min-width: 0; flex: 1; }
+    .timeline-header { display: flex; justify-content: space-between; margin-bottom: 7px; color: #86a4aa; font: 9px var(--mono); letter-spacing: .1em; }
+    .timeline-header strong { font-weight: 400; color: #c7dddc; }
+    input[type="range"] { -webkit-appearance: none; appearance: none; border: 0; cursor: pointer; }
+    .timeline { display: block; width: 100%; height: 22px; margin: 0; background: transparent; --progress: 0%; }
+    .timeline::-webkit-slider-runnable-track { height: 3px; background: linear-gradient(to right, var(--a) 0 var(--progress), #36515a var(--progress) 100%); border-radius: 4px; }
+    .timeline::-moz-range-track { height: 3px; background: #36515a; border-radius: 4px; }
+    .timeline::-moz-range-progress { height: 3px; background: var(--a); }
+    .timeline::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5.5px; border: 2px solid #09232a; border-radius: 50%; background: var(--a); box-shadow: 0 0 0 2px var(--a); }
+    .timeline::-moz-range-thumb { width: 14px; height: 14px; border: 2px solid #09232a; border-radius: 50%; background: var(--a); }
+
+    .controls-panel { min-width: 0; padding: 5px 0 0 32px; border-left: 1px solid var(--line); }
+    .panel-index { display: block; margin-bottom: 14px; color: var(--a); font: 10px var(--mono); letter-spacing: .14em; }
+    .controls-panel h2 { margin: 0 0 9px; font-size: 27px; line-height: 1.35; font-weight: 600; letter-spacing: -.07em; }
+    .controls-panel h2 em { color: var(--a); font-style: normal; }
+    .panel-lead { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.7; }
+    .control-list { margin-top: 24px; }
+    .slider-group { padding: 16px 0 14px; border-top: 1px solid var(--line); }
+    .slider-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+    .slider-heading label { font-size: 13px; font-weight: 600; letter-spacing: -.04em; }
+    .slider-heading output { color: var(--a); font: 500 15px var(--mono); white-space: nowrap; }
+    .slider-group.speed-b .slider-heading output { color: var(--b); }
+    .control-range { width: 100%; height: 28px; margin: 0; background: transparent; --fill: 50%; --range-color: var(--a); }
+    .speed-b .control-range { --range-color: var(--b); }
+    .control-range::-webkit-slider-runnable-track { height: 3px; border-radius: 3px; background: linear-gradient(to right, var(--range-color) 0 var(--fill), #344c53 var(--fill) 100%); }
+    .control-range::-moz-range-track { height: 3px; border-radius: 3px; background: #344c53; }
+    .control-range::-moz-range-progress { height: 3px; background: var(--range-color); }
+    .control-range::-webkit-slider-thumb { -webkit-appearance: none; width: 19px; height: 19px; margin-top: -8px; border: 3px solid var(--bg); border-radius: 50%; background: var(--range-color); box-shadow: 0 0 0 1px var(--range-color); }
+    .control-range::-moz-range-thumb { width: 19px; height: 19px; border: 3px solid var(--bg); border-radius: 50%; background: var(--range-color); }
+    .slider-limits { display: flex; justify-content: space-between; margin-top: 2px; color: #78969d; font: 10px var(--mono); }
+    .result { margin-top: 7px; padding-top: 20px; border-top: 1px solid var(--line); }
+    .result-kicker { display: flex; justify-content: space-between; align-items: center; color: #a9c0c2; font-size: 11px; }
+    .result-kicker span:last-child { font: 12px var(--mono); color: var(--b); }
+    .result-value { min-height: 67px; margin-top: 3px; color: var(--b); font: 500 clamp(43px, 4.1vw, 57px) var(--mono); letter-spacing: -.085em; }
+    .result-value.is-tir { padding-top: 12px; font: 600 25px var(--sans); letter-spacing: -.055em; }
+    .result-formula { padding: 9px 0 17px; border-bottom: 1px solid var(--line); color: #b5c9c8; font: 11px var(--mono); white-space: nowrap; }
+    .invariant { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 17px 0 10px; }
+    .invariant span { color: #9bb3b7; font-size: 11px; }
+    .invariant strong { color: var(--a); font: 500 13px var(--mono); white-space: nowrap; }
+    .lambda-line { color: #dde9e6; font: 11px var(--mono); line-height: 1.8; }
+    .dynamic-note { min-height: 44px; margin: 13px 0 7px; color: #a5c5c4; font-size: 11px; line-height: 1.75; word-break: keep-all; }
+    .parameter-reset { padding: 0 0 3px; border: 0; border-bottom: 1px solid #77989b; background: transparent; color: #c2d7d6; font-size: 11px; }
+    .parameter-reset:hover { color: var(--a); border-color: var(--a); }
+
+    .insights { margin-top: clamp(72px, 10vw, 137px); border-top: 1px solid var(--line); }
+    .insights-heading { display: flex; justify-content: space-between; align-items: end; gap: 24px; padding: 37px 0 42px; }
+    .insights-heading h2 { margin: 0; font-size: clamp(29px, 3.6vw, 50px); font-weight: 600; line-height: 1.42; letter-spacing: -.075em; }
+    .insights-heading h2 em { color: var(--a); font-style: normal; }
+    .insights-heading p { max-width: 295px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.8; }
+    .insight { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1fr); gap: clamp(38px, 8vw, 140px); padding: 42px 0 49px; border-top: 1px solid var(--line); align-items: center; }
+    .insight-number { display: block; margin-bottom: 18px; color: var(--a); font: 10px var(--mono); letter-spacing: .15em; }
+    .insight h3 { margin: 0 0 17px; font-size: clamp(23px, 2.4vw, 34px); font-weight: 600; line-height: 1.52; letter-spacing: -.07em; }
+    .insight-copy p { max-width: 520px; margin: 0; color: #b9cecc; font-size: 14px; line-height: 2.02; word-break: keep-all; }
+    .insight-copy p strong { color: var(--ink); font-weight: 600; }
+    .insight-equation { display: inline-block; margin-top: 27px; padding-top: 14px; border-top: 1px solid rgba(157, 242, 229, .48); color: var(--a); font: 12px var(--mono); line-height: 1.8; }
+    .visual-panel { min-width: 0; padding: 18px 0 12px; border-top: 1px solid rgba(163, 215, 214, .27); border-bottom: 1px solid rgba(163, 215, 214, .27); }
+    .visual-heading { display: flex; justify-content: space-between; gap: 12px; padding: 0 4px 10px; color: #a9c3c4; font: 10px var(--mono); letter-spacing: .07em; }
+    .visual-heading strong { color: var(--a); font-weight: 500; }
+    .geometry-svg { display: block; width: 100%; max-height: 310px; }
+    .geometry-svg text { font-family: var(--sans); fill: #c9d8d7; font-size: 12px; }
+    .geometry-svg .svg-angle { font-family: var(--mono); fill: var(--a); font-size: 18px; }
+    .geometry-svg .svg-boundary { stroke: #88aeb4; stroke-width: 2; }
+    .geometry-svg .svg-normal { stroke: #8ba6ad; stroke-width: 1.4; stroke-dasharray: 5 6; }
+    .geometry-svg .svg-wave { stroke: var(--a); stroke-width: 3; stroke-linecap: round; }
+    .geometry-svg .svg-ray { stroke: #fff2d9; stroke-width: 2; stroke-linecap: round; }
+    .geometry-svg .svg-arc { fill: none; stroke: var(--b); stroke-width: 2; }
+    .geometry-svg .svg-square { fill: none; stroke: #e9e9d5; stroke-width: 1.4; }
+    .visual-foot { display: flex; justify-content: space-between; gap: 15px; padding: 4px; color: #94afb3; font-size: 11px; }
+    .visual-foot strong { color: #e0efea; font-weight: 600; }
+    .compare-visual { padding: 27px 0 24px; }
+    .compare-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) 76px; align-items: center; gap: 12px; margin: 17px 0; }
+    .compare-name { font: 500 14px var(--mono); color: var(--a); }
+    .compare-row.b .compare-name { color: var(--b); }
+    .crest-track { position: relative; height: 35px; overflow: hidden; background-image: repeating-linear-gradient(to right, var(--crest) 0 3px, transparent 3px var(--gap)); background-color: rgba(108, 187, 185, .065); --crest: rgba(157, 242, 229, .83); --gap: 50px; }
+    .compare-row.b .crest-track { --crest: rgba(247, 197, 140, .91); background-color: rgba(247, 197, 140, .045); }
+    .crest-track::before { content: ''; position: absolute; z-index: 1; top: 0; bottom: 0; left: 30px; width: 1px; background: rgba(255, 255, 255, .65); }
+    .compare-row.is-inactive .crest-track { background-image: none; opacity: .42; }
+    .compare-value { color: #dce9e6; font: 11px var(--mono); text-align: right; white-space: nowrap; }
+    .shared-beat { display: flex; align-items: center; gap: 10px; margin: 26px 0 18px 40px; color: #a5bdbd; font-size: 11px; }
+    .beat-light { width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: var(--a); box-shadow: 0 0 14px var(--a); }
+    .beat-light.b { background: var(--b); box-shadow: 0 0 14px var(--b); }
+    .beat-connector { width: 30px; height: 1px; background: #829ea1; }
+    .compare-equations { display: flex; gap: 17px; flex-wrap: wrap; padding: 15px 4px 0; border-top: 1px solid var(--line); color: #b6cbca; font: 11px var(--mono); }
+    .compare-equations b { color: var(--a); font-weight: 500; }
+    .compare-equations span:last-child b { color: var(--b); }
+    .takeaway { display: flex; justify-content: space-between; align-items: end; gap: 25px; margin-top: 25px; padding: 31px 0 48px; border-top: 1px solid var(--line); }
+    .takeaway span { color: var(--a); font: 10px var(--mono); letter-spacing: .13em; }
+    .takeaway p { margin: 0; text-align: right; font-size: clamp(20px, 2.3vw, 32px); font-weight: 600; letter-spacing: -.07em; }
+    .takeaway p strong { color: var(--a); font-weight: 600; }
+    .footer { display: flex; justify-content: space-between; padding: 19px 0 30px; border-top: 1px solid var(--line); color: #78989f; font: 10px var(--mono); letter-spacing: .06em; }
+
+    @keyframes statusGlow { 50% { opacity: .45; box-shadow: 0 0 4px rgba(157, 242, 229, .4); } }
+    @keyframes appear { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .intro, .workbench { animation: appear .75s both; }
+    .workbench { animation-delay: .12s; }
+
+    @media (max-width: 1100px) {
+      .workbench { grid-template-columns: minmax(0, 1fr); gap: 0; }
+      .controls-panel { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 0 30px; padding: 30px 0 0; border-left: 0; }
+      .panel-top { grid-column: 1; }
+      .control-list { grid-column: 2; grid-row: 1 / span 2; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 20px; margin-top: 0; }
+      .result { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 0 26px; margin-top: 20px; }
+      .result-kicker, .result-value, .result-formula { grid-column: 1; }
+      .invariant, .lambda-line, .dynamic-note, .parameter-reset { grid-column: 2; }
+      .invariant { grid-row: 1; padding-top: 0; }
+      .lambda-line { grid-row: 2; }
+      .dynamic-note { grid-row: 3; margin-top: 3px; }
+      .parameter-reset { grid-row: 4; justify-self: start; }
+    }
+    @media (max-width: 760px) {
+      .topbar { height: 66px; }
+      .identity-sub, .topbar-right span:last-child { display: none; }
+      .intro { display: block; padding: 39px 0 28px; }
+      .intro h1 { font-size: clamp(45px, 9vw, 72px); }
+      .intro-copy { max-width: 100%; margin-top: 23px; padding-left: 16px; }
+      .intro-copy p { font-size: 14px; margin-bottom: 5px; }
+      .scene-frame { height: clamp(390px, 72vw, 550px); }
+      .controls-panel { display: block; }
+      .panel-top { display: flex; justify-content: space-between; align-items: end; gap: 20px; }
+      .panel-lead { max-width: 280px; }
+      .control-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 17px; margin-top: 22px; }
+      .slider-heading { display: block; }
+      .slider-heading output { display: block; margin-top: 5px; }
+      .result { margin-top: 8px; }
+      .insight { gap: 38px; }
+    }
+    @media (max-width: 560px) {
+      .site-shell { padding: 0 19px; }
+      .identity-name { font-size: 14px; }
+      .topbar-right { font-size: 9px; }
+      .intro { padding-top: 32px; }
+      .intro h1 { font-size: clamp(43px, 10.4vw, 60px); }
+      .eyebrow { font-size: 9px; }
+      .scene-frame { height: clamp(345px, 101vw, 470px); }
+      .stage-head { top: 11px; left: 11px; right: 11px; }
+      .stage-caption { font-size: 8px; gap: 6px; }
+      .stage-caption .tiny-rule, .stage-caption .caption-extra { display: none; }
+      .view-reset { padding: 7px 8px; font-size: 10px; }
+      .stage-hint { left: 12px; bottom: 10px; font-size: 9px; }
+      .stage-legend { right: 12px; bottom: 28px; font-size: 9px; }
+      .direction-legend { display: none !important; }
+      .medium-label { padding-left: 5px; border-left-width: 1px; }
+      .medium-label span { font-size: 7px; }
+      .medium-label strong { font-size: 12px; }
+      .angle-label strong { font-size: 14px; }
+      .angle-label small, .pair-label, .structure-label, .reflect-label { font-size: 8px; }
+      .transport { min-height: 68px; gap: 13px; }
+      .play-button { width: 39px; height: 39px; flex-basis: 39px; }
+      .controls-panel { padding-top: 29px; }
+      .panel-top { display: block; }
+      .controls-panel h2 { font-size: 24px; }
+      .control-list { display: block; margin-top: 23px; }
+      .slider-group { padding: 14px 0 12px; }
+      .slider-heading { display: flex; }
+      .slider-heading output { margin-top: 0; }
+      .result { display: block; padding-top: 17px; margin-top: 4px; }
+      .result-value { min-height: 62px; }
+      .invariant { padding-top: 14px; }
+      .dynamic-note { min-height: 0; margin: 11px 0; }
+      .insights { margin-top: 79px; }
+      .insights-heading { display: block; padding: 28px 0 34px; }
+      .insights-heading p { margin-top: 13px; }
+      .insight { display: block; padding: 35px 0 42px; }
+      .insight h3 { font-size: 24px; }
+      .insight-copy p { font-size: 13px; }
+      .visual-panel { margin-top: 30px; }
+      .takeaway { display: block; }
+      .takeaway p { margin-top: 18px; text-align: left; line-height: 1.5; }
+      .footer { gap: 10px; font-size: 8px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="site-shell" id="top">
+    <header class="topbar">
+      <a class="identity" href="#top" aria-label="파동의 굴절, 맨 위로">
+        <span class="identity-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="identity-name">파면 실험실</span>
+        <span class="identity-sub">WAVE / LAB 04</span>
+      </a>
+      <div class="topbar-right"><span class="live-dot" aria-hidden="true"></span><span>INTERACTIVE PHYSICS II</span></div>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="pageTitle">
+        <div>
+          <div class="eyebrow"><span>01 / WAVE REFRACTION</span><span class="eyebrow-line"></span><span>관찰하고, 이해하기</span></div>
+          <h1 id="pageTitle">파동의 <span>굴절</span></h1>
+        </div>
+        <div class="intro-copy">
+          <p>파면은 꺾여도 <strong>진동수의 박자는 그대로.</strong><br>그 이유를 세워진 수조 안에서 확인해 보세요.</p>
+          <small>각도와 속력을 바꾸고, 파면이 경계를 지나는 순간을 탐색하세요.</small>
+        </div>
+      </section>
+
+      <section class="workbench" aria-label="3D 파동 굴절 실험과 조작 도구">
+        <div class="scene-column">
+          <div class="scene-frame" id="sceneFrame">
+            <div id="webgl" aria-label="회전, 확대, 축소, 이동할 수 있는 3D 복셀 파동 수조"><div class="scene-loading">3D 수조를 불러오는 중입니다. 인터넷 연결이 필요합니다.</div></div>
+            <div class="stage-head">
+              <div class="stage-caption"><b>● LIVE</b><span class="tiny-rule"></span><span>3D WAVE TANK</span><span class="caption-extra">/ 세워진 관찰 수조</span></div>
+              <button class="view-reset" id="resetView" type="button" aria-label="카메라를 처음 시점으로 되돌리기">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M20 11a8 8 0 1 1-2.2-5.5M20 4v6h-6"/></svg> 시점 초기화
+              </button>
+            </div>
+            <div class="scene-anchor medium-label a" id="anchorA"><span>MEDIUM A</span><strong>매질 A</strong></div>
+            <div class="scene-anchor medium-label b" id="anchorB"><span>MEDIUM B</span><strong>매질 B</strong></div>
+            <div class="scene-anchor structure-label" id="anchorNormal">법선</div>
+            <div class="scene-anchor structure-label" id="anchorBoundary">경계면</div>
+            <div class="scene-anchor angle-label incident" id="anchorIncident"><strong>θ₁</strong><small id="incidentInline">28° 입사각</small></div>
+            <div class="scene-anchor angle-label refract" id="anchorRefracted"><strong>θ₂</strong><small id="refractedInline">44.8° 굴절각</small></div>
+            <div class="scene-anchor pair-label a" id="anchorWaveA">파면·경계 = θ₁</div>
+            <div class="scene-anchor pair-label b" id="anchorWaveB">파면·경계 = θ₂</div>
+            <div class="scene-anchor reflect-label" id="anchorReflect">반사 방향</div>
+            <div class="stage-alert" id="stageAlert" hidden>전반사: 이 설정에서는 B로 진행하는 굴절파가 없습니다.</div>
+            <div class="stage-hint">한 손가락 회전 · 두 손가락 확대/축소 및 이동</div>
+            <div class="stage-legend" aria-hidden="true"><span><i class="legend-stroke"></i>A 파면</span><span><i class="legend-stroke b"></i><span id="legendB">B 파면</span></span><span class="direction-legend">→ 진행 방향</span></div>
+          </div>
+          <div class="transport" aria-label="애니메이션 재생 및 시간 탐색">
+            <button class="play-button" id="playButton" type="button" aria-label="일시정지" aria-pressed="true">
+              <svg class="icon-pause" viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="3" width="4" height="14" rx=".6"></rect><rect x="12" y="3" width="4" height="14" rx=".6"></rect></svg>
+              <svg class="icon-play" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.8 17 10 5 17.2z"></path></svg>
+            </button>
+            <div class="timeline-wrap">
+              <div class="timeline-header"><span>TIME / 직접 시간을 탐색하세요</span><strong><span id="timeCurrent">00:00.0</span> / 00:12.0</strong></div>
+              <input class="timeline" type="range" id="timeSlider" min="0" max="12" step="0.01" value="0" aria-label="시뮬레이션 시간 탐색, 0초부터 12초">
+            </div>
+          </div>
+        </div>
+
+        <aside class="controls-panel" aria-labelledby="controlTitle">
+          <div class="panel-top">
+            <div>
+              <span class="panel-index">02 / EXPERIMENT CONTROLS</span>
+              <h2 id="controlTitle">파동을<br><em>움직여 보세요.</em></h2>
+            </div>
+            <p class="panel-lead">파면과 경계면의 각은 A에서 θ₁, B에서 θ₂입니다. 값을 바꿔 비교해 보세요.</p>
+          </div>
+          <div class="control-list">
+            <div class="slider-group">
+              <div class="slider-heading"><label for="angleSlider">입사각 θ₁</label><output id="angleOutput" for="angleSlider">28°</output></div>
+              <input class="control-range" id="angleSlider" type="range" min="5" max="70" step="1" value="28" aria-label="입사각 세타 1">
+              <div class="slider-limits"><span>5°</span><span>70°</span></div>
+            </div>
+            <div class="slider-group">
+              <div class="slider-heading"><label for="speedASlider">매질 A의 속력</label><output id="speedAOutput" for="speedASlider">1.4 m/s</output></div>
+              <input class="control-range" id="speedASlider" type="range" min="0.8" max="2.8" step="0.1" value="1.4" aria-label="매질 A에서의 파동 속력">
+              <div class="slider-limits"><span>0.8</span><span>2.8 m/s</span></div>
+            </div>
+            <div class="slider-group speed-b">
+              <div class="slider-heading"><label for="speedBSlider">매질 B의 속력</label><output id="speedBOutput" for="speedBSlider">2.1 m/s</output></div>
+              <input class="control-range" id="speedBSlider" type="range" min="0.8" max="2.8" step="0.1" value="2.1" aria-label="매질 B에서의 파동 속력">
+              <div class="slider-limits"><span>0.8</span><span>2.8 m/s</span></div>
+            </div>
+          </div>
+          <div class="result" aria-live="polite">
+            <div class="result-kicker"><span id="resultKicker">계산된 굴절각</span><span id="resultSymbol">θ₂</span></div>
+            <div class="result-value" id="resultAngle">44.8°</div>
+            <div class="result-formula" id="snellFormula">sin θ₁ / vA = sin θ₂ / vB</div>
+            <div class="invariant"><span>변하지 않는 박자</span><strong id="frequencyInvariant">fA = fB = 1.25 Hz</strong></div>
+            <div class="lambda-line" id="lambdaLine">λA = 1.12 m &nbsp; λB = 1.68 m</div>
+            <p class="dynamic-note" id="dynamicNote">B에서 속력이 더 크므로 파장도 더 길고, 굴절각도 더 큽니다.</p>
+            <button class="parameter-reset" id="resetParameters" type="button">실험값 처음으로</button>
+          </div>
+        </aside>
+      </section>
+
+      <section class="insights" aria-labelledby="insightsTitle">
+        <div class="insights-heading">
+          <h2 id="insightsTitle">헷갈렸던 두 지점,<br><em>여기서 연결됩니다.</em></h2>
+          <p>위 수조의 파면과 아래 그림은 같은 각도를 보여줍니다. 조작값을 바꾸면 아래 관찰 결과도 함께 변합니다.</p>
+        </div>
+
+        <article class="insight">
+          <div class="insight-copy">
+            <span class="insight-number">01 / GEOMETRY OF THE WAVEFRONT</span>
+            <h3>왜 파면과 경계면의 각이<br>입사각·굴절각일까?</h3>
+            <p><strong>파면은 진행 방향에 수직</strong>이고, <strong>경계면은 법선에 수직</strong>입니다. 두 직선을 각각 똑같이 90° 회전시켜도 두 직선 사이의 작은 각은 변하지 않습니다. 따라서 파면과 경계면의 각이 진행 방향과 법선의 각, 곧 θ₁ 또는 θ₂입니다.</p>
+            <span class="insight-equation">∠(파면, 경계면) = ∠(진행 방향, 법선)</span>
+          </div>
+          <div class="visual-panel">
+            <div class="visual-heading"><span>같은 각, 다른 두 직선 쌍</span><strong id="diagramCurrent">θ₁ = 28°</strong></div>
+            <svg class="geometry-svg" viewBox="0 0 440 260" role="img" aria-label="파면과 경계면의 각이 진행 방향과 법선의 각과 같은 이유를 보여주는 그림">
+              <defs><marker id="diagramArrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 Z" fill="#fff2d9"/></marker></defs>
+              <line class="svg-boundary" x1="24" y1="156" x2="416" y2="156" />
+              <line class="svg-normal" x1="220" y1="18" x2="220" y2="239" />
+              <line class="svg-wave" id="diagramWave" x1="92" y1="224" x2="348" y2="88" />
+              <line class="svg-ray" id="diagramRay" x1="165" y1="55" x2="220" y2="156" marker-end="url(#diagramArrow)" />
+              <path class="svg-arc" id="diagramArcRay" />
+              <path class="svg-arc" id="diagramArcWave" />
+              <path class="svg-square" id="diagramSquareWave" />
+              <path class="svg-square" d="M205 156 L205 171 L220 171" />
+              <circle cx="220" cy="156" r="3.5" fill="#f5e8c9" />
+              <text x="229" y="30">법선</text>
+              <text x="339" y="149">경계면</text>
+              <text id="diagramWaveLabel" x="285" y="60" fill="#9df2e5">파면</text>
+              <text id="diagramDirectionLabel" x="83" y="49">진행 방향</text>
+              <text class="svg-angle" id="diagramAngleRay" x="188" y="94">θ₁</text>
+              <text class="svg-angle" id="diagramAngleWave" x="270" y="128">θ₁</text>
+            </svg>
+            <div class="visual-foot"><span>수직 관계를 함께 90° 돌리면</span><strong>각도는 그대로</strong></div>
+          </div>
+        </article>
+
+        <article class="insight">
+          <div class="insight-copy">
+            <span class="insight-number">02 / THE BEAT STAYS THE SAME</span>
+            <h3>매질이 바뀌어도 진동수는<br>왜 그대로일까?</h3>
+            <p id="frequencyExplanation">경계면의 한 점은 들어오는 파동의 박자에 맞춰 진동하며 옆 매질을 밀어냅니다. <strong>경계에서 위상이 이어져야 하므로</strong> 1초 동안 그 점을 지나는 마루의 수는 양쪽에서 같습니다. 시간 간격은 같지만 공간 간격은 달라집니다.</p>
+            <span class="insight-equation" id="frequencyEquation">fA = fB &nbsp; / &nbsp; v = fλ</span>
+          </div>
+          <div class="visual-panel compare-visual">
+            <div class="visual-heading"><span>마루 간격은 다르게, 지나는 박자는 같게</span><strong>f = 1.25 Hz</strong></div>
+            <div class="compare-row">
+              <span class="compare-name">A</span><div class="crest-track" id="compareTrackA"><span></span></div><span class="compare-value" id="compareValueA">1.12 m</span>
+            </div>
+            <div class="compare-row b" id="compareRowB">
+              <span class="compare-name">B</span><div class="crest-track" id="compareTrackB"><span></span></div><span class="compare-value" id="compareValueB">1.68 m</span>
+            </div>
+            <div class="shared-beat"><span class="beat-light" id="beatA"></span><span class="beat-connector"></span><span class="beat-light b" id="beatB"></span><span id="beatCaption">같은 주기로 경계를 지나는 마루</span></div>
+            <div class="compare-equations"><span id="equationA"><b>A</b> 1.40 = 1.25 × 1.12</span><span id="equationB"><b>B</b> 2.10 = 1.25 × 1.68</span></div>
+          </div>
+        </article>
+        <div class="takeaway"><span>THE ONE THING TO REMEMBER / 03</span><p>진동수는 그대로. <strong>속력이 커지면 파장도 길어집니다.</strong></p></div>
+      </section>
+    </main>
+
+    <footer class="footer"><span>WAVEFRONT LAB / PHYSICS II</span><span>DRAG TO ORBIT · PINCH TO ZOOM · TWO FINGERS TO PAN</span></footer>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    const $ = (id) => document.getElementById(id);
+    const ui = {
+      stage: $('sceneFrame'), mount: $('webgl'), angle: $('angleSlider'), speedA: $('speedASlider'), speedB: $('speedBSlider'),
+      angleOutput: $('angleOutput'), speedAOutput: $('speedAOutput'), speedBOutput: $('speedBOutput'),
+      resultAngle: $('resultAngle'), snellFormula: $('snellFormula'), lambdaLine: $('lambdaLine'), dynamicNote: $('dynamicNote'),
+      frequencyInvariant: $('frequencyInvariant'), beatCaption: $('beatCaption'), diagramSquareWave: $('diagramSquareWave'),
+      legendB: $('legendB'), resultKicker: $('resultKicker'), resultSymbol: $('resultSymbol'),
+      incidentInline: $('incidentInline'), refractedInline: $('refractedInline'),
+      frequencyExplanation: $('frequencyExplanation'), frequencyEquation: $('frequencyEquation'),
+      stageAlert: $('stageAlert'), play: $('playButton'), timeSlider: $('timeSlider'), timeCurrent: $('timeCurrent'),
+      resetView: $('resetView'), resetParameters: $('resetParameters'),
+      trackA: $('compareTrackA'), trackB: $('compareTrackB'), rowB: $('compareRowB'),
+      valueA: $('compareValueA'), valueB: $('compareValueB'), equationA: $('equationA'), equationB: $('equationB'),
+      beatA: $('beatA'), beatB: $('beatB'), diagramCurrent: $('diagramCurrent'),
+      diagramWave: $('diagramWave'), diagramRay: $('diagramRay'), diagramArcRay: $('diagramArcRay'), diagramArcWave: $('diagramArcWave'),
+      diagramAngleRay: $('diagramAngleRay'), diagramAngleWave: $('diagramAngleWave'),
+      diagramWaveLabel: $('diagramWaveLabel'), diagramDirectionLabel: $('diagramDirectionLabel'),
+      anchors: {
+        a: $('anchorA'), b: $('anchorB'), normal: $('anchorNormal'), boundary: $('anchorBoundary'),
+        incident: $('anchorIncident'), refracted: $('anchorRefracted'), waveA: $('anchorWaveA'), waveB: $('anchorWaveB'), reflect: $('anchorReflect')
+      }
+    };
+    const F = 1.25;
+    const DURATION = 12;
+    const W = 11.6;
+    const TAU = Math.PI * 2;
+    const state = {
+      angle: 28, vA: 1.4, vB: 2.1, thetaA: 0, thetaB: 0, lambdaA: 0, lambdaB: 0,
+      tir: false, time: 0, playing: !window.matchMedia('(prefers-reduced-motion: reduce)').matches, dirty: true
+    };
+
+    let renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    } catch (error) {
+      ui.mount.innerHTML = '<p style="padding:35px;color:#cde6e3">이 기기에서는 WebGL 3D 화면을 시작할 수 없습니다. 다른 브라우저에서 열어 주세요.</p>';
+    }
+
+    if (renderer) {
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.8));
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.3;
+      renderer.domElement.setAttribute('aria-label', '세워진 수조를 드래그하여 360도 회전하고 두 손가락으로 확대, 축소, 이동하세요');
+      renderer.domElement.setAttribute('tabindex', '0');
+      ui.mount.replaceChildren(renderer.domElement);
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color('#091b25');
+      scene.fog = new THREE.Fog('#091b25', 30, 65);
+      const camera = new THREE.PerspectiveCamera(35, 1, .1, 100);
+      camera.up.set(0, 1, 0);
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = .075;
+      controls.enableRotate = true;
+      controls.enableZoom = true;
+      controls.enablePan = true;
+      controls.minDistance = 5;
+      controls.maxDistance = 42;
+      controls.minPolarAngle = .035;
+      controls.maxPolarAngle = Math.PI - .035;
+      controls.rotateSpeed = .72;
+      controls.zoomSpeed = .88;
+      controls.panSpeed = .8;
+      controls.screenSpacePanning = true;
+      controls.touches.ONE = THREE.TOUCH.ROTATE;
+      controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
+      controls.listenToKeyEvents(renderer.domElement);
+      let cameraMoved = false;
+      let fittedDistance = 0;
+      controls.addEventListener('start', () => { cameraMoved = true; });
+
+      scene.add(new THREE.AmbientLight(0x9bb9d3, 2.0));
+      const keyLight = new THREE.DirectionalLight(0xc6f7ed, 2.0);
+      keyLight.position.set(-5, 8, 10);
+      scene.add(keyLight);
+      const sideLight = new THREE.DirectionalLight(0xffba81, 1.0);
+      sideLight.position.set(8, -2, -3);
+      scene.add(sideLight);
+      const tank = new THREE.Group();
+      scene.add(tank);
+
+      const basic = (color, opacity = 1) => new THREE.MeshBasicMaterial({
+        color, transparent: opacity < 1, opacity, depthWrite: opacity === 1, side: THREE.DoubleSide, toneMapped: false
+      });
+      const metal = new THREE.MeshStandardMaterial({ color: 0x597985, metalness: .63, roughness: .35 });
+      const darkMetal = new THREE.MeshStandardMaterial({ color: 0x17323f, metalness: .38, roughness: .55 });
+      const paleMetal = new THREE.MeshStandardMaterial({ color: 0xa0bec0, metalness: .56, roughness: .31 });
+      const cube = (width, height, depth, x, y, z, material, parent = tank) => {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
+        mesh.position.set(x, y, z);
+        parent.add(mesh);
+        return mesh;
+      };
+      const random = (() => { let seed = 841721; return () => ((seed = (1664525 * seed + 1013904223) >>> 0) / 4294967296); })();
+      const voxelGeometry = new THREE.BoxGeometry(1, 1, 1);
+      const dummy = new THREE.Object3D();
+      function voxelBatch(items, material) {
+        const mesh = new THREE.InstancedMesh(voxelGeometry, material, items.length);
+        const tint = new THREE.Color();
+        items.forEach((item, index) => {
+          dummy.position.set(item.x, item.y, item.z);
+          dummy.rotation.set(0, 0, item.rotation || 0);
+          dummy.scale.set(item.w, item.h, item.d);
+          dummy.updateMatrix();
+          mesh.setMatrixAt(index, dummy.matrix);
+          mesh.setColorAt(index, tint.set(item.color));
+        });
+        mesh.instanceMatrix.needsUpdate = true;
+        if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+        tank.add(mesh);
+        return mesh;
+      }
+
+      // The upright tank is a shallow display box; its front face is the x-y wave diagram.
+      cube(W + .16, 3.85, .05, 0, 1.925, -1.075, basic('#164552', .69));
+      cube(W + .16, 3.85, .05, 0, -1.925, -1.075, basic('#343a57', .7));
+      cube(W + .12, 3.85, 2.08, 0, 1.925, 0, basic('#60cbbf', .027));
+      cube(W + .12, 3.85, 2.08, 0, -1.925, 0, basic('#e49c86', .026));
+      cube(W + .24, 7.9, .018, 0, 0, 1.105, basic('#d7f6ee', .035));
+      for (const x of [-5.92, 5.92]) {
+        for (const z of [-1.11, 1.11]) cube(.095, 8.02, .12, x, 0, z, metal);
+      }
+      for (const y of [-3.99, 3.99]) {
+        for (const z of [-1.11, 1.11]) cube(11.99, .11, .13, 0, y, z, metal);
+      }
+      for (const x of [-5.92, 5.92]) {
+        for (const y of [-3.99, 3.99]) {
+          cube(.16, .16, 2.32, x, y, 0, darkMetal);
+          cube(.23, .23, .21, x, y, 1.13, paleMetal);
+        }
+      }
+      cube(12.45, .24, 2.55, 0, -4.18, 0, darkMetal);
+      cube(12.19, .035, 2.46, 0, -4.042, 0, basic('#538b93', .8));
+      cube(11.73, .022, .025, 0, 3.76, 1.175, basic('#b5f4e9', .55));
+      cube(11.73, .022, .025, 0, -3.76, 1.175, basic('#e1b298', .37));
+
+      const gridPoints = [];
+      for (let x = -5.5; x <= 5.51; x += .5) gridPoints.push(x, -3.8, -1.022, x, 3.8, -1.022);
+      for (let y = -3.5; y <= 3.51; y += .5) gridPoints.push(-5.73, y, -1.022, 5.73, y, -1.022);
+      const gridGeometry = new THREE.BufferGeometry();
+      gridGeometry.setAttribute('position', new THREE.Float32BufferAttribute(gridPoints, 3));
+      tank.add(new THREE.LineSegments(gridGeometry, new THREE.LineBasicMaterial({ color: 0x9dccd0, transparent: true, opacity: .105, depthWrite: false })));
+
+      const wallPixels = [];
+      for (let i = 0; i < 390; i++) {
+        const x = (random() - .5) * 11.3;
+        const y = (random() - .5) * 7.45;
+        if (Math.abs(x) < 3.65 && Math.abs(y) < 2.35 && random() < .87) continue;
+        const s = .055 + random() * .17;
+        wallPixels.push({ x, y, z: -.995 + random() * .06, w: s, h: s * (.45 + random()), d: .035, color: y > 0 ? (random() > .5 ? '#6cc4be' : '#9ad9da') : (random() > .5 ? '#bf94a8' : '#82a8ba') });
+      }
+      voxelBatch(wallPixels, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .28, depthWrite: false }));
+
+      const bed = [];
+      for (let layer = 0; layer < 5; layer++) {
+        for (let col = 0; col < 65; col++) {
+          const x = -5.7 + col * .178;
+          const height = .13 + random() * .12 + (Math.abs(x) > 3.5 ? random() * .16 : 0);
+          bed.push({ x, y: -3.79 + height / 2 + (layer % 2) * .018, z: -.81 + layer * .37, w: .17, h: height, d: .31, color: ['#3b5e69', '#557783', '#334b65', '#71838c'][Math.floor(random() * 4)] });
+        }
+      }
+      voxelBatch(bed, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .9, metalness: .04 }));
+
+      const crystals = [];
+      for (const cluster of [
+        { x: -5.02, z: -.32, colors: ['#69dec5', '#a3f6dc', '#488fa0'] },
+        { x: 4.87, z: -.43, colors: ['#e8a985', '#ffd09c', '#aa7897'] },
+        { x: -4.18, z: -.84, colors: ['#7ed0d5', '#a9ece5', '#538ea2'] },
+        { x: 5.35, z: .24, colors: ['#d4a6a5', '#fad1a6', '#986fa0'] }
+      ]) {
+        for (let stem = 0; stem < 13; stem++) {
+          const sx = cluster.x + (random() - .5) * 1.33;
+          const sz = cluster.z + (random() - .5) * .65;
+          const levels = 2 + Math.floor(random() * 7);
+          for (let level = 0; level < levels; level++) {
+            const size = .12 + random() * .11;
+            crystals.push({ x: sx + Math.sin(level * .9 + stem) * .065, y: -3.59 + level * .17, z: sz, w: size, h: .17, d: size, color: cluster.colors[Math.floor(random() * cluster.colors.length)] });
+            if (level > 2 && level % 3 === 0 && random() > .35) {
+              crystals.push({ x: sx + .19 * (random() > .5 ? 1 : -1), y: -3.59 + level * .17, z: sz, w: .14, h: .13, d: .14, color: cluster.colors[Math.floor(random() * cluster.colors.length)] });
+            }
+          }
+        }
+      }
+      voxelBatch(crystals, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .38, metalness: .12, emissive: 0x17352e, emissiveIntensity: .2 }));
+
+      const driftingPixels = [];
+      for (let i = 0; i < 135; i++) {
+        const x = (random() - .5) * 10.9;
+        const y = (random() - .5) * 6.95;
+        if (Math.abs(x) < 2.4 && Math.abs(y) < 2.1 && random() < .82) continue;
+        const s = .025 + random() * .055;
+        driftingPixels.push({ x, y, z: -.72 + random() * 1.33, w: s, h: s, d: s, color: y > 0 ? '#9beedf' : '#e9c09f' });
+      }
+      voxelBatch(driftingPixels, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .47, depthWrite: false }));
+
+      const topStuds = [];
+      for (let i = 0; i < 41; i++) {
+        const x = -5.45 + i * .2725;
+        topStuds.push({ x, y: 3.99, z: 1.17, w: .08, h: .035, d: .08, color: i % 7 === 0 ? '#bdf9e4' : '#577f88' });
+      }
+      voxelBatch(topStuds, basic('#ffffff', .9));
+
+      cube(11.36, .018, .045, 0, 0, .88, basic('#dbf5df', .85));
+      cube(11.36, .12, .02, 0, 0, .84, basic('#9ceade', .12));
+      const seam = [];
+      for (let i = 0; i < 46; i++) seam.push({ x: -5.55 + i * .247, y: 0, z: .94, w: .058, h: .058, d: .052, color: i % 4 === 0 ? '#f9d5a1' : '#a8efdf' });
+      voxelBatch(seam, basic('#ffffff', .82));
+      const beaconMaterial = basic('#fff0bb', .95);
+      const beacon = cube(.125, .125, .125, 0, 0, 1.43, beaconMaterial);
+      beacon.rotation.z = Math.PI / 4;
+      const normalGeometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, -3.06, 1.12), new THREE.Vector3(0, 3.06, 1.12)]);
+      const normal = new THREE.Line(normalGeometry, new THREE.LineDashedMaterial({ color: 0xe8f2e9, dashSize: .12, gapSize: .105, transparent: true, opacity: .73, depthWrite: false }));
+      normal.computeLineDistances();
+      tank.add(normal);
+
+      const yAxis = new THREE.Vector3(0, 1, 0);
+      const waveBodyGeometry = new THREE.CylinderGeometry(.024, .024, 1, 6);
+      const waveGlowGeometry = new THREE.CylinderGeometry(.085, .085, 1, 6);
+      function wavePool(color, opacity = 1) {
+        const bodyMaterial = basic(color, opacity);
+        const glowMaterial = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .14 * opacity, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false });
+        const pool = [];
+        for (let i = 0; i < 34; i++) {
+          const glow = new THREE.Mesh(waveGlowGeometry, glowMaterial);
+          const body = new THREE.Mesh(waveBodyGeometry, bodyMaterial);
+          glow.visible = false;
+          body.visible = false;
+          tank.add(glow, body);
+          pool.push({ glow, body });
+        }
+        const beads = new THREE.InstancedMesh(new THREE.BoxGeometry(.105, .105, .075), basic(color, .8 * opacity), 1400);
+        beads.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        beads.frustumCulled = false;
+        beads.count = 0;
+        tank.add(beads);
+        return { pool, beads };
+      }
+      const waveA = wavePool('#a1fff0');
+      const waveB = wavePool('#ffd099');
+      const waveReflection = wavePool('#f6c18c', .49);
+
+      function setBetween(mesh, start, end) {
+        const direction = new THREE.Vector3().subVectors(end, start);
+        mesh.position.copy(start).add(end).multiplyScalar(.5);
+        mesh.quaternion.setFromUnitVectors(yAxis, direction.clone().normalize());
+        mesh.scale.set(1, direction.length(), 1);
+      }
+      function makeArrow(color) {
+        const group = new THREE.Group();
+        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(.028, .028, 1, 6), basic(color, .94));
+        const halo = new THREE.Mesh(new THREE.CylinderGeometry(.08, .08, 1, 6), basic(color, .1));
+        const head = new THREE.Mesh(new THREE.ConeGeometry(.13, .29, 5), basic(color));
+        group.add(halo, shaft, head);
+        tank.add(group);
+        return { group, shaft, halo, head };
+      }
+      function setArrow(arrow, from, to) {
+        setBetween(arrow.shaft, from, to);
+        setBetween(arrow.halo, from, to);
+        const direction = new THREE.Vector3().subVectors(to, from).normalize();
+        arrow.head.position.copy(from).lerp(to, .8);
+        arrow.head.quaternion.setFromUnitVectors(yAxis, direction);
+      }
+      const arrowA = makeArrow('#ecfff1');
+      const arrowB = makeArrow('#ffe7b6');
+      const arrowReflection = makeArrow('#ffcd9a');
+
+      function arcGeometry(radius, start, end) {
+        const points = [];
+        for (let i = 0; i <= 28; i++) {
+          const angle = start + (end - start) * i / 28;
+          points.push(new THREE.Vector3(Math.cos(angle) * radius, Math.sin(angle) * radius, 0));
+        }
+        return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 32, .022, 5, false);
+      }
+      function makeArc(color, radius) {
+        const mesh = new THREE.Mesh(arcGeometry(radius, 0, .1), basic(color));
+        mesh.position.z = 1.38;
+        tank.add(mesh);
+        return mesh;
+      }
+      function changeArc(mesh, radius, start, end) {
+        mesh.geometry.dispose();
+        mesh.geometry = arcGeometry(radius, start, end);
+      }
+      const arcA = makeArc('#a1fff0', .83);
+      const arcB = makeArc('#ffd099', .9);
+      const pairedArcA = makeArc('#f7d4a4', .55);
+      const pairedArcB = makeArc('#f7d4a4', .55);
+
+      // Clip an infinite wavefront line against one half of the tank.
+      function clipLine(px, py, dx, dy, left, right, bottom, top) {
+        let low = -Infinity;
+        let high = Infinity;
+        function axis(position, direction, min, max) {
+          if (Math.abs(direction) < 1e-9) return position >= min && position <= max;
+          let a = (min - position) / direction;
+          let b = (max - position) / direction;
+          if (a > b) [a, b] = [b, a];
+          low = Math.max(low, a);
+          high = Math.min(high, b);
+          return low <= high;
+        }
+        if (!axis(px, dx, left, right) || !axis(py, dy, bottom, top)) return null;
+        return { x1: px + low * dx, y1: py + low * dy, x2: px + high * dx, y2: py + high * dy };
+      }
+      function hidePool(target) {
+        target.pool.forEach(({ body, glow }) => { body.visible = false; glow.visible = false; });
+        target.beads.count = 0;
+      }
+      function drawWavefronts(target, wavelength, angle, sign, bottom, top) {
+        const nx = Math.sin(angle);
+        const ny = sign * Math.cos(angle);
+        const tx = Math.cos(angle);
+        const ty = -sign * Math.sin(angle);
+        let used = 0;
+        let beadCount = 0;
+        for (let n = -42; n <= 42; n++) {
+          const phaseDistance = wavelength * (n + F * state.time);
+          const part = clipLine(phaseDistance * nx, phaseDistance * ny, tx, ty, -5.69, 5.69, bottom, top);
+          if (!part) continue;
+          const length = Math.hypot(part.x2 - part.x1, part.y2 - part.y1);
+          if (length < .12 || used >= target.pool.length) continue;
+          const from = new THREE.Vector3(part.x1, part.y1, .52);
+          const to = new THREE.Vector3(part.x2, part.y2, .52);
+          const { body, glow } = target.pool[used++];
+          body.visible = true;
+          glow.visible = true;
+          setBetween(body, from, to);
+          setBetween(glow, from, to);
+          const samples = Math.floor(length / .38);
+          for (let j = 0; j < samples && beadCount < 1400; j++) {
+            const u = (j + .5) / samples;
+            dummy.position.set(THREE.MathUtils.lerp(part.x1, part.x2, u), THREE.MathUtils.lerp(part.y1, part.y2, u), .6);
+            dummy.rotation.set(0, 0, Math.atan2(ty, tx));
+            const s = j % 5 === 0 ? 1.07 : .64;
+            dummy.scale.set(s, s, s);
+            dummy.updateMatrix();
+            target.beads.setMatrixAt(beadCount++, dummy.matrix);
+          }
+        }
+        for (let i = used; i < target.pool.length; i++) {
+          target.pool[i].body.visible = false;
+          target.pool[i].glow.visible = false;
+        }
+        target.beads.count = beadCount;
+        target.beads.instanceMatrix.needsUpdate = true;
+      }
+      function updateWaves() {
+        drawWavefronts(waveA, state.lambdaA, state.thetaA, -1, 0, 3.71);
+        if (state.tir) {
+          hidePool(waveB);
+          drawWavefronts(waveReflection, state.lambdaA, state.thetaA, 1, 0, 3.71);
+        } else {
+          drawWavefronts(waveB, state.lambdaB, state.thetaB, -1, -3.71, 0);
+          hidePool(waveReflection);
+        }
+
+        // A fixed point on the boundary oscillates with the same frequency on both sides.
+        const pulse = .5 + .5 * Math.cos(TAU * F * state.time);
+        beacon.scale.setScalar(.73 + .45 * pulse);
+        beaconMaterial.opacity = .55 + .45 * pulse;
+        const gapA = Math.max(34, Math.min(120, state.lambdaA * 49));
+        const gapB = Math.max(34, Math.min(120, state.lambdaB * 49));
+        ui.trackA.style.setProperty('--gap', `${gapA}px`);
+        ui.trackB.style.setProperty('--gap', `${gapB}px`);
+        ui.trackA.style.backgroundPositionX = `${30 + state.time * F * gapA}px`;
+        ui.trackB.style.backgroundPositionX = `${30 + state.time * F * gapB}px`;
+        ui.beatA.style.opacity = String(.38 + .62 * pulse);
+        ui.beatB.style.opacity = String(state.tir ? .18 : .38 + .62 * pulse);
+        ui.beatA.style.transform = `scale(${.8 + .44 * pulse})`;
+        ui.beatB.style.transform = `scale(${state.tir ? .7 : .8 + .44 * pulse})`;
+      }
+
+      function nearestCross(target) {
+        const n = Math.round(target * Math.sin(state.thetaA) / state.lambdaA - F * state.time);
+        return state.lambdaA * (n + F * state.time) / Math.sin(state.thetaA);
+      }
+      let waveCrossA = -3;
+      let waveCrossB = 3;
+      let showPairA = true;
+      let showPairB = true;
+      function updateCrosses() {
+        waveCrossA = nearestCross(-3.4);
+        waveCrossB = nearestCross(3.4);
+        showPairA = waveCrossA > -5.15 && waveCrossA < -1.65;
+        showPairB = !state.tir && waveCrossB > 1.65 && waveCrossB < 5.15;
+        pairedArcA.visible = showPairA;
+        pairedArcB.visible = showPairB;
+        pairedArcA.position.x = waveCrossA;
+        pairedArcB.position.x = waveCrossB;
+      }
+      function updateGeometry() {
+        const a = state.thetaA;
+        const b = state.thetaB;
+        setArrow(arrowA, new THREE.Vector3(-2.82 * Math.sin(a), 2.82 * Math.cos(a), 1.24), new THREE.Vector3(0, 0, 1.24));
+        changeArc(arcA, .87, Math.PI / 2, Math.PI / 2 + a);
+        changeArc(pairedArcA, .55, 0, a);
+        if (state.tir) {
+          arrowB.group.visible = false;
+          arcB.visible = false;
+          pairedArcB.visible = false;
+          arrowReflection.group.visible = true;
+          setArrow(arrowReflection, new THREE.Vector3(0, 0, 1.24), new THREE.Vector3(2.82 * Math.sin(a), 2.82 * Math.cos(a), 1.24));
+        } else {
+          arrowB.group.visible = true;
+          arcB.visible = true;
+          arrowReflection.group.visible = false;
+          setArrow(arrowB, new THREE.Vector3(0, 0, 1.24), new THREE.Vector3(2.82 * Math.sin(b), -2.82 * Math.cos(b), 1.24));
+          changeArc(arcB, .94, -Math.PI / 2, -Math.PI / 2 + b);
+          changeArc(pairedArcB, .55, Math.PI, Math.PI + b);
+        }
+        updateDiagram();
+      }
+
+      function arcPath(cx, cy, radius, angle, leftSide) {
+        const points = [];
+        for (let i = 0; i <= 24; i++) {
+          const t = angle * i / 24;
+          const x = leftSide ? cx - radius * Math.sin(t) : cx + radius * Math.cos(t);
+          const y = leftSide ? cy - radius * Math.cos(t) : cy - radius * Math.sin(t);
+          points.push(`${i ? 'L' : 'M'}${x.toFixed(2)} ${y.toFixed(2)}`);
+        }
+        return points.join(' ');
+      }
+      function updateDiagram() {
+        const a = state.thetaA;
+        const cx = 220;
+        const cy = 156;
+        const length = 147;
+        const rayX = -Math.sin(a);
+        const rayY = -Math.cos(a);
+        const frontX = Math.cos(a);
+        const frontY = -Math.sin(a);
+        ui.diagramWave.setAttribute('x1', cx - length * Math.cos(a));
+        ui.diagramWave.setAttribute('y1', cy + length * Math.sin(a));
+        ui.diagramWave.setAttribute('x2', cx + length * Math.cos(a));
+        ui.diagramWave.setAttribute('y2', cy - length * Math.sin(a));
+        ui.diagramRay.setAttribute('x1', cx - 115 * Math.sin(a));
+        ui.diagramRay.setAttribute('y1', cy - 115 * Math.cos(a));
+        ui.diagramWaveLabel.setAttribute('x', cx + 130 * Math.cos(a) + 4);
+        ui.diagramWaveLabel.setAttribute('y', cy - 130 * Math.sin(a) - 15);
+        ui.diagramDirectionLabel.setAttribute('x', cx - 120 * Math.sin(a) - 65);
+        ui.diagramDirectionLabel.setAttribute('y', cy - 120 * Math.cos(a) - 12);
+        ui.diagramArcRay.setAttribute('d', arcPath(cx, cy, 48, a, true));
+        ui.diagramArcWave.setAttribute('d', arcPath(cx, cy, 48, a, false));
+        ui.diagramSquareWave.setAttribute('d', `M${cx + 15 * rayX} ${cy + 15 * rayY} L${cx + 15 * (rayX + frontX)} ${cy + 15 * (rayY + frontY)} L${cx + 15 * frontX} ${cy + 15 * frontY}`);
+        ui.diagramAngleRay.setAttribute('x', cx - 68 * Math.sin(a / 2) - 15);
+        ui.diagramAngleRay.setAttribute('y', cy - 68 * Math.cos(a / 2) + 3);
+        ui.diagramAngleWave.setAttribute('x', cx + 64 * Math.cos(a / 2));
+        ui.diagramAngleWave.setAttribute('y', cy - 64 * Math.sin(a / 2) + 2);
+        ui.diagramCurrent.textContent = `θ₁ = ${state.angle}°`;
+      }
+
+      const anchorPositions = {
+        a: () => [-4.88, 2.83, 1.25],
+        b: () => [-4.88, -2.63, 1.25],
+        normal: () => [.45, 2.95, 1.48],
+        boundary: () => [4.52, .27, 1.45],
+        incident: () => [-1.04 * Math.sin(state.thetaA / 2) - .25, 1.12 * Math.cos(state.thetaA / 2) + .1, 1.52],
+        refracted: () => [1.13 * Math.sin(state.thetaB / 2) + .24, -1.1 * Math.cos(state.thetaB / 2) - .15, 1.52],
+        waveA: () => [waveCrossA + .88 * Math.cos(state.thetaA / 2), .83 * Math.sin(state.thetaA / 2) + .28, 1.5],
+        waveB: () => [waveCrossB - .84 * Math.cos(state.thetaB / 2), -.85 * Math.sin(state.thetaB / 2) - .25, 1.5],
+        reflect: () => [1.91 * Math.sin(state.thetaA) + .2, 1.91 * Math.cos(state.thetaA), 1.5]
+      };
+      const projected = new THREE.Vector3();
+      function updateAnchors() {
+        const width = ui.stage.clientWidth;
+        const height = ui.stage.clientHeight;
+        for (const [key, element] of Object.entries(ui.anchors)) {
+          const visible = (key !== 'refracted' && key !== 'waveB' || !state.tir) && (key !== 'reflect' || state.tir)
+            && (key !== 'waveA' || showPairA) && (key !== 'waveB' || showPairB);
+          if (!visible) { element.hidden = true; continue; }
+          const [x, y, z] = anchorPositions[key]();
+          projected.set(x, y, z).project(camera);
+          const px = (projected.x * .5 + .5) * width;
+          const py = (-projected.y * .5 + .5) * height;
+          const inside = projected.z > -1 && projected.z < 1 && px > 8 && px < width - 8 && py > 31 && py < height - 20;
+          element.hidden = !inside;
+          if (inside) {
+            element.style.left = `${px}px`;
+            element.style.top = `${py}px`;
+          }
+        }
+      }
+
+      function setSliderFill(input) {
+        const fraction = (Number(input.value) - Number(input.min)) / (Number(input.max) - Number(input.min));
+        input.style.setProperty('--fill', `${fraction * 100}%`);
+      }
+      function updatePhysics() {
+        state.thetaA = THREE.MathUtils.degToRad(state.angle);
+        state.lambdaA = state.vA / F;
+        state.lambdaB = state.vB / F;
+        const sineB = Math.sin(state.thetaA) * state.vB / state.vA;
+        state.tir = sineB > 1 + 1e-9;
+        state.thetaB = state.tir ? 0 : Math.asin(Math.min(1, sineB));
+        ui.angleOutput.textContent = `${state.angle}°`;
+        ui.speedAOutput.textContent = `${state.vA.toFixed(1)} m/s`;
+        ui.speedBOutput.textContent = `${state.vB.toFixed(1)} m/s`;
+        ui.incidentInline.textContent = `${state.angle}° 입사각`;
+        ui.refractedInline.textContent = state.tir ? '' : `${THREE.MathUtils.radToDeg(state.thetaB).toFixed(1)}° 굴절각`;
+        [ui.angle, ui.speedA, ui.speedB].forEach(setSliderFill);
+        ui.resultAngle.textContent = state.tir ? '전반사' : `${THREE.MathUtils.radToDeg(state.thetaB).toFixed(1)}°`;
+        ui.resultAngle.classList.toggle('is-tir', state.tir);
+        ui.resultKicker.textContent = state.tir ? '굴절파 상태' : '계산된 굴절각';
+        ui.resultSymbol.textContent = state.tir ? 'TIR' : 'θ₂';
+        ui.snellFormula.textContent = state.tir ? '필요한 sin θ₂ > 1 (불가능)' : 'sin θ₁ / vA = sin θ₂ / vB';
+        ui.legendB.textContent = state.tir ? 'A 반사 파면' : 'B 파면';
+        ui.frequencyInvariant.textContent = state.tir ? 'f입사 = f반사 = 1.25 Hz' : 'fA = fB = 1.25 Hz';
+        ui.beatCaption.textContent = state.tir ? '전반사: 반사파도 같은 박자로 진동' : '같은 주기로 경계를 지나는 마루';
+        ui.frequencyExplanation.innerHTML = state.tir
+          ? '전반사가 일어나면 B로 전달되는 진행파는 없습니다. 그래도 <strong>입사파와 반사파는 경계의 같은 박자를 따라 같은 진동수</strong>를 가집니다. 입사각이나 B의 속력을 낮추면 다시 굴절파를 관찰할 수 있습니다.'
+          : '경계면의 한 점은 들어오는 파동의 박자에 맞춰 진동하며 옆 매질을 밀어냅니다. <strong>경계에서 위상이 이어져야 하므로</strong> 1초 동안 그 점을 지나는 마루의 수는 양쪽에서 같습니다. 시간 간격은 같지만 공간 간격은 달라집니다.';
+        ui.frequencyEquation.textContent = state.tir ? 'f입사 = f반사  /  v = fλ' : 'fA = fB  /  v = fλ';
+        ui.lambdaLine.textContent = `λA = ${state.lambdaA.toFixed(2)} m  ·  λB = ${state.lambdaB.toFixed(2)} m`;
+        ui.valueA.textContent = `${state.lambdaA.toFixed(2)} m`;
+        ui.valueB.textContent = state.tir ? '전달 없음' : `${state.lambdaB.toFixed(2)} m`;
+        ui.equationA.innerHTML = `<b>A</b> ${state.vA.toFixed(2)} = 1.25 × ${state.lambdaA.toFixed(2)}`;
+        ui.equationB.innerHTML = `<b>B</b> ${state.vB.toFixed(2)} = 1.25 × ${state.lambdaB.toFixed(2)}`;
+        ui.rowB.classList.toggle('is-inactive', state.tir);
+        ui.stageAlert.hidden = !state.tir;
+        if (state.tir) {
+          ui.dynamicNote.textContent = '임계각을 넘었습니다. B의 λ는 그 매질에서 진행파가 생길 때의 값이며, 지금은 전달 파면이 없고 A로 반사됩니다.';
+        } else if (Math.abs(state.vA - state.vB) < .001) {
+          ui.dynamicNote.textContent = '두 속력이 같아 파장도 같고 진행 방향도 꺾이지 않습니다. 진동수는 여전히 같습니다.';
+        } else if (state.vB > state.vA) {
+          ui.dynamicNote.textContent = 'B에서 속력이 더 크므로 파장도 더 길고, 굴절각도 더 큽니다.';
+        } else {
+          ui.dynamicNote.textContent = 'B에서 속력이 더 작으므로 파장도 더 짧고, 굴절각도 더 작습니다.';
+        }
+        updateGeometry();
+        state.dirty = true;
+      }
+      function updateTimeDisplay() {
+        const seconds = Math.floor(state.time);
+        const tenths = Math.floor((state.time - seconds) * 10 + 1e-7);
+        ui.timeCurrent.textContent = `00:${String(seconds).padStart(2, '0')}.${tenths}`;
+        ui.timeSlider.value = String(state.time);
+        ui.timeSlider.style.setProperty('--progress', `${state.time / DURATION * 100}%`);
+      }
+      function updatePlayButton() {
+        ui.play.classList.toggle('is-paused', !state.playing);
+        ui.play.setAttribute('aria-label', state.playing ? '일시정지' : '재생');
+        ui.play.setAttribute('aria-pressed', String(state.playing));
+      }
+
+      function resize() {
+        const width = ui.stage.clientWidth;
+        const height = ui.stage.clientHeight;
+        if (!width || !height) return;
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height, false);
+        if (!cameraMoved) {
+          resetCamera();
+        } else if (fittedDistance) {
+          const newDistance = getFittedDistance();
+          camera.position.sub(controls.target).multiplyScalar(newDistance / fittedDistance).add(controls.target);
+          fittedDistance = newDistance;
+          controls.update();
+        }
+        state.dirty = true;
+      }
+      function getFittedDistance() {
+        const aspect = ui.stage.clientWidth / ui.stage.clientHeight || 1;
+        const neededHeight = Math.max(9.05, 12.65 / aspect);
+        return neededHeight / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)) * 1.055;
+      }
+      function resetCamera() {
+        const distance = getFittedDistance();
+        controls.target.set(0, 0, 0);
+        camera.position.set(distance * .18, distance * .07, distance);
+        controls.update();
+        controls.saveState();
+        fittedDistance = distance;
+        cameraMoved = false;
+      }
+
+      ui.angle.addEventListener('input', () => { state.angle = Number(ui.angle.value); updatePhysics(); });
+      ui.speedA.addEventListener('input', () => { state.vA = Number(ui.speedA.value); updatePhysics(); });
+      ui.speedB.addEventListener('input', () => { state.vB = Number(ui.speedB.value); updatePhysics(); });
+      ui.play.addEventListener('click', () => { state.playing = !state.playing; updatePlayButton(); });
+      ui.timeSlider.addEventListener('input', () => {
+        state.time = Number(ui.timeSlider.value);
+        state.playing = false;
+        state.dirty = true;
+        updatePlayButton();
+        updateTimeDisplay();
+      });
+      ui.resetView.addEventListener('click', resetCamera);
+      ui.resetParameters.addEventListener('click', () => {
+        state.angle = 28; state.vA = 1.4; state.vB = 2.1; state.time = 0;
+        state.playing = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        ui.angle.value = '28'; ui.speedA.value = '1.4'; ui.speedB.value = '2.1';
+        updatePhysics(); updateTimeDisplay(); updatePlayButton();
+      });
+      window.addEventListener('keydown', (event) => {
+        if (event.code !== 'Space' || /INPUT|BUTTON/.test(document.activeElement.tagName)) return;
+        event.preventDefault();
+        state.playing = !state.playing;
+        updatePlayButton();
+      });
+      new ResizeObserver(resize).observe(ui.stage);
+      updatePhysics();
+      updatePlayButton();
+      updateTimeDisplay();
+      resize();
+
+      let previous = performance.now();
+      function animate(now) {
+        const delta = Math.min((now - previous) / 1000, .06);
+        previous = now;
+        if (state.playing) {
+          state.time = (state.time + delta) % DURATION;
+          updateTimeDisplay();
+          state.dirty = true;
+        }
+        if (state.dirty) {
+          updateWaves();
+          state.dirty = false;
+        }
+        updateCrosses();
+        controls.update();
+        updateAnchors();
+        renderer.render(scene, camera);
+        requestAnimationFrame(animate);
+      }
+      requestAnimationFrame(animate);
+    }
+  </script>
+</body>
+</html>

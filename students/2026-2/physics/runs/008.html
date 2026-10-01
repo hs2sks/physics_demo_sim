@@ -1,0 +1,1079 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><h1>안녕하세요</h1>
+<p><!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>오사카성 3D 지진 붕괴 & 태풍 기류 물리 시뮬레이터</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome 아이콘 CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js 및 OrbitControls CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700;800;900&display=swap');
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            overflow: hidden;
+            background-color: #0b1120;
+            margin: 0;
+            color: #f1f5f9;
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* 고급 Glassmorphism 패널 */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .pulse-danger {
+            animation: pulse-red 1.2s infinite alternate;
+        }
+
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.7); }
+            100% { box-shadow: 0 0 18px 6px rgba(244, 63, 94, 0.4); }
+        }
+
+        /* 커스텀 슬라이더 트랙 */
+        input[type=range] {
+            accent-color: #38bdf8;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen relative overflow-hidden">
+
+    <!-- 3D Canvas 영역 -->
+    <div id="canvas-container" class="absolute inset-0 z-0"></div>
+
+    <!-- 상단 대시보드 헤더 -->
+    <header class="absolute top-4 left-4 right-4 z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 pointer-events-none">
+        <!-- 타이틀 카드 -->
+        <div class="glass-panel p-4 rounded-2xl pointer-events-auto max-w-lg w-full md:w-auto">
+            <div class="inline-flex items-center gap-2 bg-amber-500/20 border border-amber-500/40 text-amber-300 px-3 py-1 rounded-full text-xs font-bold mb-1.5">
+                <i class="fa-solid fa-graduation-cap"></i> 물리 교과 연계 3D 구조물 시뮬레이터
+            </div>
+            <h1 class="text-xl md:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+                🏯 오사카성 지진 붕괴 & 태풍 기류 웹앱
+            </h1>
+            <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+                석축과 오사카성이 만나는 접촉점(Pivot $O$)을 기준으로 자중에 의한 
+                <b>회전 평형 및 순차적 붕괴</b>와 <b>공기역학적 수평 기류</b>를 실험하세요!
+            </p>
+        </div>
+
+        <!-- 버튼 조작부 -->
+        <div class="glass-panel p-2 rounded-2xl pointer-events-auto flex flex-wrap items-center gap-2 text-xs">
+            <button id="btn-earthquake" onclick="switchSimulationMode('earthquake')" class="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-extrabold rounded-xl transition-all flex items-center gap-2 shadow-lg">
+                <i class="fa-solid fa-house-crack"></i> 🌋 지진 붕괴 모드
+            </button>
+            <button id="btn-wind" onclick="switchSimulationMode('wind')" class="px-4 py-2.5 bg-slate-800 hover:bg-sky-600 text-slate-300 font-extrabold rounded-xl transition-all flex items-center gap-2">
+                <i class="fa-solid fa-tornado"></i> 🌪️ 태풍 기류 모드
+            </button>
+            <button onclick="rebuildCastleStructure()" class="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-colors flex items-center gap-1.5 shadow" title="오사카성 복원">
+                <i class="fa-solid fa-hammer"></i> 건물 재건축
+            </button>
+            <button id="btn-toggle-vectors" onclick="togglePhysicsVectors()" class="px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-colors flex items-center gap-1.5 shadow" title="회전축·힘의 팔·돌림힘 3D 시각화 온/오프">
+                <i class="fa-solid fa-compass-drafting"></i> 3D 물리 요소 표시
+            </button>
+            <button id="btn-sound" onclick="toggleAudioFx()" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-colors" title="사운드 온/오프">
+                <i id="icon-sound" class="fa-solid fa-volume-high text-emerald-400"></i>
+            </button>
+            <button onclick="resetCameraView()" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-colors" title="시점 초기화">
+                <i class="fa-solid fa-rotate-left"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- 좌측 하단 물리 제어 슬라이더 패널 -->
+    <div class="absolute bottom-4 left-4 z-10 w-full max-w-sm pointer-events-none">
+        <div class="glass-panel p-5 rounded-2xl pointer-events-auto shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-700/80 pb-2.5">
+                <h3 id="panel-title" class="font-bold text-sm text-white flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-rose-400"></i> 지진 파라미터 설정
+                </h3>
+                <span id="status-badge" class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-500/20 border border-emerald-500/40 text-emerald-400">
+                    구조적 안정 상태
+                </span>
+            </div>
+
+            <!-- [1] 지진 진도 슬라이더 -->
+            <div id="controls-earthquake" class="space-y-3">
+                <div>
+                    <div class="flex justify-between text-xs mb-1.5 font-semibold">
+                        <span class="text-slate-300"><i class="fa-solid fa-volcano text-rose-400 mr-1"></i> 지진의 힘 ($F_4$)</span>
+                        <span id="txt-eq-val" class="text-rose-400 font-bold">0 N (0 MN)</span>
+                    </div>
+                    <input type="range" id="slider-eq" min="0" max="220000000" value="0" step="5000000" oninput="handlePhysicsInputChange()"
+                        class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-rose-500">
+                    <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+                        <span>0 N</span>
+                        <span>110,000,000 N (50%)</span>
+                        <span>220,000,000 N (한계치)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- [2] 태풍 풍속 슬라이더 -->
+            <div id="controls-wind" class="space-y-3 hidden">
+                <div>
+                    <div class="flex justify-between text-xs mb-1.5 font-semibold">
+                        <span class="text-slate-300"><i class="fa-solid fa-wind text-sky-400 mr-1"></i> 태풍의 힘 ($F_3$)</span>
+                        <span id="txt-wind-val" class="text-sky-400 font-bold">0 N (0 MN)</span>
+                    </div>
+                    <input type="range" id="slider-wind" min="0" max="110000000" value="0" step="2500000" oninput="handlePhysicsInputChange()"
+                        class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sky-500">
+                    <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+                        <span>0 N</span>
+                        <span>55,000,000 N (50%)</span>
+                        <span>110,000,000 N (한계치)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 하단 석축 넓이 조절 (공통) -->
+            <div class="pt-2 border-t border-slate-700/80">
+                <div class="flex justify-between text-xs mb-1.5 font-semibold">
+                    <span class="text-slate-300"><i class="fa-solid fa-ruler-horizontal text-amber-400 mr-1"></i> 석축 하단 회전 반경 ($d_1 = r$)</span>
+                    <span id="txt-radius-val" class="text-amber-400 font-bold">22.0 m</span>
+                </div>
+                <input type="range" id="slider-radius" min="10" max="30" value="22" step="1" oninput="handlePhysicsInputChange()"
+                    class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500">
+            </div>
+        </div>
+    </div>
+
+    <!-- 우측 하단 실시간 수치 및 힘 분석 패널 -->
+    <div class="absolute bottom-4 right-4 z-10 w-full max-w-md pointer-events-none hidden sm:block">
+        <div class="glass-panel p-4 rounded-2xl pointer-events-auto shadow-2xl space-y-2.5 text-xs">
+            <h4 class="font-bold text-white border-b border-slate-700 pb-2 flex items-center justify-between">
+                <span class="flex items-center gap-1.5"><i class="fa-solid fa-calculator text-cyan-400"></i> 돌림힘($\tau$) & 4개 힘 벡터 분석</span>
+                <span class="text-[10px] text-slate-400 font-normal">기준 단위: $\text{N}$, $\text{m}$, $\text{N}\cdot\text{m}$</span>
+            </h4>
+            
+            <!-- 회전축 상세 정보 -->
+            <div class="bg-slate-900/70 p-2.5 rounded-xl space-y-1 border border-slate-700/60">
+                <div class="flex justify-between items-center text-[11px]">
+                    <span class="text-slate-300 font-semibold"><i class="fa-solid fa-circle-dot text-amber-400 mr-1"></i> 회전축(기준점 $O$):</span>
+                    <span id="calc-pivot" class="font-bold text-amber-300">석축 하단 접촉점 / 회전 반경 22m (O)</span>
+                </div>
+            </div>
+
+            <!-- F1, F2, F3, F4 상세 힘 목록 -->
+            <div class="space-y-1.5 bg-slate-950/50 p-2.5 rounded-xl border border-slate-800">
+                <div class="flex justify-between items-center text-[11px]">
+                    <span class="text-emerald-400 font-semibold">힘1 ($F_1$ 중력):</span>
+                    <span id="calc-f1" class="font-bold text-emerald-300">100,000,000 N | 거리 22 m | 방향: 반시계</span>
+                </div>
+                <div class="flex justify-between items-center text-[11px]">
+                    <span class="text-teal-400 font-semibold">힘2 ($F_2$ 수직항력):</span>
+                    <span id="calc-f2" class="font-bold text-teal-300">100,000,000 N | 거리 22 m | 방향: 반시계 (평형)</span>
+                </div>
+                <div class="flex justify-between items-center text-[11px]">
+                    <span id="label-f-ext" class="text-rose-400 font-semibold">작용 외력 ($F_4$ 지진):</span>
+                    <span id="calc-f-ext" class="font-bold text-rose-300">0 N | 거리 10 m | 방향: 시계</span>
+                </div>
+            </div>
+            
+            <!-- 복원 돌림힘 -->
+            <div class="flex justify-between items-center py-1 border-b border-slate-800">
+                <div>
+                    <span class="text-slate-200 font-semibold">복원 돌림힘 ($\tau_{\text{복원}} = F_1 \cdot d_1$):</span>
+                    <span class="text-[10px] text-emerald-400 block font-normal">양의 부호($+$) / 반시계 방향(CCW) 복원</span>
+                </div>
+                <span id="calc-tr" class="font-bold text-emerald-400 text-sm">+2,200 MN·m</span>
+            </div>
+
+            <!-- 전도 돌림힘 -->
+            <div class="flex justify-between items-center py-1 border-b border-slate-800">
+                <div>
+                    <span class="text-slate-200 font-semibold">전도 돌림힘 ($\tau_{\text{전도}} = -F_{\text{외력}} \cdot d_{\text{외력}}$):</span>
+                    <span class="text-[10px] text-rose-400 block font-normal">음의 부호($-$) / 시계 방향(CW) 붕괴</span>
+                </div>
+                <span id="calc-to" class="font-bold text-rose-400 text-sm">-0 MN·m</span>
+            </div>
+
+            <!-- 알짜 돌림힘 및 평형 상태 -->
+            <div class="bg-indigo-950/60 p-2.5 rounded-xl border border-indigo-500/40 space-y-1.5">
+                <div class="flex justify-between items-center">
+                    <span class="font-bold text-slate-100">알짜 돌림힘 ($\sum \tau$):</span>
+                    <span id="calc-net" class="font-black text-indigo-300 text-base">+2,200 MN·m</span>
+                </div>
+                <div class="flex justify-between items-center text-[11px] border-t border-indigo-800/60 pt-1.5">
+                    <span class="text-slate-300 font-medium">돌림힘 평형 상태 ($\sum \tau = 0$):</span>
+                    <span id="calc-equilibrium" class="font-extrabold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
+                        ✅ 회전 평형 유지 ($\sum \tau \ge 0$)
+                    </span>
+                </div>
+            </div>
+
+            <!-- 선생님 물리학 풀이 해설 -->
+            <div id="physics-guide" class="bg-indigo-950/80 border border-indigo-500/30 p-3 rounded-xl text-[11px] text-indigo-200 leading-relaxed mt-2">
+                👨‍🏫 <b>물리 해설:</b> 석축 회전축 기준점 $O(x=22.0\text{m}, y=10.0\text{m})$에서 중력 $F_1(100\text{MN}) \times 22\text{m} = +2,200\text{MN}\cdot\text{m}$ (반시계)의 복원 돌림힘이 작용하여 회전 평형을 유지합니다.
+            </div>
+        </div>
+    </div>
+
+    <!-- 우측 하단 실시간 수치 및 힘 분석 패널 -->
+    <div class="absolute bottom-4 right-4 z-10 w-full max-w-md pointer-events-none hidden sm:block">
+        <div class="glass-panel p-4 rounded-2xl pointer-events-auto shadow-2xl space-y-2.5 text-xs">
+            <h4 class="font-bold text-white border-b border-slate-700 pb-2 flex items-center justify-between">
+                <span class="flex items-center gap-1.5"><i class="fa-solid fa-calculator text-cyan-400"></i> 돌림힘($\tau$) & 4개 힘 벡터 분석</span>
+                <span class="text-[10px] text-slate-400 font-normal">기준 단위: $\text{N}$, $\text{m}$, $\text{N}\cdot\text{m}$</span>
+            </h4>
+            
+            <!-- 회전축 상세 정보 -->
+            <div class="bg-slate-900/70 p-2.5 rounded-xl space-y-1 border border-slate-700/60">
+                <div class="flex justify-between items-center text-[11px]">
+                    <span class="text-slate-300 font-semibold"><i class="fa-solid fa-circle-dot text-amber-400 mr-1"></i> 회전축(기준점 $O$):</span>
+                    <span id="calc-pivot" class="font-bold text-amber-300">석축 상단과 오사카성이 만나는 우측 접촉점 (O)</span>
+                </div>
+            </div>
+
+            <!-- F1, F2, F3, F4 상세 힘 목록 -->
+            <div class="space-y-1.5 bg-slate-950/50 p-2.5 rounded-xl border border-slate-800">
+                <div class="flex justify-between items-center text-[11px]">
+                    <span class="text-emerald-400 font-semibold">힘1 ($F_1$ 중력):</span>
+                    <span id="calc-f1" class="font-bold text-emerald-300">100,000,000 N | 거리 18 m | 방향: 반시계</span>
+                </div>
+                <div class="flex justify-between items-center text-[11px]">
+                    <span class="text-teal-400 font-semibold">힘2 ($F_2$ 수직항력):</span>
+                    <span id="calc-f2" class="font-bold text-teal-300">100,000,000 N | 거리 18 m | 방향: 반시계 (평형)</span>
+                </div>
+                <div class="flex justify-between items-center text-[11px]">
+                    <span id="label-f-ext" class="text-rose-400 font-semibold">작용 외력 ($F_4$ 지진):</span>
+                    <span id="calc-f-ext" class="font-bold text-rose-300">0 N | 거리 10 m | 방향: 시계</span>
+                </div>
+            </div>
+            
+            <!-- 복원 돌림힘 -->
+            <div class="flex justify-between items-center py-1 border-b border-slate-800">
+                <div>
+                    <span class="text-slate-200 font-semibold">복원 돌림힘 ($\tau_{\text{복원}} = F_1 \cdot d_1$):</span>
+                    <span class="text-[10px] text-emerald-400 block font-normal">양의 부호($+$) / 반시계 방향(CCW) 복원</span>
+                </div>
+                <span id="calc-tr" class="font-bold text-emerald-400 text-sm">+1,800 MN·m</span>
+            </div>
+
+            <!-- 전도 돌림힘 -->
+            <div class="flex justify-between items-center py-1 border-b border-slate-800">
+                <div>
+                    <span class="text-slate-200 font-semibold">전도 돌림힘 ($\tau_{\text{전도}} = -F_{\text{외력}} \cdot d_{\text{외력}}$):</span>
+                    <span class="text-[10px] text-rose-400 block font-normal">음의 부호($-$) / 시계 방향(CW) 붕괴</span>
+                </div>
+                <span id="calc-to" class="font-bold text-rose-400 text-sm">-0 MN·m</span>
+            </div>
+
+            <!-- 알짜 돌림힘 및 평형 상태 -->
+            <div class="bg-indigo-950/60 p-2.5 rounded-xl border border-indigo-500/40 space-y-1.5">
+                <div class="flex justify-between items-center">
+                    <span class="font-bold text-slate-100">알짜 돌림힘 ($\sum \tau$):</span>
+                    <span id="calc-net" class="font-black text-indigo-300 text-base">+1,800 MN·m</span>
+                </div>
+                <div class="flex justify-between items-center text-[11px] border-t border-indigo-800/60 pt-1.5">
+                    <span class="text-slate-300 font-medium">돌림힘 평형 상태 ($\sum \tau = 0$):</span>
+                    <span id="calc-equilibrium" class="font-extrabold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
+                        ✅ 회전 평형 유지 ($\sum \tau \ge 0$)
+                    </span>
+                </div>
+            </div>
+
+            <!-- 선생님 물리학 풀이 해설 -->
+            <div id="physics-guide" class="bg-indigo-950/80 border border-indigo-500/30 p-3 rounded-xl text-[11px] text-indigo-200 leading-relaxed mt-2">
+                👨‍🏫 <b>물리 해설:</b> 석축과 오사카성이 만나는 접촉점 기준점 $O(x=18\text{m}, y=10\text{m})$에서 중력 $F_1(100\text{MN}) \times 18\text{m} = +1,800\text{MN}\cdot\text{m}$ (반시계)의 복원 돌림힘이 작용합니다!
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* =================================================================
+           [1. 사운드 효과 엔진 (Web Audio API)]
+           ================================================================= */
+        let audioCtx = null;
+        let isAudioMuted = false;
+        let seismicOsc = null;
+        let seismicGain = null;
+        let windNoiseNode = null;
+        let windGain = null;
+
+        function initAudioEngine() {
+            if (audioCtx) return;
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext();
+
+            // A. 지진 웅웅거리는 저주파 음 (Low-frequency Rumble)
+            seismicOsc = audioCtx.createOscillator();
+            seismicGain = audioCtx.createGain();
+            seismicOsc.type = 'sawtooth';
+            seismicOsc.frequency.value = 35; // 35Hz
+            seismicGain.gain.value = 0;
+            seismicOsc.connect(seismicGain);
+            seismicGain.connect(audioCtx.destination);
+            seismicOsc.start();
+
+            // B. 태풍 노이즈 (Pink/White Noise)
+            const bufferSize = audioCtx.sampleRate * 2;
+            const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                output[i] = Math.random() * 2 - 1;
+            }
+
+            const whiteNoise = audioCtx.createBufferSource();
+            whiteNoise.buffer = noiseBuffer;
+            whiteNoise.loop = true;
+
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 400;
+
+            windGain = audioCtx.createGain();
+            windGain.gain.value = 0;
+
+            whiteNoise.connect(filter);
+            filter.connect(windGain);
+            windGain.connect(audioCtx.destination);
+            whiteNoise.start();
+        }
+
+        function toggleAudioFx() {
+            isAudioMuted = !isAudioMuted;
+            const icon = document.getElementById('icon-sound');
+            if (isAudioMuted) {
+                icon.className = "fa-solid fa-volume-xmark text-rose-400";
+                if (seismicGain) seismicGain.gain.value = 0;
+                if (windGain) windGain.gain.value = 0;
+            } else {
+                icon.className = "fa-solid fa-volume-high text-emerald-400";
+            }
+        }
+
+        function playThudSound() {
+            if (isAudioMuted || !audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 0.2);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.2);
+        }
+
+        /* =================================================================
+           [2. 시스템 글로벌 변수 & 물리 엔진 상태 정의]
+           ================================================================= */
+        let scene, camera, renderer, controls;
+        let currentMode = 'earthquake'; // 'earthquake' | 'wind'
+
+        // 3D 조각 객체 및 파편 리스트
+        let castlePieceObjects = []; // { mesh, initialPos, initialRot, vel, rotVel, isDebris, tierLevel }
+        let dustParticleGroup = [];  // 지진 바닥 충돌 먼지
+        let windStreamLines = [];    // 공기역학적 바람 유선 (Horizontal Streamlines)
+        let windParticleSystem;      // 수평 기류 입자
+
+        // 3D 물리 시각화 오버레이 객체 (회전축, 힘의 팔, 돌림힘 회전 화살표)
+        let physicsVectorGroup = null;
+        let showPhysicsVectors = true;
+        let pivotMarkerMesh, leverArmRMesh, leverArmHMesh, forceArrowHelper;
+        let torqueArcCCWMesh, torqueArcCWMesh;
+
+        // 물리 계수
+        const F1_GRAVITY = 100000000;  // 100,000,000 N (100 MN)
+        const F2_NORMAL = 100000000;   // 100,000,000 N (100 MN)
+        const PIVOT_Y = 10.0;          // 석축 상단과 오사카성 접촉 높이 Y = 10m
+        let baseRadius = 22.0;         // 석축 회전축 반경 d1 = 22m (기본값)
+        let seismicForce = 0;          // 지진의 힘 F4 (N)
+        let windForce = 0;             // 태풍의 힘 F3 (N)
+        let isStructureCollapsed = false;
+        let collapseProgressTime = 0; // 순차적 무너짐 타임라인
+
+        // 시각적 색상 팔레트
+        const PALETTE = {
+            stone: 0x475569,
+            stoneDark: 0x334155,
+            wallWhite: 0xf8fafc,
+            wallBlack: 0x1e293b,
+            roofTeal: 0x0d9488,
+            gold: 0xf59e0b
+        };
+
+        /* =================================================================
+           [3. 메인 초기화 및 Three.js 월드 생성]
+           ================================================================= */
+        window.onload = function() {
+            initThreeEngine();
+            buildBreakableOsakaCastle();
+            setupWindVortexEffects();
+            switchSimulationMode('earthquake');
+            animateLoop();
+        };
+
+        function initThreeEngine() {
+            const container = document.getElementById('canvas-container');
+
+            // 1. Scene 생성
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f172a);
+            scene.fog = new THREE.FogExp2(0x0f172a, 0.0035);
+
+            // 2. Camera 설정
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 32, 110);
+
+            // 3. Renderer 설정
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // 4. OrbitControls 설정
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2 + 0.01;
+            controls.target.set(0, 22, 0);
+
+            // 5. 조명
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.DirectionalLight(0xfff1f2, 0.95);
+            sunLight.position.set(60, 100, 50);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.near = 10;
+            sunLight.shadow.camera.far = 250;
+            sunLight.shadow.camera.left = -50;
+            sunLight.shadow.camera.right = 50;
+            sunLight.shadow.camera.top = 70;
+            sunLight.shadow.camera.bottom = -20;
+            scene.add(sunLight);
+
+            // 6. 바닥 광장
+            const groundMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.85 });
+            const groundMesh = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), groundMat);
+            groundMesh.rotation.x = -Math.PI / 2;
+            groundMesh.receiveShadow = true;
+            scene.add(groundMesh);
+
+            // 7. 3D 물리 분석 오버레이 요소(회전축, 힘의 팔, 돌림힘 화살표) 초기화
+            initPhysicsVectorOverlays();
+
+            window.addEventListener('resize', onWindowResize);
+
+            // 사용자 클릭 시 오디오 컨텍스트 활성화
+            window.addEventListener('click', () => {
+                if (!audioCtx) initAudioEngine();
+            }, { once: true });
+        }
+
+        /* =================================================================
+           [3-1. 3D 물리 요소 시각화 (회전축, 힘의 팔, 돌림힘 회전 방향)]
+           ================================================================= */
+        function initPhysicsVectorOverlays() {
+            physicsVectorGroup = new THREE.Group();
+
+            // A. 회전축 (Pivot point O) Marker: 석축 상단과 오사카성 만나는 오른쪽 점 (X = baseRadius, Y = 10.0, Z = 0)
+            const pivotGeo = new THREE.SphereGeometry(1.4, 16, 16);
+            const pivotMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b, wireframe: false });
+            pivotMarkerMesh = new THREE.Mesh(pivotGeo, pivotMat);
+            pivotMarkerMesh.position.set(baseRadius, PIVOT_Y, 0);
+            physicsVectorGroup.add(pivotMarkerMesh);
+
+            // B. 힘의 팔 (Lever Arm r - 석축 상단 수평 거리)
+            const lineMatR = new THREE.LineDashedMaterial({ color: 0x38bdf8, dashSize: 1, gapSize: 0.5, linewidth: 3 });
+            const geoR = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, PIVOT_Y, 0),
+                new THREE.Vector3(baseRadius, PIVOT_Y, 0)
+            ]);
+            leverArmRMesh = new THREE.Line(geoR, lineMatR);
+            leverArmRMesh.computeLineDistances();
+            physicsVectorGroup.add(leverArmRMesh);
+
+            // C. 힘의 팔 (Lever Arm h - 회전축 O에서 외력 작용 높이 수직 거리)
+            const lineMatH = new THREE.LineDashedMaterial({ color: 0xf43f5e, dashSize: 1, gapSize: 0.5, linewidth: 3 });
+            const geoH = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(baseRadius, PIVOT_Y, 0),
+                new THREE.Vector3(baseRadius, PIVOT_Y + 10.0, 0)
+            ]);
+            leverArmHMesh = new THREE.Line(geoH, lineMatH);
+            leverArmHMesh.computeLineDistances();
+            physicsVectorGroup.add(leverArmHMesh);
+
+            // D. 외력 화살표 (Force Vector Arrow F)
+            const dir = new THREE.Vector3(1, 0, 0);
+            const origin = new THREE.Vector3(0, PIVOT_Y + 10.0, 0);
+            forceArrowHelper = new THREE.ArrowHelper(dir, origin, 15, 0xf43f5e, 3, 2);
+            physicsVectorGroup.add(forceArrowHelper);
+
+            // E. 반시계 방향 복원 돌림힘 (+ CCW) 회전 곡선 ring
+            const arcGeoCCW = new THREE.TorusGeometry(5, 0.25, 8, 24, Math.PI * 1.2);
+            const arcMatCCW = new THREE.MeshBasicMaterial({ color: 0x10b981 });
+            torqueArcCCWMesh = new THREE.Mesh(arcGeoCCW, arcMatCCW);
+            torqueArcCCWMesh.position.set(baseRadius, PIVOT_Y + 4, 0);
+            torqueArcCCWMesh.rotation.y = Math.PI / 2;
+            physicsVectorGroup.add(torqueArcCCWMesh);
+
+            // F. 시계 방향 전도 돌림힘 (- CW) 회전 곡선 ring
+            const arcGeoCW = new THREE.TorusGeometry(7, 0.25, 8, 24, Math.PI * 1.2);
+            const arcMatCW = new THREE.MeshBasicMaterial({ color: 0xf43f5e });
+            torqueArcCWMesh = new THREE.Mesh(arcGeoCW, arcMatCW);
+            torqueArcCWMesh.position.set(baseRadius, PIVOT_Y + 4, 0);
+            torqueArcCWMesh.rotation.y = Math.PI / 2;
+            torqueArcCWMesh.rotation.x = Math.PI;
+            physicsVectorGroup.add(torqueArcCWMesh);
+
+            scene.add(physicsVectorGroup);
+        }
+
+        function togglePhysicsVectors() {
+            showPhysicsVectors = !showPhysicsVectors;
+            if (physicsVectorGroup) {
+                physicsVectorGroup.visible = showPhysicsVectors;
+            }
+            const btn = document.getElementById('btn-toggle-vectors');
+            if (showPhysicsVectors) {
+                btn.className = "px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-colors flex items-center gap-1.5 shadow";
+            } else {
+                btn.className = "px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-400 font-bold rounded-xl transition-colors flex items-center gap-1.5";
+            }
+        }
+
+        /* =================================================================
+           [4. 오사카성 5층 천수각 (Tenshukaku) 3D 분할 블록 생성기]
+           ================================================================= */
+        function buildBreakableOsakaCastle() {
+            // 기존 조각 제거
+            castlePieceObjects.forEach(p => scene.remove(p.mesh));
+            castlePieceObjects = [];
+            isStructureCollapsed = false;
+            collapseProgressTime = 0;
+
+            const group = new THREE.Group();
+
+            // 공통 재질
+            const matStone = new THREE.MeshStandardMaterial({ color: PALETTE.stone, roughness: 0.9 });
+            const matDarkStone = new THREE.MeshStandardMaterial({ color: PALETTE.stoneDark, roughness: 0.9 });
+            const matWhiteWall = new THREE.MeshStandardMaterial({ color: PALETTE.wallWhite, roughness: 0.3 });
+            const matBlackWall = new THREE.MeshStandardMaterial({ color: PALETTE.wallBlack, roughness: 0.5 });
+            const matTealRoof = new THREE.MeshStandardMaterial({ color: PALETTE.roofTeal, roughness: 0.4 });
+            const matGold = new THREE.MeshStandardMaterial({ color: PALETTE.gold, metalness: 0.8, roughness: 0.2 });
+
+            // 헬퍼: 개별 물리 블록 추가
+            function addPiece(geo, mat, posX, posY, posZ, tierLevel) {
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.set(posX, posY, posZ);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                scene.add(mesh);
+
+                castlePieceObjects.push({
+                    mesh: mesh,
+                    initialPos: new THREE.Vector3(posX, posY, posZ),
+                    initialRot: new THREE.Euler(0, 0, 0),
+                    vel: new THREE.Vector3(0, 0, 0),
+                    rotVel: new THREE.Vector3(0, 0, 0),
+                    isDebris: false,
+                    tierLevel: tierLevel
+                });
+            }
+
+            // --- Tier 0: 하단 석축 (Stone Wall Base) ---
+            // Y: 0 ~ 10, 상단 반경 18m, 하단 반경 22m
+            const baseGeo = new THREE.CylinderGeometry(18, baseRadius, 10, 8);
+            addPiece(baseGeo, matStone, 0, 5, 0, 0);
+
+            // --- Tier 1: 1층 대형 회랑 ---
+            const t1WallGeo = new THREE.BoxGeometry(28, 8, 22);
+            addPiece(t1WallGeo, matWhiteWall, 0, 14, 0, 1);
+
+            const t1RoofGeo = new THREE.ConeGeometry(23, 4, 4);
+            const t1RoofMeshGeo = t1RoofGeo.rotateY(Math.PI / 4);
+            addPiece(t1RoofGeo, matTealRoof, 0, 19, 0, 1);
+
+            // --- Tier 2: 2층 팔작지붕 ---
+            const t2WallGeo = new THREE.BoxGeometry(22, 7, 18);
+            addPiece(t2WallGeo, matWhiteWall, 0, 23.5, 0, 2);
+
+            const t2RoofGeo = new THREE.ConeGeometry(18, 3.5, 4);
+            t2RoofGeo.rotateY(Math.PI / 4);
+            addPiece(t2RoofGeo, matTealRoof, 0, 27.5, 0, 2);
+
+            // --- Tier 3: 3층 카라하후 곡선 지붕층 ---
+            const t3WallGeo = new THREE.BoxGeometry(16, 6, 14);
+            addPiece(t3WallGeo, matWhiteWall, 0, 31, 0, 3);
+
+            // 금장식 테두리
+            const t3GoldGeo = new THREE.BoxGeometry(16.5, 1, 14.5);
+            addPiece(t3GoldGeo, matGold, 0, 33.5, 0, 3);
+
+            const t3RoofGeo = new THREE.ConeGeometry(14, 3, 4);
+            t3RoofGeo.rotateY(Math.PI / 4);
+            addPiece(t3RoofGeo, matTealRoof, 0, 35.5, 0, 3);
+
+            // --- Tier 4: 4층 검은 회랑 난간 ---
+            const t4WallGeo = new THREE.BoxGeometry(11, 5, 10);
+            addPiece(t4WallGeo, matBlackWall, 0, 38.5, 0, 4);
+
+            const t4RoofGeo = new THREE.ConeGeometry(10, 2.5, 4);
+            t4RoofGeo.rotateY(Math.PI / 4);
+            addPiece(t4RoofGeo, matTealRoof, 0, 41.5, 0, 4);
+
+            // --- Tier 5: 최상층 5층 & 금빛 샤치호코 (Shachihoko) ---
+            const t5WallGeo = new THREE.BoxGeometry(8, 5, 7);
+            addPiece(t5WallGeo, matBlackWall, 0, 44, 0, 5);
+
+            // 금박 장식 패널
+            const t5PanelsGeo = new THREE.BoxGeometry(8.2, 2.5, 7.2);
+            addPiece(t5PanelsGeo, matGold, 0, 44.5, 0, 5);
+
+            // 주 지붕
+            const t5RoofGeo = new THREE.ConeGeometry(7, 3.5, 4);
+            t5RoofGeo.rotateY(Math.PI / 4);
+            addPiece(t5RoofGeo, matTealRoof, 0, 47.5, 0, 5);
+
+            // 최상단 샤치호코 (Golden Fish Ornaments) 2개
+            const shachiGeo = new THREE.ConeGeometry(0.8, 2.5, 5);
+            addPiece(shachiGeo, matGold, -3, 49.5, 0, 5);
+            addPiece(shachiGeo, matGold, 3, 49.5, 0, 5);
+        }
+
+        /* =================================================================
+           [5. 태풍 모드 공기역학적 수평 유선 (Streamlines) 생성]
+           ================================================================= */
+        function setupWindVortexEffects() {
+            // A. 바람 유선 (Streamlines) 30개 생성
+            for (let i = 0; i < 30; i++) {
+                const path = new THREE.CurvePath();
+                const startY = 5 + Math.random() * 45;
+                const startZ = (Math.random() - 0.5) * 50;
+
+                const p1 = new THREE.Vector3(-80, startY, startZ);
+                const p2 = new THREE.Vector3(-15, startY + (Math.random() - 0.5) * 4, startZ * 1.2);
+                const p3 = new THREE.Vector3(20, startY + Math.random() * 6 + 2, startZ * 1.5); // 구조물 상단 우회
+                const p4 = new THREE.Vector3(80, startY, startZ);
+
+                path.add(new THREE.CubicBezierCurve3(p1, p2, p3, p4));
+
+                const points = path.getPoints(40);
+                const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+                const lineMat = new THREE.LineBasicMaterial({
+                    color: 0x38bdf8,
+                    transparent: true,
+                    opacity: 0
+                });
+
+                const lineMesh = new THREE.Line(lineGeo, lineMat);
+                scene.add(lineMesh);
+
+                windStreamLines.push({
+                    mesh: lineMesh,
+                    speed: 0.8 + Math.random() * 0.8,
+                    offsetX: (Math.random() - 0.5) * 100
+                });
+            }
+
+            // B. 수평 바람 파티클 시스템
+            const particleCount = 200;
+            const particleGeo = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3] = (Math.random() - 0.5) * 160;
+                positions[i * 3 + 1] = Math.random() * 55;
+                positions[i * 3 + 2] = (Math.random() - 0.5) * 60;
+            }
+
+            particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const particleMat = new THREE.PointsMaterial({
+                color: 0x7dd3fc,
+                size: 0.8,
+                transparent: true,
+                opacity: 0
+            });
+
+            windParticleSystem = new THREE.Points(particleGeo, particleMat);
+            scene.add(windParticleSystem);
+        }
+
+        /* =================================================================
+           [6. 시뮬레이션 모드 전환 (지진 vs 태풍)]
+           ================================================================= */
+        function switchSimulationMode(mode) {
+            currentMode = mode;
+
+            const btnEq = document.getElementById('btn-earthquake');
+            const btnWind = document.getElementById('btn-wind');
+            const ctrlEq = document.getElementById('controls-earthquake');
+            const ctrlWind = document.getElementById('controls-wind');
+            const title = document.getElementById('panel-title');
+
+            if (mode === 'earthquake') {
+                btnEq.className = "px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-extrabold rounded-xl transition-all flex items-center gap-2 shadow-lg";
+                btnWind.className = "px-4 py-2.5 bg-slate-800 hover:bg-sky-600 text-slate-300 font-extrabold rounded-xl transition-all flex items-center gap-2";
+                ctrlEq.classList.remove('hidden');
+                ctrlWind.classList.add('hidden');
+                title.innerHTML = `<i class="fa-solid fa-sliders text-rose-400"></i> 지진 파라미터 설정`;
+            } else {
+                btnWind.className = "px-4 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-extrabold rounded-xl transition-all flex items-center gap-2 shadow-lg";
+                btnEq.className = "px-4 py-2.5 bg-slate-800 hover:bg-rose-600 text-slate-300 font-extrabold rounded-xl transition-all flex items-center gap-2";
+                ctrlWind.classList.remove('hidden');
+                ctrlEq.classList.add('hidden');
+                title.innerHTML = `<i class="fa-solid fa-sliders text-sky-400"></i> 태풍 풍속 파라미터 설정`;
+            }
+
+            handlePhysicsInputChange();
+        }
+
+        /* =================================================================
+           [7. 실시간 물리 법칙 계산 & UI 수치 업데이트]
+           ================================================================= */
+        function handlePhysicsInputChange() {
+            baseRadius = parseFloat(document.getElementById('slider-radius').value);
+            seismicForce = parseFloat(document.getElementById('slider-eq').value);
+            windForce = parseFloat(document.getElementById('slider-wind').value);
+
+            document.getElementById('txt-radius-val').innerText = `${baseRadius.toFixed(1)} m`;
+            document.getElementById('txt-eq-val').innerText = `${seismicForce.toLocaleString()} N (${(seismicForce / 1e6).toFixed(1)} MN)`;
+            document.getElementById('txt-wind-val').innerText = `${windForce.toLocaleString()} N (${(windForce / 1e6).toFixed(1)} MN)`;
+
+            // 외력 파라미터 분기 (지진 vs 태풍)
+            let extForce = 0;
+            let extHeightRel = 10.0; // 회전축 Y=10m 대비 외력 작용 높이 거리 (m)
+            let extName = "지진";
+
+            if (currentMode === 'earthquake') {
+                extForce = seismicForce;
+                extHeightRel = 10.0; // 지진 forceY = 20m, 거리 h = 20 - 10 = 10m
+                extName = "F4 지진";
+                document.getElementById('label-f-ext').innerText = `작용 외력 ($F_4$ 지진):`;
+                document.getElementById('calc-f-ext').innerText = `${extForce.toLocaleString()} N | 거리 10 m | 방향: 시계`;
+            } else {
+                extForce = windForce;
+                extHeightRel = 20.0; // 태풍 forceY = 30m, 거리 h = 30 - 10 = 20m
+                extName = "F3 태풍";
+                document.getElementById('label-f-ext').innerText = `작용 외력 ($F_3$ 태풍):`;
+                document.getElementById('calc-f-ext').innerText = `${extForce.toLocaleString()} N | 거리 20 m | 방향: 시계`;
+            }
+
+            // 석축 상단 우측 접촉점 회전축 O 위치 (X = baseRadius, Y = 10.0, Z = 0)
+            if (pivotMarkerMesh) {
+                pivotMarkerMesh.position.set(baseRadius, PIVOT_Y, 0);
+
+                const positionsR = leverArmRMesh.geometry.attributes.position;
+                positionsR.setXYZ(0, 0, PIVOT_Y, 0);
+                positionsR.setXYZ(1, baseRadius, PIVOT_Y, 0);
+                positionsR.needsUpdate = true;
+                leverArmRMesh.computeLineDistances();
+
+                const positionsH = leverArmHMesh.geometry.attributes.position;
+                positionsH.setXYZ(0, baseRadius, PIVOT_Y, 0);
+                positionsH.setXYZ(1, baseRadius, PIVOT_Y + extHeightRel, 0);
+                positionsH.needsUpdate = true;
+                leverArmHMesh.computeLineDistances();
+
+                if (forceArrowHelper) {
+                    forceArrowHelper.position.set(0, PIVOT_Y + extHeightRel, 0);
+                }
+
+                torqueArcCCWMesh.position.set(baseRadius, PIVOT_Y + 4, 0);
+                torqueArcCWMesh.position.set(baseRadius, PIVOT_Y + 4, 0);
+            }
+
+            // 바람 유선 및 입자 효과
+            const windAlpha = Math.min(0.75, windForce / 110000000.0);
+            windStreamLines.forEach(s => s.mesh.material.opacity = (currentMode === 'wind') ? windAlpha : 0);
+            if (windParticleSystem) {
+                windParticleSystem.material.opacity = (currentMode === 'wind') ? windAlpha * 0.9 : 0;
+            }
+
+            // 오디오 사운드 피드백
+            if (seismicGain && !isAudioMuted) {
+                seismicGain.gain.setTargetAtTime((currentMode === 'earthquake') ? (seismicForce / 220000000) * 0.3 : 0, audioCtx.currentTime, 0.1);
+            }
+            if (windGain && !isAudioMuted) {
+                windGain.gain.setTargetAtTime((currentMode === 'wind') ? (windForce / 110000000) * 0.25 : 0, audioCtx.currentTime, 0.1);
+            }
+
+            // 외력 화살표 가시성
+            if (forceArrowHelper) {
+                const arrowLength = Math.max(0.1, (extForce / 1e6) * 0.15);
+                forceArrowHelper.setLength(arrowLength, Math.min(3, arrowLength * 0.3), Math.min(2, arrowLength * 0.2));
+                forceArrowHelper.visible = (extForce > 1000000);
+            }
+
+            // 복원 돌림힘 (+ CCW): F1 (100,000,000 N) * baseRadius (예: 18 m)
+            const tauRestore = F1_GRAVITY * baseRadius; // N·m
+            // 전도 돌림힘 (- CW): F_ext * extHeightRel (N·m)
+            const tauOverturn = extForce * extHeightRel; // N·m
+            // 알짜 돌림힘
+            const tauNet = tauRestore - tauOverturn;
+
+            const tauRestoreMN = tauRestore / 1e6;
+            const tauOverturnMN = tauOverturn / 1e6;
+            const tauNetMN = tauNet / 1e6;
+
+            // UI 텍스트 업데이트
+            document.getElementById('calc-f1').innerText = `100,000,000 N | 거리 ${baseRadius.toFixed(1)} m | 방향: 반시계`;
+            document.getElementById('calc-f2').innerText = `100,000,000 N | 거리 ${baseRadius.toFixed(1)} m | 방향: 반시계 (평형)`;
+            
+            document.getElementById('calc-tr').innerText = `+${Math.round(tauRestoreMN).toLocaleString()} MN·m (+${(tauRestore).toExponential(2)} N·m)`;
+            document.getElementById('calc-to').innerText = `-${Math.round(tauOverturnMN).toLocaleString()} MN·m (-${(tauOverturn).toExponential(2)} N·m)`;
+
+            const netElem = document.getElementById('calc-net');
+            const badge = document.getElementById('status-badge');
+            const guide = document.getElementById('physics-guide');
+            const equilibriumElem = document.getElementById('calc-equilibrium');
+
+            netElem.innerText = `${tauNetMN >= 0 ? '+' : ''}${Math.round(tauNetMN).toLocaleString()} MN·m`;
+
+            if (tauNetMN > 200) {
+                badge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-500/20 border border-emerald-500/40 text-emerald-400";
+                badge.innerText = "구조적 안정 상태";
+                netElem.className = "font-black text-emerald-400 text-base";
+                equilibriumElem.className = "font-extrabold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30";
+                equilibriumElem.innerText = "✅ 회전 평형 유지 (∑τ ≥ 0)";
+                
+                guide.innerHTML = `👨‍🏫 <b>선생님 가이드:</b> 석축과 오사카성이 만나는 우측 접촉점 $O(x=${baseRadius.toFixed(1)}\text{m}, y=10.0\text{m})$에서 중력 $F_1(100\text{MN}) \times ${baseRadius.toFixed(1)}\text{m} = +${Math.round(tauRestoreMN).toLocaleString()}\text{MN}\cdot\text{m}$ (반시계)의 복원 돌림힘이 작용하여 회전 평형을 유지합니다.`;
+            } else if (tauNetMN >= 0) {
+                badge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-500/20 border border-amber-500/40 text-amber-400";
+                badge.innerText = "⚠️ 임계 회전 평형 상태";
+                netElem.className = "font-black text-amber-400 text-base";
+                equilibriumElem.className = "font-extrabold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30";
+                equilibriumElem.innerText = "⚠️ 한계 회전 평형 (∑τ ≈ 0)";
+                guide.innerHTML = `⚠️ <b>경고:</b> 회전축 $O$ 기준 작용 외력에 의한 시계 방향 전도 돌림힘이 복원 돌림힘($+${Math.round(tauRestoreMN).toLocaleString()}\text{MN}\cdot\text{m}$) 한계치에 거의 다다랐습니다!`;
+            } else {
+                badge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-500/20 border border-rose-500/40 text-rose-400 pulse-danger";
+                badge.innerText = "🚨 회전 평형 파괴 및 붕괴!";
+                netElem.className = "font-black text-rose-400 text-base";
+                equilibriumElem.className = "font-extrabold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/30";
+                equilibriumElem.innerText = "🚨 회전 평형 파괴 (∑τ < 0)";
+                guide.innerHTML = `🚨 <b>구조 붕괴 발생!</b> ${extName}에 의한 시계 방향 전도 돌림힘이 회전축 $O$에서의 복원 돌림힘($+${Math.round(tauRestoreMN).toLocaleString()}\text{MN}\cdot\text{m}$)을 초과하여 건축물이 회전하며 전도 붕괴됩니다!`;
+
+                triggerMultiPieceCollapse(seismicForce, windForce);
+            }
+        }
+
+        function triggerMultiPieceCollapse(eq, wind) {
+            if (isStructureCollapsed) return;
+            isStructureCollapsed = true;
+            collapseProgressTime = 0;
+
+            playThudSound();
+
+            castlePieceObjects.forEach(p => {
+                const pushDirection = 1;
+                p.vel.set(
+                    (Math.random() * 0.4 + 0.2) * pushDirection,
+                    Math.random() * 0.2,
+                    (Math.random() - 0.5) * 0.3
+                );
+                p.rotVel.set(
+                    (Math.random() - 0.5) * 0.08,
+                    (Math.random() - 0.5) * 0.08,
+                    -Math.random() * 0.1
+                );
+            });
+        }
+
+        function createImpactDustCloud(x, y, z, scale) {
+            const group = new THREE.Group();
+            const count = 12;
+            const mat = new THREE.MeshBasicMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.6 });
+
+            for (let i = 0; i < count; i++) {
+                const pGeo = new THREE.SphereGeometry(0.5 + Math.random() * scale, 8, 8);
+                const mesh = new THREE.Mesh(pGeo, mat);
+                mesh.position.set(x, y, z);
+
+                mesh.userData = {
+                    vel: new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.4,
+                        Math.random() * 0.3 + 0.1,
+                        (Math.random() - 0.5) * 0.4
+                    ),
+                    life: 1.0
+                };
+                group.add(mesh);
+            }
+
+            scene.add(group);
+            dustParticleGroup.push(group);
+        }
+
+        function rebuildCastleStructure() {
+            document.getElementById('slider-eq').value = 0;
+            document.getElementById('slider-wind').value = 0;
+            buildBreakableOsakaCastle();
+            handlePhysicsInputChange();
+        }
+
+        function resetCameraView() {
+            camera.position.set(0, 32, 110);
+            controls.target.set(0, 22, 0);
+            controls.update();
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        /* =================================================================
+           [8. 메인 프레임 애니메이션 루프]
+           ================================================================= */
+        let animTime = 0;
+        function animateLoop() {
+            requestAnimationFrame(animateLoop);
+            animTime += 0.035;
+
+            // [A. 지진 지반 진동 모션]
+            if (currentMode === 'earthquake' && seismicForce > 0 && !isStructureCollapsed) {
+                const shakeIntensity = seismicForce / 220000000;
+                const shakeX = Math.sin(animTime * 26) * shakeIntensity * 1.5;
+                const shakeZ = Math.cos(animTime * 20) * shakeIntensity * 0.8;
+
+                castlePieceObjects.forEach(p => {
+                    if (!p.isDebris) {
+                        const hRatio = (p.initialPos.y / 40);
+                        p.mesh.position.x = p.initialPos.x + shakeX * hRatio;
+                        p.mesh.position.z = p.initialPos.z + shakeZ * hRatio;
+                        p.mesh.rotation.z = p.initialRot.z + (shakeX * 0.015 * hRatio);
+                    }
+                });
+            }
+
+            // [B. 자중 순차 붕괴 (Progressive Crumbling Down)]
+            if (isStructureCollapsed) {
+                collapseProgressTime += 0.035;
+
+                castlePieceObjects.forEach(p => {
+                    // 상층부(5층, 4층...)부터 높이 순서대로 시간차를 두고 낙하
+                    const collapseDelay = (6 - p.tierLevel) * 0.35;
+
+                    if (!p.isDebris && collapseProgressTime > collapseDelay) {
+                        p.isDebris = true;
+                    }
+
+                    if (p.isDebris) {
+                        // 중력 가속도 ($g = -0.035$)
+                        p.vel.y -= 0.035;
+
+                        p.mesh.position.add(p.vel);
+                        p.mesh.rotation.x += p.rotVel.x;
+                        p.mesh.rotation.y += p.rotVel.y;
+                        p.mesh.rotation.z += p.rotVel.z;
+
+                        // 바닥 충돌 및 저탄성 반발 / 먼지 생성
+                        const groundLevel = Math.max(1.0, (p.tierLevel === 0 ? 1.0 : 2.0));
+                        if (p.mesh.position.y <= groundLevel) {
+                            if (p.mesh.position.y < groundLevel) {
+                                if (Math.abs(p.vel.y) > 0.25) {
+                                    createImpactDustCloud(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, p.tierLevel * 0.3 + 0.5);
+                                }
+                                p.mesh.position.y = groundLevel;
+                            }
+
+                            p.vel.y = -p.vel.y * 0.18; // 저탄성 감쇄
+                            p.vel.x *= 0.75;
+                            p.vel.z *= 0.75;
+                            p.rotVel.multiplyScalar(0.6);
+                        }
+                    }
+                });
+
+                // 먼지 파편 애니메이션
+                for (let i = dustParticleGroup.length - 1; i >= 0; i--) {
+                    const group = dustParticleGroup[i];
+                    let allDead = true;
+
+                    group.children.forEach(p => {
+                        p.position.add(p.userData.vel);
+                        p.userData.life -= 0.02;
+                        p.material.opacity = Math.max(0, p.userData.life * 0.5);
+                        p.scale.addScalar(0.02);
+                        if (p.userData.life > 0) allDead = false;
+                    });
+
+                    if (allDead) {
+                        scene.remove(group);
+                        dustParticleGroup.splice(i, 1);
+                    }
+                }
+            }
+
+            // [C. 태풍 휘어짐 및 수평 기류 유동]
+            if (currentMode === 'wind') {
+                if (!isStructureCollapsed) {
+                    const bendAngle = (windForce / 110000000) * -0.12;
+                    castlePieceObjects.forEach(p => {
+                        if (!p.isDebris) {
+                            const hRatio = (p.initialPos.y / 40);
+                            p.mesh.rotation.z = bendAngle * hRatio;
+                            p.mesh.position.x = p.initialPos.x + (bendAngle * 16 * hRatio);
+                        }
+                    });
+                }
+
+                // 기류 유선 이동
+                const windSpeedFactor = windForce / 25000000;
+                windStreamLines.forEach(s => {
+                    s.offsetX += windSpeedFactor * s.speed;
+                    if (s.offsetX > 90) s.offsetX = -90;
+                    s.mesh.position.x = s.offsetX;
+                });
+
+                // 기류 입자 이동
+                if (windParticleSystem) {
+                    const positions = windParticleSystem.geometry.attributes.position.array;
+                    for (let i = 0; i < positions.length; i += 3) {
+                        positions[i] += windSpeedFactor * 1.5;
+                        positions[i+1] += Math.sin(animTime * 2 + positions[i]) * 0.08;
+
+                        if (positions[i] > 90) positions[i] = -90;
+                    }
+                    windParticleSystem.geometry.attributes.position.needsUpdate = true;
+                }
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html></p><script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

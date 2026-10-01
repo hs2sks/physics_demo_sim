@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#09131c">
+  <meta name="description" content="복셀 수소 원자를 돌려 보고, 전자의 전이와 에너지 차이, 방출 스펙트럼의 관계를 직접 탐색하는 물리학 II 자료">
+  <title>빛의 지문 | 수소 원자의 전이와 스펙트럼</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --ink: #14242b;
+      --muted: #62716e;
+      --paper: #eeeae0;
+      --paper-dark: #e2dfd4;
+      --night: #09131c;
+      --night-2: #101d27;
+      --line: #c8cbc3;
+      --light-line: #33434b;
+      --coral: #d5795a;
+      --gold: #e6b77e;
+      --cyan: #8bdbd1;
+      --sans: "Noto Sans KR", sans-serif;
+      --serif: "Noto Serif KR", serif;
+      --mono: "DM Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    a { color: inherit; text-decoration: none; }
+    button:focus-visible, a:focus-visible, input:focus-visible, [tabindex="0"]:focus-visible { outline: 2px solid var(--coral); outline-offset: 4px; }
+    ::selection { background: #ddac84; color: #14242b; }
+    .skip-link { position: fixed; z-index: 100; top: -70px; left: 20px; padding: 12px 18px; background: white; color: var(--ink); }
+    .skip-link:focus { top: 15px; }
+    .content-width { width: min(100%, 1460px); margin: 0 auto; padding-left: clamp(24px, 6.3vw, 110px); padding-right: clamp(24px, 6.3vw, 110px); }
+    .mono { font-family: var(--mono); }
+
+    /* The scene stays edge-to-edge; text and controls sit in its quiet left margin. */
+    .hero { position: relative; isolation: isolate; height: 100svh; min-height: 740px; overflow: hidden; background: radial-gradient(ellipse at 74% 41%, #1b3540 0%, #0d202b 40%, #09131c 76%); color: #f1eee5; }
+    .scene-host, .scene-host canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .scene-host { z-index: 0; }
+    .scene-host canvas { display: block; touch-action: none; cursor: grab; }
+    .scene-host canvas:active { cursor: grabbing; }
+    .hero-wash { position: absolute; z-index: 1; inset: 0; pointer-events: none; background: linear-gradient(90deg, #09131c 0%, rgba(9, 19, 28, .98) 14%, rgba(9, 19, 28, .79) 29%, rgba(9, 19, 28, .17) 53%, transparent 73%), linear-gradient(0deg, rgba(6, 15, 22, .88), transparent 19%, transparent 76%, rgba(6, 15, 22, .43)); }
+    .hero-grain { position: absolute; z-index: 1; inset: 0; pointer-events: none; opacity: .19; background-image: radial-gradient(#8eaaac 0.65px, transparent .65px); background-size: 29px 29px; mask-image: linear-gradient(90deg, transparent 38%, black 100%); }
+    .site-header { position: absolute; z-index: 5; top: 0; left: 0; right: 0; height: 86px; padding: 0 clamp(24px, 6.3vw, 110px); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(205, 223, 221, .17); }
+    .brand { display: inline-flex; gap: 13px; align-items: center; font-weight: 700; font-size: 18px; letter-spacing: -.05em; white-space: nowrap; }
+    .brand-mark { display: grid; grid-template-columns: repeat(3, 5px); grid-template-rows: repeat(3, 5px); gap: 2px; transform: rotate(-14deg); }
+    .brand-mark i { display: block; background: var(--gold); }
+    .brand-mark i:nth-child(2), .brand-mark i:nth-child(4), .brand-mark i:nth-child(8) { opacity: .44; }
+    .brand-mark i:nth-child(3), .brand-mark i:nth-child(7) { opacity: .15; }
+    .header-center, .header-right { font: 11px var(--mono); letter-spacing: .17em; color: #a6b8b9; }
+    .header-center { position: absolute; left: 50%; transform: translateX(-50%); }
+    .header-right { display: flex; align-items: center; gap: 24px; }
+    .header-right a { color: #e8e9df; border-bottom: 1px solid rgba(232, 233, 223, .48); padding-bottom: 4px; transition: color .25s, border-color .25s; }
+    .header-right a:hover { color: var(--gold); border-color: var(--gold); }
+    .hero-copy { position: absolute; z-index: 3; top: 22%; left: clamp(24px, 8vw, 138px); width: min(435px, 41vw); pointer-events: none; }
+    .hero-eyebrow, .micro-label { display: flex; align-items: center; gap: 12px; font: 11px var(--mono); letter-spacing: .18em; text-transform: uppercase; }
+    .hero-eyebrow { color: #dbb788; }
+    .hero-eyebrow::before { content: ""; display: block; width: 26px; height: 1px; background: currentColor; }
+    .hero h1 { margin: 27px 0 18px; font-family: var(--serif); font-weight: 600; font-size: clamp(76px, 8.15vw, 130px); letter-spacing: -.11em; line-height: 1.13; text-shadow: 0 4px 30px rgba(0, 0, 0, .12); }
+    .hero h1 span { color: var(--gold); }
+    .hero-description { max-width: 385px; margin: 0; color: #b7c6c5; font-size: clamp(14px, 1.25vw, 17px); font-weight: 400; line-height: 1.85; word-break: keep-all; }
+    .hero-actions { margin-top: 38px; pointer-events: auto; }
+    .hero-actions .micro-label { color: #b7c8c7; margin-bottom: 14px; }
+    .transition-picker { display: flex; flex-wrap: wrap; gap: 8px; }
+    .transition-pick { min-width: 82px; height: 73px; border: 1px solid rgba(184, 209, 207, .35); background: rgba(12, 30, 39, .37); color: #dee8e5; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 10px 13px; transition: background .25s, border-color .25s, transform .25s; }
+    .transition-pick:hover { border-color: rgba(230, 183, 126, .9); transform: translateY(-3px); }
+    .transition-pick.is-active { background: #e6b77e; color: #16252a; border-color: #e6b77e; }
+    .transition-pick strong { font: 500 27px/.95 var(--mono); }
+    .transition-pick small { margin-top: 8px; font: 10px var(--mono); letter-spacing: .02em; white-space: nowrap; }
+    .hero-footer { position: absolute; z-index: 4; bottom: 0; left: clamp(24px, 6.3vw, 110px); right: clamp(24px, 6.3vw, 110px); min-height: 70px; border-top: 1px solid rgba(203, 223, 222, .23); display: flex; justify-content: space-between; align-items: center; gap: 20px; font-size: 11px; color: #a4b8b7; }
+    .gesture-hint { display: flex; align-items: center; gap: 13px; word-break: keep-all; }
+    .gesture-symbol { font: 19px var(--mono); color: var(--gold); }
+    .hero-footer-controls { display: flex; align-items: center; gap: 28px; white-space: nowrap; }
+    .text-button { padding: 5px 0; border: 0; border-bottom: 1px solid rgba(183, 203, 201, .4); background: none; color: #d5dfdc; font-size: 11px; transition: color .2s; }
+    .text-button:hover, .hero-footer a:hover { color: var(--gold); }
+    .hero-footer a { color: #eae9dd; font-weight: 600; transition: color .2s; }
+    .hero-footer a span { margin-left: 8px; font: 16px var(--mono); }
+    .webgl-fallback { position: absolute; z-index: 2; inset: 20% 12% 20% 48%; display: grid; place-items: center; text-align: center; color: #e8d5b7; font-size: 15px; line-height: 1.8; }
+    .webgl-fallback[hidden] { display: none; }
+
+    .energy-section { padding: 117px 0 132px; background: var(--paper); }
+    .section-heading { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 36px; align-items: start; }
+    .section-index { padding-top: 13px; color: #967960; font: 11px var(--mono); letter-spacing: .13em; text-transform: uppercase; }
+    .section-heading h2 { margin: 0; font: 600 clamp(38px, 4.25vw, 65px)/1.34 var(--serif); letter-spacing: -.077em; word-break: keep-all; }
+    .section-heading p { margin: 21px 0 0; color: #62716e; font-size: 16px; line-height: 1.85; word-break: keep-all; }
+    .analysis-grid { margin-top: 76px; border-top: 1px solid #aeb7b1; display: grid; grid-template-columns: minmax(0, .84fr) minmax(0, 1.16fr); gap: clamp(36px, 5vw, 82px); }
+    .reading-panel, .diagram-panel { min-width: 0; padding-top: 29px; }
+    .diagram-panel { border-left: 1px solid #c7cbc3; padding-left: clamp(30px, 4.3vw, 65px); }
+    .panel-topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #697772; font: 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .panel-topline .panel-accent { color: #b36f54; }
+    .current-transition { margin: 22px 0 28px; display: flex; align-items: baseline; gap: 21px; }
+    .current-letter { font: 400 clamp(74px, 8vw, 114px)/1 var(--serif); letter-spacing: -.12em; color: #be7659; }
+    .current-route { font: 500 clamp(24px, 2.8vw, 38px)/1.3 var(--mono); letter-spacing: -.055em; white-space: nowrap; }
+    .current-region { display: block; margin-top: 10px; color: #78827a; font-size: 13px; }
+    .reading-numbers { padding: 24px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .reading-numbers > div { min-width: 0; }
+    .reading-numbers > div + div { border-left: 1px solid var(--line); padding-left: 25px; }
+    .number-label { display: block; font: 11px var(--mono); color: #667570; letter-spacing: .04em; }
+    .number-value { display: block; margin-top: 8px; font: 500 clamp(27px, 3vw, 42px)/1.1 var(--mono); letter-spacing: -.08em; color: #20353b; white-space: nowrap; }
+    .number-value em { font-style: normal; font: 12px var(--mono); letter-spacing: 0; color: #7b8981; }
+    .number-value.wavelength { color: #b5664e; }
+    .formula-label { margin: 31px 0 8px; color: #9b7c66; font: 11px var(--mono); letter-spacing: .14em; }
+    .formula { margin: 0; font: 500 clamp(24px, 2.6vw, 34px)/1.4 var(--serif); letter-spacing: -.04em; }
+    .formula-explain { margin: 11px 0 0; color: #65746e; font-size: 14px; line-height: 1.9; word-break: keep-all; }
+    .takeaway { margin-top: 29px; border-left: 3px solid #c87957; padding: 2px 0 2px 19px; }
+    .takeaway strong { color: #ab634b; font: 600 20px/1.5 var(--serif); letter-spacing: -.05em; }
+    .takeaway p { margin: 7px 0 0; color: #455a59; font-size: 14px; line-height: 1.8; word-break: keep-all; }
+    .mini-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 30px; }
+    .mini-controls .micro-label { margin-right: 8px; color: #68756f; font-size: 10px; }
+    .mini-pick { width: 38px; height: 38px; border: 1px solid #b7c0b8; background: transparent; color: #324a4d; font: 15px var(--mono); transition: background .2s, color .2s; }
+    .mini-pick:hover, .mini-pick.is-active { background: #173039; color: #f6f0e7; border-color: #173039; }
+    .replay-button { margin: 20px 0 0; padding: 0 0 5px; border: 0; border-bottom: 1px solid #a4aca6; background: none; color: #405954; font-size: 13px; }
+    .replay-button:hover { color: #ad694c; border-color: #ad694c; }
+    .diagram-caption { margin: 0 0 7px; font: 11px var(--mono); color: #697772; letter-spacing: .11em; text-transform: uppercase; }
+    .diagram-help { margin: 0; color: #87938a; font-size: 12px; }
+    .energy-diagram { width: 100%; height: auto; display: block; margin: 12px 0 12px; overflow: visible; }
+    .energy-diagram text { user-select: none; }
+    .diagram-level-line { stroke: #a5afa9; stroke-width: 1.35; }
+    .level-group.is-inspected .diagram-level-line { stroke: #3d6764; stroke-width: 2.7; }
+    .level-name { font: italic 18px var(--serif); fill: #62736e; }
+    .level-number { font: 15px var(--mono); fill: #52635f; }
+    .level-group.is-inspected .level-name, .level-group.is-inspected .level-number { fill: #236d68; }
+    .level-group { cursor: pointer; }
+    .diagram-level-hit { fill: transparent; }
+    .diagram-axis { stroke: #62736e; stroke-width: 1.2; }
+    .diagram-axis-text { font: 13px var(--sans); fill: #66736c; }
+    .diagram-arrow { cursor: pointer; }
+    .diagram-arrow-line { stroke: #879691; stroke-width: 2.1; transition: stroke .25s, stroke-width .25s; }
+    .diagram-arrow.is-active .diagram-arrow-line { stroke: #c87858; stroke-width: 3.5; }
+    .diagram-arrow-letter { font: 23px var(--serif); fill: #53655f; transition: fill .25s; }
+    .diagram-arrow.is-active .diagram-arrow-letter { fill: #b96048; font-weight: 700; }
+    .diagram-arrow-hit { stroke: transparent; stroke-width: 28; }
+    .orbit-inspector { padding: 23px 0 0; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 22px; flex-wrap: wrap; }
+    .orbit-inspector .micro-label { color: #697772; font-size: 10px; margin-bottom: 7px; }
+    .orbit-energy { color: #334c4c; font: 500 18px var(--mono); letter-spacing: -.04em; }
+    .orbit-buttons { display: flex; gap: 6px; }
+    .orbit-button { min-width: 52px; height: 43px; padding: 0 10px; border: 1px solid #b6c1b9; background: transparent; color: #536760; font: 12px var(--mono); transition: background .2s, color .2s; }
+    .orbit-button:hover, .orbit-button.is-active { background: #2d625f; color: #f1f0e8; border-color: #2d625f; }
+    .diagram-footnote { margin: 16px 0 0; color: #8a958c; font-size: 12px; line-height: 1.7; }
+
+    .spectrum-section { background: var(--night-2); color: #edf0e8; padding: 116px 0 132px; }
+    .spectrum-section .section-index { color: #d5ad7e; }
+    .spectrum-section .section-heading p { color: #aebebd; }
+    .spectrum-workspace { margin-top: 72px; padding-top: 30px; border-top: 1px solid #40515a; }
+    .spectrum-subhead { display: flex; justify-content: space-between; gap: 15px; align-items: baseline; font: 11px var(--mono); letter-spacing: .12em; color: #a8b9bb; text-transform: uppercase; }
+    .spectrum-subhead span:last-child { color: #d5b598; }
+    .spectrum-axis { margin-top: 45px; padding: 0 1px 8px; display: flex; justify-content: space-between; border-bottom: 1px solid #849293; color: #b9c9c6; font: 13px var(--mono); }
+    .spectrum-track { position: relative; height: 157px; margin-top: 9px; background: #03080e; border: 1px solid #2a3d45; box-shadow: inset 0 0 55px rgba(0, 0, 0, .55); overflow: visible; touch-action: none; cursor: crosshair; }
+    .spectrum-track::before { content: ""; position: absolute; inset: 0; opacity: .16; background: linear-gradient(90deg, #744f9c 0%, #4b67be 18%, #54bab6 32%, #c8ca79 51%, #e7a75d 74%, #c75653 100%); mask-image: linear-gradient(0deg, transparent, black 48%, transparent); pointer-events: none; }
+    .spectrum-track::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(90deg, transparent 0, transparent calc(16.666% - 1px), rgba(176, 198, 202, .065) calc(16.666% - 1px), rgba(176, 198, 202, .065) 16.666%); }
+    .emission-line { position: absolute; z-index: 2; top: 0; left: var(--pos); width: 44px; height: 100%; padding: 0; transform: translateX(-50%); background: none; border: 0; color: #dddcd2; }
+    .emission-line .beam { position: absolute; top: 0; bottom: 0; left: calc(50% - 2px); width: 4px; background: var(--beam-color); box-shadow: 0 0 8px var(--beam-color), 0 0 26px var(--beam-color), 0 0 44px var(--beam-color); opacity: .75; transition: opacity .25s, width .25s, box-shadow .25s; }
+    .emission-line:hover .beam, .emission-line.is-active .beam { opacity: 1; width: 6px; box-shadow: 0 0 10px var(--beam-color), 0 0 28px var(--beam-color), 0 0 65px var(--beam-color); }
+    .emission-line.is-active .beam { animation: lightBreathe 2.6s ease-in-out infinite; }
+    .emission-line .line-name { position: absolute; left: 50%; bottom: 13px; transform: translateX(-50%); font: 13px var(--mono); color: #e6e8e2; text-shadow: 0 2px 4px #03080e; }
+    .emission-line.line-c .line-name { bottom: -49px; font: 600 31px var(--serif); color: #f0b39a; }
+    .emission-line.line-c .line-name::before { content: ""; position: absolute; width: 1px; height: 20px; background: #f0b39a; left: 50%; bottom: 36px; }
+    .probe-marker { position: absolute; z-index: 3; top: -18px; bottom: -12px; left: 60%; width: 1px; border-left: 1px dashed rgba(243, 239, 225, .7); pointer-events: none; transition: left .09s linear; }
+    .probe-marker::before { content: ""; position: absolute; top: -2px; left: -5px; width: 9px; height: 9px; transform: rotate(45deg); background: #f1e5cc; }
+    .spectrum-track-caption { margin-top: 63px; display: flex; justify-content: space-between; gap: 15px; font-size: 12px; color: #9fadaf; }
+    .spectrum-track-caption strong { color: #eab594; font-weight: 500; }
+    .probe-tools { margin-top: 42px; padding-top: 28px; border-top: 1px solid #34454d; display: grid; grid-template-columns: 150px minmax(0, 1fr) 164px; align-items: center; gap: 27px; }
+    .probe-title { color: #ecefe7; font-size: 14px; font-weight: 600; }
+    .probe-title small { display: block; margin-top: 5px; color: #9dadae; font: 11px var(--mono); font-weight: 400; }
+    .wavelength-slider { width: 100%; margin: 0; appearance: none; -webkit-appearance: none; height: 5px; border-radius: 0; background: linear-gradient(90deg, #7654a8, #6469bc 17%, #64b3bd 32%, #c7c67f 55%, #e3a163 77%, #d5685b); cursor: pointer; touch-action: auto; }
+    .wavelength-slider::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 16px; height: 27px; border: 2px solid #f2eadc; border-radius: 0; background: #0c1720; box-shadow: 0 0 0 3px #0c1720; }
+    .wavelength-slider::-moz-range-thumb { width: 14px; height: 24px; border: 2px solid #f2eadc; border-radius: 0; background: #0c1720; }
+    .probe-value { text-align: right; font: 500 28px var(--mono); letter-spacing: -.05em; color: #f1dfca; white-space: nowrap; }
+    .probe-value small { font-size: 13px; color: #acbbb9; letter-spacing: 0; }
+    .probe-feedback { margin-top: 13px; display: flex; justify-content: space-between; gap: 16px; color: #aebebe; font-size: 13px; line-height: 1.6; }
+    .probe-feedback strong { color: #e8b38e; font-weight: 500; }
+    .comparison { margin-top: 75px; }
+    .comparison-title { padding-bottom: 14px; color: #aebebd; font: 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .comparison-head, .comparison-row { display: grid; grid-template-columns: 1.3fr 1fr 1fr; align-items: center; gap: 20px; }
+    .comparison-head { padding: 0 22px 13px; color: #8da5a8; font-size: 12px; }
+    .comparison-row { width: 100%; min-height: 76px; padding: 12px 22px; border: 0; border-top: 1px solid #344952; background: transparent; text-align: left; color: #dbe6e1; transition: background .22s, color .22s; }
+    .comparison-row:last-child { border-bottom: 1px solid #344952; }
+    .comparison-row:hover, .comparison-row.is-active { background: rgba(216, 159, 124, .1); }
+    .comparison-row.is-active { box-shadow: inset 3px 0 #df9e79; }
+    .comparison-row strong { font: 500 16px var(--mono); }
+    .comparison-row strong b { display: inline-block; width: 28px; color: #efbc99; font: 500 20px var(--mono); }
+    .comparison-row > span { font: 15px var(--mono); }
+    .comparison-row .longest { color: #e9ae90; }
+    .comparison-row .longest i { margin-left: 12px; font: 600 19px var(--serif); font-style: normal; }
+    .infrared-note { margin-top: 34px; border-left: 2px solid #b98068; padding: 2px 0 2px 20px; display: grid; grid-template-columns: 160px 1fr; gap: 18px; }
+    .infrared-note strong { color: #deb398; font: 12px var(--mono); padding-top: 3px; }
+    .infrared-note p { margin: 0; color: #acbcbd; font-size: 14px; line-height: 1.85; word-break: keep-all; }
+    .infrared-note em { font-style: normal; color: #f0d2bc; }
+
+    .answer-section { padding: 112px 0 120px; background: var(--paper); }
+    .answer-intro { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 28px; align-items: end; }
+    .answer-section .section-heading { display: block; }
+    .answer-section .section-index { display: block; padding: 0 0 20px; }
+    .answer-section .section-heading p { max-width: 580px; }
+    .answer-number { font: 500 clamp(82px, 12vw, 180px)/.95 var(--serif); color: #bb7456; letter-spacing: -.13em; padding-right: 15px; }
+    .answer-list { margin-top: 62px; border-top: 1px solid #aeb7b1; }
+    .answer-row { display: grid; grid-template-columns: 75px 1fr auto; gap: 20px; padding: 24px 0; border-bottom: 1px solid #ccd0c8; align-items: start; }
+    .answer-symbol { font: 500 26px var(--serif); color: #a9654c; }
+    .answer-row strong { font-size: 17px; font-weight: 600; }
+    .answer-row p { margin: 8px 0 0; color: #60716c; font-size: 14px; line-height: 1.8; word-break: keep-all; }
+    .answer-true { color: #31726c; font: 13px var(--mono); padding-top: 5px; }
+    .site-footer { background: #e3e1d6; padding: 34px 0 40px; }
+    .footer-inner { display: flex; justify-content: space-between; gap: 26px; color: #697870; font-size: 12px; line-height: 1.8; }
+    .footer-inner p { max-width: 710px; margin: 0; }
+    .footer-inner a { white-space: nowrap; color: #324d4b; border-bottom: 1px solid #83928b; align-self: start; }
+
+    .reveal { transition: opacity .7s ease, transform .7s ease; }
+    .js-ready .reveal:not(.is-visible) { opacity: 0; transform: translateY(20px); }
+    .reveal.is-visible { opacity: 1; transform: translateY(0); }
+    @keyframes lightBreathe { 0%, 100% { filter: brightness(.8); } 50% { filter: brightness(1.45); } }
+    @keyframes enterUp { from { opacity: 0; transform: translateY(19px); } to { opacity: 1; transform: translateY(0); } }
+    .hero-eyebrow, .hero h1, .hero-description, .hero-actions { animation: enterUp .8s both; }
+    .hero h1 { animation-delay: .12s; }
+    .hero-description { animation-delay: .25s; }
+    .hero-actions { animation-delay: .38s; }
+
+    @media (max-width: 1170px) {
+      .header-center { display: none; }
+      .hero-copy { top: 21%; width: 390px; }
+      .hero h1 { font-size: clamp(75px, 8.4vw, 105px); }
+      .transition-pick { min-width: 76px; }
+      .analysis-grid { gap: 35px; }
+      .diagram-panel { padding-left: 32px; }
+    }
+    @media (max-width: 900px) {
+      .hero-copy { width: min(400px, 49vw); left: 6vw; }
+      .hero-wash { background: linear-gradient(90deg, #09131c 0%, rgba(9, 19, 28, .93) 23%, rgba(9, 19, 28, .28) 61%, transparent 100%), linear-gradient(0deg, rgba(6, 15, 22, .85), transparent 20%); }
+      .transition-picker { max-width: 365px; }
+      .transition-pick { min-width: 76px; }
+      .analysis-grid { display: block; }
+      .reading-panel { max-width: 650px; }
+      .diagram-panel { border-left: 0; border-top: 1px solid var(--line); margin-top: 55px; padding-left: 0; padding-top: 35px; }
+      .energy-diagram { max-width: 720px; margin-left: auto; margin-right: auto; }
+      .orbit-inspector { max-width: 720px; margin-left: auto; margin-right: auto; }
+    }
+    @media (min-width: 641px) and (max-width: 900px) and (min-height: 800px) and (orientation: portrait) {
+      .hero-copy { top: 115px; bottom: 115px; left: 7vw; right: 7vw; width: auto; display: flex; flex-direction: column; }
+      .hero-eyebrow, .hero h1, .hero-description { pointer-events: auto; touch-action: pan-y; }
+      .hero h1 { margin: 16px 0 11px; font-size: clamp(76px, 10vw, 96px); }
+      .hero-actions { margin-top: auto; max-width: 400px; }
+      .hero-wash { background: linear-gradient(180deg, rgba(7, 17, 25, .96), rgba(7, 17, 25, .62) 25%, rgba(7, 17, 25, .02) 46%, rgba(7, 17, 25, .08) 67%, rgba(7, 17, 25, .92) 91%); }
+    }
+    @media (max-width: 640px) {
+      .content-width { padding-left: 22px; padding-right: 22px; }
+      .hero { min-height: 695px; height: 100svh; }
+      .site-header { height: 66px; padding: 0 22px; }
+      .brand { font-size: 16px; }
+      .header-right { font-size: 10px; gap: 0; }
+      .header-right span { display: none; }
+      .hero-wash { background: linear-gradient(180deg, rgba(7, 17, 25, .98) 0%, rgba(7, 17, 25, .88) 23%, rgba(7, 17, 25, .15) 43%, rgba(7, 17, 25, .12) 67%, rgba(7, 17, 25, .88) 87%, #09131c 100%); }
+      .hero-grain { opacity: .1; }
+      .hero-copy { top: 96px; bottom: 94px; left: 22px; right: 22px; width: auto; display: flex; flex-direction: column; pointer-events: none; }
+      .hero-eyebrow, .hero h1, .hero-description { pointer-events: auto; touch-action: pan-y; }
+      .hero-eyebrow { font-size: 10px; }
+      .hero h1 { margin: 13px 0 10px; font-size: clamp(55px, 14.2vw, 78px); line-height: 1.07; }
+      .hero-description { font-size: 13px; line-height: 1.68; max-width: 290px; }
+      .hero-actions { margin-top: auto; }
+      .hero-actions .micro-label { margin-bottom: 9px; font-size: 10px; }
+      .transition-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-width: none; }
+      .transition-pick { width: 100%; min-width: 0; height: 56px; padding: 8px 9px; background: rgba(10, 26, 34, .75); }
+      .transition-pick strong { font-size: 21px; }
+      .transition-pick small { margin-top: 5px; font-size: 9px; }
+      .hero-footer { left: 22px; right: 22px; min-height: 65px; bottom: 0; gap: 6px; font-size: 10px; }
+      .gesture-hint { max-width: 245px; gap: 8px; line-height: 1.5; }
+      .gesture-symbol { display: none; }
+      .desktop-gesture { display: none; }
+      .hero-footer-controls { gap: 10px; }
+      .text-button { font-size: 10px; }
+      .hero-footer a { display: none; }
+      .webgl-fallback { inset: 39% 14% 30%; }
+      .energy-section, .spectrum-section { padding: 76px 0 85px; }
+      .section-heading { display: block; }
+      .section-index { display: block; padding: 0 0 17px; }
+      .section-heading h2 { font-size: clamp(34px, 8.5vw, 45px); line-height: 1.38; }
+      .section-heading p { font-size: 14px; margin-top: 15px; }
+      .analysis-grid, .spectrum-workspace { margin-top: 45px; }
+      .reading-panel, .diagram-panel { padding-top: 23px; }
+      .current-transition { margin: 15px 0 23px; }
+      .current-letter { font-size: 78px; }
+      .current-route { font-size: 24px; }
+      .number-value { font-size: clamp(23px, 7vw, 34px); }
+      .reading-numbers > div + div { padding-left: 15px; }
+      .formula { font-size: 26px; }
+      .takeaway strong { font-size: 18px; }
+      .diagram-panel { margin-top: 43px; }
+      .energy-diagram { margin: 18px -10px 10px; width: calc(100% + 20px); }
+      .orbit-inspector { gap: 16px; }
+      .orbit-energy { font-size: 15px; }
+      .orbit-button { min-width: 44px; height: 40px; font-size: 11px; padding: 0 5px; }
+      .spectrum-subhead { font-size: 10px; }
+      .spectrum-axis { margin-top: 38px; font-size: 10px; }
+      .spectrum-axis span:nth-child(2n) { display: none; }
+      .spectrum-track { height: 135px; }
+      .emission-line.line-c .line-name { font-size: 25px; bottom: -42px; }
+      .emission-line.line-c .line-name::before { bottom: 30px; height: 16px; }
+      .spectrum-track-caption { margin-top: 55px; font-size: 11px; }
+      .probe-tools { margin-top: 31px; gap: 15px 10px; grid-template-columns: 1fr auto; }
+      .probe-title { font-size: 13px; }
+      .probe-value { font-size: 23px; }
+      .wavelength-slider { grid-row: 2; grid-column: 1 / -1; margin: 12px 0 8px; }
+      .probe-feedback { display: block; margin-top: 11px; font-size: 12px; }
+      .probe-feedback span { display: block; margin-bottom: 5px; }
+      .comparison { margin-top: 55px; }
+      .comparison-head, .comparison-row { grid-template-columns: 1.25fr .92fr .85fr; gap: 8px; }
+      .comparison-head { padding: 0 7px 10px; font-size: 10px; }
+      .comparison-row { padding: 12px 7px; min-height: 68px; }
+      .comparison-row strong, .comparison-row > span { font-size: 11px; }
+      .comparison-row strong b { width: 16px; font-size: 15px; }
+      .comparison-row .longest i { margin-left: 4px; font-size: 15px; }
+      .infrared-note { display: block; margin-top: 28px; padding-left: 16px; }
+      .infrared-note p { margin-top: 9px; font-size: 13px; }
+      .answer-section { padding: 80px 0 88px; }
+      .answer-intro { grid-template-columns: 1fr auto; gap: 8px; }
+      .answer-number { align-self: start; padding-top: 38px; font-size: 81px; }
+      .answer-section .section-heading h2 { font-size: 32px; }
+      .answer-list { margin-top: 43px; }
+      .answer-row { grid-template-columns: 36px 1fr auto; gap: 10px; padding: 21px 0; }
+      .answer-row strong { font-size: 15px; }
+      .answer-row p { font-size: 12px; }
+      .answer-symbol { font-size: 21px; }
+      .answer-true { font-size: 11px; }
+      .footer-inner { display: block; }
+      .footer-inner a { display: inline-block; margin-top: 20px; }
+    }
+    @media (max-width: 375px) {
+      .hero-copy { top: 88px; }
+      .hero h1 { font-size: 54px; }
+      .transition-pick { padding: 8px 7px; }
+      .transition-pick small { font-size: 8px; }
+      .hero-footer { font-size: 9px; }
+      .number-value { font-size: 23px; }
+      .answer-number { font-size: 65px; }
+    }
+    @media (max-height: 690px) and (min-width: 641px) {
+      .hero { min-height: 650px; }
+      .hero-copy { top: 20%; }
+      .hero h1 { font-size: 78px; margin-top: 14px; }
+      .hero-actions { margin-top: 22px; }
+      .transition-pick { height: 60px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+      .js-ready .reveal:not(.is-visible) { opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#experiment">실험 내용으로 이동</a>
+
+  <section class="hero" id="top" aria-labelledby="hero-title">
+    <div class="scene-host" id="sceneHost" aria-label="회전, 확대, 이동할 수 있는 3D 복셀 수소 원자"></div>
+    <div class="hero-wash" aria-hidden="true"></div>
+    <div class="hero-grain" aria-hidden="true"></div>
+    <div class="webgl-fallback" id="webglFallback" hidden>이 브라우저에서는 3D 장면을 표시할 수 없습니다.<br>아래의 에너지 준위와 스펙트럼 탐색기는 계속 사용할 수 있습니다.</div>
+
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="빛의 지문, 맨 위로">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+        빛의 지문
+      </a>
+      <span class="header-center">AN INTERACTIVE ATOMIC ATLAS / 01</span>
+      <div class="header-right"><span>PHYSICS II · HYDROGEN</span><a href="#experiment">원리 탐색 ↗</a></div>
+    </header>
+
+    <div class="hero-copy">
+      <div class="hero-eyebrow">THE HYDROGEN ATOM</div>
+      <h1 id="hero-title">빛의<br>지문<span>.</span></h1>
+      <p class="hero-description">보이지 않는 에너지 차이가<br>눈에 보이는 한 줄의 빛이 되는 순간.</p>
+      <div class="hero-actions">
+        <div class="micro-label">전이를 선택해 보세요 / SELECT A JUMP</div>
+        <div class="transition-picker" role="group" aria-label="전자 전이 선택">
+          <button class="transition-pick" type="button" data-transition="a" aria-pressed="false"><strong>a</strong><small>5 → 2</small></button>
+          <button class="transition-pick" type="button" data-transition="b" aria-pressed="false"><strong>b</strong><small>4 → 2</small></button>
+          <button class="transition-pick is-active" type="button" data-transition="c" aria-pressed="true"><strong>c</strong><small>3 → 2</small></button>
+          <button class="transition-pick" type="button" data-transition="d" aria-pressed="false"><strong>d</strong><small>5 → 3</small></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-footer">
+      <div class="gesture-hint"><span class="gesture-symbol" aria-hidden="true">+</span><span>한 손가락 회전 · 두 손가락 확대/축소와 이동<span class="desktop-gesture"> / 마우스 드래그 · 휠 · 오른쪽 드래그</span></span></div>
+      <div class="hero-footer-controls"><button class="text-button" id="resetView" type="button">시점 초기화 ↺</button><a href="#experiment">원리 살펴보기 <span aria-hidden="true">↓</span></a></div>
+    </div>
+  </section>
+
+  <main id="experiment">
+    <section class="energy-section" aria-labelledby="energy-title">
+      <div class="content-width">
+        <div class="section-heading reveal">
+          <span class="section-index">01 / ENERGY LEVELS</span>
+          <div><h2 id="energy-title">작게 떨어질수록,<br>빛은 더 길어집니다.</h2><p>전자가 높은 에너지 준위에서 낮은 준위로 이동할 때, 두 준위의 차이만큼 빛 한 개가 방출됩니다.</p></div>
+        </div>
+
+        <div class="analysis-grid reveal">
+          <div class="reading-panel">
+            <div class="panel-topline"><span>선택한 전이 / EMISSION</span><span class="panel-accent" id="readingSeries">BALMER SERIES</span></div>
+            <div class="current-transition"><span class="current-letter" id="currentLetter">c</span><div><span class="current-route" id="currentRoute">n = 3 → 2</span><span class="current-region" id="currentRegion">가시광선 · 붉은빛</span></div></div>
+            <div class="reading-numbers" aria-live="polite">
+              <div><span class="number-label">준위 차이 / ΔE</span><strong class="number-value"><span id="energyValue">1.89</span> <em>eV</em></strong></div>
+              <div><span class="number-label">방출 파장 / λ</span><strong class="number-value wavelength"><span id="wavelengthValue">656</span> <em>nm</em></strong></div>
+            </div>
+            <div class="formula-label">THE ONE RELATION TO REMEMBER</div>
+            <p class="formula">ΔE = hν = hc / λ</p>
+            <p class="formula-explain">에너지 차가 작으면 진동수 ν도 작아집니다. 빛의 속력 c = λν는 일정하므로 파장 λ는 길어집니다. 즉, <strong>λ = hc / ΔE</strong>입니다.</p>
+            <div class="takeaway" aria-live="polite"><strong>ΔE ↓ &nbsp; λ ↑</strong><p id="transitionExplanation">a~c 중 에너지 차가 가장 작은 c는 파장이 가장 깁니다. 따라서 오른쪽 끝의 ㉠은 c입니다.</p></div>
+            <div class="mini-controls" role="group" aria-label="전이 다시 선택"><span class="micro-label">전이 선택</span><button class="mini-pick" type="button" data-transition="a" aria-pressed="false">a</button><button class="mini-pick" type="button" data-transition="b" aria-pressed="false">b</button><button class="mini-pick is-active" type="button" data-transition="c" aria-pressed="true">c</button><button class="mini-pick" type="button" data-transition="d" aria-pressed="false">d</button></div>
+            <button class="replay-button" id="replayTransition" type="button">↻ 3D 전이 다시 보기</button>
+          </div>
+
+          <div class="diagram-panel">
+            <p class="diagram-caption">보어의 수소 원자 / n = 2 ~ 5</p>
+            <p class="diagram-help">화살표를 누르면 전이가, 준위를 누르면 관찰할 궤도가 바뀝니다.</p>
+            <svg class="energy-diagram" id="energyDiagram" viewBox="0 0 670 470" role="group" aria-label="수소 원자의 n=2부터 n=5까지 에너지 준위와 a, b, c, d 전이">
+              <defs>
+                <marker id="arrowSoft" markerWidth="9" markerHeight="9" refX="5" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M 1 1 L 5 4.5 L 1 8" fill="none" stroke="#879691" stroke-width="1.6"/></marker>
+                <marker id="arrowActive" markerWidth="11" markerHeight="11" refX="6" refY="5.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M 1 1 L 6 5.5 L 1 10" fill="none" stroke="#c87858" stroke-width="2.1"/></marker>
+              </defs>
+              <g id="diagramAxis"></g><g id="diagramLevels"></g><g id="diagramArrows"></g>
+            </svg>
+            <div class="orbit-inspector">
+              <div><span class="micro-label">양자수 n / 궤도 살펴보기</span><strong class="orbit-energy" id="orbitEnergy" aria-live="polite">n = 3 &nbsp; Eₙ = -1.51 eV</strong></div>
+              <div class="orbit-buttons" role="group" aria-label="관찰할 양자수 선택">
+                <button class="orbit-button" type="button" data-n="2" aria-pressed="false">n=2</button><button class="orbit-button is-active" type="button" data-n="3" aria-pressed="true">n=3</button><button class="orbit-button" type="button" data-n="4" aria-pressed="false">n=4</button><button class="orbit-button" type="button" data-n="5" aria-pressed="false">n=5</button>
+              </div>
+            </div>
+            <p class="diagram-footnote">Eₙ = -13.6 / n² eV. 위쪽 준위일수록 에너지가 높습니다. 3D의 청록색 입자는 전자, 밖으로 향하는 복셀 파동은 광자입니다. 궤도 간격은 도식입니다.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="spectrum-section" id="spectrum" aria-labelledby="spectrum-title">
+      <div class="content-width">
+        <div class="section-heading reveal">
+          <span class="section-index">02 / SPECTRAL LINES</span>
+          <div><h2 id="spectrum-title">㉠은 왜 가장<br>오른쪽에 있을까요?</h2><p>그림 (나)는 a, b, c의 가시광선만 보여줍니다. 오른쪽일수록 파장이 길고, 광자 한 개의 에너지는 작습니다.</p></div>
+        </div>
+        <div class="spectrum-workspace reveal">
+          <div class="spectrum-subhead"><span>HYDROGEN / VISIBLE EMISSION</span><span>파장 λ (nm) →</span></div>
+          <div class="spectrum-axis" aria-hidden="true"><span>400</span><span>450</span><span>500</span><span>550</span><span>600</span><span>650</span><span>700</span></div>
+          <div class="spectrum-track" id="spectrumTrack" aria-label="400에서 700 나노미터까지의 가시광선 방출선">
+            <button class="emission-line line-a" style="--pos: 11.33%; --beam-color: #a597eb;" data-transition="a" type="button" aria-label="a 전이, 약 434 나노미터"><span class="beam"></span><span class="line-name">a</span></button>
+            <button class="emission-line line-b" style="--pos: 28.7%; --beam-color: #70d9d9;" data-transition="b" type="button" aria-label="b 전이, 약 486 나노미터"><span class="beam"></span><span class="line-name">b</span></button>
+            <button class="emission-line line-c is-active" style="--pos: 85.43%; --beam-color: #fa947b;" data-transition="c" type="button" aria-label="㉠은 c 전이, 약 656 나노미터"><span class="beam"></span><span class="line-name">㉠</span></button>
+            <div class="probe-marker" id="probeMarker" aria-hidden="true"></div>
+          </div>
+          <div class="spectrum-track-caption"><span>짧은 파장 · 큰 에너지</span><strong>㉠ = c (3 → 2)</strong><span>긴 파장 · 작은 에너지</span></div>
+
+          <div class="probe-tools">
+            <label class="probe-title" for="wavelengthSlider">파장 탐색<small>DRAG TO SCAN</small></label>
+            <input class="wavelength-slider" id="wavelengthSlider" type="range" min="400" max="700" step="1" value="580" aria-label="탐색할 방출 스펙트럼 파장, 400에서 700 나노미터">
+            <output class="probe-value" id="probeValue" for="wavelengthSlider">580 <small>nm</small></output>
+          </div>
+          <div class="probe-feedback" aria-live="polite"><span id="probeEnergy">이 파장의 광자 에너지 ≈ 2.14 eV</span><strong id="probeHint">바늘을 방출선에 맞춰 보세요.</strong></div>
+
+          <div class="comparison">
+            <div class="comparison-title">같은 n=2에 도착하는 a, b, c 비교 / 누르면 선택됩니다</div>
+            <div class="comparison-head" aria-hidden="true"><span>전이</span><span>에너지 차 ΔE</span><span>방출 파장 λ</span></div>
+            <button type="button" class="comparison-row" data-transition="a" aria-pressed="false"><strong><b>a</b> 5 → 2</strong><span>2.86 eV</span><span>434 nm</span></button>
+            <button type="button" class="comparison-row" data-transition="b" aria-pressed="false"><strong><b>b</b> 4 → 2</strong><span>2.55 eV</span><span>486 nm</span></button>
+            <button type="button" class="comparison-row is-active" data-transition="c" aria-pressed="true"><strong><b>c</b> 3 → 2</strong><span>1.89 eV</span><span class="longest">656 nm <i>㉠</i></span></button>
+            <div class="infrared-note"><strong>잠깐, d는요?</strong><p><em>d (5 → 3)는 약 0.97 eV, 1282 nm</em>입니다. 네 전이 전체에서는 d의 에너지 차가 가장 작지만, 적외선이라 이 가시광선 스펙트럼에는 나타나지 않습니다. <em>㉠은 a~c 중에서만 고릅니다.</em></p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="answer-section" aria-labelledby="answer-title">
+      <div class="content-width">
+        <div class="answer-intro reveal">
+          <div class="section-heading"><span class="section-index">03 / BACK TO THE QUESTION</span><div><h2 id="answer-title">㉠은 c.<br>정답은 ⑤입니다.</h2><p>파장을 비교할 때는 먼저 <strong>어떤 전이들이 스펙트럼에 포함되는지</strong> 확인하세요.</p></div></div>
+          <div class="answer-number" aria-hidden="true">05</div>
+        </div>
+        <div class="answer-list reveal">
+          <div class="answer-row"><span class="answer-symbol">ㄱ</span><div><strong>a의 파장은 d보다 짧다.</strong><p>a는 약 434 nm, d는 약 1282 nm이므로 참입니다. d는 적외선입니다.</p></div><span class="answer-true">TRUE</span></div>
+          <div class="answer-row"><span class="answer-symbol">ㄴ</span><div><strong>b의 진동수는 (E₄ - E₂) / h이다.</strong><p>b는 n=4에서 n=2로 내려갑니다. ΔE = hν이므로 참입니다.</p></div><span class="answer-true">TRUE</span></div>
+          <div class="answer-row"><span class="answer-symbol">ㄷ</span><div><strong>㉠은 c가 만든 스펙트럼선이다.</strong><p>a~c 중 c의 ΔE가 가장 작아서 λ가 가장 깁니다. 따라서 참입니다.</p></div><span class="answer-true">TRUE</span></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer"><div class="content-width footer-inner"><p>보어 모형을 이용한 학습용 시각화입니다. 여러 복셀로 만든 중심 핵은 양성자 1개를 표현합니다. 실제 전자는 정해진 3D 궤도를 도는 작은 구슬이 아니며, 적외선 d의 광자 색은 관찰을 돕기 위한 의사색입니다.</p><a href="#top">처음으로 돌아가기 ↑</a></div></footer>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    document.documentElement.classList.add('js-ready');
+
+    const transitions = {
+      a: { from: 5, to: 2, color: '#a597eb', region: '가시광선 · 보랏빛', series: 'BALMER SERIES', explanation: 'a는 n=5에서 n=2까지 크게 내려갑니다. a~c 중 에너지 차가 가장 커서 파장은 가장 짧습니다.' },
+      b: { from: 4, to: 2, color: '#70d9d9', region: '가시광선 · 청록빛', series: 'BALMER SERIES', explanation: 'b의 에너지 차는 a보다 작고 c보다 큽니다. 따라서 파장도 434 nm와 656 nm 사이입니다.' },
+      c: { from: 3, to: 2, color: '#fa947b', region: '가시광선 · 붉은빛', series: 'BALMER SERIES', explanation: 'a~c 중 에너지 차가 가장 작은 c는 파장이 가장 깁니다. 따라서 오른쪽 끝의 ㉠은 c입니다.' },
+      d: { from: 5, to: 3, color: '#d88575', region: '적외선 · 화면에서는 의사색', series: 'PASCHEN SERIES', explanation: 'd는 네 전이 중 에너지 차가 가장 작지만 파장이 약 1282 nm인 적외선입니다. 그림 (나)는 a~c만 보여주므로 ㉠은 c입니다.' }
+    };
+    const levelY = { 5: 73, 4: 109, 3: 186, 2: 402 };
+    const orbitRadius = { 2: 1.69, 3: 2.42, 4: 3.17, 5: 4.0 };
+    const $ = (selector) => document.querySelector(selector);
+    const $$ = (selector) => document.querySelectorAll(selector);
+    const energyAt = (n) => -13.6 / (n * n);
+    const photonEnergy = (transition) => energyAt(transition.from) - energyAt(transition.to);
+    const wavelengthAt = (transition) => 1239.841984 / photonEnergy(transition);
+    const svgNS = 'http://www.w3.org/2000/svg';
+    let activeTransition = 'c';
+    let inspectedN = 3;
+    let wasCompactDiagram = window.innerWidth <= 640;
+    let sceneAPI = { select: () => {}, inspect: () => {}, replay: () => {}, resetView: () => {} };
+
+    function svgElement(tag, attributes = {}, text = '') {
+      const element = document.createElementNS(svgNS, tag);
+      for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, value);
+      if (text) element.textContent = text;
+      return element;
+    }
+
+    function drawDiagram() {
+      const compact = window.innerWidth <= 640;
+      wasCompactDiagram = compact;
+      $('#energyDiagram').setAttribute('viewBox', compact ? '0 0 460 470' : '0 0 670 470');
+      const axis = $('#diagramAxis');
+      const levels = $('#diagramLevels');
+      const arrows = $('#diagramArrows');
+      axis.replaceChildren();
+      levels.replaceChildren();
+      arrows.replaceChildren();
+
+      axis.append(svgElement('line', { x1: compact ? 51 : 72, y1: 435, x2: compact ? 51 : 72, y2: 52, class: 'diagram-axis', 'marker-end': 'url(#arrowSoft)' }));
+      axis.append(svgElement('text', { x: compact ? 2 : 20, y: 48, class: 'diagram-axis-text' }, '에너지'));
+
+      for (const n of [5, 4, 3, 2]) {
+        const y = levelY[n];
+        const group = svgElement('g', { class: `level-group${n === inspectedN ? ' is-inspected' : ''}`, 'data-n': n, role: 'button', tabindex: 0, 'aria-pressed': String(n === inspectedN), 'aria-label': `양자수 n=${n} 궤도 보기` });
+        group.append(svgElement('rect', { x: compact ? 57 : 80, y: y - 15, width: compact ? 397 : 562, height: 30, class: 'diagram-level-hit' }));
+        group.append(svgElement('line', { x1: compact ? 64 : 89, y1: y, x2: compact ? 382 : 565, y2: y, class: 'diagram-level-line' }));
+        group.append(svgElement('text', { x: compact ? 19 : 42, y: y + 6, class: 'level-name' }, `E${n}`));
+        group.append(svgElement('text', { x: compact ? 394 : 580, y: y + 5, class: 'level-number' }, `n=${n}`));
+        levels.append(group);
+      }
+
+      const positions = compact ? { a: 111, b: 180, c: 251, d: 326 } : { a: 165, b: 256, c: 349, d: 475 };
+      for (const [key, transition] of Object.entries(transitions)) {
+        const x = positions[key];
+        const start = levelY[transition.from] + 8;
+        const end = levelY[transition.to] - 15;
+        const isActive = key === activeTransition;
+        const group = svgElement('g', { class: `diagram-arrow${isActive ? ' is-active' : ''}`, 'data-transition': key, role: 'button', tabindex: 0, 'aria-pressed': String(isActive), 'aria-label': `${key} 전이, n=${transition.from}에서 n=${transition.to}로 선택` });
+        group.append(svgElement('line', { x1: x, y1: start, x2: x, y2: end, class: 'diagram-arrow-line', 'marker-end': isActive ? 'url(#arrowActive)' : 'url(#arrowSoft)' }));
+        group.append(svgElement('line', { x1: x, y1: start, x2: x, y2: end, class: 'diagram-arrow-hit' }));
+        group.append(svgElement('text', { x: x + 13, y: start + (end - start) * .48, class: 'diagram-arrow-letter' }, key));
+        arrows.append(group);
+      }
+    }
+
+    function updateProbe(value) {
+      const wavelength = Math.max(400, Math.min(700, Number(value)));
+      $('#wavelengthSlider').value = wavelength;
+      $('#probeMarker').style.left = `${(wavelength - 400) / 3}%`;
+      $('#probeValue').innerHTML = `${wavelength} <small>nm</small>`;
+      $('#probeEnergy').textContent = `이 파장의 광자 에너지 ≈ ${(1239.841984 / wavelength).toFixed(2)} eV`;
+      const near = ['a', 'b', 'c'].find((key) => Math.abs(wavelengthAt(transitions[key]) - wavelength) <= 7);
+      $('#probeHint').textContent = near
+        ? `${near === 'c' ? '㉠ = ' : ''}${near} 전이의 방출선 근처입니다. (${Math.round(wavelengthAt(transitions[near]))} nm)`
+        : '이 위치에는 a~c의 방출선이 없습니다.';
+    }
+
+    function selectTransition(key, moveProbe = true) {
+      if (!transitions[key]) return;
+      activeTransition = key;
+      const transition = transitions[key];
+      const energy = photonEnergy(transition);
+      const wavelength = wavelengthAt(transition);
+      inspectedN = transition.from;
+
+      $('#currentLetter').textContent = key;
+      $('#currentRoute').textContent = `n = ${transition.from} → ${transition.to}`;
+      $('#currentRegion').textContent = transition.region;
+      $('#readingSeries').textContent = transition.series;
+      $('#energyValue').textContent = energy.toFixed(2);
+      $('#wavelengthValue').textContent = Math.round(wavelength);
+      $('#transitionExplanation').textContent = transition.explanation;
+      $$('[data-transition]').forEach((element) => {
+        const isActive = element.dataset.transition === key;
+        element.classList.toggle('is-active', isActive);
+        if (element.hasAttribute('aria-pressed')) element.setAttribute('aria-pressed', String(isActive));
+      });
+      updateN(inspectedN);
+      if (moveProbe && key !== 'd') updateProbe(Math.round(wavelength));
+      if (key === 'd') {
+        $('#probeHint').textContent = 'd는 1282 nm 적외선이라 이 400~700 nm 눈금 밖에 있습니다.';
+      }
+      sceneAPI.select(key);
+    }
+
+    function updateN(n) {
+      if (![2, 3, 4, 5].includes(Number(n))) return;
+      inspectedN = Number(n);
+      $('#orbitEnergy').textContent = `n = ${n}   Eₙ = ${energyAt(n).toFixed(2)} eV`;
+      $$('.orbit-button').forEach((button) => {
+        const isActive = Number(button.dataset.n) === inspectedN;
+        button.classList.toggle('is-active', isActive);
+        button.setAttribute('aria-pressed', String(isActive));
+      });
+      drawDiagram();
+      sceneAPI.inspect(inspectedN);
+    }
+
+    document.addEventListener('click', (event) => {
+      const transitionButton = event.target.closest('[data-transition]');
+      if (transitionButton) selectTransition(transitionButton.dataset.transition);
+      const orbitButton = event.target.closest('[data-n]');
+      if (orbitButton) updateN(Number(orbitButton.dataset.n));
+    });
+    document.addEventListener('keydown', (event) => {
+      const target = event.target;
+      if ((event.key === 'Enter' || event.key === ' ') && target.matches('svg [role="button"]')) {
+        event.preventDefault();
+        if (target.dataset.transition) selectTransition(target.dataset.transition);
+        if (target.dataset.n) updateN(Number(target.dataset.n));
+      }
+    });
+    $('#wavelengthSlider').addEventListener('input', (event) => updateProbe(event.target.value));
+    const spectrumTrack = $('#spectrumTrack');
+    function scanAtPointer(event) {
+      const bounds = spectrumTrack.getBoundingClientRect();
+      const fraction = Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width));
+      updateProbe(Math.round(400 + fraction * 300));
+    }
+    spectrumTrack.addEventListener('pointerdown', (event) => {
+      if (event.target.closest('.emission-line')) return;
+      spectrumTrack.setPointerCapture(event.pointerId);
+      scanAtPointer(event);
+    });
+    spectrumTrack.addEventListener('pointermove', (event) => {
+      if (spectrumTrack.hasPointerCapture(event.pointerId)) scanAtPointer(event);
+    });
+    $('#replayTransition').addEventListener('click', () => {
+      sceneAPI.replay();
+      $('#top').scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    });
+    $('#resetView').addEventListener('click', () => sceneAPI.resetView());
+    window.addEventListener('resize', () => {
+      if ((window.innerWidth <= 640) !== wasCompactDiagram) drawDiagram();
+    });
+
+    const revealObserver = 'IntersectionObserver' in window
+      ? new IntersectionObserver((entries, observer) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) { entry.target.classList.add('is-visible'); observer.unobserve(entry.target); }
+          });
+        }, { threshold: .12 })
+      : null;
+    $$('.reveal').forEach((element) => revealObserver ? revealObserver.observe(element) : element.classList.add('is-visible'));
+
+    function createScene() {
+      const host = $('#sceneHost');
+      let renderer;
+      try {
+        renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'high-performance' });
+      } catch (error) {
+        $('#webglFallback').hidden = false;
+        return;
+      }
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.8));
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.47;
+      host.appendChild(renderer.domElement);
+
+      const scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x0b1c26, .015);
+      const camera = new THREE.PerspectiveCamera(42, 1, .1, 120);
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = .065;
+      controls.minDistance = 6.5;
+      controls.maxDistance = 45;
+      controls.minPolarAngle = .04;
+      controls.maxPolarAngle = Math.PI - .04;
+      controls.screenSpacePanning = true;
+      controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+      controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      controls.autoRotate = !reducedMotion;
+      controls.autoRotateSpeed = .22;
+      renderer.domElement.addEventListener('pointerdown', () => { controls.autoRotate = false; });
+      renderer.domElement.addEventListener('wheel', () => { controls.autoRotate = false; }, { passive: true });
+      renderer.domElement.addEventListener('contextmenu', (event) => event.preventDefault());
+
+      scene.add(new THREE.AmbientLight(0xb6d8d8, 1.55));
+      const warmKey = new THREE.DirectionalLight(0xffd1a4, 3.1);
+      warmKey.position.set(-4, 8, 6);
+      scene.add(warmKey);
+      const coolRim = new THREE.DirectionalLight(0x5ac6d7, 2.2);
+      coolRim.position.set(5, 4, -6);
+      scene.add(coolRim);
+
+      const cube = new THREE.BoxGeometry(1, 1, 1);
+      const temp = new THREE.Object3D();
+      const root = new THREE.Group();
+      scene.add(root);
+      let seed = 11227;
+      const random = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+
+      // Repeated voxel details are instanced so the elaborate diorama remains light on phones.
+      function voxelInstances(voxels, material, parent = root) {
+        const mesh = new THREE.InstancedMesh(cube, material, voxels.length);
+        voxels.forEach((voxel, index) => {
+          temp.position.set(voxel.x, voxel.y, voxel.z);
+          temp.rotation.set(0, voxel.rotation || 0, 0);
+          temp.scale.set(voxel.sx || voxel.size || .1, voxel.sy || voxel.size || .1, voxel.sz || voxel.size || .1);
+          temp.updateMatrix();
+          mesh.setMatrixAt(index, temp.matrix);
+          if (voxel.color) mesh.setColorAt(index, new THREE.Color(voxel.color));
+        });
+        mesh.instanceMatrix.needsUpdate = true;
+        if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+        mesh.frustumCulled = false;
+        parent.add(mesh);
+        return mesh;
+      }
+
+      const stoneMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .87, metalness: .08 });
+      const floor = [];
+      for (let x = -4.66; x <= 4.66; x += .265) {
+        for (let z = -4.66; z <= 4.66; z += .265) {
+          const radius = Math.hypot(x, z);
+          if (radius > 4.67 || (radius > 4.28 && random() < .18)) continue;
+          const noise = random();
+          floor.push({ x, y: -1.34 + (noise > .92 ? .045 : 0), z, sx: .228, sy: .13 + random() * .025, sz: .228,
+            color: radius < 1.05 ? (noise > .5 ? '#355260' : '#294650') : (noise > .93 ? '#45626a' : noise > .66 ? '#263d49' : '#1b303b') });
+        }
+      }
+      voxelInstances(floor, stoneMaterial);
+
+      const underLayer = [];
+      for (let x = -4.55; x <= 4.55; x += .42) {
+        for (let z = -4.55; z <= 4.55; z += .42) {
+          if (Math.hypot(x, z) > 4.49) continue;
+          underLayer.push({ x, y: -1.56, z, sx: .38, sy: .29, sz: .38, color: random() > .82 ? '#19333b' : '#122631' });
+        }
+      }
+      voxelInstances(underLayer, stoneMaterial);
+
+      const rim = [];
+      const etched = [];
+      for (let i = 0; i < 200; i++) {
+        const angle = i / 200 * Math.PI * 2;
+        rim.push({ x: Math.cos(angle) * 4.61, y: -1.23, z: Math.sin(angle) * 4.61, sx: .115, sy: .15, sz: .115, color: i % 10 === 0 ? '#d7aa78' : '#5d726c' });
+        if (i % 3 === 0) etched.push({ x: Math.cos(angle) * 4.87, y: -1.28, z: Math.sin(angle) * 4.87, sx: .045, sy: .05, sz: i % 15 === 0 ? .22 : .105, rotation: -angle, color: i % 15 === 0 ? '#b78b68' : '#385662' });
+      }
+      voxelInstances(rim, stoneMaterial);
+      voxelInstances(etched, stoneMaterial);
+
+      const circuit = [];
+      for (let ray = 0; ray < 16; ray++) {
+        const angle = ray * Math.PI / 8;
+        for (let r = .75; r < 4.27; r += .25) {
+          if (random() < .1) continue;
+          circuit.push({ x: Math.cos(angle) * r, y: -1.225, z: Math.sin(angle) * r, sx: .062, sy: .025, sz: .09, rotation: -angle, color: ray % 4 === 0 ? '#aa876a' : '#3b7478' });
+        }
+      }
+      voxelInstances(circuit, new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x18393b, emissiveIntensity: .45, roughness: .48 }));
+
+      const pylons = [];
+      for (let k = 0; k < 12; k++) {
+        const angle = k / 12 * Math.PI * 2;
+        for (let tier = 0; tier < 4; tier++) {
+          pylons.push({ x: Math.cos(angle) * 4.43, y: -1.08 + tier * .16, z: Math.sin(angle) * 4.43,
+            sx: tier === 3 ? .17 : .23, sy: .15, sz: tier === 3 ? .17 : .23,
+            color: tier === 3 ? '#e4b782' : (k % 3 === 0 ? '#577478' : '#314d56') });
+        }
+      }
+      voxelInstances(pylons, stoneMaterial);
+
+      const rings = {};
+      const labels = {};
+      for (const n of [2, 3, 4, 5]) {
+        const radius = orbitRadius[n];
+        const voxels = [];
+        const count = Math.round(radius * 76);
+        for (let i = 0; i < count; i++) {
+          const angle = i / count * Math.PI * 2;
+          voxels.push({ x: Math.cos(angle) * radius, y: .29, z: Math.sin(angle) * radius,
+            sx: i % 13 === 0 ? .12 : .067, sy: i % 13 === 0 ? .12 : .058, sz: i % 13 === 0 ? .12 : .067 });
+          if (i % 3 === 0) voxels.push({ x: Math.cos(angle) * (radius + .115), y: .285, z: Math.sin(angle) * (radius + .115), size: .026 });
+        }
+        const material = new THREE.MeshStandardMaterial({ color: 0x5c868c, emissive: 0x244f5b, emissiveIntensity: .65, metalness: .4, roughness: .4 });
+        rings[n] = voxelInstances(voxels, material);
+
+        const labelCanvas = document.createElement('canvas');
+        labelCanvas.width = 256;
+        labelCanvas.height = 80;
+        const context = labelCanvas.getContext('2d');
+        context.fillStyle = '#d6eeea';
+        context.font = '500 46px monospace';
+        context.textAlign = 'center';
+        context.fillText(`n=${n}`, 128, 54);
+        const texture = new THREE.CanvasTexture(labelCanvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, opacity: .63, depthWrite: false }));
+        const labelAngle = 2.35;
+        sprite.position.set(Math.cos(labelAngle) * (radius + .11), .53, Math.sin(labelAngle) * (radius + .11));
+        sprite.scale.set(.69, .22, 1);
+        root.add(sprite);
+        labels[n] = sprite;
+      }
+
+      const nucleus = new THREE.Group();
+      root.add(nucleus);
+      const particles = [];
+      const nucleusColors = ['#ffb372', '#f58c65', '#f3c78d', '#aa6571', '#ce7467'];
+      for (let x = -3; x <= 3; x++) for (let y = -3; y <= 3; y++) for (let z = -3; z <= 3; z++) {
+        const distance = Math.sqrt(x * x + y * y + z * z);
+        if (distance > 2.65 || (distance > 1.8 && random() < .38)) continue;
+        particles.push({ x: x * .154 + (random() - .5) * .026, y: y * .154 + (random() - .5) * .026,
+          z: z * .154 + (random() - .5) * .026, size: .145 + random() * .027,
+          color: nucleusColors[Math.floor(random() * nucleusColors.length)] });
+      }
+      voxelInstances(particles, new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x9c3824, emissiveIntensity: .57, roughness: .37 }), nucleus);
+      nucleus.position.y = .32;
+      nucleus.add(new THREE.PointLight(0xff9e67, 9, 3.5, 2));
+
+      const focus = new THREE.Group();
+      const focusMaterial = new THREE.MeshStandardMaterial({ color: 0xffe9b6, emissive: 0xd59659, emissiveIntensity: 1.4 });
+      for (let i = 0; i < 5; i++) {
+        const piece = new THREE.Mesh(new THREE.BoxGeometry(.085, .09, .085), focusMaterial);
+        piece.position.y = i * .105;
+        focus.add(piece);
+      }
+      root.add(focus);
+
+      const electron = new THREE.Group();
+      const electronCore = new THREE.MeshStandardMaterial({ color: 0xbafff2, emissive: 0x4ff5e8, emissiveIntensity: 2.5, roughness: .22 });
+      const electronOuter = new THREE.MeshStandardMaterial({ color: 0x71dfd8, emissive: 0x1da9b5, emissiveIntensity: 1.8 });
+      const core = new THREE.Mesh(new THREE.BoxGeometry(.19, .19, .19), electronCore);
+      electron.add(core);
+      [[.17, 0, 0], [-.17, 0, 0], [0, .17, 0], [0, -.17, 0], [0, 0, .17], [0, 0, -.17]].forEach(([x, y, z]) => {
+        const bit = new THREE.Mesh(new THREE.BoxGeometry(.07, .07, .07), electronOuter);
+        bit.position.set(x, y, z);
+        electron.add(bit);
+      });
+      electron.add(new THREE.PointLight(0x65f3e7, 5, 2.2, 2));
+      root.add(electron);
+
+      const photon = new THREE.Group();
+      const photonMaterial = new THREE.MeshStandardMaterial({ color: 0xffab83, emissive: 0xff805f, emissiveIntensity: 2.3, transparent: true, opacity: 1 });
+      const photonBits = [];
+      for (let i = 0; i < 22; i++) {
+        const bit = new THREE.Mesh(new THREE.BoxGeometry(i % 4 === 0 ? .115 : .075, .075, .075), photonMaterial);
+        bit.position.set(-i * .115, Math.sin(i * .83) * .13, Math.cos(i * .83) * .09);
+        photon.add(bit);
+        photonBits.push(bit);
+      }
+      photon.add(new THREE.PointLight(0xff9474, 4, 2.6, 2));
+      root.add(photon);
+
+      const stars = [];
+      for (let i = 0; i < 125; i++) {
+        const x = (random() - .5) * 16;
+        const z = (random() - .5) * 16;
+        if (Math.hypot(x, z) < 5.1) continue;
+        stars.push({ x, y: (random() - .3) * 5.5, z, size: random() > .84 ? .065 : .027, color: random() > .6 ? '#78929c' : '#3f6570' });
+      }
+      voxelInstances(stars, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .48 }));
+
+      let startedAt = performance.now() / 1000;
+      let heroVisible = true;
+      let lastFrame = performance.now();
+      const cameraDirection = new THREE.Vector3(.49, .54, .69).normalize();
+
+      function highlightOrbits() {
+        const transition = transitions[activeTransition];
+        for (const n of [2, 3, 4, 5]) {
+          const material = rings[n].material;
+          if (n === transition.from) {
+            material.color.set('#8bded2'); material.emissive.set('#288f96'); material.emissiveIntensity = 1.45;
+          } else if (n === transition.to) {
+            material.color.set('#f5be88'); material.emissive.set('#b46b45'); material.emissiveIntensity = 1.3;
+          } else {
+            material.color.set('#527780'); material.emissive.set('#254a55'); material.emissiveIntensity = .4;
+          }
+          labels[n].material.opacity = n === inspectedN || n === transition.from || n === transition.to ? .92 : .43;
+        }
+        const color = new THREE.Color(transition.color);
+        photonMaterial.color.copy(color);
+        photonMaterial.emissive.copy(color);
+        // Wider voxel wave crests schematically represent a longer emitted wavelength.
+        const phaseStep = 1.12 * Math.pow(434 / wavelengthAt(transition), .72);
+        photonBits.forEach((bit, index) => {
+          bit.position.y = Math.sin(index * phaseStep) * .13;
+          bit.position.z = Math.cos(index * phaseStep) * .09;
+        });
+      }
+
+      function inspectOrbit(n) {
+        const angle = 2.35;
+        focus.position.set(Math.cos(angle) * orbitRadius[n], .39, Math.sin(angle) * orbitRadius[n]);
+        highlightOrbits();
+      }
+
+      function fitScene(resetCamera = false) {
+        const width = host.clientWidth;
+        const height = host.clientHeight;
+        if (!width || !height) return;
+        renderer.setSize(width, height, false);
+        camera.aspect = width / height;
+        camera.clearViewOffset();
+        const portraitTablet = width > 640 && width <= 900 && height >= 800 && width < height;
+        const horizontalOffset = width > 900 ? -width * .135 : width > 640 && !portraitTablet ? -width * .075 : 0;
+        const verticalOffset = width <= 640 ? -height * .055 : portraitTablet ? -height * .04 : 0;
+        camera.setViewOffset(width, height, horizontalOffset, verticalOffset, width, height);
+        camera.updateProjectionMatrix();
+        if (resetCamera) {
+          const minWidthInWorld = width <= 640 ? 10.5 : width <= 900 ? 11 : 12;
+          const distance = Math.max(15.8, minWidthInWorld / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect));
+          camera.position.copy(cameraDirection).multiplyScalar(distance);
+          controls.target.set(0, -.1, 0);
+          controls.update();
+          controls.saveState();
+        }
+      }
+
+      sceneAPI = {
+        select: (key) => { activeTransition = key; startedAt = performance.now() / 1000; highlightOrbits(); },
+        inspect: (n) => inspectOrbit(n),
+        replay: () => { startedAt = performance.now() / 1000; },
+        resetView: () => { controls.reset(); controls.autoRotate = false; }
+      };
+      inspectOrbit(inspectedN);
+      fitScene(true);
+      const layoutMode = () => host.clientWidth <= 640 ? 'phone' : host.clientWidth <= 900 && host.clientHeight >= 800 && host.clientWidth < host.clientHeight ? 'tablet-portrait' : 'wide';
+      let previousLayout = layoutMode();
+      if ('ResizeObserver' in window) {
+        new ResizeObserver(() => {
+          const nextLayout = layoutMode();
+          fitScene(nextLayout !== previousLayout);
+          previousLayout = nextLayout;
+        }).observe(host);
+      } else {
+        window.addEventListener('resize', () => fitScene(true));
+      }
+      if ('IntersectionObserver' in window) {
+        new IntersectionObserver(([entry]) => { heroVisible = entry.isIntersecting; }, { threshold: .01 }).observe($('#top'));
+      }
+
+      function render(time) {
+        requestAnimationFrame(render);
+        if (!heroVisible || document.hidden) { lastFrame = time; return; }
+        const dt = Math.min((time - lastFrame) / 1000, .05);
+        lastFrame = time;
+        const elapsed = (time / 1000 - startedAt) % (reducedMotion ? 7.2 : 5.8);
+        const transition = transitions[activeTransition];
+        const startRadius = orbitRadius[transition.from];
+        const endRadius = orbitRadius[transition.to];
+        const jumpStart = 1.65;
+        const jumpEnd = 2.52;
+        const jumpAngle = .48 + jumpStart * .67;
+        let angle, radius;
+        if (elapsed < jumpStart) {
+          angle = .48 + elapsed * .67;
+          radius = startRadius;
+        } else if (elapsed < jumpEnd) {
+          const fraction = (elapsed - jumpStart) / (jumpEnd - jumpStart);
+          const eased = fraction * fraction * (3 - 2 * fraction);
+          angle = jumpAngle + fraction * .12;
+          radius = THREE.MathUtils.lerp(startRadius, endRadius, eased);
+        } else {
+          angle = jumpAngle + .12 + (elapsed - jumpEnd) * .67;
+          radius = endRadius;
+        }
+        electron.position.set(Math.cos(angle) * radius, .31 + Math.sin(time * .004) * .015, Math.sin(angle) * radius);
+        electron.rotation.y += dt * 1.25;
+        nucleus.rotation.y += dt * .1;
+        focusMaterial.emissiveIntensity = 1.1 + Math.sin(time * .003) * .35;
+
+        const photonAge = elapsed - 2.1;
+        photon.visible = photonAge > 0 && photonAge < 2.1;
+        if (photon.visible) {
+          const distance = endRadius + .14 + photonAge * 2.17;
+          const emissionAngle = jumpAngle + .12;
+          photon.position.set(Math.cos(emissionAngle) * distance, .43 + photonAge * .2, Math.sin(emissionAngle) * distance);
+          photon.rotation.y = -emissionAngle;
+          photonMaterial.opacity = Math.min(1, photonAge * 5, (2.1 - photonAge) * 2.4);
+          photon.scale.setScalar(.9 + Math.sin(photonAge * 13) * .08);
+        }
+        controls.update(dt);
+        renderer.render(scene, camera);
+      }
+      requestAnimationFrame(render);
+    }
+
+    updateProbe(580);
+    selectTransition('c', false);
+    createScene();
+  </script>
+</body>
+</html>

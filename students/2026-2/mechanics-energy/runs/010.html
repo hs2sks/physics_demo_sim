@@ -1,0 +1,970 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
+
+:root {
+  --paper:#F1F5F8; --panel:#FFFFFF; --ink:#14212B; --muted:#586977; --line:#D3DCE3; --grid:#E4EAEF;
+  --ke:#2559B7; --pe:#D68510; --loss:#98A6B1; --vx:#7B4BC4; --vy:#0E8577; --ball:#E0462B;
+  --ok:#12805C; --bad:#B3261E; --okbg:#E3F4EC; --badbg:#FBE7E5; --focus:#2559B7;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:#0D141A; --panel:#151F28; --ink:#E7EEF3; --muted:#93A3AF; --line:#2B3844; --grid:#1B2630;
+    --ke:#7CADFF; --pe:#F2AE45; --loss:#6B7986; --vx:#B392F0; --vy:#3CC7B4; --ball:#FF7A59;
+    --ok:#4CD19B; --bad:#FF8C84; --okbg:#12332A; --badbg:#3A1C1A; --focus:#7CADFF;
+  }
+}
+:root[data-theme="dark"] {
+  --paper:#0D141A; --panel:#151F28; --ink:#E7EEF3; --muted:#93A3AF; --line:#2B3844; --grid:#1B2630;
+  --ke:#7CADFF; --pe:#F2AE45; --loss:#6B7986; --vx:#B392F0; --vy:#3CC7B4; --ball:#FF7A59;
+  --ok:#4CD19B; --bad:#FF8C84; --okbg:#12332A; --badbg:#3A1C1A; --focus:#7CADFF;
+}
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 28px 28px;
+  color: var(--ink);
+  font-family: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-size: 15px; line-height: 1.55;
+  font-variant-numeric: tabular-nums;
+}
+.wrap { max-width: 1120px; margin: 0 auto; padding: 24px 16px 56px; }
+h1 { margin: 0 0 6px; font-size: clamp(24px, 4.4vw, 34px); line-height: 1.2; letter-spacing: -0.02em; font-weight: 700; }
+h2 { margin: 0 0 12px; font-size: 16px; font-weight: 700; }
+.lede { margin: 0 0 20px; color: var(--muted); max-width: 62ch; }
+
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 16px; overflow-x: auto; }
+.tabs button {
+  appearance: none; background: none; border: 0; border-bottom: 3px solid transparent;
+  color: var(--muted); font: inherit; font-weight: 500; padding: 10px 14px; cursor: pointer; white-space: nowrap;
+}
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); font-weight: 700; }
+.count { display: inline-block; min-width: 20px; padding: 0 6px; border-radius: 10px; background: var(--ink); color: var(--paper); font-size: 12px; text-align: center; margin-left: 4px; }
+
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+.sim-grid { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 900px) {
+  .sim-grid { grid-template-columns: minmax(0, 1fr) 340px; grid-template-areas: "stage controls" "split controls" "energy controls" "angles controls" "results controls"; align-items: start; }
+  .stage { grid-area: stage; } .split { grid-area: split; } .energy { grid-area: energy; } .angles { grid-area: angles; } .results { grid-area: results; }
+  .controls { grid-area: controls; position: sticky; top: 12px; }
+}
+
+canvas { display: block; width: 100%; }
+#cvT { aspect-ratio: 16 / 9; min-height: 240px; border-radius: 6px; background: var(--panel); }
+#cvE { height: 210px; }
+#cvT { cursor: pointer; }
+#cvA { aspect-ratio: 16 / 8; min-height: 220px; }
+canvas.mini { height: 190px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.two > div { min-width: 0; }
+@media (max-width: 680px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.ctitle { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+.cnote { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
+.cnote b { color: var(--ink); font-size: 14px; }
+.chip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+.stage:fullscreen { overflow: auto; border-radius: 0; padding: 20px; }
+.stage:fullscreen #cvT { aspect-ratio: auto; height: min(62vh, 60vw); }
+
+.playbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 12px; }
+.btn { appearance: none; font: inherit; font-weight: 500; border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 7px 14px; border-radius: 8px; cursor: pointer; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); font-weight: 700; min-width: 84px; }
+.btn.small { padding: 4px 10px; font-size: 13px; }
+.inline { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 14px; }
+select, input[type="number"], input[type="text"] {
+  font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px;
+}
+#tSlider { flex: 1 1 160px; min-width: 120px; accent-color: var(--ink); }
+.tlabel { font-size: 14px; color: var(--muted); min-width: 130px; text-align: right; }
+
+.readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; margin-top: 12px; }
+.ro { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+.ro span { display: block; font-size: 12px; color: var(--muted); }
+.ro b { font-size: 17px; font-weight: 700; }
+.ro.vx b { color: var(--vx); } .ro.vy b { color: var(--vy); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; font-size: 13px; color: var(--muted); }
+.legend i { display: inline-block; vertical-align: middle; margin-right: 6px; }
+.sw-line { width: 20px; height: 3px; border-radius: 2px; }
+.sw-dot { width: 10px; height: 10px; border-radius: 50%; }
+.sw-ring { width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--ink); }
+.eq { margin: 10px 0 0; font-size: 14px; color: var(--muted); }
+
+/* controls */
+.field { margin-bottom: 14px; }
+.field .row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 2px; }
+.field label { font-weight: 500; font-size: 14px; }
+.field .unit { color: var(--muted); font-size: 13px; }
+.field .inputs { display: flex; gap: 10px; align-items: center; }
+.field input[type="range"] { flex: 1; min-width: 0; accent-color: var(--ke); }
+.field input[type="number"] { width: 84px; text-align: right; }
+.field.off { opacity: .45; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.chip { appearance: none; font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 14px; padding: 2px 10px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.check { display: flex; gap: 8px; align-items: center; margin: 8px 0; font-size: 14px; }
+.check input { accent-color: var(--ink); width: 16px; height: 16px; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 14px 0; }
+.rec-row { display: flex; gap: 8px; }
+.rec-row input { flex: 1; min-width: 0; }
+.hint { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+
+/* energy */
+.ebar { display: flex; height: 38px; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); background: var(--panel); }
+.seg { height: 100%; transition: width .05s linear; }
+.seg.ke { background: var(--ke); } .seg.pe { background: var(--pe); }
+.seg.loss { background: repeating-linear-gradient(135deg, var(--loss) 0 4px, transparent 4px 8px); }
+.estats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin: 12px 0; }
+.es { font-size: 13px; color: var(--muted); }
+.es b { display: block; font-size: 18px; color: var(--ink); font-weight: 700; }
+.es i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: baseline; }
+.etext { margin: 10px 0 0; font-size: 14px; color: var(--muted); }
+
+/* tables */
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { font-weight: 500; color: var(--muted); font-size: 13px; }
+td.num b { font-weight: 700; }
+td small { display: block; color: var(--muted); font-size: 12px; }
+.pass, .fail { display: inline-block; padding: 1px 10px; border-radius: 12px; font-size: 13px; font-weight: 700; }
+.pass { color: var(--ok); background: var(--okbg); } .fail { color: var(--bad); background: var(--badbg); }
+.summary { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.work { margin: 16px 0 0; padding: 12px 14px; border-left: 3px solid var(--ink); background: var(--grid); border-radius: 0 6px 6px 0; font-size: 14px; }
+.work p { margin: 2px 0; }
+textarea { width: 100%; min-height: 96px; font: 13px/1.5 "Noto Sans KR", system-ui, sans-serif; resize: vertical; margin-top: 8px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+.empty { color: var(--muted); padding: 24px 0; text-align: center; }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 8px 16px; border-radius: 8px; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 10; max-width: 90vw; }
+.toast.show { opacity: 1; }
+.note { color: var(--muted); font-size: 13px; margin: 10px 0 0; }
+.warn { color: var(--bad); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }</style></head><body><!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="./style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pen</title>
+  </head>
+  <body>
+<div class="wrap">
+  <header>
+    <h1>포물선 운동 &amp; 역학적 에너지 보존 시뮬레이터</h1>
+    <p class="lede">물리 법칙을 코드로 구현하여 수평·수직 운동 및 에너지 보존을 분석합니다. 여기서 얻은 값은 본 실험(영상 분석)과 비교할 이론값이 됩니다.</p>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="화면 선택">
+    <button role="tab" id="t-sim" aria-selected="true" aria-controls="p-sim">시뮬레이션</button>
+    <button role="tab" id="t-ver" aria-selected="false" aria-controls="p-ver">검증표</button>
+    <button role="tab" id="t-rec" aria-selected="false" aria-controls="p-rec">예측 기록<span id="recCount" class="count">0</span></button>
+  </div>
+
+  <!-- ===== 시뮬레이션 ===== -->
+  <section id="p-sim" role="tabpanel" aria-labelledby="t-sim">
+    <div class="sim-grid">
+      <div class="card stage">
+        <canvas id="cvT" role="img" aria-label="포물선 궤적과 공의 위치"></canvas>
+        <div class="playbar">
+          <button id="btnPlay" class="btn primary">발사</button>
+          <button id="btnReset" class="btn">처음으로</button>
+          <button id="btnFs" class="btn">전체화면</button>
+          <label class="inline">재생 속도
+            <select id="speed">
+              <option value="0.25">0.25배</option>
+              <option value="0.5">0.5배</option>
+              <option value="1" selected>1배</option>
+              <option value="2">2배</option>
+            </select>
+          </label>
+          <input id="tSlider" type="range" min="0" max="1" step="0.001" value="0" aria-label="시간 이동">
+          <span id="tLabel" class="tlabel"></span>
+        </div>
+        <div class="readouts">
+          <div class="ro"><span>수평 위치 x (m)</span><b id="roX">0</b></div>
+          <div class="ro"><span>높이 y (m)</span><b id="roY">0</b></div>
+          <div class="ro vx"><span>수평 속도 vₓ (m/s)</span><b id="roVx">0</b></div>
+          <div class="ro vy"><span>수직 속도 v_y (m/s)</span><b id="roVy">0</b></div>
+          <div class="ro"><span>속력 v (m/s)</span><b id="roV">0</b></div>
+        </div>
+        <div class="legend" id="trajLegend">
+          <span><i class="sw-dot" style="background:var(--ball)"></i>공</span>
+          <span><i class="sw-line" style="background:var(--vx)"></i>수평 속도 vₓ</span>
+          <span><i class="sw-line" style="background:var(--vy)"></i>수직 속도 v_y</span>
+          <span><i class="sw-line" style="background:var(--ink)"></i>속도 v (합성)</span>
+          <span id="lgStrobo"><i class="sw-ring"></i><span id="stroboTxt"></span></span>
+        </div>
+        <p class="eq" id="eqLine"></p>
+        <p class="hint">궤적 위의 점을 누르면 그 순간의 성분값(속도·위치·에너지)이 표시됩니다.</p>
+      </div>
+
+      <div class="card controls">
+        <h2>입력 변인</h2>
+        <div id="fields"></div>
+        <div class="field">
+          <div class="row"><label>중력 환경 (g 바로 입력)</label></div>
+          <div class="chips" id="gChips"></div>
+        </div>
+        <hr>
+        <label class="check"><input type="checkbox" id="dragOn"> 공기저항 적용 (선택)</label>
+        <div id="dragField"></div>
+        <p class="hint" id="dragHint" style="margin:-4px 0 8px">항력 F = ½·ρ·C_d·πr²·v² (ρ = 1.225 kg/m³)</p>
+        <label class="check"><input type="checkbox" id="showVec" checked> 속도 벡터 표시</label>
+        <label class="check"><input type="checkbox" id="showStrobo" checked> 일정 시간 간격 점 표시</label>
+        <label class="check"><input type="checkbox" id="powerSave"> 절전 모드 (재생 중 화면 갱신 줄이기)</label>
+        <hr>
+        <h2>예측값 기록</h2>
+        <div class="rec-row">
+          <input type="text" id="recName" placeholder="조건 이름 (예: 45° 촬영)" maxlength="30" aria-label="조건 이름">
+          <button class="btn primary" id="btnRec" style="min-width:0">기록</button>
+        </div>
+        <p class="hint">본 실험에서 촬영할 조건을 입력하고 기록해 두면, 실측값과 비교할 기준값이 됩니다.</p>
+      </div>
+
+      <div class="card split">
+        <h2>수평·수직 성분 분할 비교</h2>
+        <p class="hint" style="margin:0 0 10px">두 그래프의 세로축 눈금은 같습니다. 같은 순간에 두 성분이 어떻게 다른지 비교해 보세요.</p>
+        <div class="two">
+          <div>
+            <div class="ctitle" style="color:var(--vx)">수평 성분 vₓ – t</div>
+            <canvas id="cvX" class="mini" role="img" aria-label="수평 속도 성분과 시간의 그래프"></canvas>
+            <p class="cnote"><b id="cmpXv"></b><br><span id="cmpXnote"></span></p>
+          </div>
+          <div>
+            <div class="ctitle" style="color:var(--vy)">수직 성분 v_y – t</div>
+            <canvas id="cvY" class="mini" role="img" aria-label="수직 속도 성분과 시간의 그래프"></canvas>
+            <p class="cnote"><b id="cmpYv"></b><br><span id="cmpYnote"></span></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card energy">
+        <h2>역학적 에너지 = 운동에너지 + 위치에너지</h2>
+        <div class="ebar" id="ebar" role="img" aria-label="현재 시각의 에너지 구성">
+          <div class="seg ke" id="segKE"></div><div class="seg pe" id="segPE"></div><div class="seg loss" id="segLoss"></div>
+        </div>
+        <div class="estats">
+          <div class="es"><i style="background:var(--ke)"></i>운동에너지 KE<b id="eKE">0 J</b></div>
+          <div class="es"><i style="background:var(--pe)"></i>위치에너지 PE<b id="ePE">0 J</b></div>
+          <div class="es"><i style="background:var(--ink)"></i>합계 KE+PE<b id="eTot">0 J</b></div>
+          <div class="es" id="eLossBox"><i style="background:var(--loss)"></i>공기저항으로 감소<b id="eLoss">0 J</b></div>
+        </div>
+        <canvas id="cvE" role="img" aria-label="시간에 따른 운동에너지, 위치에너지, 합계 그래프"></canvas>
+        <p class="etext" id="eText"></p>
+      </div>
+
+      <div class="card angles">
+        <h2>각도별 일괄 발사</h2>
+        <p class="hint" style="margin:0 0 8px">현재 입력한 v₀, g, h₀(공기저항 설정 포함)로 여러 각도를 한꺼번에 발사해 비교합니다.</p>
+        <div class="chips" id="angChips" style="margin-bottom:10px"></div>
+        <canvas id="cvA" role="img" aria-label="여러 발사각의 궤적 비교"></canvas>
+        <div class="tablewrap" style="margin-top:8px"><table>
+          <thead><tr><th>발사각</th><th>최고점 높이 H</th><th>비행 시간 T</th><th>사거리 R</th></tr></thead>
+          <tbody id="angBody"></tbody></table></div>
+        <p class="etext" id="angNote"></p>
+      </div>
+
+      <div class="card results">
+        <h2>결과 대시보드 (검증 지표)</h2>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>항목</th><th>시뮬레이션</th><th>공식값 (공기저항 없음)</th><th>차이</th></tr></thead>
+            <tbody id="resBody"></tbody>
+          </table>
+        </div>
+        <p class="note" id="resNote"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 검증표 ===== -->
+  <section id="p-ver" role="tabpanel" aria-labelledby="t-ver" hidden>
+    <div class="card">
+      <h2>테스트값 검증표: 손 계산값 vs 시뮬레이션 출력값</h2>
+      <p class="hint" style="margin:0 0 12px">공기저항을 끄고, 질량 1 kg 조건으로 계산합니다. 각 칸의 위쪽 회색 값이 손 계산값, 아래쪽 굵은 값이 시뮬레이션 출력값입니다. 오차가 0.5 % 이내(0에 가까운 값은 0.01 이내)이면 통과입니다.</p>
+      <div class="summary"><span id="verBadge"></span><span class="hint" id="verNote" style="margin:0"></span></div>
+      <div class="tablewrap"><table id="verTable"></table></div>
+      <div class="work">
+        <p><b>손 계산 예시</b> — 조건 A (v₀ = 20 m/s, θ = 30°, g = 9.8 m/s², h₀ = 0)</p>
+        <p>v₀ₓ = 20·cos30° = 17.32 m/s,  v₀ᵧ = 20·sin30° = 10.00 m/s</p>
+        <p>최고점 도달 시간 t_H = v₀ᵧ / g = 10.00 / 9.8 = 1.020 s</p>
+        <p>최고점 높이 H = v₀ᵧ² / (2g) = 100 / 19.6 = 5.102 m</p>
+        <p>총 비행 시간 T = 2·t_H = 2.041 s,  수평 도달거리 R = v₀ₓ·T = 17.32 × 2.041 = 35.35 m</p>
+        <p>착지 시 속력: 같은 높이로 돌아오므로 위치에너지 변화가 0 → ½mv² = ½mv₀² → v = 20 m/s</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 예측 기록 ===== -->
+  <section id="p-rec" role="tabpanel" aria-labelledby="t-rec" hidden>
+    <div class="card">
+      <h2>내가 기록한 예측값</h2>
+      <div id="recEmpty" class="empty">아직 기록이 없어요. 시뮬레이션 화면에서 조건을 정하고 ‘기록’을 눌러 보세요.</div>
+      <div id="recWrap" hidden>
+        <div class="tablewrap"><table id="recTable"></table></div>
+        <p class="note">이 기록은 이 브라우저에만 저장됩니다. 보고서에 옮기려면 아래 텍스트를 복사해 표 프로그램에 붙여 넣으세요.</p>
+        <button class="btn small" id="btnCopy" style="margin-top:6px">표 텍스트 복사</button>
+        <textarea id="tsv" readonly aria-label="복사용 표 텍스트"></textarea>
+      </div>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./script.js"></script>
+  </body>
+</html>
+<script>'use strict';
+/* ---------- 물리 엔진: 4차 룽게–쿠타 수치적분 ---------- */
+function simulate(p) {
+  const th = p.angle * Math.PI / 180;
+  const c = p.drag ? p.k / p.m : 0;      // 항력: F = -k|v|v  →  a = -(k/m)|v|v
+  const g = p.g;
+  let x = 0, y = p.h0, vx = p.v0 * Math.cos(th), vy = p.v0 * Math.sin(th);
+  const dt = 0.002, maxT = 200;
+  const T = [0], X = [x], Y = [y], VX = [vx], VY = [vy];
+  const ax = (a, b) => -c * Math.hypot(a, b) * a;
+  const ay = (a, b) => -g - c * Math.hypot(a, b) * b;
+  let n = 0, capped = false;
+  for (;;) {
+    const k1vx = ax(vx, vy), k1vy = ay(vx, vy);
+    const v2x = vx + 0.5 * dt * k1vx, v2y = vy + 0.5 * dt * k1vy;
+    const k2vx = ax(v2x, v2y), k2vy = ay(v2x, v2y);
+    const v3x = vx + 0.5 * dt * k2vx, v3y = vy + 0.5 * dt * k2vy;
+    const k3vx = ax(v3x, v3y), k3vy = ay(v3x, v3y);
+    const v4x = vx + dt * k3vx, v4y = vy + dt * k3vy;
+    const k4vx = ax(v4x, v4y), k4vy = ay(v4x, v4y);
+    const nx = x + dt / 6 * (vx + 2 * v2x + 2 * v3x + v4x);
+    const ny = y + dt / 6 * (vy + 2 * v2y + 2 * v3y + v4y);
+    const nvx = vx + dt / 6 * (k1vx + 2 * k2vx + 2 * k3vx + k4vx);
+    const nvy = vy + dt / 6 * (k1vy + 2 * k2vy + 2 * k3vy + k4vy);
+    n++;
+    if (ny < 0) {                        // 지면 통과 → 선형 보간으로 착지 시점 계산
+      const d = y - ny, fr = d > 0 ? y / d : 0;
+      T.push((n - 1) * dt + fr * dt);
+      X.push(x + fr * (nx - x)); Y.push(0);
+      VX.push(vx + fr * (nvx - vx)); VY.push(vy + fr * (nvy - vy));
+      break;
+    }
+    x = nx; y = ny; vx = nvx; vy = nvy;
+    T.push(n * dt); X.push(x); Y.push(y); VX.push(vx); VY.push(vy);
+    if (n * dt >= maxT) { capped = true; break; }
+  }
+  const N = T.length;
+  let im = 0, vMax = 0;
+  for (let i = 0; i < N; i++) {
+    if (Y[i] > Y[im]) im = i;
+    const s = Math.hypot(VX[i], VY[i]); if (s > vMax) vMax = s;
+  }
+  let tApex = T[im], apexY = Y[im];
+  if (im > 0 && im < N - 2) {            // 포물선 보간으로 최고점 정밀화
+    const y0 = Y[im - 1], y1 = Y[im], y2 = Y[im + 1], den = y0 - 2 * y1 + y2;
+    if (den < 0) { const off = 0.5 * (y0 - y2) / den; tApex = T[im] + off * dt; apexY = y1 - 0.25 * (y0 - y2) * off; }
+  }
+  const last = N - 1;
+  const speedEnd = Math.hypot(VX[last], VY[last]);
+  const E0 = 0.5 * p.m * p.v0 * p.v0 + p.m * g * p.h0;
+  const Eend = 0.5 * p.m * speedEnd * speedEnd;
+  return { p, dt, T, X, Y, VX, VY, N, tEnd: T[last], xEnd: X[last], apexY, tApex, vMax, speedEnd, E0, Eend, capped };
+}
+
+/* 공기저항이 없을 때의 공식(이론) 값 */
+function vacuum(p) {
+  const th = p.angle * Math.PI / 180, vx = p.v0 * Math.cos(th), vy = p.v0 * Math.sin(th);
+  const tH = vy > 0 ? vy / p.g : 0;
+  const H = p.h0 + (vy > 0 ? vy * vy / (2 * p.g) : 0);
+  const T = (vy + Math.sqrt(vy * vy + 2 * p.g * p.h0)) / p.g;
+  return { tH, H, T, R: vx * T, vf: Math.sqrt(p.v0 * p.v0 + 2 * p.g * p.h0), E0: 0.5 * p.m * p.v0 * p.v0 + p.m * p.g * p.h0 };
+}
+
+/* 시각 tc 에서의 상태(선형 보간) */
+function stateAt(S, tc) {
+  const n = S.N;
+  const pick = (i) => ({ t: S.T[i], x: S.X[i], y: S.Y[i], vx: S.VX[i], vy: S.VY[i] });
+  if (tc <= 0) return pick(0);
+  if (tc >= S.tEnd) return pick(n - 1);
+  let i = Math.min(Math.floor(tc / S.dt), n - 2);
+  while (i > 0 && S.T[i] > tc) i--;
+  while (i < n - 2 && S.T[i + 1] < tc) i++;
+  const d = S.T[i + 1] - S.T[i], f = d > 0 ? (tc - S.T[i]) / d : 0;
+  const L = (A) => A[i] + f * (A[i + 1] - A[i]);
+  return { t: tc, x: L(S.X), y: L(S.Y), vx: L(S.VX), vy: L(S.VY) };
+}
+
+
+/* ================= UI ================= */
+const $ = (s, r = document) => r.querySelector(s);
+const fmt = (v, d = 2) => Number.isFinite(v) ? v.toFixed(d) : '—';
+const sgn = (v, d = 2) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(d);
+
+const FIELDS = [
+  { id: 'v0',    label: '초기속도 v₀',   unit: 'm/s', min: 1,    max: 50,  step: 0.1,  dec: 1 },
+  { id: 'angle', label: '발사각도 θ',    unit: '°',   min: 0,    max: 90,  step: 0.5,  dec: 1 },
+  { id: 'g',     label: '중력가속도 g',  unit: 'm/s²', min: 0.5, max: 25,  step: 0.01, dec: 2 },
+  { id: 'h0',    label: '발사 높이 h₀',  unit: 'm',   min: 0,    max: 50,  step: 0.1,  dec: 1 },
+  { id: 'm',     label: '질량 m',        unit: 'kg',  min: 0.05, max: 10,  step: 0.05, dec: 2 },
+];
+const CDF = { id: 'Cd', label: '항력계수 C_d', unit: '', min: 0.1, max: 1.5, step: 0.01, dec: 2 };
+const RF  = { id: 'r',  label: '공 반지름 r', unit: 'm', min: 0.01, max: 0.3, step: 0.005, dec: 3 };
+const P = { v0: 20, angle: 45, g: 9.8, h0: 0, m: 1, Cd: 0.47, r: 0.05, k: 0, drag: false };
+let pinT = null;        // 궤적에서 누른 지점의 시각
+let VIEW = null;        // 궤적 캔버스 좌표 변환 정보
+let powerSave = false, lastDraw = 0;
+let BATCH = [];
+const ANG_LIST = [10, 15, 30, 45, 60, 75, 80], ANG_ON = new Set([15, 45, 75]);
+const ANG_COL = { 10: '#8E5BD6', 15: '#2E7DD7', 30: '#1E9E8A', 45: '#D68510', 60: '#C7402D', 75: '#C0479B', 80: '#6F7F8C' };
+const G_PRESETS = [['지구', 9.8], ['달', 1.62], ['화성', 3.71], ['목성', 24.79]];
+
+let S = null;           // 현재 시뮬레이션 결과
+let tc = 0;             // 현재 시각
+let playing = false, lastTs = 0, raf = 0, speed = 1;
+const inputs = {};      // id -> {range, num, wrap}
+
+function buildField(f, parent) {
+  const wrap = document.createElement('div');
+  wrap.className = 'field';
+  wrap.innerHTML =
+    `<div class="row"><label for="n_${f.id}">${f.label}</label><span class="unit">${f.unit}</span></div>
+     <div class="inputs">
+       <input type="range" id="r_${f.id}" min="${f.min}" max="${f.max}" step="${f.step}" aria-label="${f.label} 슬라이더">
+       <input type="number" id="n_${f.id}" min="${f.min}" max="${f.max}" step="${f.step}" inputmode="decimal">
+     </div>`;
+  parent.appendChild(wrap);
+  const range = $('#r_' + f.id, wrap), num = $('#n_' + f.id, wrap);
+  inputs[f.id] = { range, num, wrap, f };
+  const setVal = (v, from) => {
+    if (!Number.isFinite(v)) return;
+    v = Math.min(f.max, Math.max(f.min, v));
+    P[f.id] = v;
+    if (from !== 'range') range.value = v;
+    if (from !== 'num') num.value = v.toFixed(f.dec);
+    recompute();
+    syncChips();
+  };
+  range.addEventListener('input', () => setVal(parseFloat(range.value), 'range'));
+  num.addEventListener('input', () => { const v = parseFloat(num.value); if (Number.isFinite(v) && v >= f.min && v <= f.max) setVal(v, 'num'); });
+  num.addEventListener('change', () => setVal(parseFloat(num.value), null));
+  range.value = P[f.id]; num.value = P[f.id].toFixed(f.dec);
+  inputs[f.id].set = (v) => setVal(v, null);
+}
+FIELDS.forEach(f => buildField(f, $('#fields')));
+buildField(CDF, $('#dragField'));
+buildField(RF, $('#dragField'));
+
+const gChips = $('#gChips');
+G_PRESETS.forEach(([name, val]) => {
+  const b = document.createElement('button');
+  b.className = 'chip'; b.type = 'button'; b.dataset.g = val; b.textContent = `${name} ${val}`;
+  b.setAttribute('aria-pressed', 'false');
+  b.addEventListener('click', () => inputs.g.set(val));
+  gChips.appendChild(b);
+});
+function syncChips() { gChips.querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', Math.abs(parseFloat(b.dataset.g) - P.g) < 1e-6 ? 'true' : 'false')); }
+
+function syncDragUi() {
+  ['Cd', 'r'].forEach(id => { inputs[id].wrap.classList.toggle('off', !P.drag); inputs[id].range.disabled = inputs[id].num.disabled = !P.drag; });
+  $('#dragHint').style.opacity = P.drag ? 1 : .45;
+  $('#eLossBox').style.display = P.drag ? '' : 'none';
+}
+$('#dragOn').addEventListener('change', e => { P.drag = e.target.checked; syncDragUi(); recompute(); });
+$('#showVec').addEventListener('change', render);
+$('#showStrobo').addEventListener('change', render);
+$('#powerSave').addEventListener('change', e => { powerSave = e.target.checked; toast(powerSave ? '절전 모드: 재생 중 화면 갱신을 줄여요' : '절전 모드를 껐어요'); });
+$('#speed').addEventListener('change', e => { speed = parseFloat(e.target.value); });
+
+/* ---------- 재생 ---------- */
+function updatePlayBtn() { $('#btnPlay').textContent = playing ? '일시정지' : (tc > 0 && tc < S.tEnd ? '이어서' : '발사'); }
+function tick(ts) {
+  if (!playing) return;
+  if (powerSave && ts - lastDraw < 66) { raf = requestAnimationFrame(tick); return; }
+  lastDraw = ts;
+  const d = Math.min(0.1, (ts - lastTs) / 1000); lastTs = ts;
+  tc += d * speed;
+  if (tc >= S.tEnd) { tc = S.tEnd; playing = false; }
+  render(); updatePlayBtn();
+  if (playing) raf = requestAnimationFrame(tick);
+}
+function play() {
+  if (S.tEnd <= 0) return;
+  if (tc >= S.tEnd - 1e-9) tc = 0;
+  playing = true; lastTs = performance.now(); lastDraw = 0;
+  cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); updatePlayBtn();
+}
+function pause() { playing = false; cancelAnimationFrame(raf); updatePlayBtn(); }
+$('#btnPlay').addEventListener('click', () => playing ? pause() : play());
+$('#btnReset').addEventListener('click', () => { pause(); tc = 0; render(); updatePlayBtn(); });
+$('#tSlider').addEventListener('input', e => { pause(); tc = parseFloat(e.target.value); render(); updatePlayBtn(); });
+
+/* ---------- 계산 갱신 ---------- */
+function recompute() {
+  pause();
+  P.k = 0.5 * 1.225 * P.Cd * Math.PI * P.r * P.r;   // F = ½ρC_d·A·v², A = πr²  →  k = ½ρC_d·πr²
+  S = simulate(P);
+  tc = 0; pinT = null;
+  const sl = $('#tSlider'); sl.max = S.tEnd; sl.value = 0;
+  computeBatch(); updateResults(); renderAll(); updatePlayBtn();
+}
+
+function updateResults() {
+  const V = vacuum(P);
+  const qa = stateAt(S, S.tApex);
+  const eApex = (0.5 * P.m * (qa.vx * qa.vx + qa.vy * qa.vy) + P.m * P.g * qa.y) / Math.max(S.E0, 1e-12) * 100;
+  const rows = [
+    ['최고점 높이 H (지면 기준)', 'm', S.apexY, V.H, 2],
+    ['최고점 도달 시간 t_H', 's', S.tApex, V.tH, 3],
+    ['총 비행 시간 T', 's', S.tEnd, V.T, 3],
+    ['수평 도달거리 R', 'm', S.xEnd, V.R, 2],
+    ['착지 시 속력 v', 'm/s', S.speedEnd, V.vf, 2],
+    ['처음 역학적 에너지 E₀', 'J', S.E0, V.E0, 2],
+    ['착지 직전 역학적 에너지', 'J', S.Eend, V.E0, 2],
+    ['에너지 보존율 (최고점 기준)', '%', eApex, 100, 2],
+  ];
+  $('#resBody').innerHTML = rows.map(([l, u, a, b, d]) => {
+    const diff = a - b;
+    const same = Math.abs(diff) < Math.max(0.5 * Math.pow(10, -d), 0.0005 * Math.abs(b));
+    return `<tr><td>${l}</td><td class="num"><b>${fmt(a, d)}</b> ${u}</td><td>${fmt(b, d)} ${u}</td><td>${same ? '일치' : sgn(diff, d) + ' ' + u}</td></tr>`;
+  }).join('');
+  let note = P.drag
+    ? '공기저항이 켜져 있어 공식값(진공)과 차이가 납니다. 감소한 역학적 에너지는 공기와의 마찰로 열이 된 몫입니다.'
+    : '수치적분(4차 룽게–쿠타)으로 구한 값이 공식값과 일치해야 합니다. 착지 시 속력이 처음 속력보다 커진다면 발사 높이 h₀가 0보다 크기 때문입니다.';
+  if (S.capped) note += ' 비행 시간이 200 초를 넘어 계산을 멈췄습니다. g를 키우거나 v₀를 줄여 보세요.';
+  if (S.tEnd <= 0) note += ' 발사 높이가 0이고 각도가 0°이면 공이 바로 착지합니다.';
+  $('#resNote').textContent = note;
+  $('#resNote').classList.toggle('warn', S.capped);
+
+  $('#cmpXnote').textContent = P.drag ? '공기저항 때문에 vₓ가 조금씩 줄어듭니다.' : '수평선 → 기울기 0, 가속도 0인 등속 운동';
+  $('#cmpYnote').textContent = P.drag ? '공기저항이 있으면 기울기가 −g와 조금 달라집니다.' : `직선의 기울기 = −g = −${fmt(P.g, 2)} m/s² 인 등가속도 운동`;
+  const th = P.angle * Math.PI / 180, vx0 = P.v0 * Math.cos(th), vy0 = P.v0 * Math.sin(th);
+  $('#eqLine').textContent = P.drag
+    ? '공기저항이 있으면 x(t), y(t)를 간단한 식으로 쓸 수 없어 수치적분으로 계산합니다.'
+    : `x(t) = ${fmt(vx0, 2)}·t     y(t) = ${fmt(P.h0, 1)} + ${fmt(vy0, 2)}·t − ${fmt(P.g / 2, 2)}·t²`;
+}
+
+/* ---------- 캔버스 공통 ---------- */
+function setupCanvas(cv) {
+  const dpr = window.devicePixelRatio || 1;
+  const r = cv.getBoundingClientRect();
+  const w = Math.max(200, Math.round(r.width)), h = Math.max(120, Math.round(r.height));
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+function cols() {
+  const cs = getComputedStyle(document.documentElement), g = n => cs.getPropertyValue(n).trim();
+  return { ink: g('--ink'), muted: g('--muted'), line: g('--line'), grid: g('--grid'), panel: g('--panel'),
+           ke: g('--ke'), pe: g('--pe'), loss: g('--loss'), vx: g('--vx'), vy: g('--vy'), ball: g('--ball') };
+}
+const FONT = '12px "Noto Sans KR", system-ui, sans-serif';
+function niceStep(minWorld) {
+  const p = Math.pow(10, Math.floor(Math.log10(minWorld)));
+  for (const m of [1, 2, 5, 10]) if (m * p >= minWorld) return m * p;
+  return 10 * p;
+}
+function arrow(ctx, x0, y0, x1, y1, color, lw) {
+  const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy);
+  if (len < 2) return;
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw;
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  const a = Math.atan2(dy, dx), hs = Math.min(9, len * 0.5);
+  ctx.beginPath(); ctx.moveTo(x1, y1);
+  ctx.lineTo(x1 - hs * Math.cos(a - 0.4), y1 - hs * Math.sin(a - 0.4));
+  ctx.lineTo(x1 - hs * Math.cos(a + 0.4), y1 - hs * Math.sin(a + 0.4));
+  ctx.closePath(); ctx.fill();
+}
+function stroboInterval() {
+  for (const iv of [0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10]) if (S.tEnd / iv <= 25) return iv;
+  return 20;
+}
+
+/* ---------- 좌표평면(격자·눈금·지면) 공통 ---------- */
+function drawWorld(ctx, C, w, h, xMax, yMax) {
+  const pad = { l: 44, r: 14, t: 14, b: 28 };
+  const pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
+  const sc = Math.min(pw / (xMax * 1.06), ph / (yMax * 1.2));
+  const X0 = pad.l, Y0 = pad.t + ph;
+  const wx = x => X0 + x * sc, wy = y => Y0 - y * sc;
+  const step = niceStep(46 / sc);
+  ctx.font = FONT; ctx.lineWidth = 1;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  for (let x = 0; x * sc <= pw + 1; x += step) {
+    ctx.strokeStyle = C.grid; ctx.beginPath(); ctx.moveTo(wx(x), pad.t); ctx.lineTo(wx(x), Y0); ctx.stroke();
+    ctx.fillStyle = C.muted; ctx.fillText(+x.toFixed(6), wx(x), Y0 + 6);
+  }
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (let y = 0; y * sc <= ph + 1; y += step) {
+    ctx.strokeStyle = C.grid; ctx.beginPath(); ctx.moveTo(X0, wy(y)); ctx.lineTo(X0 + pw, wy(y)); ctx.stroke();
+    ctx.fillStyle = C.muted; ctx.fillText(+y.toFixed(6), X0 - 6, wy(y));
+  }
+  ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.fillStyle = C.muted; ctx.fillText('x (m)', w - 6, h - 1);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('y (m)', 4, 2);
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(X0, Y0); ctx.lineTo(X0 + pw, Y0); ctx.stroke();
+  if (P.h0 > 0) { ctx.lineWidth = 5; ctx.strokeStyle = C.loss; ctx.beginPath(); ctx.moveTo(X0 - 2, Y0); ctx.lineTo(X0 - 2, wy(P.h0)); ctx.stroke(); }
+  return { X0, Y0, sc, pw, ph, w, h, wx, wy };
+}
+function polyline(ctx, G, s, tEndLimit) {
+  const st = Math.max(1, Math.floor(s.N / 500));
+  ctx.beginPath(); ctx.moveTo(G.wx(s.X[0]), G.wy(s.Y[0]));
+  for (let i = st; i < s.N && (tEndLimit == null || s.T[i] < tEndLimit); i += st) ctx.lineTo(G.wx(s.X[i]), G.wy(s.Y[i]));
+}
+
+/* ---------- 궤적 그리기 ---------- */
+function drawTraj() {
+  const { ctx, w, h } = setupCanvas($('#cvT')), C = cols();
+  ctx.clearRect(0, 0, w, h);
+  const G = drawWorld(ctx, C, w, h, Math.max(S.xEnd, 1), Math.max(S.apexY, P.h0, 1));
+  VIEW = G;
+  const { wx, wy, X0, Y0, pw, ph } = G;
+
+  // 전체 경로(점선)
+  ctx.lineWidth = 1.5; ctx.strokeStyle = C.muted; ctx.setLineDash([5, 5]);
+  polyline(ctx, G, S, null); ctx.lineTo(wx(S.X[S.N - 1]), wy(S.Y[S.N - 1])); ctx.stroke(); ctx.setLineDash([]);
+
+  // 최고점 표시
+  if (S.apexY > P.h0 + 0.02) {
+    const a = stateAt(S, S.tApex);
+    ctx.strokeStyle = C.muted; ctx.lineWidth = 1; ctx.setLineDash([2, 4]);
+    ctx.beginPath(); ctx.moveTo(wx(a.x), wy(S.apexY)); ctx.lineTo(wx(a.x), Y0); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = C.ink; ctx.beginPath();
+    ctx.moveTo(wx(a.x), wy(S.apexY) - 5); ctx.lineTo(wx(a.x) + 5, wy(S.apexY)); ctx.lineTo(wx(a.x), wy(S.apexY) + 5); ctx.lineTo(wx(a.x) - 5, wy(S.apexY)); ctx.fill();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText(`최고점 H = ${fmt(S.apexY, 2)} m`, wx(a.x), wy(S.apexY) - 8);
+  }
+
+  // 일정 시간 간격 점
+  const showStr = $('#showStrobo').checked, iv = stroboInterval();
+  $('#lgStrobo').style.display = showStr ? '' : 'none';
+  $('#stroboTxt').textContent = `${iv} s 간격 위치`;
+  if (showStr && S.tEnd > 0) {
+    for (let t = 0; t < S.tEnd - 1e-9; t += iv) {
+      const q = stateAt(S, t);
+      ctx.beginPath(); ctx.arc(wx(q.x), wy(q.y), 3.5, 0, 6.2832);
+      if (t <= tc + 1e-9) { ctx.fillStyle = C.ink; ctx.fill(); }
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+  }
+
+  // 지나온 경로(실선)
+  const cur = stateAt(S, tc);
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
+  polyline(ctx, G, S, tc); ctx.lineTo(wx(cur.x), wy(cur.y)); ctx.stroke();
+
+  // 속도 벡터(화살표)
+  if ($('#showVec').checked) {
+    const vs = 0.2 * Math.min(pw, ph) / Math.max(S.vMax, 1);
+    const cx = wx(cur.x), cy = wy(cur.y);
+    arrow(ctx, cx, cy, cx + cur.vx * vs, cy, C.vx, 2.5);
+    arrow(ctx, cx, cy, cx, cy - cur.vy * vs, C.vy, 2.5);
+    arrow(ctx, cx, cy, cx + cur.vx * vs, cy - cur.vy * vs, C.ink, 2);
+  }
+  // 공
+  ctx.beginPath(); ctx.arc(wx(cur.x), wy(cur.y), 7, 0, 6.2832);
+  ctx.fillStyle = C.ball; ctx.fill(); ctx.strokeStyle = C.panel; ctx.lineWidth = 2; ctx.stroke();
+
+  drawPin(ctx, C, G);
+}
+
+/* 궤적을 눌렀을 때 나오는 성분값 상자 */
+function drawPin(ctx, C, G) {
+  if (pinT == null) return;
+  const q = stateAt(S, pinT), px = G.wx(q.x), py = G.wy(q.y);
+  ctx.beginPath(); ctx.arc(px, py, 11, 0, 6.2832); ctx.strokeStyle = C.ball; ctx.lineWidth = 2; ctx.stroke();
+  const ke = 0.5 * P.m * (q.vx * q.vx + q.vy * q.vy), pe = P.m * P.g * q.y;
+  const lines = [
+    [`t = ${fmt(q.t, 2)} s`, C.ink], [`위치 (${fmt(q.x, 1)}, ${fmt(q.y, 1)}) m`, C.ink],
+    [`vₓ = ${fmt(q.vx, 2)} m/s`, C.vx], [`v_y = ${fmt(q.vy, 2)} m/s`, C.vy],
+    [`KE ${fmt(ke, 1)} J`, C.ke], [`PE ${fmt(pe, 1)} J`, C.pe], [`KE+PE ${fmt(ke + pe, 1)} J`, C.ink],
+  ];
+  const bw = 172, bh = lines.length * 17 + 12;
+  let bx = px + 16, by = py - bh - 12;
+  if (bx + bw > G.w - 4) bx = px - bw - 16;
+  if (bx < 4) bx = 4;
+  if (by < 4) by = py + 16;
+  if (by + bh > G.h - 4) by = G.h - bh - 4;
+  ctx.fillStyle = C.panel; ctx.fillRect(bx, by, bw, bh);
+  ctx.strokeStyle = C.line; ctx.lineWidth = 1; ctx.strokeRect(bx + .5, by + .5, bw, bh);
+  ctx.font = FONT; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  lines.forEach(([txt, col], i) => { ctx.fillStyle = col; ctx.fillText(txt, bx + 10, by + 15 + i * 17); });
+}
+
+/* ---------- 에너지 그래프 ---------- */
+function drawEnergy() {
+  const { ctx, w, h } = setupCanvas($('#cvE')), C = cols();
+  ctx.clearRect(0, 0, w, h);
+  const pad = { l: 52, r: 14, t: 12, b: 28 };
+  const pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
+  const Emax = Math.max(S.E0, 1e-9) * 1.08, tMax = Math.max(S.tEnd, 1e-9);
+  const wx = t => pad.l + t / tMax * pw, wy = e => pad.t + ph - e / Emax * ph;
+  ctx.font = FONT; ctx.lineWidth = 1;
+  const ys = niceStep(Emax / 4);
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (let e = 0; e <= Emax; e += ys) {
+    ctx.strokeStyle = C.grid; ctx.beginPath(); ctx.moveTo(pad.l, wy(e)); ctx.lineTo(pad.l + pw, wy(e)); ctx.stroke();
+    ctx.fillStyle = C.muted; ctx.fillText(+e.toFixed(6), pad.l - 6, wy(e));
+  }
+  const xs = niceStep(tMax / 6);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  for (let t = 0; t <= tMax + 1e-9; t += xs) {
+    ctx.strokeStyle = C.grid; ctx.beginPath(); ctx.moveTo(wx(t), pad.t); ctx.lineTo(wx(t), pad.t + ph); ctx.stroke();
+    ctx.fillStyle = C.muted; ctx.fillText(+t.toFixed(6), wx(t), pad.t + ph + 6);
+  }
+  ctx.fillStyle = C.muted; ctx.textAlign = 'right'; ctx.fillText('t (s)', w - 4, h - 14);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('에너지 (J)', 4, 0);
+
+  const NS = 240, pts = [];
+  for (let i = 0; i <= NS; i++) {
+    const q = stateAt(S, tMax * i / NS);
+    const ke = 0.5 * P.m * (q.vx * q.vx + q.vy * q.vy), pe = P.m * P.g * q.y;
+    pts.push([q.t, ke, pe, ke + pe]);
+  }
+  const line = (idx, color, lw) => {
+    ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.beginPath();
+    pts.forEach((p, i) => i ? ctx.lineTo(wx(p[0]), wy(p[idx])) : ctx.moveTo(wx(p[0]), wy(p[idx])));
+    ctx.stroke();
+  };
+  line(2, C.pe, 2); line(1, C.ke, 2); line(3, C.ink, 3);
+
+  const q = stateAt(S, tc), ke = 0.5 * P.m * (q.vx * q.vx + q.vy * q.vy), pe = P.m * P.g * q.y;
+  ctx.strokeStyle = C.muted; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+  ctx.beginPath(); ctx.moveTo(wx(tc), pad.t); ctx.lineTo(wx(tc), pad.t + ph); ctx.stroke(); ctx.setLineDash([]);
+  [[ke, C.ke], [pe, C.pe], [ke + pe, C.ink]].forEach(([e, c]) => {
+    ctx.beginPath(); ctx.arc(wx(tc), wy(e), 4.5, 0, 6.2832); ctx.fillStyle = c; ctx.fill();
+    ctx.strokeStyle = C.panel; ctx.lineWidth = 1.5; ctx.stroke();
+  });
+}
+
+/* ---------- 읽기값·에너지 막대 ---------- */
+function updateReadouts() {
+  const q = stateAt(S, tc);
+  $('#roX').textContent = fmt(q.x, 2); $('#roY').textContent = fmt(q.y, 2);
+  $('#roVx').textContent = fmt(q.vx, 2); $('#roVy').textContent = fmt(q.vy, 2);
+  $('#roV').textContent = fmt(Math.hypot(q.vx, q.vy), 2);
+  $('#cmpXv').textContent = `vₓ = ${fmt(q.vx, 2)} m/s`; $('#cmpYv').textContent = `v_y = ${fmt(q.vy, 2)} m/s`;
+  $('#tLabel').textContent = `t = ${fmt(tc, 2)} / ${fmt(S.tEnd, 2)} s`;
+  $('#tSlider').value = tc;
+
+  const ke = 0.5 * P.m * (q.vx * q.vx + q.vy * q.vy), pe = P.m * P.g * q.y, tot = ke + pe, E0 = Math.max(S.E0, 1e-12);
+  const loss = Math.max(0, E0 - tot);
+  $('#segKE').style.width = (ke / E0 * 100) + '%';
+  $('#segPE').style.width = (pe / E0 * 100) + '%';
+  $('#segLoss').style.width = (loss / E0 * 100) + '%';
+  $('#eKE').textContent = fmt(ke, 2) + ' J'; $('#ePE').textContent = fmt(pe, 2) + ' J';
+  $('#eTot').textContent = fmt(tot, 2) + ' J'; $('#eLoss').textContent = fmt(loss, 2) + ' J';
+  $('#eText').textContent = P.drag
+    ? `공기저항 때문에 합계가 처음 값(${fmt(S.E0, 2)} J)보다 줄어듭니다. 줄어든 몫은 열로 사라진 에너지입니다.`
+    : `운동에너지와 위치에너지의 비율은 계속 바뀌지만, 합계는 처음 값(${fmt(S.E0, 2)} J)에서 변하지 않습니다.`;
+}
+/* ---------- 수평·수직 성분 분할 비교 ---------- */
+function drawComp(cv, key, color, showApex) {
+  const { ctx, w, h } = setupCanvas(cv), C = cols();
+  ctx.clearRect(0, 0, w, h);
+  const pad = { l: 44, r: 12, t: 12, b: 26 }, pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
+  const stp = Math.max(1, Math.floor(S.N / 400));
+  let vm = 1; for (let i = 0; i < S.N; i += stp) vm = Math.max(vm, Math.abs(S.VX[i]), Math.abs(S.VY[i]));
+  vm *= 1.1;
+  const tMax = Math.max(S.tEnd, 1e-9);
+  const wx = t => pad.l + t / tMax * pw, wy = v => pad.t + ph / 2 - v / vm * ph / 2;
+  ctx.font = FONT;
+  const ys = niceStep(vm / 2);
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (let k = -Math.floor(vm / ys); k * ys <= vm; k++) {
+    const v = k * ys;
+    ctx.strokeStyle = v === 0 ? C.muted : C.grid; ctx.lineWidth = v === 0 ? 1.5 : 1;
+    ctx.beginPath(); ctx.moveTo(pad.l, wy(v)); ctx.lineTo(pad.l + pw, wy(v)); ctx.stroke();
+    ctx.fillStyle = C.muted; ctx.fillText(+v.toFixed(6), pad.l - 6, wy(v));
+  }
+  const xs = niceStep(tMax / 5);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  for (let t = 0; t <= tMax + 1e-9; t += xs) {
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(wx(t), pad.t); ctx.lineTo(wx(t), pad.t + ph); ctx.stroke();
+    ctx.fillStyle = C.muted; ctx.fillText(+t.toFixed(6), wx(t), pad.t + ph + 6);
+  }
+  ctx.fillStyle = C.muted; ctx.textAlign = 'right'; ctx.fillText('t (s)', w - 4, h - 14);
+  ctx.textAlign = 'left'; ctx.fillText('v (m/s)', 4, 0);
+  if (showApex && S.apexY > P.h0 + 0.02) {
+    ctx.strokeStyle = C.muted; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(wx(S.tApex), pad.t); ctx.lineTo(wx(S.tApex), pad.t + ph); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = C.muted; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('최고점', wx(S.tApex) + 4, pad.t + 2);
+  }
+  const arr = S[key];
+  ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(wx(S.T[0]), wy(arr[0]));
+  for (let i = stp; i < S.N; i += stp) ctx.lineTo(wx(S.T[i]), wy(arr[i]));
+  ctx.lineTo(wx(S.T[S.N - 1]), wy(arr[S.N - 1])); ctx.stroke();
+  const q = stateAt(S, tc), v = key === 'VX' ? q.vx : q.vy;
+  ctx.strokeStyle = C.muted; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+  ctx.beginPath(); ctx.moveTo(wx(tc), pad.t); ctx.lineTo(wx(tc), pad.t + ph); ctx.stroke(); ctx.setLineDash([]);
+  ctx.beginPath(); ctx.arc(wx(tc), wy(v), 5, 0, 6.2832); ctx.fillStyle = color; ctx.fill(); ctx.strokeStyle = C.panel; ctx.lineWidth = 1.5; ctx.stroke();
+}
+function drawSplit() { drawComp($('#cvX'), 'VX', cols().vx, false); drawComp($('#cvY'), 'VY', cols().vy, true); }
+
+/* ---------- 각도별 일괄 발사 ---------- */
+function computeBatch() {
+  BATCH = [...ANG_ON].sort((a, b) => a - b).map(a => ({ a, s: simulate({ ...P, angle: a }) }));
+  const rows = BATCH.map(b => `<tr><td><i style="display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;background:${ANG_COL[b.a]}"></i>${b.a}°</td>
+    <td>${fmt(b.s.apexY, 2)} m</td><td>${fmt(b.s.tEnd, 3)} s</td><td><b>${fmt(b.s.xEnd, 2)} m</b></td></tr>`);
+  $('#angBody').innerHTML = rows.join('');
+  const pairs = findPairs();
+  const best = BATCH.reduce((m, b) => b.s.xEnd > m.s.xEnd ? b : m, BATCH[0]);
+  let msg = '';
+  if (pairs.length) msg = pairs.map(([A, B]) => `${A.a}°와 ${B.a}°는 합이 90°이고 사거리가 같습니다(R ≈ ${fmt(A.s.xEnd, 2)} m). 그런데 최고점 높이는 ${fmt(A.s.apexY, 2)} m와 ${fmt(B.s.apexY, 2)} m로 다릅니다.`).join(' ');
+  else if (P.h0 > 0 || P.drag) msg = '발사 높이가 있거나 공기저항이 있으면 합이 90°인 두 각도의 사거리가 정확히 같지 않습니다.';
+  else msg = '합이 90°가 되는 두 각도(예: 15°와 75°)를 함께 켜 보세요.';
+  $('#angNote').textContent = `${msg} 선택한 각도 중 가장 멀리 간 각도는 ${best.a}°(R = ${fmt(best.s.xEnd, 2)} m)입니다.`;
+}
+function findPairs() {
+  const out = [];
+  for (const A of BATCH) for (const B of BATCH)
+    if (A.a < B.a && A.a + B.a === 90 && Math.abs(A.s.xEnd - B.s.xEnd) <= 0.005 * Math.max(A.s.xEnd, B.s.xEnd, 1e-9)) out.push([A, B]);
+  return out;
+}
+function drawBatch() {
+  if ($('#p-sim').hidden || !BATCH.length) return;
+  const { ctx, w, h } = setupCanvas($('#cvA')), C = cols();
+  ctx.clearRect(0, 0, w, h);
+  const xMax = Math.max(1, ...BATCH.map(b => b.s.xEnd)), yMax = Math.max(1, P.h0, ...BATCH.map(b => b.s.apexY));
+  const G = drawWorld(ctx, C, w, h, xMax, yMax);
+  findPairs().forEach(([A]) => {
+    ctx.strokeStyle = C.muted; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(G.wx(A.s.xEnd), G.Y0); ctx.lineTo(G.wx(A.s.xEnd), G.Y0 - 60); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = C.ink; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.font = FONT;
+    ctx.fillText('같은 사거리', G.wx(A.s.xEnd), G.Y0 - 64);
+  });
+  BATCH.forEach(b => {
+    const col = ANG_COL[b.a], s = b.s;
+    ctx.strokeStyle = col; ctx.lineWidth = 2.5; polyline(ctx, G, s, null); ctx.lineTo(G.wx(s.X[s.N - 1]), G.wy(s.Y[s.N - 1])); ctx.stroke();
+    const a = stateAt(s, s.tApex);
+    ctx.fillStyle = col; ctx.beginPath(); ctx.arc(G.wx(a.x), G.wy(s.apexY), 4, 0, 6.2832); ctx.fill();
+    ctx.font = FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.fillText(`${b.a}°`, G.wx(a.x), G.wy(s.apexY) - 7);
+    ctx.beginPath(); ctx.arc(G.wx(s.xEnd), G.Y0, 4.5, 0, 6.2832); ctx.fill();
+  });
+}
+const angChips = $('#angChips');
+ANG_LIST.forEach(a => {
+  const b = document.createElement('button');
+  b.className = 'chip'; b.type = 'button'; b.dataset.a = a;
+  b.innerHTML = `<i style="background:${ANG_COL[a]}"></i>${a}°`;
+  b.setAttribute('aria-pressed', ANG_ON.has(a));
+  b.addEventListener('click', () => {
+    if (ANG_ON.has(a)) { if (ANG_ON.size > 1) ANG_ON.delete(a); } else ANG_ON.add(a);
+    angChips.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', ANG_ON.has(parseInt(c.dataset.a, 10))));
+    computeBatch(); drawBatch();
+  });
+  angChips.appendChild(b);
+});
+
+/* ---------- 궤적 클릭 · 전체화면 ---------- */
+$('#cvT').addEventListener('click', e => {
+  if (!VIEW || !S) return;
+  const r = e.currentTarget.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+  let best = -1, bd = 1e12; const st = Math.max(1, Math.floor(S.N / 800));
+  for (let i = 0; i < S.N; i += st) {
+    const dx = VIEW.X0 + S.X[i] * VIEW.sc - mx, dy = VIEW.Y0 - S.Y[i] * VIEW.sc - my, d = dx * dx + dy * dy;
+    if (d < bd) { bd = d; best = i; }
+  }
+  if (best >= 0 && bd < 30 * 30) { pause(); tc = S.T[best]; pinT = tc; } else { pinT = null; }
+  render(); updatePlayBtn();
+});
+$('#btnFs').addEventListener('click', async () => {
+  try { if (document.fullscreenElement) await document.exitFullscreen(); else await $('.stage').requestFullscreen(); }
+  catch (e) { toast('이 화면에서는 전체화면을 쓸 수 없어요. 브라우저에서 링크를 직접 열어 보세요'); }
+});
+document.addEventListener('fullscreenchange', () => { $('#btnFs').textContent = document.fullscreenElement ? '전체화면 종료' : '전체화면'; requestAnimationFrame(renderAll); });
+
+function render() {
+  if (powerSave && playing) { drawTraj(); updateReadouts(); return; }
+  drawTraj(); drawEnergy(); drawSplit(); updateReadouts();
+}
+function renderAll() { render(); drawBatch(); }
+
+/* ---------- 탭 ---------- */
+const TABS = [['t-sim', 'p-sim'], ['t-ver', 'p-ver'], ['t-rec', 'p-rec']];
+function showTab(tid) {
+  TABS.forEach(([t, p]) => { const on = t === tid; $('#' + t).setAttribute('aria-selected', on); $('#' + p).hidden = !on; });
+  if (tid === 't-sim') requestAnimationFrame(renderAll); else pause();
+}
+TABS.forEach(([t]) => $('#' + t).addEventListener('click', () => showTab(t)));
+
+/* ---------- 검증표 ---------- */
+const CASES = [
+  { id: 'A', p: { v0: 20, angle: 30, g: 9.8,  h0: 0  }, hand: { tH: 1.020, H: 5.102,  T: 2.041,  R: 35.35,  vf: 20.00 } },
+  { id: 'B', p: { v0: 20, angle: 45, g: 9.8,  h0: 0  }, hand: { tH: 1.443, H: 10.204, T: 2.886,  R: 40.82,  vf: 20.00 } },
+  { id: 'C', p: { v0: 10, angle: 90, g: 9.8,  h0: 0  }, hand: { tH: 1.020, H: 5.102,  T: 2.041,  R: 0,      vf: 10.00 } },
+  { id: 'D', p: { v0: 20, angle: 30, g: 1.62, h0: 0  }, hand: { tH: 6.173, H: 30.864, T: 12.346, R: 213.83,  vf: 20.00 } },
+  { id: 'E', p: { v0: 10, angle: 0,  g: 9.8,  h0: 20 }, hand: { tH: 0,     H: 20.000, T: 2.020,  R: 20.20,  vf: 22.18 } },
+  { id: 'F', p: { v0: 15, angle: 60, g: 9.8,  h0: 10 }, hand: { tH: 1.326, H: 18.610, T: 3.274,  R: 24.56,  vf: 20.52 } },
+];
+function buildVerification() {
+  const keys = [['tH', 't_H (s)', 3], ['H', 'H (m)', 3], ['T', 'T (s)', 3], ['R', 'R (m)', 2], ['vf', '착지 속력 (m/s)', 2]];
+  let head = '<thead><tr><th>조건</th>' + keys.map(k => `<th>${k[1]}</th>`).join('') + '<th>에너지 변동</th><th>판정</th></tr></thead>';
+  let body = '', passAll = 0;
+  CASES.forEach(c => {
+    const p = { ...c.p, m: 1, k: 0, drag: false }, s = simulate(p);
+    const out = { tH: s.tApex, H: s.apexY, T: s.tEnd, R: s.xEnd, vf: s.speedEnd };
+    let ok = true, cells = '';
+    keys.forEach(([k, , d]) => {
+      const e = c.hand[k], v = out[k], good = Math.abs(v - e) <= Math.max(0.005 * Math.abs(e), 0.01);
+      ok = ok && good;
+      cells += `<td class="num"><small>손 ${fmt(e, d)}</small><b style="${good ? '' : 'color:var(--bad)'}">${fmt(v, d)}</b></td>`;
+    });
+    let dev = 0;
+    for (let i = 0; i < s.N; i++) dev = Math.max(dev, Math.abs(0.5 * (s.VX[i] ** 2 + s.VY[i] ** 2) + p.g * s.Y[i] - s.E0) / s.E0);
+    const eok = dev < 1e-4; ok = ok && eok; if (ok) passAll++;
+    body += `<tr><td><b>${c.id}</b><small>v₀=${c.p.v0}, θ=${c.p.angle}°<br>g=${c.p.g}, h₀=${c.p.h0}</small></td>${cells}
+      <td class="num"><small>손 0 %</small><b>${(dev * 100).toFixed(4)} %</b></td><td><span class="${ok ? 'pass' : 'fail'}">${ok ? '통과' : '불일치'}</span></td></tr>`;
+  });
+  $('#verTable').innerHTML = head + '<tbody>' + body + '</tbody>';
+  $('#verBadge').innerHTML = `<span class="${passAll === CASES.length ? 'pass' : 'fail'}">${passAll} / ${CASES.length} 통과</span>`;
+  $('#verNote').textContent = passAll === CASES.length ? '핵심 변인(초기속도·각도·중력가속도·높이)이 손 계산과 일치합니다.' : '일치하지 않는 조건이 있습니다. 코드를 다시 점검하세요.';
+}
+
+/* ---------- 예측 기록 ---------- */
+let records = [];
+const STORE = 'projectile_records_v1';
+try { const raw = localStorage.getItem(STORE); if (raw) records = JSON.parse(raw) || []; } catch (e) { records = []; }
+function saveRecords() { try { localStorage.setItem(STORE, JSON.stringify(records)); } catch (e) { /* 저장 불가 시 무시 */ } }
+let toastTimer = 0;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2200); }
+
+const REC_HEAD = ['조건 이름', 'v₀ (m/s)', 'θ (°)', 'g (m/s²)', 'h₀ (m)', '공기저항', 'H (m)', 't_H (s)', 'T (s)', 'R (m)', '착지 속력 (m/s)'];
+function recRow(r) { return [r.name, r.v0, r.angle, r.g, r.h0, r.drag ? '있음' : '없음', r.H, r.tH, r.T, r.R, r.vf]; }
+function renderRecords() {
+  $('#recCount').textContent = records.length;
+  $('#recEmpty').hidden = records.length > 0; $('#recWrap').hidden = records.length === 0;
+  if (!records.length) return;
+  $('#recTable').innerHTML = '<thead><tr>' + REC_HEAD.map(h => `<th>${h}</th>`).join('') + '<th></th></tr></thead><tbody>' +
+    records.map((r, i) => '<tr>' + recRow(r).map((v, j) => `<td>${j === 0 ? String(v).replace(/</g, '&lt;') : v}</td>`).join('') +
+      `<td><button class="btn small" data-del="${i}" aria-label="${i + 1}번 기록 삭제">삭제</button></td></tr>`).join('') + '</tbody>';
+  $('#tsv').value = [REC_HEAD, ...records.map(recRow)].map(r => r.join('\t')).join('\n');
+}
+$('#recTable').addEventListener('click', e => {
+  const b = e.target.closest('[data-del]'); if (!b) return;
+  records.splice(parseInt(b.dataset.del, 10), 1); saveRecords(); renderRecords();
+});
+$('#btnRec').addEventListener('click', () => {
+  const name = $('#recName').value.trim() || `조건 ${records.length + 1}`;
+  records.push({ name, v0: fmt(P.v0, 1), angle: fmt(P.angle, 1), g: fmt(P.g, 2), h0: fmt(P.h0, 1), drag: P.drag,
+    H: fmt(S.apexY, 2), tH: fmt(S.tApex, 3), T: fmt(S.tEnd, 3), R: fmt(S.xEnd, 2), vf: fmt(S.speedEnd, 2) });
+  saveRecords(); renderRecords(); $('#recName').value = ''; toast(`‘${name}’ 조건을 기록했어요`);
+});
+$('#btnCopy').addEventListener('click', async () => {
+  const ta = $('#tsv');
+  try { await navigator.clipboard.writeText(ta.value); toast('표 텍스트를 복사했어요'); }
+  catch (e) { ta.focus(); ta.select(); toast('텍스트를 선택했어요. Ctrl/Cmd + C로 복사하세요'); }
+});
+
+/* ---------- 초기화 ---------- */
+syncDragUi(); syncChips(); buildVerification(); renderRecords();
+recompute();
+new ResizeObserver(() => { if (!$('#p-sim').hidden) renderAll(); }).observe($('#cvT'));
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', renderAll);
+new MutationObserver(renderAll).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) setTimeout(play, 400);
+console.log("hello");</script></body></html>

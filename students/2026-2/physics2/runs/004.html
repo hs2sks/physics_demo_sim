@@ -1,0 +1,369 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><h1>안녕하세요</h1>
+<p>여기에 내용을 작성하세요.</p>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>직선 도선 자기장 시뮬레이터</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
+
+    <header class="w-full max-w-5xl text-center mb-6">
+        <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">
+            직선 도선 자기장 시뮬레이터
+        </h1>
+        <p class="text-slate-400 mt-2">두 직교 도선 P와 Q의 전류 세기와 방향을 조절하고 자기장 분포를 시각적으로 확인해보세요.</p>
+    </header>
+
+    <main class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Controls Panel -->
+        <div class="bg-slate-800 p-6 rounded-2xl shadow-xl flex flex-col justify-between space-y-6 lg:col-span-1 border border-slate-700">
+            <div class="space-y-6">
+                <h2 class="text-xl font-semibold border-b border-slate-700 pb-3">전류 제어 패널</h2>
+                
+                <!-- Conductor P Controls -->
+                <div class="space-y-3 bg-slate-900/50 p-4 rounded-xl border border-slate-700/50">
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-blue-400">도선 P</span>
+                        <button id="dirP-btn" onclick="toggleDirection('P')" class="px-3 py-1 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-500 transition shadow">
+                            방향: <span id="dirP-text">정방향</span>
+                        </button>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm text-slate-300 mb-1">
+                            <span>전류 세기 ($I_P$)</span>
+                            <span id="valP">1.0 $I_0$</span>
+                        </div>
+                        <input id="rangeP" type="range" min="-3" max="3" step="0.1" value="1" 
+                            class="w-full accent-blue-500 cursor-pointer" oninput="updateParams()">
+                    </div>
+                </div>
+
+                <!-- Conductor Q Controls -->
+                <div class="space-y-3 bg-slate-900/50 p-4 rounded-xl border border-slate-700/50">
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-indigo-400">도선 Q</span>
+                        <button id="dirQ-btn" onclick="toggleDirection('Q')" class="px-3 py-1 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 transition shadow">
+                            방향: <span id="dirQ-text">정방향</span>
+                        </button>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm text-slate-300 mb-1">
+                            <span>전류 세기 ($I_Q$)</span>
+                            <span id="valQ">1.73 $\sqrt{3}I_0$</span>
+                        </div>
+                        <input id="rangeQ" type="range" min="-3" max="3" step="0.1" value="1.73" 
+                            class="w-full accent-indigo-500 cursor-pointer" oninput="updateParams()">
+                    </div>
+                </div>
+
+                <!-- Presets -->
+                <div class="space-y-2">
+                    <span class="text-xs text-slate-400 font-medium">문제 조건 프리셋</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="loadPreset('problem')" class="px-3 py-2 text-xs font-medium rounded-lg bg-slate-700 hover:bg-slate-600 transition border border-slate-600">
+                            기본 문제 조건
+                        </button>
+                        <button onclick="loadPreset('reset')" class="px-3 py-2 text-xs font-medium rounded-lg bg-slate-700 hover:bg-slate-600 transition border border-slate-600">
+                            기본값 초기화
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Legend & Info -->
+            <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-700/60 text-xs space-y-2 text-slate-300">
+                <div class="font-semibold text-slate-200 mb-1">범례 안내</div>
+                <div class="flex items-center space-x-2">
+                    <span class="w-3 h-3 rounded-full bg-cyan-400 inline-block"></span>
+                    <span>자기장 0인 지점 ($B = 0$)</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
+                    <span>지면 나오는 방향 ($+z$)</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="w-3 h-3 rounded-full bg-blue-500 inline-block"></span>
+                    <span>지면 들어가는 방향 ($-z$)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Canvas Display Area -->
+        <div class="bg-slate-800 p-6 rounded-2xl shadow-xl lg:col-span-2 flex flex-col items-center justify-center border border-slate-700 relative overflow-hidden">
+            <div class="w-full flex justify-between items-center mb-4">
+                <h3 class="font-semibold text-slate-200">xy 평면 자기장 분포 (실시간 열화상 시각화)</h3>
+                <span id="zero-count" class="text-xs px-2.5 py-1 rounded-full bg-cyan-900/60 text-cyan-300 border border-cyan-700/50">자기장 0 지점 탐색 중...</span>
+            </div>
+            
+            <div class="relative w-full aspect-square max-w-[450px] bg-slate-950 rounded-xl overflow-hidden border border-slate-700 shadow-inner flex items-center justify-center">
+                <canvas id="simCanvas" class="w-full h-full cursor-crosshair"></canvas>
+            </div>
+            
+            <div class="mt-4 text-xs text-slate-400 text-center">
+                캔버스 위를 마우스로 가리키면 해당 위치의 자기장 세기와 방향을 확인할 수 있습니다.
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // State parameters
+        let state = {
+            Ip: 1.0,
+            dirP: 1, // 1 or -1
+            Iq: Math.sqrt(3),
+            dirQ: 1,
+            hoverX: null,
+            hoverY: null
+        };
+
+        // Geometry mapping based on problem description
+        // P passes through (d, 0) with angle -60 deg. Normal vector / line equation.
+        // Q passes through (-3d, 0) with angle 30 deg.
+        // Let's set scale: d = 50 pixels in standard viewport view.
+        const D_SCALE = 50; 
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            drawSimulation();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        function updateParams() {
+            state.Ip = parseFloat(document.getElementById('rangeP').value);
+            state.Iq = parseFloat(document.getElementById('rangeQ').value);
+            drawSimulation();
+        }
+
+        function toggleDirection(conductor) {
+            if (conductor === 'P') {
+                state.dirP *= -1;
+                document.getElementById('dirP-text').innerText = state.dirP > 0 ? '정방향' : '역방향';
+            } else {
+                state.dirQ *= -1;
+                document.getElementById('dirQ-text').innerText = state.dirQ > 0 ? '정방향' : '역방향';
+            }
+            drawSimulation();
+        }
+
+        function loadPreset(type) {
+            if (type === 'problem') {
+                state.Ip = 1.0;
+                state.dirP = 1;
+                state.Iq = Math.sqrt(3);
+                state.dirQ = 1;
+            } else {
+                state.Ip = 1.0;
+                state.dirP = 1;
+                state.Iq = 1.0;
+                state.dirQ = 1;
+            }
+            document.getElementById('rangeP').value = state.Ip;
+            document.getElementById('valP').value = state.Ip.toFixed(2);
+            document.getElementById('rangeQ').value = state.Iq;
+            document.getElementById('valQ').value = state.Iq.toFixed(2);
+            document.getElementById('dirP-text').innerText = state.dirP > 0 ? '정방향' : '역방향';
+            document.getElementById('dirQ-text').innerText = state.dirQ > 0 ? '정방향' : '역방향';
+            drawSimulation();
+        }
+
+        // Calculate magnetic field at coordinate (x, y) in terms of world coordinates (relative to origin in 'd' units)
+        // d unit length = 1
+        function calculateB(wx, wy) {
+            // Conductor Q passes through (-3, 0) at 30 degrees.
+            // Line Q equation: angle 30 deg -> vector direction (cos 30, sin 30) = (sqrt(3)/2, 1/2)
+            // Normal form for Q: x * sin(30) - y * cos(30) - c = 0, passing through (-3, 0)
+            // sin(30) = 0.5, cos(30) = sqrt(3)/2
+            // Distance formula to Q line: rQ = |0.5*wx - (sqrt(3)/2)*wy - (-3 * 0.5)| / sqrt(0.5^2 + (sqrt(3)/2)^2) = |0.5wx - 0.866wy + 1.5|
+            const distQ = Math.abs(0.5 * wx - (Math.sqrt(3) / 2) * wy + 1.5);
+            
+            // Conductor P passes through (1, 0) at angle -60 degrees.
+            // Direction vector: (cos(-60), sin(-60)) = (1/2, -sqrt(3)/2)
+            // Normal form for P: passing through (1, 0) with angle -60 deg
+            // Distance formula to P line: angle -60 deg means normal is at 30 deg or 120 deg.
+            // Let's use standard line equation coefficients directly:
+            // Line P passes through (1, 0) with slope -sqrt(3) -> sqrt(3)x + y - sqrt(3) = 0
+            // Distance rP = |sqrt(3)*wx + wy - sqrt(3)| / sqrt(3 + 1) = |sqrt(3)wx + wy - sqrt(3)| / 2
+            const distP = Math.abs(Math.sqrt(3) * wx + wy - Math.sqrt(3)) / 2;
+
+            // Magnetic field contribution magnitude proportional to I / r
+            // Direction sign convention: let's define standard directional right-hand rule sign relative to normal vectors.
+            // For visualization grid, let's compute exact signed B value (positive = out of page, negative = into page).
+            
+            let signQ = (0.5 * wx - (Math.sqrt(3) / 2) * wy + 1.5) > 0 ? 1 : -1;
+            signQ *= state.dirQ;
+            const bQ = distQ > 0.05 ? (state.Iq / distQ) * signQ : 0;
+
+            let signP = (Math.sqrt(3) * wx + wy - Math.sqrt(3)) > 0 ? 1 : -1;
+            signP *= state.dirP;
+            const bP = distP > 0.05 ? (state.Ip / distP) * signP : 0;
+
+            return {
+                total: bQ + bP,
+                distP,
+                distQ
+            };
+        }
+
+        function drawSimulation() {
+            const width = canvas.width;
+            const height = canvas.height;
+            ctx.clearRect(0, 0, width, height);
+
+            // Center coordinate mapping (cx, cy)
+            const cx = width / 2;
+            const cy = height / 2;
+            const scale = D_SCALE;
+
+            // 1. Draw background magnetic field heat map using low-res sampling grid
+            const step = 8;
+            let zeroPoints = [];
+
+            for (let px = 0; px < width; px += step) {
+                for (let py = 0; py < height; py += step) {
+                    // Convert pixel to world coordinate (wx, wy) where y is inverted in canvas
+                    const wx = (px - cx) / scale;
+                    const wy = -(py - cy) / scale;
+
+                    const res = calculateB(wx, wy);
+                    const val = res.total;
+
+                    // Check for zero crossing approximation
+                    if (Math.abs(val) < 0.15) {
+                        zeroPoints.push({ px, py });
+                    }
+
+                    // Color mapping: positive = red/orange, negative = blue, near zero = dark slate
+                    if (val > 0) {
+                        const intensity = Math.min(Math.abs(val) * 20, 200);
+                        ctx.fillStyle = `rgba(239, 68, 68, ${intensity / 255 * 0.4})`;
+                    } else {
+                        const intensity = Math.min(Math.abs(val) * 20, 200);
+                        ctx.fillStyle = `rgba(59, 130, 246, ${intensity / 255 * 0.4})`;
+                    }
+                    ctx.fillRect(px, py, step, step);
+                }
+            }
+
+            // 2. Draw Cartesian Axes (x, y)
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(0, cy); ctx.lineTo(width, cy); // x-axis
+            ctx.moveTo(cx, 0); ctx.lineTo(cx, height); // y-axis
+            ctx.stroke();
+
+            // Axis labels
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '12px Inter';
+            ctx.fillText('x', width - 20, cy - 8);
+            ctx.fillText('y', cx + 8, 20);
+
+            // 3. Draw Conductors P and Q
+            // Conductor Q: passes through (-3d, 0) with angle 30 deg
+            // Point (-3, 0) -> px = cx - 3*scale, py = cy
+            ctx.strokeStyle = '#6366f1';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            // Line angle 30 deg
+            const qX1 = -6, qY1 = -6 * Math.tan(Math.PI/6);
+            const qX2 = 4, qY2 = 4 * Math.tan(Math.PI/6);
+            ctx.moveTo(cx + qX1 * scale, cy - qY1 * scale);
+            ctx.lineTo(cx + qX2 * scale, cy - qY2 * scale);
+            ctx.stroke();
+
+            // Conductor P: passes through (1, 0) with angle -60 deg
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            const pX1 = -2, pY1 = -(-2 - 1) * Math.tan(Math.PI/3); // slope -sqrt(3)
+            // Let's use explicit line points for P: passes (1,0), angle -60 deg (slope -sqrt(3))
+            // y - 0 = -sqrt(3)(x - 1)
+            const pStartX = -1, pStartY = -Math.sqrt(3) * (-1 - 1);
+            const pEndX = 3, pEndY = -Math.sqrt(3) * (3 - 1);
+            ctx.moveTo(cx + pStartX * scale, cy - pStartY * scale);
+            ctx.lineTo(cx + pEndX * scale, cy - pEndY * scale);
+            ctx.stroke();
+
+            // Labels for conductors
+            ctx.fillStyle = '#6366f1';
+            ctx.fillText('도선 Q', cx - 3 * scale, cy - 15);
+            ctx.fillStyle = '#3b82f6';
+            ctx.fillText('도선 P', cx + 1 * scale - 15, cy + 25);
+
+            // 4. Highlight Zero Magnetic Field Points (B = 0)
+            ctx.fillStyle = '#22d3ee';
+            zeroPoints.forEach(pt => {
+                ctx.beginPath();
+                ctx.arc(pt.px, pt.py, 3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Update UI zero points badge count
+            document.getElementById('zero-count').innerText = `자기장 0 지점 후보 수: ${zeroPoints.length > 0 ? '탐색됨' : '없음'}`;
+
+            // 5. Draw Hover Tooltip if mouse is inside canvas
+            if (state.hoverX !== null && state.hoverY !== null) {
+                const wx = (state.hoverX - cx) / scale;
+                const wy = -(state.hoverY - cy) / scale;
+                const res = calculateB(wx, wy);
+
+                ctx.strokeStyle = '#e2e8f0';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.arc(state.hoverX, state.hoverY, 6, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // Tooltip box
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+                ctx.strokeStyle = '#475569';
+                ctx.lineWidth = 1;
+                ctx.fillRect(state.hoverX + 10, state.hoverY - 45, 140, 40);
+                ctx.strokeRect(state.hoverX + 10, state.hoverY - 45, 140, 40);
+
+                ctx.fillStyle = '#f8fafc';
+                ctx.font = '11px Inter';
+                ctx.fillText(`위치: (${wx.toFixed(1)}, ${wy.toFixed(1)})`, state.hoverX + 16, state.hoverY - 26);
+                ctx.fillStyle = Math.abs(res.total) < 0.1 ? '#22d3ee' : '#cbd5e1';
+                ctx.fillText(`자기장: ${res.total > 0 ? '+' : ''}${res.total.toFixed(2)} (B)`, state.hoverX + 16, state.hoverY - 11);
+            }
+        }
+
+        // Mouse interactions for inspection
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            state.hoverX = e.clientX - rect.left;
+            state.hoverY = e.clientY - rect.top;
+            drawSimulation();
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            state.hoverX = null;
+            state.hoverY = null;
+            drawSimulation();
+        });
+
+        // Initial trigger
+        window.onload = function() {
+            resizeCanvas();
+            loadPreset('problem');
+        };
+    </script>
+</body>
+</html><script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

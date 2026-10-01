@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>엘리베이터 등가속도 운동 계산기</title>
+
+  <style>
+    /* 전체 페이지 모양 */
+    body {
+      font-family: Arial, sans-serif;
+      background: #eef3f8;
+      margin: 0;
+      padding: 30px;
+      text-align: center;
+    }
+
+    /* 계산기 상자 */
+    .box {
+      max-width: 700px;
+      margin: auto;
+      background: white;
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    .situation {
+      background: #f3f6fa;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 25px;
+    }
+
+    /* 입력칸 */
+    label {
+      display: block;
+      text-align: left;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+      margin-top: 7px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    /* 계산 버튼 */
+    button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 25px;
+      border: none;
+      border-radius: 10px;
+      background: #222;
+      color: white;
+      font-size: 17px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #444;
+    }
+
+    /* 결과 부분 */
+    #result {
+      margin-top: 25px;
+      padding: 20px;
+      background: #f5f5f5;
+      border-radius: 12px;
+      font-size: 18px;
+      line-height: 1.8;
+    }
+
+    /* 그래프 */
+    canvas {
+      margin-top: 25px;
+      max-width: 100%;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background: white;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="box">
+
+  <h1>🛗 엘리베이터 등가속도 운동</h1>
+
+  <div class="situation">
+    <strong>상황 설명</strong><br>
+    아베노 하루카스 엘리베이터가 출발하여 상승하는 상황
+  </div>
+
+  <!-- 처음 속도 입력 -->
+  <label>처음 속도 (m/s)</label>
+  <input type="number" id="initialVelocity" value="0">
+
+  <!-- 나중 속도 입력 -->
+  <label>나중 속도 (m/s)</label>
+  <input type="number" id="finalVelocity" value="10">
+
+  <!-- 걸린 시간 입력 -->
+  <label>걸린 시간 (초)</label>
+  <input type="number" id="time" value="5">
+
+  <!-- 계산 버튼 -->
+  <button onclick="calculate()">계산하기</button>
+
+  <!-- 계산 결과가 나타나는 곳 -->
+  <div id="result">
+    계산하기 버튼을 눌러주세요.
+  </div>
+
+  <!-- 속도 변화 그래프 -->
+  <canvas id="graph" width="600" height="350"></canvas>
+
+</div>
+
+<script>
+  // 계산하기 버튼을 눌렀을 때 실행되는 함수
+  function calculate() {
+
+    // 입력한 값을 가져온다.
+    const v0 = Number(document.getElementById("initialVelocity").value);
+    const v = Number(document.getElementById("finalVelocity").value);
+    const t = Number(document.getElementById("time").value);
+
+    // 가속도 공식
+    // 가속도 = (나중 속도 - 처음 속도) / 걸린 시간
+    const acceleration = (v - v0) / t;
+
+    // 계산 결과를 화면에 표시한다.
+    document.getElementById("result").innerHTML =
+      "처음 속도: " + v0 + " m/s<br>" +
+      "나중 속도: " + v + " m/s<br>" +
+      "걸린 시간: " + t + "초<br><br>" +
+
+      "<strong>가속도 = " + acceleration.toFixed(2) + " m/s²</strong><br><br>" +
+
+      "계산 과정:<br>" +
+      "a = (v - v₀) ÷ t<br>" +
+      "a = (" + v + " - " + v0 + ") ÷ " + t + "<br>" +
+      "a = " + acceleration.toFixed(2) + " m/s²";
+
+    // 그래프를 그린다.
+    drawGraph(v0, v, t);
+  }
+
+
+  // 속도-시간 그래프를 그리는 함수
+  function drawGraph(v0, v, t) {
+
+    const canvas = document.getElementById("graph");
+    const ctx = canvas.getContext("2d");
+
+    // 기존 그래프를 지운다.
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const width = canvas.width;
+    const height = canvas.height;
+
+    // 그래프의 여백
+    const left = 60;
+    const bottom = 50;
+    const top = 30;
+    const right = 20;
+
+    // 최대 속도보다 조금 크게 그래프 범위를 설정한다.
+    const maxVelocity = Math.max(v0, v) + 2;
+
+    // 가로축 그리기
+    ctx.beginPath();
+    ctx.moveTo(left, height - bottom);
+    ctx.lineTo(width - right, height - bottom);
+    ctx.stroke();
+
+    // 세로축 그리기
+    ctx.beginPath();
+    ctx.moveTo(left, height - bottom);
+    ctx.lineTo(left, top);
+    ctx.stroke();
+
+    // 축 이름
+    ctx.font = "14px Arial";
+    ctx.fillText("시간 (초)", width - 80, height - 15);
+
+    ctx.save();
+    ctx.translate(18, height / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText("속도 (m/s)", 0, 0);
+    ctx.restore();
+
+    // 그래프의 시작점
+    const startX = left;
+    const startY =
+      height - bottom -
+      (v0 / maxVelocity) * (height - bottom - top);
+
+    // 그래프의 끝점
+    const endX = width - right;
+    const endY =
+      height - bottom -
+      (v / maxVelocity) * (height - bottom - top);
+
+    // 속도 변화 선을 그린다.
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(endX, endY);
+    ctx.stroke();
+
+    // 시작점 표시
+    ctx.beginPath();
+    ctx.arc(startX, startY, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 끝점 표시
+    ctx.beginPath();
+    ctx.arc(endX, endY, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 시작 속도 표시
+    ctx.fillText(
+      v0 + " m/s",
+      startX + 5,
+      startY - 10
+    );
+
+    // 끝 속도 표시
+    ctx.fillText(
+      v + " m/s",
+      endX - 60,
+      endY - 10
+    );
+
+    // 시간 표시
+    ctx.fillText(
+      "0",
+      startX - 5,
+      height - bottom + 20
+    );
+
+    ctx.fillText(
+      t + "초",
+      endX - 15,
+      height - bottom + 20
+    );
+  }
+
+
+  // 웹페이지를 처음 열었을 때 자동으로 계산한다.
+  calculate();
+
+</script>
+
+</body>
+</html>

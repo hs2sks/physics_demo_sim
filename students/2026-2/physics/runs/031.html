@@ -1,0 +1,821 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>도월교 돌림힘 평형 시뮬레이션</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Arial, "Noto Sans KR", sans-serif;
+  background: #eef2f6;
+  color: #20252b;
+}
+.app {
+  max-width: 1100px;
+  margin: 24px auto;
+  padding: 24px;
+  background: white;
+  border-radius: 18px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.08);
+}
+h1 { text-align: center; margin: 0 0 8px; }
+.subtitle { text-align: center; color: #666; margin-bottom: 22px; }
+.info {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.info-card {
+  padding: 14px;
+  background: #f6f8fa;
+  border-radius: 10px;
+  text-align: center;
+}
+.info-card strong { display: block; font-size: 20px; margin-top: 5px; }
+
+.sim-wrap {
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid #dce2e8;
+  border-radius: 14px;
+  margin-bottom: 20px;
+}
+.sim-title { font-weight: bold; margin-bottom: 10px; }
+#bridgeCanvas {
+  width: 100%;
+  height: 280px;
+  display: block;
+  background: white;
+  border-radius: 10px;
+  border: 1px solid #d8dde3;
+}
+.scale-label {
+  display: flex;
+  justify-content: space-between;
+  color: #666;
+  font-size: 13px;
+  margin-top: 5px;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.control-box {
+  padding: 14px;
+  background: #f6f8fa;
+  border-radius: 10px;
+}
+.control-box label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 7px;
+}
+input, select {
+  width: 100%;
+  padding: 9px;
+  border: 1px solid #b9c1c9;
+  border-radius: 7px;
+  font-size: 15px;
+}
+small { color: #666; display: block; margin-top: 5px; line-height: 1.4; }
+
+.table-wrap { overflow-x: auto; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+th, td {
+  padding: 9px;
+  border-bottom: 1px solid #ddd;
+  text-align: center;
+}
+th { background: #f1f3f5; }
+td input, td select { min-width: 110px; }
+
+button {
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 15px;
+  cursor: pointer;
+  font-size: 15px;
+}
+.add { background: #2e7d32; color: white; margin-top: 14px; }
+.calc { width: 100%; background: #1565c0; color: white; margin-top: 14px; font-size: 17px; font-weight: bold; }
+.delete { background: #e53935; color: white; }
+
+.result {
+  margin-top: 22px;
+  padding: 18px;
+  background: #fafafa;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+}
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.result-card {
+  padding: 14px;
+  border-radius: 10px;
+  background: #f0f3f6;
+}
+.result-card b { display: block; font-size: 21px; margin-top: 5px; }
+
+.balance {
+  margin-top: 15px;
+  padding: 16px;
+  border-radius: 10px;
+  font-size: 19px;
+  font-weight: bold;
+}
+.balanced { background: #e8f5e9; color: #1b5e20; }
+.unbalanced { background: #ffebee; color: #b71c1c; }
+
+.note {
+  margin-top: 18px;
+  padding: 14px;
+  background: #fff8e1;
+  border-radius: 10px;
+  line-height: 1.6;
+  color: #5d4a00;
+}
+
+@media (max-width: 750px) {
+  .info, .controls, .result-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <h1>🌉 도월교 돌림힘 평형 시뮬레이션</h1>
+  <div class="subtitle">155 m 길이 · 교각 14개 · 힘의 위치를 바꾸며 돌림힘을 관찰해 보세요</div>
+
+  <div class="info">
+    <div class="info-card">다리 길이<strong>155 m</strong></div>
+    <div class="info-card">교각 수<strong>14개</strong></div>
+    <div class="info-card">다리 중앙<strong>77.5 m</strong></div>
+  </div>
+
+  <div class="sim-wrap">
+    <div class="sim-title">실시간 다리 모형</div>
+    <canvas id="bridgeCanvas" width="1000" height="280"></canvas>
+    <div class="scale-label"><span>0 m (왼쪽 끝)</span><span>77.5 m (중앙)</span><span>155 m (오른쪽 끝)</span></div>
+  </div>
+
+  <div class="controls">
+    <div class="control-box">
+      <label for="axis">회전축</label>
+      <select id="axis" onchange="drawBridge()">
+        <option value="0">왼쪽 끝 (0 m)</option>
+        <option value="77.5">중앙 (77.5 m)</option>
+        <option value="155">오른쪽 끝 (155 m)</option>
+        <option value="custom">직접 입력</option>
+      </select>
+      <input id="customAxis" type="number" value="77.5" step="any" min="0" max="155"
+             style="display:none; margin-top:7px;" oninput="drawBridge()">
+    </div>
+
+    <div class="control-box">
+      <label for="uniformLoad">다리 자체 등분포 하중 (N/m)</label>
+      <input id="uniformLoad" type="number" value="0" min="0" step="any" oninput="drawBridge()">
+      <small>실제 도월교의 무게를 의미하지 않습니다. 학습용으로 직접 가정하는 값입니다.</small>
+    </div>
+
+    <div class="control-box">
+      <label>교각 배치</label>
+      <div style="padding-top:9px; line-height:1.5;">
+        14개 교각을 155 m 전체 길이에<br>
+        <b>균등하게 배치한 학습용 모형</b>입니다.
+      </div>
+    </div>
+  </div>
+
+  <div class="note" style="margin-bottom:18px;">
+    <b>F3 = 사람의 힘</b><br>
+    3번째 힘(F3)을 입력하면 다리 위에 사람 모양이 표시됩니다.
+    각 힘은 <b>↑ 위쪽 / ↓ 아래쪽</b> 방향을 직접 선택할 수 있습니다.
+    F3의 위치는 사람이 서 있는 위치, F3의 크기는 사람이 다리를 누르는 힘으로 생각하면 됩니다.
+    아래의 <b>사람 움직이기</b> 버튼을 누르면 F3의 위치가 자동으로 변합니다.
+  </div>
+
+  <h2>힘 입력</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>번호</th>
+          <th>힘의 크기 (N)</th>
+          <th>힘의 위치 (m)</th>
+          <th>힘의 방향</th>
+          <th>돌림힘 (N·m)</th>
+          <th>삭제</th>
+        </tr>
+      </thead>
+      <tbody id="forceRows"></tbody>
+    </table>
+  </div>
+
+  <button class="add" onclick="addRow()">＋ 힘 추가</button>
+  <button class="calc" onclick="calculate()">계산하기</button>
+  <button id="movePersonBtn" class="calc" style="background:#6a1b9a;" onclick="togglePersonSimulation()">▶ 사람 움직이기</button>
+  <small style="text-align:center; margin-top:7px;">
+    사람(F3)이 다리 위를 자동으로 왼쪽↔오른쪽으로 이동합니다. 버튼을 다시 누르면 멈춥니다.
+  </small>
+
+  <div class="result">
+    <h2>계산 결과</h2>
+    <div class="result-grid">
+      <div class="result-card">
+        회전축
+        <b id="axisResult">77.5 m</b>
+      </div>
+      <div class="result-card">
+        힘에 의한 전체 돌림힘
+        <b id="forceTorqueResult">0.00 N·m</b>
+      </div>
+      <div class="result-card">
+        등분포 하중의 돌림힘
+        <b id="uniformTorqueResult">0.00 N·m</b>
+      </div>
+    </div>
+    <div id="totalResult" class="balance balanced">
+      전체 돌림힘의 합: 0.00 N·m
+    </div>
+    <div id="details"></div>
+  </div>
+
+  <div class="note">
+    <b>중요한 점:</b> 이 앱의 14개 교각은 도월교의 모습을 물리적으로 이해하기 위한
+    <b>학습용 모델</b>입니다. 교각의 실제 위치, 교량의 실제 자중·단면·재료·지지조건 등을
+    제공받지 않은 상태에서는 실제 구조물의 안전성을 계산할 수 없습니다.
+  </div>
+</div>
+
+<script>
+const BRIDGE_LENGTH = 155;
+const PIER_COUNT = 14;
+
+// 페이지가 열리면 힘 입력칸 하나를 만듭니다.
+addRow();
+drawBridge();
+
+// 회전축 선택에서 "직접 입력"을 선택하면 입력칸을 보여줍니다.
+document.getElementById("axis").addEventListener("change", function () {
+  document.getElementById("customAxis").style.display =
+    this.value === "custom" ? "block" : "none";
+  calculate();
+});
+
+// 새로운 힘 입력 행을 추가합니다.
+function addRow() {
+  const tbody = document.getElementById("forceRows");
+  const row = document.createElement("tr");
+
+  row.innerHTML = `
+    <td class="number"></td>
+    <td><input type="number" class="force" placeholder="예: 100" step="any" oninput="drawBridge()"></td>
+    <td><input type="number" class="position" placeholder="0~155" step="any" min="0" max="155" oninput="drawBridge()"></td>
+    <td>
+      <select class="direction" onchange="drawBridge()">
+        <option value="down">↓ 아래쪽</option>
+        <option value="up">↑ 위쪽</option>
+      </select>
+    </td>
+    <td class="torque">-</td>
+    <td><button class="delete" onclick="deleteRow(this)">삭제</button></td>
+  `;
+
+  tbody.appendChild(row);
+  updateNumbers();
+  drawBridge();
+}
+
+// 입력 행을 삭제합니다.
+function deleteRow(button) {
+  button.closest("tr").remove();
+  updateNumbers();
+  calculate();
+  drawBridge();
+}
+
+// 힘 번호를 다시 매깁니다.
+function updateNumbers() {
+  document.querySelectorAll("#forceRows tr").forEach((row, index) => {
+    row.querySelector(".number").textContent = index + 1;
+  });
+}
+
+// 현재 회전축 위치를 알아냅니다.
+function getAxis() {
+  const select = document.getElementById("axis");
+  if (select.value === "custom") {
+    let x = parseFloat(document.getElementById("customAxis").value);
+    if (isNaN(x)) x = 77.5;
+    return Math.max(0, Math.min(BRIDGE_LENGTH, x));
+  }
+  return parseFloat(select.value);
+}
+
+// 캔버스에 다리, 교각, 힘 화살표를 그립니다.
+function drawBridge() {
+  const canvas = document.getElementById("bridgeCanvas");
+  const ctx = canvas.getContext("2d");
+
+  const W = canvas.width;
+  const H = canvas.height;
+
+  ctx.clearRect(0, 0, W, H);
+
+  const left = 55;
+  const right = W - 55;
+  const deckY = 145;
+  const deckH = 22;
+  const usableW = right - left;
+
+  // 실제 거리(m)를 화면의 x좌표로 바꾸는 함수입니다.
+  function xFromM(m) {
+    return left + (m / BRIDGE_LENGTH) * usableW;
+  }
+
+  // 물
+  ctx.fillStyle = "#dfeff8";
+  ctx.fillRect(0, 210, W, 70);
+
+  // 다리 상판
+  ctx.fillStyle = "#707780";
+  ctx.fillRect(left, deckY, usableW, deckH);
+
+  // 상판 위의 선
+  ctx.strokeStyle = "#333";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(left, deckY);
+  ctx.lineTo(right, deckY);
+  ctx.stroke();
+
+  // 14개 교각을 0~155m에 균등하게 배치합니다.
+  for (let i = 0; i < PIER_COUNT; i++) {
+    const pos = i * BRIDGE_LENGTH / (PIER_COUNT - 1);
+    const x = xFromM(pos);
+
+    ctx.fillStyle = "#8d959d";
+    ctx.fillRect(x - 7, deckY + deckH, 14, 65);
+
+    // 교각의 기초
+    ctx.fillRect(x - 13, deckY + deckH + 60, 26, 7);
+
+    ctx.fillStyle = "#555";
+    ctx.font = "11px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText(i + 1, x, deckY + deckH + 82);
+  }
+
+  // 회전축 표시
+  const axis = getAxis();
+  const ax = xFromM(axis);
+
+  ctx.strokeStyle = "#222";
+  ctx.lineWidth = 3;
+  ctx.setLineDash([7, 5]);
+  ctx.beginPath();
+  ctx.moveTo(ax, 40);
+  ctx.lineTo(ax, 225);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = "#222";
+  ctx.font = "bold 13px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText("회전축 " + axis.toFixed(1) + " m", ax, 30);
+
+  // 입력된 힘을 화살표로 표시
+  const rows = document.querySelectorAll("#forceRows tr");
+  rows.forEach((row, index) => {
+    const force = parseFloat(row.querySelector(".force").value);
+    const pos = parseFloat(row.querySelector(".position").value);
+    const direction = row.querySelector(".direction").value;
+
+    if (isNaN(force) || isNaN(pos) || pos < 0 || pos > BRIDGE_LENGTH) return;
+
+    const x = xFromM(pos);
+    const arrowHeight = Math.min(95, 35 + Math.log10(Math.max(force, 1)) * 18);
+
+    // 선택한 힘의 방향에 따라 화살표를 위 또는 아래로 그립니다.
+    ctx.strokeStyle = "#c62828";
+    ctx.fillStyle = "#c62828";
+    ctx.lineWidth = 3;
+
+    const isUp = direction === "up";
+    const startY = isUp ? deckY + arrowHeight : deckY - arrowHeight;
+    const endY = isUp ? deckY + 2 : deckY - 2;
+
+    ctx.beginPath();
+    ctx.moveTo(x, startY);
+    ctx.lineTo(x, endY);
+    ctx.stroke();
+
+    ctx.beginPath();
+    if (isUp) {
+      // 위쪽 화살표 머리
+      ctx.moveTo(x, deckY + 2);
+      ctx.lineTo(x - 7, deckY + 14);
+      ctx.lineTo(x + 7, deckY + 14);
+    } else {
+      // 아래쪽 화살표 머리
+      ctx.moveTo(x, deckY - 2);
+      ctx.lineTo(x - 7, deckY - 14);
+      ctx.lineTo(x + 7, deckY - 14);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.font = "bold 12px Arial";
+    ctx.textAlign = "center";
+    const labelY = isUp ? deckY + arrowHeight + 18 : deckY - arrowHeight - 8;
+    ctx.fillText(`F${index + 1}: ${force}N`, x, labelY);
+
+    // F3은 사람이 가하는 힘으로 설정합니다.
+    // 사람이 입력된 위치에 서 있는 것처럼 간단한 사람 모양을 그립니다.
+    if (index === 2) {
+      drawPerson(ctx, x, deckY);
+    }
+  });
+
+  // 등분포 하중을 시각적으로 표시합니다.
+  const uniform = parseFloat(document.getElementById("uniformLoad").value) || 0;
+  if (uniform > 0) {
+    ctx.strokeStyle = "#1565c0";
+    ctx.fillStyle = "#1565c0";
+    ctx.lineWidth = 2;
+
+    for (let x = left + 10; x < right; x += 28) {
+      ctx.beginPath();
+      ctx.moveTo(x, 95);
+      ctx.lineTo(x, deckY - 4);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(x, deckY - 4);
+      ctx.lineTo(x - 4, deckY - 11);
+      ctx.lineTo(x + 4, deckY - 11);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    ctx.font = "12px Arial";
+    ctx.textAlign = "left";
+    ctx.fillText(`등분포 하중: ${uniform} N/m`, left, 80);
+  }
+}
+
+// F3의 위치에 사람 모양을 그리는 함수입니다.
+function drawPerson(ctx, x, deckY) {
+  const headY = deckY - 58;
+  const bodyTop = deckY - 48;
+  const bodyBottom = deckY - 20;
+
+  ctx.save();
+
+  // 머리
+  ctx.fillStyle = "#f2c6a0";
+  ctx.beginPath();
+  ctx.arc(x, headY, 8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 몸
+  ctx.strokeStyle = "#263238";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(x, bodyTop);
+  ctx.lineTo(x, bodyBottom);
+  ctx.stroke();
+
+  // 팔
+  ctx.beginPath();
+  ctx.moveTo(x, bodyTop + 5);
+  ctx.lineTo(x - 13, bodyTop + 17);
+  ctx.moveTo(x, bodyTop + 5);
+  ctx.lineTo(x + 13, bodyTop + 17);
+  ctx.stroke();
+
+  // 다리
+  ctx.beginPath();
+  ctx.moveTo(x, bodyBottom);
+  ctx.lineTo(x - 10, deckY);
+  ctx.moveTo(x, bodyBottom);
+  ctx.lineTo(x + 10, deckY);
+  ctx.stroke();
+
+  // 사람이라는 것을 알려주는 라벨
+  ctx.fillStyle = "#263238";
+  ctx.font = "bold 12px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText("사람 (F3)", x, headY - 13);
+
+  ctx.restore();
+}
+
+// 사람(F3) 자동 이동을 위한 변수
+let personMoving = false;
+let personAnimationId = null;
+let personDirection = 1;
+let personPosition = 20;
+let lastPersonTime = null;
+
+// 사람 움직이기 버튼을 누르면 시작/정지합니다.
+function togglePersonSimulation() {
+  const rows = document.querySelectorAll("#forceRows tr");
+  if (rows.length < 3) {
+    alert("사람(F3)을 움직이려면 먼저 힘 입력 행을 3개 이상 만들어 주세요.");
+    return;
+  }
+
+  const personRow = rows[2];
+  const positionInput = personRow.querySelector(".position");
+
+  if (!personMoving) {
+    let current = parseFloat(positionInput.value);
+    if (isNaN(current)) current = personPosition;
+    personPosition = Math.max(5, Math.min(BRIDGE_LENGTH - 5, current));
+    personMoving = true;
+    lastPersonTime = null;
+    document.getElementById("movePersonBtn").textContent = "⏸ 사람 움직임 멈추기";
+    personAnimationId = requestAnimationFrame(animatePerson);
+  } else {
+    stopPersonSimulation();
+  }
+}
+
+// 사람의 위치를 조금씩 바꾸어 실제로 다리 위를 이동하는 것처럼 보이게 합니다.
+function animatePerson(timestamp) {
+  if (!personMoving) return;
+
+  if (lastPersonTime === null) lastPersonTime = timestamp;
+  const dt = Math.min(0.05, (timestamp - lastPersonTime) / 1000);
+  lastPersonTime = timestamp;
+
+  // 초당 약 12m 이동
+  personPosition += personDirection * 12 * dt;
+
+  // 끝에 도착하면 방향을 반대로 바꿉니다.
+  if (personPosition >= BRIDGE_LENGTH - 5) {
+    personPosition = BRIDGE_LENGTH - 5;
+    personDirection = -1;
+  } else if (personPosition <= 5) {
+    personPosition = 5;
+    personDirection = 1;
+  }
+
+  const rows = document.querySelectorAll("#forceRows tr");
+  if (rows.length >= 3) {
+    rows[2].querySelector(".position").value = personPosition.toFixed(1);
+
+    // 중요: 사람이 실제로 움직이는 동안에만 다른 힘을 조절합니다.
+    // 사람(F3)이 움직이지 않을 때는 F1, F2 등의 힘을 자동으로 바꾸지 않습니다.
+    updateSupportForcesWhilePersonMoves();
+
+    drawBridge();
+    calculate();
+  }
+
+  personAnimationId = requestAnimationFrame(animatePerson);
+}
+
+// 사람 자동 이동을 멈춥니다.
+function stopPersonSimulation() {
+  personMoving = false;
+  lastPersonTime = null;
+
+  if (personAnimationId !== null) {
+    cancelAnimationFrame(personAnimationId);
+    personAnimationId = null;
+  }
+
+  const button = document.getElementById("movePersonBtn");
+  if (button) button.textContent = "▶ 사람 움직이기";
+}
+
+// 사람이 이동하는 동안 F1, F2가 사람(F3)의 위치에 맞춰
+// 돌림힘 평형이 되도록 변하도록 합니다.
+//
+// 여기서는 F1과 F2를 다리 양쪽의 위쪽 지지력으로 보고,
+// F1은 왼쪽 끝(0 m), F2는 오른쪽 끝(155 m)에 작용한다고 가정합니다.
+// 다리 자체 하중이 있다면 그 합력은 중앙 77.5 m에 작용합니다.
+//
+// 계산 방법:
+// 1) 전체 위쪽 힘 = 아래쪽 힘의 합
+// 2) 회전축을 왼쪽 끝으로 두고 돌림힘 평형을 적용
+// 3) 그 결과로 F1, F2를 계산
+//
+// 이 함수는 animatePerson()에서만 호출되므로,
+// 사람이 움직일 때만 F1/F2가 자동으로 변합니다.
+function updateSupportForcesWhilePersonMoves() {
+  const rows = document.querySelectorAll("#forceRows tr");
+  if (rows.length < 3) return;
+
+  const f1Input = rows[0].querySelector(".force");
+  const f1PosInput = rows[0].querySelector(".position");
+  const f1DirInput = rows[0].querySelector(".direction");
+
+  const f2Input = rows[1].querySelector(".force");
+  const f2PosInput = rows[1].querySelector(".position");
+  const f2DirInput = rows[1].querySelector(".direction");
+
+  const f3Input = rows[2].querySelector(".force");
+  const f3PosInput = rows[2].querySelector(".position");
+  const f3DirInput = rows[2].querySelector(".direction");
+
+  // F1과 F2는 다리 양쪽 끝의 위쪽 지지력으로 고정합니다.
+  f1PosInput.value = "0";
+  f2PosInput.value = BRIDGE_LENGTH;
+  f1DirInput.value = "up";
+  f2DirInput.value = "up";
+
+  const personForce = parseFloat(f3Input.value);
+  const personX = parseFloat(f3PosInput.value);
+
+  if (!Number.isFinite(personForce) || !Number.isFinite(personX)) return;
+
+  // ------------------------------------------------------------
+  // 항상 정확히 평형이 되도록 F1, F2를 동시에 계산합니다.
+  //
+  // ① 힘의 평형: F1 + F2 = 아래쪽 힘의 총합
+  // ② 돌림힘의 평형(왼쪽 끝 0 m 기준):
+  //    F2 × 155 = 아래쪽 힘들의 돌림힘 합
+  //
+  // 따라서 F1과 F2를 '따로 보정'하지 않고 두 평형식을
+  // 동시에 만족하는 해를 한 번에 구합니다.
+  // ------------------------------------------------------------
+
+  let totalDownwardForce = 0;
+  let totalDownwardMoment = 0;
+
+  // 다리 자체 등분포 하중
+  const uniform = parseFloat(document.getElementById("uniformLoad").value) || 0;
+  const bridgeLoad = Math.max(0, uniform) * BRIDGE_LENGTH;
+
+  totalDownwardForce += bridgeLoad;
+  totalDownwardMoment += bridgeLoad * (BRIDGE_LENGTH / 2);
+
+  // 사람의 힘
+  if (f3DirInput.value === "down") {
+    const p = Math.max(0, personForce);
+    totalDownwardForce += p;
+    totalDownwardMoment += p * personX;
+  }
+
+  // F1, F2, F3 이외의 힘 중 아래쪽 힘도 포함
+  rows.forEach((row, index) => {
+    if (index === 0 || index === 1 || index === 2) return;
+
+    const force = parseFloat(row.querySelector(".force").value);
+    const position = parseFloat(row.querySelector(".position").value);
+    const direction = row.querySelector(".direction").value;
+
+    if (
+      Number.isFinite(force) &&
+      Number.isFinite(position) &&
+      direction === "down"
+    ) {
+      const f = Math.max(0, force);
+      totalDownwardForce += f;
+      totalDownwardMoment += f * position;
+    }
+  });
+
+  // F3이 위쪽 힘으로 설정된 경우에는 필요한 지지력이 감소합니다.
+  if (f3DirInput.value === "up") {
+    totalDownwardForce -= Math.max(0, personForce);
+  }
+
+  // 힘의 평형 + 돌림힘 평형을 동시에 만족하는 정확한 해
+  const f2 = totalDownwardMoment / BRIDGE_LENGTH;
+  const f1 = totalDownwardForce - f2;
+
+  // 이 모델에서는 F1/F2를 위쪽 지지력으로 사용합니다.
+  // 계산 가능한 범위에서는 음수가 나오지 않도록 합니다.
+  // 정상적인 사람 이동 범위에서는 두 값 모두 양수가 되도록
+  // 사람이 다리 위에서 움직이는 조건을 사용합니다.
+  f1Input.value = Math.max(0, f1).toFixed(6);
+  f2Input.value = Math.max(0, f2).toFixed(6);
+}
+
+// 돌림힘을 계산합니다.
+function calculate() {
+  // 계산하기에서는 입력값을 그대로 사용합니다.
+  // F1/F2 등의 자동 변경은 사람이 움직일 때(animatePerson)만 실행됩니다.
+  const rows = document.querySelectorAll("#forceRows tr");
+  const axis = getAxis();
+  let forceTorqueTotal = 0;
+  let details = "";
+
+  rows.forEach((row, index) => {
+    const force = parseFloat(row.querySelector(".force").value);
+    const position = parseFloat(row.querySelector(".position").value);
+    const direction = row.querySelector(".direction").value;
+    const torqueCell = row.querySelector(".torque");
+
+    if (isNaN(force) || isNaN(position)) {
+      torqueCell.textContent = "입력 필요";
+      return;
+    }
+
+    if (position < 0 || position > BRIDGE_LENGTH) {
+      torqueCell.textContent = "0~155";
+      return;
+    }
+
+    // 회전축으로부터의 거리를 계산합니다.
+    const leverArm = Math.abs(position - axis);
+
+    // 기본 돌림힘 크기 = 힘 × 회전축으로부터의 거리
+    let torque = force * leverArm;
+
+    // 왼쪽/오른쪽 위치와 위/아래 힘 방향을 이용해 돌림힘 부호를 정합니다.
+    // 시계방향 = +, 반시계방향 = -
+    if (Math.abs(position - axis) < 1e-12) {
+      torque = 0;
+    } else if (position > axis) {
+      // 회전축 오른쪽: 아래쪽 힘은 시계(+), 위쪽 힘은 반시계(-)
+      torque *= (direction === "down") ? 1 : -1;
+    } else {
+      // 회전축 왼쪽: 아래쪽 힘은 반시계(-), 위쪽 힘은 시계(+)
+      torque *= (direction === "down") ? -1 : 1;
+    }
+
+    torqueCell.textContent = torque.toFixed(2) + " N·m";
+    forceTorqueTotal += torque;
+
+    details += `
+      <p>
+        <b>힘 ${index + 1}</b>:
+        ${force} N × |${position} − ${axis.toFixed(2)}| m
+        = <b>${torque.toFixed(2)} N·m</b>
+      </p>
+    `;
+  });
+
+  // 등분포 하중은 전체 길이에 균일하게 작용한다고 가정합니다.
+  // 따라서 그 합력은 중앙(77.5m)에 작용합니다.
+  const uniform = parseFloat(document.getElementById("uniformLoad").value) || 0;
+  const totalUniformForce = uniform * BRIDGE_LENGTH;
+  let uniformTorque = totalUniformForce * Math.abs(77.5 - axis);
+
+  // 등분포 하중은 아래 방향의 힘으로 보고,
+  // 회전축의 왼쪽/오른쪽에 따라 방향이 달라지도록 계산합니다.
+  if (Math.abs(77.5 - axis) < 1e-12) {
+    uniformTorque = 0;
+  } else if (77.5 < axis) {
+    uniformTorque *= -1;  // 중앙의 하중이 회전축 왼쪽에 있으면 반시계방향(-)
+  } else {
+    uniformTorque *= 1;   // 중앙의 하중이 회전축 오른쪽에 있으면 시계방향(+)
+  }
+
+  const totalTorque = forceTorqueTotal + uniformTorque;
+
+  document.getElementById("axisResult").textContent =
+    axis.toFixed(2) + " m";
+  document.getElementById("forceTorqueResult").textContent =
+    forceTorqueTotal.toFixed(2) + " N·m";
+  document.getElementById("uniformTorqueResult").textContent =
+    uniformTorque.toFixed(2) + " N·m";
+
+  const totalBox = document.getElementById("totalResult");
+
+  // 화면에는 소수 둘째 자리까지 표시하므로,
+  // 표시값이 0.00 N·m라면 사용자에게는 평형으로 보여야 합니다.
+  // 아주 작은 계산 오차 때문에 '0.00인데 평형 아님'이 나타나지 않도록
+  // 실제 계산값과 표시값을 함께 고려하여 판정합니다.
+  const displayedTorque = Number(totalTorque.toFixed(2));
+  const isBalanced = Math.abs(displayedTorque) < 0.005;
+
+  if (isBalanced) {
+    totalBox.className = "balance balanced";
+    totalBox.innerHTML =
+      `전체 돌림힘의 합: ${displayedTorque.toFixed(2)} N·m<br><br>
+       ✅ 이 회전축에 대한 돌림힘 평형 조건을 만족합니다.`;
+  } else {
+    totalBox.className = "balance unbalanced";
+    totalBox.innerHTML =
+      `전체 돌림힘의 합: ${displayedTorque.toFixed(2)} N·m<br><br>
+       ⚠️ 이 회전축에 대한 돌림힘 평형 조건을 만족하지 않습니다.`;
+  }
+
+  document.getElementById("details").innerHTML =
+    details || "<p>입력된 힘이 없습니다.</p>";
+
+  drawBridge();
+}
+</script>
+</body>
+</html><script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

@@ -1,0 +1,1059 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>포물선 운동 & 역학적 에너지 보존 시뮬레이터</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- KaTeX for Math rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; }
+        .canvas-container { position: relative; width: 100%; height: 400px; }
+        canvas { display: block; width: 100%; height: 100%; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+
+    <!-- Header & Navigation Tabs -->
+    <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-indigo-600 rounded-lg text-white">
+                    <i class="fa-solid fa-atom text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg text-white leading-tight">포물선 운동 & 역학적 에너지 보존</h1>
+                    <p class="text-xs text-slate-400">물리학 탐구 수행평가 가상실험실</p>
+                </div>
+            </div>
+
+            <!-- Tab Buttons -->
+            <nav class="flex gap-2 bg-slate-900 p-1 rounded-xl border border-slate-700">
+                <button id="tab-sim-btn" onclick="switchTab('sim')" 
+                        class="px-4 sm:px-5 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 bg-indigo-600 text-white shadow-md flex items-center gap-2">
+                    <i class="fa-solid fa-gamepad"></i>
+                    <span>🎮 시뮬레이션</span>
+                </button>
+                <button id="tab-theory-btn" onclick="switchTab('theory')" 
+                        class="px-4 sm:px-5 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-white flex items-center gap-2">
+                    <i class="fa-solid fa-book-open"></i>
+                    <span>📚 이론 학습 및 계산기</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
+
+        <!-- ================= TAB 1: SIMULATION ================= -->
+        <div id="tab-sim-content">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                <!-- Left Column: Variable Control Panel (변수 설정 UI) -->
+                <div class="lg:col-span-4 space-y-5 bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl lg:sticky lg:top-20">
+                    <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+                        <h2 class="font-bold text-base text-white flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-indigo-400"></i> 물리 변수 설정
+                        </h2>
+                        <button onclick="resetInputs()" class="text-xs text-slate-400 hover:text-indigo-300 flex items-center gap-1 transition">
+                            <i class="fa-solid fa-rotate-right"></i> 초기화
+                        </button>
+                    </div>
+
+                    <!-- Input Controls -->
+                    <div class="space-y-4">
+                        <!-- Initial Velocity -->
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <label class="text-slate-300 font-medium">초기 속도 ($v_0$)</label>
+                                <span class="text-indigo-400 font-semibold" id="val-v0">15 m/s</span>
+                            </div>
+                            <input type="range" id="input-v0" min="0.1" max="50" value="15" step="0.1"
+                                   class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500" oninput="updateParams()">
+                        </div>
+
+                        <!-- Angle -->
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <label class="text-slate-300 font-medium">발사 각도 ($\theta$)</label>
+                                <span class="text-indigo-400 font-semibold" id="val-angle">45°</span>
+                            </div>
+                            <input type="range" id="input-angle" min="0" max="90" value="45" step="1"
+                                   class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500" oninput="updateParams()">
+                        </div>
+
+                        <!-- Gravity -->
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <label class="text-slate-300 font-medium">중력가속도 ($g$)</label>
+                                <span class="text-indigo-400 font-semibold" id="val-gravity">9.8 m/s²</span>
+                            </div>
+                            <input type="range" id="input-gravity" min="1" max="20" value="9.8" step="0.1"
+                                   class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500" oninput="updateParams()">
+                        </div>
+
+                        <!-- Mass -->
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <label class="text-slate-300 font-medium">물체 질량 ($m$)</label>
+                                <span class="text-indigo-400 font-semibold" id="val-mass">0.050 kg (50g)</span>
+                            </div>
+                            <input type="range" id="input-mass" min="0.005" max="2.0" value="0.050" step="0.005"
+                                   class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500" oninput="updateParams()">
+                        </div>
+
+                        <!-- Air Resistance Toggle -->
+                        <div class="flex items-center justify-between p-3 bg-slate-900/60 rounded-xl border border-slate-700/80">
+                            <div>
+                                <span class="text-xs font-semibold text-slate-200 block">공기 저항 ($k$)</span>
+                                <span class="text-[11px] text-slate-400">현실적 마찰 요인 적용</span>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="input-air" class="sr-only peer" onchange="updateParams()">
+                                <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- View Mode Selector -->
+                    <div class="space-y-2 pt-2 border-t border-slate-700">
+                        <label class="text-xs font-semibold text-slate-300 block mb-1">시각화 모드 (운동 분리)</label>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <button onclick="setViewMode('combined')" id="view-combined"
+                                    class="view-btn py-2 px-3 rounded-lg border border-indigo-500/80 bg-indigo-600/20 text-indigo-300 font-medium text-left">
+                                🌌 통합 포물선 뷰
+                            </button>
+                            <button onclick="setViewMode('horizontal')" id="view-horizontal"
+                                    class="view-btn py-2 px-3 rounded-lg border border-slate-700 bg-slate-900/40 text-slate-400 hover:text-white text-left">
+                                ➡️ 수평 등속 뷰
+                            </button>
+                            <button onclick="setViewMode('vertical')" id="view-vertical"
+                                    class="view-btn py-2 px-3 rounded-lg border border-slate-700 bg-slate-900/40 text-slate-400 hover:text-white text-left">
+                                ⬆️ 수직 등가속 뷰
+                            </button>
+                            <button onclick="setViewMode('split')" id="view-split"
+                                    class="view-btn py-2 px-3 rounded-lg border border-slate-700 bg-slate-900/40 text-slate-400 hover:text-white text-left">
+                                🔲 분할 비교 뷰
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Playback Controls -->
+                    <div class="pt-2 border-t border-slate-700 space-y-3">
+                        <div class="flex gap-2">
+                            <button id="btn-play" onclick="togglePlay()" 
+                                    class="flex-1 py-3 px-4 bg-indigo-600 hover:bg-indigo-500 font-bold rounded-xl text-white shadow-lg transition flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-play"></i> <span id="btn-play-text">발사</span>
+                            </button>
+                            <button onclick="resetSimulation()" 
+                                    class="py-3 px-4 bg-slate-700 hover:bg-slate-600 font-semibold rounded-xl text-slate-200 transition">
+                                <i class="fa-solid fa-rotate-left"></i>
+                            </button>
+                        </div>
+
+                        <!-- Speed Controls -->
+                        <div class="flex items-center justify-between bg-slate-900/40 p-2 rounded-lg text-xs">
+                            <span class="text-slate-400">재생 속도:</span>
+                            <div class="flex gap-1">
+                                <button onclick="setSpeed(0.5)" id="speed-0.5" class="speed-btn px-2.5 py-1 rounded bg-slate-800 text-slate-400 hover:text-white">0.5x</button>
+                                <button onclick="setSpeed(1.0)" id="speed-1.0" class="speed-btn px-2.5 py-1 rounded bg-indigo-600 text-white font-bold">1.0x</button>
+                                <button onclick="setSpeed(2.0)" id="speed-2.0" class="speed-btn px-2.5 py-1 rounded bg-slate-800 text-slate-400 hover:text-white">2.0x</button>
+                            </div>
+                        </div>
+
+                        <!-- Data Export Button -->
+                        <button onclick="exportCSV()" class="w-full py-2 px-3 bg-slate-700/60 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-medium border border-slate-600 transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-file-csv"></i> 실험 데이터 (CSV) 내보내기 (0.05초 간격)
+                        </button>
+                    </div>
+
+                </div>
+
+                <!-- Right Column: Simulation Display Area (시뮬레이션 메인 화면) -->
+                <div class="lg:col-span-8 space-y-5">
+                    
+                    <!-- Key Predictive Metrics Overview -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div class="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col justify-between shadow-sm">
+                            <span class="text-xs font-medium text-slate-400 flex items-center gap-1">
+                                <i class="fa-solid fa-arrows-up-to-line text-amber-400"></i> 최고점 높이 ($H_{\text{max}}$)
+                            </span>
+                            <span id="metric-hmax" class="text-xl font-bold text-amber-400 mt-1">0.00 <span class="text-xs font-normal text-slate-300">m</span></span>
+                        </div>
+                        <div class="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col justify-between shadow-sm">
+                            <span class="text-xs font-medium text-slate-400 flex items-center gap-1">
+                                <i class="fa-solid fa-arrows-left-right text-emerald-400"></i> 수평 도달거리 ($R$)
+                            </span>
+                            <span id="metric-range" class="text-xl font-bold text-emerald-400 mt-1">0.00 <span class="text-xs font-normal text-slate-300">m</span></span>
+                        </div>
+                        <div class="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col justify-between shadow-sm">
+                            <span class="text-xs font-medium text-slate-400 flex items-center gap-1">
+                                <i class="fa-solid fa-stopwatch text-cyan-400"></i> 비행시간 ($T_{\text{total}}$)
+                            </span>
+                            <span id="metric-flighttime" class="text-xl font-bold text-cyan-400 mt-1">0.00 <span class="text-xs font-normal text-slate-300">s</span></span>
+                        </div>
+                        <div class="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col justify-between shadow-sm">
+                            <span class="text-xs font-medium text-slate-400 flex items-center gap-1">
+                                <i class="fa-solid fa-bolt text-rose-400"></i> 총 역학적 에너지 ($E$)
+                            </span>
+                            <span id="metric-total-energy" class="text-xl font-bold text-rose-400 mt-1">0.00 <span class="text-xs font-normal text-slate-300">J</span></span>
+                        </div>
+                    </div>
+
+                    <!-- Canvas Box (Simulation Screen) -->
+                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-xl relative overflow-hidden">
+                        <div class="flex justify-between items-center mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                <span class="font-bold text-sm text-slate-200" id="canvas-title">통합 포물선 궤적 시각화</span>
+                            </div>
+                            <div class="text-xs text-slate-400 flex items-center gap-4">
+                                <span class="flex items-center gap-1"><span class="w-3 h-0.5 bg-blue-400 inline-block"></span> $v_x$ (수평)</span>
+                                <span class="flex items-center gap-1"><span class="w-3 h-0.5 bg-emerald-400 inline-block"></span> $v_y$ (수직)</span>
+                                <span class="flex items-center gap-1"><span class="w-3 h-0.5 bg-rose-400 inline-block"></span> $v$ (합속도)</span>
+                            </div>
+                        </div>
+
+                        <div class="canvas-container bg-slate-950 rounded-xl border border-slate-800">
+                            <canvas id="simCanvas"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Real-Time Charts Grid (Energy & Velocity) -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        
+                        <!-- Energy Chart Box -->
+                        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-xl">
+                            <div class="flex justify-between items-center mb-2">
+                                <h3 class="font-bold text-xs sm:text-sm text-slate-200 flex items-center gap-2">
+                                    <i class="fa-solid fa-chart-line text-indigo-400"></i> 실시간 역학적 에너지 변환
+                                </h3>
+                            </div>
+                            <div class="h-44 w-full">
+                                <canvas id="energyChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Velocity Chart Box (New) -->
+                        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-xl">
+                            <div class="flex justify-between items-center mb-2">
+                                <h3 class="font-bold text-xs sm:text-sm text-slate-200 flex items-center gap-2">
+                                    <i class="fa-solid fa-gauge-high text-cyan-400"></i> 실시간 속도 변화 그래프
+                                </h3>
+                                <span id="vel-chart-badge" class="text-[10px] bg-slate-900 text-cyan-300 px-2 py-0.5 rounded border border-slate-700">모드 연동</span>
+                            </div>
+                            <div class="h-44 w-full">
+                                <canvas id="velocityChart"></canvas>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+
+        <!-- ================= TAB 2: THEORY & CALCULATOR ================= -->
+        <div id="tab-theory-content" class="hidden space-y-6">
+            
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- Theory Column (Left 7 Cols) -->
+                <div class="lg:col-span-7 space-y-6">
+                    
+                    <!-- Card 1: Motion Decomposition -->
+                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl space-y-4">
+                        <div class="flex items-center gap-3 border-b border-slate-700 pb-3">
+                            <div class="p-2 bg-indigo-600/30 text-indigo-400 rounded-lg">
+                                <i class="fa-solid fa-arrows-split-up-and-left text-xl"></i>
+                            </div>
+                            <h2 class="text-lg font-bold text-white">1. 포물선 운동의 수평 · 수직 성분 분리</h2>
+                        </div>
+                        
+                        <p class="text-sm text-slate-300 leading-relaxed">
+                            포물선 운동은 <strong>직교하는 두 축(수평 방향 $x$, 수직 방향 $y$)의 운동이 서로 독립적으로 일어난다는 법칙</strong>을 바탕으로 분석합니다.
+                        </p>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                            <!-- Horizontal -->
+                            <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-700/80 space-y-2">
+                                <h3 class="font-bold text-indigo-400 text-sm flex items-center gap-2">
+                                    <i class="fa-solid fa-arrow-right"></i> 수평 방향 ($x$축): 등속 직선 운동
+                                </h3>
+                                <ul class="text-xs text-slate-300 space-y-1.5 list-disc list-inside">
+                                    <li><strong>작용 힘</strong>: 공기 저항이 없으면 알짜힘 $F_x = 0$</li>
+                                    <li><strong>가속도</strong>: $a_x = 0$</li>
+                                    <li><strong>속도</strong>: $v_x = v_0 \cos\theta$ (항상 일정)</li>
+                                    <li><strong>변위</strong>: $x(t) = v_0 \cos\theta \cdot t$</li>
+                                </ul>
+                            </div>
+
+                            <!-- Vertical -->
+                            <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-700/80 space-y-2">
+                                <h3 class="font-bold text-emerald-400 text-sm flex items-center gap-2">
+                                    <i class="fa-solid fa-arrow-up"></i> 수직 방향 ($y$축): 등가속도 운동
+                                </h3>
+                                <ul class="text-xs text-slate-300 space-y-1.5 list-disc list-inside">
+                                    <li><strong>작용 힘</strong>: 연직 아래 중력 $F_y = -mg$</li>
+                                    <li><strong>가속도</strong>: $a_y = -g$ (중력가속도)</li>
+                                    <li><strong>속도</strong>: $v_y(t) = v_0 \sin\theta - gt$</li>
+                                    <li><strong>변위</strong>: $y(t) = v_0 \sin\theta \cdot t - \frac{1}{2}gt^2$</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 2: Conservation of Mechanical Energy -->
+                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl space-y-4">
+                        <div class="flex items-center gap-3 border-b border-slate-700 pb-3">
+                            <div class="p-2 bg-emerald-600/30 text-emerald-400 rounded-lg">
+                                <i class="fa-solid fa-bolt text-xl"></i>
+                            </div>
+                            <h2 class="text-lg font-bold text-white">2. 역학적 에너지 보존 법칙</h2>
+                        </div>
+                        
+                        <p class="text-sm text-slate-300 leading-relaxed">
+                            공기 저항이 없는 이상적인 상태에서 물체의 <strong>운동에너지($KE$)와 위치에너지($PE$)의 합인 총 역학적 에너지($E$)는 항시 일정하게 유지</strong>됩니다.
+                        </p>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 text-xs">
+                            <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/80">
+                                <h4 class="font-bold text-cyan-400 mb-1">⚡ 운동에너지 ($KE$)</h4>
+                                <p class="text-slate-300 font-mono text-[11px] mb-1">$KE = \frac{1}{2}m(v_x^2 + v_y^2)$</p>
+                                <p class="text-slate-400 text-[11px]">속력 $v$에 의존. 최고점에서 $v_y=0$이어도 $v_x$가 살아있어 $KE \neq 0$입니다.</p>
+                            </div>
+
+                            <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/80">
+                                <h4 class="font-bold text-emerald-400 mb-1">🌱 위치에너지 ($PE$)</h4>
+                                <p class="text-slate-300 font-mono text-[11px] mb-1">$PE = mgh$</p>
+                                <p class="text-slate-400 text-[11px]">높이 $y$에 의존. 물체가 상승함에 따라 $PE$가 증가하고 최고점에서 최대가 됩니다.</p>
+                            </div>
+
+                            <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/80">
+                                <h4 class="font-bold text-rose-400 mb-1">⚖️ 총 역학적 에너지 ($E$)</h4>
+                                <p class="text-slate-300 font-mono text-[11px] mb-1">$E = KE + PE = \text{일정}$</p>
+                                <p class="text-slate-400 text-[11px]">상승 시 $KE \rightarrow PE$ 전환, 하강 시 $PE \rightarrow KE$ 전환이 일어납니다.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Calculator Column (Right 5 Cols) -->
+                <div class="lg:col-span-5 space-y-6">
+                    
+                    <!-- Dynamic Calculator Panel -->
+                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl space-y-4">
+                        <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                            <h2 class="font-bold text-base text-white flex items-center gap-2">
+                                <i class="fa-solid fa-calculator text-indigo-400"></i> 실시간 이론 공식 계산기
+                            </h2>
+                            <span class="text-[11px] bg-indigo-900/80 text-indigo-300 px-2 py-0.5 rounded border border-indigo-700">슬라이더 연동</span>
+                        </div>
+                        <p class="text-xs text-slate-400">좌측 패널에서 조절한 물리 변수가 아래 이론 수식 결과값에 즉시 반영됩니다.</p>
+
+                        <div class="space-y-3 pt-1">
+                            <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-700 flex justify-between items-center">
+                                <div>
+                                    <span class="text-xs font-semibold text-amber-400 block">최고점 높이 ($H_{\text{max}}$)</span>
+                                    <span class="text-[10px] text-slate-400 font-mono">$H = \frac{(v_0 \sin\theta)^2}{2g}$</span>
+                                </div>
+                                <span id="calc-hmax" class="text-base font-bold text-amber-400 font-mono">0.00 m</span>
+                            </div>
+
+                            <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-700 flex justify-between items-center">
+                                <div>
+                                    <span class="text-xs font-semibold text-cyan-400 block">최고점 도달 시간 ($t_{\text{top}}$)</span>
+                                    <span class="text-[10px] text-slate-400 font-mono">$t = \frac{v_0 \sin\theta}{g}$</span>
+                                </div>
+                                <span id="calc-ttop" class="text-base font-bold text-cyan-400 font-mono">0.00 s</span>
+                            </div>
+
+                            <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-700 flex justify-between items-center">
+                                <div>
+                                    <span class="text-xs font-semibold text-emerald-400 block">수평 도달 거리 ($R$)</span>
+                                    <span class="text-[10px] text-slate-400 font-mono">$R = \frac{v_0^2 \sin(2\theta)}{g}$</span>
+                                </div>
+                                <span id="calc-range" class="text-base font-bold text-emerald-400 font-mono">0.00 m</span>
+                            </div>
+
+                            <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-700 flex justify-between items-center">
+                                <div>
+                                    <span class="text-xs font-semibold text-rose-400 block">총 역학적 에너지 ($E$)</span>
+                                    <span class="text-[10px] text-slate-400 font-mono">$E = \frac{1}{2} m v_0^2$</span>
+                                </div>
+                                <span id="calc-energy" class="text-base font-bold text-rose-400 font-mono">0.00 J</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // State Variables
+        let params = {
+            v0: 15,
+            angle: 45,
+            g: 9.8,
+            m: 0.050,
+            air: false
+        };
+
+        let viewMode = 'combined'; // 'combined', 'horizontal', 'vertical', 'split'
+        let isRunning = false;
+        let animationFrameId = null;
+        let simTime = 0;
+        let timeSpeed = 1.0;
+        let trajectoryData = [];
+
+        // Canvas & Contexts
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Chart.js Instances
+        let energyChart = null;
+        let velocityChart = null;
+
+        // Initialize App
+        window.addEventListener('load', () => {
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            initCharts();
+            updateParams();
+            renderKaTeX();
+        });
+
+        function renderKaTeX() {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false}
+                ],
+                throwOnError: false
+            });
+        }
+
+        // Tab Switching Logic
+        function switchTab(tab) {
+            const simContent = document.getElementById('tab-sim-content');
+            const theoryContent = document.getElementById('tab-theory-content');
+
+            const simBtn = document.getElementById('tab-sim-btn');
+            const theoryBtn = document.getElementById('tab-theory-btn');
+
+            if (tab === 'sim') {
+                simContent.classList.remove('hidden');
+                theoryContent.classList.add('hidden');
+                
+                simBtn.className = "px-4 sm:px-5 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 bg-indigo-600 text-white shadow-md flex items-center gap-2";
+                theoryBtn.className = "px-4 sm:px-5 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-white flex items-center gap-2";
+                resizeCanvas();
+            } else if (tab === 'theory') {
+                simContent.classList.add('hidden');
+                theoryContent.classList.remove('hidden');
+                
+                theoryBtn.className = "px-4 sm:px-5 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 bg-indigo-600 text-white shadow-md flex items-center gap-2";
+                simBtn.className = "px-4 sm:px-5 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-white flex items-center gap-2";
+            }
+        }
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            drawFrame();
+        }
+
+        // Update Parameters from Sliders
+        function updateParams() {
+            params.v0 = parseFloat(document.getElementById('input-v0').value);
+            params.angle = parseFloat(document.getElementById('input-angle').value);
+            params.g = parseFloat(document.getElementById('input-gravity').value);
+            params.m = parseFloat(document.getElementById('input-mass').value);
+            params.air = document.getElementById('input-air').checked;
+
+            document.getElementById('val-v0').innerText = params.v0.toFixed(1) + ' m/s';
+            document.getElementById('val-angle').innerText = params.angle.toFixed(0) + '°';
+            document.getElementById('val-gravity').innerText = params.g.toFixed(1) + ' m/s²';
+            
+            const massGrams = Math.round(params.m * 1000);
+            document.getElementById('val-mass').innerText = params.m < 1 ? `${params.m.toFixed(3)} kg (${massGrams}g)` : `${params.m.toFixed(2)} kg (${massGrams}g)`;
+
+            // Theoretical Key Metrics Calculation
+            const rad = params.angle * Math.PI / 180;
+            const hMax = Math.pow(params.v0 * Math.sin(rad), 2) / (2 * params.g);
+            const range = (Math.pow(params.v0, 2) * Math.sin(2 * rad)) / params.g;
+            const tTotal = (2 * params.v0 * Math.sin(rad)) / params.g;
+            const totalEnergy = 0.5 * params.m * Math.pow(params.v0, 2);
+            const tTop = (params.v0 * Math.sin(rad)) / params.g;
+
+            // Update Header Cards
+            document.getElementById('metric-hmax').innerHTML = `${hMax.toFixed(2)} <span class="text-sm font-normal text-slate-300">m</span>`;
+            document.getElementById('metric-range').innerHTML = `${range.toFixed(2)} <span class="text-sm font-normal text-slate-300">m</span>`;
+            document.getElementById('metric-flighttime').innerHTML = `${tTotal.toFixed(2)} <span class="text-sm font-normal text-slate-300">s</span>`;
+            document.getElementById('metric-total-energy').innerHTML = `${totalEnergy.toFixed(2)} <span class="text-sm font-normal text-slate-300">J</span>`;
+
+            // Update Theory Calculator Card
+            document.getElementById('calc-hmax').innerText = hMax.toFixed(2) + ' m';
+            document.getElementById('calc-ttop').innerText = tTop.toFixed(2) + ' s';
+            document.getElementById('calc-range').innerText = range.toFixed(2) + ' m';
+            document.getElementById('calc-energy').innerText = totalEnergy.toFixed(2) + ' J';
+
+            if (!isRunning) {
+                resetSimulation();
+            }
+        }
+
+        function setViewMode(mode) {
+            viewMode = mode;
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.className = "view-btn py-2 px-3 rounded-lg border border-slate-700 bg-slate-900/40 text-slate-400 hover:text-white text-left text-xs";
+            });
+            document.getElementById(`view-${mode}`).className = "view-btn py-2 px-3 rounded-lg border border-indigo-500/80 bg-indigo-600/20 text-indigo-300 font-medium text-left text-xs";
+
+            const titleMap = {
+                'combined': '🌌 통합 2D 포물선 궤적 시각화',
+                'horizontal': '➡️ 수평 방향 등속 직선 운동 시각화 (v_x = 일정)',
+                'vertical': '⬆️ 수직 방향 등가속도 운동 시각화 (중력 가속도 연동)',
+                'split': '🔲 분할 비교 뷰 (통합 포물선 + 수평 등속 + 수직 등가속도)'
+            };
+            document.getElementById('canvas-title').innerText = titleMap[mode];
+
+            // Update Velocity Chart visibility dynamically based on View Mode
+            if (velocityChart) {
+                const badge = document.getElementById('vel-chart-badge');
+                if (mode === 'horizontal') {
+                    velocityChart.setDatasetVisibility(0, true);  // Vx
+                    velocityChart.setDatasetVisibility(1, false); // Vy
+                    velocityChart.setDatasetVisibility(2, false); // V
+                    badge.innerText = '수평 등속만 (v_x)';
+                    badge.className = 'text-[10px] bg-blue-900/80 text-blue-300 px-2 py-0.5 rounded border border-blue-700';
+                } else if (mode === 'vertical') {
+                    velocityChart.setDatasetVisibility(0, false); // Vx
+                    velocityChart.setDatasetVisibility(1, true);  // Vy
+                    velocityChart.setDatasetVisibility(2, false); // V
+                    badge.innerText = '수직 등가속만 (v_y)';
+                    badge.className = 'text-[10px] bg-emerald-900/80 text-emerald-300 px-2 py-0.5 rounded border border-emerald-700';
+                } else { // 'combined' or 'split'
+                    velocityChart.setDatasetVisibility(0, true);  // Vx
+                    velocityChart.setDatasetVisibility(1, true);  // Vy
+                    velocityChart.setDatasetVisibility(2, true);  // V
+                    badge.innerText = '통합 속도 분해 (v_x, v_y, v)';
+                    badge.className = 'text-[10px] bg-slate-900 text-cyan-300 px-2 py-0.5 rounded border border-slate-700';
+                }
+                velocityChart.update();
+            }
+
+            drawFrame();
+        }
+
+        function setSpeed(spd) {
+            timeSpeed = spd;
+            document.querySelectorAll('.speed-btn').forEach(b => {
+                b.className = "speed-btn px-2.5 py-1 rounded bg-slate-800 text-slate-400 hover:text-white text-xs";
+            });
+            document.getElementById(`speed-${spd}`).className = "speed-btn px-2.5 py-1 rounded bg-indigo-600 text-white font-bold text-xs";
+        }
+
+        function togglePlay() {
+            if (isRunning) {
+                pauseSimulation();
+            } else {
+                startSimulation();
+            }
+        }
+
+        function startSimulation() {
+            if (simTime >= getMaxFlightTime()) {
+                resetSimulation();
+            }
+            isRunning = true;
+            document.getElementById('btn-play-text').innerText = '일시정지';
+            document.getElementById('btn-play').className = "flex-1 py-3 px-4 bg-amber-600 hover:bg-amber-500 font-bold rounded-xl text-white shadow-lg transition flex items-center justify-center gap-2";
+            lastTimestamp = performance.now();
+            animationFrameId = requestAnimationFrame(animLoop);
+        }
+
+        function pauseSimulation() {
+            isRunning = false;
+            document.getElementById('btn-play-text').innerText = '계속 실행';
+            document.getElementById('btn-play').className = "flex-1 py-3 px-4 bg-indigo-600 hover:bg-indigo-500 font-bold rounded-xl text-white shadow-lg transition flex items-center justify-center gap-2";
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        }
+
+        function resetSimulation() {
+            pauseSimulation();
+            document.getElementById('btn-play-text').innerText = '발사';
+            simTime = 0;
+            trajectoryData = [];
+            resetCharts();
+            drawFrame();
+        }
+
+        function getMaxFlightTime() {
+            const rad = params.angle * Math.PI / 180;
+            return (2 * params.v0 * Math.sin(rad)) / params.g;
+        }
+
+        // Physics State Evaluator
+        function getPhysicsState(t) {
+            const rad = params.angle * Math.PI / 180;
+            let vx0 = params.v0 * Math.cos(rad);
+            let vy0 = params.v0 * Math.sin(rad);
+
+            let x = 0, y = 0, vx = 0, vy = 0;
+
+            if (!params.air) {
+                // Ideal state
+                vx = vx0;
+                vy = vy0 - params.g * t;
+                x = vx0 * t;
+                y = vy0 * t - 0.5 * params.g * t * t;
+            } else {
+                // Approximate Air Resistance Simulation (k = 0.15)
+                const k = 0.15;
+                const m = params.m;
+                const dtStep = 0.005;
+                let currX = 0, currY = 0, currVx = vx0, currVy = vy0;
+                for (let currT = 0; currT < t; currT += dtStep) {
+                    let vMod = Math.sqrt(currVx * currVx + currVy * currVy);
+                    let ax = -(k / m) * currVx * vMod;
+                    let ay = -params.g - (k / m) * currVy * vMod;
+
+                    currVx += ax * dtStep;
+                    currVy += ay * dtStep;
+                    currX += currVx * dtStep;
+                    currY += currVy * dtStep;
+                }
+                x = currX; y = currY; vx = currVx; vy = currVy;
+            }
+
+            if (y < 0) y = 0;
+
+            const v = Math.sqrt(vx * vx + vy * vy);
+            const ke = 0.5 * params.m * v * v;
+            const pe = params.m * params.g * y;
+            const totalE = ke + pe;
+
+            return { t, x, y, vx, vy, v, ke, pe, totalE };
+        }
+
+        let lastTimestamp = 0;
+        function animLoop(timestamp) {
+            if (!isRunning) return;
+            const dt = (timestamp - lastTimestamp) / 1000 * timeSpeed;
+            lastTimestamp = timestamp;
+
+            simTime += dt;
+            const maxT = getMaxFlightTime();
+
+            const currentState = getPhysicsState(simTime);
+            trajectoryData.push(currentState);
+            updateCharts(currentState);
+
+            if (simTime >= maxT || currentState.y < 0) {
+                simTime = maxT;
+                drawFrame();
+                pauseSimulation();
+                document.getElementById('btn-play-text').innerText = '재시작';
+                return;
+            }
+
+            drawFrame();
+            animationFrameId = requestAnimationFrame(animLoop);
+        }
+
+        // Draw Canvas Frame
+        function drawFrame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const currentState = getPhysicsState(simTime);
+            const rad = params.angle * Math.PI / 180;
+            const maxRange = Math.max(15, (Math.pow(params.v0, 2) * Math.sin(2 * rad)) / params.g * 1.25);
+            const maxHeight = Math.max(10, Math.pow(params.v0 * Math.sin(rad), 2) / (2 * params.g) * 1.35);
+
+            if (viewMode === 'split') {
+                drawSplitView(currentState, maxRange, maxHeight);
+            } else {
+                drawSingleView(viewMode, currentState, maxRange, maxHeight, 0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        function drawSingleView(mode, state, maxR, maxH, originX, originY, w, h) {
+            const margin = { top: 40, right: 30, bottom: 40, left: 50 };
+            const plotW = w - margin.left - margin.right;
+            const plotH = h - margin.top - margin.bottom;
+
+            const scaleX = plotW / maxR;
+            const scaleY = plotH / maxH;
+
+            const toCanvasX = (physX) => originX + margin.left + physX * scaleX;
+            const toCanvasY = (physY) => originY + h - margin.bottom - physY * scaleY;
+
+            // Draw Grid Lines & Ruler
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+
+            for (let r = 0; r <= maxR; r += Math.ceil(maxR / 5)) {
+                let cx = toCanvasX(r);
+                ctx.beginPath();
+                ctx.moveTo(cx, originY + margin.top);
+                ctx.lineTo(cx, originY + h - margin.bottom);
+                ctx.stroke();
+
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '10px Pretendard';
+                ctx.fillText(`${r}m`, cx - 8, originY + h - margin.bottom + 16);
+            }
+
+            for (let alt = 0; alt <= maxH; alt += Math.ceil(maxH / 4)) {
+                let cy = toCanvasY(alt);
+                ctx.beginPath();
+                ctx.moveTo(originX + margin.left, cy);
+                ctx.lineTo(originX + w - margin.right, cy);
+                ctx.stroke();
+
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '10px Pretendard';
+                ctx.fillText(`${alt}m`, originX + margin.left - 30, cy + 4);
+            }
+            ctx.setLineDash([]);
+
+            // Draw Ground Axis
+            ctx.strokeStyle = '#64748b';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(originX + margin.left, originY + h - margin.bottom);
+            ctx.lineTo(originX + w - margin.right, originY + h - margin.bottom);
+            ctx.stroke();
+
+            // Render Trajectory Path (Only after launch / simTime > 0)
+            if ((mode === 'combined' || mode === 'split') && simTime > 0) {
+                ctx.strokeStyle = '#818cf8';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                const maxT = getMaxFlightTime();
+                const currentT = Math.min(simTime, maxT);
+                
+                // Draw path progressively up to current simulation time
+                const stepsToDraw = Math.max(2, Math.floor(100 * (currentT / maxT)));
+                for (let i = 0; i <= stepsToDraw; i++) {
+                    let stepT = (currentT * i) / stepsToDraw;
+                    let st = getPhysicsState(stepT);
+                    let cx = toCanvasX(st.x);
+                    let cy = toCanvasY(st.y);
+                    if (i === 0) ctx.moveTo(cx, cy);
+                    else ctx.lineTo(cx, cy);
+                }
+                ctx.stroke();
+
+                // Calculate theoretical key points
+                const rad = params.angle * Math.PI / 180;
+                const tTop = (params.v0 * Math.sin(rad)) / params.g;
+                const hMaxTheoretical = Math.pow(params.v0 * Math.sin(rad), 2) / (2 * params.g);
+                const xTopTheoretical = params.v0 * Math.cos(rad) * tTop;
+
+                // 1. Apex (H_max) Guide Lines & Marker Badge
+                if (currentT >= tTop) {
+                    const apexCX = toCanvasX(xTopTheoretical);
+                    const apexCY = toCanvasY(hMaxTheoretical);
+                    const groundCY = toCanvasY(0);
+
+                    ctx.save();
+                    ctx.setLineDash([3, 3]);
+                    ctx.strokeStyle = '#f59e0b'; // amber color
+                    ctx.lineWidth = 1.5;
+
+                    ctx.beginPath();
+                    ctx.moveTo(apexCX, apexCY);
+                    ctx.lineTo(apexCX, groundCY);
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.moveTo(originX + margin.left, apexCY);
+                    ctx.lineTo(apexCX, apexCY);
+                    ctx.stroke();
+                    ctx.restore();
+
+                    ctx.fillStyle = '#f59e0b';
+                    ctx.beginPath();
+                    ctx.arc(apexCX, apexCY, 5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    drawBadge(ctx, apexCX, apexCY - 16, `최고점 H_max = ${hMaxTheoretical.toFixed(2)}m`, '#f59e0b', 'rgba(15, 23, 42, 0.9)');
+                }
+
+                // 2. Landing Range (R) Guide Line & Marker Badge
+                if (currentT >= maxT) {
+                    const landingState = getPhysicsState(maxT);
+                    const landingCX = toCanvasX(landingState.x);
+                    const groundCY = toCanvasY(0);
+
+                    ctx.save();
+                    ctx.setLineDash([3, 3]);
+                    ctx.strokeStyle = '#10b981'; // emerald color
+                    ctx.lineWidth = 1.5;
+
+                    ctx.beginPath();
+                    ctx.moveTo(landingCX, groundCY - 20);
+                    ctx.lineTo(landingCX, groundCY);
+                    ctx.stroke();
+                    ctx.restore();
+
+                    ctx.fillStyle = '#10b981';
+                    ctx.beginPath();
+                    ctx.arc(landingCX, groundCY, 6, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    drawBadge(ctx, landingCX, groundCY + 18, `도달거리 R = ${landingState.x.toFixed(2)}m`, '#10b981', 'rgba(15, 23, 42, 0.9)');
+                }
+            }
+
+            // Object Coordinates
+            let ballX = toCanvasX(state.x);
+            let ballY = toCanvasY(state.y);
+
+            if (mode === 'horizontal') {
+                ballY = toCanvasY(0);
+            } else if (mode === 'vertical') {
+                ballX = toCanvasX(0);
+            }
+
+            // Velocity Vector Arrows
+            const vScale = 2.5;
+            if (mode === 'combined' || mode === 'horizontal') {
+                drawArrow(ctx, ballX, ballY, ballX + state.vx * vScale, ballY, '#60a5fa', 2);
+            }
+            if (mode === 'combined' || mode === 'vertical') {
+                drawArrow(ctx, ballX, ballY, ballX, ballY - state.vy * vScale, '#34d399', 2);
+            }
+            if (mode === 'combined') {
+                drawArrow(ctx, ballX, ballY, ballX + state.vx * vScale, ballY - state.vy * vScale, '#f43f5e', 2.5);
+            }
+
+            // Draw Main Ball
+            ctx.fillStyle = mode === 'horizontal' ? '#60a5fa' : (mode === 'vertical' ? '#34d399' : '#fbbf24');
+            ctx.beginPath();
+            ctx.arc(ballX, ballY, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        }
+
+        function drawSplitView(state, maxR, maxH) {
+            const w = canvas.width / 3;
+            const h = canvas.height;
+
+            // View 1: 2D Combined
+            drawSingleView('combined', state, maxR, maxH, 0, 0, w, h);
+            ctx.font = 'bold 12px Pretendard';
+            ctx.fillStyle = '#a5b4fc';
+            ctx.fillText("① 2D 통합 포물선", 15, 25);
+
+            // Divider Line 1
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(w, 0); ctx.lineTo(w, h); ctx.stroke();
+
+            // View 2: Horizontal
+            drawSingleView('horizontal', state, maxR, maxH, w, 0, w, h);
+            ctx.fillStyle = '#60a5fa';
+            ctx.fillText("② 수평 등속 운동 (v_x)", w + 15, 25);
+
+            // Divider Line 2
+            ctx.beginPath(); ctx.moveTo(w * 2, 0); ctx.lineTo(w * 2, h); ctx.stroke();
+
+            // View 3: Vertical
+            drawSingleView('vertical', state, maxR, maxH, w * 2, 0, w, h);
+            ctx.fillStyle = '#34d399';
+            ctx.fillText("③ 수직 등가속도 (v_y)", w * 2 + 15, 25);
+        }
+
+        function drawArrow(context, fromx, fromy, tox, toy, color, width) {
+            const headlen = 8;
+            const dx = tox - fromx;
+            const dy = toy - fromy;
+            const angle = Math.atan2(dy, dx);
+            
+            context.strokeStyle = color;
+            context.fillStyle = color;
+            context.lineWidth = width;
+
+            context.beginPath();
+            context.moveTo(fromx, fromy);
+            context.lineTo(tox, toy);
+            context.stroke();
+
+            context.beginPath();
+            context.moveTo(tox, toy);
+            context.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+            context.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+            context.closePath();
+            context.fill();
+        }
+
+        function drawBadge(context, x, y, text, borderColor, bgColor) {
+            context.save();
+            context.font = 'bold 11px Pretendard, sans-serif';
+            const textWidth = context.measureText(text).width;
+            const paddingX = 8;
+            const paddingY = 4;
+            const boxWidth = textWidth + paddingX * 2;
+            const boxHeight = 18;
+            const boxX = x - boxWidth / 2;
+            const boxY = y - boxHeight / 2;
+
+            context.fillStyle = bgColor || 'rgba(15, 23, 42, 0.9)';
+            context.beginPath();
+            if (context.roundRect) {
+                context.roundRect(boxX, boxY, boxWidth, boxHeight, 5);
+            } else {
+                context.rect(boxX, boxY, boxWidth, boxHeight);
+            }
+            context.fill();
+
+            context.strokeStyle = borderColor || '#6366f1';
+            context.lineWidth = 1.2;
+            context.stroke();
+
+            context.fillStyle = borderColor || '#ffffff';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText(text, x, y + 1);
+            context.restore();
+        }
+
+        // Initialize Real-time Charts (Energy & Velocity)
+        function initCharts() {
+            // 1. Energy Chart Initialization
+            const ctxEnergy = document.getElementById('energyChart').getContext('2d');
+            energyChart = new Chart(ctxEnergy, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'KE (운동)', borderColor: '#22d3ee', backgroundColor: '#22d3ee20', data: [], borderWidth: 2, pointRadius: 0 },
+                        { label: 'PE (위치)', borderColor: '#34d399', backgroundColor: '#34d39920', data: [], borderWidth: 2, pointRadius: 0 },
+                        { label: 'E (합계)', borderColor: '#fb7185', backgroundColor: '#fb718520', data: [], borderWidth: 2.5, pointRadius: 0 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales: {
+                        x: { type: 'linear', title: { display: true, text: 't (s)', color: '#94a3b8', font: { size: 9 } }, ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: '#334155' } },
+                        y: { title: { display: true, text: '에너지 (J)', color: '#94a3b8', font: { size: 9 } }, ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: '#334155' } }
+                    },
+                    plugins: { legend: { display: true, labels: { color: '#cbd5e1', font: { size: 10 }, boxWidth: 10 } } }
+                }
+            });
+
+            // 2. Velocity Chart Initialization (New)
+            const ctxVelocity = document.getElementById('velocityChart').getContext('2d');
+            velocityChart = new Chart(ctxVelocity, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'v_x (수평 속도)', borderColor: '#60a5fa', backgroundColor: '#60a5fa20', data: [], borderWidth: 2, pointRadius: 0 },
+                        { label: 'v_y (수직 속도)', borderColor: '#34d399', backgroundColor: '#34d39920', data: [], borderWidth: 2, pointRadius: 0 },
+                        { label: 'v (합속도)', borderColor: '#f43f5e', backgroundColor: '#f43f5e20', data: [], borderWidth: 2, pointRadius: 0 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales: {
+                        x: { type: 'linear', title: { display: true, text: 't (s)', color: '#94a3b8', font: { size: 9 } }, ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: '#334155' } },
+                        y: { title: { display: true, text: '속도 (m/s)', color: '#94a3b8', font: { size: 9 } }, ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: '#334155' } }
+                    },
+                    plugins: { legend: { display: true, labels: { color: '#cbd5e1', font: { size: 10 }, boxWidth: 10 } } }
+                }
+            });
+        }
+
+        function updateCharts(state) {
+            if (energyChart) {
+                energyChart.data.labels.push(state.t);
+                energyChart.data.datasets[0].data.push(state.ke);
+                energyChart.data.datasets[1].data.push(state.pe);
+                energyChart.data.datasets[2].data.push(state.totalE);
+                energyChart.update();
+            }
+
+            if (velocityChart) {
+                velocityChart.data.labels.push(state.t);
+                velocityChart.data.datasets[0].data.push(state.vx);
+                velocityChart.data.datasets[1].data.push(state.vy);
+                velocityChart.data.datasets[2].data.push(state.v);
+                velocityChart.update();
+            }
+        }
+
+        function resetCharts() {
+            if (energyChart) {
+                energyChart.data.labels = [];
+                energyChart.data.datasets.forEach(dataset => dataset.data = []);
+                energyChart.update();
+            }
+            if (velocityChart) {
+                velocityChart.data.labels = [];
+                velocityChart.data.datasets.forEach(dataset => dataset.data = []);
+                velocityChart.update();
+            }
+        }
+
+        function resetInputs() {
+            document.getElementById('input-v0').value = 15;
+            document.getElementById('input-angle').value = 45;
+            document.getElementById('input-gravity').value = 9.8;
+            document.getElementById('input-mass').value = 0.050;
+            document.getElementById('input-air').checked = false;
+            updateParams();
+        }
+
+        // Export Simulation Data to CSV (0.05s intervals)
+        function exportCSV() {
+            const maxT = getMaxFlightTime();
+            let csvContent = "data:text/csv;charset=utf-8,Time(s),X(m),Y(m),Vx(m/s),Vy(m/s),V_total(m/s),KE(J),PE(J),TotalE(J)\n";
+
+            for (let t = 0; t <= maxT + 0.05; t += 0.05) {
+                let st = getPhysicsState(Math.min(t, maxT));
+                csvContent += `${st.t.toFixed(2)},${st.x.toFixed(3)},${st.y.toFixed(3)},${st.vx.toFixed(3)},${st.vy.toFixed(3)},${st.v.toFixed(3)},${st.ke.toFixed(3)},${st.pe.toFixed(3)},${st.totalE.toFixed(3)}\n`;
+                if (t >= maxT) break;
+            }
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `projectile_motion_data_v0_${params.v0}_angle_${params.angle}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html><script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

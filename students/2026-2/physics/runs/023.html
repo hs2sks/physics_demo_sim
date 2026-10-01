@@ -1,0 +1,1869 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><p><!DOCTYPE html>
+<html lang="ko">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>엘리베이터 물리 시뮬레이션</title>
+
+
+<style>
+
+/* =========================
+   전체 화면
+========================= */
+
+body {
+
+    font-family: Arial, sans-serif;
+
+    background: #f4f6f8;
+
+    margin: 0;
+
+    padding: 20px;
+
+    color: #222;
+}
+
+
+.container {
+
+    max-width: 1000px;
+
+    margin: auto;
+}
+
+
+h1, h2 {
+
+    text-align: center;
+}
+
+
+.box {
+
+    background: white;
+
+    border-radius: 15px;
+
+    padding: 20px;
+
+    margin-bottom: 20px;
+
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+}
+
+
+/* =========================
+   입력창
+========================= */
+
+.input-area {
+
+    display: grid;
+
+    grid-template-columns: repeat(3, 1fr);
+
+    gap: 15px;
+}
+
+
+label {
+
+    font-weight: bold;
+}
+
+
+input {
+
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 10px;
+
+    margin-top: 5px;
+
+    border-radius: 8px;
+
+    border: 1px solid #aaa;
+
+    font-size: 16px;
+}
+
+
+button {
+
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 10px;
+
+    margin-top: 15px;
+
+    border-radius: 8px;
+
+    border: none;
+
+    font-size: 16px;
+
+    background: #333;
+
+    color: white;
+
+    cursor: pointer;
+}
+
+
+button:hover {
+
+    background: #555;
+}
+
+
+/* =========================
+   결과
+========================= */
+
+.result {
+
+    font-size: 18px;
+
+    line-height: 1.8;
+
+    background: #f1f1f1;
+
+    padding: 15px;
+
+    border-radius: 10px;
+
+    margin-top: 15px;
+}
+
+
+/* =========================
+   그래프
+========================= */
+
+canvas {
+
+    width: 100%;
+
+    max-width: 800px;
+
+    height: 350px;
+
+    display: block;
+
+    margin: auto;
+
+    border: 1px solid #aaa;
+
+    background: white;
+}
+
+
+/* =========================
+   엘리베이터 시뮬레이션
+========================= */
+
+.simulation {
+
+    position: relative;
+
+    height: 450px;
+
+    background: #e9eef2;
+
+    border-radius: 15px;
+
+    overflow: hidden;
+
+    border: 2px solid #bbb;
+}
+
+
+.shaft {
+
+    position: absolute;
+
+    left: 50%;
+
+    transform: translateX(-50%);
+
+    width: 180px;
+
+    height: 400px;
+
+    bottom: 20px;
+
+    background: #ddd;
+
+    border: 4px solid #777;
+}
+
+
+.elevator {
+
+    position: absolute;
+
+    left: 50%;
+
+    transform: translateX(-50%);
+
+    width: 110px;
+
+    height: 90px;
+
+    background: #888;
+
+    border: 4px solid #333;
+
+    border-radius: 8px;
+
+    bottom: 30px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    font-size: 30px;
+
+    transition: bottom 0.1s linear;
+}
+
+
+/* =========================
+   힘 화살표
+========================= */
+
+.force-arrow {
+
+    position: absolute;
+
+    left: 50%;
+
+    width: 6px;
+
+    transform: translateX(-50%);
+}
+
+
+.up-force {
+
+    background: #222;
+
+    bottom: 120px;
+}
+
+
+.up-force::after {
+
+    content: "";
+
+    position: absolute;
+
+    top: -18px;
+
+    left: 50%;
+
+    transform: translateX(-50%);
+
+    width: 0;
+
+    height: 0;
+
+    border-left: 10px solid transparent;
+
+    border-right: 10px solid transparent;
+
+    border-bottom: 18px solid #222;
+}
+
+
+.down-force {
+
+    background: #555;
+
+    top: 135px;
+}
+
+
+.down-force::after {
+
+    content: "";
+
+    position: absolute;
+
+    bottom: -18px;
+
+    left: 50%;
+
+    transform: translateX(-50%);
+
+    width: 0;
+
+    height: 0;
+
+    border-left: 10px solid transparent;
+
+    border-right: 10px solid transparent;
+
+    border-top: 18px solid #555;
+}
+
+
+.force-text {
+
+    position: absolute;
+
+    font-weight: bold;
+
+    font-size: 15px;
+
+    white-space: nowrap;
+}
+
+
+.up-text {
+
+    left: calc(50% + 35px);
+
+    top: 120px;
+}
+
+
+.down-text {
+
+    left: calc(50% + 35px);
+
+    top: 250px;
+}
+
+
+/* =========================
+   상태
+========================= */
+
+.status {
+
+    text-align: center;
+
+    font-size: 22px;
+
+    font-weight: bold;
+
+    margin: 15px;
+}
+
+
+/* =========================
+   시뮬레이션 버튼
+========================= */
+
+.buttons {
+
+    display: grid;
+
+    grid-template-columns: repeat(4, 1fr);
+
+    gap: 10px;
+
+    margin-top: 15px;
+}
+
+
+/* =========================
+   설명
+========================= */
+
+.explanation {
+
+    background: #f7f7f7;
+
+    border-radius: 10px;
+
+    padding: 15px;
+
+    line-height: 1.8;
+}
+
+
+/* =========================
+   모바일
+========================= */
+
+@media(max-width:700px) {
+
+    .input-area {
+
+        grid-template-columns: 1fr;
+    }
+
+    .buttons {
+
+        grid-template-columns: 1fr 1fr;
+    }
+
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<div class="container">
+
+
+<!-- =====================================================
+     제목
+===================================================== -->
+
+<h1>🛗 엘리베이터 물리 시뮬레이션</h1>
+
+
+<!-- =====================================================
+     1. 운동 데이터
+===================================================== -->
+
+<div class="box">
+
+<h2>1. 엘리베이터 운동 데이터</h2>
+
+
+<div class="input-area">
+
+
+<div>
+
+<label>초기 속도 (m/s)</label>
+
+<input
+type="number"
+id="v0"
+value="0"
+step="0.01">
+
+</div>
+
+
+<div>
+
+<label>최종 속도 (m/s)</label>
+
+<input
+type="number"
+id="vf"
+value="9.63"
+step="0.01">
+
+</div>
+
+
+<div>
+
+<label>시간 (s)</label>
+
+<input
+type="number"
+id="time"
+value="43"
+step="0.1">
+
+</div>
+
+
+</div>
+
+
+<button onclick="calculateMotion()">
+
+가속도 계산하기
+
+</button>
+
+
+<div
+class="result"
+id="motionResult">
+</div>
+
+</div>
+
+
+
+<!-- =====================================================
+     2. 속도-시간 그래프
+===================================================== -->
+
+<div class="box">
+
+<h2>2. 속도-시간 그래프</h2>
+
+
+<canvas
+id="velocityGraph"
+width="800"
+height="350">
+</canvas>
+
+
+<div
+class="result"
+id="graphResult">
+</div>
+
+</div>
+
+
+
+<!-- =====================================================
+     3. 뉴턴 운동 법칙
+===================================================== -->
+
+<div class="box">
+
+<h2>3. 뉴턴 운동 법칙 - 엘리베이터 힘 분석</h2>
+
+
+<div class="input-area">
+
+
+<div>
+
+<label>엘리베이터 질량 (kg)</label>
+
+<input
+type="number"
+id="mass"
+value="1000"
+min="1">
+
+</div>
+
+
+<div>
+
+<label>모터의 장력 T (N)</label>
+
+<input
+type="number"
+id="tension"
+value="11000"
+min="0">
+
+</div>
+
+
+<div>
+
+<label>중력가속도 g (m/s²)</label>
+
+<input
+type="number"
+id="gravity"
+value="9.8"
+step="0.1">
+
+</div>
+
+
+</div>
+
+
+<button onclick="calculateForce()">
+
+힘 계산하기
+
+</button>
+
+
+<div
+class="result"
+id="forceResult">
+</div>
+
+</div>
+
+
+
+<!-- =====================================================
+     4. 엘리베이터 움직임 시뮬레이션
+===================================================== -->
+
+<div class="box">
+
+<h2>4. 엘리베이터 움직임 시뮬레이션</h2>
+
+
+<div
+class="status"
+id="status">
+
+준비 완료
+
+</div>
+
+
+<div class="simulation">
+
+
+<div class="shaft"></div>
+
+
+<div
+class="elevator"
+id="elevator">
+
+🛗
+
+</div>
+
+
+<!-- 위쪽 장력 -->
+
+<div
+class="force-arrow up-force"
+id="upArrow"
+style="height:100px;">
+</div>
+
+
+<div
+class="force-text up-text"
+id="upText">
+
+↑ 장력 T
+
+</div>
+
+
+<!-- 아래쪽 중력 -->
+
+<div
+class="force-arrow down-force"
+id="downArrow"
+style="height:80px;">
+</div>
+
+
+<div
+class="force-text down-text"
+id="downText">
+
+↓ 중력 mg
+
+</div>
+
+
+</div>
+
+
+<div class="buttons">
+
+
+<button onclick="startElevator()">
+
+▶ 출발 가속
+
+</button>
+
+
+<button onclick="constantMotion()">
+
+→ 등속 운동
+
+</button>
+
+
+<button onclick="slowElevator()">
+
+◀ 감속
+
+</button>
+
+
+<button onclick="resetElevator()">
+
+↻ 정지 / 초기화
+
+</button>
+
+
+</div>
+
+</div>
+
+
+
+<!-- =====================================================
+     5. 뉴턴 운동 법칙 설명
+===================================================== -->
+
+<div class="box">
+
+<h2>5. 뉴턴 운동 법칙으로 이해하기</h2>
+
+
+<div
+class="explanation"
+id="explanation">
+
+
+<b>엘리베이터의 힘 분석</b>
+
+<br><br>
+
+
+엘리베이터에는 위쪽 방향의
+<b>모터 장력 T</b>와
+아래쪽 방향의
+<b>중력 mg</b>가 작용합니다.
+
+
+<br><br>
+
+
+위쪽을 (+) 방향으로 설정하면
+
+
+<br><br>
+
+
+<b>T - mg = ma</b>
+
+
+<br><br>
+
+
+즉, 모터가 끌어올리는 힘과 중력의
+차이가 알짜힘을 만들고,
+그 알짜힘에 의해 가속도가 생깁니다.
+
+
+</div>
+
+</div>
+
+
+</div>
+
+
+
+<script>
+
+
+/* =========================================================
+   1. 가속도 계산
+========================================================= */
+
+function calculateMotion() {
+
+
+    let v0 =
+        Number(
+            document.getElementById("v0").value
+        );
+
+
+    let vf =
+        Number(
+            document.getElementById("vf").value
+        );
+
+
+    let t =
+        Number(
+            document.getElementById("time").value
+        );
+
+
+    // 가속도 공식
+    // a = (vf - v0) / t
+
+    let a =
+        (vf - v0) / t;
+
+
+    document.getElementById(
+        "motionResult"
+    ).innerHTML =
+
+        "초기 속도: "
+        + v0.toFixed(2)
+        + " m/s<br>"
+
+        +
+
+        "최종 속도: "
+        + vf.toFixed(2)
+        + " m/s<br>"
+
+        +
+
+        "시간: "
+        + t.toFixed(2)
+        + " s<br>"
+
+        +
+
+        "<b>가속도: "
+        + a.toFixed(3)
+        + " m/s²</b>";
+
+
+    drawGraph(
+        v0,
+        vf,
+        t
+    );
+
+}
+
+
+
+/* =========================================================
+   2. 속도-시간 그래프
+========================================================= */
+
+function drawGraph(
+    v0,
+    vf,
+    totalTime
+) {
+
+
+    let canvas =
+        document.getElementById(
+            "velocityGraph"
+        );
+
+
+    let ctx =
+        canvas.getContext("2d");
+
+
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+
+    // 그래프 크기
+
+    let marginLeft = 70;
+
+    let graphWidth = 680;
+
+    let graphHeight = 250;
+
+
+    // 가속도
+
+    let a =
+        (vf - v0) / totalTime;
+
+
+    // 최대 속도
+
+    let maxV =
+        Math.max(
+            Math.abs(v0),
+            Math.abs(vf),
+            1
+        ) * 1.2;
+
+
+    // =====================================================
+    // 그래프 축
+    // =====================================================
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        marginLeft,
+        40
+    );
+
+    ctx.lineTo(
+        marginLeft,
+        300
+    );
+
+    ctx.lineTo(
+        750,
+        300
+    );
+
+    ctx.strokeStyle = "#222";
+
+    ctx.stroke();
+
+
+    // 축 이름
+
+    ctx.font = "14px Arial";
+
+    ctx.fillStyle = "#222";
+
+
+    ctx.fillText(
+        "속도 (m/s)",
+        10,
+        30
+    );
+
+
+    ctx.fillText(
+        "시간 (s)",
+        700,
+        330
+    );
+
+
+    // =====================================================
+    // y축 눈금
+    // =====================================================
+
+    let ySteps = 5;
+
+
+    for (
+        let i = 0;
+        i <= ySteps;
+        i++
+    ) {
+
+
+        let value =
+            maxV * i / ySteps;
+
+
+        let y =
+            300 -
+            (value / maxV)
+            * graphHeight;
+
+
+        // 가로 눈금선
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            marginLeft,
+            y
+        );
+
+        ctx.lineTo(
+            750,
+            y
+        );
+
+
+        ctx.strokeStyle =
+            "#dddddd";
+
+        ctx.stroke();
+
+
+        // 숫자
+
+        ctx.fillStyle =
+            "#222";
+
+
+        ctx.fillText(
+            value.toFixed(1),
+            25,
+            y + 5
+        );
+
+    }
+
+
+    // =====================================================
+    // x축 눈금
+    // =====================================================
+
+    let timePoints = [
+        0,
+        10,
+        20,
+        30,
+        40,
+        totalTime
+    ];
+
+
+    timePoints.forEach(
+        function(t) {
+
+
+            if (
+                t > totalTime
+            ) {
+
+                return;
+
+            }
+
+
+            let x =
+                marginLeft
+                +
+                (t / totalTime)
+                * graphWidth;
+
+
+            // 세로 눈금
+
+            ctx.beginPath();
+
+            ctx.moveTo(
+                x,
+                300
+            );
+
+            ctx.lineTo(
+                x,
+                305
+            );
+
+
+            ctx.strokeStyle =
+                "#222";
+
+            ctx.stroke();
+
+
+            // 시간 표시
+
+            ctx.fillStyle =
+                "#222";
+
+
+            ctx.fillText(
+                t.toFixed(0) + " s",
+                x - 10,
+                325
+            );
+
+        }
+    );
+
+
+
+    // =====================================================
+    // 속도-시간 그래프 선
+    // =====================================================
+
+    ctx.beginPath();
+
+
+    for (
+        let i = 0;
+        i <= 100;
+        i++
+    ) {
+
+
+        let t =
+            totalTime
+            * i
+            / 100;
+
+
+        // v = v0 + at
+
+        let velocity =
+            v0 + a * t;
+
+
+        let x =
+            marginLeft
+            +
+            (t / totalTime)
+            * graphWidth;
+
+
+        let y =
+            300
+            -
+            (velocity / maxV)
+            * graphHeight;
+
+
+        if (
+            i === 0
+        ) {
+
+            ctx.moveTo(
+                x,
+                y
+            );
+
+        } else {
+
+            ctx.lineTo(
+                x,
+                y
+            );
+
+        }
+
+    }
+
+
+    ctx.strokeStyle =
+        "#222";
+
+    ctx.lineWidth = 3;
+
+    ctx.stroke();
+
+
+    // 선 두께 원래대로
+
+    ctx.lineWidth = 1;
+
+
+
+    // =====================================================
+    // 시간별 속도값 표시
+    // =====================================================
+
+    timePoints.forEach(
+        function(t) {
+
+
+            if (
+                t > totalTime
+            ) {
+
+                return;
+
+            }
+
+
+            // 해당 시간의 속도
+
+            let velocity =
+                v0 + a * t;
+
+
+            let x =
+                marginLeft
+                +
+                (t / totalTime)
+                * graphWidth;
+
+
+            let y =
+                300
+                -
+                (velocity / maxV)
+                * graphHeight;
+
+
+            // 점 표시
+
+            ctx.beginPath();
+
+            ctx.arc(
+                x,
+                y,
+                5,
+                0,
+                Math.PI * 2
+            );
+
+
+            ctx.fillStyle =
+                "#222";
+
+            ctx.fill();
+
+
+            // 속도값 표시
+
+            ctx.font =
+                "13px Arial";
+
+
+            ctx.fillText(
+                velocity.toFixed(2)
+                + " m/s",
+                x - 25,
+                y - 12
+            );
+
+        }
+    );
+
+
+
+    // =====================================================
+    // 그래프 설명
+    // =====================================================
+
+    document.getElementById(
+        "graphResult"
+    ).innerHTML =
+
+        "속도-시간 그래프의 기울기 = 가속도<br><br>"
+
+        +
+
+        "기울기 = ("
+        + vf.toFixed(2)
+        + " - "
+        + v0.toFixed(2)
+        + ") ÷ "
+        + totalTime.toFixed(2)
+
+        +
+
+        "<br><br>"
+
+        +
+
+        "<b>가속도 = "
+        + a.toFixed(3)
+        + " m/s²</b>"
+
+        +
+
+        "<br><br>"
+
+        +
+
+        "<b>시간별 속도</b><br>"
+
+        +
+
+        "0초: "
+        + v0.toFixed(2)
+        + " m/s<br>"
+
+        +
+
+        "10초: "
+        + (v0 + a * 10).toFixed(2)
+        + " m/s<br>"
+
+        +
+
+        "20초: "
+        + (v0 + a * 20).toFixed(2)
+        + " m/s<br>"
+
+        +
+
+        "30초: "
+        + (v0 + a * 30).toFixed(2)
+        + " m/s<br>"
+
+        +
+
+        "40초: "
+        + (v0 + a * 40).toFixed(2)
+        + " m/s<br>"
+
+        +
+
+        "43초: "
+        + vf.toFixed(2)
+        + " m/s";
+
+}
+
+
+
+/* =========================================================
+   3. 힘 계산
+========================================================= */
+
+function calculateForce() {
+
+
+    let mass =
+        Number(
+            document.getElementById(
+                "mass"
+            ).value
+        );
+
+
+    let tension =
+        Number(
+            document.getElementById(
+                "tension"
+            ).value
+        );
+
+
+    let g =
+        Number(
+            document.getElementById(
+                "gravity"
+            ).value
+        );
+
+
+    // 중력
+
+    let weight =
+        mass * g;
+
+
+    // 알짜힘
+
+    let netForce =
+        tension - weight;
+
+
+    // 가속도
+
+    let acceleration =
+        netForce / mass;
+
+
+    let explanation = "";
+
+
+    if (
+        netForce > 0
+    ) {
+
+
+        explanation =
+
+            "<b>위쪽 방향으로 가속합니다.</b><br><br>"
+
+            +
+
+            "T > mg 이므로 "
+            + "위쪽 방향의 알짜힘이 발생합니다.<br>"
+
+            +
+
+            "따라서 엘리베이터의 속도가 증가합니다.";
+
+    }
+
+
+    else if (
+        netForce === 0
+    ) {
+
+
+        explanation =
+
+            "<b>알짜힘이 0입니다.</b><br><br>"
+
+            +
+
+            "T = mg 이므로 "
+            + "가속도가 0입니다.<br>"
+
+            +
+
+            "따라서 엘리베이터는 현재 속도를 유지합니다.";
+
+    }
+
+
+    else {
+
+
+        explanation =
+
+            "<b>아래쪽 방향으로 가속합니다.</b><br><br>"
+
+            +
+
+            "T < mg 이므로 "
+            + "아래쪽 방향의 알짜힘이 발생합니다.<br>"
+
+            +
+
+            "엘리베이터가 상승 중이라면 "
+            + "상승 속도가 감소합니다.";
+
+    }
+
+
+    document.getElementById(
+        "forceResult"
+    ).innerHTML =
+
+        "중력: mg = "
+        + weight.toFixed(1)
+        + " N<br>"
+
+        +
+
+        "모터의 장력: T = "
+        + tension.toFixed(1)
+        + " N<br>"
+
+        +
+
+        "알짜힘: T - mg = "
+        + netForce.toFixed(1)
+        + " N<br>"
+
+        +
+
+        "<b>가속도: a = F/m = "
+        + acceleration.toFixed(3)
+        + " m/s²</b><br><br>"
+
+        +
+
+        explanation;
+
+
+    updateArrows(
+        tension,
+        weight
+    );
+
+}
+
+
+
+/* =========================================================
+   4. 힘 화살표
+========================================================= */
+
+function updateArrows(
+    tension,
+    weight
+) {
+
+
+    let maxForce =
+        Math.max(
+            tension,
+            weight
+        );
+
+
+    let upHeight =
+        150
+        *
+        tension
+        /
+        maxForce;
+
+
+    let downHeight =
+        150
+        *
+        weight
+        /
+        maxForce;
+
+
+    document.getElementById(
+        "upArrow"
+    ).style.height =
+        upHeight + "px";
+
+
+    document.getElementById(
+        "downArrow"
+    ).style.height =
+        downHeight + "px";
+
+
+    document.getElementById(
+        "upText"
+    ).innerHTML =
+
+        "↑ 장력 T = "
+        + tension.toFixed(0)
+        + " N";
+
+
+    document.getElementById(
+        "downText"
+    ).innerHTML =
+
+        "↓ 중력 mg = "
+        + weight.toFixed(0)
+        + " N";
+
+}
+
+
+
+/* =========================================================
+   5. 엘리베이터 시뮬레이션
+========================================================= */
+
+let elevatorPosition = 30;
+
+let elevatorTimer = null;
+
+
+
+/* =========================================================
+   6. 출발 가속
+========================================================= */
+
+function startElevator() {
+
+
+    clearInterval(
+        elevatorTimer
+    );
+
+
+    document.getElementById(
+        "status"
+    ).innerHTML =
+
+        "🛗 출발 가속 중";
+
+
+    document.getElementById(
+        "explanation"
+    ).innerHTML =
+
+        "<b>① 출발 가속 구간</b><br><br>"
+
+        +
+
+        "모터가 케이블을 당기는 장력 T가 "
+        + "중력 mg보다 큽니다.<br><br>"
+
+        +
+
+        "<b>T > mg</b><br>"
+
+        +
+
+        "→ 위쪽 알짜힘 발생<br>"
+
+        +
+
+        "→ 뉴턴 제2법칙 F = ma<br>"
+
+        +
+
+        "→ 위쪽 가속도 발생<br>"
+
+        +
+
+        "→ 엘리베이터의 속도가 증가합니다.";
+
+
+    let speed = 1;
+
+
+    elevatorTimer =
+        setInterval(
+            function() {
+
+
+                elevatorPosition += speed;
+
+
+                speed += 0.2;
+
+
+                if (
+                    elevatorPosition >= 300
+                ) {
+
+
+                    elevatorPosition = 300;
+
+
+                    clearInterval(
+                        elevatorTimer
+                    );
+
+
+                    document.getElementById(
+                        "status"
+                    ).innerHTML =
+
+                        "🛗 최고 속도에 도달";
+
+                }
+
+
+                document.getElementById(
+                    "elevator"
+                ).style.bottom =
+
+                    elevatorPosition
+                    + "px";
+
+
+            },
+            100
+        );
+
+}
+
+
+
+/* =========================================================
+   7. 등속 운동
+========================================================= */
+
+function constantMotion() {
+
+
+    clearInterval(
+        elevatorTimer
+    );
+
+
+    document.getElementById(
+        "status"
+    ).innerHTML =
+
+        "🛗 등속 운동 중";
+
+
+    document.getElementById(
+        "explanation"
+    ).innerHTML =
+
+        "<b>② 등속 주행 구간</b><br><br>"
+
+        +
+
+        "모터의 장력 T와 중력 mg가 같습니다.<br><br>"
+
+        +
+
+        "<b>T = mg</b><br>"
+
+        +
+
+        "→ 알짜힘 = 0<br>"
+
+        +
+
+        "→ 가속도 = 0<br>"
+
+        +
+
+        "→ 현재 속도를 유지합니다.<br><br>"
+
+        +
+
+        "위쪽 힘과 아래쪽 힘이 균형을 이루기 때문에 "
+        + "속도가 일정하게 유지됩니다.";
+
+}
+
+
+
+/* =========================================================
+   8. 감속
+========================================================= */
+
+function slowElevator() {
+
+
+    clearInterval(
+        elevatorTimer
+    );
+
+
+    document.getElementById(
+        "status"
+    ).innerHTML =
+
+        "🛗 도착 전 감속 중";
+
+
+    document.getElementById(
+        "explanation"
+    ).innerHTML =
+
+        "<b>③ 도착 감속 구간</b><br><br>"
+
+        +
+
+        "상승 중인 엘리베이터의 속도를 "
+        + "줄이기 위해 아래쪽 방향의 "
+        + "알짜힘이 발생합니다.<br><br>"
+
+        +
+
+        "<b>T < mg</b><br>"
+
+        +
+
+        "→ 아래쪽 알짜힘 발생<br>"
+
+        +
+
+        "→ 가속도는 아래쪽 방향<br>"
+
+        +
+
+        "→ 상승 속도 감소<br>"
+
+        +
+
+        "→ 최종적으로 정지합니다.";
+
+
+    let speed = 3;
+
+
+    elevatorTimer =
+        setInterval(
+            function() {
+
+
+                elevatorPosition += speed;
+
+
+                speed -= 0.2;
+
+
+                if (
+                    speed <= 0
+                ) {
+
+
+                    speed = 0;
+
+
+                    clearInterval(
+                        elevatorTimer
+                    );
+
+
+                    document.getElementById(
+                        "status"
+                    ).innerHTML =
+
+                        "🛗 도착 및 정지";
+
+                }
+
+
+                if (
+                    elevatorPosition >= 330
+                ) {
+
+
+                    elevatorPosition = 330;
+
+
+                    clearInterval(
+                        elevatorTimer
+                    );
+
+                }
+
+
+                document.getElementById(
+                    "elevator"
+                ).style.bottom =
+
+                    elevatorPosition
+                    + "px";
+
+
+            },
+            100
+        );
+
+}
+
+
+
+/* =========================================================
+   9. 초기화
+========================================================= */
+
+function resetElevator() {
+
+
+    clearInterval(
+        elevatorTimer
+    );
+
+
+    elevatorPosition = 30;
+
+
+    document.getElementById(
+        "elevator"
+    ).style.bottom =
+
+        elevatorPosition
+        + "px";
+
+
+    document.getElementById(
+        "status"
+    ).innerHTML =
+
+        "🛗 정지";
+
+
+    document.getElementById(
+        "explanation"
+    ).innerHTML =
+
+        "<b>엘리베이터 시뮬레이션</b><br><br>"
+
+        +
+
+        "출발 가속 버튼을 누르면 "
+        + "엘리베이터가 위쪽으로 가속합니다.<br><br>"
+
+        +
+
+        "등속 운동 버튼에서는 "
+        + "가속도 0인 상태를 확인할 수 있습니다.<br><br>"
+
+        +
+
+        "감속 버튼에서는 "
+        + "상승 속도가 감소하는 과정을 확인할 수 있습니다.";
+
+}
+
+
+
+/* =========================================================
+   처음 실행
+========================================================= */
+
+calculateMotion();
+
+calculateForce();
+
+</script>
+
+
+</body>
+
+</html></p><script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

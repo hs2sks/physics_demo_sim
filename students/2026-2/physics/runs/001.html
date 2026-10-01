@@ -1,0 +1,1016 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>아베노 하루카스 돌림힘 평형 3D 시뮬레이터</title>
+  
+  <!-- 반응형 및 모던 UI 스타일링을 위한 Tailwind CSS 로드 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- 3D 렌더링 및 궤도 컨트롤러 라이브러리 (Three.js & OrbitControls) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <style>
+    /* 폰트 및 기본 여백 초기화 */
+    @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap');
+    body {
+      font-family: 'Pretendard', sans-serif;
+      user-select: none;
+    }
+    /* 캔버스 3D 뷰포트 */
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+    }
+    /* 스크롤바 디자인 */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #94a3b8;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="relative w-screen h-screen overflow-hidden bg-slate-900 text-slate-800">
+
+  <div id="canvas-container" class="absolute inset-0 z-0"></div>
+
+  <div class="absolute top-4 right-4 z-10 bg-slate-900/80 backdrop-blur-md px-4 py-2.5 rounded-xl border border-slate-700/60 text-slate-200 text-xs shadow-xl hidden md:flex items-center gap-4">
+    <div class="flex items-center gap-1.5">
+      <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+      <span><b>좌클릭 드래그:</b> 360° 시점 회전</span>
+    </div>
+    <div class="flex items-center gap-1.5 border-l border-slate-700 pl-3">
+      <span><b>우클릭 드래그:</b> 화면 이동</span>
+    </div>
+    <div class="flex items-center gap-1.5 border-l border-slate-700 pl-3">
+      <span><b>마우스 휠:</b> 줌 인 / 아웃</span>
+    </div>
+  </div>
+
+  <div class="absolute top-4 left-4 z-10 w-full max-w-[420px] max-h-[92vh] flex flex-col bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200/80 overflow-hidden">
+    
+    <!-- 패널 헤더: 물리 개념 안내 -->
+    <div class="p-5 bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
+      <div class="flex items-center justify-between">
+        <h1 class="text-lg font-bold tracking-tight">🏢 아베노 하루카스 돌림힘 평형</h1>
+        <span class="text-xs bg-white/20 px-2.5 py-1 rounded-full font-medium">물리I 돌림힘</span>
+      </div>
+      <p class="text-xs text-blue-100 mt-1 leading-relaxed">
+        바람의 전도 토크($\tau_w$)와 건물 자중의 복원 토크($\tau_r$)의 대결!
+      </p>
+    </div>
+
+    <!-- 스크롤 가능한 본문 영역 -->
+    <div class="p-5 overflow-y-auto space-y-4 flex-1 text-sm">
+      
+      <!-- 기준점 및 제원 정보 박스 -->
+      <div class="bg-blue-50/80 border border-blue-200/70 p-3.5 rounded-xl text-xs space-y-1 text-slate-700">
+        <div class="flex items-center gap-1.5 font-bold text-blue-900">
+          <svg class="w-4 h-4 text-rose-500" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8"/></svg>
+          회전 기준점(Pivot O): 바닥 풍하측(우측) 모서리
+        </div>
+        <p>• 건물 높이 $H = 300\text{ m}$, 무게중심 수평거리 $B/2 = 25\text{ m}$</p>
+        <p>• 건물 자중 $Mg \approx 2.156 \times 10^9\text{ N}$ (반시계 복원 토크)</p>
+        <p>• 전도 한계 풍속: <b class="text-rose-600">약 164.5 m/s</b> (초과 시 전도 발생)</p>
+      </div>
+
+      <!-- 원클릭 프리셋 버튼 영역 -->
+      <div>
+        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">실험 시나리오 프리셋</label>
+        <div class="grid grid-cols-3 gap-2">
+          <button onclick="applyPreset('safe')" class="py-2 px-2.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition border border-slate-200 text-center">
+            🍃 일상 풍속<br><span class="text-[10px] text-slate-500">20 m/s</span>
+          </button>
+          <button onclick="applyPreset('typhoon')" class="py-2 px-2.5 rounded-lg text-xs font-medium bg-amber-50 hover:bg-amber-100 text-amber-800 transition border border-amber-200 text-center">
+            🌀 역대급 태풍<br><span class="text-[10px] text-amber-600">60 m/s (회오리)</span>
+          </button>
+          <button onclick="applyPreset('collapse')" class="py-2 px-2.5 rounded-lg text-xs font-medium bg-rose-50 hover:bg-rose-100 text-rose-800 transition border border-rose-200 text-center">
+            💥 한계 초과<br><span class="text-[10px] text-rose-600">175 m/s (전도)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 바람 속도 조절 슬라이더 바 -->
+      <div class="p-3.5 bg-sky-50/70 border border-sky-200 rounded-xl space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-sky-900 flex items-center gap-1.5">
+            <span>💨</span> 실시간 풍속 조절 슬라이더
+          </span>
+          <span class="text-xs font-mono font-bold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded" id="wind-speed-text">60 m/s</span>
+        </div>
+        <input id="wind-speed-slider" type="range" min="0" max="200" step="1" value="60" oninput="onWindSliderChange(this.value)"
+          class="w-full h-2 bg-sky-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+        <div class="flex justify-between text-[10px] text-slate-400 font-mono">
+          <span>0 m/s (무풍)</span>
+          <span class="text-amber-600 font-semibold">60 m/s (태풍)</span>
+          <span class="text-rose-500 font-semibold">165 m/s (한계)</span>
+          <span>200 m/s</span>
+        </div>
+      </div>
+
+      <!-- 힘 입력 리스트 헤더 -->
+      <div class="pt-2 border-t border-slate-200">
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">작용하는 힘 목록</label>
+          <button onclick="addNewForceRow()" class="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1">
+            + 힘 추가하기
+          </button>
+        </div>
+        
+        <!-- 동적으로 행이 추가되는 컨테이너 -->
+        <div id="forces-container" class="space-y-2.5">
+          <!-- 자바스크립트로 기본 힘 2개가 주입됩니다 -->
+        </div>
+      </div>
+
+      <!-- 계산 및 시뮬레이션 동작 버튼들 -->
+      <div class="pt-2 flex gap-2">
+        <button onclick="runSimulation()" class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 transition flex items-center justify-center gap-2">
+          <span>⚡ 돌림힘 계산 및 검증</span>
+        </button>
+        <button onclick="resetBuilding()" class="px-3.5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-xl transition" title="원위치 리셋">
+          🔄
+        </button>
+      </div>
+
+      <div id="result-card" class="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
+        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">계산 분석 결과</div>
+        
+        <div id="torque-details" class="text-xs space-y-1 text-slate-600">
+          계산하기 버튼을 누르면 항목별 돌림힘과 합력이 도출됩니다.
+        </div>
+
+        <div class="pt-2 border-t border-slate-200 flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-700">알짜 돌림힘 ($\sum \tau$):</span>
+          <span id="net-torque-display" class="font-bold font-mono text-sm text-slate-900">0.00 N·m</span>
+        </div>
+
+        <!-- 최종 평형 상태 뱃지 -->
+        <div id="status-badge" class="p-3 rounded-lg text-xs font-bold flex items-center gap-2 bg-emerald-100 text-emerald-800 border border-emerald-300">
+          <span>✅</span>
+          <span>정적 평형 상태: 건물이 안전하게 지지됩니다.</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // 1. 3D 공간 및 카메라, 조명 초기 세팅
+    // ==========================================
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xdcecf8); // 쾌청한 오사카 상공 하늘색
+
+    // 원근 투영 카메라 생성 (화각 45도)
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 4000);
+    camera.position.set(320, 240, 520);
+
+    // WebGL 렌더러 생성 (안티앨리어싱 활성화)
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    // 마우스로 360도 둘러볼 수 있는 OrbitControls
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.target.set(0, 120, 0); // 건물 중심부 바라보기
+    controls.maxPolarAngle = Math.PI / 2 + 0.05; // 지면 아래로 내려가지 않도록 제한
+
+    // 조명 구성 (은은한 환경광 + 태양광 직사광)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+    dirLight.position.set(300, 600, 300);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    dirLight.shadow.camera.near = 10;
+    dirLight.shadow.camera.far = 1500;
+    const d = 400;
+    dirLight.shadow.camera.left = -d;
+    dirLight.shadow.camera.right = d;
+    dirLight.shadow.camera.top = d;
+    dirLight.shadow.camera.bottom = -d;
+    scene.add(dirLight);
+
+    // 바닥 격자 및 콘크리트 지면
+    const groundGeo = new THREE.PlaneGeometry(1200, 1200);
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x8894a0, roughness: 0.8 });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    const grid = new THREE.GridHelper(1000, 50, 0x334155, 0x94a3b8);
+    grid.position.y = 0.1;
+    scene.add(grid);
+
+    // ==========================================
+    // 2. 아베노 하루카스 3D 모델 및 회전축(Pivot) 구성
+    // ==========================================
+    // 건물의 평균 하부 폭은 50m입니다.
+    // 바람이 왼쪽에서 오른쪽으로 불 때 넘어지는 회전축은 우측 바닥 모서리 (x = +25) 입니다.
+    const PIVOT_X = 25;
+
+    // 회전 피벗 역할을 할 부모 그룹 생성 (실제 회전축의 위치)
+    const pivotGroup = new THREE.Group();
+    pivotGroup.position.set(PIVOT_X, 0, 0);
+    scene.add(pivotGroup);
+
+    // 회전 기준점(Pivot O)을 시각화하는 붉은색 핀
+    const pivotPinGeo = new THREE.CylinderGeometry(2.5, 2.5, 60, 24);
+    const pivotPinMat = new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0x991b1b });
+    const pivotPin = new THREE.Mesh(pivotPinGeo, pivotPinMat);
+    pivotPin.rotation.x = Math.PI / 2;
+    pivotPin.castShadow = true;
+    pivotGroup.add(pivotPin);
+
+    // 회전축 안내 텍스트용 화살표
+    const axisArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), 35, 0xef4444, 8, 5);
+    pivotGroup.add(axisArrow);
+
+    // 실제 건물의 부품들을 모아둘 자식 그룹
+    const buildingBody = new THREE.Group();
+    // 부모 그룹이 (25, 0, 0)에 위치하므로, 건물의 기하학적 중심이 (0, 0, 0)이 되도록 -25만큼 오프셋 이동
+    buildingBody.position.set(-PIVOT_X, 0, 0);
+    pivotGroup.add(buildingBody);
+
+    // 실물 아베노 하루카스 커튼월 유리 & 메탈 프레임 텍스처 캔버스 동적 생성
+    function createGlassFacadeTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#658d9e'; // 아베노 하루카스 특유의 은청색 로이 복층 유리
+      ctx.fillRect(0, 0, 128, 256);
+
+      // 세로 알루미늄 루버 핀 (Vertical Fins)
+      ctx.strokeStyle = '#cddbe1';
+      ctx.lineWidth = 1.5;
+      for (let x = 0; x < 128; x += 16) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, 256);
+        ctx.stroke();
+      }
+
+      // 가로 층간 스팬드럴 라인 (Horizontal Bands)
+      for (let y = 0; y < 256; y += 32) {
+        ctx.fillStyle = '#2b3f4a';
+        ctx.fillRect(0, y, 128, 5);
+        ctx.fillStyle = '#e2edf3';
+        ctx.fillRect(0, y + 5, 128, 2);
+      }
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      return texture;
+    }
+
+    const facadeTex = createGlassFacadeTexture();
+    facadeTex.repeat.set(3, 8);
+
+    const harukasGlassMat = new THREE.MeshStandardMaterial({
+      map: facadeTex,
+      color: 0x99ccdf,
+      metalness: 0.7,
+      roughness: 0.18,
+      transparent: true,
+      opacity: 0.92,
+      envMapIntensity: 1.5
+    });
+
+    const spandrelMat = new THREE.MeshStandardMaterial({
+      color: 0x334155,
+      metalness: 0.5,
+      roughness: 0.4
+    });
+
+    const trussMat = new THREE.MeshStandardMaterial({
+      color: 0xe2e8f0,
+      metalness: 0.6,
+      roughness: 0.3
+    });
+
+    // 1단: 저층부 (킨테츠 백화점 및 오피스 저층: 높이 0~110m, 폭 56m x 깊이 42m)
+    const tier1 = new THREE.Mesh(new THREE.BoxGeometry(56, 110, 42), harukasGlassMat);
+    tier1.position.set(0, 55, 0);
+    tier1.castShadow = true;
+    tier1.receiveShadow = true;
+    buildingBody.add(tier1);
+
+    // 1단 하부 기단부 띠
+    const podiumBelt = new THREE.Mesh(new THREE.BoxGeometry(57, 12, 43), spandrelMat);
+    podiumBelt.position.set(0, 6, 0);
+    buildingBody.add(podiumBelt);
+
+    // 2단: 중층부 (오피스 및 호텔 로비: 높이 110~200m, 폭 46m x 깊이 36m, 왼쪽 셋백)
+    const tier2 = new THREE.Mesh(new THREE.BoxGeometry(46, 90, 36), harukasGlassMat);
+    tier2.position.set(-5, 155, 0);
+    tier2.castShadow = true;
+    tier2.receiveShadow = true;
+    buildingBody.add(tier2);
+
+    // 아베노 하루카스의 상징인 1~2단 사이의 메가 트러스 층(사진 속 V자 브레이스)
+    const trussGroup = new THREE.Group();
+    trussGroup.position.set(-3, 110, 0);
+    
+    // 오픈 트러스 바닥/천장 슬래브
+    const trussFloor = new THREE.Mesh(new THREE.BoxGeometry(50, 4, 38), spandrelMat);
+    trussGroup.add(trussFloor);
+
+    // 전면 & 후면 V자 메가 브레이스 기둥 생성
+    for (let zOffset of [-18.5, 18.5]) {
+      for (let i = -18; i <= 18; i += 12) {
+        const braceLeft = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 14, 12), trussMat);
+        braceLeft.position.set(i - 3, 0, zOffset);
+        braceLeft.rotation.z = Math.PI / 4;
+        trussGroup.add(braceLeft);
+
+        const braceRight = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 14, 12), trussMat);
+        braceRight.position.set(i + 3, 0, zOffset);
+        braceRight.rotation.z = -Math.PI / 4;
+        trussGroup.add(braceRight);
+      }
+    }
+    buildingBody.add(trussGroup);
+
+    // 3단: 상층부 (메리어트 호텔 & 전망대: 높이 200~285m, 폭 36m x 깊이 30m)
+    const tier3 = new THREE.Mesh(new THREE.BoxGeometry(36, 85, 30), harukasGlassMat);
+    tier3.position.set(-10, 242.5, 0);
+    tier3.castShadow = true;
+    tier3.receiveShadow = true;
+    buildingBody.add(tier3);
+
+    // 최상단 '하루카스 300' 3개 층 전망대 (285~300m, 오픈루프 중정 회랑 구조)
+    const deckHollowGroup = new THREE.Group();
+    deckHollowGroup.position.set(-10, 292.5, 0);
+
+    const deckWallMat = new THREE.MeshStandardMaterial({
+      color: 0xbae6fd,
+      metalness: 0.9,
+      roughness: 0.1,
+      transparent: true,
+      opacity: 0.75
+    });
+
+    // 유리 외벽 4면 프레임 (가운데가 뚫린 옥상 정원 형태)
+    const deckNorth = new THREE.Mesh(new THREE.BoxGeometry(36, 15, 2), deckWallMat);
+    deckNorth.position.set(0, 0, 14);
+    const deckSouth = new THREE.Mesh(new THREE.BoxGeometry(36, 15, 2), deckWallMat);
+    deckSouth.position.set(0, 0, -14);
+    const deckWest = new THREE.Mesh(new THREE.BoxGeometry(2, 15, 30), deckWallMat);
+    deckWest.position.set(-17, 0, 0);
+    const deckEast = new THREE.Mesh(new THREE.BoxGeometry(2, 15, 30), deckWallMat);
+    deckEast.position.set(17, 0, 0);
+
+    // 전망대 바닥 및 헬리포트
+    const deckFloor = new THREE.Mesh(new THREE.BoxGeometry(36, 1, 30), spandrelMat);
+    deckFloor.position.set(0, -7.5, 0);
+    
+    // 옥상 헬리포트 원형 마킹
+    const heliGeo = new THREE.RingGeometry(5, 7, 32);
+    const heliMat = new THREE.MeshBasicMaterial({ color: 0xfacc15, side: THREE.DoubleSide });
+    const heli = new THREE.Mesh(heliGeo, heliMat);
+    heli.rotation.x = Math.PI / 2;
+    heli.position.set(0, -6.9, 0);
+
+    deckHollowGroup.add(deckNorth, deckSouth, deckWest, deckEast, deckFloor, heli);
+    buildingBody.add(deckHollowGroup);
+
+    // ==========================================
+    // 3. 텐노지 역세권 및 주변 도심 환경 디테일 구축
+    // ==========================================
+    const urbanGroup = new THREE.Group();
+    scene.add(urbanGroup);
+
+    // 주변 빌딩 건축 재료
+    const concreteMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.8 });
+    const darkOfficeMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5 });
+    const brickMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.85 });
+    const roadMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 });
+    const asphaltLineMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
+    const whiteStripeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+    // 아베노스지 & 타니마치스지 간선 도로망
+    const roadMain = new THREE.Mesh(new THREE.PlaneGeometry(1000, 48), roadMat);
+    roadMain.rotation.x = -Math.PI / 2;
+    roadMain.position.set(0, 0.15, 60);
+    roadMain.receiveShadow = true;
+    urbanGroup.add(roadMain);
+
+    // 횡단 차선 스트라이프
+    for (let rx = -480; rx <= 480; rx += 40) {
+      const yellowLine = new THREE.Mesh(new THREE.PlaneGeometry(20, 1.2), asphaltLineMat);
+      yellowLine.rotation.x = -Math.PI / 2;
+      yellowLine.position.set(rx, 0.2, 60);
+      urbanGroup.add(yellowLine);
+    }
+
+    // 텐노지역 철도 선로 지대 (하루카스 북측 / 서측 선로)
+    const railwayGround = new THREE.Mesh(new THREE.PlaneGeometry(800, 70), new THREE.MeshStandardMaterial({ color: 0x3f3f46, roughness: 0.95 }));
+    railwayGround.rotation.x = -Math.PI / 2;
+    railwayGround.position.set(0, 0.12, -75);
+    railwayGround.receiveShadow = true;
+    urbanGroup.add(railwayGround);
+
+    // 철도 레일들
+    const railMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.8, roughness: 0.2 });
+    for (let rz = -95; rz <= -55; rz += 8) {
+      const rail1 = new THREE.Mesh(new THREE.BoxGeometry(800, 0.4, 0.4), railMat);
+      rail1.position.set(0, 0.3, rz);
+      const rail2 = new THREE.Mesh(new THREE.BoxGeometry(800, 0.4, 0.4), railMat);
+      rail2.position.set(0, 0.3, rz + 2.5);
+      urbanGroup.add(rail1, rail2);
+    }
+
+    // 아베노 보행자 육교 (독특한 트러스 데크 육교 형태)
+    const footbridge = new THREE.Group();
+    const bridgeFloor = new THREE.Mesh(new THREE.TorusGeometry(38, 3.5, 8, 32), new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5 }));
+    bridgeFloor.rotation.x = Math.PI / 2;
+    bridgeFloor.position.set(65, 6, 50);
+    footbridge.add(bridgeFloor);
+    // 육교 기둥들
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 3) {
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 6, 8), concreteMat);
+      pillar.position.set(65 + Math.cos(a) * 38, 3, 50 + Math.sin(a) * 38);
+      footbridge.add(pillar);
+    }
+    urbanGroup.add(footbridge);
+
+    // 주변 상업 빌딩군 (텐노지 미오, 루시아스, 아폴로 빌딩 등)
+    const surroundingBuildingData = [
+      { x: -95, z: 50, w: 45, d: 45, h: 48, mat: darkOfficeMat, name: "아폴로빌딩" },
+      { x: -155, z: 65, w: 55, d: 50, h: 65, mat: concreteMat, name: "루시아스빌딩" },
+      { x: 90, z: -40, w: 70, d: 35, h: 55, mat: brickMat, name: "텐노지 MIO 본관" },
+      { x: 180, z: -35, w: 50, d: 40, h: 42, mat: concreteMat, name: "텐노지 MIO 프라자관" },
+      { x: -80, z: -130, w: 85, d: 50, h: 35, mat: darkOfficeMat, name: "JR 텐노지역사" },
+      { x: 110, z: 75, w: 40, d: 45, h: 72, mat: darkOfficeMat, name: "신사이바시 방면 오피스" },
+      { x: -140, z: -80, w: 50, d: 45, h: 40, mat: brickMat, name: "상가단지" },
+      { x: -220, z: 20, w: 60, d: 70, h: 50, mat: concreteMat, name: "서측 빌딩" },
+      { x: 230, z: 40, w: 65, d: 60, h: 58, mat: darkOfficeMat, name: "동측 비즈니스센터" }
+    ];
+
+    surroundingBuildingData.forEach(b => {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(b.w, b.h, b.d), b.mat);
+      mesh.position.set(b.x, b.h / 2, b.z);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      urbanGroup.add(mesh);
+
+      // 옥상 구조물(공조기 큐브)
+      const hvac = new THREE.Mesh(new THREE.BoxGeometry(b.w * 0.35, 4, b.d * 0.35), darkOfficeMat);
+      hvac.position.set(b.x, b.h + 2, b.z);
+      urbanGroup.add(hvac);
+    });
+
+    // ==========================================
+    // 4. 연속 유선(Streamlines) 바람 시각화 시스템
+    // ==========================================
+    // 점(파티클) 형태가 아니라 바람의 결을 생생하게 보여주는 3D 유선(Streamlines)
+    const STREAMLINE_COUNT = 90;
+    const STREAM_SEGMENTS = 14;
+    const streamGroup = new THREE.Group();
+    scene.add(streamGroup);
+
+    const streamLines = [];
+    const streamMat = new THREE.LineBasicMaterial({
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.55,
+      blending: THREE.AdditiveBlending,
+      linewidth: 1.5
+    });
+
+    for (let s = 0; s < STREAMLINE_COUNT; s++) {
+      const points = [];
+      const baseY = 12 + Math.random() * 300;
+      const baseZ = -95 + Math.random() * 190;
+      const startX = -280 + Math.random() * 60;
+      const length = 45 + Math.random() * 35; // 한 유선의 길이
+
+      for (let j = 0; j < STREAM_SEGMENTS; j++) {
+        points.push(new THREE.Vector3(startX + (j * (length / STREAM_SEGMENTS)), baseY, baseZ));
+      }
+
+      const geom = new THREE.BufferGeometry().setFromPoints(points);
+      const line = new THREE.Line(geom, streamMat);
+
+      streamLines.push({
+        line: line,
+        baseY: baseY,
+        baseZ: baseZ,
+        length: length,
+        speedFactor: 0.85 + Math.random() * 0.45,
+        startX: startX,
+        phase: Math.random() * Math.PI * 2
+      });
+      streamGroup.add(line);
+    }
+
+    // ==========================================
+    // 5. 풍속별 공중 비산물(날아다니는 물체) 시스템
+    // ==========================================
+    // 바람 속도가 빨라질수록 가벼운 물체부터 무거운 물체까지 공중에 날아다닙니다.
+    // 레벨 1: 나뭇잎, 종이비닐 (20 m/s ~)
+    // 레벨 2: 도로 삼각콘, 박스, 간판 조각 (40 m/s ~)
+    // 레벨 3: 자전거, 파라솔, 가로수 가지 (70 m/s ~)
+    // 레벨 4: 경차(자동차), 컨테이너 (120 m/s ~)
+
+    const debrisGroup = new THREE.Group();
+    scene.add(debrisGroup);
+
+    const DEBRIS_COUNT = 85;
+    const debrisObjects = [];
+
+    // 비산물 메쉬 프리팹 생성기
+    function createDebrisMesh(type) {
+      let geo, mat;
+      if (type === 'leaf') {
+        geo = new THREE.PlaneGeometry(1.6, 1.2);
+        mat = new THREE.MeshBasicMaterial({ color: 0x22c55e, side: THREE.DoubleSide });
+      } else if (type === 'paper') {
+        geo = new THREE.PlaneGeometry(1.8, 2.2);
+        mat = new THREE.MeshBasicMaterial({ color: 0xf1f5f9, side: THREE.DoubleSide });
+      } else if (type === 'cone') {
+        geo = new THREE.ConeGeometry(1.0, 2.8, 6);
+        mat = new THREE.MeshStandardMaterial({ color: 0xf97316 });
+      } else if (type === 'box') {
+        geo = new THREE.BoxGeometry(2.4, 2.4, 2.4);
+        mat = new THREE.MeshStandardMaterial({ color: 0xb45309 });
+      } else if (type === 'bicycle') {
+        geo = new THREE.TorusGeometry(1.8, 0.25, 4, 10);
+        mat = new THREE.MeshStandardMaterial({ color: 0x3b82f6 });
+      } else if (type === 'car') {
+        // 바람에 날아가는 경차
+        geo = new THREE.BoxGeometry(6.5, 3.2, 3.4);
+        mat = new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.6 });
+      }
+      const mesh = new THREE.Mesh(geo, mat);
+      return mesh;
+    }
+
+    for (let i = 0; i < DEBRIS_COUNT; i++) {
+      let type = 'leaf';
+      let minSpeed = 18;
+      let weightCategory = 1;
+
+      if (i < 30) {
+        type = Math.random() > 0.5 ? 'leaf' : 'paper';
+        minSpeed = 15;
+        weightCategory = 1;
+      } else if (i < 55) {
+        type = Math.random() > 0.5 ? 'cone' : 'box';
+        minSpeed = 38;
+        weightCategory = 2;
+      } else if (i < 72) {
+        type = 'bicycle';
+        minSpeed = 70;
+        weightCategory = 3;
+      } else {
+        type = 'car';
+        minSpeed = 115;
+        weightCategory = 4;
+      }
+
+      const mesh = createDebrisMesh(type);
+      mesh.visible = false; // 초기엔 비활성화
+      debrisGroup.add(mesh);
+
+      debrisObjects.push({
+        mesh: mesh,
+        type: type,
+        minSpeed: minSpeed,
+        weight: weightCategory,
+        x: -240 + Math.random() * 450,
+        y: 5 + Math.random() * 220,
+        z: -110 + Math.random() * 220,
+        rotSpeedX: (Math.random() - 0.5) * 0.12,
+        rotSpeedY: (Math.random() - 0.5) * 0.15,
+        rotSpeedZ: (Math.random() - 0.5) * 0.12,
+        floatFreq: 1.0 + Math.random() * 2.0
+      });
+    }
+
+    // ==========================================
+    // 6. 태풍 회오리(볼텍스) 시스템 ('역대급 태풍' 프리셋 전용)
+    // ==========================================
+    const TORNADO_COUNT = 900;
+    const tornadoGeo = new THREE.BufferGeometry();
+    const tornadoPos = new Float32Array(TORNADO_COUNT * 3);
+    const tornadoParams = [];
+
+    for (let i = 0; i < TORNADO_COUNT; i++) {
+      const h = Math.random() * 340;
+      const radius = 10 + (h * 0.28);
+      const angle = Math.random() * Math.PI * 2;
+      tornadoPos[i * 3 + 0] = Math.cos(angle) * radius;
+      tornadoPos[i * 3 + 1] = h;
+      tornadoPos[i * 3 + 2] = Math.sin(angle) * radius;
+      tornadoParams.push({
+        angle: angle,
+        height: h,
+        speed: 0.04 + Math.random() * 0.05,
+        radiusBase: radius
+      });
+    }
+    tornadoGeo.setAttribute('position', new THREE.BufferAttribute(tornadoPos, 3));
+
+    const tornadoMat = new THREE.PointsMaterial({
+      color: 0xf59e0b,
+      size: 5.5,
+      transparent: true,
+      opacity: 0.0,
+      blending: THREE.AdditiveBlending
+    });
+    const tornadoMesh = new THREE.Points(tornadoGeo, tornadoMat);
+    tornadoMesh.position.set(-80, 0, 0);
+    scene.add(tornadoMesh);
+
+    // 회오리는 '역대급 태풍' 프리셋을 눌렀을 때만 활성화됩니다.
+    let isTyphoonTornadoActive = false;
+    let tornadoMoveProgress = 0;
+
+    // 중력 자중 화살표 (건물 무게중심에서 아래로 향하는 파란 화살표)
+    const gravityArrow = new THREE.ArrowHelper(
+      new THREE.Vector3(0, -1, 0),
+      new THREE.Vector3(0, 150, 0),
+      50,
+      0x3b82f6,
+      14,
+      8
+    );
+    buildingBody.add(gravityArrow);
+  </script>
+
+  <script>
+    // ==========================================
+    // 7. 돌림힘 데이터 구조 및 계산 로직
+    // ==========================================
+    let forcesData = [
+      {
+        id: 1,
+        name: "건물 자체 중력(자중 복원력)",
+        magnitude: 2156000000,
+        distance: 25,
+        direction: -1,
+        removable: false
+      },
+      {
+        id: 2,
+        name: "바람에 의한 풍하중",
+        magnitude: 47736000,
+        distance: 150,
+        direction: 1,
+        removable: false
+      }
+    ];
+
+    let currentWindSpeed = 60;
+    let nextId = 3;
+    let isCollapsing = false;
+    let collapseProgress = 0;
+    let collapseAngle = 0;
+
+    // 바람 속도 슬라이더 변경 핸들러
+    // 슬라이더를 조작할 때는 태풍 회오리가 활성화되지 않으며, 바람 유선과 비산물 속도만 증가합니다!
+    function onWindSliderChange(speedVal) {
+      currentWindSpeed = parseFloat(speedVal);
+      document.getElementById('wind-speed-text').innerText = `${currentWindSpeed} m/s`;
+
+      // 슬라이더를 수동 조절하면 태풍 회오리 모드는 비활성화
+      isTyphoonTornadoActive = false;
+
+      // 풍하중 공식: F_w = 0.5 * rho * v^2 * Cd * A = 13,260 * v^2
+      const calculatedForce = Math.round(13260 * Math.pow(currentWindSpeed, 2));
+
+      const windItem = forcesData.find(f => f.id === 2);
+      if (windItem) {
+        windItem.magnitude = calculatedForce;
+      }
+
+      renderForcesList();
+      runSimulation();
+    }
+
+    // UI에 힘 입력 항목들을 동적으로 렌더링
+    function renderForcesList() {
+      const container = document.getElementById('forces-container');
+      container.innerHTML = '';
+
+      forcesData.forEach((item, index) => {
+        const row = document.createElement('div');
+        row.className = "p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 relative transition hover:border-slate-300";
+        
+        row.innerHTML = `
+          <div class="flex items-center justify-between text-xs font-semibold text-slate-700">
+            <span class="flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full ${item.direction === 1 ? 'bg-rose-500' : 'bg-blue-500'}"></span>
+              ${item.name}
+            </span>
+            ${item.removable ? `<button onclick="deleteForceRow(${item.id})" class="text-rose-500 hover:text-rose-700 text-[11px] font-bold">삭제</button>` : '<span class="text-[10px] text-slate-400">기본 요소</span>'}
+          </div>
+
+          <div class="grid grid-cols-12 gap-2 text-xs">
+            <div class="col-span-5">
+              <label class="block text-[10px] text-slate-500 mb-0.5">힘의 크기 (N)</label>
+              <input type="number" step="any" value="${item.magnitude}" onchange="updateForce(${item.id}, 'magnitude', this.value)"
+                class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono text-xs bg-white">
+            </div>
+            
+            <div class="col-span-3">
+              <label class="block text-[10px] text-slate-500 mb-0.5">거리 r (m)</label>
+              <input type="number" step="any" value="${item.distance}" onchange="updateForce(${item.id}, 'distance', this.value)"
+                class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono text-xs bg-white">
+            </div>
+
+            <div class="col-span-4">
+              <label class="block text-[10px] text-slate-500 mb-0.5">회전 방향</label>
+              <select onchange="updateForce(${item.id}, 'direction', this.value)"
+                class="w-full px-2 py-1.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs bg-white">
+                <option value="1" ${item.direction === 1 ? 'selected' : ''}>시계 (+)</option>
+                <option value="-1" ${item.direction === -1 ? 'selected' : ''}>반시계 (-)</option>
+              </select>
+            </div>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    // 값 수정 핸들러 (직접 N값을 입력했을 때 슬라이더도 역연산 동기화)
+    function updateForce(id, key, value) {
+      const target = forcesData.find(f => f.id === id);
+      if (target) {
+        target[key] = parseFloat(value) || 0;
+      }
+      if (id === 2 && key === 'magnitude') {
+        const reverseV = Math.sqrt(Math.max(0, target.magnitude) / 13260);
+        currentWindSpeed = Math.min(200, Math.round(reverseV));
+        const slider = document.getElementById('wind-speed-slider');
+        if (slider) slider.value = currentWindSpeed;
+        document.getElementById('wind-speed-text').innerText = `${currentWindSpeed} m/s`;
+        isTyphoonTornadoActive = false;
+      }
+    }
+
+    // 새 힘 추가 함수
+    function addNewForceRow() {
+      forcesData.push({
+        id: nextId++,
+        name: `추가된 외력 ${forcesData.length + 1}`,
+        magnitude: 50000000,
+        distance: 100,
+        direction: 1,
+        removable: true
+      });
+      renderForcesList();
+    }
+
+    // 힘 삭제 함수
+    function deleteForceRow(id) {
+      forcesData = forcesData.filter(f => f.id !== id);
+      renderForcesList();
+    }
+
+    // ==========================================
+    // 5. 돌림힘 평형 계산 및 판정 공식 적용
+    // ==========================================
+    function runSimulation() {
+      let netTorque = 0;
+      let overturnTorque = 0;
+      let restoreTorque = 0;
+      let detailsHtml = "";
+
+      // 각 힘의 돌림힘: tau = dir * F * r
+      forcesData.forEach((f, idx) => {
+        const tau = f.direction * f.magnitude * f.distance;
+        netTorque += tau;
+
+        if (f.direction === 1) {
+          overturnTorque += f.magnitude * f.distance;
+        } else {
+          restoreTorque += f.magnitude * f.distance;
+        }
+
+        const dirSymbol = f.direction === 1 ? "시계방향(+ 전도)" : "반시계방향(- 복원)";
+        const colorClass = f.direction === 1 ? "text-rose-600" : "text-blue-600";
+
+        detailsHtml += `
+          <div class="flex justify-between items-center py-0.5 border-b border-slate-100 last:border-0">
+            <span>항목 ${idx + 1} (${dirSymbol}):</span>
+            <span class="font-mono font-semibold ${colorClass}">${tau.toExponential(2)} N·m</span>
+          </div>
+        `;
+      });
+
+      // UI 텍스트 갱신
+      document.getElementById('torque-details').innerHTML = detailsHtml;
+      
+      const netDisplay = document.getElementById('net-torque-display');
+      netDisplay.innerText = `${netTorque >= 0 ? '+' : ''}${netTorque.toExponential(3)} N·m`;
+      
+      const badge = document.getElementById('status-badge');
+
+      // 전도 판정: 시계 방향 토크가 반시계 방향 복원 토크를 초과할 때 (알짜 토크 > 0)
+      if (netTorque > 0) {
+        badge.className = "p-3 rounded-lg text-xs font-bold flex items-center gap-2 bg-rose-100 text-rose-800 border border-rose-300 animate-pulse";
+        badge.innerHTML = `
+          <span>⚠️</span>
+          <span><b>전도 발생(전복)!</b> 전도 토크가 복원 토크를 초과하여 회전축 O를 중심으로 건물이 무너집니다.</span>
+        `;
+        isCollapsing = true; // 3D 회전 무너짐 애니메이션 트리거
+      } else {
+        badge.className = "p-3 rounded-lg text-xs font-bold flex items-center gap-2 bg-emerald-100 text-emerald-800 border border-emerald-300";
+        badge.innerHTML = `
+          <span>✅</span>
+          <span><b>정적 평형 유지!</b> 자중 복원 토크가 충분하여 건물이 전도되지 않고 안전합니다.</span>
+        `;
+        isCollapsing = false;
+        resetBuildingTransform();
+      }
+    }
+
+    // 건물 위치 및 각도 원상복귀
+    function resetBuildingTransform() {
+      pivotGroup.rotation.z = 0;
+      collapseAngle = 0;
+      collapseProgress = 0;
+    }
+
+    function resetBuilding() {
+      isCollapsing = false;
+      resetBuildingTransform();
+      runSimulation();
+    }
+
+    // 프리셋 적용 함수 (풍속에 따른 풍하중 F_w = 0.5 * rho * v^2 * Cd * A 역계산)
+    function applyPreset(type) {
+      let v = 20;
+      if (type === 'safe') {
+        v = 20;
+        isTyphoonTornadoActive = false; // 회오리 끔
+      } else if (type === 'typhoon') {
+        v = 60;
+        isTyphoonTornadoActive = true;  // '역대급 태풍' 프리셋을 눌렀을 때만 회오리 가동!
+        tornadoMoveProgress = 0;
+      } else if (type === 'collapse') {
+        v = 175;
+        isTyphoonTornadoActive = false; // 회오리 끔 (단순 한계 초과 폭풍 전도)
+      }
+
+      const slider = document.getElementById('wind-speed-slider');
+      if (slider) slider.value = v;
+      currentWindSpeed = v;
+      document.getElementById('wind-speed-text').innerText = `${currentWindSpeed} m/s`;
+
+      const calculatedForce = Math.round(13260 * Math.pow(currentWindSpeed, 2));
+      const windItem = forcesData.find(f => f.id === 2);
+      if (windItem) windItem.magnitude = calculatedForce;
+
+      renderForcesList();
+      runSimulation();
+    }
+
+    // ==========================================
+    // 8. 메인 렌더링 및 유선형 바람/비산물/회오리 애니메이션 루프
+    // ==========================================
+    let clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta = clock.getDelta();
+      const elapsedTime = clock.getElapsedTime();
+      controls.update();
+
+      // 1) 실제 유선(Streamline) 바람 애니메이션
+      // 풍속에 비례해 유선이 왼쪽(-280)에서 오른쪽(+220)으로 흘러감
+      const windSpeedRatio = Math.max(0.15, currentWindSpeed / 25);
+      const speedMultiplier = 160 * windSpeedRatio;
+
+      streamLines.forEach(item => {
+        item.startX += delta * speedMultiplier * item.speedFactor;
+        
+        // 화면 오른쪽을 지나가면 다시 왼쪽으로 순환
+        if (item.startX > 240) {
+          item.startX = -290 - Math.random() * 40;
+          item.baseY = 12 + Math.random() * 300;
+          item.baseZ = -95 + Math.random() * 190;
+        }
+
+        const posAttr = item.line.geometry.attributes.position;
+        const pts = posAttr.array;
+        const segmentLen = item.length / STREAM_SEGMENTS;
+
+        for (let j = 0; j < STREAM_SEGMENTS; j++) {
+          const curX = item.startX + (j * segmentLen);
+          // 건물 근처(x: -35 ~ 35, y: 0 ~ 300)를 지날 때 바람이 건물 옆으로 비껴 흐르는 굴절 효과
+          let deflectZ = 0;
+          if (curX > -40 && curX < 35 && item.baseY < 300) {
+            deflectZ = Math.sin(j * 0.4) * 8.0;
+          }
+
+          pts[j * 3 + 0] = curX;
+          pts[j * 3 + 1] = item.baseY + Math.sin(elapsedTime * 3.0 + item.phase + j * 0.3) * 1.5;
+          pts[j * 3 + 2] = item.baseZ + deflectZ;
+        }
+        posAttr.needsUpdate = true;
+      });
+      // 유선의 투명도 및 밝기 조절
+      streamMat.opacity = Math.min(0.85, 0.25 + (currentWindSpeed / 130));
+
+      // 2) 풍속별 공중 비산물(날아다니는 물체) 애니메이션
+      debrisObjects.forEach(obj => {
+        // 현재 풍속이 해당 물체의 부양 한계 풍속 이상일 때만 화면에 출현
+        if (currentWindSpeed >= obj.minSpeed) {
+          obj.mesh.visible = true;
+
+          // 비산물 비행 속도 (바람 속도에 비례)
+          const objSpeed = (currentWindSpeed * 1.4) * (1.2 / obj.weight);
+          obj.x += delta * objSpeed;
+
+          // 공중 와류에 의한 상하/전후 흔들림
+          obj.y += Math.sin(elapsedTime * obj.floatFreq) * 0.4;
+          obj.z += Math.cos(elapsedTime * obj.floatFreq * 0.8) * 0.3;
+
+          // 회전 텀블링 모션
+          obj.mesh.rotation.x += obj.rotSpeedX * (currentWindSpeed / 20);
+          obj.mesh.rotation.y += obj.rotSpeedY * (currentWindSpeed / 20);
+          obj.mesh.rotation.z += obj.rotSpeedZ * (currentWindSpeed / 20);
+
+          // 화면 우측으로 벗어나면 다시 좌측 풍상측에서 재등장
+          if (obj.x > 260) {
+            obj.x = -260 - Math.random() * 70;
+            obj.y = 8 + Math.random() * (obj.weight === 4 ? 60 : 220); // 무거운 차는 비교적 낮은 높이에서 비산
+            obj.z = -100 + Math.random() * 200;
+          }
+
+          obj.mesh.position.set(obj.x, obj.y, obj.z);
+        } else {
+          obj.mesh.visible = false;
+        }
+      });
+
+      // 3) 태풍 회오리(토네이도) 애니메이션 ('역대급 태풍' 프리셋 전용)
+      if (isTyphoonTornadoActive) {
+        tornadoMat.opacity = Math.min(0.85, tornadoMat.opacity + delta * 2.0);
+        tornadoMoveProgress += delta * 30;
+        // 건물을 감싸며 통과
+        tornadoMesh.position.x = -190 + (tornadoMoveProgress % 400);
+        tornadoMesh.position.z = Math.sin(tornadoMoveProgress * 0.025) * 35;
+
+        const torPositions = tornadoGeo.attributes.position.array;
+        for (let i = 0; i < TORNADO_COUNT; i++) {
+          const p = tornadoParams[i];
+          p.angle += p.speed * 2.0;
+          torPositions[i * 3 + 0] = Math.cos(p.angle) * p.radiusBase;
+          torPositions[i * 3 + 2] = Math.sin(p.angle) * p.radiusBase;
+        }
+        tornadoGeo.attributes.position.needsUpdate = true;
+      } else {
+        tornadoMat.opacity = Math.max(0, tornadoMat.opacity - delta * 2.5);
+      }
+
+      // 4) 전도 붕괴 애니메이션 로직
+      if (isCollapsing) {
+        if (collapseAngle < Math.PI / 2) {
+          collapseProgress += delta * 0.8;
+          collapseAngle = Math.min(Math.PI / 2, collapseAngle + 0.015 + (collapseAngle * 0.05));
+          pivotGroup.rotation.z = -collapseAngle;
+        }
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    // 창 크기 변경 시 카메라 비율 재조정
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // 앱 구동 시 초기화
+    renderForcesList();
+    runSimulation();
+    animate();
+  </script>
+</body>
+</html>
+<script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

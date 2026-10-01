@@ -1,0 +1,1364 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><h1>안녕하세요</h1>
+<p>여기에 내용을 작성하세요.</p>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>특수상대론 → 뮤온 시뮬레이션</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 30px;
+    font-family: Arial, sans-serif;
+    background: #f5f7fa;
+    color: #222;
+}
+
+.container {
+    max-width: 850px;
+    margin: auto;
+}
+
+.panel {
+    border: 1px solid #d6d9de;
+    border-radius: 14px;
+    background: white;
+    padding: 18px;
+    margin-bottom: 20px;
+}
+
+h1 {
+    margin-bottom: 8px;
+}
+
+h2 {
+    margin-top: 30px;
+}
+
+.description {
+    color: #666;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* =========================
+   문제
+========================= */
+
+.question {
+    font-weight: bold;
+    line-height: 1.7;
+    margin-bottom: 15px;
+}
+
+.choice-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.choice {
+    border: 1px solid #ccc;
+    background: white;
+    border-radius: 10px;
+    padding: 12px;
+    text-align: left;
+    cursor: pointer;
+    font-size: 15px;
+    transition: 0.15s;
+}
+
+.choice:hover {
+    border-color: #555;
+}
+
+.choice.selected {
+    border-color: #333;
+    background: #eeeeee;
+}
+
+.quiz-result {
+    margin-top: 14px;
+    font-weight: bold;
+}
+
+.quiz-explain {
+    margin-top: 8px;
+    color: #666;
+    line-height: 1.6;
+}
+
+/* =========================
+   시뮬레이션
+========================= */
+
+.scene {
+    position: relative;
+    height: 390px;
+
+    border: 1px solid #d6d9de;
+    border-radius: 14px;
+
+    background: white;
+
+    overflow: hidden;
+}
+
+.sky {
+    position: absolute;
+
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 54px;
+
+    background:
+        linear-gradient(
+            to bottom,
+            rgba(120,160,210,0.15),
+            rgba(120,160,210,0.02)
+        );
+}
+
+/* 지상 */
+
+.ground {
+    position: absolute;
+
+    left: 0;
+    right: 0;
+    bottom: 53px;
+
+    height: 10px;
+
+    border-top: 3px solid #333;
+
+    background:
+        repeating-linear-gradient(
+            90deg,
+            transparent 0 18px,
+            #333 18px 20px
+        );
+}
+
+/* 뮤온 */
+
+.muon {
+    position: absolute;
+
+    left: 50%;
+    top: 24px;
+
+    transform: translateX(-50%);
+
+    font-size: 27px;
+    font-weight: bold;
+
+    color: #333;
+
+    transition: top 0.12s linear;
+}
+
+/* 이동 방향 */
+
+.arrow {
+    position: absolute;
+
+    left: calc(50% + 19px);
+
+    top: 32px;
+    bottom: 73px;
+
+    border-left: 1px dashed #888;
+}
+
+.arrow::after {
+    content: "▼";
+
+    position: absolute;
+
+    bottom: -5px;
+    left: -6px;
+
+    font-size: 12px;
+
+    color: #888;
+}
+
+/* =========================
+   졸라맨 관찰자
+========================= */
+
+.observer {
+    position: absolute;
+
+    right: 18%;
+    bottom: 61px;
+
+    width: 44px;
+    height: 100px;
+}
+
+/* 머리 */
+
+.head {
+    position: absolute;
+
+    left: 14px;
+    top: 0;
+
+    width: 18px;
+    height: 18px;
+
+    border: 2px solid #222;
+    border-radius: 50%;
+
+    background: white;
+}
+
+/* 몸 */
+
+.body {
+    position: absolute;
+
+    left: 22px;
+    top: 18px;
+
+    width: 3px;
+    height: 42px;
+
+    background: #222;
+}
+
+/* 팔 */
+
+.arm1,
+.arm2 {
+    position: absolute;
+
+    top: 27px;
+
+    width: 30px;
+    height: 2px;
+
+    background: #222;
+}
+
+.arm1 {
+    left: -5px;
+
+    transform:
+        rotate(25deg);
+
+    transform-origin: right;
+}
+
+.arm2 {
+    left: 20px;
+
+    transform:
+        rotate(-25deg);
+
+    transform-origin: left;
+}
+
+/* 다리 */
+
+.leg1,
+.leg2 {
+    position: absolute;
+
+    top: 58px;
+
+    width: 34px;
+    height: 2px;
+
+    background: #222;
+
+    transform-origin: left;
+}
+
+.leg1 {
+    left: 21px;
+
+    transform:
+        rotate(65deg);
+}
+
+.leg2 {
+    left: 21px;
+
+    transform:
+        rotate(-65deg);
+}
+
+.observer-label {
+    position: absolute;
+
+    right: 8%;
+    bottom: 8px;
+
+    font-size: 12px;
+
+    color: #666;
+}
+
+/* =========================
+   속도 조절
+========================= */
+
+input[type="range"] {
+    width: 100%;
+}
+
+/* =========================
+   결과값
+========================= */
+
+.stats {
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+
+    gap: 10px;
+
+    margin-top: 12px;
+}
+
+.stat {
+    padding: 12px;
+
+    border: 1px solid #d6d9de;
+
+    border-radius: 10px;
+
+    background: white;
+}
+
+.stat-title {
+    font-size: 12px;
+    color: #777;
+}
+
+.stat-value {
+    margin-top: 5px;
+
+    font-size: 19px;
+    font-weight: bold;
+}
+
+/* =========================
+   그래프
+========================= */
+
+.chart {
+    height: 210px;
+
+    position: relative;
+
+    margin-top: 15px;
+
+    border-left: 1px solid #aaa;
+    border-bottom: 1px solid #aaa;
+
+    overflow: visible;
+}
+
+.chart svg {
+    position: absolute;
+
+    inset: 0;
+
+    width: 100%;
+    height: 180px;
+}
+
+.selected-point {
+    position: absolute;
+
+    width: 10px;
+    height: 10px;
+
+    border-radius: 50%;
+
+    background: #333;
+
+    transform:
+        translate(-50%, 50%);
+}
+
+.axis-label {
+    position: absolute;
+
+    font-size: 11px;
+
+    color: #777;
+}
+
+.axis-left {
+    left: 2px;
+    top: 2px;
+}
+
+.axis-bottom-left {
+    left: 5px;
+    bottom: -20px;
+}
+
+.axis-bottom-right {
+    right: 5px;
+    bottom: -20px;
+}
+
+/* =========================
+   반응형
+========================= */
+
+@media (max-width: 600px) {
+
+    body {
+        padding: 15px;
+    }
+
+    .choice-container {
+        grid-template-columns: 1fr;
+    }
+
+    .stats {
+        grid-template-columns: 1fr;
+    }
+
+    .scene {
+        height: 350px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>특수상대론 → 뮤온 시뮬레이션</h1>
+
+    <p class="description">
+        먼저 시간 지연의 기본 개념을 확인한 뒤,
+        같은 원리를 뮤온의 운동에 적용해 보자.
+    </p>
+
+
+    <!-- ==================================================
+         1. 특수상대론 기초 문제
+    =================================================== -->
+
+    <div class="panel">
+
+        <div class="description">
+            특수상대론 기초 문제
+        </div>
+
+        <div class="question">
+
+            어떤 입자의 고유계에서 2.2 μs가 지나갔다.
+            로런츠 인자가 γ = 5라면,
+            정지한 관찰자가 측정하는 시간은?
+
+        </div>
+
+        <div class="choice-container">
+
+            <button
+                class="choice"
+                data-answer="2.2">
+
+                ① 2.2 μs
+
+            </button>
+
+            <button
+                class="choice"
+                data-answer="4.4">
+
+                ② 4.4 μs
+
+            </button>
+
+            <button
+                class="choice"
+                data-answer="11">
+
+                ③ 11 μs
+
+            </button>
+
+            <button
+                class="choice"
+                data-answer="22">
+
+                ④ 22 μs
+
+            </button>
+
+        </div>
+
+        <div
+            id="quizResult"
+            class="quiz-result">
+        </div>
+
+        <div
+            id="quizExplain"
+            class="quiz-explain"
+            style="display:none;">
+
+            시간 지연 공식은
+
+            <strong>
+                Δt = γΔτ
+            </strong>
+
+            이다.
+
+            따라서
+
+            <strong>
+                5 × 2.2 μs = 11 μs
+            </strong>
+
+            이다.
+
+            아래 뮤온 시뮬레이션에서도
+            바로 이 관계가 사용된다.
+
+        </div>
+
+    </div>
+
+
+    <!-- ==================================================
+         2. 시뮬레이션
+    =================================================== -->
+
+    <h2>뮤온 시뮬레이션</h2>
+
+    <p class="description">
+
+        뮤온이 대기 상층에서 생성되어
+        위에서 아래로 이동한다.
+
+    </p>
+
+
+    <!-- 장면 -->
+
+    <div class="scene">
+
+        <div class="sky"></div>
+
+
+        <!-- 생성 위치 -->
+
+        <div
+            style="
+                position:absolute;
+                left:12px;
+                top:12px;
+                font-size:12px;
+                color:#666;
+            ">
+
+            뮤온 생성 · 약 10 km
+
+        </div>
+
+
+        <!-- 아래 방향 화살표 -->
+
+        <div class="arrow"></div>
+
+
+        <!-- 뮤온 -->
+
+        <div
+            id="muon"
+            class="muon">
+
+            μ
+
+        </div>
+
+
+        <!-- 지상 -->
+
+        <div class="ground"></div>
+
+
+        <div
+            style="
+                position:absolute;
+                left:12px;
+                bottom:16px;
+                font-size:12px;
+                color:#666;
+            ">
+
+            지상
+
+        </div>
+
+
+        <!-- 졸라맨 -->
+
+        <div
+            class="observer">
+
+            <div class="head"></div>
+
+            <div class="body"></div>
+
+            <div class="arm1"></div>
+
+            <div class="arm2"></div>
+
+            <div class="leg1"></div>
+
+            <div class="leg2"></div>
+
+        </div>
+
+
+        <div class="observer-label">
+
+            관찰자
+
+        </div>
+
+    </div>
+
+
+    <!-- ==================================================
+         3. 속도 조절
+    =================================================== -->
+
+    <div class="panel">
+
+        <label
+            for="beta"
+            style="font-weight:bold;">
+
+            뮤온 속도:
+
+            <span id="speedText">
+                0.9900c
+            </span>
+
+        </label>
+
+
+        <input
+            id="beta"
+            type="range"
+
+            min="0.5000"
+            max="0.9999"
+            step="0.0001"
+
+            value="0.9900">
+
+
+        <div
+            id="message"
+            style="
+                margin-top:12px;
+                font-size:14px;
+                font-weight:bold;
+            ">
+
+        </div>
+
+    </div>
+
+
+    <!-- ==================================================
+         4. 수치
+    =================================================== -->
+
+    <div class="stats">
+
+        <div class="stat">
+
+            <div class="stat-title">
+                로런츠 인자 γ
+            </div>
+
+            <div
+                id="gamma"
+                class="stat-value">
+            </div>
+
+        </div>
+
+
+        <div class="stat">
+
+            <div class="stat-title">
+                관찰자 기준 수명
+            </div>
+
+            <div
+                id="life"
+                class="stat-value">
+            </div>
+
+        </div>
+
+
+        <div class="stat">
+
+            <div class="stat-title">
+                평균 이동거리
+            </div>
+
+            <div
+                id="dist"
+                class="stat-value">
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ==================================================
+         5. 그래프
+    =================================================== -->
+
+    <div class="panel">
+
+        <div style="font-weight:bold;">
+
+            속도와 평균 이동거리의 관계
+
+        </div>
+
+        <div
+            class="description">
+
+            v가 c에 가까워질수록
+            γ가 커지면서 평균 이동거리도 증가한다.
+
+        </div>
+
+
+        <div
+            id="chart"
+            class="chart">
+
+
+            <svg
+                viewBox="0 0 600 180"
+                preserveAspectRatio="none">
+
+
+                <!-- 기준선 -->
+
+                <line
+                    x1="0"
+                    y1="179"
+                    x2="600"
+                    y2="179"
+
+                    stroke="#777"
+                    opacity="0.3"/>
+
+
+                <line
+                    x1="0"
+                    y1="90"
+                    x2="600"
+                    y2="90"
+
+                    stroke="#777"
+                    opacity="0.15"/>
+
+
+                <!-- 그래프 -->
+
+                <polyline
+                    id="poly"
+                    fill="none"
+                    stroke="#333"
+                    stroke-width="3"
+                    points="">
+                </polyline>
+
+            </svg>
+
+
+            <!-- 현재 위치 -->
+
+            <div
+                id="selectedPoint"
+                class="selected-point">
+
+            </div>
+
+
+            <!-- 축 표시 -->
+
+            <div
+                class="axis-label axis-bottom-left">
+
+                0.50c
+
+            </div>
+
+
+            <div
+                class="axis-label axis-bottom-right">
+
+                0.9999c
+
+            </div>
+
+
+            <div
+                class="axis-label axis-left">
+
+                큰 거리
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ==================================================
+         6. 설명
+    =================================================== -->
+
+    <p
+        class="description"
+        style="
+            margin-top:25px;
+            line-height:1.8;
+        ">
+
+        앞의 문제에서 본
+
+        <strong>
+            Δt = γΔτ
+        </strong>
+
+        가 여기서도 그대로 적용된다.
+
+        뮤온의 고유수명은 약 2.2 μs이지만,
+        지상 관찰자에게는 시간 지연 때문에
+        더 오래 사는 것처럼 측정된다.
+
+    </p>
+
+</div>
+
+
+<!-- ======================================================
+     JAVASCRIPT
+======================================================= -->
+
+<script>
+
+(function () {
+
+
+    /* ==================================================
+       1. 특수상대론 문제
+    =================================================== */
+
+    const choices =
+        document.querySelectorAll(".choice");
+
+    const quizResult =
+        document.getElementById("quizResult");
+
+    const quizExplain =
+        document.getElementById("quizExplain");
+
+
+    choices.forEach(function (button) {
+
+        button.addEventListener(
+            "click",
+            function () {
+
+
+                /* 기존 선택 제거 */
+
+                choices.forEach(function (b) {
+
+                    b.classList.remove("selected");
+
+                });
+
+
+                /* 현재 선택 */
+
+                button.classList.add("selected");
+
+
+                /* 정답 확인 */
+
+                const answer =
+                    button.dataset.answer;
+
+
+                if (answer === "11") {
+
+                    quizResult.textContent =
+                        "정답! Δt = γΔτ = 11 μs";
+
+                    quizExplain.style.display =
+                        "block";
+
+                }
+
+                else {
+
+                    quizResult.textContent =
+                        "다시 생각해 보자. 정지한 관찰자가 측정하는 시간은 γ배로 늘어난다.";
+
+                    quizExplain.style.display =
+                        "none";
+
+                }
+
+            }
+        );
+
+    });
+
+
+    /* ==================================================
+       2. 시뮬레이션 요소
+    =================================================== */
+
+    const beta =
+        document.getElementById("beta");
+
+    const speedText =
+        document.getElementById("speedText");
+
+    const gammaElement =
+        document.getElementById("gamma");
+
+    const lifeElement =
+        document.getElementById("life");
+
+    const distanceElement =
+        document.getElementById("dist");
+
+    const message =
+        document.getElementById("message");
+
+    const muon =
+        document.getElementById("muon");
+
+    const point =
+        document.getElementById("selectedPoint");
+
+    const poly =
+        document.getElementById("poly");
+
+
+    /* ==================================================
+       3. 물리 상수
+    =================================================== */
+
+    const c =
+        299792458;
+
+    /*
+        빛의 속도
+        단위: m/s
+    */
+
+
+    const tau =
+        2.2e-6;
+
+    /*
+        뮤온 고유수명
+        2.2 μs
+    */
+
+
+    const height =
+        10000;
+
+    /*
+        뮤온 생성 고도
+        10 km
+    */
+
+
+    /* ==================================================
+       4. 상대론 계산
+    =================================================== */
+
+    function calculate(beta) {
+
+
+        /*
+            로런츠 인자
+
+            γ = 1 / sqrt(1 - β²)
+        */
+
+        const gamma =
+            1 /
+            Math.sqrt(
+                1 - beta * beta
+            );
+
+
+        /*
+            관찰자 기준 수명
+
+            Δt = γΔτ
+        */
+
+        const lifetime =
+            gamma * tau;
+
+
+        /*
+            평균 이동거리
+
+            d = vt
+        */
+
+        const distance =
+            beta *
+            c *
+            lifetime;
+
+
+        return {
+
+            gamma:
+                gamma,
+
+            lifetime:
+                lifetime,
+
+            distance:
+                distance
+
+        };
+
+    }
+
+
+    /* ==================================================
+       5. 그래프 업데이트
+    =================================================== */
+
+    function updateGraph(currentBeta) {
+
+
+        const numberOfPoints =
+            80;
+
+
+        let maximumDistance = 0;
+
+
+        /*
+            그래프 전체에서
+            최대 이동거리 찾기
+        */
+
+        for (
+            let i = 0;
+            i < numberOfPoints;
+            i++
+        ) {
+
+            const b =
+                0.5 +
+                (0.9999 - 0.5)
+                * i /
+                (numberOfPoints - 1);
+
+
+            const result =
+                calculate(b);
+
+
+            maximumDistance =
+                Math.max(
+                    maximumDistance,
+                    result.distance
+                );
+
+        }
+
+
+        /*
+            그래프 점 생성
+        */
+
+        let points = [];
+
+
+        for (
+            let i = 0;
+            i < numberOfPoints;
+            i++
+        ) {
+
+            const b =
+                0.5 +
+                (0.9999 - 0.5)
+                * i /
+                (numberOfPoints - 1);
+
+
+            const result =
+                calculate(b);
+
+
+            const x =
+                600 *
+                i /
+                (numberOfPoints - 1);
+
+
+            const y =
+                178 -
+                176 *
+                Math.min(
+                    1,
+                    result.distance /
+                    maximumDistance
+                );
+
+
+            points.push(
+                x.toFixed(1)
+                + ","
+                + y.toFixed(1)
+            );
+
+        }
+
+
+        /*
+            실제 그래프에 적용
+        */
+
+        poly.setAttribute(
+            "points",
+            points.join(" ")
+        );
+
+
+        /*
+            현재 속도의 위치 표시
+        */
+
+        const currentResult =
+            calculate(currentBeta);
+
+
+        const xPosition =
+            (
+                (currentBeta - 0.5)
+                /
+                (0.9999 - 0.5)
+            ) * 100;
+
+
+        const yPosition =
+            Math.min(
+                100,
+                currentResult.distance /
+                maximumDistance *
+                100
+            );
+
+
+        point.style.left =
+            xPosition.toFixed(2)
+            + "%";
+
+
+        point.style.bottom =
+            yPosition.toFixed(2)
+            + "%";
+
+    }
+
+
+    /* ==================================================
+       6. 전체 시뮬레이션 업데이트
+    =================================================== */
+
+    function updateSimulation() {
+
+
+        let b =
+            Number(beta.value);
+
+
+        /*
+            혹시 잘못된 값이 들어오면
+            기본값 사용
+        */
+
+        if (!Number.isFinite(b)) {
+
+            b = 0.99;
+
+        }
+
+
+        /*
+            범위 제한
+        */
+
+        b =
+            Math.max(
+                0.5,
+                Math.min(
+                    0.9999,
+                    b
+                )
+            );
+
+
+        /*
+            물리 계산
+        */
+
+        const result =
+            calculate(b);
+
+
+        /* 속도 */
+
+        speedText.textContent =
+            b.toFixed(4)
+            + "c";
+
+
+        /* 로런츠 인자 */
+
+        gammaElement.textContent =
+            result.gamma.toFixed(2);
+
+
+        /* 관찰자 기준 수명 */
+
+        lifeElement.textContent =
+            (
+                result.lifetime
+                * 1e6
+            ).toFixed(2)
+            + " μs";
+
+
+        /* 이동거리 */
+
+        distanceElement.textContent =
+            (
+                result.distance
+                / 1000
+            ).toFixed(2)
+            + " km";
+
+
+        /* ==================================================
+           뮤온 위치
+        =================================================== */
+
+
+        /*
+            10 km를 기준으로
+            뮤온의 위치를 표시
+        */
+
+        const progress =
+            Math.min(
+                94,
+                result.distance /
+                height *
+                94
+            );
+
+
+        muon.style.top =
+            "calc("
+            + progress.toFixed(2)
+            + "% - 8px)";
+
+
+        /* ==================================================
+           지상 도달 여부
+        =================================================== */
+
+        if (
+            result.distance >= height
+        ) {
+
+            message.textContent =
+                "이 속도에서는 평균적으로 지상까지 도달할 수 있다.";
+
+        }
+
+        else {
+
+            message.textContent =
+                "이 속도에서는 평균적으로 지상 도달 전에 붕괴한다.";
+
+        }
+
+
+        /* 그래프 */
+
+        updateGraph(b);
+
+    }
+
+
+    /* ==================================================
+       7. 슬라이더 이벤트
+    =================================================== */
+
+    beta.addEventListener(
+        "input",
+        updateSimulation
+    );
+
+
+    /* ==================================================
+       8. 최초 실행
+    =================================================== */
+
+    updateSimulation();
+
+
+})();
+
+</script>
+
+</body>
+</html><script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>특수상대성이론 - 시간 지연 시뮬레이션</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,"Malgun Gothic",sans-serif;background:#0b1020;color:#eef2ff}
+.container{max-width:1100px;margin:0 auto;padding:28px}
+h1{margin:0 0 8px;font-size:30px}
+.subtitle{color:#aab5d6;margin-bottom:24px}
+.card{background:#151c31;border:1px solid #293552;border-radius:18px;padding:22px;margin-bottom:18px;box-shadow:0 12px 30px #0004}
+label{font-weight:bold}
+input[type=range]{width:100%;margin:18px 0 8px}
+.speedline{display:flex;justify-content:space-between;align-items:center}
+.value{font-size:28px;font-weight:bold}
+.stage{height:250px;background:#080c17;border-radius:14px;position:relative;overflow:hidden;border:1px solid #27314b}
+.track{position:absolute;left:6%;right:6%;top:50%;height:3px;background:#394766}
+.rocket{position:absolute;top:calc(50% - 28px);left:8%;width:56px;height:56px;border-radius:50%;background:#8fb7ff;box-shadow:0 0 25px #6ea0ff;transition:left .15s linear}
+.rocket:after{content:"";position:absolute;left:-26px;top:18px;border-right:30px solid #ffb45c;border-top:10px solid transparent;border-bottom:10px solid transparent}
+.observer{position:absolute;bottom:18px;left:8%;font-size:14px;color:#aab5d6}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.stat{background:#0e1527;border-radius:12px;padding:16px}
+.stat .name{color:#9aa8cc;font-size:14px}
+.stat .num{font-size:25px;font-weight:bold;margin-top:6px}
+canvas{width:100%;height:280px;background:#0b1120;border-radius:12px}
+.explain{line-height:1.7;color:#cbd4ed}
+.formula{font-size:21px;text-align:center;padding:14px;background:#0e1527;border-radius:12px;margin-top:15px}
+.warning{color:#ffc978;font-size:14px}
+@media(max-width:750px){.grid{grid-template-columns:1fr}.container{padding:16px}}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>특수상대성이론: 시간 지연 시뮬레이션</h1>
+  <div class="subtitle">속도가 빛의 속도에 가까워질수록 시간은 어떻게 측정될까?</div>
+
+  <div class="card">
+    <div class="speedline">
+      <label for="speed">우주선의 속도</label>
+      <div class="value"><span id="speedValue">50</span>% c</div>
+    </div>
+    <input id="speed" type="range" min="0" max="99.9" step="0.1" value="50">
+    <div class="speedline">
+      <span>0% c</span><span>빛의 속도에 가까워짐 →</span><span>99.9% c</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+      <div class="track"></div>
+      <div class="rocket" id="rocket"></div>
+      <div class="observer">정지한 관측자</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="stat"><div class="name">속도</div><div class="num" id="velocity">50.0% c</div></div>
+    <div class="stat"><div class="name">로렌츠 인자 γ</div><div class="num" id="gamma">1.155</div></div>
+    <div class="stat"><div class="name">관측자 시간</div><div class="num">10.00 s</div></div>
+  </div>
+
+  <div class="card">
+    <div class="stat" style="margin-bottom:14px">
+      <div class="name">우주선 안의 시계가 측정한 시간</div>
+      <div class="num" id="proper">8.66 s</div>
+    </div>
+    <div class="explain" id="explain"></div>
+    <div class="formula">Δt = γΔτ &nbsp;&nbsp;&nbsp; γ = 1 / √(1 − v²/c²)</div>
+  </div>
+
+  <div class="card">
+    <h2>속도와 시간 지연의 관계</h2>
+    <canvas id="chart" width="1000" height="280"></canvas>
+    <p class="warning">※ 이 시뮬레이션은 개념 이해를 위한 모델입니다. v는 빛의 속도 c에 대한 비율로 표시합니다.</p>
+  </div>
+</div>
+
+<script>
+const speed=document.getElementById("speed");
+const speedValue=document.getElementById("speedValue");
+const velocity=document.getElementById("velocity");
+const gammaEl=document.getElementById("gamma");
+const proper=document.getElementById("proper");
+const explain=document.getElementById("explain");
+const rocket=document.getElementById("rocket");
+const canvas=document.getElementById("chart");
+const ctx=canvas.getContext("2d");
+const observerTime=10;
+
+function gamma(v){return 1/Math.sqrt(1-v*v)}
+function update(){
+  const p=Number(speed.value);
+  const v=p/100;
+  const g=gamma(v);
+  const tau=observerTime/g;
+
+  speedValue.textContent=p.toFixed(1);
+  velocity.textContent=p.toFixed(1)+"% c";
+  gammaEl.textContent=g.toFixed(3);
+  proper.textContent=tau.toFixed(2)+" s";
+  rocket.style.left=(8+p*0.82)+"%";
+
+  if(p<10){
+    explain.textContent="속도가 빛의 속도에 비해 매우 작을 때는 시간 지연이 거의 나타나지 않습니다.";
+  }else{
+    explain.textContent=`정지한 관측자에게 10초가 흐르는 동안 우주선 안의 시계는 약 ${tau.toFixed(2)}초를 측정합니다. 속도가 증가할수록 로렌츠 인자 γ가 커지고 시간 지연 효과도 커집니다.`;
+  }
+  drawChart(p);
+}
+
+function drawChart(current){
+  const w=canvas.width,h=canvas.height;
+  ctx.clearRect(0,0,w,h);
+
+  const left=65,right=25,top=25,bottom=45;
+  const pw=w-left-right, ph=h-top-bottom;
+
+  ctx.strokeStyle="#33415f";
+  ctx.lineWidth=1;
+  for(let i=0;i<=5;i++){
+    const y=top+ph*i/5;
+    ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(w-right,y);ctx.stroke();
+  }
+  for(let i=0;i<=5;i++){
+    const x=left+pw*i/5;
+    ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,h-bottom);ctx.stroke();
+  }
+
+  ctx.strokeStyle="#8fb7ff";
+  ctx.lineWidth=3;
+  ctx.beginPath();
+  for(let i=0;i<=999;i++){
+    const v=i/1000*0.999;
+    const g=gamma(v);
+    const x=left+pw*(v/0.999);
+    const y=top+ph*(1-Math.min(g,10)/10);
+    if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  const cv=Math.min(current/100,0.999);
+  const cg=gamma(cv);
+  const cx=left+pw*(cv/0.999);
+  const cy=top+ph*(1-Math.min(cg,10)/10);
+  ctx.fillStyle="#ffb45c";
+  ctx.beginPath();ctx.arc(cx,cy,6,0,Math.PI*2);ctx.fill();
+
+  ctx.fillStyle="#aab5d6";
+  ctx.font="14px Arial";
+  ctx.fillText("로렌츠 인자 γ",10,18);
+  ctx.fillText("0",left-12,h-bottom+5);
+  ctx.fillText("속도 v/c",w-75,h-12);
+  ctx.fillText("1",left-20,top+ph);
+  ctx.fillText("10",left-28,top+5);
+}
+speed.addEventListener("input",update);
+update();
+</script>
+</body>
+</html><h1>안녕하세요</h1>
+<p>여기에 내용을 작성하세요.</p><script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

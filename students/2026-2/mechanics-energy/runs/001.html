@@ -1,0 +1,619 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>포물선 운동 시뮬레이션 (시작/끝 지점 확인 개선)</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background-color: #f0f0f0; padding: 20px; }
+        canvas { background-color: white; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: crosshair; }
+        .controls, .history-panel { background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 850px; box-sizing: border-box; padding: 15px; margin-top: 15px; }
+        .controls { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+        .control-group { display: flex; flex-direction: column; gap: 5px; }
+        .control-group input[type="number"] { padding: 5px; width: 90px; font-size: 14px; }
+        .checkbox-group { display: flex; align-items: center; gap: 5px; font-weight: bold; color: #d32f2f; }
+        .stats { margin-top: 15px; font-weight: bold; color: #333; }
+        button { padding: 10px 20px; border: none; border-radius: 4px; background-color: #007bff; color: white; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #0056b3; }
+        .clear-btn { background-color: #dc3545; }
+        .clear-btn:hover { background-color: #a71d2a; }
+        
+        .history-panel h3 { margin-top: 0; margin-bottom: 10px; color: #333; font-size: 16px; }
+        table { width: 100%; border-collapse: collapse; text-align: center; font-size: 14px; }
+        th, td { border: 1px solid #ddd; padding: 6px; }
+        th { background-color: #f8f9fa; }
+        .color-box { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: middle; }
+        
+        .delete-btn { padding: 4px 8px; font-size: 12px; background-color: #ff4d4f; }
+        .delete-btn:hover { background-color: #d9363e; }
+
+        .legend { margin-top: 5px; font-size: 13px; color: #555; }
+        .legend span { margin-right: 15px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <canvas id="simCanvas" width="800" height="400"></canvas>
+    
+    <div class="legend">
+        <span style="color: #4caf50;">● 출발 지점</span>
+        <span style="color: #ff0000;">● 최고 높이 지점</span>
+        <span style="color: #2196f3;">● 착지 지점</span>
+    </div>
+
+    <div class="stats" id="statsDisplay">최대 높이: 0 m | 비행 거리: 0 m</div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label for="mass">질량 (g):</label>
+            <input type="number" id="mass" value="1000" min="1" step="10">
+        </div>
+        <div class="control-group">
+            <label for="angle">발사 각도 (도):</label>
+            <input type="number" id="angle" value="45" min="0" max="90" step="1">
+        </div>
+        <div class="control-group">
+            <label for="velocity">초기 속도 (m/s):</label>
+            <input type="number" id="velocity" value="5" min="0" step="0.5">
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="airResistance" style="width: 18px; height: 18px;">
+            <label for="airResistance">공기 저항 켜기</label>
+        </div>
+
+        <button id="fireBtn">발사</button>
+        <button id="clearBtn" class="clear-btn">전체 지우기</button>
+    </div>
+
+    <div class="history-panel">
+        <h3>발사 기록</h3>
+        <table id="historyTable">
+            <thead>
+                <tr>
+                    <th>색상</th>
+                    <th>번호</th>
+                    <th>공기저항</th>
+                    <th>질량 (g)</th>
+                    <th>각도 (도)</th>
+                    <th>속도 (m/s)</th>
+                    <th>최대 높이 (m)</th>
+                    <th>고점 위치 (거리, m)</th>
+                    <th>비행 거리 (m)</th>
+                    <th>관리</th>
+                </tr>
+            </thead>
+            <tbody id="historyBody">
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const scale = 120; 
+        const g = 9.8; 
+        
+        let projectiles = [];
+        let launchCount = 0; 
+        let clickedPoint = null; 
+        let selectedProjectile = null; 
+        let isDraggingPoint = false;
+
+        const angleInput = document.getElementById('angle');
+        const velocityInput = document.getElementById('velocity');
+        const massInput = document.getElementById('mass');
+        const airResistInput = document.getElementById('airResistance');
+        const statsDisplay = document.getElementById('statsDisplay');
+        const historyBody = document.getElementById('historyBody');
+
+        function drawGrid() {
+            ctx.lineWidth = 1;
+            ctx.font = '11px sans-serif';
+            ctx.fillStyle = '#888'; 
+            
+            for (let x = 0; x <= 600; x += 1 * scale) {
+                ctx.beginPath(); 
+                ctx.strokeStyle = '#eaeaea';
+                ctx.moveTo(x, 0); 
+                ctx.lineTo(x, canvas.height); 
+                ctx.stroke();
+
+                const meters = (x / scale).toFixed(1);
+                if (x > 0) {
+                    ctx.textAlign = 'center';
+                    ctx.fillText(meters + 'm', x, canvas.height - 5);
+                }
+            }
+
+            for (let y = canvas.height; y >= 0; y -= 1 * scale) {
+                ctx.beginPath(); 
+                ctx.strokeStyle = '#eaeaea';
+                ctx.moveTo(0, y); 
+                ctx.lineTo(600, y); 
+                ctx.stroke();
+
+                const meters = ((canvas.height - y) / scale).toFixed(1);
+                if (canvas.height - y > 0) {
+                    ctx.textAlign = 'left';
+                    ctx.fillText(meters + 'm', 5, y + 12);
+                }
+            }
+        }
+
+        function drawEnergyChart() {
+            ctx.fillStyle = '#f8f9fa';
+            ctx.fillRect(600, 0, 200, canvas.height);
+            ctx.strokeStyle = '#ccc';
+            ctx.strokeRect(600, 0, 200, canvas.height);
+
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 15px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('역학적 에너지 (J)', 700, 30);
+
+            let pe = 0, ke = 0, totalE = 0;
+            let initialE = 0;
+
+            if (clickedPoint) {
+                pe = clickedPoint.pe;
+                ke = clickedPoint.ke;
+                totalE = pe + ke;
+                initialE = clickedPoint.initialE;
+            } else if (projectiles.length > 0) {
+                const p = projectiles[projectiles.length - 1];
+                if (p && p.path.length > 0) {
+                    const lastPt = p.path[p.path.length - 1];
+                    pe = lastPt.pe;
+                    ke = lastPt.ke;
+                    totalE = pe + ke;
+                    initialE = 0.5 * p.massKg * p.v0 * p.v0;
+                }
+            } else {
+                return;
+            }
+
+            if (totalE <= 0 || initialE <= 0) return;
+
+            const maxBarHeight = 280;
+            const barWidth = 60;
+            const startX = 670;
+            const startY = 350;
+
+            const peHeight = (pe / initialE) * maxBarHeight;
+            const keHeight = (ke / initialE) * maxBarHeight;
+            let lossHeight = maxBarHeight - (peHeight + keHeight);
+            
+            if(lossHeight < 0.5) lossHeight = 0; 
+
+            ctx.fillStyle = '#3498db'; 
+            ctx.fillRect(startX, startY - peHeight, barWidth, peHeight);
+
+            ctx.fillStyle = '#e74c3c'; 
+            ctx.fillRect(startX, startY - peHeight - keHeight, barWidth, keHeight);
+
+            if (lossHeight > 1) {
+                ctx.fillStyle = '#bdc3c7';
+                ctx.fillRect(startX, startY - maxBarHeight, barWidth, lossHeight);
+            }
+
+            ctx.fillStyle = '#fff';
+            ctx.font = '12px sans-serif';
+            if (peHeight > 20) ctx.fillText('위치E', 700, startY - peHeight/2 + 4);
+            if (keHeight > 20) ctx.fillText('운동E', 700, startY - peHeight - keHeight/2 + 4);
+            
+            ctx.fillStyle = '#333';
+            if (lossHeight > 20) ctx.fillText('손실E', 700, startY - maxBarHeight + lossHeight/2 + 4);
+
+            ctx.fillText(`현재 총합: ${totalE.toFixed(2)} J`, 700, 380);
+        }
+
+        class Projectile {
+            constructor(id, angle, velocity, massGrams, hasAirResistance) {
+                this.id = id;
+                this.rad = angle * (Math.PI / 180);
+                this.v0 = velocity;
+                this.massGrams = massGrams;
+                this.massKg = massGrams / 1000;
+                this.hasAirResistance = hasAirResistance;
+                
+                this.k = 0.1; 
+                
+                this.x = 0;
+                this.y = 0;
+                this.vx = this.v0 * Math.cos(this.rad);
+                this.vy = this.v0 * Math.sin(this.rad);
+                
+                this.time = 0;
+                this.path = [];
+                
+                this.maxH = 0;
+                this.maxR = 0;
+                this.peakPoint = null; 
+                this.initialE = 0.5 * this.massKg * this.v0 * this.v0;
+                
+                this.color = `hsl(${Math.random() * 360}, 80%, 45%)`;
+                this.active = true;
+            }
+
+            getAcceleration(vx, vy) {
+                let ax = 0;
+                let ay = -g;
+                if (this.hasAirResistance) {
+                    ax = -(this.k / this.massKg) * vx;
+                    ay = -g - (this.k / this.massKg) * vy;
+                }
+                return { ax, ay };
+            }
+
+            update(dt) {
+                if (!this.active) return;
+                
+                const prevX = this.x;
+                const prevY = this.y;
+                const prevVx = this.vx;
+                const prevVy = this.vy;
+                const prevTime = this.time;
+
+                const a1 = this.getAcceleration(this.vx, this.vy);
+                const k1_vx = a1.ax, k1_vy = a1.ay, k1_x = this.vx, k1_y = this.vy;
+
+                const a2 = this.getAcceleration(this.vx + k1_vx * dt * 0.5, this.vy + k1_vy * dt * 0.5);
+                const k2_vx = a2.ax, k2_vy = a2.ay, k2_x = this.vx + k1_vx * dt * 0.5, k2_y = this.vy + k1_vy * dt * 0.5;
+
+                const a3 = this.getAcceleration(this.vx + k2_vx * dt * 0.5, this.vy + k2_vy * dt * 0.5);
+                const k3_vx = a3.ax, k3_vy = a3.ay, k3_x = this.vx + k2_vx * dt * 0.5, k3_y = this.vy + k2_vy * dt * 0.5;
+
+                const a4 = this.getAcceleration(this.vx + k3_vx * dt, this.vy + k3_vy * dt);
+                const k4_vx = a4.ax, k4_vy = a4.ay, k4_x = this.vx + k3_vx * dt, k4_y = this.vy + k3_vy * dt;
+
+                this.x += (dt / 6) * (k1_x + 2 * k2_x + 2 * k3_x + k4_x);
+                this.y += (dt / 6) * (k1_y + 2 * k2_y + 2 * k3_y + k4_y);
+                this.vx += (dt / 6) * (k1_vx + 2 * k2_vx + 2 * k3_vx + k4_vx);
+                this.vy += (dt / 6) * (k1_vy + 2 * k2_vy + 2 * k3_vy + k4_vy);
+                
+                this.time += dt;
+
+                if (this.y <= 0 && this.time > 0.05) {
+                    const fraction = (0 - prevY) / (this.y - prevY);
+                    const clampedFraction = Math.max(0, Math.min(1, fraction));
+                    
+                    this.x = prevX + clampedFraction * (this.x - prevX);
+                    this.y = 0;
+                    this.vx = prevVx + clampedFraction * (this.vx - prevVx);
+                    this.vy = prevVy + clampedFraction * (this.vy - prevVy);
+                    this.time = prevTime + clampedFraction * dt; 
+                    
+                    this.active = false;
+                    this.maxR = this.x;
+                }
+
+                const currentV2 = this.vx * this.vx + this.vy * this.vy;
+                const currentSpeed = Math.sqrt(currentV2);
+                const ke = 0.5 * this.massKg * currentV2;
+                const pe = this.massKg * g * this.y;
+
+                const pointData = {
+                    cx: this.x * scale,
+                    cy: canvas.height - (this.y * scale),
+                    realX: this.x,
+                    realY: this.y,
+                    speed: currentSpeed,
+                    ke: ke,
+                    pe: pe,
+                    initialE: this.initialE,
+                    time: this.time 
+                };
+
+                if (this.y > this.maxH) {
+                    this.maxH = this.y;
+                    this.peakPoint = { ...pointData };
+                }
+                
+                this.path.push(pointData);
+            }
+
+            draw() {
+                // 선 렌더링
+                ctx.beginPath();
+                ctx.strokeStyle = this.color;
+                if (this.hasAirResistance) {
+                    ctx.setLineDash([5, 5]); 
+                } else {
+                    ctx.setLineDash([]);
+                }
+                ctx.lineWidth = 2.5;
+                for (let i = 0; i < this.path.length; i++) {
+                    if (i === 0) ctx.moveTo(this.path[i].cx, this.path[i].cy);
+                    else ctx.lineTo(this.path[i].cx, this.path[i].cy);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]); 
+
+                // 시작 지점(초록색) 마커 렌더링
+                if (this.path.length > 0) {
+                    const startPos = this.path[0];
+                    ctx.beginPath();
+                    ctx.arc(startPos.cx, startPos.cy, 7, 0, Math.PI * 2);
+                    ctx.fillStyle = '#4caf50';
+                    ctx.fill();
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+
+                // 끝 지점(파란색) 마커 렌더링 (착지 완료 후)
+                if (!this.active && this.path.length > 0) {
+                    const endPos = this.path[this.path.length - 1];
+                    ctx.beginPath();
+                    ctx.arc(endPos.cx, endPos.cy, 7, 0, Math.PI * 2);
+                    ctx.fillStyle = '#2196f3';
+                    ctx.fill();
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+
+                // 최고 높이(빨간색) 마커 렌더링
+                if (this.peakPoint) {
+                    ctx.beginPath();
+                    ctx.arc(this.peakPoint.cx, this.peakPoint.cy, 7, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ff0000';
+                    ctx.fill();
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            }
+        }
+
+        function animate() {
+            const dt = 0.006; 
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+
+            projectiles.forEach(p => {
+                if(p.active) {
+                    p.update(dt);
+                }
+                p.draw();
+            });
+
+            if (clickedPoint) {
+                const boxW = 160;
+                const boxH = 110; 
+                let bx = clickedPoint.cx + 15;
+                let by = clickedPoint.cy - boxH - 15;
+
+                if (bx + boxW > 600) bx = clickedPoint.cx - boxW - 15;
+                if (by < 10) by = clickedPoint.cy + 20;
+
+                ctx.fillStyle = 'rgba(20, 20, 20, 0.9)';
+                ctx.fillRect(bx, by, boxW, boxH);
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(bx, by, boxW, boxH);
+
+                ctx.beginPath();
+                ctx.arc(clickedPoint.cx, clickedPoint.cy, 8, 0, Math.PI*2);
+                ctx.fillStyle = '#ffeb3b';
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#000000';
+                ctx.stroke();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 12px sans-serif';
+                ctx.textAlign = 'left';
+                
+                ctx.fillText(`📍 상태 정보`, bx + 12, by + 18);
+                ctx.font = '11px sans-serif';
+                ctx.fillText(`• 경과 시간: ${clickedPoint.time.toFixed(2)} s`, bx + 12, by + 34);
+                ctx.fillText(`• 위치: (${clickedPoint.realX.toFixed(2)}m, ${clickedPoint.realY.toFixed(2)}m)`, bx + 12, by + 50);
+                ctx.fillText(`• 속력: ${clickedPoint.speed.toFixed(2)} m/s`, bx + 12, by + 66);
+                ctx.fillText(`• 위치E: ${clickedPoint.pe.toFixed(2)} J`, bx + 12, by + 82);
+                ctx.fillText(`• 운동E: ${clickedPoint.ke.toFixed(2)} J`, bx + 12, by + 98);
+            }
+
+            drawEnergyChart();
+
+            requestAnimationFrame(animate);
+        }
+
+        function updateSelectedPointAlongPath(mouseX) {
+            if (!selectedProjectile || selectedProjectile.path.length === 0) return;
+            
+            const path = selectedProjectile.path;
+            
+            // 마우스가 시작점보다 왼쪽에 있으면 강제로 시작점 선택
+            if (mouseX <= path[0].cx) {
+                clickedPoint = path[0];
+                return;
+            }
+            
+            // 마우스가 끝점보다 오른쪽에 있으면 강제로 끝점 선택
+            if (mouseX >= path[path.length - 1].cx) {
+                clickedPoint = path[path.length - 1];
+                return;
+            }
+
+            // 그 외의 경우 X축 기준 가장 가까운 지점 찾기
+            let closest = path[0];
+            let minXDist = Math.abs(closest.cx - mouseX);
+
+            for (let pt of path) {
+                let xDist = Math.abs(pt.cx - mouseX);
+                if (xDist < minXDist) {
+                    minXDist = xDist;
+                    closest = pt;
+                }
+            }
+
+            clickedPoint = closest;
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            if (mouseX > 600) return;
+
+            let closest = null;
+            let targetProj = null;
+            
+            // 1순위 검색: 주요 지점 (시작, 최고, 끝 지점)에 대한 마그네틱 자석 효과
+            let keyMinDist = 20; // 넉넉한 클릭 판정 범위
+            
+            for (let p of projectiles) {
+                if (p.path.length === 0) continue;
+                
+                const startPt = p.path[0];
+                const endPt = p.active ? null : p.path[p.path.length - 1];
+                const peakPt = p.peakPoint;
+                
+                const keyPoints = [startPt, peakPt, endPt].filter(pt => pt !== null);
+                
+                for (let pt of keyPoints) {
+                    const dx = pt.cx - mouseX;
+                    const dy = pt.cy - mouseY;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < keyMinDist) {
+                        keyMinDist = dist;
+                        closest = pt;
+                        targetProj = p;
+                    }
+                }
+            }
+            
+            // 2순위 검색: 주요 지점을 클릭하지 않았다면 일반 궤적에서 검색
+            if (!closest) {
+                let pathMinDist = 12; // 궤적 클릭 판정은 조금 더 좁게 설정
+                for (let p of projectiles) {
+                    for (let pt of p.path) {
+                        const dx = pt.cx - mouseX;
+                        const dy = pt.cy - mouseY;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        if (dist < pathMinDist) {
+                            pathMinDist = dist;
+                            closest = pt;
+                            targetProj = p;
+                        }
+                    }
+                }
+            }
+
+            if (closest && targetProj) {
+                clickedPoint = closest;
+                selectedProjectile = targetProj;
+                isDraggingPoint = true;
+            } else {
+                clickedPoint = null;
+                selectedProjectile = null;
+                isDraggingPoint = false;
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDraggingPoint || !selectedProjectile) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+
+            updateSelectedPointAlongPath(mouseX);
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDraggingPoint = false;
+        });
+
+        document.getElementById('fireBtn').addEventListener('click', () => {
+            let angle = parseFloat(angleInput.value);
+            if (isNaN(angle)) angle = 45;
+            if (angle < 0) angle = 0;
+            if (angle > 90) angle = 90;
+            angleInput.value = angle;
+
+            let velocity = parseFloat(velocityInput.value);
+            if (isNaN(velocity) || velocity < 0) {
+                velocity = 5;
+                velocityInput.value = 5;
+            }
+
+            let massGrams = parseFloat(massInput.value);
+            if (isNaN(massGrams) || massGrams <= 0) {
+                massGrams = 1000;
+                massInput.value = 1000;
+            }
+
+            const hasAir = airResistInput.checked;
+            
+            launchCount++;
+            const currentId = launchCount;
+
+            const newProjectile = new Projectile(currentId, angle, velocity, massGrams, hasAir);
+            projectiles.push(newProjectile);
+            clickedPoint = null; 
+            selectedProjectile = null;
+            isDraggingPoint = false;
+            
+            statsDisplay.innerText = "발사 중... (착탄 후 기록 갱신)";
+
+            const tr = document.createElement('tr');
+            tr.id = `row-${currentId}`;
+            tr.innerHTML = `
+                <td><span class="color-box" style="background-color: ${newProjectile.color};"></span></td>
+                <td>${currentId}</td>
+                <td>${hasAir ? 'O' : 'X'}</td>
+                <td>${massGrams}</td>
+                <td>${angle}</td>
+                <td>${velocity}</td>
+                <td id="maxH-${currentId}">-</td>
+                <td id="peakX-${currentId}">-</td>
+                <td id="maxR-${currentId}">-</td>
+                <td><button class="delete-btn" onclick="deleteProjectile(${currentId})">삭제</button></td>
+            `;
+            historyBody.prepend(tr);
+
+            const checkLanding = setInterval(() => {
+                if (!newProjectile.active) {
+                    const maxHEl = document.getElementById(`maxH-${currentId}`);
+                    const peakXEl = document.getElementById(`peakX-${currentId}`);
+                    const maxREl = document.getElementById(`maxR-${currentId}`);
+                    
+                    if (maxHEl) maxHEl.innerText = newProjectile.maxH.toFixed(2);
+                    if (peakXEl) peakXEl.innerText = newProjectile.peakPoint ? newProjectile.peakPoint.realX.toFixed(2) : '-';
+                    if (maxREl) maxREl.innerText = newProjectile.maxR.toFixed(2);
+                    
+                    statsDisplay.innerText = `최대 높이: ${newProjectile.maxH.toFixed(2)} m | 비행 거리: ${newProjectile.maxR.toFixed(2)} m`;
+                    clearInterval(checkLanding);
+                }
+            }, 100);
+        });
+
+        window.deleteProjectile = function(id) {
+            projectiles = projectiles.filter(p => p.id !== id);
+            const row = document.getElementById(`row-${id}`);
+            if (row) row.remove();
+            clickedPoint = null;
+            selectedProjectile = null;
+            isDraggingPoint = false;
+        };
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            projectiles = [];
+            launchCount = 0;
+            clickedPoint = null;
+            selectedProjectile = null;
+            isDraggingPoint = false;
+            statsDisplay.innerText = '최대 높이: 0 m | 비행 거리: 0 m';
+            historyBody.innerHTML = ''; 
+        });
+
+        requestAnimationFrame(animate);
+
+    </script>
+</body>
+</html><script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

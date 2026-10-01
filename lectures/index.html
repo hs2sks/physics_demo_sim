@@ -24,7 +24,12 @@
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .chip { border: 1px solid var(--border); background: var(--panel); color: var(--sub); padding: 5px 12px; border-radius: 20px; font: inherit; font-size: 0.85em; cursor: pointer; }
   .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
-  h2 { font-size: 1.15em; margin: 26px 0 4px; padding-bottom: 6px; border-bottom: 2px solid var(--border); }
+  details.subj { margin-top: 22px; }
+  details.subj > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 1.15em; font-weight: 700; padding-bottom: 6px; border-bottom: 2px solid var(--border); user-select: none; }
+  details.subj > summary::-webkit-details-marker { display: none; }
+  details.subj > summary::before { content: "▶"; font-size: 0.7em; color: var(--sub); transition: transform .15s; }
+  details.subj[open] > summary::before { transform: rotate(90deg); }
+  details.subj > summary .cnt { font-size: 0.75em; font-weight: 400; color: var(--sub); }
   h3 { font-size: 0.95em; color: var(--sub); margin: 14px 0 8px; font-weight: 600; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
   .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-decoration: none; color: inherit; display: block; transition: transform .1s, box-shadow .1s; }
@@ -90,6 +95,7 @@
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 let decks = [];
 let subject = "전체";
+const closed = new Set(); // 접어 둔 과목
 
 function render() {
   const host = document.getElementById("list");
@@ -105,7 +111,7 @@ function render() {
   host.innerHTML = subjects.map((sub) => {
     const inSub = shown.filter((d) => d.subject === sub);
     const units = [...new Set(inSub.map((d) => d.unit))];
-    return `<h2>${esc(sub)}</h2>` + units.map((u) => {
+    return `<details class="subj" data-s="${esc(sub)}"${closed.has(sub) ? "" : " open"}><summary>${esc(sub)} <span class="cnt">${inSub.length}</span></summary>` + units.map((u) => {
       const cards = inSub.filter((d) => d.unit === u).map((d) => `
         <a class="card" href="${esc(d.path)}" target="_blank" rel="noopener">
           <div class="date">${esc(d.date)}</div>
@@ -114,8 +120,11 @@ function render() {
           ${d.tags && d.tags.length ? `<div class="tags">${d.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join("")}</div>` : ""}
         </a>`).join("");
       return `<h3>${esc(u)}</h3><div class="grid">${cards}</div>`;
-    }).join("");
+    }).join("") + `</details>`;
   }).join("");
+  host.querySelectorAll("details.subj").forEach((el) => el.addEventListener("toggle", () => {
+    if (el.open) closed.delete(el.dataset.s); else closed.add(el.dataset.s);
+  }));
 }
 
 function renderChips() {

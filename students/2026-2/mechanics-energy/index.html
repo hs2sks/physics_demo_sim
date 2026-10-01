@@ -28,7 +28,6 @@
   .empty{text-align:center;padding:60px 20px;color:var(--muted);}
   footer{margin-top:36px;color:var(--muted);font-size:.82em;text-align:center;}
   .rate{display:flex;align-items:center;gap:10px;white-space:nowrap;}
-  .avg{font-size:.82em;color:var(--muted);font-variant-numeric:tabular-nums;min-width:64px;text-align:right;}
   .rv{font:inherit;font-size:.85em;font-weight:600;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;}
   .rv:hover{border-color:var(--accent);color:var(--accent);}
   .rv.done{background:#eef7ef;border-color:#b9dcbf;color:#1d6b33;}
@@ -116,7 +115,7 @@ const MIN_LEN = 20;
 const STAR_LABELS = ["", "아쉬워요", "조금 아쉬워요", "괜찮아요", "좋아요", "최고예요"];
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const $ = (id) => document.getElementById(id);
-let items = [], summary = {}, mine = {}, cred = null;
+let items = [], mine = {}, cred = null;
 
 // 공용 PC를 고려해 로그인 정보는 탭을 닫으면 사라지는 sessionStorage에만 둔다
 const store = {
@@ -137,15 +136,14 @@ function render() {
   $("count").innerHTML = `<b>${shown.length}</b>건 표시 중 (전체 ${items.length}건)`;
   $("empty").style.display = shown.length ? "none" : "block";
   $("log").innerHTML = shown.map((s) => {
-    const sm = summary[s.no], my = mine[s.no];
-    const avg = sm ? `${sm.count}명 평가` : "평가 없음";
+    const my = mine[s.no];
     const btn = my ? `<button class="rv done" data-no="${s.no}">✓ ${"★".repeat(my.stars)} 수정</button>`
                    : `<button class="rv" data-no="${s.no}" ${cred ? "" : "disabled title='위에서 학번·이름·비밀번호를 먼저 입력하세요'"}>평가하기</button>`;
     return `
     <div class="row">
       <div class="runid">학생-${String(s.no).padStart(2, "0")}</div>
       <div><div class="title">${esc(s.title)}</div><div class="date">${esc(s.date)}</div></div>
-      <div class="rate"><span class="avg">${avg}</span>${btn}</div>
+      <div class="rate">${btn}</div>
       <a class="go" href="${esc(s.run)}" target="_blank" rel="noopener">실행 →</a>
     </div>`;
   }).join("");
@@ -160,10 +158,6 @@ function renderMe() {
   $("meName").innerHTML = `<b>${esc(cred.name)}</b> (${esc(cred.student_id)})`;
   $("meCount").textContent = `${n} / ${items.length}개 평가함`;
   $("bar").style.width = items.length ? `${(n / items.length) * 100}%` : "0";
-}
-
-async function loadSummary() {
-  try { summary = (await api(`/api/reviews/summary?gallery=${encodeURIComponent(GALLERY)}`)).items; } catch { summary = {}; }
 }
 
 async function login(c) {
@@ -225,7 +219,7 @@ $("mSend").addEventListener("click", async () => {
     await api("/api/reviews", { gallery: GALLERY, ...cred, no: cur.no, stars: curStars, feedback });
     mine[cur.no] = { stars: curStars, feedback };
     closeModal();
-    await loadSummary(); render();
+    render();
   } catch (e) {
     $("mMsg").textContent = e.message;
   } finally {
@@ -242,7 +236,6 @@ fetch("items.json").then((r) => r.json()).then(async (data) => {
   items = data;
   $("q").addEventListener("input", render);
   render();
-  await loadSummary();
   const saved = store.get();
   if (saved) await login(saved); else render();
 }).catch(() => { $("empty").style.display = "block"; });

@@ -36,8 +36,9 @@ mechanics/                     역학
 ├── newton-second-law/         ⚖️ 뉴턴 제2법칙 가상 실험실  ✔ 완료
 ├── kepler-laws/                🪐 케플러 법칙 → 뉴턴 만유인력  ✔ 완료
 ├── circular-motion-vector/     🔄 등속원운동 벡터 워크벤치  ✔ 완료
+├── equilibrium/               ⚖️ 역학적 평형(병진·회전)  ✔ 완료
 └── black-ice/                 🧊 블랙아이스(마찰·제동 R&E 실험실)  ✔ 완료
-electromagnetism/              전자기            시뮬레이션 1개
+electromagnetism/              전자기            시뮬레이션 2개
 optics/                        광학              시뮬레이션 4개
 modern-physics/                현대물리
 └── photoelectric-effect/      💡 광전효과        ✔ 완료

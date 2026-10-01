@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>역학적 평형 — 병진 평형과 회전 평형</title>
+<style>
+  :root {
+    --bg: #f4f6fa; --panel: #ffffff; --ink: #1c2733; --sub: #5a6b7d;
+    --accent: #1f6fd6; --accent2: #d64545; --ok: #1e8f4e;
+    --border: #d7dee8; --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+  body {
+    font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+    background: var(--bg); color: var(--ink);
+    padding: 12px; font-size: 15px;
+  }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  header h1 { font-size: 1.25em; }
+  header .spacer { flex: 1; }
+  a.home { text-decoration:none; color:var(--sub); border:1px solid var(--border); padding:6px 12px; border-radius:8px; font-size:0.9em; white-space:nowrap; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .tabs button { flex: 0 0 auto; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 1em; }
+  .tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .layout { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .sim-col { flex: 2 1 480px; display: flex; flex-direction: column; gap: 12px; }
+  .side-col { flex: 1 1 320px; display: flex; flex-direction: column; gap: 12px; }
+
+  #sceneWrap { position: relative; width: 100%; aspect-ratio: 16/10; border-radius: 8px; overflow: hidden; background: radial-gradient(circle at 50% 30%, #16233a, #060a12 75%); }
+  #sceneWrap canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #hoverHint { position:absolute; left:8px; bottom:8px; color:#9fb3d9; font-size:0.78em; background:rgba(6,10,18,0.55); padding:4px 8px; border-radius:6px; pointer-events:none; }
+  #hoverHint:empty { display: none; }
+  #simError { position:absolute; left:8px; right:8px; top:8px; color:#fff; background:rgba(214,69,69,0.92); padding:6px 10px; border-radius:6px; font-size:0.82em; white-space:pre-wrap; }
+
+  .scenario-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .scenario-picker button { flex: 1 1 30%; min-width: 120px; padding: 8px 6px; font-size: 0.86em; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  .scenario-picker button.active { background: #eaf1fd; border-color: var(--accent); color: var(--accent); font-weight: 700; }
+
+  .param { margin-bottom: 10px; }
+  .param label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 4px; font-size: 0.92em; }
+  .param label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .param input[type=range] { width: 100%; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .hint { color: var(--sub); font-size: 0.83em; margin-top: 2px; line-height: 1.5; }
+
+  button { font-size: 1em; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.warn { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .controls-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.82em; color: var(--sub); margin-top: 8px; }
+  .legend:empty { display: none; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .swatch { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .swatch.bar { border-radius: 2px; }
+
+  table.readout { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+  table.readout td { padding: 4px 2px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  table.readout td:first-child { color: var(--sub); }
+  table.readout td:last-child { text-align: right; font-weight: 700; }
+
+  details { margin-top: 6px; }
+  summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+  .formula-body { padding: 8px 2px; line-height: 1.8; font-size: 0.92em; }
+  .formula-body .eq { font-size: 1.08em; text-align: center; margin: 6px 0; font-family: Georgia, serif; }
+  .note { border-left: 3px solid var(--accent); background: #eef4fd; padding: 8px 10px; border-radius: 6px; font-size: 0.86em; margin-top: 8px; line-height: 1.6; }
+  .note:empty { display: none; }
+  .misconception { border-left: 3px solid var(--accent2); background: #fdeeee; padding: 8px 10px; border-radius: 6px; font-size: 0.86em; margin-top: 8px; line-height: 1.6; }
+
+  canvas.chart { width: 100%; background: #fff; border: 1px solid var(--border); border-radius: 6px; }
+
+  body.projector { font-size: 19px; }
+  body.projector button { padding: 12px 18px; }
+  body.projector .scenario-picker button { font-size: 1em; padding: 12px 8px; }
+
+  @media (max-width: 720px) {
+    body { font-size: 16px; padding: 8px; }
+    .layout { flex-direction: column; }
+    .sim-col, .side-col { flex: 1 1 100%; }
+    button { padding: 11px 14px; }
+    input[type=range] { height: 26px; }
+  }
+/* ---- 레시피 입력 extra_css ---- */
+
+</style>
+</head>
+<body>
+
+<header>
+  
+  <h1>⚖️ 역학적 평형 — 병진 평형과 회전 평형</h1>
+  <span class="spacer"></span>
+  <button id="projectorBtn" title="프로젝터용 큰 글씨 모드">🖥 큰 글씨 모드</button>
+</header>
+
+<div class="tabs" id="tabs"></div>
+
+<div class="layout">
+
+  <div class="sim-col">
+    <div class="panel">
+      <div id="sceneWrap">
+        <div id="hoverHint"></div>
+        <div id="simError" hidden></div>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="panel" id="graphPanel" hidden>
+      <canvas id="chartCanvas" class="chart" width="440" height="220"></canvas>
+      <div class="hint" id="chartHint"></div>
+    </div>
+  </div>
+
+  <div class="side-col">
+
+    <div class="panel" id="scenarioPanel">
+      <div class="scenario-picker" id="scenarioPicker"></div>
+      <div id="scenarioBody"></div>
+      <div id="customPanel"></div>
+    </div>
+
+    <div class="panel" id="readoutPanel">
+      <b id="readoutTitle"></b>
+      <table class="readout" id="readout"></table>
+      <div class="note" id="readoutNote"></div>
+    </div>
+
+    <div class="panel">
+      <details id="formulaDetails">
+        <summary>📐 관련 공식 보기</summary>
+        <div class="formula-body" id="formulaBody"></div>
+      </details>
+    </div>
+
+    <div class="panel" id="misconceptionPanel"></div>
+
+  </div>
+</div>
+
+
+<script>
+const WS_CONFIG = {
+ "title": "역학적 평형 — 병진 평형과 회전 평형",
+ "renderer": "canvas2d",
+ "scene": {
+  "aspect": "16/10",
+  "hint": ""
+ },
+ "legend": [
+  {
+   "label": "중력 W",
+   "color": "#ff8f7a"
+  },
+  {
+   "label": "수직항력·경첩 힘",
+   "color": "#5eead4"
+  },
+  {
+   "label": "장력 T",
+   "color": "#ffd166"
+  },
+  {
+   "label": "작용한 힘 F",
+   "color": "#7aa9ff"
+  },
+  {
+   "label": "알짜힘 ΣF",
+   "color": "#ff5d73"
+  }
+ ],
+ "tabs": [
+  {
+   "id": "trans",
+   "label": "① 병진 평형 ΣF = 0"
+  },
+  {
+   "id": "rot",
+   "label": "② 회전 평형 Στ = 0"
+  },
+  {
+   "id": "prob",
+   "label": "③ 평형 문제 풀기"
+  }
+ ],
+ "scenarios": [
+  {
+   "id": "forces",
+   "tab": "trans",
+   "name": "세 힘의 합력",
+   "section": "제1 평형 조건",
+   "desc": "세 힘의 크기와 방향을 바꿔 힘 다각형이 닫히게(ΣF = 0) 만들어 보세요. ▶ 재생하면 알짜힘이 있을 때 물체가 가속됩니다(질량 1 kg).",
+   "misconception_title": "오개념: 평형이면 힘이 작용하지 않는다",
+   "misconception": "평형 상태에서도 힘은 여러 개 작용한다. 힘들의 벡터 합(알짜힘)이 0일 뿐이다. 알짜힘이 0이면 정지해 있거나 등속 운동을 계속한다 — '정지'만 평형인 것도 아니다.",
+   "formula": [
+    {
+     "eq_html": "ΣF = 0",
+     "text_html": "제1 평형 조건 (병진 평형)"
+    },
+    {
+     "eq_html": "ΣF<sub>x<\/sub> = 0,  ΣF<sub>y<\/sub> = 0",
+     "text_html": "(→ 방향 힘의 합) = (← 방향 힘의 합), (↑ 합) = (↓ 합)"
+    }
+   ],
+   "params": [
+    {
+     "key": "f1",
+     "label": "F₁ 크기",
+     "min": 0,
+     "max": 20,
+     "step": 0.5,
+     "value": 10,
+     "unit": "N"
+    },
+    {
+     "key": "a1",
+     "label": "F₁ 방향",
+     "min": 0,
+     "max": 360,
+     "step": 5,
+     "value": 0,
+     "unit": "°"
+    },
+    {
+     "key": "f2",
+     "label": "F₂ 크기",
+     "min": 0,
+     "max": 20,
+     "step": 0.5,
+     "value": 10,
+     "unit": "N"
+    },
+    {
+     "key": "a2",
+     "label": "F₂ 방향",
+     "min": 0,
+     "max": 360,
+     "step": 5,
+     "value": 120,
+     "unit": "°"
+    },
+    {
+     "key": "f3",
+     "label": "F₃ 크기",
+     "min": 0,
+     "max": 20,
+     "step": 0.5,
+     "value": 6,
+     "unit": "N"
+    },
+    {
+     "key": "a3",
+     "label": "F₃ 방향",
+     "min": 0,
+     "max": 360,
+     "step": 5,
+     "value": 250,
+     "unit": "°"
+    }
+   ],
+   "animated": true,
+   "status_hint": "▶ 재생 / ⏸ 멈춤: 알짜힘이 있으면 물체가 가속"
+  },
+  {
+   "id": "hang",
+   "tab": "trans",
+   "name": "두 줄에 매달린 물체",
+   "section": "제1 평형 조건",
+   "desc": "두 줄이 수평과 이루는 각 θ₁, θ₂를 바꾸면 장력이 어떻게 변할까요? 각을 작게(줄을 수평에 가깝게) 해 보세요.",
+   "misconception_title": "오개념: 줄을 수평에 가깝게 하면 줄이 받는 힘이 줄어든다",
+   "misconception": "무게는 장력의 수직 성분(T sinθ)만으로 버텨야 한다. θ가 작아지면 sinθ가 작아지므로 장력 T는 오히려 커진다. 빨랫줄을 팽팽하게 수평으로 당길수록 줄이 끊어지기 쉬운 이유다.",
+   "formula": [
+    {
+     "eq_html": "T<sub>1<\/sub> cosθ<sub>1<\/sub> = T<sub>2<\/sub> cosθ<sub>2<\/sub>",
+     "text_html": "수평 방향 힘의 평형"
+    },
+    {
+     "eq_html": "T<sub>1<\/sub> sinθ<sub>1<\/sub> + T<sub>2<\/sub> sinθ<sub>2<\/sub> = mg",
+     "text_html": "수직 방향 힘의 평형"
+    }
+   ],
+   "params": [
+    {
+     "key": "hm",
+     "label": "질량 m",
+     "min": 0.5,
+     "max": 5,
+     "step": 0.5,
+     "value": 2,
+     "unit": "kg"
+    },
+    {
+     "key": "ht1",
+     "label": "왼쪽 줄 각 θ₁",
+     "min": 10,
+     "max": 80,
+     "step": 5,
+     "value": 30,
+     "unit": "°"
+    },
+    {
+     "key": "ht2",
+     "label": "오른쪽 줄 각 θ₂",
+     "min": 10,
+     "max": 80,
+     "step": 5,
+     "value": 55,
+     "unit": "°"
+    }
+   ]
+  },
+  {
+   "id": "torque",
+   "tab": "rot",
+   "name": "돌림힘 τ = rF sinθ",
+   "section": "제2 평형 조건",
+   "desc": "회전축에서 r만큼 떨어진 곳에 힘 F를 각 θ로 작용합니다. 점선(팔길이 = 축에서 힘의 작용선까지 수직 거리)을 보며 θ를 0°~180°로 바꿔 보세요.",
+   "misconception_title": "오개념: 힘이 크면 돌림힘도 항상 크다",
+   "misconception": "돌림힘은 힘의 크기만이 아니라 팔길이(r sinθ)에 비례한다. 힘이 회전축을 향하면(θ = 0°) 아무리 큰 힘도 돌림힘이 0이다. 문 손잡이가 경첩에서 먼 곳에 있는 이유이기도 하다.",
+   "formula": [
+    {
+     "eq_html": "τ = r F sinθ",
+     "text_html": "힘의 크기 × 회전축에서 작용선까지의 수직 거리(팔길이)"
+    }
+   ],
+   "params": [
+    {
+     "key": "tr",
+     "label": "거리 r",
+     "min": 0.2,
+     "max": 1,
+     "step": 0.05,
+     "value": 0.6,
+     "unit": "m"
+    },
+    {
+     "key": "tF",
+     "label": "힘 F",
+     "min": 0,
+     "max": 50,
+     "step": 1,
+     "value": 20,
+     "unit": "N"
+    },
+    {
+     "key": "tth",
+     "label": "각 θ",
+     "min": 0,
+     "max": 180,
+     "step": 5,
+     "value": 30,
+     "unit": "°"
+    }
+   ]
+  },
+  {
+   "id": "seesaw",
+   "tab": "rot",
+   "name": "시소의 회전 평형",
+   "section": "제2 평형 조건",
+   "desc": "두 물체의 질량과 회전축까지 거리를 바꿔 시소가 돌지 않게 만들어 보세요. ▶ 재생하면 Στ ≠ 0일 때 시소가 기울어집니다.",
+   "misconception_title": "오개념: 무거운 쪽이 항상 내려간다",
+   "misconception": "시소가 도는 방향은 무게가 아니라 돌림힘(무게 × 거리)의 크기로 정해진다. 2 kg이 1 m, 1 kg이 2 m에 있으면 돌림힘이 같아 평형이다. 또 평형이면 기울어진 채로도 그대로 멈춰 있다.",
+   "formula": [
+    {
+     "eq_html": "Στ = 0",
+     "text_html": "제2 평형 조건 (회전 평형)"
+    },
+    {
+     "eq_html": "m<sub>1<\/sub>g d<sub>1<\/sub> = m<sub>2<\/sub>g d<sub>2<\/sub>",
+     "text_html": "반시계 방향 돌림힘의 합 = 시계 방향 돌림힘의 합"
+    }
+   ],
+   "params": [
+    {
+     "key": "m1",
+     "label": "왼쪽 질량 m₁",
+     "min": 0.5,
+     "max": 5,
+     "step": 0.5,
+     "value": 2,
+     "unit": "kg"
+    },
+    {
+     "key": "d1",
+     "label": "왼쪽 거리 d₁",
+     "min": 0,
+     "max": 2,
+     "step": 0.1,
+     "value": 1,
+     "unit": "m"
+    },
+    {
+     "key": "m2",
+     "label": "오른쪽 질량 m₂",
+     "min": 0.5,
+     "max": 5,
+     "step": 0.5,
+     "value": 1,
+     "unit": "kg"
+    },
+    {
+     "key": "d2",
+     "label": "오른쪽 거리 d₂",
+     "min": 0,
+     "max": 2,
+     "step": 0.1,
+     "value": 1.5,
+     "unit": "m"
+    }
+   ],
+   "animated": true,
+   "status_hint": "▶ 재생 / ⏸ 멈춤: Στ ≠ 0이면 시소가 회전"
+  },
+  {
+   "id": "couple",
+   "tab": "rot",
+   "name": "짝힘: ΣF = 0이어도 돈다",
+   "section": "두 조건이 모두 필요한 이유",
+   "desc": "크기가 같고 방향이 반대인 두 힘을 막대 양쪽에 작용합니다. 알짜힘은 0인데 물체는 어떻게 될까요? ▶ 재생해 보세요.",
+   "misconception_title": "오개념: 알짜힘이 0이면 평형이다",
+   "misconception": "알짜힘이 0이면 무게중심은 가속하지 않지만(병진 평형), 작용선이 다른 두 힘은 돌림힘을 만들어 물체를 회전시킨다. 역학적 평형은 ΣF = 0과 Στ = 0을 모두 만족해야 한다.",
+   "formula": [
+    {
+     "eq_html": "ΣF = F + (−F) = 0",
+     "text_html": "병진 평형은 만족"
+    },
+    {
+     "eq_html": "Στ = F d ≠ 0",
+     "text_html": "회전 평형은 만족하지 않음 → 회전 가속"
+    }
+   ],
+   "params": [
+    {
+     "key": "cF",
+     "label": "힘 F",
+     "min": 0,
+     "max": 20,
+     "step": 1,
+     "value": 8,
+     "unit": "N"
+    },
+    {
+     "key": "cd",
+     "label": "두 힘 사이 거리 d",
+     "min": 0.2,
+     "max": 2,
+     "step": 0.1,
+     "value": 1,
+     "unit": "m"
+    }
+   ],
+   "animated": true,
+   "status_hint": "▶ 재생 / ⏸ 멈춤: 짝힘에 의한 회전"
+  },
+  {
+   "id": "beam",
+   "tab": "prob",
+   "name": "받침대 위 균일한 막대",
+   "section": "대표 유형",
+   "desc": "길이 4 m 막대를 A(왼쪽 끝)와 B에서 받칩니다. 회전축을 A·B·중심으로 바꿔도 N_A, N_B가 같은지 확인하고, 물체를 B 바깥으로 옮겨 보세요. 풀이 4단계: ① 자유물체도 ② 회전축 정하기 ③ ΣF = 0, Στ = 0 세우기 ④ 풀고 검토.",
+   "misconception_title": "오개념: 회전축을 어디에 잡느냐에 따라 답이 달라진다",
+   "misconception": "평형 상태라면 어느 점을 축으로 잡아도 Στ = 0이 성립하므로 답은 같다. 다만 미지수(N_A 또는 N_B)가 작용하는 점을 축으로 잡으면 그 힘의 돌림힘이 0이 되어 식이 간단해진다. 또 받침대는 밀기만 할 수 있어서 계산값이 N < 0이면 막대가 기울어진다.",
+   "formula": [
+    {
+     "eq_html": "N<sub>A<\/sub> + N<sub>B<\/sub> = Mg + mg",
+     "text_html": "ΣF<sub>y<\/sub> = 0"
+    },
+    {
+     "eq_html": "N<sub>B<\/sub> x<sub>B<\/sub> = Mg (L/2) + mg x",
+     "text_html": "A를 회전축으로 한 Στ = 0"
+    }
+   ],
+   "params": [
+    {
+     "key": "bM",
+     "label": "막대 질량 M",
+     "min": 1,
+     "max": 20,
+     "step": 1,
+     "value": 10,
+     "unit": "kg"
+    },
+    {
+     "key": "bm",
+     "label": "물체 질량 m",
+     "min": 0,
+     "max": 30,
+     "step": 1,
+     "value": 15,
+     "unit": "kg"
+    },
+    {
+     "key": "bx",
+     "label": "물체 위치 x (A에서)",
+     "min": 0,
+     "max": 4,
+     "step": 0.1,
+     "value": 1,
+     "unit": "m"
+    },
+    {
+     "key": "bxb",
+     "label": "받침 B 위치",
+     "min": 1,
+     "max": 4,
+     "step": 0.1,
+     "value": 4,
+     "unit": "m"
+    }
+   ],
+   "choices": [
+    {
+     "key": "axis",
+     "label": "회전축",
+     "value": "A",
+     "options": [
+      {
+       "value": "A",
+       "label": "A 받침점"
+      },
+      {
+       "value": "B",
+       "label": "B 받침점"
+      },
+      {
+       "value": "C",
+       "label": "막대 중심"
+      }
+     ]
+    }
+   ],
+   "chart": true
+  },
+  {
+   "id": "cable",
+   "tab": "prob",
+   "name": "경첩과 줄로 고정한 막대",
+   "section": "응용 유형",
+   "desc": "벽에 경첩으로 연결된 길이 2 m 막대를 끝에서 줄로 당겨 수평으로 유지합니다. 경첩을 회전축으로 잡으면 경첩 힘(미지수 2개)이 식에서 사라집니다.",
+   "misconception_title": "오개념: 경첩(벽)은 막대를 위로만 떠받친다",
+   "misconception": "줄의 장력에는 벽 쪽으로 당기는 수평 성분 T cosθ가 있으므로, ΣF_{x} = 0이 되려면 경첩이 막대를 벽에서 밀어내는 수평 힘 H_x를 반드시 준다. 경첩 힘의 방향은 막대 방향과 일치하지 않는다.",
+   "formula": [
+    {
+     "eq_html": "T L sinθ = Mg (L/2) + mg x",
+     "text_html": "경첩을 회전축으로 한 Στ = 0"
+    },
+    {
+     "eq_html": "H<sub>x<\/sub> = T cosθ,  H<sub>y<\/sub> = Mg + mg − T sinθ",
+     "text_html": "ΣF<sub>x<\/sub> = 0, ΣF<sub>y<\/sub> = 0"
+    }
+   ],
+   "params": [
+    {
+     "key": "kM",
+     "label": "막대 질량 M",
+     "min": 1,
+     "max": 20,
+     "step": 1,
+     "value": 5,
+     "unit": "kg"
+    },
+    {
+     "key": "km",
+     "label": "물체 질량 m",
+     "min": 0,
+     "max": 30,
+     "step": 1,
+     "value": 10,
+     "unit": "kg"
+    },
+    {
+     "key": "kx",
+     "label": "물체 위치 x (경첩에서)",
+     "min": 0,
+     "max": 2,
+     "step": 0.1,
+     "value": 1.5,
+     "unit": "m"
+    },
+    {
+     "key": "kth",
+     "label": "줄의 각 θ",
+     "min": 15,
+     "max": 75,
+     "step": 5,
+     "value": 40,
+     "unit": "°"
+    }
+   ]
+  }
+ ],
+ "common_params": null,
+ "readout_title": "측정값"
+};
+</script>
+<script>
+/* ============================ 시뮬레이션 코드 (레시피 입력 sim_js) ============================ */
+const G = 9.8, DEG = Math.PI / 180;
+
+/* ===== 물리 계산 (DOM 없음) ===== */
+const PHY = {
+  sumForces(fs) { // fs: [[F, 각도deg], ...] (각도: +x에서 반시계)
+    let x = 0, y = 0;
+    for (const [F, a] of fs) { x += F * Math.cos(a * DEG); y += F * Math.sin(a * DEG); }
+    return { x, y, mag: Math.hypot(x, y) };
+  },
+  hang(m, th1, th2) { // 왼줄 th1, 오른줄 th2 (수평에서 잰 각)
+    const s = Math.sin((th1 + th2) * DEG), W = m * G;
+    return { W, T1: W * Math.cos(th2 * DEG) / s, T2: W * Math.cos(th1 * DEG) / s };
+  },
+  torque(r, F, th) { return r * F * Math.sin(th * DEG); },
+  seesaw(m1, d1, m2, d2) { // 왼쪽 m1(반시계), 오른쪽 m2(시계)
+    const ccw = m1 * G * d1, cw = m2 * G * d2;
+    return { ccw, cw, net: ccw - cw };
+  },
+  beam(M, m, x, xb, L) { // A(x=0), B(x=xb) 받침, 막대 길이 L, 물체 위치 x
+    const NB = G * (M * L / 2 + m * x) / xb, NA = (M + m) * G - NB;
+    return { NA, NB, W: M * G, w: m * G };
+  },
+  torqueAbout(p, M, m, x, xb, L, NA, NB) { // 축 p에 대한 돌림힘 합 (반시계 +)
+    // 힘(위 +)이 위치 s에 작용 → 돌림힘 = (s - p) × F
+    return (0 - p) * NA + (xb - p) * NB + (L / 2 - p) * (-M * G) + (x - p) * (-m * G);
+  },
+  cable(M, m, x, th, L) { // 벽 경첩(x=0), 끝(x=L)에 줄(수평과 th)
+    const T = G * (M * L / 2 + m * x) / (L * Math.sin(th * DEG));
+    return { T, Hx: T * Math.cos(th * DEG), Hy: (M + m) * G - T * Math.sin(th * DEG) };
+  },
+};
+
+/* ===== 그리기 도우미 ===== */
+const COL = { bg: '#0f1a33', grid: 'rgba(160,190,255,.15)', text: '#e3ecff', dim: '#9db0d8', W: '#ff8f7a', N: '#5eead4', T: '#ffd166', F: '#7aa9ff', net: '#ff5d73', beam: '#c9d6f2' };
+function clear(ctx, w, h) { ctx.fillStyle = COL.bg; ctx.fillRect(0, 0, w, h); }
+function arrow(ctx, x0, y0, x1, y1, col, label, lw = 4) {
+  const len = Math.hypot(x1 - x0, y1 - y0); if (len < 2) return;
+  const a = Math.atan2(y1 - y0, x1 - x0), hd = Math.min(16, len * .45);
+  ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = lw; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - Math.cos(a) * hd * .7, y1 - Math.sin(a) * hd * .7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - hd * Math.cos(a - .42), y1 - hd * Math.sin(a - .42)); ctx.lineTo(x1 - hd * Math.cos(a + .42), y1 - hd * Math.sin(a + .42)); ctx.closePath(); ctx.fill();
+  if (label) { ctx.font = '600 17px sans-serif'; ctx.fillText(label, x1 + 8 * Math.cos(a) + 4, y1 + 8 * Math.sin(a) + 6); }
+}
+function text(ctx, s, x, y, col = COL.text, size = 17, align = 'left') { ctx.font = `600 ${size}px sans-serif`; ctx.fillStyle = col; ctx.textAlign = align; ctx.fillText(s, x, y); ctx.textAlign = 'left'; }
+function box(ctx, x, y, w, h, col) { ctx.fillStyle = col; ctx.fillRect(x, y, w, h); ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h); }
+function ground(ctx, x0, x1, y) { ctx.strokeStyle = COL.dim; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke(); for (let x = x0; x < x1; x += 16) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 10, y + 10); ctx.lineWidth = 1.5; ctx.stroke(); } }
+function tri(ctx, x, y, s, col) { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - s, y + s * 1.4); ctx.lineTo(x + s, y + s * 1.4); ctx.closePath(); ctx.fill(); }
+const f1 = v => (Math.abs(v) < 0.05 ? 0 : v).toFixed(1);
+const f2 = v => (Math.abs(v) < 0.005 ? 0 : v).toFixed(2);
+
+/* ===== 애니메이션 상태 ===== */
+const S = { pos: [0, 0], vel: [0, 0], ang: 0, angV: 0 };
+function resetState() { S.pos = [0, 0]; S.vel = [0, 0]; S.ang = 0; S.angV = 0; }
+
+/* ===== 시나리오별 그리기 ===== */
+function drawForces(api) {
+  const { ctx, width: w, height: h, P } = api; clear(ctx, w, h);
+  const fs = [[P.f1, P.a1], [P.f2, P.a2], [P.f3, P.a3]], sum = PHY.sumForces(fs), k = Math.min(w, h) / 70;
+  const cx = w * .3 + S.pos[0] * k * 4, cy = h * .5 - S.pos[1] * k * 4, cols = [COL.F, COL.T, COL.N];
+  text(ctx, '물체에 작용하는 힘', 16, 28, COL.dim);
+  ctx.fillStyle = '#e8eefc'; ctx.beginPath(); ctx.arc(cx, cy, 16, 0, 2 * Math.PI); ctx.fill();
+  fs.forEach(([F, a], i) => arrow(ctx, cx, cy, cx + F * k * Math.cos(a * DEG), cy - F * k * Math.sin(a * DEG), cols[i], `F${'₁₂₃'[i]}`));
+  if (sum.mag > 0.05) arrow(ctx, cx, cy, cx + sum.x * k, cy - sum.y * k, COL.net, 'ΣF', 5);
+  // 힘 다각형 (꼬리-머리 잇기)
+  const ox = w * .68, oy = h * .55; let x = ox, y = oy;
+  text(ctx, '힘 다각형 (꼬리에 머리 잇기)', w * .52, 28, COL.dim);
+  fs.forEach(([F, a], i) => { const nx = x + F * k * Math.cos(a * DEG), ny = y - F * k * Math.sin(a * DEG); arrow(ctx, x, y, nx, ny, cols[i], `F${'₁₂₃'[i]}`, 3); x = nx; y = ny; });
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ox, oy, 5, 0, 2 * Math.PI); ctx.fill();
+  if (sum.mag > 0.05) { ctx.setLineDash([7, 6]); arrow(ctx, ox, oy, x, y, COL.net, 'ΣF', 3); ctx.setLineDash([]); text(ctx, '다각형이 닫히지 않음 → 알짜힘 있음', w * .52, h - 20, COL.net); }
+  else text(ctx, '다각형이 닫힘 → ΣF = 0 (병진 평형)', w * .52, h - 20, COL.N);
+  const st = sum.mag < 0.05 ? '병진 평형: 가속도 0 (정지 또는 등속 운동 유지)' : `알짜힘 ${f1(sum.mag)} N → 가속도 ${f1(sum.mag / 1)} m/s² (질량 1 kg)`;
+  api.setStatus(st);
+  api.setReadout([['ΣFx', f1(sum.x) + ' N'], ['ΣFy', f1(sum.y) + ' N'], ['|ΣF|', f1(sum.mag) + ' N'], ['상태', sum.mag < 0.05 ? '평형' : '가속']]);
+  return sum;
+}
+
+function drawHang(api) {
+  const { ctx, width: w, height: h, P } = api; clear(ctx, w, h);
+  const r = PHY.hang(P.hm, P.ht1, P.ht2), top = h * .14, ky = h * .45;
+  const jx = w * .5, jy = top + ky * .9;
+  const ax = jx - (jy - top) / Math.tan(P.ht1 * DEG), bx = jx + (jy - top) / Math.tan(P.ht2 * DEG);
+  ctx.fillStyle = '#2a3a66'; ctx.fillRect(0, top - 14, w, 14);
+  ctx.strokeStyle = COL.beam; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(Math.max(ax, -w), top); ctx.lineTo(jx, jy); ctx.lineTo(Math.min(bx, 2 * w), top); ctx.moveTo(jx, jy); ctx.lineTo(jx, jy + 50); ctx.stroke();
+  box(ctx, jx - 28, jy + 50, 56, 44, '#8fa4d8'); text(ctx, `${P.hm} kg`, jx, jy + 78, '#0f1a33', 16, 'center');
+  const k = Math.min(h * .35, 220) / Math.max(r.T1, r.T2, r.W);
+  arrow(ctx, jx, jy, jx - r.T1 * k * Math.cos(P.ht1 * DEG), jy - r.T1 * k * Math.sin(P.ht1 * DEG), COL.T, 'T₁');
+  arrow(ctx, jx, jy, jx + r.T2 * k * Math.cos(P.ht2 * DEG), jy - r.T2 * k * Math.sin(P.ht2 * DEG), COL.T, 'T₂');
+  arrow(ctx, jx, jy, jx, jy + r.W * k, COL.W, 'W');
+  ctx.setLineDash([5, 5]); ctx.strokeStyle = COL.dim; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(jx - 180, jy); ctx.lineTo(jx + 180, jy); ctx.stroke(); ctx.setLineDash([]);
+  text(ctx, `θ₁ = ${P.ht1}°`, jx - 170, jy - 10, COL.dim); text(ctx, `θ₂ = ${P.ht2}°`, jx + 100, jy - 10, COL.dim);
+  text(ctx, `수평: T₁cosθ₁ = ${f1(r.T1 * Math.cos(P.ht1 * DEG))} N  =  T₂cosθ₂ = ${f1(r.T2 * Math.cos(P.ht2 * DEG))} N`, 16, h - 46);
+  text(ctx, `수직: T₁sinθ₁ + T₂sinθ₂ = ${f1(r.T1 * Math.sin(P.ht1 * DEG) + r.T2 * Math.sin(P.ht2 * DEG))} N  =  W = ${f1(r.W)} N`, 16, h - 18);
+  api.setReadout([['무게 W', f1(r.W) + ' N'], ['장력 T₁', f1(r.T1) + ' N'], ['장력 T₂', f1(r.T2) + ' N'], ['T₁ / W', f2(r.T1 / r.W)]]);
+  api.setNote(P.ht1 < 20 || P.ht2 < 20 ? '줄이 수평에 가까워질수록 장력이 무게보다 훨씬 커진다 (수직 성분만으로 무게를 버텨야 하므로).' : '두 각을 10°까지 줄여 보세요. 장력은 어떻게 될까요?');
+}
+
+function drawTorque(api) {
+  const { ctx, width: w, height: h, P } = api; clear(ctx, w, h);
+  const px = w * .25, py = h * .55, k = w * .55, ex = px + P.tr * k, tau = PHY.torque(P.tr, P.tF, P.tth);
+  ctx.fillStyle = '#5b6b94'; ctx.fillRect(px, py - 10, k, 20);
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(px, py, 9, 0, 2 * Math.PI); ctx.fill(); text(ctx, '회전축', px - 30, py + 40, COL.dim);
+  const fl = 4 * P.tF, a = P.tth * DEG; // 막대(+x)에서 반시계로 θ만큼 돌린 방향
+  arrow(ctx, ex, py, ex + fl * Math.cos(a), py - fl * Math.sin(a), COL.F, 'F');
+  // 팔길이(수직 거리) = r sinθ: 힘의 작용선에 내린 수선
+  const ux = Math.cos(a), uy = -Math.sin(a), t = (px - ex) * ux + (py - py) * uy, fx = ex + t * ux, fy = py + t * uy;
+  ctx.setLineDash([6, 6]); ctx.strokeStyle = COL.dim; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(ex - ux * 900, py - uy * 900); ctx.lineTo(ex + ux * 900, py + uy * 900); ctx.stroke();
+  ctx.strokeStyle = COL.T; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(fx, fy); ctx.stroke(); ctx.setLineDash([]);
+  text(ctx, `팔길이 r sinθ = ${f2(P.tr * Math.sin(a))} m`, Math.min(fx, px) + 10, Math.min(fy, py) - 14, COL.T);
+  text(ctx, `r = ${P.tr} m`, px + P.tr * k / 2 - 30, py + 34, COL.dim);
+  text(ctx, `τ = r·F·sinθ = ${P.tr} × ${P.tF} × sin${P.tth}° = ${f1(tau)} N·m`, 16, h - 18);
+  api.setReadout([['τ', f1(tau) + ' N·m'], ['팔길이', f2(P.tr * Math.sin(a)) + ' m'], ['최대(θ=90°)', f1(P.tr * P.tF) + ' N·m']]);
+  api.setNote(P.tth % 180 === 0 ? '힘이 회전축을 향하면(θ = 0° 또는 180°) 힘이 아무리 커도 돌림힘은 0이다.' : '같은 힘이라도 방향(θ)과 작용점까지의 거리(r)에 따라 돌림힘이 달라진다.');
+}
+
+const SEE = { L: 4, M: 2 };
+function seesawInfo(P) { const s = PHY.seesaw(P.m1, P.d1, P.m2, P.d2); const I = P.m1 * P.d1 ** 2 + P.m2 * P.d2 ** 2 + SEE.M * SEE.L ** 2 / 12; return { ...s, I }; }
+function drawSeesaw(api) {
+  const { ctx, width: w, height: h, P } = api; clear(ctx, w, h);
+  const s = seesawInfo(P), cx = w / 2, cy = h * .62, k = w * .2, c = Math.cos(S.ang), sn = Math.sin(S.ang);
+  const pt = d => [cx + d * k * c, cy - d * k * sn]; // d: 오른쪽 +
+  ground(ctx, 20, w - 20, cy + 60); tri(ctx, cx, cy + 4, 40, '#5b6b94');
+  const [lx, ly] = pt(-SEE.L / 2), [rx, ry] = pt(SEE.L / 2);
+  ctx.strokeStyle = COL.beam; ctx.lineWidth = 12; ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(rx, ry); ctx.stroke();
+  for (let d = -2; d <= 2; d += .5) { const [x, y] = pt(d); ctx.fillStyle = COL.bg; ctx.fillRect(x - 1, y - 3, 2, 6); }
+  const kw = 3.2;
+  [[-P.d1, P.m1, '#8fa4d8', 'm₁'], [P.d2, P.m2, '#e6b980', 'm₂']].forEach(([d, m, col, nm]) => {
+    const [x, y] = pt(d), sz = 18 + 6 * Math.sqrt(m); box(ctx, x - sz / 2, y - 6 - sz, sz, sz, col); text(ctx, `${nm} ${m}kg`, x, y - sz - 14, COL.text, 15, 'center');
+    arrow(ctx, x, y, x, y + m * G * kw, COL.W);
+  });
+  text(ctx, `반시계(왼쪽) m₁g·d₁ = ${f1(s.ccw)} N·m`, 16, 30, COL.F); text(ctx, `시계(오른쪽) m₂g·d₂ = ${f1(s.cw)} N·m`, 16, 56, COL.T);
+  text(ctx, `거리 눈금: 0.5 m, 막대 질량 ${SEE.M} kg (중심이 회전축 → 돌림힘 0)`, 16, h - 14, COL.dim);
+  const bal = Math.abs(s.net) < 1e-6;
+  api.setReadout([['τ 반시계', f1(s.ccw) + ' N·m'], ['τ 시계', f1(s.cw) + ' N·m'], ['Στ', f1(s.net) + ' N·m'], ['상태', bal ? '회전 평형' : (s.net > 0 ? '왼쪽이 내려감' : '오른쪽이 내려감')]]);
+  api.setStatus(bal ? '회전 평형: Στ = 0 → 기울어진 채로도 그대로 유지' : `Στ = ${f1(s.net)} N·m → 각가속도 ${f2(s.net / s.I)} rad/s²`);
+}
+
+function drawCouple(api) {
+  const { ctx, width: w, height: h, P } = api; clear(ctx, w, h);
+  const cx = w / 2, cy = h / 2, k = w * .18, c = Math.cos(S.ang), sn = Math.sin(S.ang), half = P.cd / 2;
+  const pa = [cx - half * k * c, cy + half * k * sn], pb = [cx + half * k * c, cy - half * k * sn];
+  ctx.strokeStyle = COL.beam; ctx.lineWidth = 12; ctx.beginPath(); ctx.moveTo(cx - 1.1 * k * c, cy + 1.1 * k * sn); ctx.lineTo(cx + 1.1 * k * c, cy - 1.1 * k * sn); ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(cx, cy, 6, 0, 2 * Math.PI); ctx.fill(); text(ctx, '무게중심 (움직이지 않음)', cx + 12, cy + 30, COL.dim);
+  const fl = 6 * P.cF; // 막대에 수직, 크기 같고 방향 반대
+  arrow(ctx, pa[0], pa[1], pa[0] + fl * sn, pa[1] + fl * c, COL.F, 'F');
+  arrow(ctx, pb[0], pb[1], pb[0] - fl * sn, pb[1] - fl * c, COL.F, 'F');
+  const tau = P.cF * P.cd;
+  text(ctx, `ΣF = F + (−F) = 0  → 무게중심은 그대로`, 16, 30, COL.N); text(ctx, `Στ = F × d = ${P.cF} × ${P.cd} = ${f1(tau)} N·m  → 회전 가속`, 16, 56, COL.net);
+  api.setReadout([['ΣF', '0 N'], ['Στ', f1(tau) + ' N·m'], ['회전 각', f1(S.ang / DEG % 360) + '°'], ['평형?', tau < 1e-9 ? '예' : '아니오 (회전 평형 아님)']]);
+  api.setStatus(tau < 1e-9 ? 'F = 0이면 평형' : '알짜힘은 0이지만 돌림힘이 있어 회전이 점점 빨라진다');
+}
+
+const BEAM = { L: 4 };
+function beamCalc(P) { const xb = P.bxb, x = Math.min(P.bx, BEAM.L); return { xb, x, ...PHY.beam(P.bM, P.bm, x, xb, BEAM.L) }; }
+function drawBeam(api) {
+  const { ctx, width: w, height: h, P } = api; clear(ctx, w, h);
+  const b = beamCalc(P), x0 = w * .1, k = w * .8 / BEAM.L, by = h * .5, X = s => x0 + s * k;
+  const tip = b.NA < -1e-9;
+  ground(ctx, 10, w - 10, by + 70);
+  tri(ctx, X(0), by + 8, 22, '#5b6b94'); tri(ctx, X(b.xb), by + 8, 22, '#5b6b94');
+  text(ctx, 'A', X(0) - 6, by + 64, COL.dim); text(ctx, 'B', X(b.xb) - 6, by + 64, COL.dim);
+  ctx.fillStyle = tip ? '#b65b5b' : COL.beam; ctx.fillRect(X(0), by - 8, BEAM.L * k, 16);
+  const sz = 20 + 5 * Math.sqrt(P.bm); if (P.bm > 0) { box(ctx, X(b.x) - sz / 2, by - 8 - sz, sz, sz, '#e6b980'); text(ctx, `m ${P.bm}kg`, X(b.x), by - sz - 18, COL.text, 15, 'center'); }
+  const kf = Math.min(110 / Math.max(b.W + b.w, 1), 1.2);
+  arrow(ctx, X(BEAM.L / 2), by, X(BEAM.L / 2), by + b.W * kf, COL.W, 'Mg'); if (P.bm > 0) arrow(ctx, X(b.x), by + 8, X(b.x), by + 8 + b.w * kf, COL.W, 'mg');
+  arrow(ctx, X(0) + 14, by + 8, X(0) + 14, by + 8 - b.NA * kf, COL.N, 'N_A'); arrow(ctx, X(b.xb) + 14, by + 8, X(b.xb) + 14, by + 8 - b.NB * kf, COL.N, 'N_B');
+  const ax = { A: 0, B: b.xb, C: BEAM.L / 2 }[P.axis] ?? 0;
+  ctx.strokeStyle = COL.T; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(X(ax), by, 13, 0, 2 * Math.PI); ctx.stroke(); text(ctx, '회전축', X(ax) - 24, by - 26, COL.T);
+  const tq = PHY.torqueAbout(ax, P.bM, P.bm, b.x, b.xb, BEAM.L, b.NA, b.NB);
+  text(ctx, `ΣFy = N_A + N_B − Mg − mg = ${f1(b.NA + b.NB - b.W - b.w)} N`, 16, 30);
+  text(ctx, `Στ (선택한 축 기준) = ${f1(tq)} N·m`, 16, 56);
+  text(ctx, '막대 길이 4 m, 거리는 A에서 잰 값', 16, h - 14, COL.dim);
+  if (tip) text(ctx, 'N_A < 0 : 받침대는 당길 수 없다 → 막대가 B를 축으로 기울어진다', 16, 84, COL.net);
+  api.setReadout([['N_A', f1(b.NA) + ' N'], ['N_B', f1(b.NB) + ' N'], ['Mg + mg', f1(b.W + b.w) + ' N'], ['Στ(선택 축)', f1(tq) + ' N·m']]);
+  const eqs = { A: `A축: N_B × ${b.xb} = Mg × 2 + mg × ${b.x}`, B: `B축: N_A × ${b.xb} = Mg × (${b.xb} − 2) + mg × (${b.xb} − ${b.x})`, C: `중심축: N_B × (${b.xb} − 2) + mg × (2 − ${b.x}) = N_A × 2` };
+  api.setNote(`${eqs[P.axis] || eqs.A}  → 어느 축을 잡아도 N_A, N_B는 같다. 미지수가 지나는 점을 축으로 잡으면 식이 가장 간단하다.`);
+  // 그래프: 물체 위치 x에 따른 N_A, N_B
+  const ch = api.chart; if (!ch) return;
+  const cv = ch.canvas, c2 = ch.ctx, cw = cv.width, chh = cv.height, sc = cw / (cv.clientWidth || cw);
+  c2.save(); c2.setTransform(1, 0, 0, 1, 0, 0); c2.fillStyle = COL.bg; c2.fillRect(0, 0, cw, chh);
+  const l = 50 * sc, r = cw - 14 * sc, t = 16 * sc, bt = chh - 30 * sc, fmax = (P.bM + 30) * G * 1.6, fmin = -fmax * .4;
+  const gx = s => l + s / BEAM.L * (r - l), gy = f => bt - (f - fmin) / (fmax - fmin) * (bt - t);
+  c2.strokeStyle = COL.grid; c2.lineWidth = sc; c2.beginPath(); c2.moveTo(l, gy(0)); c2.lineTo(r, gy(0)); c2.moveTo(l, t); c2.lineTo(l, bt); c2.stroke();
+  [['NA', COL.N, [6, 4]], ['NB', COL.N, []]].forEach(([key, col, dash]) => {
+    c2.strokeStyle = col; c2.lineWidth = 2.5 * sc; c2.setLineDash(dash.map(v => v * sc)); c2.beginPath();
+    for (let i = 0; i <= 40; i++) { const s = BEAM.L * i / 40, v = PHY.beam(P.bM, P.bm, s, b.xb, BEAM.L)[key]; i ? c2.lineTo(gx(s), gy(v)) : c2.moveTo(gx(s), gy(v)); }
+    c2.stroke(); c2.setLineDash([]);
+  });
+  c2.fillStyle = COL.T; [b.NA, b.NB].forEach(v => { c2.beginPath(); c2.arc(gx(b.x), gy(v), 5 * sc, 0, 2 * Math.PI); c2.fill(); });
+  c2.font = `600 ${12 * sc}px sans-serif`; c2.fillStyle = COL.dim; c2.fillText('물체 위치 x (m) →', r - 120 * sc, chh - 8 * sc); c2.fillText('0', l - 14 * sc, gy(0) + 4 * sc);
+  c2.restore(); ch.setHint('점선 N_A, 실선 N_B — 물체가 B 쪽으로 갈수록 N_A는 줄고 N_B는 늘며, 둘의 합은 항상 Mg + mg');
+}
+
+const CAB = { L: 2 };
+function drawCable(api) {
+  const { ctx, width: w, height: h, P } = api; clear(ctx, w, h);
+  const x = Math.min(P.kx, CAB.L), r = PHY.cable(P.kM, P.km, x, P.kth, CAB.L), wx = w * .12, k = w * .6 / CAB.L, by = h * .62, X = s => wx + s * k;
+  ctx.fillStyle = '#2a3a66'; ctx.fillRect(wx - 30, h * .05, 30, h * .9);
+  const topY = by - CAB.L * k * Math.tan(P.kth * DEG);
+  ctx.strokeStyle = COL.dim; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X(CAB.L), by); ctx.lineTo(wx, Math.max(topY, h * .05)); ctx.stroke();
+  ctx.fillStyle = COL.beam; ctx.fillRect(wx, by - 7, CAB.L * k, 14);
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(wx, by, 8, 0, 2 * Math.PI); ctx.fill(); text(ctx, '경첩', wx + 8, by + 34, COL.dim);
+  const sz = 20 + 5 * Math.sqrt(P.km); if (P.km > 0) box(ctx, X(x) - sz / 2, by - 7 - sz, sz, sz, '#e6b980');
+  const kf = Math.min(120 / Math.max(r.T, (P.kM + P.km) * G, 1), 1.5), th = P.kth * DEG;
+  arrow(ctx, X(CAB.L), by, X(CAB.L) - r.T * kf * Math.cos(th), by - r.T * kf * Math.sin(th), COL.T, 'T');
+  arrow(ctx, X(CAB.L / 2), by, X(CAB.L / 2), by + P.kM * G * kf, COL.W, 'Mg'); if (P.km > 0) arrow(ctx, X(x), by, X(x), by + P.km * G * kf, COL.W, 'mg');
+  arrow(ctx, wx, by, wx + r.Hx * kf, by, COL.N, 'H_x'); arrow(ctx, wx, by, wx, by - r.Hy * kf, COL.N, 'H_y');
+  text(ctx, `경첩 축: T·L·sinθ = Mg·L/2 + mg·x  → T = ${f1(r.T)} N`, 16, 30);
+  text(ctx, `ΣFx: H_x = T cosθ = ${f1(r.Hx)} N   ΣFy: H_y = Mg + mg − T sinθ = ${f1(r.Hy)} N`, 16, 56);
+  text(ctx, `막대 길이 ${CAB.L} m, 줄은 막대 끝에 연결 (θ = ${P.kth}°)`, 16, h - 14, COL.dim);
+  api.setReadout([['장력 T', f1(r.T) + ' N'], ['경첩 H_x', f1(r.Hx) + ' N'], ['경첩 H_y', f1(r.Hy) + ' N'], ['경첩 힘 크기', f1(Math.hypot(r.Hx, r.Hy)) + ' N']]);
+  api.setNote('경첩은 막대를 위로 받칠 뿐 아니라 벽에서 밀어내는 수평 성분(H_x)도 준다. 줄의 각 θ를 줄이면 T와 H_x가 함께 커진다.');
+}
+
+const DRAW = { forces: drawForces, hang: drawHang, torque: drawTorque, seesaw: drawSeesaw, couple: drawCouple, beam: drawBeam, cable: drawCable };
+
+const SIM = {
+  enter(api) { resetState(); api.setPlaying && api.setPlaying(false); },
+  reset(api) { resetState(); api.refresh(); },
+  update(api) { (DRAW[api.scenario.id] || drawForces)(api); },
+  frame(api, dt) {
+    const id = api.scenario.id, P = api.P;
+    const playing = typeof api.playing === 'function' ? api.playing() : api.playing;
+    if (playing === false) return; // ⏸ 멈춤 상태: 그대로 정지
+    if (id === 'forces') {
+      const s = PHY.sumForces([[P.f1, P.a1], [P.f2, P.a2], [P.f3, P.a3]]);
+      if (s.mag > 0.05) { S.vel[0] += s.x * dt; S.vel[1] += s.y * dt; S.pos[0] += S.vel[0] * dt * .3; S.pos[1] += S.vel[1] * dt * .3; }
+      if (Math.hypot(S.pos[0], S.pos[1]) > 9) { S.vel = [0, 0]; api.setPlaying && api.setPlaying(false); }
+    } else if (id === 'seesaw') {
+      const s = seesawInfo(P), lim = Math.asin(60 / (api.width * .2 * 2)); // 끝이 바닥에 닿는 각
+      S.angV += (s.net / s.I) * dt; S.ang += S.angV * dt;
+      if (Math.abs(S.ang) >= lim) { S.ang = Math.sign(S.ang) * lim; S.angV = 0; }
+    } else if (id === 'couple') {
+      const I = 2 * (2.2 ** 2) / 12; // 막대 2 kg, 길이 2.2 m
+      S.angV += (P.cF * P.cd / I) * dt * .2; S.angV = Math.min(S.angV, 8); S.ang += S.angV * dt;
+    }
+    (DRAW[id] || drawForces)(api);
+  },
+  tests() {
+    const T = [], eps = 1e-9, near = (a, b, e = eps) => Math.abs(a - b) <= e * Math.max(1, Math.abs(b));
+    const f = PHY.sumForces([[10, 0], [10, 120], [10, 240]]);
+    T.push(['같은 크기 세 힘(120° 간격)의 합력 = 0', f.mag < 1e-9, f.mag.toExponential(1)]);
+    const g = PHY.sumForces([[3, 0], [4, 90], [5, 180 + Math.atan2(4, 3) / DEG]]);
+    T.push(['3-4-5 힘 삼각형이 닫힌다', g.mag < 1e-9, g.mag.toExponential(1)]);
+    const hs = PHY.hang(2, 30, 30);
+    T.push(['대칭 매달기: T = mg / (2 sinθ)', near(hs.T1, 2 * G / (2 * Math.sin(30 * DEG))) && near(hs.T1, hs.T2), hs.T1.toFixed(3) + ' N']);
+    const ha = PHY.hang(3, 25, 65);
+    T.push(['비대칭 매달기: ΣFx = 0, ΣFy = 0', near(ha.T1 * Math.cos(25 * DEG), ha.T2 * Math.cos(65 * DEG)) && near(ha.T1 * Math.sin(25 * DEG) + ha.T2 * Math.sin(65 * DEG), ha.W), '']);
+    T.push(['줄이 수평에 가까울수록 장력 증가 (θ 10° > 45°)', PHY.hang(1, 10, 10).T1 > PHY.hang(1, 45, 45).T1, '']);
+    T.push(['τ: θ = 90°이면 rF, θ = 0°이면 0', near(PHY.torque(.5, 20, 90), 10) && Math.abs(PHY.torque(.5, 20, 0)) < eps, '']);
+    T.push(['시소: m₁d₁ = m₂d₂이면 Στ = 0', Math.abs(PHY.seesaw(2, 1, 1, 2).net) < eps, '']);
+    const b = PHY.beam(10, 15, 1, 4, 4);
+    T.push(['막대: N_A + N_B = (M + m)g', near(b.NA + b.NB, 25 * G), `${b.NA.toFixed(2)} + ${b.NB.toFixed(2)}`]);
+    const ok = [0, 4, 2, 1.3].every(p => Math.abs(PHY.torqueAbout(p, 10, 15, 1, 4, 4, b.NA, b.NB)) < 1e-9);
+    T.push(['회전축을 어디에 잡아도 Στ = 0 (A, B, 중심, 임의점)', ok, '']);
+    const c = PHY.beam(10, 6, 2, 4, 4);
+    T.push(['물체가 중앙이면 N_A = N_B = (M + m)g/2', near(c.NA, c.NB) && near(c.NA, 8 * G), c.NA.toFixed(2) + ' N']);
+    T.push(['받침 B 바깥 끝에 무거운 물체 → N_A < 0 (기울어짐)', PHY.beam(2, 30, 4, 2.5, 4).NA < 0, '']);
+    const k = PHY.cable(5, 10, 1.5, 40, 2), L = 2;
+    T.push(['경첩 막대: 경첩 축 돌림힘 합 = 0', near(k.T * L * Math.sin(40 * DEG), G * (5 * L / 2 + 10 * 1.5)), k.T.toFixed(2) + ' N']);
+    T.push(['경첩 막대: ΣFx = 0, ΣFy = 0', near(k.Hx, k.T * Math.cos(40 * DEG)) && near(k.Hy + k.T * Math.sin(40 * DEG), 15 * G), '']);
+    T.push(['짝힘: 알짜힘 0, 돌림힘 F·d', PHY.sumForces([[8, 90], [8, 270]]).mag < 1e-9, '']);
+    return T;
+  },
+};
+
+</script>
+<script>
+"use strict";
+/* ============================ 공용 UI 프레임워크 (템플릿) ============================ */
+(function () {
+  const C = WS_CONFIG;
+  const $ = (id) => document.getElementById(id);
+  const P = {};
+  const ui = { tab: C.tabs[0].id, scenarioId: null, playing: false };
+  const lastScenarioOfTab = {};
+
+  function addDefaults(params) { (params || []).forEach(p => { if (!(p.key in P)) P[p.key] = p.value; }); }
+  C.scenarios.forEach(s => { addDefaults(s.params); addDefaults(s.choices); });
+  if (C.common_params) addDefaults(C.common_params.params);
+
+  function current() { return C.scenarios.find(s => s.id === ui.scenarioId); }
+  function scenariosOfTab(tab) { return C.scenarios.filter(s => s.tab === tab); }
+  function fmtVal(v, unit) {
+    if (!unit) return String(v);
+    return /^[°%′″]/.test(unit) ? v + unit : v + " " + unit;
+  }
+
+  function showError(where, e) {
+    const box = $("simError");
+    box.hidden = false;
+    box.textContent = "시뮬레이션 오류 (" + where + "): " + (e && e.message ? e.message : e);
+    console.error(e);
+  }
+  const SIMOBJ = (typeof SIM !== "undefined") ? SIM : null;
+  function call(hook, ...args) {
+    if (!SIMOBJ || typeof SIMOBJ[hook] !== "function") return undefined;
+    try { return SIMOBJ[hook](api, ...args); } catch (e) { showError(hook, e); return undefined; }
+  }
+
+  /* ---------- 렌더러 ---------- */
+  const wrap = $("sceneWrap");
+  const api = {
+    config: C, P,
+    get scenario() { return current(); },
+    get tab() { return ui.tab; },
+    get playing() { return ui.playing; },
+    setPlaying(b) { ui.playing = !!b; updatePlayButton(); },
+    boxHalf: (C.scene && C.scene.box_half) || 16,
+    sceneEl: wrap,
+    THREE: window.THREE || null,
+    scene: null, camera: null, renderer: null, controls: null,
+    canvas: null, ctx: null, width: 0, height: 0,
+    custom: $("customPanel"),
+    chart: {
+      canvas: $("chartCanvas"),
+      ctx: $("chartCanvas").getContext("2d"),
+      setHint(html) { $("chartHint").innerHTML = html; },
+    },
+    setReadout(rows) {
+      const tbl = $("readout");
+      tbl.innerHTML = "";
+      (rows || []).forEach(r => {
+        const tr = document.createElement("tr");
+        const a = document.createElement("td"); a.textContent = r[0];
+        const b = document.createElement("td"); b.textContent = r[1];
+        tr.append(a, b); tbl.appendChild(tr);
+      });
+    },
+    setNote(text) { $("readoutNote").textContent = text || ""; },
+    setStatus(text) { const el = $("wsStatus"); if (el) el.textContent = text || ""; },
+    setParam(key, v) {
+      P[key] = v;
+      const el = $("p_" + key); if (el) el.value = v;
+      const vEl = $("p_" + key + "_val"); if (vEl) vEl.textContent = fmtVal(v, vEl.dataset.unit);
+    },
+    refresh() { call("update"); },
+  };
+
+  function initRenderer() {
+    const sc = C.scene || {};
+    if (C.renderer === "three") {
+      if (!window.THREE) { showError("init", "Three.js를 불러오지 못했습니다 (인터넷 연결 확인)"); return false; }
+      const T = window.THREE;
+      api.scene = new T.Scene();
+      api.camera = new T.PerspectiveCamera(45, wrap.clientWidth / wrap.clientHeight, 0.1, 500);
+      const cp = sc.camera || [26, 20, 30];
+      api.camera.position.set(cp[0], cp[1], cp[2]);
+      api.renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
+      api.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      wrap.insertBefore(api.renderer.domElement, wrap.firstChild);
+      api.controls = new T.OrbitControls(api.camera, api.renderer.domElement);
+      api.controls.enableDamping = true;
+      api.controls.dampingFactor = 0.08;
+      api.controls.target.set(0, 0, 0);
+      api.scene.add(new T.AmbientLight(0xffffff, 0.55));
+      const dl = new T.DirectionalLight(0xffffff, 0.9);
+      dl.position.set(20, 30, 15);
+      api.scene.add(dl);
+      if (sc.grid !== false) api.scene.add(new T.GridHelper(api.boxHalf * 2, 16, 0x3a5a8a, 0x1f3352));
+      if (sc.axes !== false) api.scene.add(new T.AxesHelper(api.boxHalf * 0.6));
+    } else {
+      api.canvas = document.createElement("canvas");
+      wrap.insertBefore(api.canvas, wrap.firstChild);
+      api.ctx = api.canvas.getContext("2d");
+    }
+    window.addEventListener("resize", onResize);
+    onResize();
+    return true;
+  }
+
+  function onResize() {
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    api.width = w; api.height = h;
+    if (api.renderer) {
+      api.camera.aspect = w / h;
+      api.camera.updateProjectionMatrix();
+      api.renderer.setSize(w, h);
+    } else if (api.canvas) {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      api.canvas.width = Math.round(w * dpr);
+      api.canvas.height = Math.round(h * dpr);
+      api.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (ui.scenarioId) call("update");
+    }
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    if (api.controls) api.controls.update();
+    call("frame", 1 / 60);
+    if (api.renderer) api.renderer.render(api.scene, api.camera);
+  }
+
+  /* ---------- UI ---------- */
+  function renderTabs() {
+    const box = $("tabs");
+    box.innerHTML = "";
+    box.hidden = C.tabs.length < 2;
+    C.tabs.forEach(t => {
+      const b = document.createElement("button");
+      b.textContent = t.label;
+      b.className = t.id === ui.tab ? "active" : "";
+      b.addEventListener("click", () => switchTab(t.id));
+      box.appendChild(b);
+    });
+  }
+
+  function renderPicker() {
+    const box = $("scenarioPicker");
+    const list = scenariosOfTab(ui.tab);
+    box.innerHTML = "";
+    box.hidden = list.length < 2;
+    list.forEach(s => {
+      const b = document.createElement("button");
+      b.textContent = s.name;
+      b.className = s.id === ui.scenarioId ? "active" : "";
+      b.addEventListener("click", () => selectScenario(s.id));
+      box.appendChild(b);
+    });
+  }
+
+  function sliderEl(p) {
+    const div = document.createElement("div");
+    div.className = "param";
+    const label = document.createElement("label");
+    label.textContent = p.label + " ";
+    const val = document.createElement("span");
+    val.className = "val"; val.id = "p_" + p.key + "_val"; val.dataset.unit = p.unit || "";
+    val.textContent = fmtVal(P[p.key], p.unit);
+    label.appendChild(val);
+    const inp = document.createElement("input");
+    inp.type = "range"; inp.id = "p_" + p.key;
+    inp.min = p.min; inp.max = p.max; inp.step = p.step; inp.value = P[p.key];
+    inp.addEventListener("input", () => {
+      const v = parseFloat(inp.value);
+      P[p.key] = v;
+      val.textContent = fmtVal(v, p.unit);
+      call("update");
+    });
+    div.append(label, inp);
+    return div;
+  }
+
+  function choiceEl(c) {
+    const row = document.createElement("div");
+    row.className = "row"; row.style.marginBottom = "8px";
+    if (c.label) { const l = document.createElement("b"); l.style.fontSize = "0.9em"; l.textContent = c.label; row.appendChild(l); }
+    c.options.forEach(o => {
+      const b = document.createElement("button");
+      b.textContent = o.label;
+      b.className = P[c.key] === o.value ? "primary" : "";
+      b.addEventListener("click", () => {
+        P[c.key] = o.value;
+        row.querySelectorAll("button").forEach(x => x.className = "");
+        b.className = "primary";
+        call("update");
+      });
+      row.appendChild(b);
+    });
+    return row;
+  }
+
+  function renderControls() {
+    const s = current();
+    const body = $("scenarioBody");
+    body.innerHTML = "";
+    if (s.desc || s.section) {
+      const p = document.createElement("p");
+      p.className = "hint"; p.style.marginBottom = "10px";
+      if (s.section) { const b = document.createElement("b"); b.textContent = s.section; p.appendChild(b); if (s.desc) p.appendChild(document.createTextNode(" — ")); }
+      if (s.desc) p.appendChild(document.createTextNode(s.desc));
+      body.appendChild(p);
+    }
+    (s.choices || []).forEach(c => body.appendChild(choiceEl(c)));
+    (s.params || []).forEach(p => body.appendChild(sliderEl(p)));
+    if (s.animated) {
+      const st = document.createElement("div");
+      st.className = "hint"; st.id = "wsStatus";
+      st.textContent = s.status_hint || "";
+      body.appendChild(st);
+      const row = document.createElement("div");
+      row.className = "controls-row";
+      const play = document.createElement("button");
+      play.id = "playBtn"; play.className = "primary";
+      play.addEventListener("click", () => { ui.playing = !ui.playing; updatePlayButton(); });
+      const reset = document.createElement("button");
+      reset.textContent = "↺ 리셋";
+      reset.addEventListener("click", () => { ui.playing = false; updatePlayButton(); call("reset"); call("update"); });
+      row.append(play, reset);
+      body.appendChild(row);
+      updatePlayButton();
+    }
+    const cp = C.common_params;
+    if (cp && s.use_common !== false) {
+      const hr = document.createElement("hr");
+      hr.style.cssText = "margin:10px 0;border:none;border-top:1px solid var(--border)";
+      body.appendChild(hr);
+      if (cp.title) { const b = document.createElement("b"); b.style.fontSize = "0.9em"; b.textContent = cp.title; body.appendChild(b); }
+      cp.params.forEach(p => body.appendChild(sliderEl(p)));
+    }
+  }
+
+  function updatePlayButton() {
+    const b = $("playBtn");
+    if (b) b.textContent = ui.playing ? "⏸ 일시정지" : "▶ 재생";
+  }
+
+  function renderFormula() {
+    const s = current();
+    const body = $("formulaBody");
+    body.innerHTML = (s.formula || []).map(f =>
+      (f.eq_html ? `<div class="eq">${f.eq_html}</div>` : "") + (f.text_html || "")
+    ).join("");
+  }
+
+  function renderMisconception() {
+    const s = current();
+    const panel = $("misconceptionPanel");
+    panel.innerHTML = "";
+    panel.hidden = !s.misconception;
+    if (!s.misconception) return;
+    const box = document.createElement("div");
+    box.className = "misconception";
+    const b = document.createElement("b");
+    b.textContent = s.misconception_title || "💡 흔한 오개념";
+    box.append(b, document.createElement("br"), document.createTextNode(s.misconception));
+    panel.appendChild(box);
+  }
+
+  function enterScenario() {
+    ui.playing = false;
+    const s = current();
+    $("graphPanel").hidden = !s.chart;
+    $("chartHint").innerHTML = "";
+    api.custom.innerHTML = "";
+    api.setReadout([]); api.setNote("");
+    renderPicker(); renderControls(); renderFormula(); renderMisconception();
+    call("enter");
+    call("update");
+  }
+
+  function selectScenario(id) {
+    ui.scenarioId = id;
+    lastScenarioOfTab[ui.tab] = id;
+    enterScenario();
+  }
+
+  function switchTab(tab) {
+    ui.tab = tab;
+    renderTabs();
+    selectScenario(lastScenarioOfTab[tab] || scenariosOfTab(tab)[0].id);
+  }
+
+  function renderLegend() {
+    const box = $("legend");
+    (C.legend || []).forEach(l => {
+      const span = document.createElement("span");
+      const sw = document.createElement("i");
+      sw.className = "swatch" + (l.shape === "bar" ? " bar" : "");
+      sw.style.background = l.color;
+      span.append(sw, document.createTextNode(l.label));
+      box.appendChild(span);
+    });
+  }
+
+  function runSelfTests() {
+    if (!SIMOBJ || typeof SIMOBJ.tests !== "function") { console.log("물리 검증 항목 없음"); return; }
+    let results = [];
+    try { results = SIMOBJ.tests() || []; } catch (e) { showError("tests", e); return; }
+    console.log("=== " + C.title + " 물리 검증 ===");
+    let pass = 0;
+    for (const [name, ok, detail] of results) {
+      console.log(`[${ok ? "PASS" : "FAIL"}] ${name}${detail ? " — " + detail : ""}`);
+      if (ok) pass++;
+    }
+    console.log(pass === results.length ? "모든 검증 통과" : "일부 검증 실패 — 콘솔 확인 필요");
+    window.__wsSelfTest = { pass, total: results.length };
+  }
+
+  /* ---------- 시작 ---------- */
+  $("readoutTitle").textContent = C.readout_title || "측정값";
+  $("hoverHint").textContent = (C.scene && C.scene.hint != null) ? C.scene.hint
+    : (C.renderer === "three" ? "마우스 드래그: 회전 · 휠: 확대/축소" : "");
+  $("projectorBtn").addEventListener("click", () => document.body.classList.toggle("projector"));
+  renderLegend();
+  if (!SIMOBJ) showError("load", "sim_js에 SIM 객체가 정의되지 않았습니다");
+  if (initRenderer()) {
+    call("init");
+    renderTabs();
+    switchTab(ui.tab);
+    animate();
+  }
+  runSelfTests();
+})();
+</script>
+
+</body>
+</html>
+<!--claude-meta
+category: 역학
+slug: mechanical-equilibrium
+icon: ⚖️
+title: 역학적 평형 — 병진 평형과 회전 평형
+desc: ΣF = 0과 Στ = 0을 힘 다각형·시소·짝힘·받침 막대·경첩 막대로 조작하며 확인 (고2 물리학)
+-->

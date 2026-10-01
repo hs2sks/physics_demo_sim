@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>평행판 사이 전자의 포물선 운동</title>
+<style>
+  :root {
+    --bg: #f4f6fa; --panel: #ffffff; --ink: #1c2733; --sub: #5a6b7d;
+    --accent: #1f6fd6; --accent2: #d64545; --ok: #1e8f4e;
+    --border: #d7dee8; --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+  body {
+    font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+    background: var(--bg); color: var(--ink);
+    padding: 12px; font-size: 15px;
+  }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  header h1 { font-size: 1.25em; }
+  header .spacer { flex: 1; }
+  a.home { text-decoration:none; color:var(--sub); border:1px solid var(--border); padding:6px 12px; border-radius:8px; font-size:0.9em; white-space:nowrap; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .tabs button { flex: 0 0 auto; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 1em; }
+  .tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .layout { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .sim-col { flex: 2 1 480px; display: flex; flex-direction: column; gap: 12px; }
+  .side-col { flex: 1 1 320px; display: flex; flex-direction: column; gap: 12px; }
+
+  #sceneWrap { position: relative; width: 100%; aspect-ratio: 4/3; border-radius: 8px; overflow: hidden; background: radial-gradient(circle at 50% 30%, #16233a, #060a12 75%); }
+  #sceneWrap canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #hoverHint { position:absolute; left:8px; bottom:8px; color:#9fb3d9; font-size:0.78em; background:rgba(6,10,18,0.55); padding:4px 8px; border-radius:6px; pointer-events:none; }
+  #hoverHint:empty { display: none; }
+  #simError { position:absolute; left:8px; right:8px; top:8px; color:#fff; background:rgba(214,69,69,0.92); padding:6px 10px; border-radius:6px; font-size:0.82em; white-space:pre-wrap; }
+
+  .scenario-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .scenario-picker button { flex: 1 1 30%; min-width: 120px; padding: 8px 6px; font-size: 0.86em; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  .scenario-picker button.active { background: #eaf1fd; border-color: var(--accent); color: var(--accent); font-weight: 700; }
+
+  .param { margin-bottom: 10px; }
+  .param label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 4px; font-size: 0.92em; }
+  .param label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .param input[type=range] { width: 100%; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .hint { color: var(--sub); font-size: 0.83em; margin-top: 2px; line-height: 1.5; }
+
+  button { font-size: 1em; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.warn { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .controls-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.82em; color: var(--sub); margin-top: 8px; }
+  .legend:empty { display: none; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .swatch { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .swatch.bar { border-radius: 2px; }
+
+  table.readout { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+  table.readout td { padding: 4px 2px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  table.readout td:first-child { color: var(--sub); }
+  table.readout td:last-child { text-align: right; font-weight: 700; }
+
+  details { margin-top: 6px; }
+  summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+  .formula-body { padding: 8px 2px; line-height: 1.8; font-size: 0.92em; }
+  .formula-body .eq { font-size: 1.08em; text-align: center; margin: 6px 0; font-family: Georgia, serif; }
+  .note { border-left: 3px solid var(--accent); background: #eef4fd; padding: 8px 10px; border-radius: 6px; font-size: 0.86em; margin-top: 8px; line-height: 1.6; }
+  .note:empty { display: none; }
+  .misconception { border-left: 3px solid var(--accent2); background: #fdeeee; padding: 8px 10px; border-radius: 6px; font-size: 0.86em; margin-top: 8px; line-height: 1.6; }
+
+  canvas.chart { width: 100%; background: #fff; border: 1px solid var(--border); border-radius: 6px; }
+
+  body.projector { font-size: 19px; }
+  body.projector button { padding: 12px 18px; }
+  body.projector .scenario-picker button { font-size: 1em; padding: 12px 8px; }
+
+  @media (max-width: 720px) {
+    body { font-size: 16px; padding: 8px; }
+    .layout { flex-direction: column; }
+    .sim-col, .side-col { flex: 1 1 100%; }
+    button { padding: 11px 14px; }
+    input[type=range] { height: 26px; }
+  }
+/* ---- 레시피 입력 extra_css ---- */
+
+</style>
+</head>
+<body>
+
+<header>
+  <a class="home" href="../index.html">🏠 홈</a>
+  <h1>⚡ 평행판 사이 전자의 포물선 운동</h1>
+  <span class="spacer"></span>
+  <button id="projectorBtn" title="프로젝터용 큰 글씨 모드">🖥 큰 글씨 모드</button>
+</header>
+
+<div class="tabs" id="tabs"></div>
+
+<div class="layout">
+
+  <div class="sim-col">
+    <div class="panel">
+      <div id="sceneWrap">
+        <div id="hoverHint"></div>
+        <div id="simError" hidden></div>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="panel" id="graphPanel" hidden>
+      <canvas id="chartCanvas" class="chart" width="440" height="220"></canvas>
+      <div class="hint" id="chartHint"></div>
+    </div>
+  </div>
+
+  <div class="side-col">
+
+    <div class="panel" id="scenarioPanel">
+      <div class="scenario-picker" id="scenarioPicker"></div>
+      <div id="scenarioBody"></div>
+      <div id="customPanel"></div>
+    </div>
+
+    <div class="panel" id="readoutPanel">
+      <b id="readoutTitle"></b>
+      <table class="readout" id="readout"></table>
+      <div class="note" id="readoutNote"></div>
+    </div>
+
+    <div class="panel">
+      <details id="formulaDetails">
+        <summary>📐 관련 공식 보기</summary>
+        <div class="formula-body" id="formulaBody"></div>
+      </details>
+    </div>
+
+    <div class="panel" id="misconceptionPanel"></div>
+
+  </div>
+</div>
+
+
+<script>
+const WS_CONFIG = {
+ "title": "평행판 사이 전자의 포물선 운동",
+ "renderer": "canvas2d",
+ "scene": {
+  "hint": "▶ 재생으로 입자를 발사하고, 슬라이더로 조건을 바꿔 보세요."
+ },
+ "legend": [
+  {
+   "label": "전자",
+   "color": "#6a3fd6"
+  },
+  {
+   "label": "양성자",
+   "color": "#d9822b"
+  },
+  {
+   "label": "알파 입자",
+   "color": "#1f9e89"
+  },
+  {
+   "label": "(+) 극판",
+   "color": "#e0472f",
+   "shape": "bar"
+  },
+  {
+   "label": "(−) 극판",
+   "color": "#2f6fe0",
+   "shape": "bar"
+  },
+  {
+   "label": "전기장 E",
+   "color": "#3fae58",
+   "shape": "bar"
+  },
+  {
+   "label": "속도 v",
+   "color": "#1492c9",
+   "shape": "bar"
+  },
+  {
+   "label": "전기력 F",
+   "color": "#e0337a",
+   "shape": "bar"
+  },
+  {
+   "label": "출구 속도 연장선",
+   "color": "#c98a12",
+   "shape": "bar"
+  }
+ ],
+ "tabs": [
+  {
+   "id": "scenario",
+   "label": "📘 시나리오"
+  }
+ ],
+ "scenarios": [
+  {
+   "id": "basic",
+   "tab": "scenario",
+   "name": "① 평행판 속 전자의 포물선 운동",
+   "section": "균일한 전기장 · 등가속도 운동",
+   "animated": true,
+   "status_hint": "재생을 누르면 전자가 왼쪽에서 발사됩니다 (실제 1 ns → 화면 0.5초).",
+   "desc": "두 평행판에 전압 V를 걸면 판 사이에는 크기 E = V/d인 균일한 전기장이 생깁니다. 판 사이로 수평하게 들어온 전자는 수평 방향으로는 등속도, 수직 방향으로는 등가속도 운동을 하므로 포물선을 그립니다. 재생해서 궤적을 관찰하고, 판을 빠져나온 뒤의 운동도 확인하세요.",
+   "misconception": "① 전자는 전기장 방향이 아니라 반대 방향, 즉 (+)판 쪽으로 휩니다 — 극판의 극성을 바꿔 확인해 보세요. ② 전기력은 수직 방향으로만 작용하므로 수평 속도 v_x는 줄지도 늘지도 않습니다. ③ 판을 벗어나면 힘이 사라져 더 이상 휘지 않고 직선으로 나아갑니다. 그 직선을 뒤로 연장하면 판 길이의 정확히 절반(L/2) 지점에서 중심축과 만납니다.",
+   "formula": [
+    {
+     "eq_html": "E = V / d ,  F = eE = eV / d",
+     "text_html": ""
+    },
+    {
+     "eq_html": "x = v<sub>0<\/sub>t ,  y = (1/2)at<sup>2<\/sup> ,  a = eV / (md)",
+     "text_html": "수평은 등속도, 수직은 등가속도 — 수평으로 던진 물체의 운동과 같은 구조입니다."
+    },
+    {
+     "eq_html": "y = (eV / 2mdv<sub>0<\/sub><sup>2<\/sup>) x<sup>2<\/sup>",
+     "text_html": "t를 소거하면 y ∝ x²인 포물선이 됩니다."
+    },
+    {
+     "eq_html": "y<sub>1<\/sub> = eVL<sup>2<\/sup> / (2mdv<sub>0<\/sub><sup>2<\/sup>) ,  tanθ = eVL / (mdv<sub>0<\/sub><sup>2<\/sup>)",
+     "text_html": "판 출구에서의 편향 y₁과 출구 각도 θ"
+    }
+   ],
+   "choices": [
+    {
+     "key": "top1",
+     "label": "위쪽 극판",
+     "value": "plus",
+     "options": [
+      {
+       "value": "plus",
+       "label": "(+) 극"
+      },
+      {
+       "value": "minus",
+       "label": "(−) 극"
+      }
+     ]
+    },
+    {
+     "key": "ex1",
+     "label": "화면 비율",
+     "value": 1,
+     "options": [
+      {
+       "value": 1,
+       "label": "실제 비율"
+      },
+      {
+       "value": 3,
+       "label": "세로 3배 과장"
+      }
+     ]
+    }
+   ],
+   "params": [
+    {
+     "key": "V1",
+     "label": "극판 전압 V",
+     "min": 0,
+     "max": 300,
+     "step": 5,
+     "value": 100,
+     "unit": "V"
+    },
+    {
+     "key": "d1",
+     "label": "극판 간격 d",
+     "min": 1,
+     "max": 4,
+     "step": 0.1,
+     "value": 2,
+     "unit": "cm"
+    },
+    {
+     "key": "L1",
+     "label": "극판 길이 L",
+     "min": 2,
+     "max": 10,
+     "step": 0.5,
+     "value": 6,
+     "unit": "cm"
+    },
+    {
+     "key": "v01",
+     "label": "입사 속력 v₀",
+     "min": 1,
+     "max": 5,
+     "step": 0.1,
+     "value": 1.6,
+     "unit": "×10⁷ m/s"
+    }
+   ]
+  },
+  {
+   "id": "speed",
+   "tab": "scenario",
+   "name": "② 속력·전압과 휘는 정도",
+   "section": "편향 y₁ ∝ V / v₀²",
+   "chart": true,
+   "desc": "같은 극판에서 입사 속력(또는 전압)만 ½배, 1배, 2배로 바꾼 세 궤적을 비교합니다. 아래 그래프는 출구 편향 y₁이 가로축 변수에 따라 어떻게 변하는지 보여 줍니다. 가로축을 속력과 전압으로 바꿔 가며 비교해 보세요.",
+   "misconception": "속력을 2배로 하면 휘는 정도가 1/2이 될 것 같지만, 실제로는 1/4이 됩니다. 판을 지나는 시간이 1/2로 줄고, 편향은 시간의 제곱(½at²)에 비례하기 때문입니다. 반면 전압을 2배로 하면 가속도가 2배이므로 편향도 정확히 2배가 됩니다.",
+   "formula": [
+    {
+     "eq_html": "y<sub>1<\/sub> = (1/2)a(L/v<sub>0<\/sub>)<sup>2<\/sup> = eVL<sup>2<\/sup> / (2mdv<sub>0<\/sub><sup>2<\/sup>)",
+     "text_html": "y₁ ∝ V ,  y₁ ∝ 1/v₀² ,  y₁ ∝ L² ,  y₁ ∝ 1/d"
+    }
+   ],
+   "choices": [
+    {
+     "key": "chartX",
+     "label": "그래프 가로축",
+     "value": "v0",
+     "options": [
+      {
+       "value": "v0",
+       "label": "입사 속력 v₀"
+      },
+      {
+       "value": "V",
+       "label": "극판 전압 V"
+      }
+     ]
+    },
+    {
+     "key": "ex2",
+     "label": "화면 비율",
+     "value": 1,
+     "options": [
+      {
+       "value": 1,
+       "label": "실제 비율"
+      },
+      {
+       "value": 3,
+       "label": "세로 3배 과장"
+      }
+     ]
+    }
+   ],
+   "params": [
+    {
+     "key": "V2",
+     "label": "극판 전압 V",
+     "min": 50,
+     "max": 300,
+     "step": 5,
+     "value": 100,
+     "unit": "V"
+    },
+    {
+     "key": "d2",
+     "label": "극판 간격 d",
+     "min": 1,
+     "max": 4,
+     "step": 0.1,
+     "value": 2,
+     "unit": "cm"
+    },
+    {
+     "key": "L2",
+     "label": "극판 길이 L",
+     "min": 2,
+     "max": 10,
+     "step": 0.5,
+     "value": 6,
+     "unit": "cm"
+    },
+    {
+     "key": "v02",
+     "label": "입사 속력 v₀",
+     "min": 1,
+     "max": 5,
+     "step": 0.1,
+     "value": 2.5,
+     "unit": "×10⁷ m/s"
+    }
+   ]
+  },
+  {
+   "id": "crt",
+   "tab": "scenario",
+   "name": "③ 전자총과 형광 스크린 (브라운관)",
+   "section": "가속 전압 → 편향 → 스크린",
+   "animated": true,
+   "status_hint": "재생을 누르면 입자가 발사되어 스크린에 점을 찍습니다. 입자를 바꿔 여러 번 쏴 보세요.",
+   "desc": "가속 전압 V_a로 가속된 입자가 편향판(전압 V_d)을 지나 거리 D 떨어진 형광 스크린에 닿습니다. 스크린에 찍힌 점은 리셋 전까지 남으므로, 입자 종류나 전압을 바꿔 가며 여러 번 쏴서 비교할 수 있습니다.",
+   "misconception": "무거운 양성자는 전자보다 훨씬 덜 휠 것 같지만, 같은 가속 전압으로 가속했다면 휘는 정도의 크기는 질량·전하량과 무관하게 똑같습니다! 질량이 크면 가속도는 작지만 그만큼 느려서 판 안에 오래 머물기 때문에 효과가 정확히 상쇄됩니다. 전하의 부호에 따라 방향만 반대가 됩니다.",
+   "formula": [
+    {
+     "eq_html": "qV<sub>a<\/sub> = (1/2)mv<sub>0<\/sub><sup>2<\/sup>  →  v<sub>0<\/sub> = √(2qV<sub>a<\/sub> / m)",
+     "text_html": ""
+    },
+    {
+     "eq_html": "Y = V<sub>d<\/sub>L(L/2 + D) / (2dV<sub>a<\/sub>)",
+     "text_html": "q와 m이 식에서 사라집니다 — 스크린 위치는 전압과 장치 치수로만 결정됩니다."
+    }
+   ],
+   "choices": [
+    {
+     "key": "particle",
+     "label": "입자",
+     "value": "electron",
+     "options": [
+      {
+       "value": "electron",
+       "label": "전자"
+      },
+      {
+       "value": "proton",
+       "label": "양성자"
+      },
+      {
+       "value": "alpha",
+       "label": "알파 입자"
+      }
+     ]
+    },
+    {
+     "key": "ex3",
+     "label": "화면 비율",
+     "value": 1,
+     "options": [
+      {
+       "value": 1,
+       "label": "실제 비율"
+      },
+      {
+       "value": 3,
+       "label": "세로 3배 과장"
+      }
+     ]
+    }
+   ],
+   "params": [
+    {
+     "key": "Va3",
+     "label": "가속 전압 V_a",
+     "min": 200,
+     "max": 3000,
+     "step": 50,
+     "value": 1000,
+     "unit": "V"
+    },
+    {
+     "key": "Vd3",
+     "label": "편향판 전압 V_d",
+     "min": 0,
+     "max": 200,
+     "step": 5,
+     "value": 50,
+     "unit": "V"
+    },
+    {
+     "key": "d3",
+     "label": "편향판 간격 d",
+     "min": 1,
+     "max": 3,
+     "step": 0.1,
+     "value": 1.5,
+     "unit": "cm"
+    },
+    {
+     "key": "L3",
+     "label": "편향판 길이 L",
+     "min": 2,
+     "max": 6,
+     "step": 0.5,
+     "value": 4,
+     "unit": "cm"
+    },
+    {
+     "key": "D3",
+     "label": "판 끝~스크린 거리 D",
+     "min": 5,
+     "max": 25,
+     "step": 1,
+     "value": 15,
+     "unit": "cm"
+    }
+   ]
+  }
+ ],
+ "common_params": null,
+ "readout_title": "측정값"
+};
+</script>
+<script>
+/* ============================ 시뮬레이션 코드 (레시피 입력 sim_js) ============================ */
+'use strict';
+/* 1. 상수 — 내부 계산은 SI 단위, 화면 표시는 cm */
+const QE = 1.602176634e-19, ME = 9.1093837015e-31, MP = 1.67262192369e-27, MA = 6.6446573357e-27, C_LIGHT = 2.99792458e8;
+const CM = 0.01;
+const PARTICLES = {
+  electron: { q: -QE, m: ME, name: '전자', color: '#6a3fd6' },
+  proton: { q: QE, m: MP, name: '양성자', color: '#d9822b' },
+  alpha: { q: 2 * QE, m: MA, name: '알파 입자', color: '#1f9e89' },
+};
+const COL = { plus: '#e0472f', minus: '#2f6fe0', field: 'rgba(63,174,88,0.6)', v: '#1492c9', F: '#e0337a', tangent: '#c98a12', axis: '#9aa7bd', text: '#33414f' };
+
+/* 2. 물리 코어: 극판 사이에서만 y방향 등가속도, x방향 힘 없음 */
+function fieldEy(c) { return c.topPositive ? -c.V / c.d : c.V / c.d; }
+function accelOf(c) { return c.q * fieldEy(c) / c.m; }
+function deriv(s, a) { return { x: s.vx, y: s.vy, vx: 0, vy: a }; }
+function adv(s, k, h) { return { t: s.t + h, x: s.x + k.x * h, y: s.y + k.y * h, vx: s.vx + k.vx * h, vy: s.vy + k.vy * h }; }
+function rk4(s, a, h) {
+  const k1 = deriv(s, a), k2 = deriv(adv(s, k1, h / 2), a), k3 = deriv(adv(s, k2, h / 2), a), k4 = deriv(adv(s, k3, h), a);
+  return {
+    t: s.t + h,
+    x: s.x + h / 6 * (k1.x + 2 * k2.x + 2 * k3.x + k4.x),
+    y: s.y + h / 6 * (k1.y + 2 * k2.y + 2 * k3.y + k4.y),
+    vx: s.vx + h / 6 * (k1.vx + 2 * k2.vx + 2 * k3.vx + k4.vx),
+    vy: s.vy + h / 6 * (k1.vy + 2 * k2.vy + 2 * k3.vy + k4.vy),
+  };
+}
+// 구간(입사부 → 극판 사이 → 극판 밖)별 RK4 적분. 극판에 닿으면 그 지점에서 멈춘다.
+function simulate(c) {
+  const a = accelOf(c), half = c.d / 2;
+  let s = { t: 0, x: -c.xPre, y: 0, vx: c.v0, vy: 0 };
+  const pts = [s];
+  const segs = [
+    { a: 0, T: c.xPre / c.v0, n: 30, plate: false },
+    { a: a, T: c.L / c.v0, n: 400, plate: true },
+    { a: 0, T: c.D / c.v0, n: 240, plate: false },
+  ];
+  let hit = false, exit = null;
+  for (const g of segs) {
+    if (!(g.T > 0)) continue;
+    const h = g.T / g.n;
+    for (let i = 0; i < g.n; i++) {
+      const nx = rk4(s, g.a, h);
+      if (g.plate && Math.abs(nx.y) >= half) {
+        const f = (half - Math.abs(s.y)) / (Math.abs(nx.y) - Math.abs(s.y));
+        s = { t: s.t + f * h, x: s.x + f * (nx.x - s.x), y: Math.sign(nx.y) * half, vx: s.vx + f * (nx.vx - s.vx), vy: s.vy + f * (nx.vy - s.vy) };
+        pts.push(s); hit = true; break;
+      }
+      s = nx; pts.push(s);
+    }
+    if (hit) break;
+    if (g.plate) exit = Object.assign({}, s);
+  }
+  return { pts, hit, exit, a, end: s, tEnd: s.t, screenY: !hit && c.D > 0 ? s.y : null };
+}
+function stateAt(sim, t) {
+  const p = sim.pts;
+  if (t <= 0) return p[0];
+  if (t >= sim.tEnd) return p[p.length - 1];
+  let lo = 0, hi = p.length - 1;
+  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (p[mid].t <= t) lo = mid; else hi = mid; }
+  const A = p[lo], B = p[hi], f = (t - A.t) / ((B.t - A.t) || 1);
+  return { t, x: A.x + f * (B.x - A.x), y: A.y + f * (B.y - A.y), vx: A.vx + f * (B.vx - A.vx), vy: A.vy + f * (B.vy - A.vy) };
+}
+// 해석해
+function analyticExit(c) { const a = accelOf(c), T = c.L / c.v0; return { a, T, y1: 0.5 * a * T * T, vy: a * T, tan: a * T / c.v0 }; }
+function crtFormulaY(Vd, Va, d, L, D, qSign) { return -qSign * Vd * L * (L / 2 + D) / (2 * d * Va); } // 위쪽 극판 (+)
+function gunSpeed(p, Va) { return Math.sqrt(2 * Math.abs(p.q) * Va / p.m); }
+
+/* 3. 시나리오별 설정 */
+function cfgFor(api) {
+  const P = api.P, id = api.scenario.id, e = PARTICLES.electron;
+  if (id === 'crt') {
+    const p = PARTICLES[P.particle] || e;
+    return { q: p.q, m: p.m, v0: gunSpeed(p, P.Va3), V: P.Vd3, d: P.d3 * CM, L: P.L3 * CM, D: P.D3 * CM, xPre: 2 * CM, topPositive: true, particle: p };
+  }
+  if (id === 'speed') return { q: e.q, m: e.m, v0: P.v02 * 1e7, V: P.V2, d: P.d2 * CM, L: P.L2 * CM, D: P.L2 * CM * 0.5, xPre: 1.5 * CM, topPositive: true, particle: e };
+  return { q: e.q, m: e.m, v0: P.v01 * 1e7, V: P.V1, d: P.d1 * CM, L: P.L1 * CM, D: P.L1 * CM * 0.6, xPre: 1.5 * CM, topPositive: P.top1 !== 'minus', particle: e };
+}
+function exFor(api) { const id = api.scenario.id; const v = Number(api.P[id === 'crt' ? 'ex3' : id === 'speed' ? 'ex2' : 'ex1']); return v > 0 ? v : 1; }
+const S = { t: 0, done: false, cfg: null, sim: null, extra: null, trail: [] };
+function speedSims(api) {
+  const base = S.cfg, useV = api.P.chartX === 'V';
+  const mk = f => useV ? Object.assign({}, base, { V: base.V * f }) : Object.assign({}, base, { v0: base.v0 * f });
+  const lab = useV ? ['½V', 'V', '2V'] : ['½v₀', 'v₀', '2v₀'];
+  return [
+    { sim: simulate(mk(0.5)), color: '#9aa7bd', label: lab[0] },
+    { sim: simulate(base), color: PARTICLES.electron.color, label: lab[1] + ' (현재)', main: true },
+    { sim: simulate(mk(2)), color: '#3fae58', label: lab[2] },
+  ];
+}
+
+/* 4. 그리기 */
+function arrow(ctx, x1, y1, x2, y2, color, w) {
+  const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy);
+  if (len < 2) return;
+  const ux = dx / len, uy = dy / len, hl = Math.min(10, len * 0.45);
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = w || 2;
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2 - ux * hl * 0.6, y2 - uy * hl * 0.6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - ux * hl - uy * hl * 0.5, y2 - uy * hl + ux * hl * 0.5);
+  ctx.lineTo(x2 - ux * hl + uy * hl * 0.5, y2 - uy * hl - ux * hl * 0.5);
+  ctx.closePath(); ctx.fill();
+}
+function makeView(api, c, maxY, k) {
+  const W = api.width || api.ctx.canvas.clientWidth, H = api.height || api.ctx.canvas.clientHeight, m = 44;
+  const xmin = -c.xPre, xmax = c.L + c.D + 0.6 * CM;
+  const yh = Math.max(c.d / 2 * 1.7, maxY * 1.15, 1 * CM);
+  const s = Math.min((W - 2 * m) / (xmax - xmin), (H - 2 * m) / (2 * yh * k));
+  const cx = W / 2 - s * (xmin + xmax) / 2, cy = H / 2;
+  return { W, H, s, k, X: x => cx + s * x, Y: y => cy - s * k * y };
+}
+function polyline(ctx, v, pts, tMax, cur) {
+  ctx.beginPath(); let n = 0;
+  for (const p of pts) { if (p.t > tMax) break; if (n++ === 0) ctx.moveTo(v.X(p.x), v.Y(p.y)); else ctx.lineTo(v.X(p.x), v.Y(p.y)); }
+  if (cur && n > 0) ctx.lineTo(v.X(cur.x), v.Y(cur.y));
+  ctx.stroke();
+}
+function drawPlates(ctx, v, c) {
+  const x0 = v.X(0), x1 = v.X(c.L), yt = v.Y(c.d / 2), yb = v.Y(-c.d / 2);
+  const topCol = c.topPositive ? COL.plus : COL.minus, botCol = c.topPositive ? COL.minus : COL.plus;
+  if (c.V > 0) {
+    const nx = Math.max(3, Math.round((x1 - x0) / 55)), ny = Math.max(1, Math.round((yb - yt) / 55));
+    const len = Math.min(26, (yb - yt) / ny * 0.6), dir = c.topPositive ? 1 : -1;
+    for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) {
+      const x = x0 + (i + 0.5) * (x1 - x0) / nx, y = yt + (j + 0.5) * (yb - yt) / ny;
+      arrow(ctx, x, y - dir * len / 2, x, y + dir * len / 2, COL.field, 1.6);
+    }
+  }
+  ctx.fillStyle = topCol; ctx.fillRect(x0, yt - 8, x1 - x0, 8);
+  ctx.fillStyle = botCol; ctx.fillRect(x0, yb, x1 - x0, 8);
+  ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillStyle = topCol; ctx.fillText(c.topPositive ? '+' : '−', x1 + 14, yt + 2);
+  ctx.fillStyle = botCol; ctx.fillText(c.topPositive ? '−' : '+', x1 + 14, yb + 10);
+  ctx.font = '12px sans-serif'; ctx.fillStyle = COL.text;
+  ctx.fillText(`L = ${(c.L / CM).toFixed(1)} cm`, (x0 + x1) / 2, yb + 24);
+  ctx.fillText(`V = ${c.V.toFixed(0)} V,  d = ${(c.d / CM).toFixed(1)} cm`, (x0 + x1) / 2, yt - 14);
+}
+function drawGun(ctx, v, c, label) {
+  const x = v.X(-c.xPre), y = v.Y(0);
+  ctx.fillStyle = '#5a6b7d'; ctx.fillRect(x - 30, y - 9, 30, 18);
+  ctx.fillStyle = COL.text; ctx.font = '11px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(label, x - 15, y + 26);
+}
+function drawScreen(ctx, v, c) {
+  const xs = v.X(c.L + c.D);
+  ctx.fillStyle = '#c9d3df'; ctx.fillRect(xs, 18, 7, v.H - 36);
+  ctx.fillStyle = COL.text; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('형광 스크린', xs + 3, 14);
+  ctx.fillText(`D = ${(c.D / CM).toFixed(0)} cm`, (v.X(c.L) + xs) / 2, v.Y(0) + 18);
+  const groups = {};
+  for (const tr of S.trail) {
+    const key = Math.round(tr.Y / CM * 200);
+    if (!groups[key]) groups[key] = { Y: tr.Y, items: [] };
+    if (!groups[key].items.some(it => it.name === tr.name)) groups[key].items.push(tr);
+  }
+  for (const key in groups) {
+    const g = groups[key], y = v.Y(g.Y);
+    g.items.forEach((it, i) => { ctx.fillStyle = it.color; ctx.beginPath(); ctx.arc(xs + 3.5 + i * 6, y, 6, 0, Math.PI * 2); ctx.fill(); });
+    ctx.textAlign = 'left'; ctx.fillStyle = COL.text; ctx.font = '12px sans-serif';
+    ctx.fillText(g.items.map(it => it.name).join('·'), xs + 14 + g.items.length * 6, y + 4);
+  }
+}
+function drawFlight(api, ctx, v, c, sim) {
+  const pts = sim.pts, cur = stateAt(sim, S.t), col = c.particle.color;
+  const crashed = sim.hit && S.t >= sim.tEnd;
+  ctx.setLineDash([5, 5]); ctx.strokeStyle = 'rgba(90,107,125,0.45)'; ctx.lineWidth = 1.5;
+  polyline(ctx, v, pts, Infinity); ctx.setLineDash([]);
+  ctx.strokeStyle = col; ctx.lineWidth = 3; polyline(ctx, v, pts, S.t, cur);
+  if (api.scenario.id === 'basic' && sim.exit && !sim.hit && S.t >= sim.exit.t && Math.abs(sim.exit.vy) > 0) {
+    const ex = sim.exit, xe = c.L + c.D, ye = ex.y + (xe - c.L) * ex.vy / ex.vx;
+    ctx.setLineDash([4, 4]); ctx.strokeStyle = COL.tangent; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.moveTo(v.X(c.L / 2), v.Y(0)); ctx.lineTo(v.X(xe), v.Y(ye)); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = COL.tangent; ctx.beginPath(); ctx.arc(v.X(c.L / 2), v.Y(0), 5, 0, Math.PI * 2); ctx.fill();
+    ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('L/2', v.X(c.L / 2), v.Y(0) + 20);
+  }
+  const px = v.X(cur.x), py = v.Y(cur.y);
+  if (!crashed) {
+    const Lv = 60, sp = Math.hypot(cur.vx, cur.vy * v.k), ux = cur.vx / sp, uy = cur.vy * v.k / sp;
+    if (Math.abs(cur.vy) > 1e-6 * cur.vx) {
+      ctx.setLineDash([3, 3]);
+      arrow(ctx, px, py, px + Lv * ux, py, 'rgba(20,146,201,0.55)', 1.5);
+      arrow(ctx, px, py, px, py - Lv * uy, 'rgba(20,146,201,0.55)', 1.5);
+      ctx.setLineDash([]);
+    }
+    arrow(ctx, px, py, px + Lv * ux, py - Lv * uy, COL.v, 2.5);
+    ctx.fillStyle = COL.v; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('v', px + Lv * ux + 6, py - Lv * uy - 6);
+    const inside = cur.x >= 0 && cur.x <= c.L;
+    if (inside && sim.a !== 0) {
+      const dir = sim.a > 0 ? -1 : 1;
+      arrow(ctx, px, py, px, py + dir * 42, COL.F, 2.5);
+      ctx.fillStyle = COL.F; ctx.fillText('F', px + 8, py + dir * 38);
+    }
+  }
+  ctx.fillStyle = col; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(px, py, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  if (crashed) { ctx.fillStyle = '#c0392b'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('💥 극판에 충돌!', px, py + (cur.y > 0 ? -18 : 28)); }
+}
+function drawCompare(ctx, v, list) {
+  ctx.font = 'bold 12px sans-serif';
+  for (const it of list) {
+    ctx.strokeStyle = it.color; ctx.lineWidth = it.main ? 3 : 2;
+    polyline(ctx, v, it.sim.pts, Infinity);
+    const e = it.sim.end, x = v.X(e.x), y = v.Y(e.y);
+    ctx.fillStyle = it.color; ctx.textAlign = 'left';
+    if (it.sim.hit) { ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill(); ctx.fillText('✕ ' + it.label + ' 충돌', x + 8, y + (e.y > 0 ? -10 : 18)); }
+    else ctx.fillText(it.label, x + 6, y + 4);
+  }
+}
+function draw(api) {
+  if (!S.sim) return;
+  const ctx = api.ctx, id = api.scenario.id, c = S.cfg, k = exFor(api);
+  const list = id === 'speed' && S.extra ? S.extra : [{ sim: S.sim }];
+  let maxY = 0;
+  for (const it of list) for (const p of it.sim.pts) maxY = Math.max(maxY, Math.abs(p.y));
+  if (id === 'crt') for (const tr of S.trail) maxY = Math.max(maxY, Math.abs(tr.Y));
+  const v = makeView(api, c, maxY, k);
+  ctx.save();
+  ctx.fillStyle = '#f8fafc'; ctx.fillRect(0, 0, v.W, v.H);
+  ctx.setLineDash([6, 6]); ctx.strokeStyle = COL.axis; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(v.X(-c.xPre), v.Y(0)); ctx.lineTo(v.X(c.L + c.D + 0.5 * CM), v.Y(0)); ctx.stroke(); ctx.setLineDash([]);
+  drawGun(ctx, v, c, id === 'crt' ? '가속부 V_a' : '입사');
+  drawPlates(ctx, v, c);
+  if (id === 'crt') drawScreen(ctx, v, c);
+  if (id === 'speed') drawCompare(ctx, v, list); else drawFlight(api, ctx, v, c, S.sim);
+  ctx.font = '12px sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = k > 1 ? '#c0392b' : '#5a6b7d';
+  ctx.fillText(k > 1 ? `⚠ 세로 방향 ${k}배 과장 표시` : '가로·세로 실제 비율', 12, v.H - 12);
+  ctx.restore();
+}
+
+/* 5. 편향-속력(전압) 그래프 */
+function renderSpeedChart(api) {
+  const P = api.P, cv = api.chart.canvas, ctx = api.chart.ctx, c = S.cfg;
+  const W = cv.width, H = cv.height, padL = 48, padB = 34, padT = 12, padR = 12;
+  const useV = P.chartX === 'V';
+  const xMin = useV ? 0 : 1, xMax = useV ? 300 : 5, cur = useV ? P.V2 : P.v02;
+  const yOf = xv => Math.abs(analyticExit(Object.assign({}, c, useV ? { V: xv } : { v0: xv * 1e7 })).y1) / CM * 10;
+  const lim = c.d / 2 / CM * 10, yMax = lim * 1.5;
+  const X = xv => padL + (xv - xMin) / (xMax - xMin) * (W - padL - padR);
+  const Y = yv => H - padB - yv / yMax * (H - padB - padT);
+  ctx.clearRect(0, 0, W, H);
+  ctx.strokeStyle = '#d7dee8'; ctx.lineWidth = 1; ctx.fillStyle = '#5a6b7d'; ctx.font = '11px sans-serif';
+  ctx.beginPath(); ctx.moveTo(padL, padT); ctx.lineTo(padL, H - padB); ctx.lineTo(W - padR, H - padB); ctx.stroke();
+  ctx.textAlign = 'center';
+  for (let i = 0; i <= 4; i++) { const xv = xMin + (xMax - xMin) * i / 4; ctx.fillText(xv.toFixed(0), X(xv), H - padB + 14); }
+  ctx.fillText(useV ? '극판 전압 V (V)' : '입사 속력 v₀ (×10⁷ m/s)', (padL + W - padR) / 2, H - 4);
+  ctx.textAlign = 'right';
+  for (let i = 0; i <= 3; i++) { const yv = yMax * i / 3; ctx.fillText(yv.toFixed(1), padL - 4, Y(yv) + 4); }
+  ctx.save(); ctx.translate(12, (padT + H - padB) / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = 'center'; ctx.fillText('출구 편향 y₁ (mm)', 0, 0); ctx.restore();
+  ctx.save(); ctx.beginPath(); ctx.rect(padL, padT, W - padL - padR, H - padB - padT); ctx.clip();
+  ctx.strokeStyle = '#34495e'; ctx.lineWidth = 2.2; ctx.beginPath();
+  for (let i = 0; i <= 160; i++) { const xv = xMin + (xMax - xMin) * i / 160, px = X(xv), py = Math.max(-1000, Y(yOf(xv))); if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); }
+  ctx.stroke(); ctx.restore();
+  ctx.setLineDash([5, 4]); ctx.strokeStyle = '#c0392b'; ctx.beginPath(); ctx.moveTo(padL, Y(lim)); ctx.lineTo(W - padR, Y(lim)); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = '#c0392b'; ctx.textAlign = 'right'; ctx.fillText('극판 충돌 한계 d/2', W - padR - 4, Y(lim) - 5);
+  const mark = (xv, col, txt) => {
+    if (xv < xMin || xv > xMax) return;
+    const py = Y(Math.min(yOf(xv), yMax));
+    ctx.fillStyle = col; ctx.beginPath(); ctx.arc(X(xv), py, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.textAlign = 'left'; ctx.font = 'bold 11px sans-serif'; ctx.fillText(txt, X(xv) + 7, py - 6);
+  };
+  mark(cur * 0.5, '#9aa7bd', useV ? '½V' : '½v₀');
+  mark(cur, '#6a3fd6', '현재');
+  mark(cur * 2, '#3fae58', useV ? '2V' : '2v₀');
+  const r = yOf(cur * 2) / yOf(cur);
+  api.chart.setHint(useV ? `전압 2배 → 편향 <b>${r.toFixed(2)}배</b> (y₁ ∝ V, 원점을 지나는 직선)` : `속력 2배 → 편향 <b>${r.toFixed(2)}배 = 1/${(1 / r).toFixed(1)}</b> (y₁ ∝ 1/v₀²)`);
+}
+
+/* 6. 측정값 */
+function sci(v, unit) { if (!isFinite(v)) return '—'; if (v === 0) return '0 ' + unit; const a = Math.abs(v); return (a >= 0.01 && a < 1e4 ? v.toFixed(2) : v.toExponential(2)) + ' ' + unit; }
+function cmS(m) { return (m / CM).toFixed(3) + ' cm'; }
+function nsS(s) { return (s * 1e9).toFixed(2) + ' ns'; }
+function readouts(api) {
+  const id = api.scenario.id, c = S.cfg, sim = S.sim, an = analyticExit(c), E = c.V / c.d;
+  if (id === 'speed') {
+    const useV = api.P.chartX === 'V';
+    const y = f => Math.abs(analyticExit(Object.assign({}, c, useV ? { V: c.V * f } : { v0: c.v0 * f })).y1);
+    const y0 = y(1), y2 = y(2);
+    api.setReadout([
+      ['전기장 E = V/d', sci(E, 'V/m')],
+      ['가속도 a = eE/m', sci(Math.abs(an.a), 'm/s²')],
+      ['판 통과 시간 L/v₀', nsS(an.T)],
+      ['출구 편향 y₁ (현재)', y0 < c.d / 2 ? cmS(y0) : '판에 충돌'],
+      [useV ? '전압 2배일 때 y₁' : '속력 2배일 때 y₁', y2 < c.d / 2 ? cmS(y2) : '판에 충돌'],
+      ['비율 y₁(2배) / y₁(현재)', y0 > 0 ? (y2 / y0).toFixed(2) + '배' : '—'],
+    ]);
+    api.setNote(useV ? '전압을 2배로 하면 가속도가 2배 → 편향도 2배입니다 (y₁ ∝ V).' : '속력을 2배로 하면 판을 지나는 시간이 ½ → 편향은 (½)² = ¼ 입니다 (y₁ ∝ 1/v₀²).');
+    return;
+  }
+  const cur = stateAt(sim, S.t), rows = [];
+  if (id === 'crt') {
+    rows.push(['입자', `${c.particle.name} (q = ${c.q > 0 ? '+' : '−'}${Math.round(Math.abs(c.q) / QE)}e)`]);
+    rows.push(['가속 후 속력 v₀ = √(2qV_a/m)', `${sci(c.v0, 'm/s')} (${(c.v0 / C_LIGHT * 100).toFixed(2)}% c)`]);
+  }
+  rows.push(['전기장 E = V/d', sci(E, 'V/m')], ['가속도 a_y', sci(an.a, 'm/s²')], ['판 통과 시간 L/v₀', nsS(an.T)]);
+  rows.push(['출구 편향 y₁ (해석해)', Math.abs(an.y1) < c.d / 2 ? cmS(an.y1) : '판에 충돌']);
+  if (id === 'crt') {
+    rows.push(['스크린 위치 Y (공식)', sim.hit ? '— (판에 충돌)' : cmS(crtFormulaY(c.V, api.P.Va3, c.d, c.L, c.D, Math.sign(c.q)))]);
+    rows.push(['스크린 위치 Y (시뮬레이션)', sim.hit ? '—' : cmS(sim.screenY)]);
+  } else {
+    rows.push(['출구 각도 θ', sim.hit ? '—' : (Math.atan(an.tan) * 180 / Math.PI).toFixed(2) + '°']);
+  }
+  rows.push(['현재 t', nsS(cur.t)], ['현재 위치 (x, y)', `(${(cur.x / CM).toFixed(2)}, ${(cur.y / CM).toFixed(3)}) cm`], ['현재 v_x', sci(cur.vx, 'm/s')], ['현재 v_y', sci(cur.vy, 'm/s')]);
+  api.setReadout(rows);
+  if (id === 'crt') api.setNote(sim.hit ? '편향판 전압이 너무 크거나 가속 전압이 너무 작아 입자가 편향판에 부딪힙니다.' : 'V_a가 같으면 입자 종류를 바꿔도 스크린 위치의 크기는 같고, 전하 부호에 따라 방향만 뒤집힙니다. 스크린 점은 리셋 전까지 남습니다.');
+  else api.setNote(sim.hit ? '전압이 너무 크거나 속력이 너무 작으면 판을 빠져나가기 전에 (+)판에 부딪힙니다 (y₁ ≥ d/2).' : 'v_x는 끝까지 변하지 않고 v_y만 일정하게 늘어납니다. 판을 나온 뒤에는 힘이 없어 직선으로 진행합니다. (비상대론 근사 사용: 5×10⁷ m/s는 광속의 약 17%)');
+}
+
+/* 7. SIM 훅 */
+const SIM = {
+  enter(api) { S.t = 0; S.done = false; S.trail = []; },
+  update(api) {
+    S.cfg = cfgFor(api);
+    S.sim = simulate(S.cfg);
+    if (S.t > S.sim.tEnd) S.t = S.sim.tEnd;
+    if (api.scenario.id === 'speed') { S.extra = speedSims(api); renderSpeedChart(api); }
+    readouts(api);
+    draw(api);
+  },
+  frame(api, dt) {
+    const id = api.scenario.id;
+    if (id === 'speed' || !S.sim) return;
+    if (api.playing) {
+      if (S.done) { S.t = 0; S.done = false; }
+      const scale = id === 'crt' ? S.sim.tEnd / 3 : 2e-9;
+      S.t += Math.min(dt, 0.05) * scale;
+      if (S.t >= S.sim.tEnd) {
+        S.t = S.sim.tEnd; S.done = true; api.setPlaying(false);
+        if (id === 'crt' && !S.sim.hit) { S.trail.push({ Y: S.sim.screenY, color: S.cfg.particle.color, name: S.cfg.particle.name }); if (S.trail.length > 12) S.trail.shift(); }
+      }
+      const cur = stateAt(S.sim, S.t);
+      api.setStatus(`t = ${(cur.t * 1e9).toFixed(2)} ns  |  x = ${(cur.x / CM).toFixed(2)} cm  |  y = ${(cur.y / CM).toFixed(3)} cm` + (id === 'crt' ? `  |  실제 비행 ${(S.sim.tEnd * 1e9).toFixed(1)} ns를 3초로 표시` : '  |  1 ns → 0.5초'));
+      readouts(api);
+    }
+    draw(api);
+  },
+  reset(api) { S.t = 0; S.done = false; S.trail = []; api.setStatus(''); if (S.sim) { readouts(api); draw(api); } },
+  tests() {
+    const R = [];
+    const rel = (a, b) => Math.abs(a - b) / Math.max(Math.abs(b), 1e-30);
+    const base = { q: -QE, m: ME, v0: 2e7, V: 100, d: 0.02, L: 0.06, D: 0.03, xPre: 0.015, topPositive: true };
+    const sim = simulate(base), an = analyticExit(base);
+    R.push(['출구 편향 y₁ = eVL²/(2mdv₀²) (RK4 vs 해석해)', !sim.hit && rel(sim.exit.y, an.y1) < 1e-6, `해석해 ${(an.y1 / CM).toFixed(5)} cm, 수치 ${(sim.exit.y / CM).toFixed(5)} cm`]);
+    const mid = stateAt(sim, base.xPre / base.v0 + (base.L / 2) / base.v0);
+    R.push(['포물선: x = L/2에서 y = y₁/4', rel(mid.y, an.y1 / 4) < 1e-3, `y(L/2) = ${(mid.y / CM).toFixed(5)} cm, y₁/4 = ${(an.y1 / 4 / CM).toFixed(5)} cm`]);
+    R.push(['수평 속도 v_x 보존', rel(sim.exit.vx, base.v0) < 1e-12 && rel(sim.end.vx, base.v0) < 1e-12, `v_x(끝) = ${sim.end.vx.toExponential(6)} m/s`]);
+    const dK = 0.5 * base.m * (sim.exit.vx ** 2 + sim.exit.vy ** 2) - 0.5 * base.m * base.v0 ** 2, Wk = base.m * an.a * sim.exit.y;
+    R.push(['일-에너지 정리 ΔK = F·y₁', rel(dK, Wk) < 1e-6, `ΔK = ${dK.toExponential(4)} J, W = ${Wk.toExponential(4)} J`]);
+    const xCross = base.L - sim.exit.y * sim.exit.vx / sim.exit.vy;
+    R.push(['출구 속도 연장선이 L/2에서 축과 만남', rel(xCross, base.L / 2) < 1e-6, `교점 x = ${(xCross / CM).toFixed(5)} cm (L/2 = ${(base.L / 2 / CM).toFixed(2)} cm)`]);
+    const flip = analyticExit(Object.assign({}, base, { topPositive: false }));
+    R.push(['전자는 (+)판 쪽으로 휨', an.y1 > 0 && flip.y1 < 0, `위 (+): y₁ = ${(an.y1 / CM).toFixed(4)} cm, 위 (−): y₁ = ${(flip.y1 / CM).toFixed(4)} cm`]);
+    const s2 = simulate(Object.assign({}, base, { v0: 4e7 })), sV = simulate(Object.assign({}, base, { V: 200 }));
+    R.push(['속력 2배 → 편향 1/4', rel(sim.exit.y / s2.exit.y, 4) < 1e-6, `비율 ${(sim.exit.y / s2.exit.y).toFixed(6)}`]);
+    R.push(['전압 2배 → 편향 2배', rel(sV.exit.y / sim.exit.y, 2) < 1e-6, `비율 ${(sV.exit.y / sim.exit.y).toFixed(6)}`]);
+    const hc = Object.assign({}, base, { V: 300, v0: 1e7 }), sh = simulate(hc);
+    const xHit = hc.v0 * Math.sqrt(2 * (hc.d / 2) / Math.abs(accelOf(hc)));
+    R.push(['극판 충돌 판정 및 충돌 위치', sh.hit && Math.abs(Math.abs(sh.end.y) - hc.d / 2) < 1e-12 && rel(sh.end.x, xHit) < 1e-3, `충돌 x = ${(sh.end.x / CM).toFixed(4)} cm, 해석해 ${(xHit / CM).toFixed(4)} cm`]);
+    const crt = p => simulate({ q: p.q, m: p.m, v0: gunSpeed(p, 1000), V: 50, d: 0.015, L: 0.04, D: 0.15, xPre: 0.02, topPositive: true });
+    const ce = crt(PARTICLES.electron), cp = crt(PARTICLES.proton), ca = crt(PARTICLES.alpha);
+    const Yf = crtFormulaY(50, 1000, 0.015, 0.04, 0.15, -1);
+    R.push(['브라운관 Y = V_dL(L/2+D)/(2dV_a)', rel(ce.screenY, Yf) < 1e-6, `공식 ${(Yf / CM).toFixed(5)} cm, 수치 ${(ce.screenY / CM).toFixed(5)} cm`]);
+    R.push(['같은 V_a → 양성자·알파도 |Y| 동일, 방향만 반대', rel(cp.screenY, -ce.screenY) < 1e-6 && rel(ca.screenY, cp.screenY) < 1e-6, `전자 ${(ce.screenY / CM).toFixed(4)}, 양성자 ${(cp.screenY / CM).toFixed(4)}, 알파 ${(ca.screenY / CM).toFixed(4)} cm`]);
+    const vMax = gunSpeed(PARTICLES.electron, 3000);
+    R.push(['비상대론 근사 범위 (V_a = 3000 V 전자 v/c < 0.12)', vMax / C_LIGHT < 0.12, `v/c = ${(vMax / C_LIGHT).toFixed(3)}`]);
+    return R;
+  },
+};
+
+</script>
+<script>
+"use strict";
+/* ============================ 공용 UI 프레임워크 (템플릿) ============================ */
+(function () {
+  const C = WS_CONFIG;
+  const $ = (id) => document.getElementById(id);
+  const P = {};
+  const ui = { tab: C.tabs[0].id, scenarioId: null, playing: false };
+  const lastScenarioOfTab = {};
+
+  function addDefaults(params) { (params || []).forEach(p => { if (!(p.key in P)) P[p.key] = p.value; }); }
+  C.scenarios.forEach(s => { addDefaults(s.params); addDefaults(s.choices); });
+  if (C.common_params) addDefaults(C.common_params.params);
+
+  function current() { return C.scenarios.find(s => s.id === ui.scenarioId); }
+  function scenariosOfTab(tab) { return C.scenarios.filter(s => s.tab === tab); }
+  function fmtVal(v, unit) {
+    if (!unit) return String(v);
+    return /^[°%′″]/.test(unit) ? v + unit : v + " " + unit;
+  }
+
+  function showError(where, e) {
+    const box = $("simError");
+    box.hidden = false;
+    box.textContent = "시뮬레이션 오류 (" + where + "): " + (e && e.message ? e.message : e);
+    console.error(e);
+  }
+  const SIMOBJ = (typeof SIM !== "undefined") ? SIM : null;
+  function call(hook, ...args) {
+    if (!SIMOBJ || typeof SIMOBJ[hook] !== "function") return undefined;
+    try { return SIMOBJ[hook](api, ...args); } catch (e) { showError(hook, e); return undefined; }
+  }
+
+  /* ---------- 렌더러 ---------- */
+  const wrap = $("sceneWrap");
+  const api = {
+    config: C, P,
+    get scenario() { return current(); },
+    get tab() { return ui.tab; },
+    get playing() { return ui.playing; },
+    setPlaying(b) { ui.playing = !!b; updatePlayButton(); },
+    boxHalf: (C.scene && C.scene.box_half) || 16,
+    sceneEl: wrap,
+    THREE: window.THREE || null,
+    scene: null, camera: null, renderer: null, controls: null,
+    canvas: null, ctx: null, width: 0, height: 0,
+    custom: $("customPanel"),
+    chart: {
+      canvas: $("chartCanvas"),
+      ctx: $("chartCanvas").getContext("2d"),
+      setHint(html) { $("chartHint").innerHTML = html; },
+    },
+    setReadout(rows) {
+      const tbl = $("readout");
+      tbl.innerHTML = "";
+      (rows || []).forEach(r => {
+        const tr = document.createElement("tr");
+        const a = document.createElement("td"); a.textContent = r[0];
+        const b = document.createElement("td"); b.textContent = r[1];
+        tr.append(a, b); tbl.appendChild(tr);
+      });
+    },
+    setNote(text) { $("readoutNote").textContent = text || ""; },
+    setStatus(text) { const el = $("wsStatus"); if (el) el.textContent = text || ""; },
+    setParam(key, v) {
+      P[key] = v;
+      const el = $("p_" + key); if (el) el.value = v;
+      const vEl = $("p_" + key + "_val"); if (vEl) vEl.textContent = fmtVal(v, vEl.dataset.unit);
+    },
+    refresh() { call("update"); },
+  };
+
+  function initRenderer() {
+    const sc = C.scene || {};
+    if (C.renderer === "three") {
+      if (!window.THREE) { showError("init", "Three.js를 불러오지 못했습니다 (인터넷 연결 확인)"); return false; }
+      const T = window.THREE;
+      api.scene = new T.Scene();
+      api.camera = new T.PerspectiveCamera(45, wrap.clientWidth / wrap.clientHeight, 0.1, 500);
+      const cp = sc.camera || [26, 20, 30];
+      api.camera.position.set(cp[0], cp[1], cp[2]);
+      api.renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
+      api.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      wrap.insertBefore(api.renderer.domElement, wrap.firstChild);
+      api.controls = new T.OrbitControls(api.camera, api.renderer.domElement);
+      api.controls.enableDamping = true;
+      api.controls.dampingFactor = 0.08;
+      api.controls.target.set(0, 0, 0);
+      api.scene.add(new T.AmbientLight(0xffffff, 0.55));
+      const dl = new T.DirectionalLight(0xffffff, 0.9);
+      dl.position.set(20, 30, 15);
+      api.scene.add(dl);
+      if (sc.grid !== false) api.scene.add(new T.GridHelper(api.boxHalf * 2, 16, 0x3a5a8a, 0x1f3352));
+      if (sc.axes !== false) api.scene.add(new T.AxesHelper(api.boxHalf * 0.6));
+    } else {
+      api.canvas = document.createElement("canvas");
+      wrap.insertBefore(api.canvas, wrap.firstChild);
+      api.ctx = api.canvas.getContext("2d");
+    }
+    window.addEventListener("resize", onResize);
+    onResize();
+    return true;
+  }
+
+  function onResize() {
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    api.width = w; api.height = h;
+    if (api.renderer) {
+      api.camera.aspect = w / h;
+      api.camera.updateProjectionMatrix();
+      api.renderer.setSize(w, h);
+    } else if (api.canvas) {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      api.canvas.width = Math.round(w * dpr);
+      api.canvas.height = Math.round(h * dpr);
+      api.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (ui.scenarioId) call("update");
+    }
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    if (api.controls) api.controls.update();
+    call("frame", 1 / 60);
+    if (api.renderer) api.renderer.render(api.scene, api.camera);
+  }
+
+  /* ---------- UI ---------- */
+  function renderTabs() {
+    const box = $("tabs");
+    box.innerHTML = "";
+    box.hidden = C.tabs.length < 2;
+    C.tabs.forEach(t => {
+      const b = document.createElement("button");
+      b.textContent = t.label;
+      b.className = t.id === ui.tab ? "active" : "";
+      b.addEventListener("click", () => switchTab(t.id));
+      box.appendChild(b);
+    });
+  }
+
+  function renderPicker() {
+    const box = $("scenarioPicker");
+    const list = scenariosOfTab(ui.tab);
+    box.innerHTML = "";
+    box.hidden = list.length < 2;
+    list.forEach(s => {
+      const b = document.createElement("button");
+      b.textContent = s.name;
+      b.className = s.id === ui.scenarioId ? "active" : "";
+      b.addEventListener("click", () => selectScenario(s.id));
+      box.appendChild(b);
+    });
+  }
+
+  function sliderEl(p) {
+    const div = document.createElement("div");
+    div.className = "param";
+    const label = document.createElement("label");
+    label.textContent = p.label + " ";
+    const val = document.createElement("span");
+    val.className = "val"; val.id = "p_" + p.key + "_val"; val.dataset.unit = p.unit || "";
+    val.textContent = fmtVal(P[p.key], p.unit);
+    label.appendChild(val);
+    const inp = document.createElement("input");
+    inp.type = "range"; inp.id = "p_" + p.key;
+    inp.min = p.min; inp.max = p.max; inp.step = p.step; inp.value = P[p.key];
+    inp.addEventListener("input", () => {
+      const v = parseFloat(inp.value);
+      P[p.key] = v;
+      val.textContent = fmtVal(v, p.unit);
+      call("update");
+    });
+    div.append(label, inp);
+    return div;
+  }
+
+  function choiceEl(c) {
+    const row = document.createElement("div");
+    row.className = "row"; row.style.marginBottom = "8px";
+    if (c.label) { const l = document.createElement("b"); l.style.fontSize = "0.9em"; l.textContent = c.label; row.appendChild(l); }
+    c.options.forEach(o => {
+      const b = document.createElement("button");
+      b.textContent = o.label;
+      b.className = P[c.key] === o.value ? "primary" : "";
+      b.addEventListener("click", () => {
+        P[c.key] = o.value;
+        row.querySelectorAll("button").forEach(x => x.className = "");
+        b.className = "primary";
+        call("update");
+      });
+      row.appendChild(b);
+    });
+    return row;
+  }
+
+  function renderControls() {
+    const s = current();
+    const body = $("scenarioBody");
+    body.innerHTML = "";
+    if (s.desc || s.section) {
+      const p = document.createElement("p");
+      p.className = "hint"; p.style.marginBottom = "10px";
+      if (s.section) { const b = document.createElement("b"); b.textContent = s.section; p.appendChild(b); if (s.desc) p.appendChild(document.createTextNode(" — ")); }
+      if (s.desc) p.appendChild(document.createTextNode(s.desc));
+      body.appendChild(p);
+    }
+    (s.choices || []).forEach(c => body.appendChild(choiceEl(c)));
+    (s.params || []).forEach(p => body.appendChild(sliderEl(p)));
+    if (s.animated) {
+      const st = document.createElement("div");
+      st.className = "hint"; st.id = "wsStatus";
+      st.textContent = s.status_hint || "";
+      body.appendChild(st);
+      const row = document.createElement("div");
+      row.className = "controls-row";
+      const play = document.createElement("button");
+      play.id = "playBtn"; play.className = "primary";
+      play.addEventListener("click", () => { ui.playing = !ui.playing; updatePlayButton(); });
+      const reset = document.createElement("button");
+      reset.textContent = "↺ 리셋";
+      reset.addEventListener("click", () => { ui.playing = false; updatePlayButton(); call("reset"); call("update"); });
+      row.append(play, reset);
+      body.appendChild(row);
+      updatePlayButton();
+    }
+    const cp = C.common_params;
+    if (cp && s.use_common !== false) {
+      const hr = document.createElement("hr");
+      hr.style.cssText = "margin:10px 0;border:none;border-top:1px solid var(--border)";
+      body.appendChild(hr);
+      if (cp.title) { const b = document.createElement("b"); b.style.fontSize = "0.9em"; b.textContent = cp.title; body.appendChild(b); }
+      cp.params.forEach(p => body.appendChild(sliderEl(p)));
+    }
+  }
+
+  function updatePlayButton() {
+    const b = $("playBtn");
+    if (b) b.textContent = ui.playing ? "⏸ 일시정지" : "▶ 재생";
+  }
+
+  function renderFormula() {
+    const s = current();
+    const body = $("formulaBody");
+    body.innerHTML = (s.formula || []).map(f =>
+      (f.eq_html ? `<div class="eq">${f.eq_html}</div>` : "") + (f.text_html || "")
+    ).join("");
+  }
+
+  function renderMisconception() {
+    const s = current();
+    const panel = $("misconceptionPanel");
+    panel.innerHTML = "";
+    panel.hidden = !s.misconception;
+    if (!s.misconception) return;
+    const box = document.createElement("div");
+    box.className = "misconception";
+    const b = document.createElement("b");
+    b.textContent = s.misconception_title || "💡 흔한 오개념";
+    box.append(b, document.createElement("br"), document.createTextNode(s.misconception));
+    panel.appendChild(box);
+  }
+
+  function enterScenario() {
+    ui.playing = false;
+    const s = current();
+    $("graphPanel").hidden = !s.chart;
+    $("chartHint").innerHTML = "";
+    api.custom.innerHTML = "";
+    api.setReadout([]); api.setNote("");
+    renderPicker(); renderControls(); renderFormula(); renderMisconception();
+    call("enter");
+    call("update");
+  }
+
+  function selectScenario(id) {
+    ui.scenarioId = id;
+    lastScenarioOfTab[ui.tab] = id;
+    enterScenario();
+  }
+
+  function switchTab(tab) {
+    ui.tab = tab;
+    renderTabs();
+    selectScenario(lastScenarioOfTab[tab] || scenariosOfTab(tab)[0].id);
+  }
+
+  function renderLegend() {
+    const box = $("legend");
+    (C.legend || []).forEach(l => {
+      const span = document.createElement("span");
+      const sw = document.createElement("i");
+      sw.className = "swatch" + (l.shape === "bar" ? " bar" : "");
+      sw.style.background = l.color;
+      span.append(sw, document.createTextNode(l.label));
+      box.appendChild(span);
+    });
+  }
+
+  function runSelfTests() {
+    if (!SIMOBJ || typeof SIMOBJ.tests !== "function") { console.log("물리 검증 항목 없음"); return; }
+    let results = [];
+    try { results = SIMOBJ.tests() || []; } catch (e) { showError("tests", e); return; }
+    console.log("=== " + C.title + " 물리 검증 ===");
+    let pass = 0;
+    for (const [name, ok, detail] of results) {
+      console.log(`[${ok ? "PASS" : "FAIL"}] ${name}${detail ? " — " + detail : ""}`);
+      if (ok) pass++;
+    }
+    console.log(pass === results.length ? "모든 검증 통과" : "일부 검증 실패 — 콘솔 확인 필요");
+    window.__wsSelfTest = { pass, total: results.length };
+  }
+
+  /* ---------- 시작 ---------- */
+  $("readoutTitle").textContent = C.readout_title || "측정값";
+  $("hoverHint").textContent = (C.scene && C.scene.hint != null) ? C.scene.hint
+    : (C.renderer === "three" ? "마우스 드래그: 회전 · 휠: 확대/축소" : "");
+  $("projectorBtn").addEventListener("click", () => document.body.classList.toggle("projector"));
+  renderLegend();
+  if (!SIMOBJ) showError("load", "sim_js에 SIM 객체가 정의되지 않았습니다");
+  if (initRenderer()) {
+    call("init");
+    renderTabs();
+    switchTab(ui.tab);
+    animate();
+  }
+  runSelfTests();
+})();
+</script>
+
+</body>
+</html>
+<!--claude-meta
+category: electromagnetism
+slug: electron-parallel-plates
+icon: ⚡
+title: 평행판 사이 전자의 포물선 운동
+desc: 균일한 전기장 속 전자의 포물선 운동 · 편향과 속력의 관계 · 브라운관(전자총+스크린)
+-->

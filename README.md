@@ -26,7 +26,7 @@
 ## 구성
 
 ```
-index.html                     ← 전체 시뮬레이션 목록 (랜딩 페이지)
+index.html                     ← 랜딩 페이지 (수업 자료 · 시뮬레이션 모음 · 학생 제출자료)
 mechanics/                     역학
 ├── gravity/                   중력가속도(g) 측정
 │   ├── free-fall/             🍎 자유낙하        ✔ 완료

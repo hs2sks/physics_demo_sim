@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>평형과 안정성</title>
+<!-- equilibrium-stability · 고2 물리학 수업 도입 모션그래픽 #2 — 알짜힘, 돌림힘, 평형, 안정성, 문제 풀이 요령 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Nanum+Pen+Script&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<style>
+:root{
+  --page:#e7e3d8; --ink:#23261f; --barbg:#d8d3c6;
+  --board:#1f3d31; --chalk:#f3f0e6; --yellow:#f4cf5a; --pink:#f29aac; --blue:#8cc3e8; --wood:#6b4a2f;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#111513;--ink:#e6e6de;--barbg:#1c211e}}
+:root[data-theme="dark"]{--page:#111513;--ink:#e6e6de;--barbg:#1c211e}
+html{height:100%} body{height:100%;margin:0}
+body{background:var(--page);color:var(--ink);font-family:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;display:flex;flex-direction:column;overflow:hidden}
+#wrap{flex:1;position:relative;overflow:hidden}
+#stage{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center center;overflow:hidden;color:var(--chalk);
+  background:
+    radial-gradient(ellipse 900px 500px at 25% 20%,rgba(255,255,255,.07),transparent 70%),
+    radial-gradient(ellipse 700px 400px at 75% 70%,rgba(255,255,255,.05),transparent 70%),
+    radial-gradient(ellipse 1400px 700px at 50% 110%,rgba(0,0,0,.35),transparent 70%),
+    var(--board);
+  box-shadow:inset 0 0 0 22px var(--wood), inset 0 0 0 26px #4d341f, inset 0 0 120px rgba(0,0,0,.45);
+}
+#tray{position:absolute;left:22px;right:22px;bottom:22px;height:18px;background:linear-gradient(#7a5738,#50361f)}
+.stick{position:absolute;bottom:40px;height:12px;border-radius:6px}
+.dsp{font-family:"Black Han Sans","Malgun Gothic",sans-serif;font-weight:400}
+.pen{font-family:"Nanum Pen Script",cursive}
+.ch{text-shadow:0 0 1px currentColor,0 0 10px rgba(255,255,255,.12)}
+.sc{position:absolute;inset:0;display:none}
+.row{position:absolute;left:0;right:0;text-align:center;white-space:nowrap;will-change:transform,opacity}
+.abs{position:absolute;will-change:transform,opacity}
+.y{color:var(--yellow)} .p{color:var(--pink)} .b{color:var(--blue)}
+.card{position:absolute;border:4px solid rgba(243,240,230,.85);border-radius:22px 12px 26px 14px;background:var(--board)}
+.fig{position:absolute;transform-origin:50% 100%}
+.fig svg{display:block;overflow:visible}
+
+/* control bar */
+#bar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--barbg);font-size:15px;flex-wrap:wrap}
+#bar button{font:inherit;padding:7px 14px;border-radius:8px;border:1px solid rgba(127,127,127,.5);background:var(--page);color:var(--ink);cursor:pointer}
+#bar button:focus-visible,#seek:focus-visible{outline:3px solid #3b82f6;outline-offset:2px}
+#seek{flex:1;min-width:140px}
+#time{font-variant-numeric:tabular-nums;min-width:92px}
+.hint{opacity:.7}
+body.rec #bar{display:none}
+@media (max-width:640px){.hint{display:none}}
+#mgError{position:absolute;left:40px;right:40px;top:40px;z-index:50;background:rgba(184,50,31,.95);color:#fff;font:22px/1.4 sans-serif;padding:10px 18px;border-radius:12px;white-space:pre-wrap;display:none}
+#mgError.on{display:block}
+body.nodecor #tray, body.nodecor .stick{display:none}
+/* ---- theme ---- */
+:root{--board:#1f3d31;--chalk:#f3f0e6;--yellow:#f4cf5a;--pink:#f29aac;--blue:#8cc3e8;--wood:#6b4a2f}
+/* ---- MotionKit 스타일 프리셋 (내장) ---- */
+/* ==== MotionKit 스타일 프리셋 (템플릿 내장) ==== */
+.mk-u{display:inline-block;will-change:transform,opacity}
+.mk-bg{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden}
+.mk-grain{position:absolute;left:0;top:0;width:1920px;height:1080px;pointer-events:none;background-image:var(--mk-noise);opacity:.13;mix-blend-mode:multiply}
+/* 글꼴 */
+.f-sans{font-family:'Noto Sans KR','Black Han Sans',sans-serif;font-weight:900;letter-spacing:-.04em}
+.f-thin{font-family:'Noto Sans KR',sans-serif;font-weight:300;letter-spacing:.02em}
+.f-plex{font-family:'IBM Plex Sans KR',sans-serif;font-weight:300}
+.f-mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+.f-paper{font-family:'Do Hyeon','Black Han Sans',sans-serif}
+.f-serif{font-family:'Nanum Myeongjo',serif}
+/* 1. SWISS — 그리드·원색·굵은 산세리프 */
+.mk-swiss{background:#f2efe8;color:#111;background-image:repeating-linear-gradient(90deg,rgba(0,0,0,.06) 0 1px,transparent 1px 160px)}
+.mk-swiss .accent{background:#e8321e}
+/* 2. LINE — 블루프린트 선화 */
+.mk-line{background:radial-gradient(ellipse at 50% 40%,#13305a,#060e1d 75%);color:#d8ecff}
+.mk-line .grid{position:absolute;inset:0;background-image:linear-gradient(rgba(140,200,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(140,200,255,.08) 1px,transparent 1px);background-size:60px 60px}
+.mk-line svg *{fill:none;stroke:#8fd0ff;stroke-width:3;stroke-linecap:round}
+/* 3. PAPER — 종이 컷아웃 */
+.mk-paper{background:radial-gradient(circle at 30% 20%,#f6eedf,#e6d8bf);color:#3b2f22}
+.mk-paper .card{position:absolute;border-radius:18px;box-shadow:0 10px 0 rgba(0,0,0,.08),0 22px 40px rgba(60,40,10,.18)}
+/* 4. RISO — 형광 잉크 겹침 */
+.mk-riso{background:#f4f0e6;color:#1a1a1a}
+.mk-riso .ink-p{color:#ff48b0;fill:#ff48b0;mix-blend-mode:multiply}
+.mk-riso .ink-b{color:#0078bf;fill:#0078bf;mix-blend-mode:multiply}
+.mk-riso .ink-y{color:#ffe800;fill:#ffe800;mix-blend-mode:multiply}
+/* 5. COSMIC — 입자·글로우·세리프 */
+.mk-cosmic{background:radial-gradient(circle at 50% 60%,#22124a,#04030c 70%);color:#f5f0ff}
+.mk-cosmic .glow{text-shadow:0 0 24px rgba(190,160,255,.7)}
+/* 6. CHALK — 기존 칠판 테마는 .mk-bg 없이 템플릿 그대로 쓴다 */
+/* ==== /MotionKit CSS ==== */
+
+/* ---- extra_css ---- */
+.hb{font-family:'IBM Plex Sans KR','Noto Sans KR',sans-serif;font-weight:600;letter-spacing:-.02em;line-height:1.15;white-space:nowrap;color:#e8f4ff}.tag{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:28px;color:#8fd0ff;letter-spacing:.14em;opacity:.85;white-space:pre}.tx{font-family:'IBM Plex Sans KR',sans-serif;font-weight:300;white-space:nowrap;color:#d8ecff}.eq{font-family:'IBM Plex Sans KR',sans-serif;font-weight:600;white-space:nowrap;color:#e8f4ff}.eq sub{font-size:.6em}.am{color:#ffc857}.pk{color:#ff7aa8}.cy{color:#8fd0ff}.ln{overflow:visible}.ln *{fill:none;stroke:#8fd0ff;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.ln .pw *{stroke:#e8f4ff;stroke-width:4}.ln .svt{fill:#ffc857;stroke:none;font:600 36px 'IBM Plex Sans KR',sans-serif}.ln .svw{fill:#d8ecff;stroke:none;font:300 28px 'IBM Plex Sans KR',sans-serif}.ln .svp{fill:#ff7aa8;stroke:none;font:600 34px 'IBM Plex Sans KR',sans-serif}.ln .dot{fill:#ff7aa8;stroke:none}.ln .fillb{fill:rgba(143,208,255,.10)}.ln .dash{stroke-dasharray:10 10}.boxd{position:absolute;border:4px solid #8fd0ff;background:rgba(143,208,255,.08);box-sizing:border-box;display:flex;align-items:center;justify-content:center;font:300 34px 'IBM Plex Sans KR',sans-serif;color:#d8ecff}
+</style>
+</head>
+<body class="nodecor">
+<div id="wrap">
+ <div id="stage">
+  <div id="tray"></div>
+  <div class="stick" style="left:300px;width:90px;background:#f3f0e6"></div>
+  <div class="stick" style="left:420px;width:60px;background:#f4cf5a"></div>
+  <div class="stick" style="left:1500px;width:70px;background:#f29aac"></div>
+
+  <!-- s0: 오프닝: 제목 + 감쇠 진동으로 수평 정착하는 시소 -->
+  <div class="sc" id="s0">
+<div class='mk-bg mk-line'><div class='grid'></div></div><div id='s0g' class='abs tag' style='left:160px;top:300px'></div><div id='s0t' class='abs hb' style='left:150px;top:350px;font-size:160px'>평형과 안정성</div><div id='s0s' class='abs tx' style='left:162px;top:570px;font-size:42px;opacity:0'>힘의 평형 · 돌림힘 · 무게중심</div><div id='s0c' class='abs tx cy' style='left:162px;top:645px;font-size:30px;opacity:0'>고2 물리학 · 개념 도입</div><svg id='s0v' class='abs ln' style='position:absolute;left:1240px;top:330px' width='640' height='420' viewBox='0 0 640 420'><g id='s0f'><polyline points='320,250 270,330 370,330 320,250'/><line x1='120' y1='330' x2='520' y2='330'/></g><g id='s0b'><line x1='20' y1='246' x2='620' y2='246'/><rect x='40' y='182' width='64' height='64' class='fillb'/><rect x='536' y='182' width='64' height='64' class='fillb'/></g></svg>
+  </div>
+
+  <!-- s1: 알짜힘: 5N-3N=2N 가속 → 알짜힘 0이면 등속(힘의 평형) -->
+  <div class="sc" id="s1">
+<div class='mk-bg mk-line'><div class='grid'></div></div><div id='s1g' class='abs tag' style='left:160px;top:70px'></div><div id='s1t' class='abs hb' style='left:155px;top:112px;font-size:68px'>알짜힘 — 힘을 모두 더하면</div><svg id='s1sv' class='abs ln' style='position:absolute;left:0;top:0' width='1920' height='1080' viewBox='0 0 1920 1080'><g id='s1fl'><line x1='200' y1='582' x2='1720' y2='582'/></g><line id='s1aR' style='opacity:0'/><polygon id='s1aRh' style='opacity:0'/><line id='s1aL' style='opacity:0'/><polygon id='s1aLh' style='opacity:0'/><line id='s1aN' style='opacity:0'/><polygon id='s1aNh' style='opacity:0'/></svg><div id='s1b' class='boxd' style='left:520px;top:400px;width:180px;height:180px;opacity:0;transform-origin:50% 100%'>상자</div><div id='s1lR' class='abs eq am' style='left:0;top:420px;font-size:40px;opacity:0'>5 N</div><div id='s1lL' class='abs eq am' style='left:0;top:420px;font-size:40px;opacity:0'>3 N</div><div id='s1lN' class='abs eq pk' style='left:0;top:690px;font-size:34px;opacity:0'>알짜힘</div><div id='s1e1' class='abs hb' style='left:160px;top:800px;font-size:64px'>알짜힘 = 5 N − 3 N = 2 N → 오른쪽</div><div id='s1e2' class='abs hb am' style='left:160px;top:800px;font-size:64px'>알짜힘 = 0 → 힘의 평형</div><div id='s1c' class='abs tx' style='left:164px;top:900px;font-size:34px;opacity:0'>정지해 있거나, 일정한 속도로 움직인다 (가속도 = 0)</div>
+  </div>
+
+  <!-- s2: 돌림힘: 문 0.5m vs 1.0m, 같은 시간 각도 2배 → τ=rF -->
+  <div class="sc" id="s2">
+<div class='mk-bg mk-line'><div class='grid'></div></div><div id='s2g' class='abs tag' style='left:160px;top:70px'></div><div id='s2t' class='abs hb' style='left:155px;top:112px;font-size:68px'>돌림힘 — 문은 어디를 밀어야 쉬울까?</div><div id='s2st' class='abs tx cy' style='left:162px;top:205px;font-size:30px;opacity:0'>위에서 내려다본 문 · 같은 힘 F로 민다</div><svg id='s2sv' class='abs ln' style='position:absolute;left:0;top:0' width='1920' height='1080' viewBox='0 0 1920 1080'><g id='s2fr'><line x1='80' y1='792' x2='306' y2='792'/><line x1='100' y1='792' x2='80' y2='820'/><line x1='160' y1='792' x2='140' y2='820'/><line x1='220' y1='792' x2='200' y2='820'/><line x1='280' y1='792' x2='260' y2='820'/></g><rect id='s2gh' x='320' y='768' width='600' height='24' transform='rotate(-24 320 780)' class='dash' style='opacity:0'/><g id='s2d'><g id='s2dr'><rect x='320' y='768' width='600' height='24' class='fillb'/><line x1='620' y1='760' x2='620' y2='800'/><line x1='920' y1='760' x2='920' y2='800'/></g><text x='620' y='745' text-anchor='middle' class='svw'>0.5 m</text><text x='905' y='745' text-anchor='middle' class='svw'>1.0 m</text><g id='s2gA' style='opacity:0'><line id='s2fA'/><polygon id='s2fAh'/><text x='642' y='890' class='svt'>F</text></g><g id='s2gB' style='opacity:0'><line id='s2fB'/><polygon id='s2fBh'/><text x='942' y='890' class='svt'>F</text></g></g><circle cx='320' cy='780' r='14' class='dot' style='fill:#8fd0ff'/><text x='240' y='870' class='svw'>회전축(경첩)</text></svg><div id='s2pA' class='abs eq' style='left:1120px;top:300px;font-size:46px;opacity:0'>① r = 0.5 m → τ = 0.5 m × F</div><div id='s2pB' class='abs eq am' style='left:1120px;top:380px;font-size:46px;opacity:0'>② r = 1.0 m → τ = 1.0 m × F</div><div id='s2pC' class='abs tx pk' style='left:1124px;top:460px;font-size:34px;opacity:0'>같은 시간 동안 2배 더 돌아간다</div><div id='s2F' class='abs hb am' style='left:1110px;top:560px;font-size:170px'>τ = r F</div><div id='s2cap' class='abs tx' style='left:1124px;top:780px;font-size:32px;opacity:0'>회전축에서 멀리, 수직으로 밀수록 돌림힘이 크다</div>
+  </div>
+
+  <!-- s3: 지레: 600N×0.5m = 200N×1.5m, spring으로 수평 -->
+  <div class="sc" id="s3">
+<div class='mk-bg mk-line'><div class='grid'></div></div><div id='s3g' class='abs tag' style='left:160px;top:70px'></div><div id='s3t' class='abs hb' style='left:155px;top:112px;font-size:68px'>돌림힘의 이용 — 지레</div><div id='s3st' class='abs tx cy' style='left:162px;top:205px;font-size:30px;opacity:0'>받침점을 회전축으로, 무거운 돌을 들어 올리려면?</div><svg id='s3sv' class='abs ln' style='position:absolute;left:0;top:0' width='1920' height='1080' viewBox='0 0 1920 1080'><g id='s3fr'><line x1='420' y1='770' x2='1500' y2='770'/><polyline points='760,700 715,770 805,770 760,700'/></g><g id='s3L' style='opacity:0'><rect x='560' y='688' width='800' height='12' class='fillb'/><polyline points='512,688 500,650 524,614 570,602 612,624 618,664 606,688 512,688' class='fillb' style='stroke:#d8ecff'/></g><line id='s3aW' style='opacity:0'/><polygon id='s3aWh' style='opacity:0'/><line id='s3aE' style='opacity:0'/><polygon id='s3aEh' style='opacity:0'/><g id='s3m' style='opacity:0'><line x1='560' y1='830' x2='760' y2='830'/><line x1='560' y1='815' x2='560' y2='845'/><line x1='760' y1='815' x2='760' y2='845'/><line x1='1360' y1='815' x2='1360' y2='845'/><line x1='760' y1='830' x2='1360' y2='830'/><text x='660' y='880' text-anchor='middle' class='svw'>0.5 m</text><text x='1060' y='880' text-anchor='middle' class='svw'>1.5 m</text></g><text id='s3lW' x='0' y='0' class='svt' style='opacity:0'>600 N</text><text id='s3lE' x='0' y='0' class='svp' style='opacity:0'>200 N</text></svg><div id='s3e1' class='abs eq' style='left:1060px;top:300px;font-size:52px;opacity:0'>600 N × 0.5 m = 200 N × 1.5 m</div><div id='s3e2' class='abs eq am' style='left:1060px;top:380px;font-size:52px;opacity:0'><span id='s3n1'>0</span> N·m = <span id='s3n2'>0</span> N·m</div><div id='s3c' class='abs tx' style='left:1064px;top:470px;font-size:34px;opacity:0'>팔이 3배 길면, 힘은 1/3이면 충분하다</div>
+  </div>
+
+  <!-- s4: 평형: 시소 300N이 1→2m 이동, 실시간 돌림힘 → 수평 정착 → ΣF=0, Στ=0 -->
+  <div class="sc" id="s4">
+<div class='mk-bg mk-line'><div class='grid'></div></div><div id='s4g' class='abs tag' style='left:160px;top:70px'></div><div id='s4t' class='abs hb' style='left:155px;top:112px;font-size:68px'>평형 — 시소를 수평으로 맞추려면?</div><div id='s4r1' class='abs tx' style='left:162px;top:225px;font-size:36px;opacity:0'>왼쪽 돌림힘: 500 N × 1.2 m = <b class='am'>600 N·m</b></div><div id='s4r2' class='abs tx' style='left:162px;top:280px;font-size:36px;opacity:0'>오른쪽 돌림힘: 300 N × <span id='s4x'>1.00</span> m = <b id='s4tr' class='am'>300 N·m</b></div><div id='s4r3' class='abs eq pk' style='left:162px;top:340px;font-size:40px;opacity:0'>→ 왼쪽으로 기운다</div><svg id='s4sv' class='abs ln' style='position:absolute;left:0;top:0' width='1920' height='1080' viewBox='0 0 1920 1080'><g id='s4fr'><line x1='380' y1='720' x2='1540' y2='720'/><polyline points='960,640 915,720 1005,720 960,640'/></g><g id='s4S' style='opacity:0'><rect x='454' y='628' width='1012' height='12' class='fillb'/><g id='s4Lb' style='opacity:0'><rect x='641' y='518' width='110' height='110' class='fillb'/><text x='696' y='585' text-anchor='middle' class='svw'>500 N</text></g><g id='s4Rb' style='opacity:0'><rect x='915' y='538' width='90' height='90' class='fillb'/><text x='960' y='593' text-anchor='middle' class='svw'>300 N</text></g></g><line id='s4w1' style='opacity:0'/><polygon id='s4w1h' style='opacity:0'/><line id='s4w2' style='opacity:0'/><polygon id='s4w2h' style='opacity:0'/><line id='s4n' style='opacity:0'/><polygon id='s4nh' style='opacity:0'/><text id='s4nl' x='980' y='470' class='svp' style='opacity:0'>N = 800 N</text></svg><div id='s4c1' class='abs hb am' style='left:160px;top:790px;font-size:130px'>ΣF = 0</div><div id='s4c1s' class='abs tx' style='left:166px;top:950px;font-size:32px;opacity:0'>위아래로 움직이지 않는다 · 800 N = 500 N + 300 N</div><div id='s4c2' class='abs hb am' style='left:1000px;top:790px;font-size:130px'>Στ = 0</div><div id='s4c2s' class='abs tx' style='left:1006px;top:950px;font-size:32px;opacity:0'>회전하지 않는다 · 600 N·m = 600 N·m</div>
+  </div>
+
+  <!-- s5: 안정성: 높은 상자 vs 낮은 상자 22° 기울임, 무게중심 연직선 -->
+  <div class="sc" id="s5">
+<div class='mk-bg mk-line'><div class='grid'></div></div><div id='s5g' class='abs tag' style='left:160px;top:70px'></div><div id='s5t' class='abs hb' style='left:155px;top:112px;font-size:68px'>안정성 — 왜 높은 상자가 잘 넘어질까?</div><div id='s5q' class='abs tx cy' style='left:162px;top:205px;font-size:32px;opacity:0'>두 상자를 모서리를 축으로 똑같이 22° 기울였다가 놓으면?</div><div id='s5k' class='abs hb am' style='left:160px;top:270px;font-size:76px'>무게중심은 낮게, 받침면은 넓게</div><svg id='s5sv' class='abs ln' style='position:absolute;left:0;top:0' width='1920' height='1080' viewBox='0 0 1920 1080'><g id='s5fr'><line x1='200' y1='820' x2='1750' y2='820'/></g><g id='s5T' style='opacity:0'><rect x='580' y='420' width='120' height='400' class='fillb'/></g><g id='s5W' style='opacity:0'><rect x='1220' y='670' width='340' height='150' class='fillb'/></g><circle cx='700' cy='820' r='8' class='dot' style='fill:#8fd0ff'/><circle cx='1560' cy='820' r='8' class='dot' style='fill:#8fd0ff'/><line id='s5pT' class='dash' style='opacity:0'/><line id='s5pW' class='dash' style='opacity:0'/><circle id='s5cT' r='0' class='dot'/><circle id='s5cW' r='0' class='dot'/><text id='s5gT' class='svp' style='opacity:0'>G</text><text id='s5gW' class='svp' style='opacity:0'>G</text></svg><div id='s5lT' class='abs tx' style='left:560px;top:850px;font-size:32px;opacity:0'>높은 상자</div><div id='s5lW' class='abs tx' style='left:1320px;top:850px;font-size:32px;opacity:0'>낮은 상자</div><div id='s5rT' class='abs eq pk' style='left:440px;top:920px;font-size:36px;opacity:0'>연직선이 받침면 밖 → 넘어진다</div><div id='s5rW' class='abs eq cy' style='left:1150px;top:920px;font-size:36px;opacity:0'>연직선이 받침면 안 → 되돌아온다</div>
+  </div>
+
+  <!-- s6: 문제 풀이: 사람 이동 → N_A, N_B 실시간 → N_A=0 → B 축 줌 → x=0.5m, N_B=600N -->
+  <div class="sc" id="s6">
+<div class='mk-bg mk-line'><div class='grid'></div></div><div id='s6g' class='abs tag' style='left:160px;top:60px'></div><div id='s6t' class='abs hb' style='left:155px;top:100px;font-size:64px'>문제 풀이 — 사람이 어디까지 가면 기울어질까?</div><div id='s6q' class='abs tx cy' style='left:162px;top:190px;font-size:30px;opacity:0'>판자 4 m · 200 N │ 받침 A(0 m), B(3 m) │ 사람 400 N</div><div id='s6cam' class='abs' style='left:0;top:0;width:1920px;height:1080px'><svg class='abs ln' style='position:absolute;left:0;top:0' width='1920' height='1080' viewBox='0 0 1920 1080'><g id='s6fr'><line x1='300' y1='630' x2='420' y2='630'/><line x1='1200' y1='630' x2='1320' y2='630'/><polyline points='360,572 330,630 390,630 360,572'/><polyline points='1260,572 1230,630 1290,630 1260,572'/><rect x='360' y='548' width='1200' height='24' class='fillb'/></g><g id='s6ru' style='opacity:0'><text x='360' y='670' text-anchor='middle' class='svw'>A (0 m)</text><text x='660' y='670' text-anchor='middle' class='svw'>1</text><text x='960' y='670' text-anchor='middle' class='svw'>2</text><text x='1260' y='670' text-anchor='middle' class='svw'>B (3 m)</text><text x='1560' y='670' text-anchor='middle' class='svw'>4 m</text></g><g id='s6P' class='pw' style='opacity:0'><line x1='-18' y1='548' x2='0' y2='482'/><line x1='18' y1='548' x2='0' y2='482'/><line x1='0' y1='482' x2='0' y2='412'/><line x1='-26' y1='455' x2='0' y2='430'/><line x1='26' y1='455' x2='0' y2='430'/><circle cx='0' cy='390' r='20'/><text x='0' y='352' text-anchor='middle' class='svt'>400 N</text></g><line id='s6nA' style='opacity:0'/><polygon id='s6nAh' style='opacity:0'/><line id='s6nB' style='opacity:0'/><polygon id='s6nBh' style='opacity:0'/><line id='s6wP' style='opacity:0'/><polygon id='s6wPh' style='opacity:0'/><line id='s6wM' style='opacity:0'/><polygon id='s6wMh' style='opacity:0'/><text id='s6lA' x='372' y='500' class='svp' style='opacity:0'>N_A</text><text id='s6lB' x='1272' y='500' class='svp' style='opacity:0'>N_B</text><text id='s6lP' x='975' y='612' class='svw' style='opacity:0'>200 N</text><circle id='s6ax' cx='1260' cy='572' r='26' style='fill:none;stroke:#ff7aa8;stroke-width:4;opacity:0'/><g id='s6br' style='opacity:0'><line x1='960' y1='740' x2='1260' y2='740'/><line x1='960' y1='725' x2='960' y2='755'/><line x1='1260' y1='725' x2='1260' y2='755'/><line x1='1260' y1='740' x2='1410' y2='740'/><line x1='1410' y1='725' x2='1410' y2='755'/><text x='1110' y='790' text-anchor='middle' class='svw'>1 m</text><text x='1335' y='790' text-anchor='middle' class='svt'>x</text></g></svg></div><div id='s6r' class='abs eq' style='left:162px;top:250px;font-size:46px;opacity:0'>N<sub>A</sub> = <span id='s6na' class='pk'>333</span> N │ N<sub>B</sub> = <span id='s6nb' class='pk'>267</span> N</div><div id='s6xr' class='abs tx' style='left:164px;top:320px;font-size:30px;opacity:0'>사람 위치 = <span id='s6x'>1.00</span> m (A 기준)</div><div id='s6big' class='abs hb pk' style='left:160px;top:375px;font-size:60px'>기울어지기 직전 → N_A = 0</div><div id='s6e1' class='abs eq' style='left:160px;top:790px;font-size:42px;opacity:0'>① N<sub>A</sub> = 0이니까, B를 회전축으로 잡는다</div><div id='s6e2' class='abs eq' style='left:160px;top:846px;font-size:42px;opacity:0'>② 200 N × 1 m = 400 N × x</div><div id='s6e3' class='abs eq am' style='left:160px;top:902px;font-size:42px;opacity:0'>③ x = 0.5 m → B에서 오른쪽 0.5 m (A에서 3.5 m)</div><div id='s6e4' class='abs eq' style='left:160px;top:958px;font-size:42px;opacity:0'>④ ΣF = 0 → N<sub>B</sub> = 200 N + 400 N = 600 N</div><div id='s6tip' class='abs tx am' style='left:162px;top:60px;font-size:30px;opacity:0'>요령: 기울어지기 직전 → 떨어지는 쪽 수직항력 = 0, 남은 받침점을 회전축으로!</div>
+  </div>
+
+  <!-- s7: 정리: 핵심 4줄 + 풀이 3단계, 오프닝 시소 매치 -->
+  <div class="sc" id="s7">
+<div class='mk-bg mk-line'><div class='grid'></div></div><div id='s7g' class='abs tag' style='left:160px;top:90px'></div><div id='s7t' class='abs hb' style='left:150px;top:120px;font-size:150px'>정리</div><div id='s7a1' class='abs eq' style='left:160px;top:340px;font-size:44px'><span class='am'>1</span>&nbsp;&nbsp;알짜힘 = 0 → 힘의 평형</div><div id='s7a2' class='abs eq' style='left:160px;top:430px;font-size:44px'><span class='am'>2</span>&nbsp;&nbsp;τ = r F (회전축까지 거리 × 힘)</div><div id='s7a3' class='abs eq' style='left:160px;top:520px;font-size:44px'><span class='am'>3</span>&nbsp;&nbsp;평형 조건: ΣF = 0, Στ = 0</div><div id='s7a4' class='abs eq' style='left:160px;top:610px;font-size:44px'><span class='am'>4</span>&nbsp;&nbsp;무게중심 연직선이 받침면 안 → 안정</div><div id='s7h' class='abs eq am' style='left:1180px;top:340px;font-size:40px'>풀이 3단계</div><div id='s7b1' class='abs tx' style='left:1180px;top:420px;font-size:38px'>① 물체에 작용하는 힘을 모두 그린다</div><div id='s7b2' class='abs tx' style='left:1180px;top:490px;font-size:38px'>② 모르는 힘이 걸린 점을 회전축으로</div><div id='s7b3' class='abs tx' style='left:1180px;top:560px;font-size:38px'>③ ΣF = 0, Στ = 0 식을 세운다</div><svg id='s7v' class='abs ln' style='position:absolute;left:1240px;top:740px' width='600' height='260' viewBox='0 0 600 260'><polyline points='300,184 260,250 340,250 300,184'/><g id='s7s'><line x1='20' y1='180' x2='580' y2='180'/><rect x='40' y='124' width='56' height='56' class='fillb'/><rect x='504' y='124' width='56' height='56' class='fillb'/></g></svg>
+  </div>
+
+  <div id="mgError"></div>
+ </div>
+</div>
+
+<div id="bar">
+ <button id="play" aria-label="재생">▶ 재생</button>
+ <button id="restart">처음부터</button>
+ <input id="seek" type="range" min="0" step="0.01" value="0" aria-label="재생 위치">
+ <span id="time">0.0 / 0.0초</span>
+ <button id="mute">🔊 음악 켬</button>
+ <button id="fs">전체 화면</button>
+ <button id="rec">녹화 모드</button>
+ <span class="hint">Space 재생 · ← → 2초 이동 · R 처음부터 · M 음악 · F 전체화면 · H 녹화 모드</span>
+</div>
+
+<script>
+/* ===== 문구·설정 (content.config) ===== */
+const CONFIG = {"tag0": "PHYSICS MOTION GRAPHIC #2"};
+const MUSIC = {"on": true, "volume": 0.3, "bpm": 112, "melody_at": 15, "kick_at": 21, "hat_at": 28};
+
+/* ===== 공용 도우미 (템플릿 제공) ===== */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const cl = (x,a=0,b=1) => x<a?a:x>b?b:x;
+const P = (t,s,d) => cl((t-s)/d);                 // t가 s에서 d초 동안 0→1
+const eo = x => 1-Math.pow(1-x,3);                 // ease-out
+const eio = x => x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2; // ease-in-out
+const eb = x => {const c1=1.9,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)}; // 살짝 튀어 오르기
+const S = (el,o,tr) => {el.style.opacity=o; el.style.transform=tr||"none";};
+const colors=["y","p","b"], HEX={"y": "#f4cf5a", "p": "#f29aac", "b": "#8cc3e8", "c": "#f3f0e6"};
+/* 자주 쓰는 동작 */
+const typeText = (el,text,t,start,cps=18) => { el.textContent = text.slice(0, cl(Math.floor((t-start)*cps),0,text.length)); };
+const fadeUp = (el,t,start,dur=.6,dist=40) => { const a=eo(P(t,start,dur)); S(el,a,`translateY(${(1-a)*dist}px)`); };
+const popIn = (el,t,start,dur=.6) => { const a=P(t,start,dur); S(el,P(t,start,.1),`scale(${.4+.6*eb(a)})`); };
+const drawPath = (pathEl,t,start,dur=.8) => { pathEl.style.strokeDashoffset = 1-eio(P(t,start,dur)); }; // path에 pathLength="1" stroke-dasharray="1"
+
+/* 분필 사람 그림: person(색, 'down'|'point'|'wave'|'talk', 'smile'|'worry') → SVG 문자열 */
+function person(col,pose,mood){
+  const arms={down:"M60 92 L32 142 M60 92 L88 142",point:"M60 92 L32 142 M60 92 L114 56",wave:"M60 92 L30 142 M60 92 L98 34",talk:"M60 92 L32 142 M60 92 L110 100"}[pose]||"M60 92 L32 142 M60 92 L88 142";
+  const mouth=mood==="worry"?"M50 54 Q60 46 70 54":"M50 48 Q60 57 70 48";
+  return `<svg viewBox="0 0 120 220" width="100%" height="100%" fill="none" stroke="${col}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><circle cx="60" cy="36" r="26"/><circle cx="50" cy="33" r="2.6" fill="${col}"/><circle cx="70" cy="33" r="2.6" fill="${col}"/><path d="${mouth}"/><path d="M60 62 L60 150 M60 150 L36 214 M60 150 L84 214 ${arms}"/></svg>`;
+}
+
+window.__mgErrors = [];
+function reportError(where, e){
+  const msg = `${where}: ${e && e.message ? e.message : e}`;
+  if (!window.__mgErrors.includes(msg)) { window.__mgErrors.push(msg); console.error('[장면 오류] ' + msg); }
+  const box = $("#mgError"); box.textContent = window.__mgErrors.slice(-3).join("\n"); box.classList.add("on");
+}
+
+/* ===== MotionKit (내장) ===== */
+/* ==== MotionKit v1 (템플릿 내장) — 모든 함수는 t(장면 경과 초)의 순수 함수 ==== */
+window.MK=window.MK||(()=>{
+const c=(x,a=0,b=1)=>x<a?a:x>b?b:x;
+const p=(t,s,d)=>c((t-s)/d);
+const lerp=(a,b,k)=>a+(b-a)*k;
+const h=i=>{const s=Math.sin(i*127.1+311.7)*43758.5453;return s-Math.floor(s);};
+const n1=x=>{const i=Math.floor(x),f=x-i,u=f*f*(3-2*f);return lerp(h(i),h(i+1),u)*2-1;};
+const E={
+ lin:x=>x,
+ out:x=>1-Math.pow(1-x,3),
+ inOut:x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2,
+ expo:x=>x>=1?1:1-Math.pow(2,-10*x),
+ antic:x=>{const k=1.70158;return (k+1)*x*x*x-k*x*x;},
+ back:x=>{const k=1.70158,y=x-1;return 1+(k+1)*y*y*y+k*y*y;},
+ elastic:x=>x<=0?0:x>=1?1:Math.pow(2,-10*x)*Math.sin((x*10-.75)*2.0944)+1,
+ bounce:x=>{const n=7.5625,d=2.75;if(x<1/d)return n*x*x;if(x<2/d)return n*(x-=1.5/d)*x+.75;if(x<2.5/d)return n*(x-=2.25/d)*x+.9375;return n*(x-=2.625/d)*x+.984375;},
+ snap:x=>x<.2?-0.08*Math.sin(x/.2*Math.PI/2):1-Math.exp(-7*(x-.2))*Math.cos(9*(x-.2))*1.08
+};
+const ez=e=>typeof e==='function'?e:(E[e]||E.out);
+const spring=(x,damp=6,freq=1.6)=>x<=0?0:1-Math.exp(-damp*x)*Math.cos(6.2832*freq*x);
+const split=(el,mode='char',text)=>{const s=text!=null?text:el.textContent;el.innerHTML='';el._u=[];
+ (mode==='word'?s.split(/(\s+)/):Array.from(s)).forEach(ch=>{if(!ch)return;if(/^\s+$/.test(ch)){el.appendChild(document.createTextNode(ch));return;}
+ const sp=document.createElement('span');sp.className='mk-u';sp.textContent=ch;el.appendChild(sp);el._u.push(sp);});return el._u;};
+const kinetic=(el,t,start,o={})=>{const u=el._u||split(el,o.mode);const {type='rise',gap=.045,dur=.7,dist=80,order='lr'}=o;const n=u.length;
+ u.forEach((sp,i)=>{const j=order==='rl'?n-1-i:order==='center'?Math.abs(i-(n-1)/2):order==='random'?h(i+7)*n:i;
+  const k=p(t,start+j*gap,dur);let op=c(k*3),tr='',e;
+  switch(type){
+   case 'drop':e=E.bounce(k);tr=`translateY(${(e-1)*dist*2}px)`;op=k>0?1:0;break;
+   case 'flip':e=E.back(k);tr=`perspective(600px) rotateX(${(1-e)*-90}deg)`;break;
+   case 'pop':e=E.elastic(k);tr=`scale(${e})`;op=k>0?1:0;break;
+   case 'scatter':{e=E.expo(k);const a=h(i)*2-1,b=h(i+50)*2-1;tr=`translate(${(1-e)*a*dist*4}px,${(1-e)*b*dist*3}px) rotate(${(1-e)*a*180}deg)`;break;}
+   case 'blur':e=E.out(k);sp.style.filter=`blur(${(1-e)*14}px)`;tr=`scale(${1.3-.3*e})`;break;
+   case 'wave':e=E.out(k);tr=`translateY(${(1-e)*dist+Math.sin(t*4-i*.5)*8*e}px)`;break;
+   default:e=E.back(k);tr=`translateY(${(1-e)*dist}px)`;
+  }
+  sp.style.opacity=op;sp.style.transform=tr;});};
+const kineticOut=(el,t,start,o={})=>{const u=el._u||split(el,o.mode);const {gap=.03,dur=.45,dist=60}=o;
+ u.forEach((sp,i)=>{const k=E.antic(p(t,start+i*gap,dur));if(k<=0&&t<start)return;sp.style.opacity=1-c(k);sp.style.transform=`translateY(${-k*dist}px)`;});};
+const stagger=(els,t,start,o,fn)=>{const {gap=.08,dur=.6,ease='back'}=o||{};const f=ez(ease);Array.from(els).forEach((el,i)=>fn(el,f(p(t,start+i*gap,dur)),i));};
+const reveal=(el,t,start,dur,o={})=>{const {shape='circle',x=50,y=50,ease='inOut',dir='left'}=o;const k=ez(ease)(p(t,start,dur));let cp;
+ if(shape==='wipe'){const r=(1-k)*100;cp=dir==='right'?`inset(0 0 0 ${r}%)`:dir==='up'?`inset(${r}% 0 0 0)`:dir==='down'?`inset(0 0 ${r}% 0)`:`inset(0 ${r}% 0 0)`;}
+ else if(shape==='diag'){const a=k*200;cp=`polygon(0 0,${a}% 0,${a-100}% 100%,0 100%)`;}
+ else if(shape==='iris'){const r=(1-k)*50;cp=`inset(${r}% ${r}% ${r}% ${r}% round ${r}%)`;}
+ else cp=`circle(${k*150}% at ${x}% ${y}%)`;
+ el.style.clipPath=cp;el.style.webkitClipPath=cp;};
+const camera=(el,t,keys,ease='inOut')=>{let a=keys[0],b=keys[keys.length-1];
+ if(t<=a.t)b=a;else if(t>=b.t)a=b;else for(let i=0;i<keys.length-1;i++)if(t>=keys[i].t&&t<=keys[i+1].t){a=keys[i];b=keys[i+1];break;}
+ const k=a===b?0:ez(ease)((t-a.t)/(b.t-a.t));const g=(q,d)=>lerp(a[q]??d,b[q]??d,k);
+ el.style.transformOrigin='960px 540px';el.style.transform=`translate(${g('x',0)}px,${g('y',0)}px) scale(${g('s',1)}) rotate(${g('r',0)}deg)`;};
+const ngon=(sides,N=72,r=200,cx=0,cy=0,rot=-90)=>{const P=[];for(let i=0;i<N;i++){const s=i/N;
+ if(!sides){const a=(rot+360*s)*Math.PI/180;P.push([cx+r*Math.cos(a),cy+r*Math.sin(a)]);continue;}
+ const f=s*sides,j=Math.floor(f),u=f-j,A=(rot+360*j/sides)*Math.PI/180,B=(rot+360*(j+1)/sides)*Math.PI/180;
+ P.push([cx+r*lerp(Math.cos(A),Math.cos(B),u),cy+r*lerp(Math.sin(A),Math.sin(B),u)]);}return P;};
+const morph=(el,A,B,k)=>el.setAttribute('points',A.map((a,i)=>`${lerp(a[0],B[i][0],k).toFixed(1)},${lerp(a[1],B[i][1],k).toFixed(1)}`).join(' '));
+const ball=(el,t,start,o={})=>{const {h:H=400,decay=.55,fall=.55,sq=.35}=o;const g=2*H/(fall*fall);let tt=t-start,y=H,v=0;
+ if(tt>0){if(tt<fall){y=H-.5*g*tt*tt;v=-g*tt;}else{tt-=fall;let hk=H*decay,vk=Math.sqrt(2*g*hk),T=2*vk/g,n=0;
+  while(tt>T&&hk>1&&n++<30){tt-=T;hk*=decay;vk=Math.sqrt(2*g*hk);T=2*vk/g;}
+  if(hk<=1||n>=30){y=0;v=0;}else{y=vk*tt-.5*g*tt*tt;v=vk-g*tt;}}}
+ const sp=Math.abs(v)/Math.sqrt(2*g*H);let sx=1,sy=1;
+ if(y<H*.04&&sp>.05){sx=1+sq*sp;sy=1-sq*sp;}else{sy=1+.25*sp;sx=1-.15*sp;}
+ el.style.transformOrigin='50% 100%';el.style.transform=`translateY(${-y}px) scale(${sx},${sy})`;return y;};
+const boil=(el,t,amt=1.5,fps=8,base='')=>{const f=Math.floor(t*fps);el.style.transform=`${base} translate(${(h(f)*2-1)*amt}px,${(h(f+9)*2-1)*amt}px) rotate(${(h(f+3)*2-1)*amt*.3}deg)`;};
+const misreg=(el,t,amt=4,fps=10)=>{const f=Math.floor(t*fps);el.style.transform=`translate(${(h(f+1)*2-1)*amt}px,${(h(f+2)*2-1)*amt}px)`;};
+const grain=(el,t,fps=12)=>{const f=Math.floor(t*fps);el.style.backgroundPosition=`${Math.floor(h(f)*256)}px ${Math.floor(h(f+5)*256)}px`;};
+const count=(el,t,start,dur,from,to,dec=0,ease='out')=>{el.textContent=lerp(from,to,ez(ease)(p(t,start,dur))).toFixed(dec);};
+const scramble=(el,text,t,start,dur,chars='01▲■●◆ABCDEFGHJKLMNPRSTUVWXYZ')=>{const k=p(t,start,dur),n=text.length,done=Math.floor(k*n),f=Math.floor(t*20);let s='';
+ for(let i=0;i<n;i++){if(i<done||text[i]===' ')s+=text[i];else if(k>0&&i<done+6)s+=chars[Math.floor(h(i+f*13)*chars.length)];}el.textContent=s;};
+const drawAll=(root,t,start,o={})=>{const {dur=1.2,gap=.15,ease='inOut'}=o;root.querySelectorAll('path,line,polyline,circle,rect').forEach((el,i)=>{
+ el.setAttribute('pathLength','1');el.style.strokeDasharray='1';el.style.strokeDashoffset=1-ez(ease)(p(t,start+i*gap,dur));});};
+const particles=(cv,t,o={})=>{const ctx=cv.getContext('2d');const {n=160,mode='drift',color='255,255,255',size=2.2,speed=.08,glow=0,cx=960,cy=540,alpha=1}=o;
+ ctx.clearRect(0,0,cv.width,cv.height);ctx.save();if(glow){ctx.shadowBlur=glow;ctx.shadowColor=`rgba(${color},1)`;}
+ for(let i=0;i<n;i++){let x,y;const a=h(i+3),b=h(i+91),z=.3+.7*h(i+17);
+  if(mode==='orbit'){const R=80+a*620,w=(.15+.6/(1+R/200))*(b<.5?1:-1),ang=b*6.2832+t*w;x=cx+R*Math.cos(ang);y=cy+R*Math.sin(ang)*.42;}
+  else if(mode==='rise'){x=a*cv.width+n1(i+t*.5)*30;y=((b*cv.height-t*speed*600*z)%cv.height+cv.height)%cv.height;}
+  else{x=a*cv.width+n1(i*1.7+t*speed*3)*120;y=b*cv.height+n1(i*2.3+50+t*speed*3)*120;}
+  ctx.globalAlpha=alpha*z*(.55+.45*Math.sin(t*2+i));ctx.fillStyle=`rgb(${color})`;ctx.beginPath();ctx.arc(x,y,size*z,0,6.2832);ctx.fill();}
+ ctx.restore();};
+/* 준비: 웹폰트·그레인 텍스처 (한 번만) */
+(()=>{try{if(!document.getElementById('mk-fonts')){const l=document.createElement('link');l.id='mk-fonts';l.rel='stylesheet';
+ l.href='https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;900&family=IBM+Plex+Sans+KR:wght@300;600&family=Do+Hyeon&family=Nanum+Myeongjo:wght@400;800&display=swap';document.head.appendChild(l);}
+ const cv=document.createElement('canvas');cv.width=cv.height=256;const g=cv.getContext('2d'),im=g.createImageData(256,256);
+ for(let i=0;i<im.data.length;i+=4){const v=Math.floor(h(i*.25+1)*255);im.data[i]=im.data[i+1]=im.data[i+2]=v;im.data[i+3]=255;}
+ g.putImageData(im,0,0);document.documentElement.style.setProperty('--mk-noise',`url(${cv.toDataURL()})`);}catch(e){}})();
+return {c,p,lerp,h,n1,E,ez,spring,split,kinetic,kineticOut,stagger,reveal,camera,ngon,morph,ball,boil,misreg,grain,count,scramble,drawAll,particles};
+})();
+/* ==== /MotionKit ==== */
+
+
+/* ===== setup_js (장면 요소 준비: 한 번 실행, 여기서 선언한 const/function은 장면 코드에서 쓸 수 있다) ===== */
+const gid=id=>document.getElementById(id);const COL={cy:'#8fd0ff',am:'#ffc857',pk:'#ff7aa8',wh:'#d8ecff'};function arw(id,x1,y1,dx,dy,col,w){const L=gid(id),H=gid(id+'h');if(!L||!H)return;const len=Math.hypot(dx,dy);if(len<6){L.style.opacity=0;H.style.opacity=0;return;}const ux=dx/len,uy=dy/len,x2=x1+dx,y2=y1+dy,hl=Math.min(30,len*.55),bx=x2-ux*hl,by=y2-uy*hl,px=-uy*hl*.55,py=ux*hl*.55;L.style.opacity=1;H.style.opacity=1;L.setAttribute('x1',x1);L.setAttribute('y1',y1);L.setAttribute('x2',x2-ux*hl*.7);L.setAttribute('y2',y2-uy*hl*.7);H.setAttribute('points',(bx+px)+','+(by+py)+' '+x2+','+y2+' '+(bx-px)+','+(by-py));L.style.stroke=col;L.style.strokeWidth=w||6;L.style.strokeDasharray='none';H.style.fill=col;H.style.stroke=col;H.style.strokeWidth=2;}function rotp(x,y,cx,cy,d){const a=d*Math.PI/180,c=Math.cos(a),s=Math.sin(a);return [cx+(x-cx)*c-(y-cy)*s,cy+(x-cx)*s+(y-cy)*c];}function fin(el,t,s,d,dx,dy){const e=MK.E.out(MK.p(t,s,d||.6));el.style.opacity=e;el.style.transform='translate('+((1-e)*(dx||0))+'px,'+((1-e)*(dy===undefined?20:dy))+'px)';return e;}
+
+/* ===== 장면 ===== */
+const SC=[
+ {id:"s0",d:7,up(t){
+MK.scramble(gid('s0g'),CONFIG.tag0,t,.1,1.1);MK.kinetic(gid('s0t'),t,.5,{type:'rise',gap:.08,dur:.8,dist:100});fin(gid('s0s'),t,1.5,.8,-40,0);fin(gid('s0c'),t,1.9,.8,-40,0);MK.drawAll(gid('s0v'),t,.8,{dur:1,gap:.12});const a=-14*(1-MK.spring(t-2.6,2.2,1.1));gid('s0b').setAttribute('transform','rotate('+a.toFixed(2)+' 320 246)');if(t>=6.1)MK.kineticOut(gid('s0t'),t,6.1);
+ }},
+ {id:"s1",d:13,up(t){
+MK.scramble(gid('s1g'),'01  NET FORCE',t,0,.9);MK.kinetic(gid('s1t'),t,.25,{type:'flip',gap:.035});MK.drawAll(gid('s1fl'),t,.5,{dur:1});const tt=t-6,a=22;let dx=0;if(tt>0)dx=tt<2.8?.5*a*tt*tt:.5*a*7.84+a*2.8*(tt-2.8);const bx=520+dx;const pe=MK.E.back(MK.p(t,1,.6));const B=gid('s1b');B.style.left=bx+'px';B.style.opacity=MK.c(pe*2);B.style.transform='scale('+Math.max(pe,0)+')';const FR=5*MK.E.out(MK.p(t,1.8,.7));const FL3=3*MK.E.out(MK.p(t,2.8,.7));const FL=FL3+2*MK.E.inOut(MK.p(t,9,1.2));arw('s1aR',bx+180,490,FR*50,0,COL.am);arw('s1aL',bx,490,-FL*50,0,COL.am);const net=(FR-FL)*MK.c((t-4.2)/.4);arw('s1aN',bx+90,660,net*50,0,COL.pk,7);const lR=gid('s1lR');lR.style.opacity=MK.c((t-2.2)/.3);lR.style.left=(bx+180+FR*25-lR.offsetWidth/2)+'px';const lL=gid('s1lL');lL.textContent=Math.round(Math.max(FL,3))+' N';lL.style.opacity=MK.c((t-3.2)/.3);lL.style.left=(bx-FL*25-lL.offsetWidth/2)+'px';const lN=gid('s1lN');lN.textContent='알짜힘 '+(FR-FL).toFixed(1)+' N';lN.style.opacity=MK.c((t-4.5)/.4);lN.style.left=(bx+90)+'px';MK.kinetic(gid('s1e1'),t,4.8,{type:'rise',gap:.03});if(t>=8.6)MK.kineticOut(gid('s1e1'),t,8.6);MK.kinetic(gid('s1e2'),t,10.1,{type:'pop',gap:.04});fin(gid('s1c'),t,11,.7);
+ }},
+ {id:"s2",d:16,up(t){
+MK.scramble(gid('s2g'),'02  TORQUE',t,0,.9);MK.reveal(gid('s2t'),t,.2,.9,{shape:'wipe'});fin(gid('s2st'),t,1,.6);MK.drawAll(gid('s2fr'),t,.6,{dur:.8,gap:.05});MK.drawAll(gid('s2dr'),t,1,{dur:1,gap:.1});let ang=0;const aA=3.92;if(t<7){const u=MK.c(t-3,0,3.5);ang=.5*aA*u*u;}else if(t<8.5){ang=24*(1-MK.E.inOut(MK.p(t,7,.8)));}else{const u=MK.c(t-8.5,0,3.5);ang=aA*u*u;}gid('s2d').setAttribute('transform','rotate('+(-ang).toFixed(2)+' 320 780)');arw('s2fA',620,905,0,-110,COL.am);arw('s2fB',920,905,0,-110,COL.am);gid('s2gA').style.opacity=MK.c((t-2.3)/.4)*(1-MK.c((t-6.8)/.4));gid('s2gB').style.opacity=MK.c((t-7.9)/.4);gid('s2gh').style.opacity=.45*MK.c((t-8)/.5);fin(gid('s2pA'),t,3,.6,-30,0);fin(gid('s2pB'),t,8.6,.6,-30,0);fin(gid('s2pC'),t,12,.6);MK.kinetic(gid('s2F'),t,12.8,{type:'pop',gap:.06,dur:.9});fin(gid('s2cap'),t,13.8,.7);
+ }},
+ {id:"s3",d:14,up(t){
+MK.scramble(gid('s3g'),'03  LEVER',t,0,.9);MK.kinetic(gid('s3t'),t,.25,{type:'flip',gap:.04});fin(gid('s3st'),t,1,.6);MK.drawAll(gid('s3fr'),t,.6,{dur:.9});gid('s3L').style.opacity=MK.E.out(MK.p(t,1.2,.8));const th=-9*(1-MK.spring(t-5.6,3,1.0));gid('s3L').setAttribute('transform','rotate('+th.toFixed(2)+' 760 700)');const r=rotp(560,645,760,700,th),e=rotp(1360,688,760,700,th);const kw=MK.E.out(MK.p(t,2.4,.6)),ke=MK.E.out(MK.p(t,4.8,.8));arw('s3aW',r[0],r[1],0,150*kw,COL.am);arw('s3aE',e[0],e[1]-50*ke,0,50*ke,COL.pk,6);const lW=gid('s3lW');lW.setAttribute('x',r[0]-150);lW.setAttribute('y',r[1]+110);lW.style.opacity=kw;const lE=gid('s3lE');lE.setAttribute('x',e[0]+20);lE.setAttribute('y',e[1]-40);lE.style.opacity=ke;gid('s3m').style.opacity=MK.c((t-7)/.6);fin(gid('s3e1'),t,7.6,.7,-30,0);fin(gid('s3e2'),t,9,.6,-30,0);MK.count(gid('s3n1'),t,9,1.2,0,300);MK.count(gid('s3n2'),t,9.3,1.2,0,300);fin(gid('s3c'),t,10.8,.7);
+ }},
+ {id:"s4",d:20,up(t){
+MK.scramble(gid('s4g'),'04  EQUILIBRIUM',t,0,.9);MK.kinetic(gid('s4t'),t,.25,{type:'blur',gap:.035});MK.drawAll(gid('s4fr'),t,.6,{dur:.9});gid('s4S').style.opacity=MK.E.out(MK.p(t,1.2,.6));const dl=MK.p(t,2.2,.9);gid('s4Lb').setAttribute('transform','translate(0,'+(-300*(1-MK.E.bounce(dl))).toFixed(1)+')');gid('s4Lb').style.opacity=dl>0?1:0;const xm=1+MK.E.inOut(MK.p(t,8,3));const ar=MK.E.back(MK.p(t,4.6,.6));gid('s4Rb').setAttribute('transform','translate('+(xm*220).toFixed(1)+','+(-120*(1-ar)).toFixed(1)+')');gid('s4Rb').style.opacity=MK.c((t-4.6)/.2);const tL=600*MK.E.out(MK.p(t,2.9,.7)),tR=300*xm*MK.E.out(MK.p(t,5,.7));let th=-12*MK.c((tL-tR)/600,-1,1);if(t>11)th+=2.5*Math.exp(-2.5*(t-11))*Math.sin(6.2832*1.1*(t-11));gid('s4S').setAttribute('transform','rotate('+th.toFixed(2)+' 960 640)');fin(gid('s4r1'),t,3,.6,-30,0);fin(gid('s4r2'),t,5.2,.6,-30,0);gid('s4x').textContent=xm.toFixed(2);gid('s4tr').textContent=Math.round(300*xm)+' N·m';const r3=gid('s4r3');fin(r3,t,5.8,.5,-30,0);const bal=t>=11;r3.textContent=bal?'→ 수평! 시소가 회전하지 않는다':'→ 왼쪽으로 기운다';r3.style.color=bal?COL.am:COL.pk;const k=MK.E.out(MK.p(t,12.6,.8));arw('s4w1',696,640,0,100*k,COL.am);arw('s4w2',1400,640,0,60*k,COL.am);arw('s4n',960,628,0,-160*k,COL.pk,7);gid('s4nl').style.opacity=k;MK.kinetic(gid('s4c1'),t,13.6,{type:'drop',gap:.06,dist:60});fin(gid('s4c1s'),t,14.5,.6);MK.kinetic(gid('s4c2'),t,15,{type:'drop',gap:.06,dist:60});fin(gid('s4c2s'),t,15.9,.6);
+ }},
+ {id:"s5",d:16,up(t){
+MK.scramble(gid('s5g'),'05  STABILITY',t,0,.9);MK.kinetic(gid('s5t'),t,.25,{type:'scatter',gap:.03,dist:40});fin(gid('s5q'),t,3.6,.6);MK.drawAll(gid('s5fr'),t,.6,{dur:.8});const bo=MK.E.out(MK.p(t,1.2,.7));gid('s5T').style.opacity=bo;gid('s5W').style.opacity=bo;fin(gid('s5lT'),t,1.6,.5);fin(gid('s5lW'),t,1.8,.5);const tilt=22*MK.E.inOut(MK.p(t,4.5,3));let aT=tilt,aW=tilt;if(t>8.2){aT=22+68*MK.E.bounce(MK.p(t,8.2,1.1));aW=22*(1-MK.E.bounce(MK.p(t,8.2,.9)));}gid('s5T').setAttribute('transform','rotate('+aT.toFixed(2)+' 700 820)');gid('s5W').setAttribute('transform','rotate('+aW.toFixed(2)+' 1560 820)');const co=MK.E.back(MK.p(t,2.6,.5));[['T',640,620,700,aT],['W',1390,745,1560,aW]].forEach(([s,x,y,px,a])=>{const g=rotp(x,y,px,820,a);const c=gid('s5c'+s),l=gid('s5p'+s),tx=gid('s5g'+s);c.setAttribute('cx',g[0]);c.setAttribute('cy',g[1]);c.setAttribute('r',11*Math.max(co,0));l.setAttribute('x1',g[0]);l.setAttribute('y1',g[1]);l.setAttribute('x2',g[0]);l.setAttribute('y2',820);const out=g[0]>px+.5;l.style.stroke=out?COL.pk:COL.cy;let lo=MK.c((t-3)/.5);if(s==='T')lo*=1-MK.c((t-9.3)/.4);l.style.opacity=lo;tx.setAttribute('x',g[0]-48);tx.setAttribute('y',g[1]+12);tx.style.opacity=MK.c(co);});fin(gid('s5rT'),t,9.4,.6);fin(gid('s5rW'),t,9.8,.6);MK.kinetic(gid('s5k'),t,11,{type:'rise',gap:.05});
+ }},
+ {id:"s6",d:22,up(t){
+MK.scramble(gid('s6g'),'06  PROBLEM',t,0,.9);MK.kinetic(gid('s6t'),t,.25,{type:'rise',gap:.03});const hd=1-MK.c((t-12.2)/.5);gid('s6g').style.opacity=hd;gid('s6t').style.opacity=hd;const q=gid('s6q');fin(q,t,1,.6);q.style.opacity=Math.min(+q.style.opacity,hd);MK.reveal(gid('s6cam'),t,.6,1.2,{shape:'diag'});MK.camera(gid('s6cam'),t,[{t:12.4,x:0,y:0,s:1},{t:14,x:-230,y:-154,s:1.4}]);MK.drawAll(gid('s6fr'),t,1,{dur:1,gap:.12});gid('s6ru').style.opacity=MK.c((t-2)/.5);const xp=1+2.5*MK.E.inOut(MK.p(t,4.5,6.5)),NB=(400+400*xp)/3,NA=Math.max(0,600-NB),px=360+300*xp,k=MK.E.out(MK.p(t,3.2,.8));const P=gid('s6P');P.setAttribute('transform','translate('+px.toFixed(1)+',0)');P.style.opacity=k;arw('s6nA',360,548,0,-NA*.25*k,COL.pk,6);arw('s6nB',1260,548,0,-NB*.25*k,COL.pk,6);arw('s6wP',960,572,0,50*k,COL.am,6);arw('s6wM',px,572,0,100*k,COL.am,6);const lA=gid('s6lA');lA.setAttribute('y',548-NA*.25*k+8);lA.style.opacity=k*MK.c(NA/40);const lB=gid('s6lB');lB.setAttribute('y',548-NB*.25*k+8);lB.style.opacity=k;gid('s6lP').style.opacity=k;fin(gid('s6r'),t,3.6,.6,-30,0);fin(gid('s6xr'),t,3.9,.6,-30,0);gid('s6na').textContent=Math.round(NA);gid('s6nb').textContent=Math.round(NB);gid('s6x').textContent=xp.toFixed(2);const big=gid('s6big');MK.kinetic(big,t,11.1,{type:'pop',gap:.04});if(t>=13)MK.kineticOut(big,t,13);const ax=gid('s6ax');ax.style.opacity=MK.c((t-13.6)/.4);ax.setAttribute('r',26+4*Math.sin(t*5));gid('s6br').style.opacity=MK.c((t-15)/.5);['s6e1','s6e2','s6e3','s6e4'].forEach((id,i)=>fin(gid(id),t,13.6+i*1.5,.6,-40,0));fin(gid('s6tip'),t,19.4,.7);
+ }},
+ {id:"s7",d:10,up(t){
+MK.scramble(gid('s7g'),'07  SUMMARY',t,0,.8);MK.kinetic(gid('s7t'),t,.2,{type:'drop',gap:.1,dist:70});['s7a1','s7a2','s7a3','s7a4'].forEach((id,i)=>MK.reveal(gid(id),t,1+i*.55,.7,{shape:'wipe'}));MK.reveal(gid('s7h'),t,3.4,.5,{shape:'wipe'});['s7b1','s7b2','s7b3'].forEach((id,i)=>MK.reveal(gid(id),t,3.8+i*.5,.6,{shape:'wipe'}));MK.drawAll(gid('s7v'),t,5.6,{dur:.8,gap:.1});const a=-12*(1-MK.spring(t-6.6,2.2,1.1));gid('s7s').setAttribute('transform','rotate('+a.toFixed(2)+' 300 180)');
+ }}
+];
+let acc=0; SC.forEach(s=>{s.el=$("#"+s.id);s.s=acc;acc+=s.d;});
+const TOTAL=acc;
+
+/* ===== 배경음악: 코드로 합성한 단순 멜로디 (외부 음원 없음) ===== */
+const BPM=MUSIC.bpm||112, SD=60/BPM/2;
+const CH=[[48,52,55],[43,47,50],[45,48,52],[41,45,48]];   // C G Am F
+const MEL=[76,0,79,0,76,74,72,0, 74,0,71,0,74,76,74,0, 72,0,76,0,81,0,79,76, 77,0,76,74,72,0,0,0];
+const ARP=[0,1,2,1,0,1,2,1];
+const mf=m=>440*Math.pow(2,(m-69)/12);
+let actx=null,master=null,noiseBuf=null,muted=!MUSIC.on,nextStep=0,baseA=0,baseT=0;
+function initAudio(){
+  if(!actx){
+    try{actx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return;}
+    master=actx.createGain();master.gain.value=0;master.connect(actx.destination);
+    noiseBuf=actx.createBuffer(1,actx.sampleRate*.1,actx.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  }
+  if(actx.state!=="running")actx.resume().then(syncAudio);
+  syncAudio();
+}
+function syncAudio(){if(actx){baseA=actx.currentTime;baseT=T;nextStep=Math.ceil(T/SD-1e-6);}}
+function tone(f,t,dur,type,g){const o=actx.createOscillator(),v=actx.createGain();o.type=type;o.frequency.value=f;
+  v.gain.setValueAtTime(0.0001,t);v.gain.linearRampToValueAtTime(g,t+.012);v.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(v).connect(master);o.start(t);o.stop(t+dur+.05);}
+function kick(t){const o=actx.createOscillator(),v=actx.createGain();o.frequency.setValueAtTime(140,t);o.frequency.exponentialRampToValueAtTime(45,t+.14);
+  v.gain.setValueAtTime(.55,t);v.gain.exponentialRampToValueAtTime(.001,t+.25);o.connect(v).connect(master);o.start(t);o.stop(t+.3);}
+function hat(t){const s=actx.createBufferSource(),h=actx.createBiquadFilter(),v=actx.createGain();s.buffer=noiseBuf;h.type="highpass";h.frequency.value=7000;
+  v.gain.setValueAtTime(.07,t);v.gain.exponentialRampToValueAtTime(.001,t+.05);s.connect(h).connect(v).connect(master);s.start(t);s.stop(t+.08);}
+function playStep(n,at,tl){
+  const bar=Math.floor(n/8)%4, st=n%8, ch=CH[bar];
+  const nt=ch[ARP[st]]+24+(st>=4&&ARP[st]===0?12:0);
+  tone(mf(nt),at,.22,"triangle",.07);
+  if(st===0||st===3||st===6)tone(mf(ch[0]),at,.32,"sine",.22);
+  if(tl>=MUSIC.melody_at){const m=MEL[n%32];if(m)tone(mf(m),at,.42,"sine",.13),tone(mf(m+12),at,.2,"sine",.025);}
+  if(tl>=MUSIC.kick_at&&(st===0||st===4))kick(at);
+  if(tl>=MUSIC.hat_at&&st%2===1)hat(at);
+}
+function audioTick(){
+  if(!actx||actx.state!=="running")return;
+  const vol=(muted?0:MUSIC.volume)*(1-P(T,TOTAL-3,3))*(playing?1:0);
+  master.gain.setTargetAtTime(vol,actx.currentTime,.05);
+  if(!playing||muted)return;
+  const now=actx.currentTime;
+  while(nextStep*SD<T+.2){const st=nextStep*SD;if(st>=T-.03&&st<TOTAL-.5)playStep(nextStep,now+Math.max(0,st-T),st);nextStep++;}
+}
+
+/* ===== 재생 엔진 ===== */
+let T=0,playing=false,last=null,cur=null;
+function render(t){
+  let sc=SC[SC.length-1]; for(const s of SC){if(t<s.s+s.d){sc=s;break;}}
+  if(cur!==sc){SC.forEach(s=>s.el.style.display="none");sc.el.style.display="block";cur=sc;}
+  const lt=t-sc.s, isLast=sc===SC[SC.length-1];
+  sc.el.style.opacity=P(lt,0,.25)*(isLast?1:1-P(lt,sc.d-.35,.35));
+  try { sc.up(lt); } catch (e) { reportError(sc.id, e); }
+  $("#seek").value=t; $("#time").textContent=`${t.toFixed(1)} / ${TOTAL.toFixed(1)}초`;
+}
+function frame(ts){
+  if(playing){
+    if(actx&&actx.state==="running"){T=baseT+(actx.currentTime-baseA);}
+    else{if(last!==null)T+=(ts-last)/1000;last=ts;}
+    if(T>=TOTAL){T=TOTAL;setPlay(false);}
+  } else last=null;
+  audioTick(); render(T); requestAnimationFrame(frame);
+}
+function setPlay(p){playing=p;last=null;syncAudio();$("#play").textContent=p?"❚❚ 일시정지":"▶ 재생";$("#play").setAttribute("aria-label",p?"일시정지":"재생");}
+$("#seek").max=TOTAL;
+$("#mute").textContent=muted?"🔇 음악 끔":"🔊 음악 켬";
+$("#play").onclick=()=>{initAudio();if(T>=TOTAL)T=0;setPlay(!playing);};
+$("#restart").onclick=()=>{initAudio();T=0;setPlay(true);};
+$("#seek").oninput=e=>{T=+e.target.value;syncAudio();};
+$("#mute").onclick=()=>{initAudio();muted=!muted;$("#mute").textContent=muted?"🔇 음악 끔":"🔊 음악 켬";syncAudio();};
+function toggleFS(){try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}catch(e){}}
+function toggleRec(){document.body.classList.toggle("rec");fit();}
+$("#fs").onclick=toggleFS; $("#rec").onclick=toggleRec;
+addEventListener("keydown",e=>{
+  if(e.target.tagName==="BUTTON"&&e.code==="Space")return;
+  initAudio();
+  if(e.code==="Space"){e.preventDefault();$("#play").click();}
+  else if(e.key==="f"||e.key==="F")toggleFS();
+  else if(e.key==="h"||e.key==="H")toggleRec();
+  else if(e.key==="m"||e.key==="M")$("#mute").click();
+  else if(e.key==="r"||e.key==="R"){T=0;setPlay(true);}
+  else if(e.key==="ArrowRight"){T=Math.min(TOTAL,T+2);syncAudio();}
+  else if(e.key==="ArrowLeft"){T=Math.max(0,T-2);syncAudio();}
+});
+function fit(){const w=$("#wrap"),s=Math.min(w.clientWidth/1920,w.clientHeight/1080);$("#stage").style.transform=`translate(-50%,-50%) scale(${s})`;}
+addEventListener("resize",fit); fit();
+window.__mg = { TOTAL, SC, render: t => { T = t; render(t); }, get T(){ return T; } };
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

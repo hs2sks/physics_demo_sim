@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>모션그래픽 (Motion Graphics) — physics_demo_sim</title>
+<style>
+  :root {
+    --bg: #f4f6fa; --panel: #ffffff; --ink: #1c2733; --sub: #5a6b7d;
+    --accent: #1f6fd6; --ok: #1e8f4e; --border: #d7dee8; --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", "Malgun Gothic", sans-serif; background: var(--bg); color: var(--ink); padding: 20px; line-height: 1.6; }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  .home { display: inline-block; color: var(--sub); text-decoration: none; font-size: 0.9em; margin-bottom: 14px; }
+  .home:hover { color: var(--accent); }
+  header { margin-bottom: 14px; }
+  header h1 { font-size: 1.6em; }
+  header .en { color: var(--sub); font-size: 0.6em; font-weight: 400; }
+  header p { color: var(--sub); margin-top: 4px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 16px 0 4px; }
+  .controls input { flex: 1 1 220px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font: inherit; background: var(--panel); color: var(--ink); }
+  .controls input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { border: 1px solid var(--border); background: var(--panel); color: var(--sub); padding: 5px 12px; border-radius: 20px; font: inherit; font-size: 0.85em; cursor: pointer; }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  h2 { font-size: 1.15em; margin: 26px 0 4px; padding-bottom: 6px; border-bottom: 2px solid var(--border); }
+  h3 { font-size: 0.95em; color: var(--sub); margin: 14px 0 8px; font-weight: 600; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-decoration: none; color: inherit; display: block; transition: transform .1s, box-shadow .1s; }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.08); border-color: var(--accent); }
+  .card .date { font-family: monospace; font-size: 0.8em; color: var(--accent); letter-spacing: .04em; }
+  .card .title { font-weight: 700; font-size: 1.1em; margin: 4px 0 2px; }
+  .card .desc { color: var(--sub); font-size: 0.9em; }
+  .card .tags { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 4px; }
+  .card .tag { font-size: 0.75em; background: #e9eef5; color: var(--sub); padding: 1px 8px; border-radius: 10px; }
+  .empty { color: var(--sub); font-size: 0.9em; padding: 20px 0; }
+  .tip { margin-top: 28px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; font-size: 0.88em; color: var(--sub); }
+  .tip b { color: var(--ink); }
+  kbd { font-family: monospace; background: #e9eef5; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; font-size: 0.9em; }
+  footer { margin-top: 32px; color: var(--sub); font-size: 0.85em; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="home" href="../index.html">← 홈으로</a>
+  <header>
+    <h1>🎬 모션그래픽 <span class="en">Motion Graphics</span></h1>
+    <p>개념의 원리를 움직이는 그림으로 보여주는 짧은 영상 자료입니다. 수업 전후로 다시 보며 복습하세요.</p>
+  </header>
+
+  <div class="controls">
+    <input id="q" type="search" placeholder="제목·단원·키워드 검색" aria-label="모션그래픽 검색">
+  </div>
+  <div class="chips" id="chips"></div>
+
+  <div id="list"></div>
+
+  <div class="tip">
+    <b>보는 법</b> · 카드를 누르면 새 탭에서 열립니다. <kbd>F11</kbd>로 전체 화면을 켜면 더 잘 보입니다.
+  </div>
+
+  </div>
+
+<script>
+"use strict";
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let decks = [];
+let subject = "전체";
+
+function render() {
+  const host = document.getElementById("list");
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const shown = decks.filter((d) =>
+    (subject === "전체" || d.subject === subject) &&
+    (!q || [d.title, d.unit, d.subject, d.desc, ...(d.tags || [])].join(" ").toLowerCase().includes(q)));
+  if (!shown.length) {
+    host.innerHTML = `<p class="empty">${decks.length ? "조건에 맞는 자료가 없습니다." : "아직 등록된 모션그래픽이 없습니다."}</p>`;
+    return;
+  }
+  const subjects = [...new Set(shown.map((d) => d.subject))];
+  host.innerHTML = subjects.map((sub) => {
+    const inSub = shown.filter((d) => d.subject === sub);
+    const units = [...new Set(inSub.map((d) => d.unit))];
+    return `<h2>${esc(sub)}</h2>` + units.map((u) => {
+      const cards = inSub.filter((d) => d.unit === u).map((d) => `
+        <a class="card" href="${esc(d.path)}" target="_blank" rel="noopener">
+          <div class="date">${esc(d.date)}</div>
+          <div class="title">${esc(d.title)}</div>
+          <div class="desc">${esc(d.desc)}</div>
+          ${d.tags && d.tags.length ? `<div class="tags">${d.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join("")}</div>` : ""}
+        </a>`).join("");
+      return `<h3>${esc(u)}</h3><div class="grid">${cards}</div>`;
+    }).join("");
+  }).join("");
+}
+
+function renderChips() {
+  const subjects = ["전체", ...new Set(decks.map((d) => d.subject))];
+  const box = document.getElementById("chips");
+  box.innerHTML = subjects.length > 2
+    ? subjects.map((s) => `<button class="chip${s === subject ? " on" : ""}" data-s="${esc(s)}">${esc(s)}</button>`).join("")
+    : "";
+  box.querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => {
+    subject = b.dataset.s; renderChips(); render();
+  }));
+}
+
+fetch("index.json").then((r) => r.json()).then((data) => {
+  // 최신 수업이 위로
+  decks = data.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  renderChips(); render();
+  document.getElementById("q").addEventListener("input", render);
+}).catch(() => { document.getElementById("list").innerHTML = '<p class="empty">목록을 불러오지 못했습니다.</p>'; });
+</script>
+</body>
+</html>

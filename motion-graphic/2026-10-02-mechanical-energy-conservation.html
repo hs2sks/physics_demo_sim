@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>역학적 에너지 보존</title>
+<!-- mechanical-energy-conservation · 물리학 I 2. 에너지와 열 — 일과 운동 에너지, 위치 에너지, 역학적 에너지 보존 (LINE 스타일) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Nanum+Pen+Script&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<style>
+:root{
+  --page:#e7e3d8; --ink:#23261f; --barbg:#d8d3c6;
+  --board:#1f3d31; --chalk:#f3f0e6; --yellow:#f4cf5a; --pink:#f29aac; --blue:#8cc3e8; --wood:#6b4a2f;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#111513;--ink:#e6e6de;--barbg:#1c211e}}
+:root[data-theme="dark"]{--page:#111513;--ink:#e6e6de;--barbg:#1c211e}
+html{height:100%} body{height:100%;margin:0}
+body{background:var(--page);color:var(--ink);font-family:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;display:flex;flex-direction:column;overflow:hidden}
+#wrap{flex:1;position:relative;overflow:hidden}
+#stage{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center center;overflow:hidden;color:var(--chalk);
+  background:
+    radial-gradient(ellipse 900px 500px at 25% 20%,rgba(255,255,255,.07),transparent 70%),
+    radial-gradient(ellipse 700px 400px at 75% 70%,rgba(255,255,255,.05),transparent 70%),
+    radial-gradient(ellipse 1400px 700px at 50% 110%,rgba(0,0,0,.35),transparent 70%),
+    var(--board);
+  box-shadow:inset 0 0 0 22px var(--wood), inset 0 0 0 26px #4d341f, inset 0 0 120px rgba(0,0,0,.45);
+}
+#tray{position:absolute;left:22px;right:22px;bottom:22px;height:18px;background:linear-gradient(#7a5738,#50361f)}
+.stick{position:absolute;bottom:40px;height:12px;border-radius:6px}
+.dsp{font-family:"Black Han Sans","Malgun Gothic",sans-serif;font-weight:400}
+.pen{font-family:"Nanum Pen Script",cursive}
+.ch{text-shadow:0 0 1px currentColor,0 0 10px rgba(255,255,255,.12)}
+.sc{position:absolute;inset:0;display:none}
+.row{position:absolute;left:0;right:0;text-align:center;white-space:nowrap;will-change:transform,opacity}
+.abs{position:absolute;will-change:transform,opacity}
+.y{color:var(--yellow)} .p{color:var(--pink)} .b{color:var(--blue)}
+.card{position:absolute;border:4px solid rgba(243,240,230,.85);border-radius:22px 12px 26px 14px;background:var(--board)}
+.fig{position:absolute;transform-origin:50% 100%}
+.fig svg{display:block;overflow:visible}
+
+/* control bar */
+#bar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--barbg);font-size:15px;flex-wrap:wrap}
+#bar button{font:inherit;padding:7px 14px;border-radius:8px;border:1px solid rgba(127,127,127,.5);background:var(--page);color:var(--ink);cursor:pointer}
+#bar button:focus-visible,#seek:focus-visible{outline:3px solid #3b82f6;outline-offset:2px}
+#seek{flex:1;min-width:140px}
+#time{font-variant-numeric:tabular-nums;min-width:92px}
+.hint{opacity:.7}
+body.rec #bar{display:none}
+@media (max-width:640px){.hint{display:none}}
+#mgError{position:absolute;left:40px;right:40px;top:40px;z-index:50;background:rgba(184,50,31,.95);color:#fff;font:22px/1.4 sans-serif;padding:10px 18px;border-radius:12px;white-space:pre-wrap;display:none}
+#mgError.on{display:block}
+body.nodecor #tray, body.nodecor .stick{display:none}
+/* ---- theme ---- */
+:root{--board:#08142a;--chalk:#f3f0e6;--yellow:#f4cf5a;--pink:#f29aac;--blue:#8cc3e8;--wood:#6b4a2f}
+/* ---- MotionKit 스타일 프리셋 (내장) ---- */
+/* ==== MotionKit 스타일 프리셋 (템플릿 내장) ==== */
+.mk-u{display:inline-block;will-change:transform,opacity}
+.mk-bg{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden}
+.mk-grain{position:absolute;left:0;top:0;width:1920px;height:1080px;pointer-events:none;background-image:var(--mk-noise);opacity:.13;mix-blend-mode:multiply}
+/* 글꼴 */
+.f-sans{font-family:'Noto Sans KR','Black Han Sans',sans-serif;font-weight:900;letter-spacing:-.04em}
+.f-thin{font-family:'Noto Sans KR',sans-serif;font-weight:300;letter-spacing:.02em}
+.f-plex{font-family:'IBM Plex Sans KR',sans-serif;font-weight:300}
+.f-mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+.f-paper{font-family:'Do Hyeon','Black Han Sans',sans-serif}
+.f-serif{font-family:'Nanum Myeongjo',serif}
+/* 1. SWISS — 그리드·원색·굵은 산세리프 */
+.mk-swiss{background:#f2efe8;color:#111;background-image:repeating-linear-gradient(90deg,rgba(0,0,0,.06) 0 1px,transparent 1px 160px)}
+.mk-swiss .accent{background:#e8321e}
+/* 2. LINE — 블루프린트 선화 */
+.mk-line{background:radial-gradient(ellipse at 50% 40%,#13305a,#060e1d 75%);color:#d8ecff}
+.mk-line .grid{position:absolute;inset:0;background-image:linear-gradient(rgba(140,200,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(140,200,255,.08) 1px,transparent 1px);background-size:60px 60px}
+.mk-line svg *{fill:none;stroke:#8fd0ff;stroke-width:3;stroke-linecap:round}
+/* 3. PAPER — 종이 컷아웃 */
+.mk-paper{background:radial-gradient(circle at 30% 20%,#f6eedf,#e6d8bf);color:#3b2f22}
+.mk-paper .card{position:absolute;border-radius:18px;box-shadow:0 10px 0 rgba(0,0,0,.08),0 22px 40px rgba(60,40,10,.18)}
+/* 4. RISO — 형광 잉크 겹침 */
+.mk-riso{background:#f4f0e6;color:#1a1a1a}
+.mk-riso .ink-p{color:#ff48b0;fill:#ff48b0;mix-blend-mode:multiply}
+.mk-riso .ink-b{color:#0078bf;fill:#0078bf;mix-blend-mode:multiply}
+.mk-riso .ink-y{color:#ffe800;fill:#ffe800;mix-blend-mode:multiply}
+/* 5. COSMIC — 입자·글로우·세리프 */
+.mk-cosmic{background:radial-gradient(circle at 50% 60%,#22124a,#04030c 70%);color:#f5f0ff}
+.mk-cosmic .glow{text-shadow:0 0 24px rgba(190,160,255,.7)}
+/* 6. CHALK — 기존 칠판 테마는 .mk-bg 없이 템플릿 그대로 쓴다 */
+/* ==== /MotionKit CSS ==== */
+
+/* ---- extra_css ---- */
+.tag{position:absolute;left:140px;top:64px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:26px;letter-spacing:.18em;color:#8fd0ff}
+.hd{font-family:'IBM Plex Sans KR',sans-serif;font-weight:600}
+.bd{font-family:'IBM Plex Sans KR',sans-serif;font-weight:300}
+.eqb{font-family:'Times New Roman','Nanum Myeongjo',serif;color:#eef7ff;white-space:nowrap}
+.eqb sup,.eqb sub{font-size:.6em} .eqb i{font-style:italic}
+.fr{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;font-size:.72em;line-height:1.05;margin:0 .08em;font-style:normal}
+.fr>span:first-child{border-bottom:.06em solid currentColor;padding:0 .12em}
+.ek{color:#ff9f6b} .ep{color:#6fe3a1} .tot{color:#ffd76a} .dim{color:rgba(143,208,255,.35)}
+.boxed{border:3px solid currentColor;padding:14px 34px}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+
+</style>
+</head>
+<body class="nodecor">
+<div id="wrap">
+ <div id="stage">
+  <div id="tray"></div>
+  <div class="stick" style="left:300px;width:90px;background:#f3f0e6"></div>
+  <div class="stick" style="left:420px;width:60px;background:#f4cf5a"></div>
+  <div class="stick" style="left:1500px;width:70px;background:#f29aac"></div>
+
+  <!-- s0: 표지 -->
+  <div class="sc" id="s0">
+<div class='mk-bg mk-line'><div class='grid'></div><div class='tag'>PHYSICS I · 2. 에너지와 열</div><svg class='abs' style='left:0;top:0;width:1920px;height:1080px' viewBox='0 0 1920 1080'><g id='s0g'><line x1='140' y1='520' x2='1780' y2='520'/><line x1='140' y1='508' x2='140' y2='532'/><line x1='304' y1='508' x2='304' y2='532'/><line x1='468' y1='508' x2='468' y2='532'/><line x1='632' y1='508' x2='632' y2='532'/><line x1='796' y1='508' x2='796' y2='532'/><line x1='960' y1='508' x2='960' y2='532'/><line x1='1124' y1='508' x2='1124' y2='532'/><line x1='1288' y1='508' x2='1288' y2='532'/><line x1='1452' y1='508' x2='1452' y2='532'/><line x1='1616' y1='508' x2='1616' y2='532'/><line x1='1780' y1='508' x2='1780' y2='532'/></g></svg><div id='s0t' class='abs hd' style='left:130px;top:330px;font-size:150px;line-height:1'>역학적 에너지 보존</div><div id='s0i0' class='abs bd' style='left:150px;top:590px;font-size:52px'><b class='mono ek' style='font-weight:700'>01</b>&nbsp;&nbsp;일과 운동 에너지</div><div id='s0i1' class='abs bd' style='left:150px;top:678px;font-size:52px'><b class='mono ep' style='font-weight:700'>02</b>&nbsp;&nbsp;위치 에너지</div><div id='s0i2' class='abs bd' style='left:150px;top:766px;font-size:52px'><b class='mono tot' style='font-weight:700'>03</b>&nbsp;&nbsp;역학적 에너지 보존 법칙</div></div>
+  </div>
+
+  <!-- s1: 질문 + 수레 등가속도 -->
+  <div class="sc" id="s1">
+<div class='mk-bg mk-line'><div class='grid'></div><div class='tag'>01 · 일과 운동 에너지</div><div id='s1q1' class='abs hd' style='left:140px;top:200px;font-size:84px'></div><div id='s1q2' class='abs hd' style='left:140px;top:310px;font-size:84px'></div><svg class='abs' style='left:0;top:0;width:1920px;height:1080px' viewBox='0 0 1920 1080'><line id='s1tr' x1='140' y1='812' x2='1780' y2='812'/><g id='s1c'><g><rect x='-80' y='-60' width='160' height='60' rx='6'/><circle cx='-45' cy='12' r='14'/><circle cx='45' cy='12' r='14'/></g><g transform='translate(-210 -30)'><g id='s1F'><line x1='0' y1='0' x2='100' y2='0' style='stroke:#ff9f6b;stroke-width:8'/><path d='M100 -14 L122 0 L100 14 Z' style='fill:#ff9f6b;stroke:none'/></g></g></g></svg><div id='s1Fl' class='abs eqb ek' style='font-size:48px'><i>F</i></div><div id='s1a' class='abs hd ek' style='left:140px;top:900px;font-size:56px'>→ 운동 에너지로 저장된다</div></div>
+  </div>
+
+  <!-- s2: W=Fs, F-s 그래프 넓이 -->
+  <div class="sc" id="s2">
+<div class='mk-bg mk-line'><div class='grid'></div><div class='tag'>01 · 일과 운동 에너지</div><div id='s2h' class='abs bd' style='left:140px;top:150px;font-size:46px'>일정한 힘 <i>F</i>로 물체를 <i>s</i>만큼 이동시키면</div><svg class='abs' style='left:0;top:0;width:1920px;height:1080px' viewBox='0 0 1920 1080'><rect id='s2f' x='220' y='560' width='0' height='320' style='fill:#ff9f6b;fill-opacity:.32;stroke:none'/><g id='s2ax'><line x1='220' y1='880' x2='1120' y2='880'/><line x1='220' y1='880' x2='220' y2='360'/><line x1='220' y1='560' x2='1060' y2='560' style='stroke:#ff9f6b;stroke-width:5'/></g><line id='s2v' x1='220' y1='560' x2='220' y2='880' style='stroke:#ff9f6b;stroke-width:3;stroke-dasharray:10 8'/></svg><div class='abs bd' id='s2la' style='left:150px;top:330px;font-size:34px'>힘</div><div class='abs bd' id='s2lb' style='left:1130px;top:860px;font-size:34px'>거리</div><div class='abs eqb' id='s2lf' style='left:170px;top:532px;font-size:46px'><i>F</i></div><div id='s2s' class='abs eqb' style='top:892px;font-size:46px'><i>s</i></div><div id='s2w' class='abs bd ek' style='left:420px;top:680px;font-size:48px;font-weight:600'>넓이 = 한 일</div><div id='s2e' class='abs eqb' style='left:1270px;top:340px;font-size:150px'><i>W</i> = <i>F</i><i>s</i></div><div id='s2n1' class='abs bd' style='left:1280px;top:560px;font-size:46px'>그래프 아래 <b class='ek'>넓이</b> = 한 일</div><div id='s2n2' class='abs bd dim' style='left:1280px;top:640px;font-size:38px'>힘이 변해도 넓이로 구한다</div><div id='s2n3' class='abs bd' style='left:1280px;top:720px;font-size:38px'>단위: J (1 J = 1 N × 1 m)</div></div>
+  </div>
+
+  <!-- s3: 일 → 운동 에너지 유도 -->
+  <div class="sc" id="s3">
+<div class='mk-bg mk-line'><div class='grid'></div><div class='tag'>01 · 일과 운동 에너지</div><svg class='abs' style='left:0;top:0;width:1920px;height:1080px' viewBox='0 0 1920 1080'><line x1='140' y1='402' x2='1780' y2='402' style='opacity:.6'/><g id='s3c'><g><rect x='-80' y='-60' width='160' height='60' rx='6'/><circle cx='-45' cy='12' r='14'/><circle cx='45' cy='12' r='14'/></g><g transform='translate(-210 -30)'><g id='s3F'><line x1='0' y1='0' x2='100' y2='0' style='stroke:#ff9f6b;stroke-width:8'/><path d='M100 -14 L122 0 L100 14 Z' style='fill:#ff9f6b;stroke:none'/></g></g><g transform='translate(90 -80)'><g id='s3v'><g id='s3va'><line x1='0' y1='0' x2='100' y2='0' style='stroke:#8fd0ff;stroke-width:6'/><path d='M100 -14 L122 0 L100 14 Z' style='fill:#8fd0ff;stroke:none'/></g></g></g></g></svg><div id='s3m' class='abs eqb' style='font-size:40px;top:350px'><i>m</i></div><div id='s3vl' class='abs eqb' style='font-size:44px;top:256px'><i>v</i></div><div id='s3l0' class='abs eqb' style='left:160px;top:500px;font-size:58px'><i>a</i> = <span class='fr'><span><i>F</i></span><span><i>m</i></span></span></div><div id='s3l1' class='abs eqb' style='left:160px;top:600px;font-size:58px'>2<i>a</i><i>s</i> = <i>v</i><sup>2</sup> − 0 &nbsp;→&nbsp; 2<span class='fr'><span><i>F</i></span><span><i>m</i></span></span><i>s</i> = <i>v</i><sup>2</sup></div><div id='s3l2' class='abs eqb' style='left:160px;top:705px;font-size:58px'><i>F</i><i>s</i> = <span class='fr'><span>1</span><span>2</span></span><i>m</i><i>v</i><sup>2</sup></div><div id='s3l3' class='abs eqb ek boxed' style='left:150px;top:820px;font-size:76px'><i>W</i> = <i>F</i><i>s</i> = <span class='fr'><span>1</span><span>2</span></span><i>m</i><i>v</i><sup>2</sup> = <i>E</i><sub>k</sub></div><div id='s3t' class='abs hd ek' style='left:1220px;top:850px;font-size:58px'>운동 에너지</div><div id='s3n' class='abs bd dim' style='left:1220px;top:930px;font-size:34px'>수레에 해 준 일만큼 증가</div></div>
+  </div>
+
+  <!-- s4: 일·에너지 정리 — 스트로보 -->
+  <div class="sc" id="s4">
+<div class='mk-bg mk-line'><div class='grid'></div><div class='tag'>01 · 일과 운동 에너지</div><div id='s4e' class='abs eqb' style='left:140px;top:160px;font-size:78px'><i>W</i> = <span class='fr'><span>1</span><span>2</span></span><i>m</i><i>v</i><sup>2</sup> − <span class='fr'><span>1</span><span>2</span></span><i>m</i><i>v</i><sub>0</sub><sup>2</sup> = <span class='ek'>Δ<i>E</i><sub>k</sub></span></div><div id='s4h' class='abs hd' style='left:150px;top:310px;font-size:40px'>일·에너지 정리 — 알짜힘이 한 일 = 운동 에너지 변화량</div><svg class='abs' style='left:0;top:0;width:1920px;height:1080px' viewBox='0 0 1920 1080'><line x1='140' y1='740' x2='900' y2='740' style='opacity:.5'/><line x1='1020' y1='740' x2='1780' y2='740' style='opacity:.5'/><line x1='960' y1='440' x2='960' y2='940' style='opacity:.3'/><circle id='s4a0' r='30' cy='700' style='stroke:#ff9f6b;stroke-width:5'/><circle id='s4a1' r='30' cy='700' style='stroke:#ff9f6b;stroke-width:5'/><circle id='s4a2' r='30' cy='700' style='stroke:#ff9f6b;stroke-width:5'/><circle id='s4a3' r='30' cy='700' style='stroke:#ff9f6b;stroke-width:5'/><circle id='s4a4' r='30' cy='700' style='stroke:#ff9f6b;stroke-width:5'/><circle id='s4a5' r='30' cy='700' style='stroke:#ff9f6b;stroke-width:5'/><circle id='s4b0' r='30' cy='700' style='stroke:#ff9f6b;stroke-width:5'/><circle id='s4b1' r='30' cy='700' style='stroke:#ff9f6b;stroke-width:5'/><circle id='s4b2' r='30' cy='700' style='stroke:#ff9f6b;stroke-width:5'/><circle id='s4b3' r='30' cy='700' style='stroke:#ff9f6b;stroke-width:5'/><circle id='s4b4' r='30' cy='700' style='stroke:#ff9f6b;stroke-width:5'/><circle id='s4b5' r='30' cy='700' style='stroke:#ff9f6b;stroke-width:5'/><g id='s4Fa'><g id='s4fa'><line x1='0' y1='0' x2='100' y2='0' style='stroke:#8fd0ff;stroke-width:6'/><path d='M100 -14 L122 0 L100 14 Z' style='fill:#8fd0ff;stroke:none'/></g></g><g id='s4Fb'><g id='s4fb'><line x1='0' y1='0' x2='100' y2='0' style='stroke:#8fd0ff;stroke-width:6'/><path d='M100 -14 L122 0 L100 14 Z' style='fill:#8fd0ff;stroke:none'/></g></g></svg><div id='s4L' class='abs hd' style='left:150px;top:470px;font-size:46px'>운동 방향으로 일 <span class='ek'>(+)</span></div><div id='s4R' class='abs hd' style='left:1030px;top:470px;font-size:46px'>운동 반대 방향으로 일 <span class='ek'>(−)</span></div><div id='s4Lc' class='abs bd' style='left:150px;top:800px;font-size:40px'>공을 찰 때 → <i>E</i><sub>k</sub> 증가</div><div id='s4Rc' class='abs bd' style='left:1030px;top:800px;font-size:40px'>공을 받을 때 → <i>E</i><sub>k</sub> 감소</div></div>
+  </div>
+
+  <!-- s5: 중력 위치 에너지 — 들기/낙하 + 막대 -->
+  <div class="sc" id="s5">
+<div class='mk-bg mk-line'><div class='grid'></div><div class='tag'>02 · 위치 에너지</div><svg class='abs' style='left:0;top:0;width:1920px;height:1080px' viewBox='0 0 1920 1080'><line x1='140' y1='900' x2='1000' y2='900'/><g id='s5h'><line x1='640' y1='900' x2='640' y2='450' style='stroke-dasharray:10 8'/><line x1='620' y1='450' x2='660' y2='450'/></g><rect x='760' y='450' width='60' height='450' style='stroke:#ffd76a;stroke-width:3;stroke-dasharray:8 6'/><rect id='s5ep' x='760' width='60' style='fill:#6fe3a1;stroke:none'/><rect id='s5ek' x='860' width='60' style='fill:#ff9f6b;stroke:none'/><circle id='s5w' cx='445' cy='900' r='10' style='stroke:#fff;stroke-width:4'/></svg><div id='s5b' class='abs eqb' style='left:400px;width:90px;height:90px;border:4px solid #8fd0ff;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:52px;background:rgba(10,30,60,.7)'><i>m</i></div><div class='abs bd dim' style='left:150px;top:915px;font-size:30px'>기준면</div><div id='s5hl' class='abs eqb' style='left:660px;top:640px;font-size:52px'><i>h</i></div><div class='abs eqb ep' id='s5bl1' style='left:766px;top:915px;font-size:36px'><i>E</i><sub>p</sub></div><div class='abs eqb ek' id='s5bl2' style='left:866px;top:915px;font-size:36px'><i>E</i><sub>k</sub></div><div id='s5t' class='abs hd ep' style='left:1100px;top:250px;font-size:48px'>중력에 의한 위치 에너지</div><div id='s5e' class='abs eqb ep' style='left:1100px;top:330px;font-size:140px'><i>E</i><sub>p</sub> = <i>m</i><i>g</i><i>h</i></div><div id='s5n0' class='abs bd' style='left:1110px;top:580px;font-size:40px'>· 들어 올린 일만큼 에너지가 저장된다</div><div id='s5n1' class='abs bd' style='left:1110px;top:650px;font-size:40px'>· 떨어지면서 중력이 <i>m</i><i>g</i><i>h</i>만큼 일을 한다</div><div id='s5n2' class='abs bd' style='left:1110px;top:720px;font-size:40px'>· <span class='ep'>위치 에너지</span> → <span class='ek'>운동 에너지</span></div><div id='s5n3' class='abs bd dim' style='left:1110px;top:790px;font-size:34px'>(값은 기준면을 어디로 잡느냐에 따라 달라진다)</div></div>
+  </div>
+
+  <!-- s6: 탄성 위치 에너지 — 용수철 + 삼각형 넓이 -->
+  <div class="sc" id="s6">
+<div class='mk-bg mk-line'><div class='grid'></div><div class='tag'>02 · 위치 에너지</div><svg class='abs' style='left:0;top:0;width:1920px;height:1080px' viewBox='0 0 1920 1080'><rect x='150' y='230' width='40' height='200' style='fill:rgba(143,208,255,.15)'/><path id='s6sp' style='stroke-width:4'/><line x1='640' y1='450' x2='640' y2='480' style='stroke-dasharray:6 6'/><g id='s6Fg'><g id='s6F'><line x1='0' y1='0' x2='100' y2='0' style='stroke:#ff9f6b;stroke-width:8'/><path d='M100 -14 L122 0 L100 14 Z' style='fill:#ff9f6b;stroke:none'/></g></g><polygon id='s6tri' style='fill:#6fe3a1;fill-opacity:.32;stroke:none'/><g id='s6ax'><line x1='1100' y1='900' x2='1760' y2='900'/><line x1='1100' y1='900' x2='1100' y2='480'/></g><line id='s6ln' x1='1100' y1='900' x2='1100' y2='900' style='stroke:#ff9f6b;stroke-width:5'/></svg><div id='s6bk' class='abs eqb' style='top:280px;width:110px;height:100px;border:4px solid #8fd0ff;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:46px;background:rgba(10,30,60,.7)'><i>m</i></div><div id='s6x' class='abs eqb' style='top:470px;font-size:44px'><i>x</i></div><div class='abs bd dim' style='left:600px;top:490px;font-size:28px'>원래 길이</div><div id='s6Fl' class='abs eqb ek' style='top:200px;font-size:46px'><i>F</i> = <i>k</i><i>x</i></div><div class='abs bd' id='s6g1' style='left:1040px;top:440px;font-size:32px'>힘</div><div class='abs bd' id='s6g2' style='left:1700px;top:915px;font-size:32px'>늘어난 길이</div><div id='s6l0' class='abs eqb' style='left:140px;top:600px;font-size:56px'><i>W</i> = <span class='fr'><span>1</span><span>2</span></span>·<i>k</i><i>x</i>·<i>x</i> = <span class='fr'><span>1</span><span>2</span></span><i>k</i><i>x</i><sup>2</sup></div><div id='s6l1' class='abs eqb ep boxed' style='left:130px;top:720px;font-size:88px'><i>E</i><sub>p</sub> = <span class='fr'><span>1</span><span>2</span></span><i>k</i><i>x</i><sup>2</sup></div><div id='s6l2' class='abs bd' style='left:140px;top:920px;font-size:36px'>매트리스 · 자동차 서스펜션 · 트램펄린</div><div id='s6tl' class='abs bd ep' style='left:1430px;top:780px;font-size:40px;font-weight:600'>넓이 = <span class='fr'><span>1</span><span>2</span></span><i>k</i><i>x</i><sup>2</sup></div></div>
+  </div>
+
+  <!-- s7: 사과 낙하 — 누적 막대 + 실시간 % -->
+  <div class="sc" id="s7">
+<div class='mk-bg mk-line'><div class='grid'></div><div class='tag'>03 · 역학적 에너지 보존 법칙</div><svg class='abs' style='left:0;top:0;width:1920px;height:1080px' viewBox='0 0 1920 1080'><line x1='140' y1='930' x2='900' y2='930'/><line x1='500' y1='260' x2='500' y2='930' style='stroke-dasharray:6 10;opacity:.4'/><circle id='s7g0' cx='500' r='34' style='stroke:#8fd0ff;stroke-width:2;stroke-dasharray:5 5'/><circle id='s7g1' cx='500' r='34' style='stroke:#8fd0ff;stroke-width:2;stroke-dasharray:5 5'/><circle id='s7g2' cx='500' r='34' style='stroke:#8fd0ff;stroke-width:2;stroke-dasharray:5 5'/><circle id='s7g3' cx='500' r='34' style='stroke:#8fd0ff;stroke-width:2;stroke-dasharray:5 5'/><circle id='s7ap' cx='500' r='34' style='fill:#ff6b6b;stroke:none'/><rect x='980' y='300' width='140' height='600' style='stroke:#ffd76a;stroke-width:4'/><rect id='s7ep' x='982' width='136' style='fill:#6fe3a1;stroke:none'/><rect id='s7ek' x='982' width='136' style='fill:#ff9f6b;stroke:none'/></svg><div id='s7m0' class='abs mono' style='left:560px;font-size:34px;color:#8fd0ff'>①</div><div id='s7m1' class='abs mono' style='left:560px;font-size:34px;color:#8fd0ff'>②</div><div id='s7m2' class='abs mono' style='left:560px;font-size:34px;color:#8fd0ff'>③</div><div id='s7m3' class='abs mono' style='left:560px;font-size:34px;color:#8fd0ff'>④</div><div class='abs bd tot' id='s7tl' style='left:930px;top:245px;font-size:32px;font-weight:600'>역학적 에너지</div><div class='abs bd dim' id='s7sl' style='left:150px;top:950px;font-size:30px'>기준면 · 공기 저항 무시 · 슬로 모션</div><div id='s7e' class='abs eqb' style='left:1220px;top:280px;font-size:50px'><i>m</i><i>g</i><i>h</i><sub>1</sub> + <span class='fr'><span>1</span><span>2</span></span><i>m</i><i>v</i><sub>1</sub><sup>2</sup> = <i>m</i><i>g</i><i>h</i><sub>2</sub> + <span class='fr'><span>1</span><span>2</span></span><i>m</i><i>v</i><sub>2</sub><sup>2</sup></div><div id='s7r0' class='abs mono ep' style='left:1230px;top:460px;font-size:46px'>E<sub>p</sub> <span id='s7v0'>100</span>%</div><div id='s7r1' class='abs mono ek' style='left:1230px;top:540px;font-size:46px'>E<sub>k</sub> <span id='s7v1'>0</span>%</div><div id='s7r2' class='abs mono tot' style='left:1230px;top:620px;font-size:46px'>합 100%</div><div id='s7f' class='abs eqb tot boxed' style='left:1220px;top:760px;font-size:84px'><i>E</i><sub>p</sub> + <i>E</i><sub>k</sub> = 일정</div></div>
+  </div>
+
+  <!-- s8: 용수철 진동 — 에너지 포물선 + 이동점 -->
+  <div class="sc" id="s8">
+<div class='mk-bg mk-line'><div class='grid'></div><div class='tag'>03 · 역학적 에너지 보존 법칙</div><svg class='abs' style='left:0;top:0;width:1920px;height:1080px' viewBox='0 0 1920 1080'><rect x='150' y='200' width='40' height='200' style='fill:rgba(143,208,255,.15)'/><line x1='150' y1='400' x2='1150' y2='400' style='opacity:.5'/><path id='s8sp' style='stroke-width:4'/><line x1='500' y1='405' x2='500' y2='430'/><line x1='760' y1='405' x2='760' y2='430'/><line x1='1020' y1='405' x2='1020' y2='430'/><g id='s8ax'><line x1='300' y1='960' x2='1220' y2='960'/><line x1='760' y1='960' x2='760' y2='560'/><path d='M360 600.0 L368 614.3 L376 628.2 L384 641.9 L392 655.3 L400 668.4 L408 681.2 L416 693.7 L424 706.0 L432 717.9 L440 729.6 L448 741.0 L456 752.1 L464 762.9 L472 773.4 L480 783.6 L488 793.5 L496 803.2 L504 812.5 L512 821.6 L520 830.4 L528 838.9 L536 847.1 L544 855.0 L552 862.7 L560 870.0 L568 877.1 L576 883.8 L584 890.3 L592 896.5 L600 902.4 L608 908.0 L616 913.3 L624 918.4 L632 923.1 L640 927.6 L648 931.8 L656 935.7 L664 939.3 L672 942.6 L680 945.6 L688 948.3 L696 950.8 L704 952.9 L712 954.8 L720 956.4 L728 957.7 L736 958.7 L744 959.4 L752 959.9 L760 960.0 L768 959.9 L776 959.4 L784 958.7 L792 957.7 L800 956.4 L808 954.8 L816 952.9 L824 950.8 L832 948.3 L840 945.6 L848 942.6 L856 939.3 L864 935.7 L872 931.8 L880 927.6 L888 923.1 L896 918.4 L904 913.3 L912 908.0 L920 902.4 L928 896.5 L936 890.3 L944 883.8 L952 877.1 L960 870.0 L968 862.7 L976 855.0 L984 847.1 L992 838.9 L1000 830.4 L1008 821.6 L1016 812.5 L1024 803.2 L1032 793.5 L1040 783.6 L1048 773.4 L1056 762.9 L1064 752.1 L1072 741.0 L1080 729.6 L1088 717.9 L1096 706.0 L1104 693.7 L1112 681.2 L1120 668.4 L1128 655.3 L1136 641.9 L1144 628.2 L1152 614.3 L1160 600.0 ' style='stroke:#6fe3a1;stroke-width:5'/><path d='M360 960.0 L368 945.7 L376 931.8 L384 918.1 L392 904.7 L400 891.6 L408 878.8 L416 866.3 L424 854.0 L432 842.1 L440 830.4 L448 819.0 L456 807.9 L464 797.1 L472 786.6 L480 776.4 L488 766.5 L496 756.8 L504 747.5 L512 738.4 L520 729.6 L528 721.1 L536 712.9 L544 705.0 L552 697.3 L560 690.0 L568 682.9 L576 676.2 L584 669.7 L592 663.5 L600 657.6 L608 652.0 L616 646.7 L624 641.6 L632 636.9 L640 632.4 L648 628.2 L656 624.3 L664 620.7 L672 617.4 L680 614.4 L688 611.7 L696 609.2 L704 607.1 L712 605.2 L720 603.6 L728 602.3 L736 601.3 L744 600.6 L752 600.1 L760 600.0 L768 600.1 L776 600.6 L784 601.3 L792 602.3 L800 603.6 L808 605.2 L816 607.1 L824 609.2 L832 611.7 L840 614.4 L848 617.4 L856 620.7 L864 624.3 L872 628.2 L880 632.4 L888 636.9 L896 641.6 L904 646.7 L912 652.0 L920 657.6 L928 663.5 L936 669.7 L944 676.2 L952 682.9 L960 690.0 L968 697.3 L976 705.0 L984 712.9 L992 721.1 L1000 729.6 L1008 738.4 L1016 747.5 L1024 756.8 L1032 766.5 L1040 776.4 L1048 786.6 L1056 797.1 L1064 807.9 L1072 819.0 L1080 830.4 L1088 842.1 L1096 854.0 L1104 866.3 L1112 878.8 L1120 891.6 L1128 904.7 L1136 918.1 L1144 931.8 L1152 945.7 L1160 960.0 ' style='stroke:#ff9f6b;stroke-width:5'/><line x1='360' y1='600' x2='1160' y2='600' style='stroke:#ffd76a;stroke-width:5'/></g><line id='s8vl' y1='600' y2='960' style='stroke:#fff;stroke-width:2;stroke-dasharray:6 6'/><circle id='s8d0' r='12' style='fill:#6fe3a1;stroke:none'/><circle id='s8d1' r='12' style='fill:#ff9f6b;stroke:none'/><rect x='1400' y='600' width='120' height='360' style='stroke:#ffd76a;stroke-width:4'/><rect id='s8ep' x='1402' width='116' style='fill:#6fe3a1;stroke:none'/><rect id='s8ek' x='1402' width='116' style='fill:#ff9f6b;stroke:none'/></svg><div id='s8bk' class='abs eqb' style='top:300px;width:100px;height:100px;border:4px solid #8fd0ff;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:46px;background:rgba(10,30,60,.7)'><i>m</i></div><div class='abs eqb dim' style='left:480px;top:432px;font-size:36px'>−<i>A</i></div><div class='abs eqb dim' style='left:740px;top:432px;font-size:36px'>O</div><div class='abs eqb dim' style='left:1000px;top:432px;font-size:36px'><i>A</i></div><div id='s8gl' class='abs bd dim' style='left:1170px;top:975px;font-size:28px'>변형된 길이</div><div id='s8e' class='abs eqb' style='left:1250px;top:200px;font-size:52px'><span class='fr'><span>1</span><span>2</span></span><i>k</i><i>A</i><sup>2</sup> = <span class='fr'><span>1</span><span>2</span></span><i>k</i><i>x</i><sup>2</sup> + <span class='fr'><span>1</span><span>2</span></span><i>m</i><i>v</i><sup>2</sup> = <span class='fr'><span>1</span><span>2</span></span><i>m</i><i>V</i><sup>2</sup></div><div id='s8c' class='abs bd' style='left:1250px;top:330px;font-size:38px'>양 끝(±<i>A</i>): <span class='ep'>위치 에너지 최대</span><br>O점: <span class='ek'>운동 에너지 최대</span></div><div class='abs eqb ep' id='s8b0' style='left:1560px;top:860px;font-size:38px'><i>E</i><sub>p</sub></div><div class='abs eqb ek' id='s8b1' style='left:1560px;top:610px;font-size:38px'><i>E</i><sub>k</sub></div><div class='abs bd tot' id='s8b2' style='left:1560px;top:735px;font-size:32px;font-weight:600'>합 일정</div></div>
+  </div>
+
+  <!-- s9: 정리 — 경계만 움직이는 막대 -->
+  <div class="sc" id="s9">
+<div class='mk-bg mk-line'><div class='grid'></div><div class='tag'>정리</div><div id='s9a' class='abs bd dim' style='left:140px;top:170px;font-size:40px'>마찰이나 공기 저항을 무시하면</div><div id='s9b' class='abs eqb tot' style='left:130px;top:230px;font-size:150px'><i>E</i><sub>p</sub> + <i>E</i><sub>k</sub> = 일정</div><svg class='abs' style='left:0;top:0;width:1920px;height:1080px' viewBox='0 0 1920 1080'><rect id='s9ep' y='470' height='80' style='fill:#6fe3a1;stroke:none'/><rect id='s9ek' y='470' height='80' style='fill:#ff9f6b;stroke:none'/><rect id='s9fr' x='1150' y='466' width='650' height='88' style='stroke:#ffd76a;stroke-width:4'/></svg><div id='s9bl' class='abs bd' style='left:1150px;top:570px;font-size:34px'>서로 바뀌어도, <b class='tot'>합은 그대로</b></div><div id='s9i0' class='abs bd' style='left:140px;top:680px;font-size:46px'><b class='mono ek'>01</b>&nbsp; 일을 하면 운동 에너지가 변한다 &nbsp;<span class='eqb ek'><i>W</i> = Δ<i>E</i><sub>k</sub></span></div><div id='s9i1' class='abs bd' style='left:140px;top:770px;font-size:46px'><b class='mono ep'>02</b>&nbsp; 높이·변형에 에너지가 저장된다 &nbsp;<span class='eqb ep'><i>m</i><i>g</i><i>h</i>, <span class='fr'><span>1</span><span>2</span></span><i>k</i><i>x</i><sup>2</sup></span></div><div id='s9i2' class='abs bd' style='left:140px;top:860px;font-size:46px'><b class='mono tot'>03</b>&nbsp; 둘은 서로 전환되고, 합은 보존된다</div></div>
+  </div>
+
+  <div id="mgError"></div>
+ </div>
+</div>
+
+<div id="bar">
+ <button id="play" aria-label="재생">▶ 재생</button>
+ <button id="restart">처음부터</button>
+ <input id="seek" type="range" min="0" step="0.01" value="0" aria-label="재생 위치">
+ <span id="time">0.0 / 0.0초</span>
+ <button id="mute">🔊 음악 켬</button>
+ <button id="fs">전체 화면</button>
+ <button id="rec">녹화 모드</button>
+ <span class="hint">Space 재생 · ← → 2초 이동 · R 처음부터 · M 음악 · F 전체화면 · H 녹화 모드</span>
+</div>
+
+<script>
+/* ===== 문구·설정 (content.config) ===== */
+const CONFIG = {};
+const MUSIC = {"on": true, "volume": 0.4, "bpm": 90, "melody_at": 16, "kick_at": 58, "hat_at": 81};
+
+/* ===== 공용 도우미 (템플릿 제공) ===== */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const cl = (x,a=0,b=1) => x<a?a:x>b?b:x;
+const P = (t,s,d) => cl((t-s)/d);                 // t가 s에서 d초 동안 0→1
+const eo = x => 1-Math.pow(1-x,3);                 // ease-out
+const eio = x => x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2; // ease-in-out
+const eb = x => {const c1=1.9,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)}; // 살짝 튀어 오르기
+const S = (el,o,tr) => {el.style.opacity=o; el.style.transform=tr||"none";};
+const colors=["y","p","b"], HEX={"y": "#f4cf5a", "p": "#f29aac", "b": "#8cc3e8", "c": "#f3f0e6"};
+/* 자주 쓰는 동작 */
+const typeText = (el,text,t,start,cps=18) => { el.textContent = text.slice(0, cl(Math.floor((t-start)*cps),0,text.length)); };
+const fadeUp = (el,t,start,dur=.6,dist=40) => { const a=eo(P(t,start,dur)); S(el,a,`translateY(${(1-a)*dist}px)`); };
+const popIn = (el,t,start,dur=.6) => { const a=P(t,start,dur); S(el,P(t,start,.1),`scale(${.4+.6*eb(a)})`); };
+const drawPath = (pathEl,t,start,dur=.8) => { pathEl.style.strokeDashoffset = 1-eio(P(t,start,dur)); }; // path에 pathLength="1" stroke-dasharray="1"
+
+/* 분필 사람 그림: person(색, 'down'|'point'|'wave'|'talk', 'smile'|'worry') → SVG 문자열 */
+function person(col,pose,mood){
+  const arms={down:"M60 92 L32 142 M60 92 L88 142",point:"M60 92 L32 142 M60 92 L114 56",wave:"M60 92 L30 142 M60 92 L98 34",talk:"M60 92 L32 142 M60 92 L110 100"}[pose]||"M60 92 L32 142 M60 92 L88 142";
+  const mouth=mood==="worry"?"M50 54 Q60 46 70 54":"M50 48 Q60 57 70 48";
+  return `<svg viewBox="0 0 120 220" width="100%" height="100%" fill="none" stroke="${col}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><circle cx="60" cy="36" r="26"/><circle cx="50" cy="33" r="2.6" fill="${col}"/><circle cx="70" cy="33" r="2.6" fill="${col}"/><path d="${mouth}"/><path d="M60 62 L60 150 M60 150 L36 214 M60 150 L84 214 ${arms}"/></svg>`;
+}
+
+window.__mgErrors = [];
+function reportError(where, e){
+  const msg = `${where}: ${e && e.message ? e.message : e}`;
+  if (!window.__mgErrors.includes(msg)) { window.__mgErrors.push(msg); console.error('[장면 오류] ' + msg); }
+  const box = $("#mgError"); box.textContent = window.__mgErrors.slice(-3).join("\n"); box.classList.add("on");
+}
+
+/* ===== MotionKit (내장) ===== */
+/* ==== MotionKit v1 (템플릿 내장) — 모든 함수는 t(장면 경과 초)의 순수 함수 ==== */
+window.MK=window.MK||(()=>{
+const c=(x,a=0,b=1)=>x<a?a:x>b?b:x;
+const p=(t,s,d)=>c((t-s)/d);
+const lerp=(a,b,k)=>a+(b-a)*k;
+const h=i=>{const s=Math.sin(i*127.1+311.7)*43758.5453;return s-Math.floor(s);};
+const n1=x=>{const i=Math.floor(x),f=x-i,u=f*f*(3-2*f);return lerp(h(i),h(i+1),u)*2-1;};
+const E={
+ lin:x=>x,
+ out:x=>1-Math.pow(1-x,3),
+ inOut:x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2,
+ expo:x=>x>=1?1:1-Math.pow(2,-10*x),
+ antic:x=>{const k=1.70158;return (k+1)*x*x*x-k*x*x;},
+ back:x=>{const k=1.70158,y=x-1;return 1+(k+1)*y*y*y+k*y*y;},
+ elastic:x=>x<=0?0:x>=1?1:Math.pow(2,-10*x)*Math.sin((x*10-.75)*2.0944)+1,
+ bounce:x=>{const n=7.5625,d=2.75;if(x<1/d)return n*x*x;if(x<2/d)return n*(x-=1.5/d)*x+.75;if(x<2.5/d)return n*(x-=2.25/d)*x+.9375;return n*(x-=2.625/d)*x+.984375;},
+ snap:x=>x<.2?-0.08*Math.sin(x/.2*Math.PI/2):1-Math.exp(-7*(x-.2))*Math.cos(9*(x-.2))*1.08
+};
+const ez=e=>typeof e==='function'?e:(E[e]||E.out);
+const spring=(x,damp=6,freq=1.6)=>x<=0?0:1-Math.exp(-damp*x)*Math.cos(6.2832*freq*x);
+const split=(el,mode='char',text)=>{const s=text!=null?text:el.textContent;el.innerHTML='';el._u=[];
+ (mode==='word'?s.split(/(\s+)/):Array.from(s)).forEach(ch=>{if(!ch)return;if(/^\s+$/.test(ch)){el.appendChild(document.createTextNode(ch));return;}
+ const sp=document.createElement('span');sp.className='mk-u';sp.textContent=ch;el.appendChild(sp);el._u.push(sp);});return el._u;};
+const kinetic=(el,t,start,o={})=>{const u=el._u||split(el,o.mode);const {type='rise',gap=.045,dur=.7,dist=80,order='lr'}=o;const n=u.length;
+ u.forEach((sp,i)=>{const j=order==='rl'?n-1-i:order==='center'?Math.abs(i-(n-1)/2):order==='random'?h(i+7)*n:i;
+  const k=p(t,start+j*gap,dur);let op=c(k*3),tr='',e;
+  switch(type){
+   case 'drop':e=E.bounce(k);tr=`translateY(${(e-1)*dist*2}px)`;op=k>0?1:0;break;
+   case 'flip':e=E.back(k);tr=`perspective(600px) rotateX(${(1-e)*-90}deg)`;break;
+   case 'pop':e=E.elastic(k);tr=`scale(${e})`;op=k>0?1:0;break;
+   case 'scatter':{e=E.expo(k);const a=h(i)*2-1,b=h(i+50)*2-1;tr=`translate(${(1-e)*a*dist*4}px,${(1-e)*b*dist*3}px) rotate(${(1-e)*a*180}deg)`;break;}
+   case 'blur':e=E.out(k);sp.style.filter=`blur(${(1-e)*14}px)`;tr=`scale(${1.3-.3*e})`;break;
+   case 'wave':e=E.out(k);tr=`translateY(${(1-e)*dist+Math.sin(t*4-i*.5)*8*e}px)`;break;
+   default:e=E.back(k);tr=`translateY(${(1-e)*dist}px)`;
+  }
+  sp.style.opacity=op;sp.style.transform=tr;});};
+const kineticOut=(el,t,start,o={})=>{const u=el._u||split(el,o.mode);const {gap=.03,dur=.45,dist=60}=o;
+ u.forEach((sp,i)=>{const k=E.antic(p(t,start+i*gap,dur));if(k<=0&&t<start)return;sp.style.opacity=1-c(k);sp.style.transform=`translateY(${-k*dist}px)`;});};
+const stagger=(els,t,start,o,fn)=>{const {gap=.08,dur=.6,ease='back'}=o||{};const f=ez(ease);Array.from(els).forEach((el,i)=>fn(el,f(p(t,start+i*gap,dur)),i));};
+const reveal=(el,t,start,dur,o={})=>{const {shape='circle',x=50,y=50,ease='inOut',dir='left'}=o;const k=ez(ease)(p(t,start,dur));let cp;
+ if(shape==='wipe'){const r=(1-k)*100;cp=dir==='right'?`inset(0 0 0 ${r}%)`:dir==='up'?`inset(${r}% 0 0 0)`:dir==='down'?`inset(0 0 ${r}% 0)`:`inset(0 ${r}% 0 0)`;}
+ else if(shape==='diag'){const a=k*200;cp=`polygon(0 0,${a}% 0,${a-100}% 100%,0 100%)`;}
+ else if(shape==='iris'){const r=(1-k)*50;cp=`inset(${r}% ${r}% ${r}% ${r}% round ${r}%)`;}
+ else cp=`circle(${k*150}% at ${x}% ${y}%)`;
+ el.style.clipPath=cp;el.style.webkitClipPath=cp;};
+const camera=(el,t,keys,ease='inOut')=>{let a=keys[0],b=keys[keys.length-1];
+ if(t<=a.t)b=a;else if(t>=b.t)a=b;else for(let i=0;i<keys.length-1;i++)if(t>=keys[i].t&&t<=keys[i+1].t){a=keys[i];b=keys[i+1];break;}
+ const k=a===b?0:ez(ease)((t-a.t)/(b.t-a.t));const g=(q,d)=>lerp(a[q]??d,b[q]??d,k);
+ el.style.transformOrigin='960px 540px';el.style.transform=`translate(${g('x',0)}px,${g('y',0)}px) scale(${g('s',1)}) rotate(${g('r',0)}deg)`;};
+const ngon=(sides,N=72,r=200,cx=0,cy=0,rot=-90)=>{const P=[];for(let i=0;i<N;i++){const s=i/N;
+ if(!sides){const a=(rot+360*s)*Math.PI/180;P.push([cx+r*Math.cos(a),cy+r*Math.sin(a)]);continue;}
+ const f=s*sides,j=Math.floor(f),u=f-j,A=(rot+360*j/sides)*Math.PI/180,B=(rot+360*(j+1)/sides)*Math.PI/180;
+ P.push([cx+r*lerp(Math.cos(A),Math.cos(B),u),cy+r*lerp(Math.sin(A),Math.sin(B),u)]);}return P;};
+const morph=(el,A,B,k)=>el.setAttribute('points',A.map((a,i)=>`${lerp(a[0],B[i][0],k).toFixed(1)},${lerp(a[1],B[i][1],k).toFixed(1)}`).join(' '));
+const ball=(el,t,start,o={})=>{const {h:H=400,decay=.55,fall=.55,sq=.35}=o;const g=2*H/(fall*fall);let tt=t-start,y=H,v=0;
+ if(tt>0){if(tt<fall){y=H-.5*g*tt*tt;v=-g*tt;}else{tt-=fall;let hk=H*decay,vk=Math.sqrt(2*g*hk),T=2*vk/g,n=0;
+  while(tt>T&&hk>1&&n++<30){tt-=T;hk*=decay;vk=Math.sqrt(2*g*hk);T=2*vk/g;}
+  if(hk<=1||n>=30){y=0;v=0;}else{y=vk*tt-.5*g*tt*tt;v=vk-g*tt;}}}
+ const sp=Math.abs(v)/Math.sqrt(2*g*H);let sx=1,sy=1;
+ if(y<H*.04&&sp>.05){sx=1+sq*sp;sy=1-sq*sp;}else{sy=1+.25*sp;sx=1-.15*sp;}
+ el.style.transformOrigin='50% 100%';el.style.transform=`translateY(${-y}px) scale(${sx},${sy})`;return y;};
+const boil=(el,t,amt=1.5,fps=8,base='')=>{const f=Math.floor(t*fps);el.style.transform=`${base} translate(${(h(f)*2-1)*amt}px,${(h(f+9)*2-1)*amt}px) rotate(${(h(f+3)*2-1)*amt*.3}deg)`;};
+const misreg=(el,t,amt=4,fps=10)=>{const f=Math.floor(t*fps);el.style.transform=`translate(${(h(f+1)*2-1)*amt}px,${(h(f+2)*2-1)*amt}px)`;};
+const grain=(el,t,fps=12)=>{const f=Math.floor(t*fps);el.style.backgroundPosition=`${Math.floor(h(f)*256)}px ${Math.floor(h(f+5)*256)}px`;};
+const count=(el,t,start,dur,from,to,dec=0,ease='out')=>{el.textContent=lerp(from,to,ez(ease)(p(t,start,dur))).toFixed(dec);};
+const scramble=(el,text,t,start,dur,chars='01▲■●◆ABCDEFGHJKLMNPRSTUVWXYZ')=>{const k=p(t,start,dur),n=text.length,done=Math.floor(k*n),f=Math.floor(t*20);let s='';
+ for(let i=0;i<n;i++){if(i<done||text[i]===' ')s+=text[i];else if(k>0&&i<done+6)s+=chars[Math.floor(h(i+f*13)*chars.length)];}el.textContent=s;};
+const drawAll=(root,t,start,o={})=>{const {dur=1.2,gap=.15,ease='inOut'}=o;root.querySelectorAll('path,line,polyline,circle,rect').forEach((el,i)=>{
+ el.setAttribute('pathLength','1');el.style.strokeDasharray='1';el.style.strokeDashoffset=1-ez(ease)(p(t,start+i*gap,dur));});};
+const particles=(cv,t,o={})=>{const ctx=cv.getContext('2d');const {n=160,mode='drift',color='255,255,255',size=2.2,speed=.08,glow=0,cx=960,cy=540,alpha=1}=o;
+ ctx.clearRect(0,0,cv.width,cv.height);ctx.save();if(glow){ctx.shadowBlur=glow;ctx.shadowColor=`rgba(${color},1)`;}
+ for(let i=0;i<n;i++){let x,y;const a=h(i+3),b=h(i+91),z=.3+.7*h(i+17);
+  if(mode==='orbit'){const R=80+a*620,w=(.15+.6/(1+R/200))*(b<.5?1:-1),ang=b*6.2832+t*w;x=cx+R*Math.cos(ang);y=cy+R*Math.sin(ang)*.42;}
+  else if(mode==='rise'){x=a*cv.width+n1(i+t*.5)*30;y=((b*cv.height-t*speed*600*z)%cv.height+cv.height)%cv.height;}
+  else{x=a*cv.width+n1(i*1.7+t*speed*3)*120;y=b*cv.height+n1(i*2.3+50+t*speed*3)*120;}
+  ctx.globalAlpha=alpha*z*(.55+.45*Math.sin(t*2+i));ctx.fillStyle=`rgb(${color})`;ctx.beginPath();ctx.arc(x,y,size*z,0,6.2832);ctx.fill();}
+ ctx.restore();};
+/* 준비: 웹폰트·그레인 텍스처 (한 번만) */
+(()=>{try{if(!document.getElementById('mk-fonts')){const l=document.createElement('link');l.id='mk-fonts';l.rel='stylesheet';
+ l.href='https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;900&family=IBM+Plex+Sans+KR:wght@300;600&family=Do+Hyeon&family=Nanum+Myeongjo:wght@400;800&display=swap';document.head.appendChild(l);}
+ const cv=document.createElement('canvas');cv.width=cv.height=256;const g=cv.getContext('2d'),im=g.createImageData(256,256);
+ for(let i=0;i<im.data.length;i+=4){const v=Math.floor(h(i*.25+1)*255);im.data[i]=im.data[i+1]=im.data[i+2]=v;im.data[i+3]=255;}
+ g.putImageData(im,0,0);document.documentElement.style.setProperty('--mk-noise',`url(${cv.toDataURL()})`);}catch(e){}})();
+return {c,p,lerp,h,n1,E,ez,spring,split,kinetic,kineticOut,stagger,reveal,camera,ngon,morph,ball,boil,misreg,grain,count,scramble,drawAll,particles};
+})();
+/* ==== /MotionKit ==== */
+
+
+/* ===== setup_js (장면 요소 준비: 한 번 실행, 여기서 선언한 const/function은 장면 코드에서 쓸 수 있다) ===== */
+
+const C={ek:'#ff9f6b',ep:'#6fe3a1',tot:'#ffd76a',ln:'#8fd0ff'};
+function zig(x0,x1,y,n=14,amp=26){let s=`M${x0} ${y} L${x0+20} ${y}`;const L=x1-x0-40;for(let i=0;i<n;i++){const xa=x0+20+L*(i+.5)/n;s+=` L${xa.toFixed(1)} ${y+(i%2?amp:-amp)}`;}return s+` L${x1-20} ${y} L${x1} ${y}`;}
+function bars(ep,ek,base,Hh,r){r=MK.c(r);ep.setAttribute('y',base-Hh*r);ep.setAttribute('height',Hh*r);ek.setAttribute('y',base-Hh);ek.setAttribute('height',Hh*(1-r));}
+function tr(el,x,y){el.setAttribute('transform',`translate(${x} ${y})`);}
+function IN(el,t,s,type='rise',d=.7){const k=MK.p(t,s,d);if(type==='pop'){const e=MK.E.back(k);el.style.transformOrigin='0 50%';S(el,MK.c(k*3),`scale(${.6+.4*e})`);}else if(type==='blur'){const e=MK.E.out(k);el.style.filter=`blur(${(1-e)*12}px)`;S(el,MK.c(k*2),'');}else{const e=MK.E.out(k);S(el,MK.c(k*2),`translateY(${(1-e)*40}px)`);}}
+
+
+/* ===== 장면 ===== */
+const SC=[
+ {id:"s0",d:7,up(t){
+MK.drawAll($('#s0g'),t,.1,{dur:1.2,gap:.05});MK.kinetic($('#s0t'),t,.5,{type:'rise',gap:.06});MK.stagger([$('#s0i0'),$('#s0i1'),$('#s0i2')],t,2.2,{gap:.4,dur:.6,ease:'out'},(el,e)=>S(el,e,`translateX(${(1-e)*-50}px)`));
+ }},
+ {id:"s1",d:9,up(t){
+MK.scramble($('#s1q1'),'수레를 계속 밀면,',t,.3,1.2);MK.scramble($('#s1q2'),'내가 한 일은 어디로 갈까?',t,1.0,1.6);MK.drawAll($('#s1tr').parentNode,t,1.6,{dur:.6,gap:0});const u=MK.c((t-2.5)/5.5),x=300+1250*u*u;tr($('#s1c'),x,800);$('#s1c').style.opacity=MK.p(t,1.9,.4);const fl=$('#s1Fl');fl.style.left=(x-170)+'px';fl.style.top='690px';fl.style.opacity=MK.p(t,2.2,.4);S($('#s1a'),MK.p(t,7.2,.5),`translateY(${(1-MK.E.out(MK.p(t,7.2,.5)))*30}px)`);
+ }},
+ {id:"s2",d:12,up(t){
+IN($('#s2h'),t,.1);MK.drawAll($('#s2ax'),t,.8,{dur:.9,gap:.35});['#s2la','#s2lb','#s2lf'].forEach((q,k)=>S($(q),MK.p(t,1.4+k*.2,.4),''));const u=MK.c((t-2.6)/3.6),sx=220+840*u;$('#s2f').setAttribute('width',840*u);$('#s2v').setAttribute('x1',sx);$('#s2v').setAttribute('x2',sx);$('#s2v').style.opacity=u<=0?0:u<1?1:MK.c(1-(t-6.2)*2);const s=$('#s2s');s.style.left=(sx-10)+'px';s.style.opacity=MK.p(t,2.6,.3);S($('#s2w'),MK.p(t,5.0,.5),'');IN($('#s2e'),t,6.4,'pop');S($('#s2n1'),MK.p(t,7.6,.5),'');S($('#s2n2'),MK.p(t,8.4,.5),'');S($('#s2n3'),MK.p(t,9.1,.5),'');
+ }},
+ {id:"s3",d:12,up(t){
+const u=MK.c((t-.8)/5.4),x=230+1300*u*u;tr($('#s3c'),x,390);const vs=Math.max(.02,u);$('#s3v').setAttribute('transform',`scale(${vs} 1)`);$('#s3m').style.left=(x-14)+'px';const vl=$('#s3vl');vl.style.left=(x+100+60*vs)+'px';vl.style.opacity=MK.c(u*4);[1.6,3.0,4.5].forEach((s,k)=>S($('#s3l'+k),MK.p(t,s,.5),`translateX(${(1-MK.E.out(MK.p(t,s,.6)))*-40}px)`));const e=MK.E.back(MK.p(t,6.4,.7));S($('#s3l3'),MK.c(e*2),`scale(${.85+.15*e})`);$('#s3l3').style.transformOrigin='0 50%';S($('#s3t'),MK.p(t,7.3,.5),'');S($('#s3n'),MK.p(t,7.8,.5),'');
+ }},
+ {id:"s4",d:9,up(t){
+IN($('#s4e'),t,.1,'blur',1);S($('#s4h'),MK.p(t,1.2,.5),'');S($('#s4L'),MK.p(t,1.8,.4),'');S($('#s4R'),MK.p(t,1.8,.4),'');const A=tt=>{const u=MK.c((tt-2.4)/3.2);return 200+640*u*u;},B=tt=>{const u=MK.c((tt-2.4)/3.2);return 1080+640*(1-(1-u)*(1-u));};for(let k=0;k<6;k++){const tt=t-k*.4,a=$('#s4a'+k),b=$('#s4b'+k);a.setAttribute('cx',A(tt));b.setAttribute('cx',B(tt));const op=(k===0?1:.45-.07*k)*MK.p(t,2.2,.3)*(tt>2.4||k===0?1:0);a.style.opacity=op;b.style.opacity=op;}const on=t>2.4&&t<5.6?1:0;tr($('#s4Fa'),A(t)-160,700);$('#s4Fa').style.opacity=on;$('#s4Fb').setAttribute('transform',`translate(${B(t)+160} 700) scale(-1 1)`);$('#s4Fb').style.opacity=on;S($('#s4Lc'),MK.p(t,5.8,.5),'');S($('#s4Rc'),MK.p(t,6.2,.5),'');
+ }},
+ {id:"s5",d:11,up(t){
+let top;if(t<6){const k=MK.E.inOut(MK.p(t,1.0,2.0));top=810-450*k;}else{const tau=MK.c(t-6.2),g=900;top=360+.5*g*tau*tau;if(top>810)top=810;}S($('#s5b'),MK.p(t,.4,.4),'');$('#s5b').style.top=top+'px';const h=MK.c((810-top)/450),fall=t>6.2;const lift=MK.E.inOut(MK.p(t,1.0,2.0));bars($('#s5ep'),$('#s5ek'),900,450,fall?h:1);$('#s5ep').style.opacity=1;if(!fall){$('#s5ep').setAttribute('y',900-450*h);$('#s5ep').setAttribute('height',450*h);$('#s5ek').setAttribute('height',0);}MK.drawAll($('#s5h'),t,3.2,{dur:.6,gap:.3});S($('#s5hl'),MK.p(t,3.6,.4),'');const land=MK.p(t,7.2,.6);$('#s5w').setAttribute('r',10+land*120);$('#s5w').style.opacity=land>0?1-land:0;S($('#s5t'),MK.p(t,1.2,.5),'');IN($('#s5e'),t,3.9,'pop');[4.8,6.4,7.6,8.6].forEach((s,k)=>S($('#s5n'+k),MK.p(t,s,.5),''));
+ }},
+ {id:"s6",d:12,up(t){
+const k=MK.E.inOut(MK.p(t,1.2,3.4)),X=300*k,bx=640+X;$('#s6sp').setAttribute('d',zig(190,bx,330,16,28));const bk=$('#s6bk');bk.style.left=bx+'px';tr($('#s6Fg'),bx+130,330);$('#s6Fg').setAttribute('transform',`translate(${bx+130} 330) scale(${.3+X/300*.9} 1)`);$('#s6Fg').style.opacity=MK.p(t,1.0,.3);const fl=$('#s6Fl');fl.style.left=(bx+130)+'px';fl.style.opacity=MK.p(t,1.4,.4);const xl=$('#s6x');xl.style.left=(640+X/2-10)+'px';xl.style.opacity=MK.c(X/60);MK.drawAll($('#s6ax'),t,.5,{dur:.7,gap:.3});S($('#s6g1'),MK.p(t,.9,.4),'');S($('#s6g2'),MK.p(t,1.1,.4),'');const gx=1100+X*1.8,gy=900-X*1.25;$('#s6ln').setAttribute('x2',gx);$('#s6ln').setAttribute('y2',gy);$('#s6tri').setAttribute('points',`1100,900 ${gx},900 ${gx},${gy}`);S($('#s6l0'),MK.p(t,4.9,.5),'');const e=MK.E.back(MK.p(t,6.2,.7));S($('#s6l1'),MK.c(e*2),`scale(${.85+.15*e})`);$('#s6l1').style.transformOrigin='0 50%';S($('#s6tl'),MK.p(t,5.2,.5),'');S($('#s6l2'),MK.p(t,7.6,.5),'');
+ }},
+ {id:"s7",d:14,up(t){
+const T0=2.4,TF=3.2,y0=300,y1=896;const tau=MK.c((t-T0)/TF),y=y0+(y1-y0)*tau*tau;$('#s7ap').setAttribute('cy',y);$('#s7ap').style.opacity=MK.p(t,.6,.4);const r=(y1-y)/(y1-y0);bars($('#s7ep'),$('#s7ek'),900,600,r);[$('#s7ep'),$('#s7ek')].forEach(e=>e.style.opacity=MK.p(t,1.2,.5));const marks=[0,.35,.7,1];marks.forEach((m,k)=>{const yy=y0+(y1-y0)*m,g=$('#s7g'+k);g.setAttribute('cy',yy);const on=tau>=Math.sqrt(m)-1e-6&&t>T0-.01;g.style.opacity=on?1:0;const lb=$('#s7m'+k);lb.style.top=(yy-22)+'px';lb.style.opacity=on?1:0;});$('#s7v0').textContent=Math.round(r*100);$('#s7v1').textContent=100-Math.round(r*100);S($('#s7tl'),MK.p(t,1.2,.5),'');S($('#s7sl'),MK.p(t,1.0,.5),'');[0,1,2].forEach(k=>S($('#s7r'+k),MK.p(t,1.6+k*.2,.4),''));IN($('#s7e'),t,7.0);const e=MK.E.back(MK.p(t,9.4,.7));S($('#s7f'),MK.c(e*2),`scale(${.85+.15*e})`);$('#s7f').style.transformOrigin='0 50%';
+ }},
+ {id:"s8",d:14,up(t){
+const A=260,om=Math.PI*2/4,x=t<2.4?A*MK.E.inOut(MK.p(t,.6,1.4)):A*Math.cos(om*(t-2.4));const bx=760+x;$('#s8sp').setAttribute('d',zig(190,bx-50,350,16,26));$('#s8bk').style.left=(bx-50)+'px';MK.drawAll($('#s8ax'),t,.6,{dur:1.0,gap:.3});const q=x/A,gx=760+q*400;$('#s8vl').setAttribute('x1',gx);$('#s8vl').setAttribute('x2',gx);const on=MK.p(t,2.2,.4);$('#s8d0').setAttribute('cx',gx);$('#s8d0').setAttribute('cy',960-360*q*q);$('#s8d1').setAttribute('cx',gx);$('#s8d1').setAttribute('cy',960-360*(1-q*q));[$('#s8vl'),$('#s8d0'),$('#s8d1')].forEach(e=>e.style.opacity=on);bars($('#s8ep'),$('#s8ek'),960,360,q*q);[$('#s8ep'),$('#s8ek'),$('#s8b0'),$('#s8b1'),$('#s8b2')].forEach(e=>e.style.opacity=MK.p(t,1.8,.5));S($('#s8gl'),MK.p(t,1.4,.4),'');IN($('#s8e'),t,3.5);S($('#s8c'),MK.p(t,6.0,.6),'');
+ }},
+ {id:"s9",d:10,up(t){
+S($('#s9a'),MK.p(t,.2,.5),'');IN($('#s9b'),t,.6,'pop');const r=.5+.42*Math.sin((t-1.5)*2.2),w=646,q=MK.p(t,1.5,.6);$('#s9ep').setAttribute('x',1152);$('#s9ep').setAttribute('width',w*r*q);$('#s9ek').setAttribute('x',1152+w*r*q);$('#s9ek').setAttribute('width',w*(1-r)*q);S($('#s9fr'),MK.p(t,1.3,.4),'');S($('#s9bl'),MK.p(t,2.2,.5),'');MK.stagger([$('#s9i0'),$('#s9i1'),$('#s9i2')],t,3.0,{gap:.6,dur:.6,ease:'out'},(el,e)=>S(el,e,`translateX(${(1-e)*-50}px)`));
+ }}
+];
+let acc=0; SC.forEach(s=>{s.el=$("#"+s.id);s.s=acc;acc+=s.d;});
+const TOTAL=acc;
+
+/* ===== 배경음악: 코드로 합성한 단순 멜로디 (외부 음원 없음) ===== */
+const BPM=MUSIC.bpm||112, SD=60/BPM/2;
+const CH=[[48,52,55],[43,47,50],[45,48,52],[41,45,48]];   // C G Am F
+const MEL=[76,0,79,0,76,74,72,0, 74,0,71,0,74,76,74,0, 72,0,76,0,81,0,79,76, 77,0,76,74,72,0,0,0];
+const ARP=[0,1,2,1,0,1,2,1];
+const mf=m=>440*Math.pow(2,(m-69)/12);
+let actx=null,master=null,noiseBuf=null,muted=!MUSIC.on,nextStep=0,baseA=0,baseT=0;
+function initAudio(){
+  if(!actx){
+    try{actx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return;}
+    master=actx.createGain();master.gain.value=0;master.connect(actx.destination);
+    noiseBuf=actx.createBuffer(1,actx.sampleRate*.1,actx.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  }
+  if(actx.state!=="running")actx.resume().then(syncAudio);
+  syncAudio();
+}
+function syncAudio(){if(actx){baseA=actx.currentTime;baseT=T;nextStep=Math.ceil(T/SD-1e-6);}}
+function tone(f,t,dur,type,g){const o=actx.createOscillator(),v=actx.createGain();o.type=type;o.frequency.value=f;
+  v.gain.setValueAtTime(0.0001,t);v.gain.linearRampToValueAtTime(g,t+.012);v.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(v).connect(master);o.start(t);o.stop(t+dur+.05);}
+function kick(t){const o=actx.createOscillator(),v=actx.createGain();o.frequency.setValueAtTime(140,t);o.frequency.exponentialRampToValueAtTime(45,t+.14);
+  v.gain.setValueAtTime(.55,t);v.gain.exponentialRampToValueAtTime(.001,t+.25);o.connect(v).connect(master);o.start(t);o.stop(t+.3);}
+function hat(t){const s=actx.createBufferSource(),h=actx.createBiquadFilter(),v=actx.createGain();s.buffer=noiseBuf;h.type="highpass";h.frequency.value=7000;
+  v.gain.setValueAtTime(.07,t);v.gain.exponentialRampToValueAtTime(.001,t+.05);s.connect(h).connect(v).connect(master);s.start(t);s.stop(t+.08);}
+function playStep(n,at,tl){
+  const bar=Math.floor(n/8)%4, st=n%8, ch=CH[bar];
+  const nt=ch[ARP[st]]+24+(st>=4&&ARP[st]===0?12:0);
+  tone(mf(nt),at,.22,"triangle",.07);
+  if(st===0||st===3||st===6)tone(mf(ch[0]),at,.32,"sine",.22);
+  if(tl>=MUSIC.melody_at){const m=MEL[n%32];if(m)tone(mf(m),at,.42,"sine",.13),tone(mf(m+12),at,.2,"sine",.025);}
+  if(tl>=MUSIC.kick_at&&(st===0||st===4))kick(at);
+  if(tl>=MUSIC.hat_at&&st%2===1)hat(at);
+}
+function audioTick(){
+  if(!actx||actx.state!=="running")return;
+  const vol=(muted?0:MUSIC.volume)*(1-P(T,TOTAL-3,3))*(playing?1:0);
+  master.gain.setTargetAtTime(vol,actx.currentTime,.05);
+  if(!playing||muted)return;
+  const now=actx.currentTime;
+  while(nextStep*SD<T+.2){const st=nextStep*SD;if(st>=T-.03&&st<TOTAL-.5)playStep(nextStep,now+Math.max(0,st-T),st);nextStep++;}
+}
+
+/* ===== 재생 엔진 ===== */
+let T=0,playing=false,last=null,cur=null;
+function render(t){
+  let sc=SC[SC.length-1]; for(const s of SC){if(t<s.s+s.d){sc=s;break;}}
+  if(cur!==sc){SC.forEach(s=>s.el.style.display="none");sc.el.style.display="block";cur=sc;}
+  const lt=t-sc.s, isLast=sc===SC[SC.length-1];
+  sc.el.style.opacity=P(lt,0,.25)*(isLast?1:1-P(lt,sc.d-.35,.35));
+  try { sc.up(lt); } catch (e) { reportError(sc.id, e); }
+  $("#seek").value=t; $("#time").textContent=`${t.toFixed(1)} / ${TOTAL.toFixed(1)}초`;
+}
+function frame(ts){
+  if(playing){
+    if(actx&&actx.state==="running"){T=baseT+(actx.currentTime-baseA);}
+    else{if(last!==null)T+=(ts-last)/1000;last=ts;}
+    if(T>=TOTAL){T=TOTAL;setPlay(false);}
+  } else last=null;
+  audioTick(); render(T); requestAnimationFrame(frame);
+}
+function setPlay(p){playing=p;last=null;syncAudio();$("#play").textContent=p?"❚❚ 일시정지":"▶ 재생";$("#play").setAttribute("aria-label",p?"일시정지":"재생");}
+$("#seek").max=TOTAL;
+$("#mute").textContent=muted?"🔇 음악 끔":"🔊 음악 켬";
+$("#play").onclick=()=>{initAudio();if(T>=TOTAL)T=0;setPlay(!playing);};
+$("#restart").onclick=()=>{initAudio();T=0;setPlay(true);};
+$("#seek").oninput=e=>{T=+e.target.value;syncAudio();};
+$("#mute").onclick=()=>{initAudio();muted=!muted;$("#mute").textContent=muted?"🔇 음악 끔":"🔊 음악 켬";syncAudio();};
+function toggleFS(){try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}catch(e){}}
+function toggleRec(){document.body.classList.toggle("rec");fit();}
+$("#fs").onclick=toggleFS; $("#rec").onclick=toggleRec;
+addEventListener("keydown",e=>{
+  if(e.target.tagName==="BUTTON"&&e.code==="Space")return;
+  initAudio();
+  if(e.code==="Space"){e.preventDefault();$("#play").click();}
+  else if(e.key==="f"||e.key==="F")toggleFS();
+  else if(e.key==="h"||e.key==="H")toggleRec();
+  else if(e.key==="m"||e.key==="M")$("#mute").click();
+  else if(e.key==="r"||e.key==="R"){T=0;setPlay(true);}
+  else if(e.key==="ArrowRight"){T=Math.min(TOTAL,T+2);syncAudio();}
+  else if(e.key==="ArrowLeft"){T=Math.max(0,T-2);syncAudio();}
+});
+function fit(){const w=$("#wrap"),s=Math.min(w.clientWidth/1920,w.clientHeight/1080);$("#stage").style.transform=`translate(-50%,-50%) scale(${s})`;}
+addEventListener("resize",fit); fit();
+window.__mg = { TOTAL, SC, render: t => { T = t; render(t); }, get T(){ return T; } };
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

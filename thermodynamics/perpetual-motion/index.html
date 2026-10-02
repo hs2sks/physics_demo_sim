@@ -1,328 +1,1296 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>영구기관의 모순 시뮬레이션</title>
-    <style>
-        :root {
-            --primary: #2c3e50;
-            --accent1: #e74c3c;
-            --accent2: #3498db;
-            --bg: #f8f9fa;
-        }
-        body {
-            font-family: 'Malgun Gothic', sans-serif;
-            background-color: var(--bg);
-            display: flex;
-            justify-content: center;
-            padding: 20px;
-            color: #333;
-        }
-        .container {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 800px;
-            overflow: hidden;
-        }
-        .tabs {
-            display: flex;
-            background: #ecf0f1;
-            border-bottom: 2px solid #bdc3c7;
-        }
-        .tab {
-            flex: 1;
-            padding: 15px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 1.1em;
-            cursor: pointer;
-            transition: all 0.3s;
-            color: #7f8c8d;
-        }
-        .tab.active {
-            background: white;
-            color: var(--primary);
-            border-bottom: 3px solid var(--primary);
-        }
-        .content {
-            display: none;
-            padding: 30px;
-        }
-        .content.active {
-            display: block;
-        }
-        .canvas-container {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        canvas {
-            background: #fff;
-            border: 1px solid #eee;
-            border-radius: 8px;
-            max-width: 100%;
-        }
-        .info-panel {
-            background: #f1f4f6;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        .info-panel h3 { margin-top: 0; color: var(--primary); }
-        
-        .action-btn {
-            display: block;
-            width: 100%;
-            padding: 15px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1em;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        .action-btn:hover { background: #34495e; }
-        .action-btn.revealed { background: #e74c3c; }
-        
-        .contradiction-box {
-            display: none;
-            margin-top: 20px;
-            padding: 20px;
-            background: #fff0f0;
-            border-left: 5px solid #e74c3c;
-            border-radius: 4px;
-            animation: fadeIn 0.5s;
-        }
-        .contradiction-box.visible { display: block; }
-        .contradiction-box h4 { margin-top: 0; color: #c0392b; }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>영구기관의 모순 시뮬레이션</title>
+<style>
+  :root {
+    --ink: #1f2d3d; --muted: #66768a; --bg: #f3f5f8; --card: #fff; --line: #e1e7ee; --soft: #f6f8fb;
+    --k1: #e67e22; --k2: #2f80ed; --bad: #e74c3c; --good: #27ae60;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Pretendard', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; background: var(--bg); color: var(--ink); line-height: 1.6; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 18px 16px 70px; }
+  header h1 { margin: 6px 0 2px; font-size: 1.6rem; }
+  header p { margin: 0 0 14px; color: var(--muted); }
+  .tabs { display: flex; gap: 6px; border-bottom: 2px solid var(--line); margin-bottom: 14px; flex-wrap: wrap; }
+  .tab { padding: 10px 18px; border: none; background: none; font: inherit; font-weight: 700; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+  .tab.on { color: var(--ink); border-color: var(--ink); }
+  .tab[data-k="1"].on { color: var(--k1); border-color: var(--k1); }
+  .tab[data-k="2"].on { color: var(--k2); border-color: var(--k2); }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .chip { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 7px 14px; font: inherit; font-size: .95rem; cursor: pointer; }
+  .chip.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .k1 .chip.on { background: var(--k1); border-color: var(--k1); }
+  .k2 .chip.on { background: var(--k2); border-color: var(--k2); }
+  .case { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 920px) { .case { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; box-shadow: 0 4px 16px rgba(20, 40, 70, .05); }
+  canvas { width: 100%; height: auto; display: block; border-radius: 10px; }
+  #graph { margin-top: 8px; border: 1px solid var(--line); }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 12px; align-items: flex-end; }
+  .ctl { display: flex; flex-direction: column; min-width: 170px; flex: 1 1 170px; font-size: .9rem; }
+  .ctl span { display: flex; justify-content: space-between; color: var(--muted); }
+  .ctl b { color: var(--ink); }
+  .ctl input[type=range] { width: 100%; }
+  .chk { display: flex; gap: 6px; align-items: center; font-size: .92rem; cursor: pointer; }
+  .btn { border: none; border-radius: 9px; padding: 9px 14px; font: inherit; font-weight: 700; cursor: pointer; background: #e9eef4; color: var(--ink); }
+  .btn.main { background: var(--ink); color: #fff; }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+  .seg button { border: none; background: #fff; padding: 8px 12px; font: inherit; font-size: .9rem; cursor: pointer; }
+  .seg button.on { background: var(--ink); color: #fff; }
+  .info .meta { font-size: .85rem; color: var(--muted); }
+  .info h2 { margin: 2px 0 8px; font-size: 1.35rem; }
+  .info h4 { margin: 14px 0 4px; font-size: 1rem; }
+  .info p, .info li { font-size: .95rem; margin: 4px 0; }
+  .info ul { padding-left: 20px; margin: 4px 0; }
+  .badge { display: inline-block; font-size: .78rem; font-weight: 700; padding: 2px 9px; border-radius: 999px; color: #fff; margin-right: 6px; vertical-align: middle; }
+  .reveal { width: 100%; margin-top: 14px; padding: 12px; border: none; border-radius: 10px; background: var(--bad); color: #fff; font: inherit; font-weight: 700; font-size: 1rem; cursor: pointer; }
+  .reveal.done { background: #8a96a6; }
+  .contra { display: none; margin-top: 12px; padding: 12px 14px; background: #fff3f2; border-left: 5px solid var(--bad); border-radius: 6px; animation: fade .4s; }
+  .contra.show { display: block; }
+  .contra h4 { margin-top: 0; color: #c0392b; }
+  .story { margin-top: 12px; padding: 10px 12px; background: var(--soft); border-radius: 8px; font-size: .9rem; }
+  details.q { margin-top: 12px; background: #fffbea; border: 1px solid #f3e3a1; border-radius: 8px; padding: 8px 12px; }
+  details.q summary { cursor: pointer; font-weight: 700; }
+  .eq { font-family: 'Cambria Math', 'Times New Roman', serif; font-size: 1.05rem; background: #fff; border-radius: 6px; padding: 4px 8px; display: inline-block; margin: 3px 0; }
+  @keyframes fade { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+  /* 개요 */
+  .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 860px) { .grid3 { grid-template-columns: 1fr; } }
+  .kcard { border-top: 5px solid var(--ink); }
+  .kcard.a { border-top-color: var(--k1); } .kcard.b { border-top-color: var(--k2); } .kcard.c { border-top-color: #95a5a6; }
+  .kcard h3 { margin: 4px 0 6px; }
+  .kcard p { margin: 5px 0; font-size: .95rem; }
+  .kcard .law { font-weight: 700; }
+  .kcard button { margin-top: 8px; }
+  h3.sec { margin: 26px 0 10px; }
+  .timeline { list-style: none; padding: 0; margin: 0; border-left: 3px solid var(--line); }
+  .timeline li { position: relative; padding: 6px 0 6px 18px; font-size: .95rem; }
+  .timeline li::before { content: ""; position: absolute; left: -8px; top: 13px; width: 13px; height: 13px; border-radius: 50%; background: #fff; border: 3px solid var(--muted); }
+  .timeline li.a::before { border-color: var(--k1); } .timeline li.b::before { border-color: var(--k2); } .timeline li.s::before { border-color: var(--good); } .timeline li.x::before { border-color: var(--bad); }
+  .timeline .yr { font-weight: 700; display: inline-block; min-width: 92px; }
+  .steps { counter-reset: s; list-style: none; padding: 0; margin: 0; }
+  .steps li { counter-increment: s; position: relative; padding: 8px 0 8px 40px; }
+  .steps li::before { content: counter(s); position: absolute; left: 0; top: 7px; width: 28px; height: 28px; border-radius: 50%; background: var(--ink); color: #fff; text-align: center; line-height: 28px; font-weight: 700; }
+  table.cmp { width: 100%; border-collapse: collapse; font-size: .93rem; }
+  table.cmp th, table.cmp td { border-bottom: 1px solid var(--line); padding: 8px; text-align: left; vertical-align: top; }
+  table.cmp th { background: var(--soft); }
+  .refs a { color: var(--k2); }
+  .refs li { font-size: .9rem; }
+  .hidden { display: none !important; }
+</style>
 </head>
 <body>
 <a href="../../index.html" title="홈으로" style="position:fixed;left:12px;bottom:12px;z-index:99999;background:rgba(255,255,255,.94);color:#1c2733;text-decoration:none;padding:8px 13px;border-radius:9px;font:600 14px/1 'Segoe UI','Malgun Gothic',sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.22);border:1px solid rgba(0,0,0,.12)">🏠 홈</a>
 
-<div class="container">
-    <div class="tabs">
-        <div class="tab active" onclick="switchTab(1)">제1종 영구기관</div>
-        <div class="tab" onclick="switchTab(2)">제2종 영구기관</div>
+<div class="wrap">
+  <header>
+    <h1>영구기관은 왜 결국 멈추는가</h1>
+    <p>역사 속 영구기관 8가지를 직접 돌려 보고, 어디서 에너지 보존 법칙(제1법칙)이나 엔트로피 증가 법칙(제2법칙)에 걸리는지 확인해 봅시다.</p>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab on" data-k="0">개요 · 분류</button>
+    <button class="tab" data-k="1">제1종 영구기관</button>
+    <button class="tab" data-k="2">제2종 영구기관</button>
+  </nav>
+
+  <!-- ===================== 개요 ===================== -->
+  <section id="overview">
+    <div class="grid3">
+      <div class="card kcard a">
+        <span class="badge" style="background:var(--k1)">제1종</span>
+        <h3>에너지를 새로 만드는 기관</h3>
+        <p>외부에서 에너지를 받지 않고도 계속 일을 한다. 넣은 에너지보다 더 많은 에너지를 내놓는다.</p>
+        <p class="law">✗ 열역학 제1법칙(에너지 보존) 위반</p>
+        <p><span class="eq">Q = ΔU + W</span>, 한 사이클 뒤 제자리(ΔU = 0)이면 <span class="eq">W = Q</span>. 받은 열 Q = 0이면 일 W도 0.</p>
+        <p>예: 불균형 바퀴, 바스카라 바퀴, 자석 경사로, 자기 순환 물레방아, 부력 체인</p>
+        <button class="btn" onclick="openTab(1)">제1종 시뮬레이션 보기 →</button>
+      </div>
+      <div class="card kcard b">
+        <span class="badge" style="background:var(--k2)">제2종</span>
+        <h3>열을 100% 일로 바꾸는 기관</h3>
+        <p>에너지는 보존하지만, 하나의 열원(바다·공기)에서 받은 열을 버리는 것 없이 모두 일로 바꾼다.</p>
+        <p class="law">✗ 열역학 제2법칙(엔트로피 증가) 위반</p>
+        <p>켈빈–플랑크 서술: 한 열원에서 열을 받아 전부 일로 바꾸는 순환 기관은 없다. <span class="eq">e = 1 − Q₂/Q₁ &lt; 1</span></p>
+        <p>예: 바닷물 엔진(제로모터), 맥스웰의 도깨비, 파인만 래칫</p>
+        <button class="btn" onclick="openTab(2)">제2종 시뮬레이션 보기 →</button>
+      </div>
+      <div class="card kcard c">
+        <span class="badge" style="background:#95a5a6">참고</span>
+        <h3>'제3종' 영구 운동</h3>
+        <p>마찰과 저항이 전혀 없어 한번 움직이면 영원히 운동만 계속하는 장치를 가리키기도 한다.</p>
+        <p class="law">법칙 위반은 아님, 그러나 일을 꺼낼 수 없음</p>
+        <p>초전도 고리의 전류, 행성의 공전처럼 운동은 계속되지만, 일을 꺼내는 순간 그만큼 에너지가 줄어 결국 멈춘다. 시뮬레이션에서 마찰을 0으로 해 보면 확인할 수 있다.</p>
+      </div>
     </div>
 
-    <!-- 제1종 영구기관 탭 -->
-    <div id="tab1" class="content active">
-        <div class="info-panel">
-            <h3>개념: 무에서 유를 창조하는 기관</h3>
-            <p>외부에서 에너지를 전혀 공급받지 않고도 스스로 에너지를 만들어내어 영구적으로 일을 하는 기계입니다. (예: 한 번 돌려놓으면 스스로 전기를 만들어 영원히 도는 모터)</p>
-        </div>
-        
-        <div class="canvas-container">
-            <canvas id="canvas1" width="600" height="300"></canvas>
-        </div>
-
-        <button class="action-btn" id="btn1" onclick="toggleContradiction(1)">🚨 모순점 확인하기</button>
-
-        <div id="contra1" class="contradiction-box">
-            <h4>[모순] 열역학 제1법칙 (에너지 보존 법칙) 위배</h4>
-            <p><strong>왜 불가능한가?</strong> 기계가 작동하는 동안 부품 간의 <b>마찰</b>이나 공기 저항으로 인해 필연적으로 <b>열에너지 형태의 손실</b>이 발생합니다.</p>
-            <p>우주의 전체 에너지는 보존되므로, 손실된 에너지만큼 외부에서 에너지를 보충해주지 않으면 기계는 결국 멈추게 됩니다. 즉, 무(無)에서 에너지를 창조할 수 없습니다.</p>
-        </div>
+    <h3 class="sec">🔍 영구기관 판별 3단계</h3>
+    <div class="card">
+      <ol class="steps">
+        <li><b>장치 전체를 하나의 계로 묶는다.</b> 추·물·자석·도깨비·멈춤쇠까지 모두 포함한다. 계 안에서 주고받는 힘(내력)은 계 전체를 움직이지 못한다.</li>
+        <li><b>한 사이클 뒤 처음 상태로 돌아오는지 본다.</b> 중력·자기력·탄성력은 보존력이다. 제자리로 돌아오면 이 힘들이 한 일의 합은 0이다: <span class="eq">∮ F · ds = 0</span>. 남는 에너지가 없으니 마찰만큼 계속 줄어든다. → 제1종의 함정</li>
+        <li><b>열을 일로 바꾼다면, 더 차가운 곳으로 버리는 열이 있는지 본다.</b> 버리는 열이 없으면 엔트로피가 줄어든다(<span class="eq">ΔS &lt; 0</span>). 온도 차가 없으면 일도 없다. → 제2종의 함정</li>
+      </ol>
     </div>
 
-    <!-- 제2종 영구기관 탭 -->
-    <div id="tab2" class="content">
-        <div class="info-panel">
-            <h3>개념: 열효율이 100%인 기관</h3>
-            <p>고열원에서 흡수한 열에너지(Q₁)를 단 1의 손실도 없이 100% 모두 유용한 일(W)로 전환하는 기계입니다. 방출하는 열(Q₂)이 0입니다.</p>
-        </div>
-        
-        <div class="canvas-container">
-            <canvas id="canvas2" width="600" height="300"></canvas>
-        </div>
-
-        <button class="action-btn" id="btn2" onclick="toggleContradiction(2)">🚨 모순점 확인하기</button>
-
-        <div id="contra2" class="contradiction-box">
-            <h4>[모순] 열역학 제2법칙 (엔트로피 증가 법칙) 위배</h4>
-            <p><strong>왜 불가능한가?</strong> 자연계에서 열은 스스로 고온에서 저온으로 이동합니다. 열기관이 원래 상태로 되돌아와 순환 과정을 반복(연속적인 일)하기 위해서는 <b>반드시 저온의 열원(저열원)으로 남은 열(Q₂)을 방출</b>해야만 합니다.</p>
-            <p>따라서 방출되는 열이 0이 될 수 없으므로, 열효율 공식 (e = 1 - Q₂/Q₁)에 의해 효율이 100%인 기관은 존재할 수 없습니다.</p>
-        </div>
+    <h3 class="sec">📜 영구기관의 역사</h3>
+    <div class="card">
+      <ul class="timeline">
+        <li class="a"><span class="yr">7세기</span>인도 수학자 브라마굽타, 수은을 이용한 불균형 바퀴를 기록</li>
+        <li class="a"><span class="yr">1150년경</span>바스카라 2세, 굽은 바퀴살에 수은을 넣은 바퀴(바스카라 바퀴)</li>
+        <li class="a"><span class="yr">1230년경</span>빌라르 드 오네쿠르, 경첩 달린 망치 7개를 단 불균형 바퀴 스케치</li>
+        <li class="a"><span class="yr">1618</span>로버트 플러드, 물을 스스로 퍼 올리는 자기 순환 물레방아</li>
+        <li class="a"><span class="yr">1648</span>존 윌킨스, 『Mathematical Magick』에서 자석 경사로를 소개하고 왜 안 되는지 직접 반박</li>
+        <li class="x"><span class="yr">1712–1717</span>오르피레우스(베슬러)의 '스스로 도는 바퀴' 공개 시연. 훗날 하녀가 옆방에서 사람이 몰래 돌렸다고 증언</li>
+        <li class="s"><span class="yr">1775</span>프랑스 과학 아카데미, 영구기관 제안서는 더 이상 심사하지 않기로 결정</li>
+        <li class="x"><span class="yr">1812–1813</span>레드헤퍼의 영구기관(필라델피아·뉴욕). 숨겨진 벨트로 다락방에서 사람이 손으로 돌린 것이 들통남</li>
+        <li class="s"><span class="yr">1840년대</span>마이어·줄·헬름홀츠, 에너지 보존 법칙(열역학 제1법칙) 확립 → 제1종 불가능</li>
+        <li class="s"><span class="yr">1850–1851</span>클라우지우스·켈빈, 열역학 제2법칙 → 제2종 불가능</li>
+        <li class="b"><span class="yr">1867</span>맥스웰, 분자를 골라내는 '도깨비' 사고실험</li>
+        <li class="x"><span class="yr">1872–1898</span>킬리 모터 사기. 투자금을 모았으나 사후에 숨겨진 압축공기 장치가 발견됨</li>
+        <li class="b"><span class="yr">1881</span>존 갬지의 '제로모터'. 상온의 열만으로 암모니아를 끓여 엔진을 돌리려 했으나 실패</li>
+        <li class="b"><span class="yr">1912 / 1962</span>스몰루호프스키가 제안하고 파인만이 강의에서 분석한 래칫과 멈춤쇠</li>
+        <li class="s"><span class="yr">1961 / 1982</span>란다우어 원리(정보를 지우면 열이 난다), 베넷이 맥스웰의 도깨비 해결</li>
+      </ul>
     </div>
+
+    <h3 class="sec">⚠️ 자주 하는 오개념</h3>
+    <div class="card">
+      <table class="cmp">
+        <tr><th>오개념</th><th>바른 개념</th></tr>
+        <tr><td>"자석은 힘이 계속 나오니 무한한 에너지원이다."</td><td>자기장은 위치에너지를 저장할 뿐이다. 자석 배치를 아무리 비틀어도 한 바퀴 돌아 제자리에 오면 자기력이 한 일은 0이다.</td></tr>
+        <tr><td>"마찰만 없애면 영구기관이 된다."</td><td>마찰이 0이면 운동은 계속되지만(제3종) 에너지가 늘지는 않는다. 일을 꺼내는 순간 멈춘다.</td></tr>
+        <tr><td>"지레 팔이 긴 쪽이 항상 이긴다."</td><td>팔이 긴 쪽은 추 개수가 적고, 짧은 쪽은 추가 많다. 토크의 합을 계산하면 정지 위치에서 정확히 0이다.</td></tr>
+        <tr><td>"에너지가 보존되기만 하면 가능하다."</td><td>바다의 열처럼 에너지가 충분해도, 더 차가운 곳이 없으면 열을 일로 바꿀 수 없다(제2법칙).</td></tr>
+        <tr><td>"정보는 물리적인 것이 아니다."</td><td>측정한 정보를 기억하고 지우는 것도 물리 과정이다. 1비트를 지울 때 최소 k<sub>B</sub>T ln 2의 열이 나온다.</td></tr>
+        <tr><td>"분자 모터는 열운동만으로 돈다."</td><td>생체 분자 모터는 ATP 같은 화학 에너지를 소비해야 한쪽 방향으로 움직인다.</td></tr>
+      </table>
+    </div>
+
+    <h3 class="sec">🎬 참고 영상</h3>
+    <div class="card refs">
+      <ul>
+        <li><a href="https://www.youtube.com/watch?v=TxQq7qigKfc" target="_blank" rel="noopener">무한동력기관 만드는 법 (feat. 영구기관은 집에서 만드세요…제발)</a> — 열역학 0·1·2법칙, 여러 무한동력 장치</li>
+        <li><a href="https://www.youtube.com/watch?v=qx8c5f2Ccw8" target="_blank" rel="noopener">궤도가 알려주는 영구기관이 불가능한 이유 | 알고e즘</a> — 엔트로피로 보는 영구기관</li>
+        <li><a href="https://www.youtube.com/watch?v=jsxroTt9IhY" target="_blank" rel="noopener">The best attempts to create perpetual motion machines</a> — 역사 속 영구기관 모음</li>
+        <li><a href="https://www.youtube.com/watch?v=vJcOuq2xEnc" target="_blank" rel="noopener">Truth: Permanent Magnet Motor Using Magnetic Repulsion</a> — 자석 모터를 '중력 언덕' 모델로 반박</li>
+        <li><a href="https://www.youtube.com/watch?v=N7fsAqEowLc" target="_blank" rel="noopener">Brownian Ratchet Paradox: Why Entropy Prevents Perpetual Motion</a> — 파인만 래칫</li>
+        <li><a href="https://www.youtube.com/watch?v=ivDyAHAS-Q0" target="_blank" rel="noopener">MIT Professor Explains Maxwell's Demon</a> — 정보 소거와 란다우어 원리</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===================== 사례 화면 ===================== -->
+  <section id="caseView" class="hidden">
+    <div class="chips" id="chips"></div>
+    <div class="case">
+      <div class="card">
+        <canvas id="sim"></canvas>
+        <canvas id="graph"></canvas>
+        <div class="controls" id="controls"></div>
+      </div>
+      <aside class="card info" id="info"></aside>
+    </div>
+  </section>
 </div>
 
 <script>
-    let state1 = false; // 제1종 모순 공개 여부
-    let state2 = false; // 제2종 모순 공개 여부
+'use strict';
+const TAU = Math.PI * 2;
+const SW = 760, SH = 420, GW = 760, GH = 190;
+const DPR = Math.min(window.devicePixelRatio || 1, 2);
+const $ = s => document.querySelector(s);
+function setup(cv, w, h) { cv.width = w * DPR; cv.height = h * DPR; const c = cv.getContext('2d'); c.setTransform(DPR, 0, 0, DPR, 0, 0); return c; }
+const ctx = setup($('#sim'), SW, SH);
+const gtx = setup($('#graph'), GW, GH);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const FONT = "Pretendard, 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif";
 
-    function switchTab(tabNum) {
-        document.querySelectorAll('.tab').forEach((t, i) => {
-            t.classList.toggle('active', i + 1 === tabNum);
-        });
-        document.querySelectorAll('.content').forEach((c, i) => {
-            c.classList.toggle('active', i + 1 === tabNum);
-        });
-        draw();
+/* ---------- 그리기 도우미 ---------- */
+function txt(c, s, x, y, o = {}) {
+  c.font = `${o.bold ? '700 ' : ''}${o.size || 13}px ${FONT}`;
+  c.fillStyle = o.color || '#1f2d3d'; c.textAlign = o.align || 'left'; c.textBaseline = o.base || 'alphabetic';
+  c.fillText(s, x, y);
+}
+function rrect(c, x, y, w, h, r) {
+  r = Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2);
+  c.beginPath(); c.moveTo(x + r, y); c.lineTo(x + w - r, y); c.quadraticCurveTo(x + w, y, x + w, y + r);
+  c.lineTo(x + w, y + h - r); c.quadraticCurveTo(x + w, y + h, x + w - r, y + h); c.lineTo(x + r, y + h);
+  c.quadraticCurveTo(x, y + h, x, y + h - r); c.lineTo(x, y + r); c.quadraticCurveTo(x, y, x + r, y); c.closePath();
+}
+function line(c, x1, y1, x2, y2, col, w = 1, dash) {
+  c.strokeStyle = col; c.lineWidth = w; if (dash) c.setLineDash(dash);
+  c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); if (dash) c.setLineDash([]);
+}
+function circle(c, x, y, r, fill, stroke, w = 1) {
+  c.beginPath(); c.arc(x, y, r, 0, TAU);
+  if (fill) { c.fillStyle = fill; c.fill(); } if (stroke) { c.strokeStyle = stroke; c.lineWidth = w; c.stroke(); }
+}
+function arrow(c, x1, y1, x2, y2, col, w = 3, head = 10) {
+  const a = Math.atan2(y2 - y1, x2 - x1), L = Math.hypot(x2 - x1, y2 - y1);
+  if (L < 2) return; head = Math.min(head, L * 0.6);
+  line(c, x1, y1, x2 - Math.cos(a) * head * 0.6, y2 - Math.sin(a) * head * 0.6, col, w);
+  c.fillStyle = col; c.beginPath(); c.moveTo(x2, y2);
+  c.lineTo(x2 - head * Math.cos(a - 0.45), y2 - head * Math.sin(a - 0.45));
+  c.lineTo(x2 - head * Math.cos(a + 0.45), y2 - head * Math.sin(a + 0.45)); c.closePath(); c.fill();
+}
+function label(c, s, x, y, col = '#1f2d3d', bg = 'rgba(255,255,255,.88)', size = 12, align = 'center') {
+  c.font = `700 ${size}px ${FONT}`; const w = c.measureText(s).width + 10;
+  const x0 = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
+  c.fillStyle = bg; rrect(c, x0, y - size + 1, w, size + 7, 5); c.fill();
+  txt(c, s, x0 + 5, y + 2, { size, bold: true, color: col });
+}
+/* 오른쪽 수치 패널 */
+function panel(c, title, items) {
+  const x = 520, y0 = 10, w = 230;
+  c.fillStyle = '#f6f8fb'; rrect(c, x, y0, w, SH - 20, 10); c.fill();
+  c.strokeStyle = '#e1e7ee'; c.lineWidth = 1; c.stroke();
+  txt(c, title, x + 12, y0 + 24, { bold: true, size: 14 });
+  let y = y0 + 50;
+  for (const it of items) {
+    if (!it) continue;
+    if (it.bar !== undefined) {
+      txt(c, it.label, x + 12, y, { size: 12, color: '#55657a' });
+      txt(c, it.value, x + w - 12, y, { size: 12, align: 'right', bold: true, color: it.color });
+      c.fillStyle = '#e4e9ef'; rrect(c, x + 12, y + 5, w - 24, 8, 4); c.fill();
+      const f = clamp(it.bar, 0, 1); if (f > 0.002) { c.fillStyle = it.color; rrect(c, x + 12, y + 5, (w - 24) * f, 8, 4); c.fill(); }
+      y += 31;
+    } else if (it.sep) {
+      line(c, x + 12, y - 8, x + w - 12, y - 8, '#dfe5ec'); y += 8;
+    } else {
+      const lines = String(it.text).split('\n');
+      for (const s of lines) { txt(c, s, x + 12, y, { size: it.size || 12, color: it.color || '#1f2d3d', bold: it.bold }); y += it.gap || 18; }
     }
+  }
+}
+/* 그래프 틀 */
+function frame(c, o) {
+  c.setTransform(DPR, 0, 0, DPR, 0, 0);
+  c.fillStyle = '#fff'; c.fillRect(0, 0, GW, GH);
+  const x0 = 62, y0 = 26, w = GW - 82, h = GH - 62;
+  const X = v => x0 + (v - o.xmin) / (o.xmax - o.xmin) * w;
+  const Y = v => y0 + h - (v - o.ymin) / (o.ymax - o.ymin) * h;
+  c.strokeStyle = '#d5dce4'; c.lineWidth = 1; c.strokeRect(x0, y0, w, h);
+  if (o.ymin < 0 && o.ymax > 0) line(c, x0, Y(0), x0 + w, Y(0), '#b8c2cd', 1, [4, 4]);
+  if (o.title) txt(c, o.title, x0, 17, { size: 13, bold: true });
+  if (o.xlabel) txt(c, o.xlabel, x0 + w, y0 + h + 30, { size: 11, color: '#66768a', align: 'right' });
+  for (const [v, s] of (o.xticks || [])) { line(c, X(v), y0 + h, X(v), y0 + h + 4, '#9aa6b2'); txt(c, s, X(v), y0 + h + 16, { size: 11, color: '#66768a', align: 'center' }); }
+  for (const [v, s] of (o.yticks || [])) { txt(c, s, x0 - 6, Y(v) + 4, { size: 11, color: '#66768a', align: 'right' }); }
+  return { X, Y, x0, y0, w, h };
+}
+function plot(c, F, xs, ys, col, w = 2, dash) {
+  c.strokeStyle = col; c.lineWidth = w; if (dash) c.setLineDash(dash); c.beginPath();
+  let started = false;
+  for (let i = 0; i < xs.length; i++) { const px = F.X(xs[i]), py = F.Y(ys[i]); if (!isFinite(py)) continue; if (!started) { c.moveTo(px, py); started = true; } else c.lineTo(px, py); }
+  c.stroke(); if (dash) c.setLineDash([]);
+}
+function legend(c, items, x, y) {
+  for (const [s, col] of items) { c.fillStyle = col; c.fillRect(x, y - 8, 14, 4); txt(c, s, x + 19, y - 2, { size: 11, color: '#3b4a5c' }); c.font = `11px ${FONT}`; x += c.measureText(s).width + 36; }
+}
+const fmt = (v, d = 1) => (Math.abs(v) < 0.5 * Math.pow(10, -d) ? 0 : v).toFixed(d);
 
-    function toggleContradiction(tabNum) {
-        if (tabNum === 1) {
-            state1 = !state1;
-            document.getElementById('contra1').classList.toggle('visible', state1);
-            const btn = document.getElementById('btn1');
-            btn.innerText = state1 ? "🔄 초기 상태로 돌아가기" : "🚨 모순점 확인하기";
-            btn.classList.toggle('revealed', state1);
-        } else {
-            state2 = !state2;
-            document.getElementById('contra2').classList.toggle('visible', state2);
-            const btn = document.getElementById('btn2');
-            btn.innerText = state2 ? "🔄 초기 상태로 돌아가기" : "🚨 모순점 확인하기";
-            btn.classList.toggle('revealed', state2);
+/* =====================================================================
+   제1종 ① ② : 불균형 바퀴 계열 (추의 위치가 바퀴 각도만으로 정해짐)
+   추는 허용된 범위 안에서 '가장 낮은 곳'에 놓인다 → U(θ)는 θ의 함수 → 한 바퀴 일 = 0
+   ===================================================================== */
+const G = 9.8, MASS = 1;
+function wrapPi(a) { a = (a + Math.PI) % TAU; if (a < 0) a += TAU; return a - Math.PI; }
+
+function wheelCase(o) {
+  const c = Object.assign({ kind: 1, params: { fr: 0.25, load: false } }, o);
+  c.Uof = th => { let s = 0; for (const w of c.geom(th)) s += MASS * G * w.p[1]; return s; };
+  // 반시계(+θ) 기준 토크 = -Σ m g x (추가 각 순간 바퀴에 고정된 점처럼 작용 — 포락선 정리)
+  c.tauOf = th => { let s = 0; for (const w of c.geom(th)) s -= MASS * G * w.p[0]; return s; };
+  c.reset = function () {
+    const n = 2880; c.tab = []; let umin = 1e9, umax = -1e9, thmax = 0;
+    for (let i = 0; i <= n; i++) {
+      const rot = i / n * TAU, th = -rot; // 시계 방향 회전각
+      const u = c.Uof(th), t = c.tauOf(th);
+      c.tab.push({ rot, u, t: -t }); // 시계 방향 토크로 저장
+      if (u < umin) umin = u; if (u > umax) { umax = u; thmax = th; }
+    }
+    c.umin = umin; c.umax = umax;
+    c.th = thmax - 0.04; c.om = 0; c.heat = 0; c.work = 0; c.time = 0;
+    c.input = c.Uof(c.th) - umin; // 처음 위치에너지 (손으로 이 자리에 놓아둔 에너지)
+    c.vis = null;
+  };
+  c.step = function (dt) {
+    const sub = 10, h = dt / sub, b = 3 * c.params.fr, cf = 0.8 * c.params.fr, kl = c.params.load ? 1.6 : 0;
+    for (let k = 0; k < sub; k++) {
+      const tg = c.tauOf(c.th);
+      if (Math.abs(c.om) < 0.02 && Math.abs(tg) <= cf) { c.om = 0; continue; }
+      const dir = c.om !== 0 ? Math.sign(c.om) : Math.sign(tg);
+      const t = tg - (b + kl) * c.om - cf * dir;
+      const om0 = c.om;
+      c.om += t / c.I * h;
+      if (om0 !== 0 && Math.sign(c.om) !== Math.sign(om0) && Math.abs(tg) <= cf) c.om = 0;
+      c.th += c.om * h;
+      c.heat += (b * c.om * c.om + cf * Math.abs(c.om)) * h;
+      c.work += kl * c.om * c.om * h;
+    }
+    c.time += dt;
+  };
+  c.push = function () { const before = 0.5 * c.I * c.om * c.om; c.om -= 1.8; c.input += 0.5 * c.I * c.om * c.om - before; };
+  c.controls = [
+    { type: 'button', label: '🖐 힘껏 돌리기 (시계 방향)', main: true, act: () => c.push() },
+    { type: 'button', label: '↺ 처음부터', act: () => c.reset() },
+    { type: 'range', key: 'fr', label: '마찰(축·공기)', min: 0, max: 1, step: 0.05, fmt: v => v === 0 ? '0 (마찰 없음)' : v.toFixed(2) },
+    { type: 'check', key: 'load', label: '발전기 연결 (일을 꺼내기)' },
+  ];
+  c.draw = function (x) {
+    const cx = 250, cy = 208, S = 100;
+    x.clearRect(0, 0, SW, SH); x.fillStyle = '#fff'; x.fillRect(0, 0, SW, SH);
+    // 받침대
+    x.fillStyle = '#d9dfe6'; x.beginPath(); x.moveTo(cx, cy); x.lineTo(cx - 70, 400); x.lineTo(cx + 70, 400); x.closePath(); x.fill();
+    line(x, 20, 400, 505, 400, '#9aa6b2', 2);
+    const ws = c.geom(c.th);
+    c.drawBody(x, ws, cx, cy, S);
+    // 추
+    let nR = 0, nL = 0, tR = 0, tL = 0;
+    for (const w of ws) {
+      const px = cx + w.p[0] * S, py = cy - w.p[1] * S, right = w.p[0] > 0;
+      if (right) { nR++; tR += MASS * G * w.p[0]; } else { nL++; tL += MASS * G * -w.p[0]; }
+      c.drawWeight(x, w, px, py, right);
+    }
+    circle(x, cx, cy, 9, '#4a5868');
+    // 의도한 회전 방향
+    x.strokeStyle = 'rgba(230,126,34,.55)'; x.lineWidth = 3; x.beginPath(); x.arc(cx, cy, 182, -Math.PI * 0.42, -Math.PI * 0.12); x.stroke();
+    arrow(x, cx + 182 * Math.cos(-Math.PI * 0.14), cy + 182 * Math.sin(-Math.PI * 0.14), cx + 182 * Math.cos(-Math.PI * 0.1), cy + 182 * Math.sin(-Math.PI * 0.1), 'rgba(230,126,34,.8)', 3, 12);
+    txt(x, '발명가가 기대한 회전 ↻', 360, 26, { size: 12, color: '#c46a1c', bold: true });
+    if (c.revealed) {
+      line(x, cx, 18, cx, 395, '#7f8c9a', 1.5, [6, 5]);
+      for (const w of ws) { const px = cx + w.p[0] * S, py = cy - w.p[1] * S; line(x, cx, py, px, py, w.p[0] > 0 ? '#e67e22' : '#2f80ed', 1.5, [3, 3]); }
+      label(x, `오른쪽 ${nR}개 · 토크 ${fmt(tR)} N·m`, 120, 30, '#c46a1c', 'rgba(255,240,225,.95)', 12);
+      label(x, `왼쪽 ${nL}개 · 토크 ${fmt(tL)} N·m`, 120, 54, '#1f63c6', 'rgba(228,239,255,.95)', 12);
+      const net = tR - tL;
+      label(x, `알짜(시계) ${fmt(net)} N·m`, 120, 78, Math.abs(net) < 0.3 ? '#27ae60' : '#1f2d3d', 'rgba(240,244,248,.95)', 12);
+    } else {
+      label(x, `알짜 토크(시계 +) ${fmt(-c.tauOf(c.th))} N·m`, 112, 30, '#1f2d3d', 'rgba(240,244,248,.95)', 12);
+    }
+    // 정지 표시
+    if (c.om === 0 && c.time > 0.5) label(x, '정지', cx, cy + 40, '#c0392b', 'rgba(255,235,233,.95)', 14);
+    const KE = 0.5 * c.I * c.om * c.om, PE = c.Uof(c.th) - c.umin, tot = Math.max(c.input, 1e-6);
+    const sc = Math.max(tot, KE + PE + c.heat + c.work);
+    panel(x, '에너지 장부 (J)', [
+      { label: '넣어 준 에너지 (놓은 위치 + 밀기)', value: fmt(c.input), bar: c.input / sc, color: '#34495e' },
+      { sep: 1 },
+      { label: '운동 에너지', value: fmt(KE), bar: KE / sc, color: '#27ae60' },
+      { label: '추의 위치 에너지(최저점 기준)', value: fmt(PE), bar: PE / sc, color: '#8e44ad' },
+      { label: '마찰로 생긴 열', value: fmt(c.heat), bar: c.heat / sc, color: '#e74c3c' },
+      { label: '발전기로 꺼낸 일', value: fmt(c.work), bar: c.work / sc, color: '#f39c12' },
+      { sep: 1 },
+      { text: `합계 ${fmt(KE + PE + c.heat + c.work)} J = 넣어 준 에너지`, bold: true },
+      { text: `각속도 ${fmt(-c.om, 2)} rad/s (시계 +)`, color: '#55657a' },
+      { text: c.params.fr === 0 && !c.params.load ? '마찰 0: 계속 흔들리거나 돌지만\n에너지가 늘어나지는 않음' : '새로 생겨나는 에너지 = 0', color: '#c0392b', bold: true },
+    ]);
+  };
+  c.graph = function (g) {
+    const tab = c.tab;
+    let tmax = 0; for (const p of tab) tmax = Math.max(tmax, Math.abs(p.t));
+    const urange = Math.max(c.umax - c.umin, 1e-6);
+    const ymax = Math.max(tmax, urange) * 1.15;
+    const F = frame(g, { xmin: 0, xmax: TAU, ymin: -ymax, ymax, title: '바퀴 각도에 따른 토크와 위치에너지 (한 바퀴)', xlabel: '시계 방향 회전각',
+      xticks: [[0, '0°'], [Math.PI / 2, '90°'], [Math.PI, '180°'], [Math.PI * 1.5, '270°'], [TAU, '360°']] });
+    const xs = tab.map(p => p.rot);
+    // 토크 양/음 영역 칠하기
+    g.beginPath(); g.moveTo(F.X(0), F.Y(0)); for (const p of tab) g.lineTo(F.X(p.rot), F.Y(p.t)); g.lineTo(F.X(TAU), F.Y(0)); g.closePath();
+    g.fillStyle = 'rgba(230,126,34,.12)'; g.fill();
+    plot(g, F, xs, tab.map(p => p.t), '#e67e22', 2);
+    plot(g, F, xs, tab.map(p => p.u - c.umin), '#8e44ad', 2, [6, 4]);
+    let integ = 0; for (let i = 1; i < tab.length; i++) integ += 0.5 * (tab[i].t + tab[i - 1].t) * (tab[i].rot - tab[i - 1].rot);
+    let rot = (-c.th) % TAU; if (rot < 0) rot += TAU;
+    line(g, F.X(rot), F.y0, F.X(rot), F.y0 + F.h, '#1f2d3d', 2);
+    legend(g, [['알짜 토크 τ (시계 +, N·m)', '#e67e22'], ['위치에너지 U (J)', '#8e44ad']], 360, 15);
+    label(g, `한 바퀴 동안 토크가 한 일 ∮τ dθ = ${fmt(integ, 1)} J`, F.x0 + F.w - 4, F.y0 + 16, '#c0392b', 'rgba(255,255,255,.92)', 12, 'right');
+  };
+  return c;
+}
+
+/* ① 경첩 망치 바퀴 (빌라르 드 오네쿠르) */
+const AMAX = 150 * Math.PI / 180, ARM = 0.62;
+const honnecourt = wheelCase({
+  id: 'honnecourt', chip: '⚙️ 불균형 바퀴', I: 14,
+  geom(th) {
+    const N = 7, out = [];
+    for (let i = 0; i < N; i++) {
+      const phi = th + i * TAU / N, hx = Math.cos(phi), hy = Math.sin(phi);
+      const want = wrapPi(-Math.PI / 2 - phi); // 똑바로 아래로 늘어지려는 각(살 방향 기준)
+      let a;
+      if (want >= 0 && want <= AMAX) a = want;
+      else { const y0 = hy + ARM * Math.sin(phi), y1 = hy + ARM * Math.sin(phi + AMAX); a = y0 <= y1 ? 0 : AMAX; }
+      out.push({ h: [hx, hy], p: [hx + ARM * Math.cos(phi + a), hy + ARM * Math.sin(phi + a)] });
+    }
+    return out;
+  },
+  drawBody(x, ws, cx, cy, S) {
+    circle(x, cx, cy, S, null, '#7a8796', 6);
+    for (const w of ws) line(x, cx, cy, cx + w.h[0] * S, cy - w.h[1] * S, '#9aa6b2', 4);
+  },
+  drawWeight(x, w, px, py, right) {
+    const hx = 250 + w.h[0] * 100, hy = 208 - w.h[1] * 100;
+    line(x, hx, hy, px, py, '#5d4037', 4);
+    circle(x, hx, hy, 4, '#5d4037');
+    circle(x, px, py, 12, right ? '#e67e22' : '#2f80ed', '#fff', 2);
+  },
+  html: {
+    meta: '빌라르 드 오네쿠르 · 1230년경 스케치북 / 같은 계열: 오르피레우스 바퀴(1712)',
+    title: '경첩 망치 불균형 바퀴',
+    structure: '바퀴 테두리에 <b>홀수 개(7개)의 망치</b>를 경첩으로 달았다. 멈춤쇠가 있어서 내려가는 쪽(오른쪽)의 망치는 바깥으로 쭉 펴지고, 올라가는 쪽(왼쪽)의 망치는 접히거나 아래로 늘어진다.',
+    idea: '오른쪽 망치는 축에서 멀리 있으니 <b>지레 팔이 길다</b>. 그러니 토크가 커서 바퀴는 언제나 시계 방향으로 기울고, 영원히 돌 것이다.',
+    observe: ['손을 떼면 잠깐 <b>스스로 도는 것처럼</b> 보이지만, 앞뒤로 흔들리다 한 자리에 멈춘다.', '<b>힘껏 돌리기</b>로 밀어도 넣어 준 에너지만큼만 돌고 멈춘다.', '마찰을 0으로 하면 계속 흔들리지만, 오른쪽 에너지 장부의 합계는 늘지 않는다.', '아래 그래프에서 토크의 + 넓이와 − 넓이를 비교해 보자.'],
+    contra: `<h4>[모순] 열역학 제1법칙(에너지 보존) 위반</h4>
+      <p><b>① 개수의 함정:</b> 오른쪽은 팔이 길지만 추가 <b>적고</b>, 왼쪽은 팔이 짧지만 추가 <b>많다</b>. 정지한 위치에서 양쪽 토크의 합을 계산하면 정확히 0이다(그림의 점선이 각 추의 지레 팔).</p>
+      <p><b>② 제자리로 돌아온다:</b> 바퀴가 한 바퀴 돌면 모든 망치가 처음 높이로 돌아온다. 중력이 한 일은 <span class="eq">∮τ dθ = −ΔU = 0</span>이다. 내려가며 얻은 에너지는 올라가며 모두 되돌려준다.</p>
+      <p><b>③ 손실까지:</b> 망치가 꼭대기에서 젖혀지며 부딪칠 때, 그리고 축의 마찰 때문에 역학적 에너지는 열로 빠져나간다. 보충이 없으니 결국 멈춘다.</p>`,
+    story: '📜 <b>오르피레우스(베슬러)의 바퀴</b>: 1712년부터 "스스로 도는 바퀴"를 공개 시연했고, 1717년 헤센-카셀 백작 앞 밀폐실 시험을 통과했다고 주장했다. 내부 구조는 끝까지 공개하지 않았다. 훗날 하녀가 "옆방에서 사람이 몰래 돌렸다"고 증언했다.',
+    q: '망치를 9개, 11개로 늘리면 오른쪽과 왼쪽의 추 개수는 어떻게 될까? 개수가 아무리 많아도 한 바퀴 동안 중력이 한 일이 0인 까닭을 위치에너지로 설명해 보자.',
+  },
+});
+
+/* ② 바스카라 바퀴: 굽은 관 속 수은은 관의 가장 낮은 곳에 모인다 */
+const BH_N = 7, BH_R0 = 0.22, BH_K = -1.5, BH_U = 120;
+function bhPoint(phi, u) { const r = BH_R0 + (1 - BH_R0) * u, a = phi + BH_K * u; return [r * Math.cos(a), r * Math.sin(a)]; }
+const bhaskara = wheelCase({
+  id: 'bhaskara', chip: '🌀 바스카라 바퀴', I: 9,
+  geom(th) {
+    const out = [];
+    for (let i = 0; i < BH_N; i++) {
+      const phi = th + i * TAU / BH_N; let best = null, bu = 0;
+      for (let j = 0; j <= BH_U; j++) { const u = j / BH_U, p = bhPoint(phi, u); if (!best || p[1] < best[1]) { best = p; bu = u; } }
+      out.push({ phi, u: bu, p: best });
+    }
+    return out;
+  },
+  drawBody(x, ws, cx, cy, S) {
+    circle(x, cx, cy, S + 4, null, '#7a8796', 5);
+    for (const w of ws) {
+      x.beginPath();
+      for (let j = 0; j <= 30; j++) { const p = bhPoint(w.phi, j / 30); const X = cx + p[0] * S, Y = cy - p[1] * S; j ? x.lineTo(X, Y) : x.moveTo(X, Y); }
+      x.strokeStyle = '#b9c4cf'; x.lineWidth = 13; x.lineCap = 'round'; x.stroke();
+      x.strokeStyle = '#eef2f6'; x.lineWidth = 8; x.stroke(); x.lineCap = 'butt';
+    }
+  },
+  drawWeight(x, w, px, py, right) {
+    circle(x, px, py, 9, right ? '#e67e22' : '#2f80ed');
+    circle(x, px, py, 6, '#cfd8e0'); circle(x, px - 2, py - 2, 2.2, '#fff');
+  },
+  html: {
+    meta: '바스카라 2세 · 1150년경 『시단타 시로마니』 / 더 이른 기록: 브라마굽타(7세기)',
+    title: '바스카라 바퀴 (수은 바퀴)',
+    structure: '바퀴살 7개가 <b>속이 빈 굽은 관</b>이고, 관마다 <b>수은</b>이 조금씩 들어 있다. 바퀴가 돌면 수은이 관을 따라 흘러, 한쪽에서는 바퀴 바깥쪽 끝으로, 반대쪽에서는 축 가까이로 몰린다. (그림: 수은 = 은색 방울)',
+    idea: '바깥쪽으로 몰린 수은 쪽이 항상 더 무거우니(지레 팔이 기니) 바퀴가 쉬지 않고 돌 것이다. 수은은 흐르는 액체라 스스로 알아서 자리를 바꿔 준다.',
+    observe: ['수은 방울의 위치가 바퀴 각도에 따라 계속 바뀐다.', '그런데도 바퀴는 몇 번 흔들리다 <b>한 자리에 멈춘다.</b>', '밀어 주면 돌다가 결국 같은 종류의 자리로 돌아와 멈춘다.', '그래프: 위치에너지 U가 7번 오르내리고, 360°에서 처음 값으로 돌아온다.'],
+    contra: `<h4>[모순] 열역학 제1법칙(에너지 보존) 위반</h4>
+      <p>수은은 언제나 관 속 <b>가장 낮은 곳</b>에 모인다. 그래서 수은의 높이, 곧 위치에너지 U는 <b>바퀴 각도만으로 정해진다</b>.</p>
+      <p>한 바퀴 돌면 바퀴 모양이 처음과 똑같아지므로 U도 처음 값으로 돌아온다. 따라서 중력이 한 일은 <span class="eq">W = −ΔU = 0</span>이다.</p>
+      <p>중력만으로 움직이는 기계가 계속 돌려면 <b>무게중심이 끝없이 낮아져야</b> 한다. 하지만 바퀴는 돌아서 같은 모양으로 돌아온다. 수은이 출렁이며 생기는 점성 마찰은 에너지를 열로 바꿔 운동을 멈춘다.</p>`,
+    story: '📜 바스카라의 바퀴는 인도에서 이슬람 세계를 거쳐 중세 유럽으로 전해졌다. 이후 수백 년 동안 수많은 "불균형 바퀴" 설계의 원조가 되었다.',
+    q: '관을 더 많이 굽히거나 수은을 더 넣으면 결과가 달라질까? "가장 낮은 곳"이라는 말만 가지고 왜 달라지지 않는지 설명해 보자.',
+  },
+});
+
+/* =====================================================================
+   제1종 ③ : 자석 경사로 (존 윌킨스, 1648)
+   ===================================================================== */
+const magnet = {
+  id: 'magnet', kind: 1, chip: '🧲 자석 경사로',
+  params: { k: 13000, fr: 0.25 },
+  M: [440, 92], GS: 300,
+  build() {
+    const A = [60, 370], B = [380, 140];
+    const lower = [[380, 255], [374, 298], [345, 333], [285, 360], [205, 380], [125, 390], [82, 387], [62, 378]];
+    const raw = [A, B, ...lower, A];
+    const pts = [], seg = [];
+    for (let i = 0; i < raw.length - 1; i++) {
+      const p = raw[i], q = raw[i + 1], n = Math.max(1, Math.ceil(Math.hypot(q[0] - p[0], q[1] - p[1]) / 2));
+      for (let j = 0; j < n; j++) { pts.push([lerp(p[0], q[0], j / n), lerp(p[1], q[1], j / n)]); seg.push(i); }
+    }
+    pts.push(A.slice()); seg.push(raw.length - 2);
+    const s = [0]; for (let i = 1; i < pts.length; i++) s.push(s[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+    this.pts = pts; this.s = s; this.L = s[s.length - 1]; this.seg = seg;
+    this.sB = s[seg.indexOf(1)]; this.sC = s[seg.indexOf(2)];
+    this.raw = raw;
+  },
+  Uat(p) { const d = Math.hypot(p[0] - this.M[0], p[1] - this.M[1]); return this.GS * ((400 - p[1]) - this.params.k / Math.sqrt(d * d + 20 * 20)); },
+  table() { this.U = this.pts.map(p => this.Uat(p)); this.umin = Math.min(...this.U); },
+  idx(s) { s = ((s % this.L) + this.L) % this.L; let lo = 0, hi = this.s.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (this.s[m] <= s) lo = m; else hi = m; } return [lo, (s - this.s[lo]) / Math.max(1e-9, this.s[hi] - this.s[lo]), hi]; },
+  posAt(s) { const [i, f, j] = this.idx(s); return [lerp(this.pts[i][0], this.pts[j][0], f), lerp(this.pts[i][1], this.pts[j][1], f)]; },
+  UatS(s) { const [i, f, j] = this.idx(s); return lerp(this.U[i], this.U[j], f); },
+  dU(s) { return (this.UatS(s + 1) - this.UatS(s - 1)) / 2; },
+  reset() {
+    if (!this.pts) this.build();
+    this.table();
+    // 윗 경사로의 언덕 꼭대기를 찾아 그보다 조금 자석 쪽에 놓는다 → 자석이 끌어올리는 모습부터 시작
+    let top = 0; for (let q = 0; q < this.sB; q += 2) if (this.UatS(q) > this.UatS(top)) top = q;
+    this.pos = Math.min(top + 18, this.sB - 30); this.v = 0; this.heat = 0; this.time = 0;
+    this.input = this.UatS(this.pos) - this.umin; this.rest = 0;
+  },
+  step(dt) {
+    const sub = 20, h = dt / sub, b = 2.2 * this.params.fr;
+    for (let k = 0; k < sub; k++) {
+      const a = -this.dU(this.pos) - b * this.v;
+      this.v += a * h; this.pos += this.v * h; this.heat += b * this.v * this.v * h;
+    }
+    this.pos = ((this.pos % this.L) + this.L) % this.L;
+    this.rest = Math.abs(this.v) < 3 ? this.rest + dt : 0;
+    this.time += dt;
+  },
+  push() { const before = 0.5 * this.v * this.v; this.v += 330; this.input += 0.5 * this.v * this.v - before; },
+  onK() { const pos = this.pos, v = this.v; const old = this.UatS(pos); this.table(); this.input += this.UatS(pos) - old; this.pos = pos; this.v = v; },
+  get controls() {
+    return [
+      { type: 'button', label: '🖐 공 밀어 올리기', main: true, act: () => this.push() },
+      { type: 'button', label: '↺ 처음부터', act: () => this.reset() },
+      { type: 'range', key: 'k', label: '자석 세기', min: 3000, max: 24000, step: 500, fmt: v => (v / 1000).toFixed(1), on: () => this.onK() },
+      { type: 'range', key: 'fr', label: '마찰(구름·공기)', min: 0, max: 1, step: 0.05, fmt: v => v.toFixed(2) },
+    ];
+  },
+  draw(x) {
+    x.clearRect(0, 0, SW, SH); x.fillStyle = '#fff'; x.fillRect(0, 0, SW, SH);
+    const M = this.M;
+    // 자기장 느낌
+    for (let r = 30; r < 260; r += 32) { x.strokeStyle = `rgba(192,57,43,${0.13 - r / 2600})`; x.lineWidth = 1; x.beginPath(); x.arc(M[0], M[1], r, 0, TAU); x.stroke(); }
+    line(x, 20, 400, 505, 400, '#9aa6b2', 2);
+    x.fillStyle = '#b08d6e'; x.fillRect(434, 108, 12, 292);
+    x.fillStyle = '#c0392b'; rrect(x, M[0] - 26, M[1] - 18, 26, 34, 4); x.fill();
+    x.fillStyle = '#2f80ed'; rrect(x, M[0], M[1] - 18, 26, 34, 4); x.fill();
+    txt(x, '천연 자석', M[0], M[1] - 26, { size: 12, bold: true, align: 'center', color: '#7a2a20' });
+    // 경사로
+    const r = this.raw;
+    x.strokeStyle = '#8d6e4f'; x.lineWidth = 7; x.lineCap = 'round';
+    x.beginPath(); x.moveTo(r[0][0], r[0][1]); x.lineTo(r[1][0], r[1][1]); x.stroke();
+    x.beginPath(); x.moveTo(r[2][0], r[2][1]); for (let i = 3; i < r.length; i++) x.lineTo(r[i][0], r[i][1]); x.stroke();
+    x.lineCap = 'butt';
+    line(x, r[1][0], r[1][1], r[2][0], r[2][1], '#c9b49f', 2, [4, 4]);
+    x.fillStyle = '#1f2d3d'; x.beginPath(); x.ellipse(r[1][0], r[1][1] + 2, 11, 4, 0, 0, TAU); x.fill();
+    txt(x, '구멍', r[1][0] - 22, r[1][1] + 22, { size: 12, color: '#55657a', align: 'right' });
+    txt(x, '윗 경사로 (자석이 끌어올림)', 150, 255, { size: 12, color: '#7a5a3a' });
+    txt(x, '아랫 경사로 (출발점으로 복귀)', 230, 395, { size: 12, color: '#7a5a3a' });
+    // 공
+    const p = this.posAt(this.pos);
+    circle(x, p[0], p[1] - 9, 10, '#7f8c8d', '#4a5560', 1.5); circle(x, p[0] - 3, p[1] - 12, 3, '#eef2f5');
+    if (this.revealed) {
+      const [i, , j] = this.idx(this.pos), tx = this.pts[j][0] - this.pts[i][0], ty = this.pts[j][1] - this.pts[i][1], tl = Math.hypot(tx, ty) || 1;
+      const ux = tx / tl, uy = ty / tl;
+      const fg = this.GS * uy, fm = -this.dU(this.pos) - fg; // 경로 방향 성분 (중력, 자기력)
+      const len = f => clamp(f * 0.12, -70, 70);
+      arrow(x, p[0], p[1] - 9, p[0] + ux * len(fg), p[1] - 9 + uy * len(fg), '#27ae60', 3, 9);
+      arrow(x, p[0], p[1] - 9, p[0] + ux * len(fm), p[1] - 9 + uy * len(fm), '#c0392b', 3, 9);
+      label(x, '초록: 중력(경로 방향)  빨강: 자기력(경로 방향)', 260, 30, '#1f2d3d', 'rgba(240,244,248,.95)', 12);
+    }
+    if (this.rest > 1.2) label(x, '공이 갇혔다 — 정지', p[0] < 260 ? p[0] + 70 : p[0] - 90, p[1] - 34, '#c0392b', 'rgba(255,235,233,.95)', 13);
+    const KE = 0.5 * this.v * this.v / this.GS, PE = (this.UatS(this.pos) - this.umin) / this.GS, H = this.heat / this.GS, IN = this.input / this.GS;
+    const sc = Math.max(IN, KE + PE + H, 1e-6);
+    const nearHole = this.pos > this.sB - 60 && this.pos < this.sC;
+    const state = this.rest < 1.2 ? '공이 움직이는 중…' : nearHole ? '자석에 붙잡혀 구멍으로\n떨어지지 않는다.' : '아래 골짜기에 갇혔다:\n다시 올라갈 에너지가 없다.';
+    panel(x, '에너지 장부 (상대 단위)', [
+      { label: '넣어 준 에너지 (놓은 위치 + 밀기)', value: fmt(IN), bar: IN / sc, color: '#34495e' },
+      { sep: 1 },
+      { label: '운동 에너지', value: fmt(KE), bar: KE / sc, color: '#27ae60' },
+      { label: '위치에너지 (중력 + 자기)', value: fmt(PE), bar: PE / sc, color: '#8e44ad' },
+      { label: '마찰로 생긴 열', value: fmt(H), bar: H / sc, color: '#e74c3c' },
+      { sep: 1 },
+      { text: '지금 공의 상태', bold: true },
+      { text: state, color: '#c0392b', bold: true },
+      { text: '자석이 강하면 붙잡히고,\n약하면 끝까지 못 올라온다.', color: '#55657a' },
+    ]);
+  },
+  graph(g) {
+    const n = this.U.length, xs = [], ys = [];
+    let mx = -1e9, mn = 1e9;
+    for (let i = 0; i < n; i += 2) { xs.push(this.s[i]); const u = (this.U[i] - this.umin) / this.GS; ys.push(u); mx = Math.max(mx, u); mn = Math.min(mn, u); }
+    const F = frame(g, { xmin: 0, xmax: this.L, ymin: 0, ymax: mx * 1.12 + 1, title: '경로를 따라 본 위치에너지 = "언덕과 골짜기" (중력 + 자기력)', xlabel: '출발점에서 잰 경로 길이' });
+    g.fillStyle = 'rgba(142,68,173,.08)'; g.fillRect(F.X(0), F.y0, F.X(this.sB) - F.X(0), F.h);
+    g.fillStyle = 'rgba(52,73,94,.06)'; g.fillRect(F.X(this.sB), F.y0, F.X(this.sC) - F.X(this.sB), F.h);
+    txt(g, '윗 경사로', F.X(this.sB / 2), F.y0 + F.h + 16, { size: 11, align: 'center', color: '#66768a' });
+    txt(g, '구멍', F.X((this.sB + this.sC) / 2), F.y0 + F.h + 16, { size: 11, align: 'center', color: '#66768a' });
+    txt(g, '아랫 경사로', F.X((this.sC + this.L) / 2), F.y0 + F.h + 16, { size: 11, align: 'center', color: '#66768a' });
+    plot(g, F, xs, ys, '#8e44ad', 2.5);
+    const E = (0.5 * this.v * this.v + this.UatS(this.pos) - this.umin) / this.GS;
+    line(g, F.X(0), F.Y(E), F.X(this.L), F.Y(E), '#27ae60', 1.5, [6, 4]);
+    const px = F.X(this.pos), py = F.Y((this.UatS(this.pos) - this.umin) / this.GS);
+    circle(g, px, py, 6, '#7f8c8d', '#1f2d3d', 1.5);
+    legend(g, [['위치에너지', '#8e44ad'], ['공의 전체 에너지', '#27ae60']], 470, 15);
+    label(g, '끝점(한 바퀴) = 출발점과 같은 높이 → 얻는 에너지 0', F.x0 + F.w - 4, F.y0 + 16, '#c0392b', 'rgba(255,255,255,.92)', 12, 'right');
+  },
+  html: {
+    meta: '존 윌킨스(John Wilkins) · 1648년 『Mathematical Magick』 / 현대판: 영구자석 모터',
+    title: '자석 경사로',
+    structure: '기둥 꼭대기에 <b>천연 자석</b>이 있다. 쇠공이 윗 경사로를 따라 자석에 끌려 올라가다가, 꼭대기 직전의 <b>구멍</b>으로 떨어진다. 그 뒤 아랫 경사로를 굴러 다시 출발점으로 돌아온다.',
+    idea: '자석이 공을 끌어 올리고, 중력이 공을 떨어뜨린다. 두 힘이 번갈아 일하니 공은 영원히 돌고, 그 사이에 바퀴도 돌릴 수 있을 것이다.',
+    observe: ['처음에는 자석이 공을 끌어당겨 <b>스스로 올라가는 것처럼</b> 보인다.', '<b>자석 세기</b>를 바꿔 보자. 강하면 공이 구멍 위에 붙어 떨어지지 않고, 약하면 구멍으로 떨어진 뒤 다시 꼭대기까지 올라오지 못한다.', '아래 그래프: 공은 초록 점선(전체 에너지)보다 높은 언덕을 넘지 못한다.'],
+    contra: `<h4>[모순] 열역학 제1법칙(에너지 보존) 위반</h4>
+      <p>중력과 자석의 힘은 모두 <b>보존력</b>이다. 위치에너지가 위치만으로 정해지므로, 닫힌 경로를 한 바퀴 돌면 두 힘이 한 일의 합은 0이다: <span class="eq">∮ F · ds = 0</span>.</p>
+      <p>위치에너지 그래프를 '언덕과 골짜기'로 보면 쉽다. 자석 근처는 깊은 골짜기다. 공을 떨어뜨리려면 그 골짜기를 다시 빠져나와야 한다. <b>공을 끌어올릴 만큼 센 자석은 공을 놓아주지도 않는다.</b></p>
+      <p>출발점으로 돌아오면 같은 높이이므로 남는 에너지는 없다. 마찰로 잃은 만큼 공은 가장 깊은 골짜기에 갇혀 멈춘다.</p>`,
+    story: '📜 윌킨스는 이 장치를 소개하면서 스스로 반박했다. "공을 끌어올릴 만큼 강한 자석이라면 공이 구멍으로 떨어지게 두지 않을 것"이라고 썼다. 오늘날 인터넷의 \'영구자석 모터\' 영상도 같다. 나선형으로 배열한 자석이 겹치는 구간의 반발력 장벽을 넘지 못하고, 앞뒤로 흔들리다 멈춘다. 계속 도는 영상은 대개 숨긴 배터리나 편집 때문이다.',
+    q: '자석을 나선형, 비대칭 등 어떤 모양으로 배열해도 한 바퀴 돌아 제자리에 오면 자기력이 한 일이 0인 이유는? (힌트: 위치에너지는 무엇만으로 정해지는가)',
+  },
+};
+
+/* =====================================================================
+   제1종 ④ : 자기 순환 물레방아 (로버트 플러드, 1618)
+   ===================================================================== */
+const fludd = {
+  id: 'fludd', kind: 1, chip: '💧 자기 순환 물레방아',
+  params: { ew: 85, ep: 80, load: 20 },
+  reset() { this.V = 1; this.Emill = 0; this.Eloss = 0; this.t = 0; this.hist = []; this.aW = 0; this.aS = 0; this.aM = 0; this.drops = []; this.flow = {}; },
+  step(dt) {
+    const ew = this.params.ew / 100, ep = this.params.ep / 100, ld = this.params.load / 100;
+    const sub = 5, h = dt / sub;
+    for (let k = 0; k < sub; k++) {
+      const Q = this.V > 0 ? 0.07 * Math.sqrt(this.V) : 0;
+      const Pw = ew * Q, Pm = ld * Pw, Pp = Pw - Pm, Qb = ep * Pp;
+      this.V = Math.max(0, this.V + (Qb - Q) * h);
+      this.Emill += Pm * h; this.Eloss += ((1 - ew) * Q + (1 - ep) * Pp) * h;
+      this.flow = { Q, Pw, Pm, Pp, Qb };
+    }
+    this.t += dt;
+    this.aW += this.flow.Q * 55 * dt; this.aS += this.flow.Qb * 90 * dt; this.aM += this.flow.Pm * 160 * dt;
+    if (!this.hist.length || this.t - this.hist[this.hist.length - 1][0] > 0.2) { this.hist.push([this.t, this.V, this.Emill, this.Eloss]); if (this.hist.length > 600) this.hist.shift(); }
+  },
+  get controls() {
+    return [
+      { type: 'button', label: '↺ 물탱크 다시 채우기', main: true, act: () => this.reset() },
+      { type: 'range', key: 'ew', label: '물레방아 효율', min: 50, max: 100, step: 1, fmt: v => v + '%' },
+      { type: 'range', key: 'ep', label: '나선 펌프 효율', min: 50, max: 100, step: 1, fmt: v => v + '%' },
+      { type: 'range', key: 'load', label: '맷돌에 쓰는 몫', min: 0, max: 60, step: 1, fmt: v => v + '%' },
+    ];
+  },
+  draw(x) {
+    x.clearRect(0, 0, SW, SH); x.fillStyle = '#fff'; x.fillRect(0, 0, SW, SH);
+    const f = this.flow, Q = f.Q || 0;
+    // 아래 물통
+    x.fillStyle = '#d6e9f8'; x.fillRect(20, 345, 470, 45); x.strokeStyle = '#7a8796'; x.lineWidth = 3; x.strokeRect(20, 330, 470, 60);
+    // 위 물탱크
+    const tx = 80, ty = 50, tw = 120, th = 100;
+    x.fillStyle = '#4aa3df'; x.fillRect(tx, ty + th * (1 - this.V), tw, th * this.V);
+    x.strokeStyle = '#4a5868'; x.lineWidth = 3; x.strokeRect(tx, ty, tw, th);
+    txt(x, `물탱크 ${Math.round(this.V * 100)}%`, tx + tw / 2, ty - 8, { size: 12, bold: true, align: 'center' });
+    // 지지대
+    x.fillStyle = '#c8b39b'; x.fillRect(tx + 10, ty + th, 8, 230); x.fillRect(tx + tw - 18, ty + th, 8, 180);
+    // 배출구와 물줄기
+    x.fillStyle = '#4a5868'; x.fillRect(tx + tw, ty + th - 16, 34, 10);
+    const sw = Q * 110;
+    if (sw > 0.3) {
+      x.strokeStyle = '#3d8fd1'; x.lineWidth = sw; x.beginPath(); x.moveTo(tx + tw + 32, ty + th - 11); x.quadraticCurveTo(tx + tw + 58, ty + th, tx + tw + 62, 190); x.stroke();
+    }
+    // 물레방아
+    const wx = 300, wy = 238, wr = 66;
+    circle(x, wx, wy, wr, null, '#6d4c41', 6);
+    for (let i = 0; i < 12; i++) {
+      const a = this.aW + i * TAU / 12, ca = Math.cos(a), sa = Math.sin(a);
+      line(x, wx, wy, wx + ca * wr, wy + sa * wr, '#8d6e63', 3);
+      line(x, wx + ca * wr, wy + sa * wr, wx + ca * (wr + 14), wy + sa * (wr + 14), '#5d4037', 6);
+    }
+    circle(x, wx, wy, 8, '#4a5868');
+    txt(x, '물레방아', wx, wy + wr + 30, { size: 12, bold: true, align: 'center' });
+    // 맷돌 (축으로 연결)
+    line(x, wx, wy, 440, wy, '#4a5868', 5);
+    const mx = 445, my = wy;
+    x.fillStyle = '#95a5a6'; rrect(x, mx - 42, my - 34, 84, 68, 10); x.fill();
+    for (let i = 0; i < 6; i++) { const a = this.aM + i * TAU / 6; line(x, mx + Math.cos(a) * 8, my + Math.sin(a) * 26, mx + Math.cos(a) * 30, my + Math.sin(a) * 26 * 0.4, '#6c7a7d', 2); }
+    txt(x, `맷돌 (${this.params.load}%)`, mx, my + 54, { size: 12, bold: true, align: 'center' });
+    // 아르키메데스 나선 펌프 (아래 물통 → 위 물탱크)
+    const p1 = [42, 352], p2 = [96, 62], ang = Math.atan2(p2[1] - p1[1], p2[0] - p1[0]), len = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+    x.save(); x.translate(p1[0], p1[1]); x.rotate(ang);
+    x.fillStyle = 'rgba(141,110,79,.25)'; x.fillRect(0, -13, len, 26); x.strokeStyle = '#8d6e4f'; x.lineWidth = 2; x.strokeRect(0, -13, len, 26);
+    for (let s = (this.aS * 8) % 22; s < len; s += 22) line(x, s, -13, s + 11, 13, '#6d4c41', 2.5);
+    x.restore();
+    txt(x, '나선 펌프', 18, 215, { size: 12, bold: true, color: '#6d4c41' });
+    // 동력 연결 표시 (물레방아 → 펌프)
+    line(x, wx, wy, 70, 230, 'rgba(74,88,104,.45)', 2, [6, 5]);
+    txt(x, '물레방아 힘으로 펌프를 돌림', 120, 290, { size: 11, color: '#55657a' });
+    if (this.V <= 0.001) label(x, '물이 바닥남 — 모두 멈춤', 260, 30, '#c0392b', 'rgba(255,235,233,.95)', 15);
+    const tot = this.V + this.Emill + this.Eloss;
+    panel(x, '에너지 장부 (처음 물 = 1)', [
+      { label: '탱크 물의 위치에너지', value: fmt(this.V, 3), bar: this.V, color: '#2f80ed' },
+      { label: '맷돌이 한 일 (누적)', value: fmt(this.Emill, 3), bar: this.Emill, color: '#f39c12' },
+      { label: '손실 → 열·소리 (누적)', value: fmt(this.Eloss, 3), bar: this.Eloss, color: '#e74c3c' },
+      { text: `합계 ${fmt(tot, 3)} (항상 1)`, bold: true },
+      { sep: 1 },
+      { text: '지금 1초 동안 (흐름)', bold: true },
+      { text: `떨어지는 물 ${fmt(Q * 1000, 1)}  → 물레방아 ${fmt((f.Pw || 0) * 1000, 1)}`, color: '#3b4a5c' },
+      { text: `되퍼 올리는 물 ${fmt((f.Qb || 0) * 1000, 1)}`, color: '#3b4a5c' },
+      { text: `수위 변화 ${fmt(((f.Qb || 0) - Q) * 1000, 1)}`, color: (f.Qb || 0) - Q < -1e-6 ? '#c0392b' : '#27ae60', bold: true },
+      { text: this.params.ew === 100 && this.params.ep === 100 && this.params.load === 0 ? '이상적: 수위는 유지되지만\n맷돌에 줄 에너지는 0!' : '되퍼 올린 물 < 떨어진 물', color: '#c0392b', bold: true },
+    ]);
+  },
+  graph(g) {
+    const h = this.hist, t1 = Math.max(30, this.t);
+    const F = frame(g, { xmin: Math.max(0, t1 - 120), xmax: t1, ymin: 0, ymax: 1.05, title: '시간에 따른 에너지 (처음 탱크 물 = 1)', xlabel: '시간 (s)',
+      yticks: [[0, '0'], [0.5, '0.5'], [1, '1']], xticks: [[Math.max(0, t1 - 120), Math.round(Math.max(0, t1 - 120)) + ''], [t1, Math.round(t1) + '']] });
+    const xs = h.map(p => p[0]);
+    plot(g, F, xs, h.map(p => p[1]), '#2f80ed', 2.5);
+    plot(g, F, xs, h.map(p => p[2]), '#f39c12', 2);
+    plot(g, F, xs, h.map(p => p[3]), '#e74c3c', 2);
+    legend(g, [['탱크 물', '#2f80ed'], ['맷돌 일', '#f39c12'], ['손실(열)', '#e74c3c']], 420, 15);
+  },
+  html: {
+    meta: '로버트 플러드(Robert Fludd) · 1618년경',
+    title: '자기 순환 물레방아',
+    structure: '위 물탱크의 물이 떨어지며 <b>물레방아</b>를 돌린다. 물레방아는 <b>맷돌</b>을 돌리는 동시에 <b>아르키메데스 나선 펌프</b>를 돌려 아래로 떨어진 물을 다시 탱크로 퍼 올린다.',
+    idea: '떨어진 물을 다시 퍼 올리니 물은 영원히 돈다. 그리고 남는 힘으로 맷돌까지 돌릴 수 있다. 물도 연료도 더 필요 없는 방앗간!',
+    observe: ['효율과 맷돌 몫을 바꾸며 <b>물탱크 수위</b>가 어떻게 줄어드는지 보자.', '효율을 둘 다 100%, 맷돌 몫을 0%로 하면? 수위는 유지되지만 맷돌은 아무 일도 못 한다.', '오른쪽 장부의 합계는 언제나 1이다. 에너지가 새로 생기지 않는다.'],
+    contra: `<h4>[모순] 열역학 제1법칙(에너지 보존) 위반</h4>
+      <p>질량 m인 물이 높이 h만큼 떨어지며 내놓는 에너지는 <span class="eq">mgh</span>이다. 같은 물을 다시 h만큼 올리는 데도 정확히 <span class="eq">mgh</span>가 필요하다.</p>
+      <p>효율이 100%여도 <b>겨우 본전</b>이라 맷돌에 줄 몫이 없다. 실제 물레방아와 펌프는 물 튀김, 마찰, 소용돌이 때문에 효율이 100%보다 작다. 그래서 되퍼 올리는 물이 떨어지는 물보다 적고, 물탱크는 반드시 비어 간다.</p>
+      <p>맷돌이 한 일과 열 손실은 모두 탱크 물의 위치에너지에서 나온 것이다.</p>`,
+    story: '📜 플러드의 그림은 이후 수많은 "물을 스스로 퍼 올리는 방앗간" 설계의 원형이 되었다. 하지만 실제로 지어져 작동한 적은 없다.',
+    q: '물레방아 효율 90%, 펌프 효율 90%, 맷돌 몫 0%일 때 떨어진 물 중 몇 %를 되퍼 올릴 수 있을까? 계산한 뒤 시뮬레이션으로 확인해 보자.',
+  },
+};
+
+/* =====================================================================
+   제1종 ⑤ : 부력 체인
+   ===================================================================== */
+const buoy = {
+  id: 'buoy', kind: 1, chip: '🫧 부력 체인',
+  params: { naive: false, Vc: 500, hm: 2 },
+  geom: { cx: 240, top: 60, bot: 370, r: 45, wTop: 95, wBot: 345, n: 14 },
+  reset() { const g = this.geom; this.Lp = 2 * (g.bot - g.top) + TAU * g.r; this.off = 0; this.v = 0; this.passed = 0; this.t = 0; this.prevIn = null; },
+  pathPos(s) {
+    const g = this.geom, Ls = g.bot - g.top; s = ((s % this.Lp) + this.Lp) % this.Lp;
+    if (s < Ls) return [g.cx + g.r, g.bot - s];
+    s -= Ls; if (s < Math.PI * g.r) { const a = s / g.r; return [g.cx + g.r * Math.cos(a), g.top - g.r * Math.sin(a)]; }
+    s -= Math.PI * g.r; if (s < Ls) return [g.cx - g.r, g.top + s];
+    s -= Ls; const a = Math.PI + s / g.r; return [g.cx + g.r * Math.cos(a), g.bot - g.r * Math.sin(a)];
+  },
+  balls() { const sp = this.Lp / this.geom.n, out = []; for (let i = 0; i < this.geom.n; i++) out.push(this.pathPos(this.off + i * sp)); return out; },
+  inWater(p) { return this.subm(p) > 0.5; },
+  // 잠긴 정도 (공 반지름 13 구간에서 0→1로 부드럽게)
+  subm(p) { const g = this.geom; if (p[0] <= g.cx) return 0; return clamp((p[1] - (g.wTop - 13)) / 26, 0, 1) * clamp((g.wBot + 13 - p[1]) / 26, 0, 1); },
+  forces() {
+    const g = this.geom, sp = this.Lp / g.n;
+    let nIn = 0; for (const p of this.balls()) nIn += this.subm(p);
+    const seal = this.params.naive ? 0 : (g.wBot - g.wTop) / sp; // 바닥 수압이 공을 밀어내는 힘(평균, 공 1개 부력 단위)
+    return { nIn, seal, net: nIn - seal };
+  },
+  step(dt) {
+    const sub = 4, h = dt / sub;
+    for (let k = 0; k < sub; k++) { const f = this.forces(); this.v += (f.net * 55 - 0.7 * this.v) * h; this.off += this.v * h; }
+    const tops = this.balls().filter(p => p[0] > this.geom.cx && p[1] < this.geom.wTop).length;
+    if (this.prevIn !== null && tops > this.prevIn && this.v > 0) this.passed++;
+    this.prevIn = tops; this.t += dt;
+  },
+  get controls() {
+    return [
+      { type: 'button', label: '🖐 사슬 밀기', main: true, act: () => { this.v += 90; } },
+      { type: 'button', label: '↺ 처음부터', act: () => this.reset() },
+      { type: 'check', key: 'naive', label: '발명가의 계산 (바닥 수압 무시)' },
+      { type: 'range', key: 'Vc', label: '공 1개 부피', min: 100, max: 2000, step: 50, fmt: v => v + ' cm³' },
+      { type: 'range', key: 'hm', label: '물기둥 높이', min: 0.5, max: 10, step: 0.5, fmt: v => v + ' m' },
+    ];
+  },
+  draw(x) {
+    x.clearRect(0, 0, SW, SH); x.fillStyle = '#fff'; x.fillRect(0, 0, SW, SH);
+    const g = this.geom, f = this.forces();
+    // 물기둥
+    const tx0 = g.cx + g.r - 32, tx1 = g.cx + g.r + 32;
+    x.fillStyle = '#d6e9f8'; x.fillRect(tx0, g.wTop, tx1 - tx0, g.wBot - g.wTop);
+    x.strokeStyle = '#4a5868'; x.lineWidth = 3; x.beginPath(); x.moveTo(tx0, 75); x.lineTo(tx0, g.wBot); x.lineTo(tx1, g.wBot); x.lineTo(tx1, 75); x.stroke();
+    x.fillStyle = '#2c3e50'; x.fillRect(g.cx + g.r - 15, g.wBot - 4, 30, 9);
+    txt(x, '방수 패킹', g.cx + g.r + 38, g.wBot + 4, { size: 11, color: '#55657a' });
+    txt(x, '물기둥', tx1 + 6, g.wTop + 16, { size: 12, bold: true, color: '#2f6fa8' });
+    // 도르래와 사슬
+    circle(x, g.cx, g.top, g.r - 6, '#eef2f6', '#7a8796', 3); circle(x, g.cx, g.bot, g.r - 6, '#eef2f6', '#7a8796', 3);
+    circle(x, g.cx, g.top, 5, '#4a5868'); circle(x, g.cx, g.bot, 5, '#4a5868');
+    x.strokeStyle = '#7a8796'; x.lineWidth = 2; x.beginPath();
+    for (let s = 0; s <= this.Lp; s += 4) { const p = this.pathPos(s); s ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1]); } x.stroke();
+    for (const p of this.balls()) {
+      const w = this.inWater(p);
+      circle(x, p[0], p[1], 13, w ? '#f5b041' : '#f8c471', '#b9770e', 2);
+      if (w) arrow(x, p[0] + 20, p[1] + 8, p[0] + 20, p[1] - 14, '#27ae60', 2.5, 7);
+    }
+    // 힘 화살표
+    const bx = 420, by = 210;
+    txt(x, '사슬에 걸리는 힘 (공 1개 부력 = 1)', 345, 60, { size: 12, bold: true });
+    arrow(x, bx - 40, by, bx - 40, by - f.nIn * 26, '#27ae60', 6, 14);
+    txt(x, `부력 합 ${fmt(f.nIn, 2)}`, bx - 40, by + 20, { size: 12, bold: true, align: 'center', color: '#1e8449' });
+    if (!this.params.naive) {
+      arrow(x, bx + 30, by - 104, bx + 30, by - 104 + f.seal * 26, '#c0392b', 6, 14);
+      txt(x, `바닥 수압 ${fmt(f.seal, 2)}`, bx + 30, by + 20, { size: 12, bold: true, align: 'center', color: '#c0392b' });
+    } else txt(x, '수압 무시!', bx + 30, by + 20, { size: 12, bold: true, align: 'center', color: '#c0392b' });
+    label(x, `알짜 힘 ${fmt(f.net, 2)}`, 405, 260, Math.abs(f.net) < 0.6 ? '#27ae60' : '#c0392b', 'rgba(240,244,248,.95)', 13);
+    txt(x, '(공이 드나들 때 잠깐씩 출렁)', 405, 282, { size: 11, align: 'center', color: '#66768a' });
+    if (this.params.naive) label(x, '⚠ 상상 속에서만 가속', 405, 330, '#c0392b', 'rgba(255,235,233,.95)', 14);
+    // 장부 (실제 단위)
+    const rho = 1000, gg = 9.8, V = this.params.Vc * 1e-6, h = this.params.hm;
+    const Wb = rho * gg * V * h, Win = rho * gg * h * V;
+    panel(x, '공 1개가 한 바퀴 돌 때 (J)', [
+      { text: `부피 ${this.params.Vc} cm³ · 물기둥 ${h} m`, color: '#55657a' },
+      { label: '부력이 해 주는 일  ρgV·h', value: fmt(Wb, 2), bar: 1, color: '#27ae60' },
+      { label: '바닥으로 밀어 넣는 일  p·V = ρgh·V', value: this.params.naive ? '무시함' : fmt(Win, 2), bar: this.params.naive ? 0 : 1, color: '#c0392b' },
+      { text: `남는 에너지 = ${this.params.naive ? fmt(Wb, 2) + ' J ??' : '0 J'}`, bold: true, color: this.params.naive ? '#c0392b' : '#27ae60' },
+      { sep: 1 },
+      { text: `물을 빠져나간 공 ${this.passed}개`, bold: true },
+      { text: this.params.naive ? `발명가가 기대한 공짜 에너지\n= ${fmt(this.passed * Wb, 1)} J` : `실제 얻은 에너지 = 0 J\n(밀어 준 만큼 돌다 멈춤)`, color: '#55657a' },
+      { text: `사슬 속도 ${fmt(this.v, 0)} (화면 단위)`, color: '#55657a' },
+    ]);
+  },
+  graph(g) {
+    // 수압 분포와 부력의 근원
+    const h = this.params.hm, pmax = 1000 * 9.8 * h;
+    const F = frame(g, { xmin: 0, xmax: h, ymin: 0, ymax: pmax * 1.1, title: '깊이에 따른 수압 p = ρgh (물기둥 바닥에서 공을 밀어 넣을 때 이겨야 하는 압력)', xlabel: '수면에서 잰 깊이 (m)',
+      xticks: [[0, '0'], [h / 2, (h / 2).toFixed(2)], [h, h + ' m']], yticks: [[0, '0'], [pmax, (pmax / 1000).toFixed(1) + ' kPa']] });
+    plot(g, F, [0, h], [0, pmax], '#2f80ed', 2.5);
+    g.fillStyle = 'rgba(47,128,237,.1)'; g.beginPath(); g.moveTo(F.X(0), F.Y(0)); g.lineTo(F.X(h), F.Y(pmax)); g.lineTo(F.X(h), F.Y(0)); g.closePath(); g.fill();
+    circle(g, F.X(h), F.Y(pmax), 6, '#c0392b');
+    label(g, '바닥: 공 하나 밀어 넣는 일 = p·V = ρghV = 부력이 해 주는 일', F.x0 + 8, F.y0 + 16, '#c0392b', 'rgba(255,255,255,.92)', 12, 'left');
+  },
+  html: {
+    meta: '여러 발명가 · 19세기 이후 특허 출원이 되풀이됨',
+    title: '부력 체인',
+    structure: '공(또는 빈 통)을 줄줄이 단 <b>사슬</b>이 두 도르래에 걸려 있다. 사슬의 오른쪽은 <b>물기둥</b>을 지나가고, 공은 물기둥 바닥의 <b>방수 패킹 구멍</b>으로 들어가 위로 빠져나온다.',
+    idea: '물속의 공은 언제나 부력을 받아 떠오른다. 오른쪽만 계속 위로 당겨지니 사슬은 영원히 돌 것이다. 왼쪽과 오른쪽 공의 무게는 같으니 서로 상쇄된다.',
+    observe: ['<b>발명가의 계산</b>을 켜면 바닥 수압을 무시하므로 사슬이 점점 빨라진다. 상상 속의 결과다.', '끄면 부력의 합과 바닥 수압이 비긴다. 밀어 준 만큼만 돌다 멈춘다.', '오른쪽 장부에서 공 부피와 물기둥 높이를 바꿔도 두 일은 언제나 같다.'],
+    contra: `<h4>[모순] 열역학 제1법칙(에너지 보존) 위반</h4>
+      <p>공이 들어가는 물기둥 바닥은 수압이 가장 큰 곳이다: <span class="eq">p = ρgh</span>. 공을 넣으려면 부피 V만큼의 물을 이 압력에 맞서 밀어내야 한다. 이때 드는 일은 <span class="eq">W<sub>in</sub> = pV = ρghV</span>이다.</p>
+      <p>공이 떠오르며 부력이 해 주는 일은 <span class="eq">W<sub>out</sub> = (ρgV)·h</span>로, 정확히 같다.</p>
+      <p>애초에 부력은 위아래의 <b>수압 차</b>에서 생기는 힘이다. 바닥의 큰 수압을 이용해 부력을 받고 싶다면, 그 큰 수압을 이기고 공을 넣는 비용도 내야 한다. 남는 에너지는 0이고, 패킹의 마찰 때문에 오히려 손해다.</p>`,
+    story: '📜 비슷한 "부력 엔진"은 지금도 특허 신청과 투자 권유 영상에 자주 나온다. 미국 특허청은 영구기관 주장에 대해 실제로 작동하는 모형을 요구한다.',
+    q: '물기둥을 2배 높이면 부력이 해 주는 일과 공을 넣는 데 드는 일은 각각 몇 배가 될까?',
+  },
+};
+
+/* =====================================================================
+   제2종 ⑥ : 바닷물 엔진 (켈빈–플랑크) / 갬지의 제로모터
+   ===================================================================== */
+const ship = {
+  id: 'ship', kind: 2, chip: '🚢 바닷물 엔진',
+  params: { th: 20, tc: -20, eff: 30, single: true },
+  reset() { this.x = 60; this.t = 0; this.ice = []; },
+  calc() {
+    const Th = this.params.th + 273.15, Tc = this.params.single ? Th : Math.min(this.params.tc, this.params.th) + 273.15;
+    const Q1 = 1000, W = Q1 * this.params.eff / 100, Q2 = Q1 - W;
+    const dS = -Q1 / Th + Q2 / Tc, etaC = 1 - Tc / Th;
+    return { Th, Tc, Q1, W, Q2, dS, etaC, ok: dS >= -1e-9 };
+  },
+  step(dt) {
+    const r = this.calc(), sp = r.W / 1000 * 140;
+    this.x += sp * dt; if (this.x > 560) this.x = -60;
+    this.t += dt;
+    if (!r.ok && r.W > 0 && Math.random() < dt * 4) this.ice.push({ x: this.x - 30, y: 150 + Math.random() * 10, a: 1 });
+    for (const i of this.ice) i.a -= dt * 0.25; this.ice = this.ice.filter(i => i.a > 0);
+  },
+  get controls() {
+    return [
+      { type: 'check', key: 'single', label: '단일 열원 (바다 하나만 사용)' },
+      { type: 'range', key: 'th', label: '바다(고열원) 온도', min: 0, max: 35, step: 1, fmt: v => v + ' °C' },
+      { type: 'range', key: 'tc', label: '저열원 온도', min: -100, max: 35, step: 1, fmt: v => v + ' °C' },
+      { type: 'range', key: 'eff', label: '얻으려는 효율 W/Q₁', min: 0, max: 100, step: 1, fmt: v => v + '%' },
+    ];
+  },
+  draw(x) {
+    x.clearRect(0, 0, SW, SH); x.fillStyle = '#fff'; x.fillRect(0, 0, SW, SH);
+    const r = this.calc();
+    // 바다 장면
+    const sky = x.createLinearGradient(0, 0, 0, 150); sky.addColorStop(0, '#dbeefe'); sky.addColorStop(1, '#f4faff');
+    x.fillStyle = sky; x.fillRect(10, 10, 495, 140);
+    x.fillStyle = '#4aa3df'; x.fillRect(10, 140, 495, 55);
+    x.save(); x.beginPath(); x.rect(10, 10, 495, 185); x.clip();
+    for (const i of this.ice) { x.globalAlpha = i.a; x.fillStyle = '#ffffff'; x.strokeStyle = '#9fc9ea'; rrect(x, i.x, i.y, 14, 10, 2); x.fill(); x.stroke(); }
+    x.globalAlpha = 1;
+    const sx = this.x, sy = 138, ghost = !r.ok;
+    if (ghost) x.setLineDash([5, 4]);
+    x.fillStyle = ghost ? 'rgba(192,57,43,.12)' : '#34495e'; x.strokeStyle = ghost ? '#c0392b' : '#34495e'; x.lineWidth = 2;
+    x.beginPath(); x.moveTo(sx - 50, sy - 14); x.lineTo(sx + 52, sy - 14); x.lineTo(sx + 36, sy + 6); x.lineTo(sx - 40, sy + 6); x.closePath(); x.fill(); x.stroke();
+    x.fillStyle = ghost ? 'rgba(192,57,43,.08)' : '#ecf0f1'; x.fillRect(sx - 26, sy - 34, 44, 20); x.strokeRect(sx - 26, sy - 34, 44, 20);
+    x.setLineDash([]);
+    x.restore();
+    txt(x, '바닷물에서 열 Q₁을 빨아들여 → 전부 프로펠러를 돌리는 일로?', 20, 30, { size: 12, bold: true, color: '#1f4e79' });
+    if (ghost && r.W > 0) { label(x, '✗ 상상 속의 배 — 엔트로피가 줄어든다', 258, 62, '#c0392b', 'rgba(255,235,233,.95)', 13); txt(x, '(배 뒤로 얼음이 떨어진다?)', 258, 86, { size: 11, color: '#c0392b', align: 'center' }); }
+    else if (r.W === 0) label(x, '일 = 0 → 배는 멈춰 있다', 258, 62, '#55657a', 'rgba(240,244,248,.95)', 13);
+    else label(x, '✓ 가능 (저열원으로 열을 버리는 보통 열기관)', 258, 62, '#1e8449', 'rgba(232,248,239,.95)', 13);
+    // 열기관 그림
+    const cx = 255, hy = 215, ey = 300, cy2 = 385;
+    x.fillStyle = '#e74c3c'; rrect(x, cx - 150, hy, 300, 34, 8); x.fill();
+    txt(x, `고열원: 바다 ${this.params.th} °C (${r.Th.toFixed(0)} K)`, cx, hy + 22, { size: 13, bold: true, color: '#fff', align: 'center' });
+    x.fillStyle = '#3498db'; rrect(x, cx - 150, cy2, 300, 30, 8); x.fill();
+    txt(x, this.params.single ? '저열원 없음 → 같은 바다 (같은 온도)' : `저열원 ${Math.min(this.params.tc, this.params.th)} °C (${r.Tc.toFixed(0)} K)`, cx, cy2 + 20, { size: 13, bold: true, color: '#fff', align: 'center' });
+    circle(x, cx, ey + 6, 30, '#95a5a6', '#6c7a7d', 2); txt(x, '열기관', cx, ey + 11, { size: 12, bold: true, color: '#fff', align: 'center' });
+    const wQ = v => 3 + v / 1000 * 22;
+    arrow(x, cx, hy + 36, cx, ey - 26, '#f39c12', wQ(r.Q1), 16); txt(x, `Q₁ = ${r.Q1} J`, cx + 22, hy + 56, { size: 12, bold: true, color: '#b9770e' });
+    if (r.W > 0) { arrow(x, cx + 32, ey + 6, cx + 150, ey + 6, '#27ae60', wQ(r.W), 16); txt(x, `W = ${fmt(r.W, 0)} J`, cx + 92, ey - 14, { size: 12, bold: true, color: '#1e8449', align: 'center' }); }
+    if (r.Q2 > 0) { arrow(x, cx, ey + 38, cx, cy2 - 2, '#2f80ed', wQ(r.Q2), 14); txt(x, `Q₂ = ${fmt(r.Q2, 0)} J`, cx + 22, ey + 62, { size: 12, bold: true, color: '#1f63c6' }); }
+    else txt(x, 'Q₂ = 0 ?', cx + 22, ey + 62, { size: 13, bold: true, color: '#c0392b' });
+    const sc = Math.max(Math.abs(-r.Q1 / r.Th), Math.abs(r.Q2 / r.Tc), 0.1);
+    panel(x, '엔트로피 장부 (J/K)', [
+      { label: '바다가 잃는 엔트로피  −Q₁/T_H', value: fmt(-r.Q1 / r.Th, 3), bar: (r.Q1 / r.Th) / sc, color: '#e74c3c' },
+      { label: '저열원이 얻는 엔트로피  +Q₂/T_C', value: fmt(r.Q2 / r.Tc, 3), bar: (r.Q2 / r.Tc) / sc, color: '#2f80ed' },
+      { text: `우주 전체 ΔS = ${fmt(r.dS, 3)} J/K`, bold: true, color: r.ok ? '#1e8449' : '#c0392b', size: 13 },
+      { text: r.ok ? '✓ ΔS ≥ 0 : 가능' : '✗ ΔS < 0 : 제2법칙 위반', bold: true, color: r.ok ? '#1e8449' : '#c0392b', size: 13 },
+      { sep: 1 },
+      { text: `얻으려는 효율  ${this.params.eff}%` },
+      { text: `카르노 최대 효율  ${fmt(Math.max(0, r.etaC) * 100, 1)}%`, bold: true },
+      { text: '= 1 − T_C / T_H', color: '#55657a' },
+      { text: this.params.single ? '단일 열원: T_C = T_H 이므로\n최대 효율 0% → 일을 못 한다' : '저열원으로 버리는 열 Q₂가\n반드시 있어야 한다', color: '#c0392b', bold: true },
+    ]);
+  },
+  graph(g) {
+    const r = this.calc(), Th = r.Th;
+    const F = frame(g, { xmin: -100, xmax: 35, ymin: 0, ymax: 100, title: '저열원 온도에 따른 최대(카르노) 효율 — 빨간 영역은 불가능', xlabel: '저열원 온도 (°C)',
+      xticks: [[-100, '−100'], [-50, '−50'], [0, '0'], [this.params.th, this.params.th + ''], [35, '35']], yticks: [[0, '0%'], [50, '50%'], [100, '100%']] });
+    const xs = [], ys = [];
+    for (let t = -100; t <= this.params.th; t += 1) { xs.push(t); ys.push(Math.max(0, (1 - (t + 273.15) / Th) * 100)); }
+    g.fillStyle = 'rgba(231,76,60,.12)'; g.beginPath(); g.moveTo(F.X(-100), F.Y(100));
+    for (let i = 0; i < xs.length; i++) g.lineTo(F.X(xs[i]), F.Y(ys[i])); g.lineTo(F.X(35), F.Y(0)); g.lineTo(F.X(35), F.Y(100)); g.closePath(); g.fill();
+    plot(g, F, xs, ys, '#2f80ed', 2.5);
+    const tc = this.params.single ? this.params.th : Math.min(this.params.tc, this.params.th);
+    circle(g, F.X(tc), F.Y(this.params.eff), 7, r.ok ? '#27ae60' : '#c0392b', '#fff', 2);
+    legend(g, [['카르노 효율 1 − T_C/T_H', '#2f80ed']], 520, 15);
+  },
+  html: {
+    meta: '사고실험(켈빈–플랑크 서술) / 실제 시도: 존 갬지의 제로모터(1881)',
+    title: '바닷물 엔진 — 바다의 열로 가는 배',
+    structure: '배가 <b>바닷물에서 열 Q₁을 흡수</b>해 그 열을 <b>전부 프로펠러를 돌리는 일 W</b>로 바꾼다. 열을 빼앗긴 바닷물은 차가워지고, 이론상 배 뒤로 얼음이 떨어진다.',
+    idea: '바다에는 엄청난 양의 열에너지가 있다. 흡수한 열과 한 일이 같으니(Q₁ = W) <b>에너지 보존 법칙도 지킨다</b>. 연료 없이 영원히 항해할 수 있다!',
+    observe: ['<b>단일 열원</b>에서 효율을 0%보다 조금만 올려도 ΔS &lt; 0이 되어 불가능해진다.', '단일 열원을 끄고 <b>저열원 온도</b>를 낮추면, 카르노 효율까지는 가능해진다.', '아래 그래프: 점이 파란 곡선 위(빨간 영역)로 올라가면 불가능.'],
+    contra: `<h4>[모순] 열역학 제2법칙(엔트로피 증가) 위반</h4>
+      <p><b>켈빈–플랑크 서술</b>: 하나의 열원에서 열을 받아 그 열을 <b>전부 일로 바꾸고 다른 변화는 남기지 않는</b> 순환 기관은 만들 수 없다.</p>
+      <p>엔트로피로 보면, 바다는 <span class="eq">Q₁/T<sub>H</sub></span>만큼 엔트로피를 잃는다. 우주 전체의 엔트로피가 줄지 않으려면 더 차가운 곳에 열 Q₂를 버려야 한다:</p>
+      <p style="text-align:center"><span class="eq">ΔS = −Q₁/T<sub>H</sub> + Q₂/T<sub>C</sub> ≥ 0 ⇒ e = W/Q₁ ≤ 1 − T<sub>C</sub>/T<sub>H</sub></span></p>
+      <p>열원이 바다 하나뿐이면 T<sub>C</sub> = T<sub>H</sub>이므로 <b>최대 효율은 0</b>이다. 에너지가 아무리 많아도 <b>온도 차가 없으면 일을 꺼낼 수 없다</b>.</p>`,
+    story: '📜 <b>갬지의 제로모터(1881)</b>: 존 갬지는 끓는점이 낮은 액체 암모니아를 상온의 열만으로 증발시켜 피스톤을 밀고, 다시 응축시키는 기관을 제안했다. 미국 해군 기관감 이셔우드까지 지지했다. 하지만 암모니아를 다시 액체로 만들 <b>더 차가운 곳(저열원)</b>이 없어 작동하지 않았다.',
+    q: '바다 표층(25 °C)과 심층수(5 °C)의 온도 차를 쓰는 해양 온도차 발전은 영구기관이 아니다. 왜 그런지, 최대 효율은 몇 %인지 계산해 보자.',
+  },
+};
+
+/* =====================================================================
+   제2종 ⑦ : 맥스웰의 도깨비
+   ===================================================================== */
+const demon = {
+  id: 'demon', kind: 2, chip: '👹 맥스웰의 도깨비',
+  params: { mode: 'demon', speed: 1 },
+  box: { x0: 18, x1: 494, y0: 34, y1: 300, wall: 256, d0: 140, d1: 196 }, N: 150, SIG: 70, CAP: 256,
+  reset() {
+    const b = this.box; this.ps = [];
+    for (let i = 0; i < this.N; i++) {
+      const v = this.SIG * Math.sqrt(-2 * Math.log(1 - Math.random() * 0.999)), a = Math.random() * TAU;
+      const left = i % 2 === 0;
+      this.ps.push({ x: left ? lerp(b.x0 + 6, b.wall - 6, Math.random()) : lerp(b.wall + 6, b.x1 - 6, Math.random()), y: lerp(b.y0 + 6, b.y1 - 6, Math.random()), vx: v * Math.cos(a), vy: v * Math.sin(a) });
+    }
+    let ke = 0; for (const p of this.ps) ke += 0.5 * (p.vx * p.vx + p.vy * p.vy);
+    this.T0 = ke / this.N;
+    // 2차원 맥스웰 분포의 속력 중앙값 = sqrt(2 ln2 · kT/m)
+    this.vth = Math.sqrt(2 * Math.log(2) * this.T0);
+    this.bits = 0; this.erased = 0; this.flash = 0; this.t = 0; this.hist = []; this.doorOpen = 0;
+    this.S0 = null; this.S0 = this.entropy().S;
+  },
+  sides() {
+    const b = this.box; let nL = 0, nR = 0, kL = 0, kR = 0;
+    for (const p of this.ps) { const k = 0.5 * (p.vx * p.vx + p.vy * p.vy); if (p.x < b.wall) { nL++; kL += k; } else { nR++; kR += k; } }
+    return { nL, nR, TL: nL ? kL / nL : 0, TR: nR ? kR / nR : 0 };
+  },
+  entropy() {
+    const s = this.sides(); let S = 0;
+    if (s.nL) S += s.nL * (Math.log(1 / s.nL) + Math.log(s.TL / this.T0));
+    if (s.nR) S += s.nR * (Math.log(1 / s.nR) + Math.log(s.TR / this.T0));
+    return { S, ...s };
+  },
+  step(dt) {
+    const b = this.box, sub = 3, h = dt * this.params.speed / sub, mode = this.params.mode;
+    for (let k = 0; k < sub; k++) for (const p of this.ps) {
+      const ox = p.x; p.x += p.vx * h; p.y += p.vy * h;
+      if (p.y < b.y0 + 3) { p.y = 2 * (b.y0 + 3) - p.y; p.vy = -p.vy; } if (p.y > b.y1 - 3) { p.y = 2 * (b.y1 - 3) - p.y; p.vy = -p.vy; }
+      if (p.x < b.x0 + 3) { p.x = 2 * (b.x0 + 3) - p.x; p.vx = -p.vx; } if (p.x > b.x1 - 3) { p.x = 2 * (b.x1 - 3) - p.x; p.vx = -p.vx; }
+      if ((ox < b.wall) !== (p.x < b.wall)) {
+        const inDoor = p.y > b.d0 && p.y < b.d1;
+        let pass = false;
+        if (inDoor) {
+          if (mode === 'open') pass = true;
+          else if (mode === 'demon') {
+            const fast = Math.hypot(p.vx, p.vy) > this.vth; this.bits++;
+            pass = (p.vx > 0 && fast) || (p.vx < 0 && !fast);
+            if (pass) this.doorOpen = 0.15;
+          }
         }
-        draw();
+        if (!pass) { p.x = 2 * b.wall - p.x; p.vx = -p.vx; }
+      }
     }
-
-    // 캔버스 그리기 함수
-    function draw() {
-        drawCanvas1();
-        drawCanvas2();
+    if (this.bits >= this.CAP) { this.erased += this.bits; this.bits = 0; this.flash = 1; }
+    this.flash = Math.max(0, this.flash - dt * 1.2); this.doorOpen = Math.max(0, this.doorOpen - dt);
+    this.t += dt * this.params.speed;
+    if (!this.hist.length || this.t - this.hist[this.hist.length - 1][0] > 0.25) {
+      const e = this.entropy(), info = Math.log(2) * (this.bits + this.erased);
+      this.hist.push([this.t, e.S - this.S0, info, e.S - this.S0 + info]); if (this.hist.length > 800) this.hist.shift();
     }
-
-    function drawArrow(ctx, x1, y1, x2, y2, width, color) {
-        ctx.beginPath();
-        const headlen = 15;
-        const angle = Math.atan2(y2 - y1, x2 - x1);
-        ctx.lineWidth = width;
-        ctx.strokeStyle = color;
-        ctx.fillStyle = color;
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(x2, y2);
-        ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
-        ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
-        ctx.fill();
+  },
+  get controls() {
+    return [
+      { type: 'seg', key: 'mode', options: [['demon', '👹 도깨비 작동'], ['open', '문 항상 열림'], ['closed', '문 닫힘']] },
+      { type: 'button', label: '↺ 같은 온도로 다시 섞기', main: true, act: () => this.reset() },
+      { type: 'range', key: 'speed', label: '시뮬레이션 속도', min: 0.25, max: 3, step: 0.25, fmt: v => v + '×' },
+    ];
+  },
+  draw(x) {
+    x.clearRect(0, 0, SW, SH); x.fillStyle = '#fff'; x.fillRect(0, 0, SW, SH);
+    const b = this.box, e = this.entropy();
+    const tint = T => { const r = clamp((T / this.T0 - 0.5) / 1.0, 0, 1); return `rgba(${Math.round(lerp(47, 231, r))},${Math.round(lerp(128, 76, r))},${Math.round(lerp(237, 60, r))},.10)`; };
+    x.fillStyle = tint(e.TL); x.fillRect(b.x0, b.y0, b.wall - b.x0, b.y1 - b.y0);
+    x.fillStyle = tint(e.TR); x.fillRect(b.wall, b.y0, b.x1 - b.wall, b.y1 - b.y0);
+    x.strokeStyle = '#4a5868'; x.lineWidth = 3; x.strokeRect(b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0);
+    // 칸막이와 문
+    x.fillStyle = '#4a5868'; x.fillRect(b.wall - 3, b.y0, 6, b.d0 - b.y0); x.fillRect(b.wall - 3, b.d1, 6, b.y1 - b.d1);
+    const mode = this.params.mode, open = mode === 'open' || (mode === 'demon' && this.doorOpen > 0);
+    if (!open) { x.fillStyle = mode === 'closed' ? '#4a5868' : '#8e44ad'; x.fillRect(b.wall - 3, b.d0, 6, b.d1 - b.d0); }
+    for (const p of this.ps) {
+      const r = clamp(Math.hypot(p.vx, p.vy) / (this.vth * 2), 0, 1);
+      circle(x, p.x, p.y, 3.4, `rgb(${Math.round(lerp(47, 231, r))},${Math.round(lerp(128, 76, r))},${Math.round(lerp(237, 60, r))})`);
     }
-
-    function drawCanvas1() {
-        const canvas = document.getElementById('canvas1');
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        ctx.font = "16px bold sans-serif";
-        ctx.textAlign = "center";
-
-        // 모터와 발전기 박스
-        ctx.fillStyle = "#34495e";
-        ctx.fillRect(150, 100, 100, 100);
-        ctx.fillRect(350, 100, 100, 100);
-        ctx.fillStyle = "white";
-        ctx.fillText("전동기", 200, 155);
-        ctx.fillText("발전기", 400, 155);
-
-        // 에너지 순환 화살표 (이상적 상태)
-        drawArrow(ctx, 250, 120, 340, 120, 5, "#2ecc71");
-        ctx.fillStyle = "#2ecc71";
-        ctx.fillText("역학적 에너지 (100)", 300, 110);
-
-        drawArrow(ctx, 350, 180, 260, 180, 5, "#f1c40f");
-        ctx.fillStyle = "#f39c12";
-        ctx.fillText("전기 에너지 (100)", 300, 210);
-
-        // 모순 상태 (마찰 및 손실 발생)
-        if (state1) {
-            drawArrow(ctx, 200, 100, 150, 40, 4, "#e74c3c");
-            drawArrow(ctx, 400, 100, 450, 40, 4, "#e74c3c");
-            ctx.fillStyle = "#e74c3c";
-            ctx.fillText("열에너지 손실 (마찰)", 150, 30);
-            ctx.fillText("열에너지 손실 (저항)", 450, 30);
-            
-            // 에너지 값 감소 표시
-            ctx.fillStyle = "white";
-            ctx.fillRect(260, 95, 80, 20); // 텍스트 덮기
-            ctx.fillRect(260, 195, 80, 20);
-            
-            ctx.fillStyle = "#2ecc71";
-            ctx.fillText("에너지 감소 중...", 300, 110);
-            ctx.fillStyle = "#f39c12";
-            ctx.fillText("결국 정지함", 300, 210);
-        }
+    if (mode === 'demon') {
+      const dx = b.wall, dy = b.d0 - 16;
+      circle(x, dx, dy, 13, '#8e44ad'); txt(x, '👹', dx, dy + 6, { size: 16, align: 'center' });
     }
+    txt(x, `왼쪽 온도 ${fmt(e.TL / this.T0 * 300, 0)} K`, b.x0 + 8, b.y0 - 10, { size: 13, bold: true, color: '#1f63c6' });
+    txt(x, `오른쪽 온도 ${fmt(e.TR / this.T0 * 300, 0)} K`, b.x1 - 8, b.y0 - 10, { size: 13, bold: true, color: '#c0392b', align: 'right' });
+    txt(x, `분자 ${e.nL}개`, b.x0 + 8, b.y1 + 18, { size: 12, color: '#55657a' }); txt(x, `분자 ${e.nR}개`, b.x1 - 8, b.y1 + 18, { size: 12, color: '#55657a', align: 'right' });
+    txt(x, '느린 분자(파랑) → 왼쪽만 통과   빠른 분자(빨강) → 오른쪽만 통과', b.x0, 340, { size: 12, color: '#55657a' });
+    // 기억장치
+    const mx = b.x0, my = 356, mw = b.x1 - b.x0, fill = this.bits / this.CAP;
+    txt(x, `도깨비의 기억장치 (측정 기록) ${this.bits} / ${this.CAP} 비트`, mx, my + 2, { size: 12, bold: true, color: '#6c3483' });
+    x.fillStyle = '#efe6f5'; rrect(x, mx, my + 8, mw, 16, 5); x.fill();
+    x.fillStyle = '#8e44ad'; rrect(x, mx, my + 8, mw * fill, 16, 5); x.fill();
+    if (this.flash > 0) label(x, `🔥 기억 지우기! 열 ≥ ${this.CAP}·k_BT ln2 방출`, 256, 405, '#c0392b', `rgba(255,235,233,${0.4 + 0.6 * this.flash})`, 13);
+    const dSg = e.S - this.S0, info = Math.log(2) * (this.bits + this.erased), sc = Math.max(Math.abs(dSg), info, 1);
+    panel(x, '엔트로피 장부 (단위: k_B)', [
+      { label: '기체의 엔트로피 변화', value: fmt(dSg, 1), bar: Math.abs(dSg) / sc, color: dSg < 0 ? '#2f80ed' : '#95a5a6' },
+      { label: '정보 처리 엔트로피 (비트×ln2)', value: '+' + fmt(info, 1), bar: info / sc, color: '#8e44ad' },
+      { text: `전체 ΔS = ${fmt(dSg + info, 1)} ≥ 0`, bold: true, size: 13, color: dSg + info >= -0.5 ? '#1e8449' : '#c0392b' },
+      { sep: 1 },
+      { text: `측정한 분자 수 ${this.bits + this.erased}`, color: '#3b4a5c' },
+      { text: `지운 비트 ${this.erased}`, color: '#3b4a5c' },
+      { text: `온도 차 ${fmt((e.TR - e.TL) / this.T0 * 300, 0)} K`, bold: true, color: '#c0392b' },
+      { text: mode === 'demon' ? '기체만 보면 엔트로피 감소,\n도깨비까지 포함하면 증가' : (mode === 'open' ? '문이 열려 있으면 섞일 뿐\n온도 차가 생기지 않는다' : '문이 닫혀 있으면 아무 일도\n일어나지 않는다'), color: '#55657a' },
+    ]);
+  },
+  graph(g) {
+    const h = this.hist; if (!h.length) return;
+    const t1 = Math.max(20, this.t), t0 = Math.max(0, t1 - 160);
+    let lo = 0, hi = 1; for (const p of h) { lo = Math.min(lo, p[1]); hi = Math.max(hi, p[2], p[3]); }
+    const F = frame(g, { xmin: t0, xmax: t1, ymin: lo * 1.15 - 1, ymax: hi * 1.1 + 1, title: '엔트로피 변화 (k_B 단위)', xlabel: '시간' });
+    const xs = h.map(p => p[0]);
+    plot(g, F, xs, h.map(p => p[1]), '#2f80ed', 2);
+    plot(g, F, xs, h.map(p => p[2]), '#8e44ad', 2);
+    plot(g, F, xs, h.map(p => p[3]), '#1f2d3d', 2.5);
+    legend(g, [['기체', '#2f80ed'], ['정보(기억·소거)', '#8e44ad'], ['전체', '#1f2d3d']], 400, 15);
+  },
+  html: {
+    meta: '제임스 클러크 맥스웰 · 1867년 사고실험 / 해결: 실라르드(1929), 란다우어(1961), 베넷(1982)',
+    title: '맥스웰의 도깨비',
+    structure: '같은 온도의 기체가 든 상자를 칸막이로 나누고, 칸막이에 <b>아주 작은 문</b>을 낸다. 문 옆의 <b>도깨비</b>가 다가오는 분자의 속력을 보고, 빠른 분자는 오른쪽으로, 느린 분자는 왼쪽으로만 보낸다.',
+    idea: '마찰 없는 문을 여닫는 데는 일이 거의 들지 않는다. 그런데도 오른쪽은 뜨거워지고 왼쪽은 차가워진다. 이렇게 저절로 생긴 <b>온도 차로 열기관을 돌리면</b> 공짜로 일을 얻을 수 있다!',
+    observe: ['<b>도깨비 작동</b>: 오른쪽 온도가 오르고 왼쪽 온도가 내려간다. 기체의 엔트로피(파랑)는 줄어든다.', '그런데 분자를 볼 때마다 도깨비의 <b>기억장치</b>에 기록이 쌓인다. 기억장치가 가득 차면 지워야 한다.', '<b>문 항상 열림</b>으로 바꾸면 다시 섞여 온도 차가 사라진다.'],
+    contra: `<h4>[모순 해결] 열역학 제2법칙은 깨지지 않는다</h4>
+      <p>도깨비도 계의 일부다. 분자를 골라내려면 각 분자가 빠른지 느린지 <b>측정</b>하고 그 결과를 <b>기억</b>해야 한다.</p>
+      <p>도깨비가 쉬지 않고 일하려면 언젠가 기억을 <b>지워야</b> 한다. <b>란다우어 원리</b>에 따르면 1비트를 지울 때 최소 <span class="eq">k<sub>B</sub>T ln 2</span>의 열이 나오고, 엔트로피가 <span class="eq">k<sub>B</sub> ln 2</span> 이상 늘어난다.</p>
+      <p>기체의 엔트로피가 준 것보다 정보를 처리하며 늘어난 엔트로피가 더 크다. 그래서 <span class="eq">ΔS<sub>전체</sub> = ΔS<sub>기체</sub> + ΔS<sub>도깨비</sub> ≥ 0</span>이다. 정보도 물리량이다.</p>`,
+    story: '📜 맥스웰은 1867년 테이트에게 보낸 편지에서 이 생각을 처음 밝혔다. 그의 의도는 제2법칙을 깨는 것이 아니었다. 제2법칙이 수많은 분자에 대한 <b>통계적</b> 법칙임을 보이려는 것이었다. 이 수수께끼는 100년 넘게 이어지다가 정보 소거의 비용(란다우어, 베넷)으로 풀렸다.',
+    q: '도깨비가 기억을 지우지 않고 무한히 큰 기억장치에 계속 저장하면 어떨까? 이 경우에도 영구기관이라 할 수 없는 이유를 생각해 보자.',
+  },
+};
 
-    function drawCanvas2() {
-        const canvas = document.getElementById('canvas2');
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        const cx = 300;
-
-        // 고열원
-        ctx.fillStyle = "#e74c3c";
-        ctx.fillRect(cx - 100, 20, 200, 40);
-        ctx.fillStyle = "white";
-        ctx.font = "16px bold sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("고열원 (Th)", cx, 45);
-
-        // 열기관
-        ctx.beginPath();
-        ctx.arc(cx, 150, 40, 0, Math.PI * 2);
-        ctx.fillStyle = "#95a5a6";
-        ctx.fill();
-        ctx.fillStyle = "white";
-        ctx.fillText("열기관", cx, 155);
-
-        // 저열원
-        ctx.fillStyle = "#3498db";
-        ctx.fillRect(cx - 100, 240, 200, 40);
-        ctx.fillStyle = "white";
-        ctx.fillText("저열원 (Tl)", cx, 265);
-
-        // 화살표 Q1
-        ctx.fillStyle = "#f1c40f";
-        ctx.fillRect(cx - 30, 60, 60, 50);
-        ctx.fillStyle = "#333";
-        ctx.fillText("흡수한 열 Q1", cx, 90);
-
-        if (!state2) {
-            // 이상적 상태 (모순): W로 100% 전환
-            ctx.fillStyle = "#2ecc71";
-            ctx.fillRect(cx + 40, 120, 100, 60);
-            drawArrow(ctx, cx + 140, 150, cx + 170, 150, 60, "#2ecc71");
-            ctx.fillStyle = "white";
-            ctx.fillText("한 일 W = Q1 (100%)", cx + 110, 155);
-            
-            // Q2 없음 표시
-            ctx.fillStyle = "#e74c3c";
-            ctx.font = "bold 20px sans-serif";
-            ctx.fillText("방출 열 Q2 = 0 ?", cx, 220);
-        } else {
-            // 모순 확인 상태 (현실): Q2 반드시 존재
-            ctx.fillStyle = "#2ecc71";
-            ctx.fillRect(cx + 40, 135, 100, 30);
-            drawArrow(ctx, cx + 140, 150, cx + 170, 150, 30, "#2ecc71");
-            ctx.fillStyle = "white";
-            ctx.font = "14px bold sans-serif";
-            ctx.fillText("한 일 W", cx + 100, 155);
-
-            // Q2 강제 방출
-            ctx.fillStyle = "#3498db";
-            ctx.fillRect(cx - 15, 190, 30, 50);
-            ctx.fillStyle = "#c0392b";
-            ctx.font = "bold 16px sans-serif";
-            ctx.fillText("방출 열 Q2 발생! (필수)", cx, 220);
-        }
+/* =====================================================================
+   제2종 ⑧ : 파인만 래칫 (브라운 래칫)
+   ===================================================================== */
+const ratchet = {
+  id: 'ratchet', kind: 2, chip: '⚙️ 파인만 래칫',
+  params: { T1: 1, T2: 1, L: 0 },
+  TEETH: 12, NU: 20,
+  reset() {
+    this.steps = 0; this.vis = 0; this.t = 0; this.hist = [[0, 0]]; this.pawl = 0; this.fwd = 0; this.bwd = 0;
+    this.gas = [];
+    for (let i = 0; i < 60; i++) { const a = Math.random() * TAU; this.gas.push({ s: i < 30 ? 0 : 1, x: 0, y: 0, a, u: Math.random(), w: Math.random() }); }
+    for (const p of this.gas) { const bx = p.s ? this.R : this.Lb; p.x = lerp(bx.x0 + 5, bx.x1 - 5, p.u); p.y = lerp(bx.y0 + 5, bx.y1 - 5, p.w); }
+  },
+  Lb: { x0: 20, x1: 200, y0: 120, y1: 330 }, R: { x0: 300, x1: 480, y0: 120, y1: 330 },
+  rates() { const e = 1, P = this.params; return { f: this.NU * Math.exp(-(e + P.L) / P.T1), b: this.NU * Math.exp(-e / P.T2) }; },
+  step(dt) {
+    const r = this.rates(), sub = 8, h = dt / sub;
+    for (let k = 0; k < sub; k++) {
+      if (Math.random() < r.f * h) { this.steps++; this.fwd++; }
+      if (Math.random() < r.b * h) { this.steps--; this.bwd++; this.pawl = 1; }
     }
+    this.vis = lerp(this.vis, this.steps, Math.min(1, dt * 14));
+    this.pawl = Math.max(0, this.pawl - dt * 4);
+    this.t += dt;
+    if (this.t - this.hist[this.hist.length - 1][0] > 0.1) { this.hist.push([this.t, this.steps]); if (this.hist.length > 1200) this.hist.shift(); }
+    for (const p of this.gas) {
+      const T = p.s ? this.params.T2 : this.params.T1, bx = p.s ? this.R : this.Lb, sp = 90 * Math.sqrt(T);
+      p.a += (Math.random() - 0.5) * 0.6; p.x += Math.cos(p.a) * sp * dt; p.y += Math.sin(p.a) * sp * dt;
+      if (p.x < bx.x0 + 4 || p.x > bx.x1 - 4) { p.a = Math.PI - p.a; p.x = clamp(p.x, bx.x0 + 4, bx.x1 - 4); }
+      if (p.y < bx.y0 + 4 || p.y > bx.y1 - 4) { p.a = -p.a; p.y = clamp(p.y, bx.y0 + 4, bx.y1 - 4); }
+    }
+  },
+  get controls() {
+    return [
+      { type: 'range', key: 'T1', label: '날개 쪽 기체 온도 T₁', min: 0.3, max: 2, step: 0.05, fmt: v => v.toFixed(2) },
+      { type: 'range', key: 'T2', label: '톱니·멈춤쇠 쪽 온도 T₂', min: 0.3, max: 2, step: 0.05, fmt: v => v.toFixed(2) },
+      { type: 'range', key: 'L', label: '매단 추(부하)', min: 0, max: 1, step: 0.05, fmt: v => v.toFixed(2) },
+      { type: 'button', label: '↺ 처음부터', main: true, act: () => this.reset() },
+    ];
+  },
+  draw(x) {
+    x.clearRect(0, 0, SW, SH); x.fillStyle = '#fff'; x.fillRect(0, 0, SW, SH);
+    const P = this.params, Lb = this.Lb, R = this.R, ang = this.vis * TAU / this.TEETH;
+    const boxCol = T => `rgba(${Math.round(lerp(47, 231, clamp((T - 0.3) / 1.7, 0, 1)))},${Math.round(lerp(128, 76, clamp((T - 0.3) / 1.7, 0, 1)))},${Math.round(lerp(237, 60, clamp((T - 0.3) / 1.7, 0, 1)))},.12)`;
+    x.fillStyle = boxCol(P.T1); x.fillRect(Lb.x0, Lb.y0, Lb.x1 - Lb.x0, Lb.y1 - Lb.y0); x.strokeStyle = '#4a5868'; x.lineWidth = 3; x.strokeRect(Lb.x0, Lb.y0, Lb.x1 - Lb.x0, Lb.y1 - Lb.y0);
+    x.fillStyle = boxCol(P.T2); x.fillRect(R.x0, R.y0, R.x1 - R.x0, R.y1 - R.y0); x.strokeRect(R.x0, R.y0, R.x1 - R.x0, R.y1 - R.y0);
+    txt(x, `기체 상자 1 (T₁ = ${P.T1.toFixed(2)})`, Lb.x0, Lb.y0 - 10, { size: 12, bold: true });
+    txt(x, `상자 2 (T₂ = ${P.T2.toFixed(2)})`, R.x0, R.y0 - 10, { size: 12, bold: true });
+    for (const p of this.gas) circle(x, p.x, p.y, 3, p.s ? '#c0392b' : '#2f80ed');
+    // 축
+    const cy = 225; line(x, 110, cy, 390, cy, '#4a5868', 4);
+    // 날개 (축을 옆에서 본 모습: 회전하는 4장)
+    for (let i = 0; i < 4; i++) { const a = ang + i * Math.PI / 2 + (Math.random() - 0.5) * 0.05 * P.T1; line(x, 110, cy, 110 + 55 * Math.cos(a), cy + 55 * Math.sin(a), '#7f8c8d', 9); }
+    circle(x, 110, cy, 7, '#4a5868');
+    txt(x, '날개', 110, Lb.y1 - 10, { size: 12, align: 'center', color: '#55657a' });
+    // 톱니바퀴
+    const rx = 390, rr = 58, n = this.TEETH;
+    x.beginPath();
+    for (let i = 0; i < n; i++) {
+      const a0 = ang + i * TAU / n, a1 = ang + (i + 1) * TAU / n;
+      const p0 = [rx + (rr - 14) * Math.cos(a0), cy + (rr - 14) * Math.sin(a0)], p1 = [rx + rr * Math.cos(a1 - 0.0001), cy + rr * Math.sin(a1 - 0.0001)], p2 = [rx + (rr - 14) * Math.cos(a1), cy + (rr - 14) * Math.sin(a1)];
+      i ? x.lineTo(p0[0], p0[1]) : x.moveTo(p0[0], p0[1]); x.lineTo(p1[0], p1[1]); x.lineTo(p2[0], p2[1]);
+    }
+    x.closePath(); x.fillStyle = '#d5dbe1'; x.fill(); x.strokeStyle = '#4a5868'; x.lineWidth = 2; x.stroke();
+    circle(x, rx, cy, 7, '#4a5868');
+    // 멈춤쇠 (위쪽에서 톱니에 걸림)
+    const jit = (Math.random() - 0.5) * 6 * P.T2, lift = this.pawl * 16 + Math.abs(jit);
+    const pv = [rx + 62, cy - 92], tip = [rx + 6, cy - rr + 6 - lift];
+    line(x, pv[0], pv[1], tip[0], tip[1], '#8e44ad', 6); circle(x, pv[0], pv[1], 5, '#4a5868');
+    x.strokeStyle = '#8e44ad'; x.lineWidth = 1.5; x.beginPath(); for (let i = 0; i <= 10; i++) x.lineTo(pv[0] + 14 + (i % 2 ? 6 : -6), pv[1] - 26 + i * 2.6 - lift * 0.2); x.stroke();
+    txt(x, '보라: 멈춤쇠 + 용수철', R.x0, R.y1 + 18, { size: 11, color: '#6c3483' });
+    // 실패와 추
+    const sx = 250; circle(x, sx, cy, 13, '#b08d6e', '#6d4c41', 2);
+    const wy = 380 - (((this.vis * 3) % 140) + 140) % 140;
+    line(x, sx + 13, cy, sx + 13, wy - 12, '#6d4c41', 1.5);
+    x.fillStyle = P.L > 0 ? '#34495e' : '#bdc3c7'; rrect(x, sx + 1, wy - 12, 24, 22, 3); x.fill();
+    txt(x, `추 ${P.L.toFixed(2)}`, sx + 30, wy + 4, { size: 11, color: '#55657a' });
+    txt(x, `알짜 회전: 톱니 ${this.steps}칸`, 20, 30, { size: 14, bold: true, color: this.steps > 0 ? '#1e8449' : this.steps < 0 ? '#c0392b' : '#1f2d3d' });
+    txt(x, `정방향 ${this.fwd}번 · 역방향(미끄러짐) ${this.bwd}번`, 20, 52, { size: 12, color: '#55657a' });
+    if (this.pawl > 0.3) label(x, '멈춤쇠가 열요동으로 들림 → 뒤로 미끄러짐!', 300, 380, '#8e44ad', 'rgba(244,236,250,.95)', 12);
+    const r = this.rates(), net = r.f - r.b, mx = Math.max(r.f, r.b, 0.01);
+    panel(x, '확률로 보는 래칫 (1초당)', [
+      { label: '정방향 한 칸  ∝ e^{−(ε+L)/kT₁}', value: fmt(r.f, 2), bar: r.f / mx, color: '#27ae60' },
+      { label: '역방향 미끄러짐  ∝ e^{−ε/kT₂}', value: fmt(r.b, 2), bar: r.b / mx, color: '#c0392b' },
+      { text: `평균 회전 속도 ${fmt(net, 2)} 칸/s`, bold: true, size: 13, color: Math.abs(net) < 0.02 ? '#1f2d3d' : net > 0 ? '#1e8449' : '#c0392b' },
+      { sep: 1 },
+      { text: Math.abs(P.T1 - P.T2) < 1e-9 && P.L === 0 ? 'T₁ = T₂ : 두 확률이 같다\n→ 평균 0, 일을 못 한다' :
+               P.T1 > P.T2 && net > 0 ? 'T₁ > T₂ : 한쪽으로 돈다\n→ 온도 차로 움직이는\n   보통 열기관 (영구기관 아님)' :
+               net < 0 ? '거꾸로 돈다 (추가 내려감)' : '부하를 들어 올리지 못한다', bold: true, color: '#3b4a5c', gap: 18 },
+      { sep: 1 },
+      { text: 'ε = 용수철을 눌러 톱니 하나를\n넘는 데 필요한 에너지 (= 1)', color: '#66768a' },
+    ]);
+  },
+  graph(g) {
+    const h = this.hist, t1 = Math.max(20, this.t), t0 = Math.max(0, t1 - 120);
+    let lo = -5, hi = 5; for (const p of h) { if (p[0] >= t0) { lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]); } }
+    const F = frame(g, { xmin: t0, xmax: t1, ymin: lo - 2, ymax: hi + 2, title: '시간에 따른 알짜 회전 (톱니 칸 수)', xlabel: '시간 (s)', yticks: [[0, '0']] });
+    plot(g, F, h.map(p => p[0]), h.map(p => p[1]), '#1f2d3d', 2);
+    const r = this.rates(); const net = r.f - r.b;
+    const last = h[h.length - 1];
+    plot(g, F, [t0, t1], [last[1] - net * (last[0] - t0), last[1] + net * (t1 - last[0])], '#e67e22', 1.5, [6, 4]);
+    legend(g, [['실제 회전 (무작위)', '#1f2d3d'], ['평균 기울기 (이론)', '#e67e22']], 420, 15);
+  },
+  html: {
+    meta: '마리안 스몰루호프스키 · 1912 / 리처드 파인만 『파인만 물리학 강의』 · 1962',
+    title: '파인만 래칫 (브라운 래칫)',
+    structure: '기체 상자 1 속의 작은 <b>날개</b>가 축으로 상자 2 속의 <b>톱니바퀴</b>와 연결되어 있다. 톱니바퀴에는 <b>멈춤쇠</b>(용수철로 눌러 둠)가 걸려 있어 한 방향으로만 돌 수 있다. 축에 실을 감아 <b>추</b>를 매단다.',
+    idea: '기체 분자들이 날개를 사방에서 무작위로 때린다. 하지만 멈춤쇠 때문에 한 방향으로 미는 충돌만 바퀴를 돌린다. 열운동을 <b>한 방향으로 정류</b>하니, 주위의 열만으로 추를 들어 올릴 수 있다!',
+    observe: ['<b>T₁ = T₂</b>일 때: 앞으로도 가고 뒤로도 미끄러진다. 오래 지켜보면 평균 회전은 0 근처다.', '멈춤쇠(보라)가 가끔 <b>저절로 들리며</b> 톱니가 뒤로 미끄러지는 순간을 찾아보자.', '<b>T₁ &gt; T₂</b>로 하면 한 방향으로 돌고 추도 들어 올린다. 이것은 온도 차를 쓰는 보통 열기관이다.'],
+    contra: `<h4>[모순 해결] 열역학 제2법칙(엔트로피 증가)</h4>
+      <p>멈춤쇠와 용수철도 분자로 이루어져 있어 <b>같은 온도로 함께 떨린다</b>. 톱니 하나를 앞으로 넘기려면 날개 쪽 열요동이 용수철 에너지 ε(와 추의 몫 L)를 모아야 한다. 반대로 멈춤쇠 쪽 열요동이 ε만큼 모이면 멈춤쇠가 저절로 들려 톱니가 뒤로 미끄러진다.</p>
+      <p style="text-align:center"><span class="eq">정방향 ∝ e<sup>−(ε+L)/kT₁</sup></span> &nbsp; <span class="eq">역방향 ∝ e<sup>−ε/kT₂</sup></span></p>
+      <p>T₁ = T₂이고 부하가 0이면 두 확률이 <b>정확히 같아</b> 평균 회전은 0이다. 일을 하려면 <b>온도 차(T₁ &gt; T₂)</b>가 필요하고, 그 효율은 카르노 효율을 넘지 못한다. 이는 맥스웰의 도깨비와 같은 원리다.</p>`,
+    story: '🧬 세포 속 <b>분자 모터</b>(키네신, ATP 합성효소 등)는 브라운 래칫과 비슷하게 열요동을 이용한다. 하지만 ATP를 분해하는 화학 에너지나 이온 농도 차를 <b>소비</b>해야만 한쪽 방향으로 움직인다. 광학 집게 실험으로도 외부 에너지 없이 열요동만으로는 한쪽 방향 운동을 만들 수 없음이 확인되었다.',
+    q: 'T₁ < T₂로 하면 바퀴는 어느 쪽으로 돌까? 그때 장치는 어떤 기계(열기관? 냉장고?)처럼 작동하는지 생각해 보자.',
+  },
+};
 
-    // 초기 렌더링
-    window.onload = draw;
+/* =====================================================================
+   화면 전환과 조작 패널
+   ===================================================================== */
+const CASES = [honnecourt, bhaskara, magnet, fludd, buoy, ship, demon, ratchet];
+let cur = null, curKind = 0;
+
+function renderInfo(c) {
+  const h = c.html, col = c.kind === 1 ? 'var(--k1)' : 'var(--k2)';
+  $('#info').innerHTML = `
+    <div class="meta"><span class="badge" style="background:${col}">제${c.kind}종</span>${h.meta}</div>
+    <h2>${h.title}</h2>
+    <h4>🔧 구조</h4><p>${h.structure}</p>
+    <h4>💡 왜 될 것 같았나 (발명가의 논리)</h4><p>${h.idea}</p>
+    <h4>👀 시뮬레이션 관찰 포인트</h4><ul>${h.observe.map(s => `<li>${s}</li>`).join('')}</ul>
+    <button class="reveal" id="revealBtn">🚨 모순점 확인하기</button>
+    <div class="contra" id="contra">${h.contra}<div class="story">${h.story}</div></div>
+    <details class="q"><summary>🤔 생각해 보기</summary><p>${h.q}</p></details>`;
+  $('#revealBtn').onclick = () => {
+    c.revealed = !c.revealed;
+    $('#contra').classList.toggle('show', c.revealed);
+    $('#revealBtn').textContent = c.revealed ? '🔄 모순 설명 접기' : '🚨 모순점 확인하기';
+    $('#revealBtn').classList.toggle('done', c.revealed);
+  };
+}
+function renderControls(c) {
+  const box = $('#controls'); box.innerHTML = '';
+  for (const ct of c.controls) {
+    if (ct.type === 'range') {
+      const w = document.createElement('label'); w.className = 'ctl';
+      w.innerHTML = `<span>${ct.label} <b></b></span><input type="range" min="${ct.min}" max="${ct.max}" step="${ct.step}" value="${c.params[ct.key]}">`;
+      const inp = w.querySelector('input'), b = w.querySelector('b');
+      const show = () => { b.textContent = ct.fmt ? ct.fmt(+inp.value) : inp.value; };
+      inp.addEventListener('input', () => { c.params[ct.key] = +inp.value; show(); if (ct.on) ct.on(); });
+      show(); box.appendChild(w);
+    } else if (ct.type === 'check') {
+      const w = document.createElement('label'); w.className = 'chk';
+      w.innerHTML = `<input type="checkbox" ${c.params[ct.key] ? 'checked' : ''}> ${ct.label}`;
+      w.querySelector('input').addEventListener('change', e => { c.params[ct.key] = e.target.checked; if (ct.on) ct.on(); });
+      box.appendChild(w);
+    } else if (ct.type === 'button') {
+      const b = document.createElement('button'); b.className = 'btn' + (ct.main ? ' main' : ''); b.textContent = ct.label; b.onclick = ct.act; box.appendChild(b);
+    } else if (ct.type === 'seg') {
+      const w = document.createElement('div'); w.className = 'seg';
+      for (const [v, s] of ct.options) {
+        const b = document.createElement('button'); b.textContent = s; if (c.params[ct.key] === v) b.className = 'on';
+        b.onclick = () => { c.params[ct.key] = v; w.querySelectorAll('button').forEach(z => z.classList.remove('on')); b.classList.add('on'); };
+        w.appendChild(b);
+      }
+      box.appendChild(w);
+    }
+  }
+}
+function selectCase(c) {
+  cur = c; c.revealed = false; c.reset();
+  document.querySelectorAll('.chip').forEach(b => b.classList.toggle('on', b.dataset.id === c.id));
+  renderInfo(c); renderControls(c);
+}
+function openTab(k) {
+  curKind = k;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', +t.dataset.k === k));
+  $('#overview').classList.toggle('hidden', k !== 0);
+  $('#caseView').classList.toggle('hidden', k === 0);
+  $('#caseView').className = k === 0 ? 'hidden' : 'k' + k;
+  if (k === 0) { cur = null; return; }
+  const chips = $('#chips'); chips.innerHTML = '';
+  const list = CASES.filter(c => c.kind === k);
+  for (const c of list) { const b = document.createElement('button'); b.className = 'chip'; b.dataset.id = c.id; b.textContent = c.chip; b.onclick = () => selectCase(c); chips.appendChild(b); }
+  selectCase(list[0]);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => openTab(+t.dataset.k)));
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (cur) { cur.step(dt); cur.draw(ctx); cur.graph(gtx); }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
 </script>
-
 </body>
 </html>

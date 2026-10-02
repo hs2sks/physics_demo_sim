@@ -1,0 +1,1423 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>전기장의 개념과 컴퓨터 모델링</title>
+<style>
+  :root {
+    --bg: #f4f6fa; --panel: #ffffff; --ink: #1c2733; --sub: #5a6b7d;
+    --accent: #1f6fd6; --accent2: #d64545; --ok: #1e8f4e;
+    --border: #d7dee8; --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+  body {
+    font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+    background: var(--bg); color: var(--ink);
+    padding: 12px; font-size: 15px;
+  }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  header h1 { font-size: 1.25em; }
+  header .spacer { flex: 1; }
+  a.home { text-decoration:none; color:var(--sub); border:1px solid var(--border); padding:6px 12px; border-radius:8px; font-size:0.9em; white-space:nowrap; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .tabs button { flex: 0 0 auto; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 1em; }
+  .tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .layout { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .sim-col { flex: 2 1 480px; display: flex; flex-direction: column; gap: 12px; }
+  .side-col { flex: 1 1 320px; display: flex; flex-direction: column; gap: 12px; }
+
+  #sceneWrap { position: relative; width: 100%; aspect-ratio: 4/3; border-radius: 8px; overflow: hidden; background: radial-gradient(circle at 50% 30%, #16233a, #060a12 75%); }
+  #sceneWrap canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #hoverHint { position:absolute; left:8px; bottom:8px; color:#9fb3d9; font-size:0.78em; background:rgba(6,10,18,0.55); padding:4px 8px; border-radius:6px; pointer-events:none; }
+  #hoverHint:empty { display: none; }
+  #simError { position:absolute; left:8px; right:8px; top:8px; color:#fff; background:rgba(214,69,69,0.92); padding:6px 10px; border-radius:6px; font-size:0.82em; white-space:pre-wrap; }
+
+  .scenario-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .scenario-picker button { flex: 1 1 30%; min-width: 120px; padding: 8px 6px; font-size: 0.86em; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  .scenario-picker button.active { background: #eaf1fd; border-color: var(--accent); color: var(--accent); font-weight: 700; }
+
+  .param { margin-bottom: 10px; }
+  .param label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 4px; font-size: 0.92em; }
+  .param label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .param input[type=range] { width: 100%; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .hint { color: var(--sub); font-size: 0.83em; margin-top: 2px; line-height: 1.5; }
+
+  button { font-size: 1em; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.warn { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .controls-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.82em; color: var(--sub); margin-top: 8px; }
+  .legend:empty { display: none; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .swatch { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .swatch.bar { border-radius: 2px; }
+
+  table.readout { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+  table.readout td { padding: 4px 2px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  table.readout td:first-child { color: var(--sub); }
+  table.readout td:last-child { text-align: right; font-weight: 700; }
+
+  details { margin-top: 6px; }
+  summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+  .formula-body { padding: 8px 2px; line-height: 1.8; font-size: 0.92em; }
+  .formula-body .eq { font-size: 1.08em; text-align: center; margin: 6px 0; font-family: Georgia, serif; }
+  .note { border-left: 3px solid var(--accent); background: #eef4fd; padding: 8px 10px; border-radius: 6px; font-size: 0.86em; margin-top: 8px; line-height: 1.6; }
+  .note:empty { display: none; }
+  .misconception { border-left: 3px solid var(--accent2); background: #fdeeee; padding: 8px 10px; border-radius: 6px; font-size: 0.86em; margin-top: 8px; line-height: 1.6; }
+
+  canvas.chart { width: 100%; background: #fff; border: 1px solid var(--border); border-radius: 6px; }
+
+  body.projector { font-size: 19px; }
+  body.projector button { padding: 12px 18px; }
+  body.projector .scenario-picker button { font-size: 1em; padding: 12px 8px; }
+
+  @media (max-width: 720px) {
+    body { font-size: 16px; padding: 8px; }
+    .layout { flex-direction: column; }
+    .sim-col, .side-col { flex: 1 1 100%; }
+    button { padding: 11px 14px; }
+    input[type=range] { height: 26px; }
+  }
+/* ---- 레시피 입력 extra_css ---- */
+
+</style>
+</head>
+<body>
+
+<header>
+  <a class="home" href="../index.html">🏠 홈</a>
+  <h1>⚡ 전기장의 개념과 컴퓨터 모델링</h1>
+  <span class="spacer"></span>
+  <button id="projectorBtn" title="프로젝터용 큰 글씨 모드">🖥 큰 글씨 모드</button>
+</header>
+
+<div class="tabs" id="tabs"></div>
+
+<div class="layout">
+
+  <div class="sim-col">
+    <div class="panel">
+      <div id="sceneWrap">
+        <div id="hoverHint"></div>
+        <div id="simError" hidden></div>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="panel" id="graphPanel" hidden>
+      <canvas id="chartCanvas" class="chart" width="440" height="220"></canvas>
+      <div class="hint" id="chartHint"></div>
+    </div>
+  </div>
+
+  <div class="side-col">
+
+    <div class="panel" id="scenarioPanel">
+      <div class="scenario-picker" id="scenarioPicker"></div>
+      <div id="scenarioBody"></div>
+      <div id="customPanel"></div>
+    </div>
+
+    <div class="panel" id="readoutPanel">
+      <b id="readoutTitle"></b>
+      <table class="readout" id="readout"></table>
+      <div class="note" id="readoutNote"></div>
+    </div>
+
+    <div class="panel">
+      <details id="formulaDetails">
+        <summary>📐 관련 공식 보기</summary>
+        <div class="formula-body" id="formulaBody"></div>
+      </details>
+    </div>
+
+    <div class="panel" id="misconceptionPanel"></div>
+
+  </div>
+</div>
+
+
+<script>
+const WS_CONFIG = {
+ "title": "전기장의 개념과 컴퓨터 모델링",
+ "renderer": "canvas2d",
+ "scene": {
+  "hint": "A1·A3에서는 캔버스를 클릭하거나 끌어 관측점을 옮길 수 있다"
+ },
+ "legend": [
+  {
+   "label": "전기장 E",
+   "color": "#ff9f1a",
+   "shape": "bar"
+  },
+  {
+   "label": "운동량·속도",
+   "color": "#34c759",
+   "shape": "bar"
+  },
+  {
+   "label": "궤적·E₁",
+   "color": "#5ac8fa",
+   "shape": "bar"
+  },
+  {
+   "label": "양전하",
+   "color": "#ee5a4f",
+   "shape": "dot"
+  },
+  {
+   "label": "음전하",
+   "color": "#4f8cff",
+   "shape": "dot"
+  }
+ ],
+ "tabs": [
+  {
+   "id": "field",
+   "label": "① 점전하의 장"
+  },
+  {
+   "id": "multi",
+   "label": "② 여러 전하"
+  },
+  {
+   "id": "motion",
+   "label": "③ 입자 운동"
+  },
+  {
+   "id": "real",
+   "label": "④ 장은 실재하는가"
+  }
+ ],
+ "scenarios": [
+  {
+   "id": "a1",
+   "tab": "field",
+   "name": "한 점전하의 전기장 — 관측점에서 E 구하기",
+   "section": "13.9 전기장의 컴퓨터 모델링",
+   "desc": "전하 q₁이 만드는 장을 관측점 r_obs에서 계산해 화살표로 나타낸다. 화살표가 전하를 향하면 음전하이다.",
+   "misconception_title": "장과 화살표",
+   "misconception": "\"전하가 없는 곳에는 장도 없다\", \"화살표가 그려진 곳에만 장이 있다\"는 오해가 많다. 점전하의 장은 공간의 모든 점에서 값을 가지며, 화살표는 한 점의 값을 보기 위해 그린 표시일 뿐이다. 화살표 길이는 실제 길이가 아니라 sf × |E| 로 정한 그림의 크기이다.",
+   "formula": [
+    {
+     "eq_html": "r = r<sub>obs<\/sub> − r<sub>1<\/sub>",
+     "text_html": "관측점 위치 − 전하 위치 (벡터)"
+    },
+    {
+     "eq_html": "r̂ = r / |r|",
+     "text_html": "방향만 남긴 단위벡터"
+    },
+    {
+     "eq_html": "E = (1/4πε<sub>0<\/sub>) (q<sub>1<\/sub>/|r|<sup>2<\/sup>) r̂",
+     "text_html": "1/(4πε<sub>0<\/sub>) = 9×10<sup>9<\/sup> N·m<sup>2<\/sup>/C<sup>2<\/sup>"
+    },
+    {
+     "eq_html": "화살표 = sf × E",
+     "text_html": "sf: 그림 크기를 정하는 배율"
+    }
+   ],
+   "params": [
+    {
+     "key": "q1",
+     "label": "전하 q₁",
+     "min": -3,
+     "max": 3,
+     "step": 0.5,
+     "value": -1,
+     "unit": "e"
+    },
+    {
+     "key": "xo",
+     "label": "관측점 x (끌어서 이동 가능)",
+     "min": -2.8,
+     "max": 2.8,
+     "step": 0.05,
+     "value": 1.2,
+     "unit": "nm"
+    },
+    {
+     "key": "yo",
+     "label": "관측점 y",
+     "min": -1.4,
+     "max": 1.4,
+     "step": 0.05,
+     "value": 0.7,
+     "unit": "nm"
+    }
+   ],
+   "choices": [
+    {
+     "key": "scale",
+     "label": "화살표 길이",
+     "options": [
+      {
+       "value": "fixed",
+       "label": "배율 sf 고정 (E에 비례)"
+      },
+      {
+       "value": "norm",
+       "label": "길이 고정 (방향만 보기)"
+      }
+     ],
+     "value": "fixed"
+    }
+   ]
+  },
+  {
+   "id": "a2",
+   "tab": "field",
+   "name": "원 위의 여러 관측점",
+   "section": "13.9 전기장의 컴퓨터 모델링",
+   "desc": "같은 반지름의 원 위 여러 지점에서 장을 구한다. 크기는 같고 방향은 모두 전하에서 멀어지거나 향한다.",
+   "misconception_title": "화살표 굵기",
+   "misconception": "길이에 맞춰 화살표 굵기도 바꾸면 크기 비교가 어려워진다. 같은 굵기로 그리면 길이만으로 |E|를 비교할 수 있다. \"굵기\" 선택을 바꿔 확인해 보자.",
+   "formula": [
+    {
+     "eq_html": "θ = 0, Δθ, 2Δθ, …",
+     "text_html": "원 위 관측점의 각도"
+    },
+    {
+     "eq_html": "r<sub>obs<\/sub> = R (cosθ, sinθ)",
+     "text_html": "원의 반지름 R"
+    },
+    {
+     "eq_html": "|E| ∝ 1/R<sup>2<\/sup>",
+     "text_html": "R이 2배면 |E|는 1/4"
+    }
+   ],
+   "params": [
+    {
+     "key": "qc",
+     "label": "전하 q",
+     "min": -3,
+     "max": 3,
+     "step": 0.5,
+     "value": 1,
+     "unit": "e"
+    },
+    {
+     "key": "Rc",
+     "label": "원의 반지름 R",
+     "min": 0.8,
+     "max": 2.4,
+     "step": 0.1,
+     "value": 1.5,
+     "unit": "nm"
+    },
+    {
+     "key": "nc",
+     "label": "관측점 개수",
+     "min": 4,
+     "max": 24,
+     "step": 1,
+     "value": 12,
+     "unit": "개"
+    },
+    {
+     "key": "gain",
+     "label": "화살표 배율 (기준 sf의 몇 배)",
+     "min": 1,
+     "max": 12,
+     "step": 0.5,
+     "value": 4,
+     "unit": "배"
+    }
+   ],
+   "choices": [
+    {
+     "key": "width",
+     "label": "화살표 굵기",
+     "options": [
+      {
+       "value": "same",
+       "label": "모두 같은 굵기"
+      },
+      {
+       "value": "prop",
+       "label": "길이에 비례"
+      }
+     ],
+     "value": "same"
+    }
+   ]
+  },
+  {
+   "id": "a3",
+   "tab": "multi",
+   "name": "두 전하의 장 — 쌍극자와 벡터 합성",
+   "section": "13.9 전기장의 컴퓨터 모델링",
+   "desc": "전하마다 만든 장 E₁, E₂를 따로 구해 벡터로 더하면 E_net이 된다. 관측점을 끌어 보자.",
+   "misconception_title": "E_net = E_net + E",
+   "misconception": "\"E_net = E_net + E\"는 수학 등식처럼 읽으면 E = 0 이 되어 이상해 보인다. 컴퓨터에서 \"=\"는 같다는 뜻이 아니라 \"오른쪽을 계산해 왼쪽 변수에 저장하라\"는 명령이다. 그래서 전하 하나씩 E를 구할 때마다 E_net에 누적할 수 있다.",
+   "formula": [
+    {
+     "eq_html": "E<sub>1<\/sub> = (1/4πε<sub>0<\/sub>) q<sub>1<\/sub> r̂<sub>1<\/sub> / r<sub>1<\/sub><sup>2<\/sup>",
+     "text_html": "전하 1이 만든 장"
+    },
+    {
+     "eq_html": "E<sub>2<\/sub> = (1/4πε<sub>0<\/sub>) q<sub>2<\/sub> r̂<sub>2<\/sub> / r<sub>2<\/sub><sup>2<\/sup>",
+     "text_html": "전하 2가 만든 장"
+    },
+    {
+     "eq_html": "E<sub>net<\/sub> = E<sub>1<\/sub> + E<sub>2<\/sub>",
+     "text_html": "벡터 합 (성분별로 더한다)"
+    }
+   ],
+   "params": [
+    {
+     "key": "qa",
+     "label": "전하 q₁ (왼쪽)",
+     "min": -3,
+     "max": 3,
+     "step": 0.5,
+     "value": 1,
+     "unit": "e"
+    },
+    {
+     "key": "qb",
+     "label": "전하 q₂ (오른쪽)",
+     "min": -3,
+     "max": 3,
+     "step": 0.5,
+     "value": -1,
+     "unit": "e"
+    },
+    {
+     "key": "dsep",
+     "label": "두 전하 사이 거리 d",
+     "min": 0.4,
+     "max": 3.0,
+     "step": 0.1,
+     "value": 2.0,
+     "unit": "nm"
+    },
+    {
+     "key": "xo",
+     "label": "관측점 x (끌어서 이동 가능)",
+     "min": -2.8,
+     "max": 2.8,
+     "step": 0.05,
+     "value": 1.2,
+     "unit": "nm"
+    },
+    {
+     "key": "yo",
+     "label": "관측점 y",
+     "min": -1.4,
+     "max": 1.4,
+     "step": 0.05,
+     "value": 0.7,
+     "unit": "nm"
+    }
+   ],
+   "choices": [
+    {
+     "key": "map",
+     "label": "장 지도",
+     "options": [
+      {
+       "value": "off",
+       "label": "끄기 (벡터 합성 보기)"
+      },
+      {
+       "value": "grid",
+       "label": "켜기 (격자 위 장의 방향)"
+      }
+     ],
+     "value": "off"
+    }
+   ]
+  },
+  {
+   "id": "b1",
+   "tab": "motion",
+   "name": "장 속 입자의 운동 예측 — 갱신 루프",
+   "section": "13.9 전기장의 컴퓨터 모델링",
+   "desc": "고정된 전하 근처에서 움직이는 하전입자를 E → F → p → r 순서로 반복 계산해 궤적을 예측한다.",
+   "misconception_title": "장을 한 번만 계산하면 된다?",
+   "misconception": "입자가 움직이면 그 자리의 E도 달라진다. 크기나 방향이 바뀌는 양은 매 스텝마다 다시 계산해야 하므로 E의 계산도 반복 루프 안에 들어간다. 또 Δt가 너무 크면 계산한 궤도가 실제 물리와 어긋난다.",
+   "formula": [
+    {
+     "eq_html": "E = (1/4πε<sub>0<\/sub>) (q<sub>s<\/sub>/r<sup>2<\/sup>) r̂",
+     "text_html": "현재 입자 위치에서"
+    },
+    {
+     "eq_html": "F = q E",
+     "text_html": "입자 전하 q (음이면 E와 반대 방향)"
+    },
+    {
+     "eq_html": "p ← p + F Δt",
+     "text_html": "운동량 갱신"
+    },
+    {
+     "eq_html": "r ← r + (p/m) Δt",
+     "text_html": "위치 갱신"
+    }
+   ],
+   "params": [
+    {
+     "key": "qs",
+     "label": "고정 전하 q_s",
+     "min": -3,
+     "max": 3,
+     "step": 1,
+     "value": 1,
+     "unit": "e"
+    },
+    {
+     "key": "qm",
+     "label": "움직이는 입자 전하 q",
+     "min": -2,
+     "max": 2,
+     "step": 1,
+     "value": -1,
+     "unit": "e"
+    },
+    {
+     "key": "mm",
+     "label": "입자 질량",
+     "min": 1,
+     "max": 2000,
+     "step": 1,
+     "value": 1,
+     "unit": "mₑ"
+    },
+    {
+     "key": "r0",
+     "label": "처음 거리 r₀",
+     "min": 0.6,
+     "max": 2.5,
+     "step": 0.1,
+     "value": 1.5,
+     "unit": "nm"
+    },
+    {
+     "key": "v0",
+     "label": "처음 속력 (\"직접 설정\"일 때)",
+     "min": 0,
+     "max": 20,
+     "step": 0.5,
+     "value": 4,
+     "unit": "×10⁵ m/s"
+    },
+    {
+     "key": "ang",
+     "label": "처음 속도 방향 (x축 기준)",
+     "min": -180,
+     "max": 180,
+     "step": 5,
+     "value": 90,
+     "unit": "°"
+    },
+    {
+     "key": "ns",
+     "label": "한 주기당 스텝 수 (Δt = T/스텝 수)",
+     "min": 20,
+     "max": 2000,
+     "step": 10,
+     "value": 400,
+     "unit": "개"
+    }
+   ],
+   "choices": [
+    {
+     "key": "launch",
+     "label": "출발 조건",
+     "options": [
+      {
+       "value": "circle",
+       "label": "원궤도 속력 (자동)"
+      },
+      {
+       "value": "free",
+       "label": "직접 설정 (속력·방향)"
+      },
+      {
+       "value": "rest",
+       "label": "정지에서 출발"
+      }
+     ],
+     "value": "circle"
+    }
+   ],
+   "animated": true,
+   "status_hint": "입자 운동 계산 중"
+  },
+  {
+   "id": "b2",
+   "tab": "motion",
+   "name": "균일한 전기장 속 하전입자 (전자·양성자·알파 입자)",
+   "section": "13.7~13.8 연결",
+   "desc": "위쪽 균일한 E가 있는 영역에 입자가 들어간다. 장 안에서는 포물선, 밖에서는 직선 운동을 한다.",
+   "misconception_title": "무거운 입자도 똑같이 휜다?",
+   "misconception": "같은 장에서도 가속도는 a = qE/m 이므로 질량이 크면 거의 휘지 않는다. 양성자는 전자보다 약 1836배 무거워 같은 속도에서는 편향이 훨씬 작다. 또 음전하는 E와 반대 방향으로 휜다.",
+   "formula": [
+    {
+     "eq_html": "F = qE",
+     "text_html": "음전하이면 F는 E와 반대 방향"
+    },
+    {
+     "eq_html": "a = qE / m",
+     "text_html": "장 안에서 일정한 가속도"
+    },
+    {
+     "eq_html": "y = y<sub>0<\/sub> + v<sub>y<\/sub>t + ½at<sup>2<\/sup>",
+     "text_html": "장 안의 포물선"
+    },
+    {
+     "eq_html": "ΔK = qE Δy",
+     "text_html": "일-에너지 정리"
+    }
+   ],
+   "params": [
+    {
+     "key": "Ef",
+     "label": "전기장 세기 E",
+     "min": 1000,
+     "max": 10000,
+     "step": 500,
+     "value": 5000,
+     "unit": "N/C"
+    },
+    {
+     "key": "v0b",
+     "label": "입사 속력",
+     "min": 0.1,
+     "max": 30,
+     "step": 0.1,
+     "value": 10,
+     "unit": "×10⁶ m/s"
+    },
+    {
+     "key": "angb",
+     "label": "입사각 (수평 기준)",
+     "min": -30,
+     "max": 30,
+     "step": 1,
+     "value": 0,
+     "unit": "°"
+    }
+   ],
+   "choices": [
+    {
+     "key": "pcl",
+     "label": "입자 종류",
+     "options": [
+      {
+       "value": "e",
+       "label": "전자 (−e)"
+      },
+      {
+       "value": "p",
+       "label": "양성자 (+e)"
+      },
+      {
+       "value": "a",
+       "label": "알파 입자 (+2e, 4mₚ)"
+      }
+     ],
+     "value": "e"
+    }
+   ],
+   "animated": true,
+   "status_hint": "입자 진행 중"
+  },
+  {
+   "id": "c1",
+   "tab": "real",
+   "name": "지연 — 장은 빛의 속도로 전해진다",
+   "section": "13.8 전기장은 실재하는가",
+   "desc": "전하가 갑자기 움직이거나 사라져도, 멀리 있는 관측점은 거리/c 만큼은 옛 장을 그대로 느낀다.",
+   "misconception_title": "장은 즉시 바뀐다?",
+   "misconception": "전하가 움직이는 순간 모든 곳의 장이 동시에 바뀐다고 생각하기 쉽다. 그러면 신호가 광속보다 빠르게 전달되므로 상대성이론에 어긋난다. 변화의 소식은 빛의 속도 c로 전해지므로, 거리 r인 곳에서는 r/c 뒤에야 장이 바뀐다.",
+   "formula": [
+    {
+     "eq_html": "지연 시간 = r / c",
+     "text_html": "c = 3×10<sup>8<\/sup> m/s, 1 ns에 약 30 cm"
+    },
+    {
+     "eq_html": "r = 9 m  →  t = 30 ns",
+     "text_html": "교재 그림의 예"
+    }
+   ],
+   "params": [
+    {
+     "key": "rd",
+     "label": "전하와 관측점 사이 거리 r",
+     "min": 3,
+     "max": 30,
+     "step": 1,
+     "value": 9,
+     "unit": "m"
+    }
+   ],
+   "choices": [
+    {
+     "key": "evt",
+     "label": "사건",
+     "options": [
+      {
+       "value": "move",
+       "label": "전하가 갑자기 이동"
+      },
+      {
+       "value": "annihilate",
+       "label": "전자·양전자 쌍소멸"
+      }
+     ],
+     "value": "move"
+    }
+   ],
+   "animated": true,
+   "status_hint": "장 전파 진행 중"
+  },
+  {
+   "id": "c3",
+   "tab": "real",
+   "name": "상대론적 전기장 — 빠른 전하의 장 패턴",
+   "section": "13.8 전기장은 실재하는가",
+   "desc": "전하가 광속에 가깝게 움직이면 장은 구대칭이 아니며, 운동 방향에 수직인 방향으로 몰린다.",
+   "misconception_title": "쿨롱 법칙은 항상 맞다?",
+   "misconception": "E = kq/r² 은 전하가 느리게 움직일 때만 좋은 근사이다. 빠르게 움직이는 전하에서는 구대칭이 깨지고, 옆 방향의 장이 γ배가 된다(운동 방향은 1/γ²배).",
+   "formula": [
+    {
+     "eq_html": "E = E<sub>0<\/sub> (1 − β<sup>2<\/sup>) / (1 − β<sup>2<\/sup> sin<sup>2<\/sup>θ)<sup>3/2<\/sup>",
+     "text_html": "E<sub>0<\/sub> = q/(4πε<sub>0<\/sub>r<sup>2<\/sup>), θ: 속도와 r̂의 사잇각"
+    },
+    {
+     "eq_html": "E<sub>⊥<\/sub> = γ E<sub>0<\/sub>,  E<sub>∥<\/sub> = E<sub>0<\/sub> / γ<sup>2<\/sup>",
+     "text_html": "γ = 1/√(1 − v<sup>2<\/sup>/c<sup>2<\/sup>)"
+    }
+   ],
+   "params": [
+    {
+     "key": "beta",
+     "label": "속력 β = v/c",
+     "min": 0,
+     "max": 0.98,
+     "step": 0.01,
+     "value": 0.8
+    },
+    {
+     "key": "nr",
+     "label": "화살표 개수",
+     "min": 8,
+     "max": 36,
+     "step": 4,
+     "value": 24,
+     "unit": "개"
+    }
+   ],
+   "choices": [
+    {
+     "key": "cmp",
+     "label": "비교",
+     "options": [
+      {
+       "value": "both",
+       "label": "정지 전하(회색)와 함께"
+      },
+      {
+       "value": "moving",
+       "label": "움직이는 전하만"
+      }
+     ],
+     "value": "both"
+    }
+   ]
+  }
+ ],
+ "common_params": null,
+ "readout_title": "측정값"
+};
+</script>
+<script>
+/* ============================ 시뮬레이션 코드 (레시피 입력 sim_js) ============================ */
+// ===== 상수 · 도우미 =====
+const K = 8.9875517923e9, QE = 1.602176634e-19, ME = 9.1093837015e-31, MP = 1.67262192369e-27, MALPHA = 6.6446573357e-27, CL = 2.99792458e8, NM = 1e-9;
+const COL = { bg: '#0e1621', grid: '#1b2838', axis: '#2a3b50', text: '#e3ecf8', sub: '#8da2bd', pos: '#ee5a4f', neg: '#4f8cff', E: '#ff9f1a', p: '#34c759', trail: '#5ac8fa', ghost: '#7d8da3', warn: '#ffd60a', v2: '#c792ea' };
+const SF_NM = 0.45 / (K * QE / (NM * NM)); // q=1e, r=1nm 에서 화살표 길이가 0.45 nm가 되는 기준 배율 (nm per N/C)
+let API = null, V = { s: 1, cx: 0, cy: 0 }, ST = { sig: null, s: null }, DRAG = false;
+
+function G(api, k, d) { const v = api.P ? api.P[k] : undefined; return (v === undefined || v === null || Number.isNaN(Number(v))) ? d : Number(v); }
+function CH(api, k, d) { let v = api.P ? api.P[k] : undefined; if (v === undefined && api.choices) v = api.choices[k]; return (v === undefined || v === null) ? d : String(v); }
+function setView(api, halfW, x0, y0) { V.s = api.width / (2 * halfW); V.cx = api.width / 2 - x0 * V.s; V.cy = api.height / 2 + y0 * V.s; }
+function PX(x) { return V.cx + x * V.s; }
+function PY(y) { return V.cy - y * V.s; }
+function clear(api) { const c = api.ctx; c.setLineDash([]); c.globalAlpha = 1; c.fillStyle = COL.bg; c.fillRect(0, 0, api.width, api.height); return c; }
+function label(ctx, t, x, y, col, size, align, base) { ctx.fillStyle = col || COL.text; ctx.font = (size || 14) + 'px sans-serif'; ctx.textAlign = align || 'left'; ctx.textBaseline = base || 'middle'; ctx.fillText(t, x, y); }
+function line(ctx, x1, y1, x2, y2, col, lw, dash) { ctx.strokeStyle = col; ctx.lineWidth = lw || 1; ctx.setLineDash(dash || []); ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.setLineDash([]); }
+function dot(ctx, x, y, r, col, ring) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); if (ring) { ctx.strokeStyle = ring; ctx.lineWidth = 1.5; ctx.stroke(); } }
+function arrow(ctx, x1, y1, x2, y2, col, lw, head) {
+  const dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy); if (!(L > 0.5)) return;
+  head = head || Math.min(14, Math.max(6, L * 0.35)); const ux = dx / L, uy = dy / L;
+  ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = lw || 2; ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2 - ux * head * 0.8, y2 - uy * head * 0.8); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x2, y2); ctx.lineTo(x2 - ux * head + uy * head * 0.5, y2 - uy * head - ux * head * 0.5); ctx.lineTo(x2 - ux * head - uy * head * 0.5, y2 - uy * head + ux * head * 0.5); ctx.closePath(); ctx.fill();
+}
+function drawCharge(ctx, x, y, q, rad) {
+  rad = rad || 12; dot(ctx, x, y, rad, q > 0 ? COL.pos : q < 0 ? COL.neg : '#888', '#fff');
+  label(ctx, q > 0 ? '+' : q < 0 ? '−' : '0', x, y + 1, '#fff', Math.round(rad * 1.3), 'center');
+}
+const SUPD = { '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', '-': '⁻' };
+function sci(x, d) {
+  if (d === undefined) d = 2; if (!isFinite(x)) return '—'; if (x === 0) return '0';
+  let e = Math.floor(Math.log10(Math.abs(x))), ms = (x / Math.pow(10, e)).toFixed(d);
+  if (Math.abs(parseFloat(ms)) >= 10) { e += 1; ms = (x / Math.pow(10, e)).toFixed(d); }
+  return ms + '×10' + String(e).split('').map(c => SUPD[c] || c).join('');
+}
+function fmtQ(q) { return (q > 0 ? '+' : '') + (Math.abs(q % 1) < 1e-9 ? q.toFixed(0) : q.toFixed(1)) + ' e'; }
+function gridNm(ctx, api) {
+  for (let i = -8; i <= 8; i++) { line(ctx, PX(i), 0, PX(i), api.height, COL.grid, 1); line(ctx, 0, PY(i), api.width, PY(i), COL.grid, 1); }
+  line(ctx, PX(0), 0, PX(0), api.height, COL.axis, 1.5); line(ctx, 0, PY(0), api.width, PY(0), COL.axis, 1.5);
+  const y = api.height - 18; line(ctx, 16, y, 16 + V.s, y, COL.sub, 2); label(ctx, '1 nm', 24 + V.s, y, COL.sub, 12);
+}
+// 점전하들이 (x, y) [nm] 에 만드는 전기장 [N/C]. charges: [{x, y, q}] (x, y는 nm, q는 e 단위)
+function fieldAt(charges, x, y) {
+  let ex = 0, ey = 0;
+  for (const c of charges) {
+    const dx = (x - c.x) * NM, dy = (y - c.y) * NM, r2 = dx * dx + dy * dy; if (r2 < 1e-24) continue;
+    const r = Math.sqrt(r2), f = K * c.q * QE / r2; ex += f * dx / r; ey += f * dy / r;
+  }
+  return [ex, ey];
+}
+
+// ===== 1. 한 점전하의 장 =====
+function drawA1(api) {
+  const ctx = clear(api); setView(api, 3, 0, 0); gridNm(ctx, api);
+  const q = G(api, 'q1', -1), xo = G(api, 'xo', 1.2), yo = G(api, 'yo', 0.7), r = Math.hypot(xo, yo), mode = CH(api, 'scale', 'fixed');
+  line(ctx, PX(0), PY(0), PX(xo), PY(yo), COL.ghost, 1.5, [6, 5]);
+  label(ctx, 'r', (PX(0) + PX(xo)) / 2 - 10, (PY(0) + PY(yo)) / 2 - 12, COL.sub, 15, 'center');
+  drawCharge(ctx, PX(0), PY(0), q, 14);
+  label(ctx, 'q₁ = ' + fmtQ(q), PX(0), PY(0) + 30, COL.text, 13, 'center');
+  dot(ctx, PX(xo), PY(yo), 5, '#fff'); label(ctx, '관측점 r_obs', PX(xo) + 9, PY(yo) + 16, COL.sub, 12);
+  if (r < 0.15) { label(ctx, '관측점이 전하와 너무 가깝다 (r → 0 에서는 E를 정의할 수 없다)', api.width / 2, 24, COL.warn, 15, 'center'); api.setReadout([['r', '≈ 0'], ['|E|', '정의 불가']]); return; }
+  const E = fieldAt([{ x: 0, y: 0, q }], xo, yo), Em = Math.hypot(E[0], E[1]);
+  let sf = SF_NM; if (mode === 'norm' && Em > 0) sf = 0.6 / Em;
+  if (Em > 0) arrow(ctx, PX(xo), PY(yo), PX(xo + sf * E[0]), PY(yo + sf * E[1]), COL.E, 4);
+  label(ctx, 'E', PX(xo + sf * E[0] * 1.0) + 8, PY(yo + sf * E[1]) - 8, COL.E, 15);
+  const ang = Em > 0 ? Math.atan2(E[1], E[0]) * 180 / Math.PI : 0, dp = E[0] * xo + E[1] * yo;
+  api.setReadout([
+    ['r = |r_obs − r₁|', r.toFixed(2) + ' nm'], ['|E|', sci(Em) + ' N/C'], ['E의 방향', Em > 0 ? ang.toFixed(0) + '°' : '—'],
+    ['화살표 길이 = sf × |E|', (sf * Em).toFixed(2) + ' nm'], ['배율 sf', sci(sf) + ' nm/(N/C)'],
+    ['E가 향하는 곳 → 전하 부호', Em === 0 ? 'q = 0 이면 E = 0' : (dp < 0 ? '전하 쪽으로 향함 → 음(−)전하' : '전하에서 멀어짐 → 양(+)전하')]
+  ]);
+  api.setNote('관측점을 마우스로 끌어 옮겨 보세요. 화살표는 "그 지점의 장"을 그린 것일 뿐, 그 자리에 실제 화살표가 있는 것은 아닙니다. 화살표 길이 = sf × |E| 이므로 sf를 알면 |E|를 되돌릴 수 있습니다.');
+}
+
+// ===== 2. 원 위의 여러 관측점 =====
+function drawA2(api) {
+  const ctx = clear(api); setView(api, 3, 0, 0); gridNm(ctx, api);
+  const q = G(api, 'qc', 1), R = G(api, 'Rc', 1.5), n = Math.round(G(api, 'nc', 12)), gain = G(api, 'gain', 4), same = CH(api, 'width', 'same') === 'same';
+  ctx.setLineDash([4, 6]); ctx.strokeStyle = COL.ghost; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(PX(0), PY(0), R * V.s, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+  for (let k = 0; k < n; k++) {
+    const th = 2 * Math.PI * k / n, xo = R * Math.cos(th), yo = R * Math.sin(th), E = fieldAt([{ x: 0, y: 0, q }], xo, yo), len = gain * SF_NM * Math.hypot(E[0], E[1]);
+    const lw = same ? 3 : Math.max(1, Math.min(12, len * V.s / 10));
+    dot(ctx, PX(xo), PY(yo), 3, '#fff');
+    arrow(ctx, PX(xo), PY(yo), PX(xo + gain * SF_NM * E[0]), PY(yo + gain * SF_NM * E[1]), COL.E, lw, same ? 11 : undefined);
+  }
+  drawCharge(ctx, PX(0), PY(0), q, 12);
+  const E1 = K * Math.abs(q) * QE / Math.pow(R * NM, 2), E2 = K * Math.abs(q) * QE / Math.pow(2 * R * NM, 2);
+  api.setReadout([['관측점 개수 / 각 간격', n + '개 / ' + (360 / n).toFixed(1) + '°'], ['|E| (반지름 R)', sci(E1) + ' N/C'], ['|E| (반지름 2R, 계산)', sci(E2) + ' N/C'], ['E(R) / E(2R)', E2 > 0 ? (E1 / E2).toFixed(2) : '—'], ['화살표 길이 (R)', (gain * SF_NM * E1).toFixed(2) + ' nm']]);
+  api.setNote('같은 반지름의 점들에서 |E|는 모두 같고 방향만 다릅니다(구대칭). 반지름을 2배로 하면 |E|는 1/4. "굵기" 선택을 바꿔 보세요: 화살표 굵기까지 길이에 비례하면 크기 비교가 왜 어려워지는지 보입니다.');
+}
+
+// ===== 3. 쌍극자 / 장 합성 =====
+function drawA3(api) {
+  const ctx = clear(api); setView(api, 3, 0, 0); gridNm(ctx, api);
+  const qa = G(api, 'qa', 1), qb = G(api, 'qb', -1), d = G(api, 'dsep', 2), xo = G(api, 'xo', 0), yo = G(api, 'yo', 1.2);
+  const c1 = { x: -d / 2, y: 0, q: qa }, c2 = { x: d / 2, y: 0, q: qb };
+  if (CH(api, 'map', 'off') === 'grid') {
+    for (let i = -5; i <= 5; i++) for (let j = -3; j <= 3; j++) {
+      const x = i * 0.55, y = j * 0.5; if (Math.hypot(x - c1.x, y - c1.y) < 0.25 || Math.hypot(x - c2.x, y - c2.y) < 0.25) continue;
+      const E = fieldAt([c1, c2], x, y), Em = Math.hypot(E[0], E[1]); if (!(Em > 0)) continue;
+      ctx.globalAlpha = Math.max(0.2, Math.min(1, 0.3 + 0.22 * (Math.log10(Em) - 8.5)));
+      arrow(ctx, PX(x), PY(y), PX(x + 0.22 * E[0] / Em), PY(y + 0.22 * E[1] / Em), COL.E, 1.8, 7);
+    }
+    ctx.globalAlpha = 1;
+  }
+  drawCharge(ctx, PX(c1.x), PY(c1.y), qa, 13); drawCharge(ctx, PX(c2.x), PY(c2.y), qb, 13);
+  label(ctx, 'q₁ ' + fmtQ(qa), PX(c1.x), PY(c1.y) + 28, COL.text, 12, 'center'); label(ctx, 'q₂ ' + fmtQ(qb), PX(c2.x), PY(c2.y) + 28, COL.text, 12, 'center');
+  dot(ctx, PX(xo), PY(yo), 5, '#fff');
+  if (Math.hypot(xo - c1.x, yo - c1.y) < 0.15 || Math.hypot(xo - c2.x, yo - c2.y) < 0.15) { label(ctx, '관측점이 전하와 너무 가깝다', api.width / 2, 24, COL.warn, 15, 'center'); api.setReadout([['상태', 'r → 0 : E 정의 불가']]); return; }
+  const e1 = fieldAt([c1], xo, yo), e2 = fieldAt([c2], xo, yo), en = [e1[0] + e2[0], e1[1] + e2[1]];
+  if (CH(api, 'map', 'off') !== 'grid') {
+    // 꼬리-머리 합성: E1 끝에서 E2를 이어 붙인다
+    line(ctx, PX(xo + SF_NM * e1[0]), PY(yo + SF_NM * e1[1]), PX(xo + SF_NM * en[0]), PY(yo + SF_NM * en[1]), COL.v2, 1.5, [4, 4]);
+    line(ctx, PX(xo + SF_NM * e2[0]), PY(yo + SF_NM * e2[1]), PX(xo + SF_NM * en[0]), PY(yo + SF_NM * en[1]), COL.trail, 1.5, [4, 4]);
+  }
+  arrow(ctx, PX(xo), PY(yo), PX(xo + SF_NM * e1[0]), PY(yo + SF_NM * e1[1]), COL.trail, 3);
+  arrow(ctx, PX(xo), PY(yo), PX(xo + SF_NM * e2[0]), PY(yo + SF_NM * e2[1]), COL.v2, 3);
+  arrow(ctx, PX(xo), PY(yo), PX(xo + SF_NM * en[0]), PY(yo + SF_NM * en[1]), COL.E, 5);
+  label(ctx, 'E₁', PX(xo + SF_NM * e1[0]) + 8, PY(yo + SF_NM * e1[1]) - 6, COL.trail, 14); label(ctx, 'E₂', PX(xo + SF_NM * e2[0]) + 8, PY(yo + SF_NM * e2[1]) + 12, COL.v2, 14);
+  label(ctx, 'E_net', PX(xo + SF_NM * en[0]) + 8, PY(yo + SF_NM * en[1]) - 10, COL.E, 15);
+  const m = a => Math.hypot(a[0], a[1]);
+  api.setReadout([['|E₁|', sci(m(e1)) + ' N/C'], ['|E₂|', sci(m(e2)) + ' N/C'], ['E_net = E₁ + E₂', '(' + sci(en[0]) + ', ' + sci(en[1]) + ')'], ['|E_net|', sci(m(en)) + ' N/C'], ['E_net 방향', m(en) > 0 ? (Math.atan2(en[1], en[0]) * 180 / Math.PI).toFixed(0) + '°' : '—']]);
+  api.setNote('관측점을 끌어 옮겨 보세요. 각 전하가 만든 장 E₁, E₂를 따로 구한 뒤 벡터로 더한 것이 E_net 입니다. 코드의 "E_net = E_net + E" 는 등식이 아니라 "지금까지 더한 값에 E를 더해 다시 저장하라"는 갱신 명령입니다. 장 지도에서 화살표는 방향만 나타내고 밝기가 |E|를 나타냅니다.');
+}
+
+// ===== 4. 입자 운동 예측 (갱신 루프) =====
+function b1Energy(s) { const r = Math.hypot(s.x, s.y); return 0.5 * (s.px * s.px + s.py * s.py) / s.m + K * s.qs * s.qm * QE * QE / r; }
+function b1Step(s) {
+  const r = Math.hypot(s.x, s.y), E = K * s.qs * QE / (r * r), F = s.qm * QE * E; // E를 매 스텝 새 위치에서 다시 계산
+  s.px += F * (s.x / r) * s.dt; s.py += F * (s.y / r) * s.dt; // p ← p + F Δt
+  s.x += s.px / s.m * s.dt; s.y += s.py / s.m * s.dt;         // r ← r + (p/m) Δt
+  s.t += s.dt; s.steps++;
+}
+function b1Reset(api) {
+  const qs = G(api, 'qs', 1), qm = G(api, 'qm', -1), m = G(api, 'mm', 1) * ME, r0 = G(api, 'r0', 1.5) * NM, ns = Math.max(20, G(api, 'ns', 400)), mode = CH(api, 'launch', 'circle');
+  const kk = Math.max(K * Math.abs(qs * qm) * QE * QE, K * 0.01 * QE * QE), T = 2 * Math.PI * Math.sqrt(m * r0 * r0 * r0 / kk), vc = Math.sqrt(kk / (m * r0));
+  let vx = 0, vy = 0;
+  if (mode === 'circle') vy = vc; else if (mode === 'free') { const v = G(api, 'v0', 4) * 1e5, a = G(api, 'ang', 90) * Math.PI / 180; vx = v * Math.cos(a); vy = v * Math.sin(a); }
+  const s = { x: r0, y: 0, px: m * vx, py: m * vy, m, qs, qm, T, dt: T / ns, acc: 0, t: 0, steps: 0, trail: [[r0, 0]], halt: null, r0, pref: m * vc, Eref: K * Math.max(Math.abs(qs), 0.01) * QE / (r0 * r0) };
+  s.E0 = b1Energy(s); s.maxDrift = 0; return s;
+}
+function drawB1(api) {
+  const s = ST.s, ctx = clear(api); setView(api, 3, 0, 0); gridNm(ctx, api);
+  ctx.strokeStyle = COL.trail; ctx.lineWidth = 2; ctx.beginPath(); s.trail.forEach((p, i) => { const x = PX(p[0] / NM), y = PY(p[1] / NM); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }); ctx.stroke();
+  drawCharge(ctx, PX(0), PY(0), s.qs, 14);
+  const xn = s.x / NM, yn = s.y / NM, r = Math.hypot(s.x, s.y), E = K * s.qs * QE / (r * r), Ex = E * s.x / r, Ey = E * s.y / r;
+  dot(ctx, PX(xn), PY(yn), 8, s.qm > 0 ? COL.pos : s.qm < 0 ? COL.neg : '#aaa', '#fff');
+  const lenE = Math.min(1.8, 0.35 * Math.abs(E) / s.Eref); if (Math.abs(E) > 0) arrow(ctx, PX(xn), PY(yn), PX(xn + lenE * Ex / Math.abs(E)), PY(yn + lenE * Ey / Math.abs(E)), COL.E, 3);
+  const pm = Math.hypot(s.px, s.py), lenP = Math.min(1.8, 0.35 * pm / s.pref); if (pm > 0) arrow(ctx, PX(xn), PY(yn), PX(xn + lenP * s.px / pm), PY(yn + lenP * s.py / pm), COL.p, 3);
+  label(ctx, 'E', PX(xn) + 14, PY(yn) - 16, COL.E, 13); label(ctx, 'p', PX(xn) - 18, PY(yn) - 16, COL.p, 13);
+  const ke = 0.5 * pm * pm / s.m / QE, U = K * s.qs * s.qm * QE * QE / r / QE, Et = b1Energy(s), drift = (Et / s.E0 - 1) * 100;
+  api.setReadout([['시간 t', (s.t * 1e15).toFixed(1) + ' fs'], ['루프 반복 횟수', String(s.steps)], ['r (전하까지 거리)', (r / NM).toFixed(3) + ' nm'], ['속력 |p|/m', sci(pm / s.m) + ' m/s'], ['운동에너지 K', ke.toFixed(2) + ' eV'], ['퍼텐셜에너지 U', U.toFixed(2) + ' eV'], ['총에너지 K + U 변화', (drift >= 0 ? '+' : '') + drift.toFixed(2) + ' %']]);
+  api.setStatus(s.halt ? s.halt : '진행 중 — 루프 ' + s.steps + '회');
+  api.setNote('반복 루프: ① 입자 위치에서 E 계산 → ② F = qE → ③ p ← p + F·Δt → ④ r ← r + (p/m)·Δt. E는 입자가 움직일 때마다 새로 계산해야 합니다(위치가 바뀌면 그 자리의 E도 달라지므로). ' + (s.qm < 0 ? '입자 전하가 음(−)이므로 F는 E와 반대 방향입니다.' : s.qm > 0 ? '입자 전하가 양(+)이므로 F는 E와 같은 방향입니다.' : '입자 전하가 0이므로 힘이 없습니다.') + ' "Δt 간격" 슬라이더를 줄여 보면 총에너지 변화가 어떻게 달라질까요?');
+}
+function advanceB1(api, dt) {
+  const s = ST.s; if (s.halt) return; s.acc += dt * s.T / 5; let n = 0, last = 0;
+  while (s.acc >= s.dt && n++ < 4000) {
+    b1Step(s); s.acc -= s.dt; const r = Math.hypot(s.x, s.y);
+    if (r < 0.04 * NM) { s.halt = '충돌: r → 0 (점전하 모형의 한계 — 힘이 무한대로 커진다)'; break; }
+    if (r > 40 * NM) { s.halt = '장 영역 밖으로 멀어짐 — 초기화(↺)로 다시 시작'; break; }
+    if (s.steps % 2 === 0) { s.trail.push([s.x, s.y]); if (s.trail.length > 4000) s.trail.shift(); }
+    last = Math.abs(b1Energy(s) / s.E0 - 1); if (last > s.maxDrift) s.maxDrift = last;
+  }
+}
+
+// ===== 5. 균일한 전기장 속 하전입자 =====
+function b2Make(Ef, v0, angDeg, kind) {
+  const pc = kind === 'p' ? { q: QE, m: MP, name: '양성자' } : kind === 'a' ? { q: 2 * QE, m: MALPHA, name: '알파 입자' } : { q: -QE, m: ME, name: '전자' };
+  const L = 0.05, H = 0.04, y0 = 0.03, ang = angDeg * Math.PI / 180, vx = v0 * Math.cos(ang), vy = v0 * Math.sin(ang), a = pc.q * Ef / pc.m; // 장은 +y 방향
+  let tend = L / vx, kindEnd = 'right';
+  [[0, 'bottom'], [H, 'top']].forEach(pr => {
+    const A = 0.5 * a, B = vy, C = y0 - pr[0], roots = [];
+    if (Math.abs(A) < 1e-30) { if (Math.abs(B) > 1e-30) roots.push(-C / B); } else { const D = B * B - 4 * A * C; if (D >= 0) { const sq = Math.sqrt(D); roots.push((-B - sq) / (2 * A), (-B + sq) / (2 * A)); } }
+    roots.forEach(t => { if (t > 1e-18 && t < tend) { tend = t; kindEnd = pr[1]; } });
+  });
+  const xe = vx * tend, ye = y0 + vy * tend + 0.5 * a * tend * tend, vye = vy + a * tend;
+  return { pc, Ef, v0, L, H, y0, a, vx, vy, tend, kindEnd, xe, ye, vye };
+}
+function b2Pos(par, t) {
+  if (t <= par.tend) return { x: par.vx * t, y: par.y0 + par.vy * t + 0.5 * par.a * t * t, vy: par.vy + par.a * t, in: true };
+  if (par.kindEnd === 'bottom') return { x: par.xe, y: 0, vy: 0, in: true, stopped: true };
+  const d = t - par.tend; return { x: par.xe + par.vx * d, y: par.ye + par.vye * d, vy: par.vye, in: false };
+}
+function b2Reset(api) {
+  const par = b2Make(G(api, 'Ef', 5000), G(api, 'v0b', 10) * 1e6, G(api, 'angb', 0), CH(api, 'pcl', 'e'));
+  const Ttot = par.kindEnd === 'bottom' ? par.tend * 1.15 : par.tend + Math.max(0, (0.09 - par.xe)) / par.vx;
+  return { par, t: 0, T: Ttot, hold: 0, trail: [] };
+}
+function drawB2(api) {
+  const s = ST.s, par = s.par, ctx = clear(api); setView(api, 0.055, 0.035, 0.02);
+  const bx = PX(0), by = PY(par.H), bw = par.L * V.s, bh = par.H * V.s;
+  ctx.fillStyle = 'rgba(255,159,26,0.08)'; ctx.fillRect(bx, by, bw, bh); ctx.strokeStyle = COL.sub; ctx.lineWidth = 2; ctx.strokeRect(bx, by, bw, bh);
+  for (let i = 1; i <= 7; i++) for (let j = 1; j <= 3; j++) { const x = par.L * i / 8, y = par.H * j / 4; arrow(ctx, PX(x), PY(y - 0.004), PX(x), PY(y + 0.004), COL.E, 2, 7); }
+  label(ctx, '균일한 E  (위쪽)', bx + 8, by + 14, COL.E, 13); label(ctx, 'E = 0', PX(-0.012), PY(par.H) + 14, COL.sub, 13, 'center'); label(ctx, 'E = 0', PX(0.075), PY(par.H) + 14, COL.sub, 13, 'center');
+  ctx.fillStyle = COL.bg; ctx.fillRect(bx - 3, PY(par.y0 + 0.002), 6, 0.004 * V.s); label(ctx, '입구', bx - 6, PY(par.y0) - 16, COL.sub, 12, 'center');
+  // 궤적(해석해) 점선
+  ctx.strokeStyle = COL.trail; ctx.lineWidth = 1.5; ctx.setLineDash([4, 5]); ctx.beginPath();
+  const tmax = s.T; for (let i = 0; i <= 120; i++) { const p = b2Pos(par, tmax * i / 120); if (i) ctx.lineTo(PX(p.x), PY(p.y)); else ctx.moveTo(PX(p.x), PY(p.y)); } ctx.stroke(); ctx.setLineDash([]);
+  const p = b2Pos(par, Math.min(s.t, s.T)), px = PX(p.x), py = PY(p.y);
+  dot(ctx, px, py, 8, par.pc.q > 0 ? COL.pos : COL.neg, '#fff');
+  const fy = par.pc.q > 0 ? -34 : 34; // 화면 y는 아래가 +: 양전하는 위(E 방향), 음전하는 아래
+  if (p.in) { arrow(ctx, px, py, px, py + fy, '#ffffff', 3); label(ctx, 'F = qE', px + 14, py + fy, '#fff', 13); }
+  const F = Math.abs(par.pc.q) * par.Ef, ex = par.kindEnd === 'bottom' ? '아래판에 충돌' : par.kindEnd === 'top' ? '위쪽으로 탈출' : '오른쪽으로 탈출';
+  api.setReadout([['입자', par.pc.name + ' (q = ' + (par.pc.q / QE).toFixed(0) + 'e)'], ['힘 |F| = |q|E', sci(F) + ' N'], ['가속도 a = qE/m', sci(Math.abs(par.a)) + ' m/s²'], ['장 영역 통과 시간', (par.tend * 1e9).toFixed(2) + ' ns'], ['결과', ex], ['y 변위', ((par.ye - par.y0) * 1000).toFixed(2) + ' mm'], ['탈출 방향', par.kindEnd === 'bottom' ? '—' : (Math.atan2(par.vye, par.vx) * 180 / Math.PI).toFixed(1) + '°']]);
+  api.setStatus('t = ' + (Math.min(s.t, s.T) * 1e9).toFixed(2) + ' ns' + (p.in ? ' · 장 안: 포물선 운동' : ' · 장 밖: 등속 직선'));
+  api.setNote('음(−)전하는 힘이 E와 반대 방향이라 위쪽 E 속에서 아래로 휩니다. 장 안은 위로 던진 공처럼 y = y₀ + v_y t + ½at² (포물선), 밖은 등속 직선입니다. 체크포인트: E = 5000 N/C 에서 전자의 |F| = (1.6×10⁻¹⁹)(5000) = 8×10⁻¹⁶ N. 같은 장에서 힘이 1.6×10⁻¹⁵ N 이면 |q| = F/E = 3.2×10⁻¹⁹ C = 2e. 입자 종류를 바꿔 질량이 편향에 미치는 영향을 비교해 보세요.');
+}
+
+// ===== 6. 지연: 장은 빛의 속도로 전파된다 =====
+function c1Reset(api) { const r = G(api, 'rd', 9), ev = CH(api, 'evt', 'move'), Tend = 2.4 * r / CL * 1e9; return { r, ev, Tend, t: -0.15 * Tend, hold: 0 }; }
+function c1Charges(s, moved) {
+  if (s.ev === 'move') return [{ x: -s.r / 2, y: moved ? 0.25 * s.r : 0, q: 1 }];
+  const sp = 0.2 * s.r; return [{ x: -s.r / 2, y: sp / 2, q: 1 }, { x: -s.r / 2, y: -sp / 2, q: -1 }];
+}
+function fieldM(ch, x, y) { let ex = 0, ey = 0; ch.forEach(c => { const dx = x - c.x, dy = y - c.y, r2 = dx * dx + dy * dy, r = Math.sqrt(r2), f = K * c.q * QE / r2; ex += f * dx / r; ey += f * dy / r; }); return [ex, ey]; }
+function drawC1(api) {
+  const s = ST.s, ctx = clear(api), r = s.r; setView(api, 0.75 * r, 0, 0);
+  const obs = { x: r / 2, y: 0 }, tarr = r / CL * 1e9, arrived = s.t >= tarr, rc = CL * Math.max(s.t, 0) * 1e-9;
+  line(ctx, PX(-r / 2), PY(0), PX(obs.x), PY(0), COL.ghost, 1.2, [6, 5]); label(ctx, 'r = ' + r + ' m', PX(0), PY(0) + 16, COL.sub, 13, 'center');
+  if (rc > 0) { ctx.fillStyle = 'rgba(255,214,10,0.06)'; ctx.beginPath(); ctx.arc(PX(-r / 2), PY(0), rc * V.s, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = COL.warn; ctx.lineWidth = 2; ctx.setLineDash([8, 6]); ctx.stroke(); ctx.setLineDash([]); label(ctx, '변화의 소식이 퍼지는 경계 (반지름 = c·t = ' + rc.toFixed(1) + ' m)', PX(-r / 2), PY(0) - rc * V.s - 10 < 16 ? 16 : PY(0) - rc * V.s - 10, COL.warn, 12, 'center'); }
+  const chOld = c1Charges(s, false);
+  if (s.t < 0) chOld.forEach(c => drawCharge(ctx, PX(c.x), PY(c.y), c.q, 12));
+  else if (s.ev === 'move') { const c0 = chOld[0]; ctx.strokeStyle = COL.ghost; ctx.setLineDash([4, 4]); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(PX(c0.x), PY(c0.y), 12, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); label(ctx, '옛 위치', PX(c0.x), PY(c0.y) + 26, COL.ghost, 12, 'center'); const c1 = c1Charges(s, true)[0]; drawCharge(ctx, PX(c1.x), PY(c1.y), c1.q, 12); label(ctx, '새 위치', PX(c1.x), PY(c1.y) - 24, COL.text, 12, 'center'); }
+  else { label(ctx, 'e⁻ + e⁺ → γ + γ', PX(-r / 2), PY(0) - 20, COL.text, 14, 'center'); label(ctx, '(전하가 없어졌다)', PX(-r / 2), PY(0) + 4, COL.ghost, 12, 'center'); }
+  dot(ctx, PX(obs.x), PY(obs.y), 6, '#fff'); label(ctx, '관측점', PX(obs.x), PY(obs.y) + 22, COL.text, 13, 'center');
+  const E0 = Math.hypot.apply(null, fieldM(chOld, obs.x, obs.y)), sf = 0.2 * r / E0; let txt = '';
+  if (s.ev === 'move') { const e = fieldM(c1Charges(s, arrived), obs.x, obs.y); arrow(ctx, PX(obs.x), PY(obs.y), PX(obs.x + sf * e[0]), PY(obs.y + sf * e[1]), COL.E, 4); txt = arrived ? '새 위치 기준의 장' : '옛 위치 기준의 장 (그대로)'; }
+  else if (!arrived) { const e = fieldM(chOld, obs.x, obs.y); arrow(ctx, PX(obs.x), PY(obs.y), PX(obs.x + sf * e[0]), PY(obs.y + sf * e[1]), COL.E, 4); txt = '쌍극자의 장이 그대로 남아 있다'; } else txt = '장이 사라졌다 (E = 0)';
+  label(ctx, 'E', PX(obs.x) + 12, PY(obs.y) - 20, COL.E, 14);
+  // 시간 막대
+  const w = api.width, y = api.height - 26, x0 = 40, x1 = w - 40, tm = t => x0 + (t + 0.15 * s.Tend) / (1.15 * s.Tend) * (x1 - x0);
+  line(ctx, x0, y, x1, y, COL.axis, 4); line(ctx, tm(0), y - 10, tm(0), y + 10, COL.warn, 2); line(ctx, tm(tarr), y - 10, tm(tarr), y + 10, COL.E, 2);
+  label(ctx, '사건 t = 0', tm(0), y - 18, COL.warn, 12, 'center'); label(ctx, '도착 t = r/c = ' + tarr.toFixed(1) + ' ns', tm(tarr), y - 18, COL.E, 12, 'center'); dot(ctx, tm(Math.min(s.t, s.Tend)), y, 6, '#fff');
+  api.setReadout([['시간 t', s.t.toFixed(1) + ' ns'], ['빛이 간 거리 c·t', Math.max(0, rc).toFixed(1) + ' m'], ['지연 시간 r/c', tarr.toFixed(1) + ' ns'], ['관측점의 장', txt]]);
+  api.setStatus(s.t < 0 ? '사건 전: 관측점은 전하의 장을 느끼고 있다' : (!arrived ? '전하는 이미 ' + (s.ev === 'move' ? '움직였지만' : '사라졌지만') + ' 관측점의 E는 그대로 — 소식이 아직 도착하지 않았다' : (r / CL * 1e9).toFixed(0) + ' ns 경과: 소식이 도착해 E가 ' + (s.ev === 'move' ? '바뀌었다' : '사라졌다')));
+  api.setNote('빛은 1 ns에 약 30 cm(1 ft) 갑니다. 전하가 갑자기 움직이거나 사라져도, 거리 r만큼 떨어진 관측점은 r/c 동안 옛 장을 그대로 느낍니다. 그동안 장은 "원천 전하와 독립적으로" 공간에 존재하는 셈입니다. 그래서 장은 계산 도구만이 아니라 실재하는 것으로 봅니다. (가속 순간에 생기는 복사 펄스는 여기서 생략)');
+}
+
+// ===== 7. 상대론적 장 =====
+function c3Ratio(beta, theta) { const s2 = Math.sin(theta) * Math.sin(theta); return (1 - beta * beta) / Math.pow(1 - beta * beta * s2, 1.5); } // E/E0 (E0 = 정지 전하의 장)
+function drawC3(api) {
+  const ctx = clear(api), w = api.width, h = api.height, cx = w / 2, cy = h / 2, beta = G(api, 'beta', 0.8), n = Math.round(G(api, 'nr', 24)), both = CH(api, 'cmp', 'both') === 'both';
+  const gamma = 1 / Math.sqrt(1 - beta * beta), R = 0.18 * h, L0 = 0.35 * R;
+  for (let k = 0; k < n; k++) {
+    const th = 2 * Math.PI * k / n, ux = Math.cos(th), uy = -Math.sin(th), x = cx + R * ux, y = cy + R * uy, f = c3Ratio(beta, th);
+    if (both) arrow(ctx, x, y, x + L0 * ux, y + L0 * uy, COL.ghost, 2, 7);
+    arrow(ctx, x, y, x + L0 * f * ux, y + L0 * f * uy, COL.E, 3, 8);
+  }
+  drawCharge(ctx, cx, cy, 1, 12);
+  if (beta > 0) { arrow(ctx, cx + 16, cy, cx + 16 + 30 + 60 * beta, cy, COL.p, 4); label(ctx, 'v = ' + beta.toFixed(2) + ' c', cx + 20 + 30 + 60 * beta, cy - 12, COL.p, 14); }
+  label(ctx, '정지한 전하의 장은 어느 방향이나 같은 길이(회색)', 16, 22, COL.ghost, 13); label(ctx, '빠르게 움직이는 전하의 장(주황): 운동 방향은 짧고 옆 방향은 길다', 16, 42, COL.E, 13);
+  api.setReadout([['β = v/c', beta.toFixed(2)], ['γ = 1/√(1−β²)', gamma.toFixed(2)], ['옆 방향 E⊥ / E₀', (c3Ratio(beta, Math.PI / 2)).toFixed(2) + '  (= γ)'], ['운동 방향 E∥ / E₀', (c3Ratio(beta, 0)).toFixed(3) + '  (= 1/γ²)'], ['장 패턴', beta < 0.05 ? '거의 구대칭 (쿨롱 법칙이 좋은 근사)' : '구대칭이 깨짐 (쿨롱 법칙만으로는 부족)']]);
+  api.setNote('같은 거리의 점들에서 비교한 그림입니다(거리는 전하의 "현재" 위치에서 잰 값). 속도가 광속에 가까울수록 장이 운동 방향에 수직인 평면으로 납작하게 몰립니다. 느린 입자(β ≪ 1)에서는 쿨롱 법칙 E = kq/r² 이 매우 좋은 근사지만, 빠른 입자에서는 γ 인자가 필요합니다. 교재가 말한 "y, z 성분이 γ배"는 이 그림의 옆 방향(θ = 90°) 값입니다.');
+}
+
+// ===== SIM =====
+function animId(id) { return id === 'b1' || id === 'b2' || id === 'c1'; }
+function sigOf(api, id) {
+  const keys = { b1: ['qs', 'qm', 'mm', 'r0', 'v0', 'ang', 'ns'], b2: ['Ef', 'v0b', 'angb'], c1: ['rd'] }[id], ck = { b1: 'launch', b2: 'pcl', c1: 'evt' }[id];
+  return id + '|' + keys.map(k => G(api, k, 0)).join(',') + '|' + CH(api, ck, '');
+}
+function syncAnim(api, id) { const sg = sigOf(api, id); if (ST.sig !== sg || !ST.s) { ST.sig = sg; ST.s = id === 'b1' ? b1Reset(api) : id === 'b2' ? b2Reset(api) : c1Reset(api); } }
+function drawAny(api, id) {
+  if (id === 'a1') drawA1(api); else if (id === 'a2') drawA2(api); else if (id === 'a3') drawA3(api);
+  else if (id === 'b1') drawB1(api); else if (id === 'b2') drawB2(api); else if (id === 'c1') drawC1(api); else if (id === 'c3') drawC3(api);
+}
+function worldFromEvent(e, cv) { const r = cv.getBoundingClientRect(), px = (e.clientX - r.left) * API.width / r.width, py = (e.clientY - r.top) * API.height / r.height; return [(px - V.cx) / V.s, (V.cy - py) / V.s]; }
+function snap(v, lim, st) { v = Math.max(-lim, Math.min(lim, v)); return +(Math.round(v / st) * st).toFixed(3); }
+function dragTo(e, cv) {
+  const id = API.scenario && API.scenario.id; if (id !== 'a1' && id !== 'a3') return;
+  const w = worldFromEvent(e, cv); try { API.setParam('xo', snap(w[0], 2.8, 0.05)); API.setParam('yo', snap(w[1], 1.4, 0.05)); } catch (err) { /* 슬라이더 연동 실패 시 무시 */ }
+}
+
+const SIM = {
+  init(api) {
+    API = api; const cv = api.ctx && api.ctx.canvas;
+    if (cv && !cv._efBound) {
+      cv._efBound = true; cv.style.touchAction = 'none';
+      cv.addEventListener('pointerdown', e => { DRAG = true; try { cv.setPointerCapture(e.pointerId); } catch (_) { } dragTo(e, cv); });
+      cv.addEventListener('pointermove', e => { if (DRAG) dragTo(e, cv); });
+      const up = () => { DRAG = false; }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+    }
+  },
+  enter(api) { API = api; ST.sig = null; ST.s = null; },
+  reset(api) { API = api; ST.sig = null; ST.s = null; },
+  update(api) { API = api; const id = api.scenario.id; if (animId(id)) syncAnim(api, id); drawAny(api, id); },
+  frame(api, dt) {
+    API = api; const id = api.scenario.id; if (!animId(id)) return;
+    if (dt > 1) dt /= 1000; dt = Math.min(dt, 0.05); syncAnim(api, id); const s = ST.s;
+    if (id === 'b1') advanceB1(api, dt);
+    else if (id === 'b2') { s.t += dt * s.T / 5; if (s.t > s.T) { s.t = s.T; s.hold += dt; if (s.hold > 1.2) { s.t = 0; s.hold = 0; } } }
+    else if (id === 'c1') { s.t += dt * s.Tend * 1.15 / 6; if (s.t > s.Tend) { s.t = s.Tend; s.hold += dt; if (s.hold > 1.2) { s.t = -0.15 * s.Tend; s.hold = 0; } } }
+    drawAny(api, id);
+  },
+  tests() {
+    const T = [], ok = (n, c, d) => T.push([n, !!c, d]), near = (a, b, tol) => Math.abs(a / b - 1) < tol;
+    const q1 = [{ x: 0, y: 0, q: 1 }];
+    { const e = fieldAt(q1, 1, 0)[0], ex = K * QE / (NM * NM); ok('점전하 E = kq/r² (r = 1 nm)', near(e, ex, 1e-9), sci(e) + ' vs ' + sci(ex) + ' N/C'); }
+    { const a = Math.hypot.apply(null, fieldAt(q1, 1.5, 0)), b = Math.hypot.apply(null, fieldAt(q1, 3, 0)); ok('거리를 2배로 하면 E는 1/4', near(a / b, 4, 1e-9), (a / b).toFixed(6)); }
+    { const e = fieldAt([{ x: 0, y: 0, q: -1 }], 1, 1); ok('음전하의 E는 전하 쪽을 향한다', e[0] < 0 && e[1] < 0, '(' + sci(e[0]) + ', ' + sci(e[1]) + ')'); }
+    { const e = fieldAt([{ x: 0, y: 0, q: 2 }], 0.7, -0.9), m = Math.hypot(e[0], e[1]), r = Math.hypot(0.7, 0.9) * NM; ok('E의 크기가 방향과 무관 (구대칭, q=2e)', near(m, K * 2 * QE / (r * r), 1e-9), sci(m) + ' N/C'); }
+    { const d = 2, y = 1.5, e = fieldAt([{ x: -1, y: 0, q: 1 }, { x: 1, y: 0, q: -1 }], 0, y), ex = 2 * K * QE * (d / 2 * NM) / Math.pow((y * NM) * (y * NM) + (d / 2 * NM) * (d / 2 * NM), 1.5); ok('쌍극자 수직이등분선: E = 2kq(d/2)/(r²+(d/2)²)^{3/2}, E_y = 0', near(e[0], ex, 1e-9) && Math.abs(e[1]) < 1e-6 * Math.abs(e[0]), sci(e[0]) + ' vs ' + sci(ex)); }
+    { const A = { x: -1, y: 0.2, q: 1.5 }, B = { x: 0.8, y: -0.3, q: -2 }, e = fieldAt([A, B], 0.3, 1.1), e1 = fieldAt([A], 0.3, 1.1), e2 = fieldAt([B], 0.3, 1.1); ok('중첩: E_net = E₁ + E₂', near(e[0], e1[0] + e2[0], 1e-9) && near(e[1], e1[1] + e2[1], 1e-9), '성분별 일치'); }
+    { let bad = 0; [[3, 0.15, 0], [-3, 0, 1.4], [3, 2.8, 1.4], [0.5, -2.8, -1.4]].forEach(a => { const e = fieldAt([{ x: 0, y: 0, q: a[0] }], a[1], a[2]); if (!isFinite(e[0]) || !isFinite(e[1])) bad++; }); ok('슬라이더 끝값에서 NaN/무한대 없음', bad === 0, '검사 4개 지점'); }
+    // 입자 운동 (갱신 루프)
+    {
+      const m = ME, r0 = 1.5 * NM, kk = K * QE * QE, per = 2 * Math.PI * Math.sqrt(m * r0 * r0 * r0 / kk), vc = Math.sqrt(kk / (m * r0)), N = 2000;
+      const s = { x: r0, y: 0, px: 0, py: m * vc, m, qs: 1, qm: -1, dt: per / N, t: 0, steps: 0 }, E0 = b1Energy(s), L0 = s.x * s.py - s.y * s.px; let mdE = 0, mdr = 0;
+      for (let i = 0; i < N; i++) { b1Step(s); mdE = Math.max(mdE, Math.abs(b1Energy(s) / E0 - 1)); mdr = Math.max(mdr, Math.abs(Math.hypot(s.x, s.y) / r0 - 1)); }
+      const L1 = s.x * s.py - s.y * s.px;
+      ok('원궤도(전자, r=1.5 nm): 1주기 동안 반지름 편차 < 1%', mdr < 0.01, (mdr * 100).toFixed(3) + ' %');
+      ok('에너지 K+U 변화 < 1% (Δt = T/2000)', mdE < 0.01, (mdE * 100).toFixed(4) + ' %');
+      ok('중심력이므로 각운동량 보존', near(L1, L0, 1e-9), sci(L1) + ' vs ' + sci(L0));
+      ok('1주기 뒤 출발점으로 복귀 (원궤도 주기 T = 2π√(mr³/kq²))', Math.hypot(s.x - r0, s.y) / r0 < 0.01, 'T = ' + (per * 1e15).toFixed(2) + ' fs');
+    }
+    { const s = { x: 1.5 * NM, y: 0, px: 0, py: 0, m: ME, qs: 1, qm: -1, dt: 1e-17, t: 0, steps: 0 }; b1Step(s); ok('인력: 정지에서 출발한 전자는 +전하 쪽(−x)으로 가속', s.px < 0, 'p_x = ' + sci(s.px)); }
+    // 균일한 전기장
+    {
+      const p = b2Make(5000, 1e7, 0, 'e'), F = QE * 5000; ok('체크포인트 8: 전자의 |F| = eE = 8.0×10⁻¹⁶ N', near(F, 8.0108e-16, 1e-3), sci(F) + ' N');
+      ok('전자는 위쪽 E 속에서 아래로 휜다', p.ye < p.y0 && p.a < 0, 'Δy = ' + ((p.ye - p.y0) * 1000).toFixed(2) + ' mm');
+      const t = p.L / p.vx, dy = 0.5 * p.a * t * t; ok('편향 Δy = ½a(L/v)²', p.kindEnd === 'right' && near(p.ye - p.y0, dy, 1e-9), sci(dy) + ' m');
+      const dK = 0.5 * p.pc.m * (p.vx * p.vx + p.vye * p.vye - p.v0 * p.v0), W = p.pc.q * p.Ef * (p.ye - p.y0); ok('일-에너지 정리: ΔK = qE·Δy', near(dK, W, 1e-6), sci(dK) + ' J');
+      const pp = b2Make(5000, 1e7, 0, 'p'); ok('양성자는 같은 장에서 거의 휘지 않는다 (a_e/a_p = m_p/m_e)', near(p.a / pp.a, -MP / ME, 1e-9), '질량비 ' + (MP / ME).toFixed(0));
+      const q = 1.6e-15 / 5000; ok('체크포인트 8: F = 1.6×10⁻¹⁵ N 이면 |q| = F/E ≈ 2e', near(q / QE, 2, 5e-3), (q / QE).toFixed(3) + ' e');
+    }
+    // 지연
+    ok('지연 시간: r = 9 m 이면 r/c = 30 ns', near(9 / CL * 1e9, 30, 1e-3), (9 / CL * 1e9).toFixed(3) + ' ns');
+    ok('빛은 1 ns에 약 30 cm', near(CL * 1e-9, 0.3, 1e-3), (CL * 1e-9 * 100).toFixed(2) + ' cm');
+    // 상대론적 장
+    {
+      const b = 0.9, g = 1 / Math.sqrt(1 - b * b);
+      ok('옆 방향(θ=90°): E⊥ = γE₀', near(c3Ratio(b, Math.PI / 2), g, 1e-9), c3Ratio(b, Math.PI / 2).toFixed(4) + ' vs ' + g.toFixed(4));
+      ok('운동 방향(θ=0): E∥ = E₀/γ²', near(c3Ratio(b, 0), 1 / (g * g), 1e-9), c3Ratio(b, 0).toFixed(4));
+      ok('β → 0 이면 구대칭(쿨롱 법칙으로 복귀)', Math.abs(c3Ratio(0, 0.7) - 1) < 1e-12, '비 = ' + c3Ratio(0, 0.7));
+      const N = 20000; let sum = 0; for (let i = 0; i < N; i++) { const th = (i + 0.5) * Math.PI / N; sum += c3Ratio(b, th) * Math.sin(th) * Math.PI / N; }
+      ok('가우스 법칙: 전체 플럭스 불변 (∫E_r dA = q/ε₀)', Math.abs(sum - 2) < 1e-4, '∫ = ' + sum.toFixed(6) + ' (기대값 2)');
+    }
+    return T;
+  }
+};
+
+</script>
+<script>
+"use strict";
+/* ============================ 공용 UI 프레임워크 (템플릿) ============================ */
+(function () {
+  const C = WS_CONFIG;
+  const $ = (id) => document.getElementById(id);
+  const P = {};
+  const ui = { tab: C.tabs[0].id, scenarioId: null, playing: false };
+  const lastScenarioOfTab = {};
+
+  function addDefaults(params) { (params || []).forEach(p => { if (!(p.key in P)) P[p.key] = p.value; }); }
+  C.scenarios.forEach(s => { addDefaults(s.params); addDefaults(s.choices); });
+  if (C.common_params) addDefaults(C.common_params.params);
+
+  function current() { return C.scenarios.find(s => s.id === ui.scenarioId); }
+  function scenariosOfTab(tab) { return C.scenarios.filter(s => s.tab === tab); }
+  function fmtVal(v, unit) {
+    if (!unit) return String(v);
+    return /^[°%′″]/.test(unit) ? v + unit : v + " " + unit;
+  }
+
+  function showError(where, e) {
+    const box = $("simError");
+    box.hidden = false;
+    box.textContent = "시뮬레이션 오류 (" + where + "): " + (e && e.message ? e.message : e);
+    console.error(e);
+  }
+  const SIMOBJ = (typeof SIM !== "undefined") ? SIM : null;
+  function call(hook, ...args) {
+    if (!SIMOBJ || typeof SIMOBJ[hook] !== "function") return undefined;
+    try { return SIMOBJ[hook](api, ...args); } catch (e) { showError(hook, e); return undefined; }
+  }
+
+  /* ---------- 렌더러 ---------- */
+  const wrap = $("sceneWrap");
+  const api = {
+    config: C, P,
+    get scenario() { return current(); },
+    get tab() { return ui.tab; },
+    get playing() { return ui.playing; },
+    setPlaying(b) { ui.playing = !!b; updatePlayButton(); },
+    boxHalf: (C.scene && C.scene.box_half) || 16,
+    sceneEl: wrap,
+    THREE: window.THREE || null,
+    scene: null, camera: null, renderer: null, controls: null,
+    canvas: null, ctx: null, width: 0, height: 0,
+    custom: $("customPanel"),
+    chart: {
+      canvas: $("chartCanvas"),
+      ctx: $("chartCanvas").getContext("2d"),
+      setHint(html) { $("chartHint").innerHTML = html; },
+    },
+    setReadout(rows) {
+      const tbl = $("readout");
+      tbl.innerHTML = "";
+      (rows || []).forEach(r => {
+        const tr = document.createElement("tr");
+        const a = document.createElement("td"); a.textContent = r[0];
+        const b = document.createElement("td"); b.textContent = r[1];
+        tr.append(a, b); tbl.appendChild(tr);
+      });
+    },
+    setNote(text) { $("readoutNote").textContent = text || ""; },
+    setStatus(text) { const el = $("wsStatus"); if (el) el.textContent = text || ""; },
+    setParam(key, v) {
+      P[key] = v;
+      const el = $("p_" + key); if (el) el.value = v;
+      const vEl = $("p_" + key + "_val"); if (vEl) vEl.textContent = fmtVal(v, vEl.dataset.unit);
+    },
+    refresh() { call("update"); },
+  };
+
+  function initRenderer() {
+    const sc = C.scene || {};
+    if (C.renderer === "three") {
+      if (!window.THREE) { showError("init", "Three.js를 불러오지 못했습니다 (인터넷 연결 확인)"); return false; }
+      const T = window.THREE;
+      api.scene = new T.Scene();
+      api.camera = new T.PerspectiveCamera(45, wrap.clientWidth / wrap.clientHeight, 0.1, 500);
+      const cp = sc.camera || [26, 20, 30];
+      api.camera.position.set(cp[0], cp[1], cp[2]);
+      api.renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
+      api.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      wrap.insertBefore(api.renderer.domElement, wrap.firstChild);
+      api.controls = new T.OrbitControls(api.camera, api.renderer.domElement);
+      api.controls.enableDamping = true;
+      api.controls.dampingFactor = 0.08;
+      api.controls.target.set(0, 0, 0);
+      api.scene.add(new T.AmbientLight(0xffffff, 0.55));
+      const dl = new T.DirectionalLight(0xffffff, 0.9);
+      dl.position.set(20, 30, 15);
+      api.scene.add(dl);
+      if (sc.grid !== false) api.scene.add(new T.GridHelper(api.boxHalf * 2, 16, 0x3a5a8a, 0x1f3352));
+      if (sc.axes !== false) api.scene.add(new T.AxesHelper(api.boxHalf * 0.6));
+    } else {
+      api.canvas = document.createElement("canvas");
+      wrap.insertBefore(api.canvas, wrap.firstChild);
+      api.ctx = api.canvas.getContext("2d");
+    }
+    window.addEventListener("resize", onResize);
+    onResize();
+    return true;
+  }
+
+  function onResize() {
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    api.width = w; api.height = h;
+    if (api.renderer) {
+      api.camera.aspect = w / h;
+      api.camera.updateProjectionMatrix();
+      api.renderer.setSize(w, h);
+    } else if (api.canvas) {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      api.canvas.width = Math.round(w * dpr);
+      api.canvas.height = Math.round(h * dpr);
+      api.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (ui.scenarioId) call("update");
+    }
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    if (api.controls) api.controls.update();
+    call("frame", 1 / 60);
+    if (api.renderer) api.renderer.render(api.scene, api.camera);
+  }
+
+  /* ---------- UI ---------- */
+  function renderTabs() {
+    const box = $("tabs");
+    box.innerHTML = "";
+    box.hidden = C.tabs.length < 2;
+    C.tabs.forEach(t => {
+      const b = document.createElement("button");
+      b.textContent = t.label;
+      b.className = t.id === ui.tab ? "active" : "";
+      b.addEventListener("click", () => switchTab(t.id));
+      box.appendChild(b);
+    });
+  }
+
+  function renderPicker() {
+    const box = $("scenarioPicker");
+    const list = scenariosOfTab(ui.tab);
+    box.innerHTML = "";
+    box.hidden = list.length < 2;
+    list.forEach(s => {
+      const b = document.createElement("button");
+      b.textContent = s.name;
+      b.className = s.id === ui.scenarioId ? "active" : "";
+      b.addEventListener("click", () => selectScenario(s.id));
+      box.appendChild(b);
+    });
+  }
+
+  function sliderEl(p) {
+    const div = document.createElement("div");
+    div.className = "param";
+    const label = document.createElement("label");
+    label.textContent = p.label + " ";
+    const val = document.createElement("span");
+    val.className = "val"; val.id = "p_" + p.key + "_val"; val.dataset.unit = p.unit || "";
+    val.textContent = fmtVal(P[p.key], p.unit);
+    label.appendChild(val);
+    const inp = document.createElement("input");
+    inp.type = "range"; inp.id = "p_" + p.key;
+    inp.min = p.min; inp.max = p.max; inp.step = p.step; inp.value = P[p.key];
+    inp.addEventListener("input", () => {
+      const v = parseFloat(inp.value);
+      P[p.key] = v;
+      val.textContent = fmtVal(v, p.unit);
+      call("update");
+    });
+    div.append(label, inp);
+    return div;
+  }
+
+  function choiceEl(c) {
+    const row = document.createElement("div");
+    row.className = "row"; row.style.marginBottom = "8px";
+    if (c.label) { const l = document.createElement("b"); l.style.fontSize = "0.9em"; l.textContent = c.label; row.appendChild(l); }
+    c.options.forEach(o => {
+      const b = document.createElement("button");
+      b.textContent = o.label;
+      b.className = P[c.key] === o.value ? "primary" : "";
+      b.addEventListener("click", () => {
+        P[c.key] = o.value;
+        row.querySelectorAll("button").forEach(x => x.className = "");
+        b.className = "primary";
+        call("update");
+      });
+      row.appendChild(b);
+    });
+    return row;
+  }
+
+  function renderControls() {
+    const s = current();
+    const body = $("scenarioBody");
+    body.innerHTML = "";
+    if (s.desc || s.section) {
+      const p = document.createElement("p");
+      p.className = "hint"; p.style.marginBottom = "10px";
+      if (s.section) { const b = document.createElement("b"); b.textContent = s.section; p.appendChild(b); if (s.desc) p.appendChild(document.createTextNode(" — ")); }
+      if (s.desc) p.appendChild(document.createTextNode(s.desc));
+      body.appendChild(p);
+    }
+    (s.choices || []).forEach(c => body.appendChild(choiceEl(c)));
+    (s.params || []).forEach(p => body.appendChild(sliderEl(p)));
+    if (s.animated) {
+      const st = document.createElement("div");
+      st.className = "hint"; st.id = "wsStatus";
+      st.textContent = s.status_hint || "";
+      body.appendChild(st);
+      const row = document.createElement("div");
+      row.className = "controls-row";
+      const play = document.createElement("button");
+      play.id = "playBtn"; play.className = "primary";
+      play.addEventListener("click", () => { ui.playing = !ui.playing; updatePlayButton(); });
+      const reset = document.createElement("button");
+      reset.textContent = "↺ 리셋";
+      reset.addEventListener("click", () => { ui.playing = false; updatePlayButton(); call("reset"); call("update"); });
+      row.append(play, reset);
+      body.appendChild(row);
+      updatePlayButton();
+    }
+    const cp = C.common_params;
+    if (cp && s.use_common !== false) {
+      const hr = document.createElement("hr");
+      hr.style.cssText = "margin:10px 0;border:none;border-top:1px solid var(--border)";
+      body.appendChild(hr);
+      if (cp.title) { const b = document.createElement("b"); b.style.fontSize = "0.9em"; b.textContent = cp.title; body.appendChild(b); }
+      cp.params.forEach(p => body.appendChild(sliderEl(p)));
+    }
+  }
+
+  function updatePlayButton() {
+    const b = $("playBtn");
+    if (b) b.textContent = ui.playing ? "⏸ 일시정지" : "▶ 재생";
+  }
+
+  function renderFormula() {
+    const s = current();
+    const body = $("formulaBody");
+    body.innerHTML = (s.formula || []).map(f =>
+      (f.eq_html ? `<div class="eq">${f.eq_html}</div>` : "") + (f.text_html || "")
+    ).join("");
+  }
+
+  function renderMisconception() {
+    const s = current();
+    const panel = $("misconceptionPanel");
+    panel.innerHTML = "";
+    panel.hidden = !s.misconception;
+    if (!s.misconception) return;
+    const box = document.createElement("div");
+    box.className = "misconception";
+    const b = document.createElement("b");
+    b.textContent = s.misconception_title || "💡 흔한 오개념";
+    box.append(b, document.createElement("br"), document.createTextNode(s.misconception));
+    panel.appendChild(box);
+  }
+
+  function enterScenario() {
+    ui.playing = false;
+    const s = current();
+    $("graphPanel").hidden = !s.chart;
+    $("chartHint").innerHTML = "";
+    api.custom.innerHTML = "";
+    api.setReadout([]); api.setNote("");
+    renderPicker(); renderControls(); renderFormula(); renderMisconception();
+    call("enter");
+    call("update");
+  }
+
+  function selectScenario(id) {
+    ui.scenarioId = id;
+    lastScenarioOfTab[ui.tab] = id;
+    enterScenario();
+  }
+
+  function switchTab(tab) {
+    ui.tab = tab;
+    renderTabs();
+    selectScenario(lastScenarioOfTab[tab] || scenariosOfTab(tab)[0].id);
+  }
+
+  function renderLegend() {
+    const box = $("legend");
+    (C.legend || []).forEach(l => {
+      const span = document.createElement("span");
+      const sw = document.createElement("i");
+      sw.className = "swatch" + (l.shape === "bar" ? " bar" : "");
+      sw.style.background = l.color;
+      span.append(sw, document.createTextNode(l.label));
+      box.appendChild(span);
+    });
+  }
+
+  function runSelfTests() {
+    if (!SIMOBJ || typeof SIMOBJ.tests !== "function") { console.log("물리 검증 항목 없음"); return; }
+    let results = [];
+    try { results = SIMOBJ.tests() || []; } catch (e) { showError("tests", e); return; }
+    console.log("=== " + C.title + " 물리 검증 ===");
+    let pass = 0;
+    for (const [name, ok, detail] of results) {
+      console.log(`[${ok ? "PASS" : "FAIL"}] ${name}${detail ? " — " + detail : ""}`);
+      if (ok) pass++;
+    }
+    console.log(pass === results.length ? "모든 검증 통과" : "일부 검증 실패 — 콘솔 확인 필요");
+    window.__wsSelfTest = { pass, total: results.length };
+  }
+
+  /* ---------- 시작 ---------- */
+  $("readoutTitle").textContent = C.readout_title || "측정값";
+  $("hoverHint").textContent = (C.scene && C.scene.hint != null) ? C.scene.hint
+    : (C.renderer === "three" ? "마우스 드래그: 회전 · 휠: 확대/축소" : "");
+  $("projectorBtn").addEventListener("click", () => document.body.classList.toggle("projector"));
+  renderLegend();
+  if (!SIMOBJ) showError("load", "sim_js에 SIM 객체가 정의되지 않았습니다");
+  if (initRenderer()) {
+    call("init");
+    renderTabs();
+    switchTab(ui.tab);
+    animate();
+  }
+  runSelfTests();
+})();
+</script>
+
+</body>
+</html>
+<!--claude-meta
+category: electromagnetism
+slug: electric-field-modeling
+icon: ⚡
+title: 전기장의 개념과 컴퓨터 모델링
+desc: 점전하의 장 계산, 장 합성, 장 속 입자의 운동 예측, 장의 지연과 상대론적 패턴까지 — 교재 13.8~13.9를 HTML로 옮긴 시뮬레이션
+-->

@@ -532,10 +532,21 @@ const magnet = {
   step(dt) {
     const sub = 20, h = dt / sub, b = 2.2 * this.params.fr;
     for (let k = 0; k < sub; k++) {
-      const a = -this.dU(this.pos) - b * this.v;
+      const prev = this.pos;
+      // 막힘판 바로 위에서는 아랫 경사로 쪽 기울기만 쓴다 (구멍 쪽 값이 섞이면 힘이 0처럼 계산된다)
+      const atStop = this.pos >= this.sC && this.pos < this.sC + 1;
+      const a = -(atStop ? this.UatS(this.pos + 1) - this.UatS(this.pos) : this.dU(this.pos)) - b * this.v;
       this.v += a * h; this.pos += this.v * h; this.heat += b * this.v * this.v * h;
+      // 구멍 아래로 떨어지는 길은 한쪽 방향뿐: 아랫 경사로를 거꾸로 올라온 공은
+      // 시작점의 막힘판에 부딪혀 튕겨 나오고, 구멍으로 되돌아 올라가지 못한다.
+      if (prev >= this.sC && this.pos < this.sC && this.pos > this.sB) {
+        const e = 0.3;
+        this.heat += 0.5 * this.v * this.v * (1 - e * e);
+        this.pos = this.sC; this.v = -e * this.v; this.hit = 0.6;
+      }
     }
     this.pos = ((this.pos % this.L) + this.L) % this.L;
+    this.hit = Math.max(0, (this.hit || 0) - dt);
     this.rest = Math.abs(this.v) < 3 ? this.rest + dt : 0;
     this.time += dt;
   },
@@ -568,6 +579,9 @@ const magnet = {
     line(x, r[1][0], r[1][1], r[2][0], r[2][1], '#c9b49f', 2, [4, 4]);
     x.fillStyle = '#1f2d3d'; x.beginPath(); x.ellipse(r[1][0], r[1][1] + 2, 11, 4, 0, 0, TAU); x.fill();
     txt(x, '구멍', r[1][0] - 22, r[1][1] + 22, { size: 12, color: '#55657a', align: 'right' });
+    // 아랫 경사로 시작점의 막힘판 (떨어진 공은 구멍으로 되돌아 올라갈 수 없다)
+    line(x, r[2][0] - 10, r[2][1] - 6, r[2][0] + 10, r[2][1] - 6, this.hit > 0 ? '#c0392b' : '#4a3828', 4);
+    txt(x, '막힘판', r[2][0] - 16, r[2][1] - 2, { size: 11, color: '#7a5a3a', align: 'right' });
     txt(x, '윗 경사로 (자석이 끌어올림)', 150, 255, { size: 12, color: '#7a5a3a' });
     txt(x, '아랫 경사로 (출발점으로 복귀)', 230, 395, { size: 12, color: '#7a5a3a' });
     // 공
@@ -592,7 +606,7 @@ const magnet = {
       { sep: 1 },
       { label: '운동 에너지', value: fmt(KE), bar: KE / sc, color: '#27ae60' },
       { label: '위치에너지 (중력 + 자기)', value: fmt(PE), bar: PE / sc, color: '#8e44ad' },
-      { label: '마찰로 생긴 열', value: fmt(H), bar: H / sc, color: '#e74c3c' },
+      { label: '마찰·충돌로 생긴 열', value: fmt(H), bar: H / sc, color: '#e74c3c' },
       { sep: 1 },
       { text: '지금 공의 상태', bold: true },
       { text: state, color: '#c0392b', bold: true },
@@ -620,7 +634,7 @@ const magnet = {
   html: {
     meta: '존 윌킨스(John Wilkins) · 1648년 『Mathematical Magick』 / 현대판: 영구자석 모터',
     title: '자석 경사로',
-    structure: '기둥 꼭대기에 <b>천연 자석</b>이 있다. 쇠공이 윗 경사로를 따라 자석에 끌려 올라가다가, 꼭대기 직전의 <b>구멍</b>으로 떨어진다. 그 뒤 아랫 경사로를 굴러 다시 출발점으로 돌아온다.',
+    structure: '기둥 꼭대기에 <b>천연 자석</b>이 있다. 쇠공이 윗 경사로를 따라 자석에 끌려 올라가다가, 꼭대기 직전의 <b>구멍</b>으로 떨어진다. 그 뒤 아랫 경사로를 굴러 다시 출발점으로 돌아온다. (아랫 경사로 시작점은 막혀 있어서, 떨어진 공이 구멍으로 되돌아 올라가지는 못한다.)',
     idea: '자석이 공을 끌어 올리고, 중력이 공을 떨어뜨린다. 두 힘이 번갈아 일하니 공은 영원히 돌고, 그 사이에 바퀴도 돌릴 수 있을 것이다.',
     observe: ['처음에는 자석이 공을 끌어당겨 <b>스스로 올라가는 것처럼</b> 보인다.', '<b>자석 세기</b>를 바꿔 보자. 강하면 공이 구멍 위에 붙어 떨어지지 않고, 약하면 구멍으로 떨어진 뒤 다시 꼭대기까지 올라오지 못한다.', '아래 그래프: 공은 초록 점선(전체 에너지)보다 높은 언덕을 넘지 못한다.'],
     contra: `<h4>[모순] 열역학 제1법칙(에너지 보존) 위반</h4>

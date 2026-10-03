@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>전자현미경 TEM·SEM — 모션그래픽</title>
+<!-- electron-microscope-motion · 전자의 파장과 렌즈 수차, TEM·SEM의 결상 원리와 차이를 움직이는 그림으로 (SWISS 스타일) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Nanum+Pen+Script&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<style>
+:root{
+  --page:#e7e3d8; --ink:#23261f; --barbg:#d8d3c6;
+  --board:#1f3d31; --chalk:#f3f0e6; --yellow:#f4cf5a; --pink:#f29aac; --blue:#8cc3e8; --wood:#6b4a2f;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#111513;--ink:#e6e6de;--barbg:#1c211e}}
+:root[data-theme="dark"]{--page:#111513;--ink:#e6e6de;--barbg:#1c211e}
+html{height:100%} body{height:100%;margin:0}
+body{background:var(--page);color:var(--ink);font-family:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;display:flex;flex-direction:column;overflow:hidden}
+#wrap{flex:1;position:relative;overflow:hidden}
+#stage{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center center;overflow:hidden;color:var(--chalk);
+  background:
+    radial-gradient(ellipse 900px 500px at 25% 20%,rgba(255,255,255,.07),transparent 70%),
+    radial-gradient(ellipse 700px 400px at 75% 70%,rgba(255,255,255,.05),transparent 70%),
+    radial-gradient(ellipse 1400px 700px at 50% 110%,rgba(0,0,0,.35),transparent 70%),
+    var(--board);
+  box-shadow:inset 0 0 0 22px var(--wood), inset 0 0 0 26px #4d341f, inset 0 0 120px rgba(0,0,0,.45);
+}
+#tray{position:absolute;left:22px;right:22px;bottom:22px;height:18px;background:linear-gradient(#7a5738,#50361f)}
+.stick{position:absolute;bottom:40px;height:12px;border-radius:6px}
+.dsp{font-family:"Black Han Sans","Malgun Gothic",sans-serif;font-weight:400}
+.pen{font-family:"Nanum Pen Script",cursive}
+.ch{text-shadow:0 0 1px currentColor,0 0 10px rgba(255,255,255,.12)}
+.sc{position:absolute;inset:0;display:none}
+.row{position:absolute;left:0;right:0;text-align:center;white-space:nowrap;will-change:transform,opacity}
+.abs{position:absolute;will-change:transform,opacity}
+.y{color:var(--yellow)} .p{color:var(--pink)} .b{color:var(--blue)}
+.card{position:absolute;border:4px solid rgba(243,240,230,.85);border-radius:22px 12px 26px 14px;background:var(--board)}
+.fig{position:absolute;transform-origin:50% 100%}
+.fig svg{display:block;overflow:visible}
+
+/* control bar */
+#bar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--barbg);font-size:15px;flex-wrap:wrap}
+#bar button{font:inherit;padding:7px 14px;border-radius:8px;border:1px solid rgba(127,127,127,.5);background:var(--page);color:var(--ink);cursor:pointer}
+#bar button:focus-visible,#seek:focus-visible{outline:3px solid #3b82f6;outline-offset:2px}
+#seek{flex:1;min-width:140px}
+#time{font-variant-numeric:tabular-nums;min-width:92px}
+.hint{opacity:.7}
+body.rec #bar{display:none}
+@media (max-width:640px){.hint{display:none}}
+#mgError{position:absolute;left:40px;right:40px;top:40px;z-index:50;background:rgba(184,50,31,.95);color:#fff;font:22px/1.4 sans-serif;padding:10px 18px;border-radius:12px;white-space:pre-wrap;display:none}
+#mgError.on{display:block}
+body.nodecor #tray, body.nodecor .stick{display:none}
+/* ---- theme ---- */
+:root{--board:#1f3d31;--chalk:#f3f0e6;--yellow:#f4cf5a;--pink:#f29aac;--blue:#8cc3e8;--wood:#6b4a2f}
+/* ---- MotionKit 스타일 프리셋 (내장) ---- */
+/* ==== MotionKit 스타일 프리셋 (템플릿 내장) ==== */
+.mk-u{display:inline-block;will-change:transform,opacity}
+.mk-bg{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden}
+.mk-grain{position:absolute;left:0;top:0;width:1920px;height:1080px;pointer-events:none;background-image:var(--mk-noise);opacity:.13;mix-blend-mode:multiply}
+/* 글꼴 */
+.f-sans{font-family:'Noto Sans KR','Black Han Sans',sans-serif;font-weight:900;letter-spacing:-.04em}
+.f-thin{font-family:'Noto Sans KR',sans-serif;font-weight:300;letter-spacing:.02em}
+.f-plex{font-family:'IBM Plex Sans KR',sans-serif;font-weight:300}
+.f-mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+.f-paper{font-family:'Do Hyeon','Black Han Sans',sans-serif}
+.f-serif{font-family:'Nanum Myeongjo',serif}
+/* 1. SWISS — 그리드·원색·굵은 산세리프 */
+.mk-swiss{background:#f2efe8;color:#111;background-image:repeating-linear-gradient(90deg,rgba(0,0,0,.06) 0 1px,transparent 1px 160px)}
+.mk-swiss .accent{background:#e8321e}
+/* 2. LINE — 블루프린트 선화 */
+.mk-line{background:radial-gradient(ellipse at 50% 40%,#13305a,#060e1d 75%);color:#d8ecff}
+.mk-line .grid{position:absolute;inset:0;background-image:linear-gradient(rgba(140,200,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(140,200,255,.08) 1px,transparent 1px);background-size:60px 60px}
+.mk-line svg *{fill:none;stroke:#8fd0ff;stroke-width:3;stroke-linecap:round}
+/* 3. PAPER — 종이 컷아웃 */
+.mk-paper{background:radial-gradient(circle at 30% 20%,#f6eedf,#e6d8bf);color:#3b2f22}
+.mk-paper .card{position:absolute;border-radius:18px;box-shadow:0 10px 0 rgba(0,0,0,.08),0 22px 40px rgba(60,40,10,.18)}
+/* 4. RISO — 형광 잉크 겹침 */
+.mk-riso{background:#f4f0e6;color:#1a1a1a}
+.mk-riso .ink-p{color:#ff48b0;fill:#ff48b0;mix-blend-mode:multiply}
+.mk-riso .ink-b{color:#0078bf;fill:#0078bf;mix-blend-mode:multiply}
+.mk-riso .ink-y{color:#ffe800;fill:#ffe800;mix-blend-mode:multiply}
+/* 5. COSMIC — 입자·글로우·세리프 */
+.mk-cosmic{background:radial-gradient(circle at 50% 60%,#22124a,#04030c 70%);color:#f5f0ff}
+.mk-cosmic .glow{text-shadow:0 0 24px rgba(190,160,255,.7)}
+/* 6. CHALK — 기존 칠판 테마는 .mk-bg 없이 템플릿 그대로 쓴다 */
+/* ==== /MotionKit CSS ==== */
+
+/* ---- extra_css ---- */
+
+</style>
+</head>
+<body class="nodecor">
+<div id="wrap">
+ <div id="stage">
+  <div id="tray"></div>
+  <div class="stick" style="left:300px;width:90px;background:#f3f0e6"></div>
+  <div class="stick" style="left:420px;width:60px;background:#f4cf5a"></div>
+  <div class="stick" style="left:1500px;width:70px;background:#f29aac"></div>
+
+  <!-- s0: 제목 -->
+  <div class="sc" id="s0">
+<div class='mk-bg mk-swiss'>
+<div id='s0bar' class='abs' style='left:160px;top:250px;width:16px;height:620px;background:#e8321e'></div>
+<div id='s0k' class='abs f-thin' style='left:230px;top:190px;font-size:40px;letter-spacing:.12em;white-space:nowrap'>ELECTRON MICROSCOPE</div>
+<div id='s0t' class='abs f-sans' style='left:226px;top:270px;font-size:230px;line-height:1;white-space:nowrap'>전자현미경</div>
+<div id='s0u' class='abs f-sans' style='left:230px;top:560px;font-size:90px;line-height:1.1;color:#e8321e;white-space:nowrap'>빛 대신 전자로 본다</div>
+<div id='s0c' class='abs f-thin' style='left:232px;top:760px;font-size:44px;white-space:nowrap'>파장 · 렌즈 · TEM · SEM</div>
+<svg class='abs' width='1920' height='1080' style='left:0;top:0'><circle id='s0d0' r='0' style='fill:#e8321e;stroke:none'/><circle id='s0d1' r='0' style='fill:#e8321e;stroke:none'/><circle id='s0d2' r='0' style='fill:#e8321e;stroke:none'/><circle id='s0d3' r='0' style='fill:#e8321e;stroke:none'/><circle id='s0d4' r='0' style='fill:#e8321e;stroke:none'/><circle id='s0d5' r='0' style='fill:#e8321e;stroke:none'/><circle id='s0d6' r='0' style='fill:#e8321e;stroke:none'/><circle id='s0d7' r='0' style='fill:#e8321e;stroke:none'/><circle id='s0d8' r='0' style='fill:#e8321e;stroke:none'/><circle id='s0d9' r='0' style='fill:#e8321e;stroke:none'/><circle id='s0d10' r='0' style='fill:#e8321e;stroke:none'/><circle id='s0d11' r='0' style='fill:#e8321e;stroke:none'/><circle id='s0d12' r='0' style='fill:#e8321e;stroke:none'/><circle id='s0d13' r='0' style='fill:#e8321e;stroke:none'/><circle id='s0d14' r='0' style='fill:#e8321e;stroke:none'/><circle id='s0d15' r='0' style='fill:#e8321e;stroke:none'/><circle id='s0d16' r='0' style='fill:#e8321e;stroke:none'/><circle id='s0d17' r='0' style='fill:#e8321e;stroke:none'/><circle id='s0d18' r='0' style='fill:#e8321e;stroke:none'/><circle id='s0d19' r='0' style='fill:#e8321e;stroke:none'/><circle id='s0d20' r='0' style='fill:#e8321e;stroke:none'/><circle id='s0d21' r='0' style='fill:#e8321e;stroke:none'/><circle id='s0d22' r='0' style='fill:#e8321e;stroke:none'/><circle id='s0d23' r='0' style='fill:#e8321e;stroke:none'/></svg></div>
+  </div>
+
+  <!-- s1: 왜 전자인가: 파장 비교 -->
+  <div class="sc" id="s1">
+<div class='mk-bg mk-swiss'><div id='hn' class='abs f-sans' style='left:160px;top:70px;font-size:150px;line-height:1;color:#e8321e;white-space:nowrap'>01</div><div id='ht' class='abs f-sans' style='left:420px;top:92px;font-size:80px;white-space:nowrap'>왜 전자인가</div><div id='hs' class='abs f-thin' style='left:424px;top:214px;font-size:36px;white-space:nowrap'>분해능은 파장이 정한다</div>
+<div id='s1f' class='abs f-sans' style='left:1060px;top:90px;font-size:110px;white-space:nowrap'>λ = h / p</div>
+<div id='s1fs' class='abs f-thin' style='left:1064px;top:244px;font-size:34px;white-space:nowrap'>빠를수록 운동량 p ↑ → 파장 ↓</div>
+<div id='s1ax' class='abs' style='left:200px;top:659px;width:1520px;height:4px;background:#111'></div><div class='abs f-thin' style='left:160.0px;top:690px;width:80px;text-align:center;font-size:28px;color:#6b665c'>1 pm</div><div class='abs' style='left:200.0px;top:640px;width:2px;height:40px;background:#111'></div><div class='abs f-thin' style='left:413.33333333333337px;top:690px;width:80px;text-align:center;font-size:28px;color:#6b665c'>10 pm</div><div class='abs' style='left:453.33333333333337px;top:640px;width:2px;height:40px;background:#111'></div><div class='abs f-thin' style='left:666.6666666666667px;top:690px;width:80px;text-align:center;font-size:28px;color:#6b665c'>100 pm</div><div class='abs' style='left:706.6666666666667px;top:640px;width:2px;height:40px;background:#111'></div><div class='abs f-thin' style='left:920.0px;top:690px;width:80px;text-align:center;font-size:28px;color:#6b665c'>1 nm</div><div class='abs' style='left:960.0px;top:640px;width:2px;height:40px;background:#111'></div><div class='abs f-thin' style='left:1173.3333333333335px;top:690px;width:80px;text-align:center;font-size:28px;color:#6b665c'>10 nm</div><div class='abs' style='left:1213.3333333333335px;top:640px;width:2px;height:40px;background:#111'></div><div class='abs f-thin' style='left:1426.6666666666667px;top:690px;width:80px;text-align:center;font-size:28px;color:#6b665c'>100 nm</div><div class='abs' style='left:1466.6666666666667px;top:640px;width:2px;height:40px;background:#111'></div><div class='abs f-thin' style='left:1680.0px;top:690px;width:80px;text-align:center;font-size:28px;color:#6b665c'>1 µm</div><div class='abs' style='left:1720.0px;top:640px;width:2px;height:40px;background:#111'></div>
+<div id='s1b' class='abs' style='left:1619.1885311364172px;top:540px;width:61.569639000527786px;height:100px;background:rgba(232,50,30,.35)'></div>
+<div id='s1bl' class='abs f-sans' style='left:1319.1885311364172px;top:470px;width:361.5696390005278px;text-align:right;font-size:40px;white-space:nowrap'>가시광선 400~700 nm</div>
+<div id='s1e' class='abs' style='left:329.9444367636387px;top:626px;width:28px;height:28px;border-radius:50%;background:#e8321e'></div>
+<div id='s1el' class='abs f-sans' style='left:313.9444367636387px;top:540px;font-size:40px;color:#e8321e;white-space:nowrap'>전자 3.7 pm (100 kV)</div>
+<svg class='abs' width='1920' height='1080' style='left:0;top:0'><path id='s1a' d='M360 780 L1640 780' pathLength='1' stroke-dasharray='1' stroke-dashoffset='1' style='fill:none;stroke:#111;stroke-width:5px'/><path d='M360 765 L340 780 L360 795 M1640 765 L1660 780 L1640 795' style='fill:none;stroke:#111;stroke-width:5px'/></svg>
+<div id='s1n' class='abs f-sans' style='left:420px;top:830px;font-size:130px;line-height:1;color:#e8321e;white-space:nowrap'>×<span id='s1nv'>0</span></div>
+<div id='s1nl' class='abs f-thin' style='left:1110px;top:870px;font-size:44px;white-space:nowrap'>가시광선보다 10만 배 이상 짧다</div></div>
+  </div>
+
+  <!-- s2: 렌즈 수차가 분해능 한계 -->
+  <div class="sc" id="s2">
+<div class='mk-bg mk-swiss'><div id='hn' class='abs f-sans' style='left:160px;top:70px;font-size:150px;line-height:1;color:#e8321e;white-space:nowrap'>02</div><div id='ht' class='abs f-sans' style='left:420px;top:92px;font-size:80px;white-space:nowrap'>렌즈가 한계를 정한다</div><div id='hs' class='abs f-thin' style='left:424px;top:214px;font-size:36px;white-space:nowrap'>파장은 pm 인데 분해능은 nm</div>
+<svg class='abs' width='1920' height='1080' style='left:0;top:0'><line x1='200' y1='900' x2='1100' y2='900' style='stroke:#111;stroke-width:4px'/><line x1='200' y1='900' x2='200' y2='290' style='stroke:#111;stroke-width:4px'/>
+<path id='s2c1' d='M200.0 403.6 L215.0 411.0 L230.0 418.4 L245.0 425.8 L260.0 433.1 L275.0 440.5 L290.0 447.9 L305.0 455.3 L320.0 462.7 L335.0 470.1 L350.0 477.5 L365.0 484.8 L380.0 492.2 L395.0 499.6 L410.0 507.0 L425.0 514.4 L440.0 521.8 L455.0 529.2 L470.0 536.5 L485.0 543.9 L500.0 551.3 L515.0 558.7 L530.0 566.1 L545.0 573.5 L560.0 580.9 L575.0 588.2 L590.0 595.6 L605.0 603.0 L620.0 610.4 L635.0 617.8 L650.0 625.2 L665.0 632.6 L680.0 639.9 L695.0 647.3 L710.0 654.7 L725.0 662.1 L740.0 669.5 L755.0 676.9 L770.0 684.2 L785.0 691.6 L800.0 699.0 L815.0 706.4 L830.0 713.8 L845.0 721.2 L860.0 728.6 L875.0 735.9 L890.0 743.3 L905.0 750.7 L920.0 758.1 L935.0 765.5 L950.0 772.9 L965.0 780.3 L980.0 787.6 L995.0 795.0 L1010.0 802.4 L1025.0 809.8 L1040.0 817.2 L1055.0 824.6 L1070.0 832.0 L1085.0 839.3 L1100.0 846.7' pathLength='1' stroke-dasharray='1' stroke-dashoffset='1' style='fill:none;stroke:#6b665c;stroke-width:6px'/>
+<path id='s2c2' d='M200.0 900.0 L215.0 900.0 L230.0 900.0 L245.0 900.0 L260.0 900.0 L275.0 900.0 L290.0 900.0 L305.0 900.0 L320.0 900.0 L335.0 900.0 L350.0 900.0 L365.0 900.0 L380.0 900.0 L395.0 900.0 L410.0 900.0 L425.0 900.0 L440.0 900.0 L455.0 900.0 L470.0 900.0 L485.0 900.0 L500.0 900.0 L515.0 900.0 L530.0 900.0 L545.0 900.0 L560.0 900.0 L575.0 900.0 L590.0 900.0 L605.0 900.0 L620.0 879.6 L635.0 857.5 L650.0 835.3 L665.0 813.1 L680.0 791.0 L695.0 768.8 L710.0 746.7 L725.0 724.5 L740.0 702.4 L755.0 680.2 L770.0 658.0 L785.0 635.9 L800.0 613.7 L815.0 591.6 L830.0 569.4 L845.0 547.3 L860.0 525.1 L875.0 502.9 L890.0 480.8 L905.0 458.6 L920.0 436.5 L935.0 414.3 L950.0 392.2 L965.0 370.0 L980.0 347.8 L995.0 325.7 L1010.0 303.5 L1025.0 300.0 L1040.0 300.0 L1055.0 300.0 L1070.0 300.0 L1085.0 300.0 L1100.0 300.0' pathLength='1' stroke-dasharray='1' stroke-dashoffset='1' style='fill:none;stroke:#6b665c;stroke-width:6px;stroke-dasharray:1'/>
+<path id='s2c3' d='M200.0 403.6 L215.0 411.0 L230.0 418.4 L245.0 425.8 L260.0 433.1 L275.0 440.5 L290.0 447.9 L305.0 455.3 L320.0 462.7 L335.0 470.1 L350.0 477.5 L365.0 484.8 L380.0 492.2 L395.0 499.6 L410.0 507.0 L425.0 514.4 L440.0 521.8 L455.0 529.1 L470.0 536.5 L485.0 543.9 L500.0 551.3 L515.0 558.7 L530.0 566.0 L545.0 573.4 L560.0 580.7 L575.0 588.0 L590.0 595.2 L605.0 602.3 L620.0 609.4 L635.0 616.2 L650.0 622.6 L665.0 628.6 L680.0 633.8 L695.0 637.9 L710.0 640.5 L725.0 640.9 L740.0 638.7 L755.0 633.4 L770.0 624.7 L785.0 612.8 L800.0 598.2 L815.0 581.3 L830.0 562.7 L845.0 542.9 L860.0 522.3 L875.0 501.1 L890.0 479.6 L905.0 457.9 L920.0 436.0 L935.0 414.0 L950.0 392.0 L965.0 369.9 L980.0 347.8 L995.0 325.6 L1010.0 303.5 L1025.0 300.0 L1040.0 300.0 L1055.0 300.0 L1070.0 300.0 L1085.0 300.0 L1100.0 300.0' pathLength='1' stroke-dasharray='1' stroke-dashoffset='1' style='fill:none;stroke:#e8321e;stroke-width:9px'/>
+<circle id='s2m' cx='720.5' cy='641.1' r='0' style='fill:#111;stroke:none'/></svg>
+<div class='abs f-thin' style='left:200px;top:925px;font-size:30px;white-space:nowrap'>조리개 각도 α</div><div class='abs f-thin' style='left:90px;top:250px;font-size:30px;white-space:nowrap'>분해능 d</div>
+<div id='s2l1' class='abs f-sans' style='left:248px;top:357px;font-size:34px;color:#6b665c;white-space:nowrap'>회절 한계 0.61λ/α</div>
+<div id='s2l2' class='abs f-sans' style='left:879px;top:385px;font-size:34px;color:#6b665c;white-space:nowrap'>구면수차 ½C<sub>s</sub>α³</div>
+<div id='s2l3' class='abs f-sans' style='left:750px;top:665px;font-size:40px;color:#e8321e;white-space:nowrap'>최적 ≈ 0.36 nm</div>
+<div id='s2t' class='abs f-sans' style='left:1220px;top:340px;width:600px;font-size:60px;line-height:1.25'>수차가 <span style='color:#e8321e'>실제 한계</span>를 만든다</div>
+<div id='s2s' class='abs f-thin' style='left:1224px;top:560px;width:560px;font-size:38px;line-height:1.5'>자기 렌즈는 구면수차가 커서 조리개를 키우면 오히려 흐려진다.<br>그래서 분해능은 0.1~0.5 nm</div></div>
+  </div>
+
+  <!-- s3: TEM: 투과 전자로 결상 -->
+  <div class="sc" id="s3">
+<div class='mk-bg mk-swiss'><div id='hn' class='abs f-sans' style='left:160px;top:70px;font-size:150px;line-height:1;color:#e8321e;white-space:nowrap'>03</div><div id='ht' class='abs f-sans' style='left:420px;top:92px;font-size:80px;white-space:nowrap'>TEM</div>
+<div class='abs' style='left:498px;top:122px;width:44px;height:16px;background:#111'></div><div class='abs f-sans' style='left:670px;top:112px;font-size:32px;white-space:nowrap'>전자총</div><div class='abs' style='left:458px;top:248px;width:124px;height:24px;border:5px solid #111;border-radius:50%'></div><div class='abs f-sans' style='left:670px;top:242px;font-size:32px;white-space:nowrap'>집광렌즈</div><div class='abs' style='left:450px;top:396px;width:140px;height:8px;background:#6b665c'></div><div id='s3pa' class='abs' style='left:512px;top:392px;width:16px;height:16px;border-radius:50%;background:#e8321e'></div><div class='abs f-sans' style='left:670px;top:382px;font-size:32px;white-space:nowrap'>시료</div><div class='abs' style='left:458px;top:508px;width:124px;height:24px;border:5px solid #111;border-radius:50%'></div><div class='abs f-sans' style='left:670px;top:502px;font-size:32px;white-space:nowrap'>대물렌즈</div><div class='abs' style='left:458px;top:638px;width:124px;height:24px;border:5px solid #111;border-radius:50%'></div><div class='abs f-sans' style='left:670px;top:632px;font-size:32px;white-space:nowrap'>투사렌즈</div><div class='abs' style='left:410px;top:800px;width:220px;height:10px;background:#111'></div><div class='abs f-sans' style='left:670px;top:790px;font-size:32px;white-space:nowrap'>형광판</div><svg class='abs' width='1920' height='1080' style='left:0;top:0'><path d='M514 130 L511 140 L509 150 L506 160 L504 170 L501 180 L498 190 L496 200 L493 210 L490 220 L488 230 L485 240 L483 250 L480 260 L481 270 L482 280 L483 290 L485 300 L486 310 L487 320 L488 330 L489 340 L490 350 L491 360 L493 370 L494 380 L495 390 L496 400 L496 410 L495 420 L495 430 L495 440 L494 450 L494 460 L494 470 L493 480 L493 490 L493 500 L492 510 L492 520 L495 530 L498 540 L501 550 L505 560 L508 570 L511 580 L514 590 L510 600 L506 610 L502 620 L498 630 L494 640 L490 650 L487 660 L483 670 L480 680 L477 690 L473 700 L470 710 L467 720 L463 730 L460 740 L457 750 L453 760 L450 770 L447 780 L443 790 L440 800 L600 800 L597 790 L593 780 L590 770 L587 760 L583 750 L580 740 L577 730 L573 720 L570 710 L567 700 L563 690 L560 680 L557 670 L553 660 L550 650 L546 640 L542 630 L538 620 L534 610 L530 600 L526 590 L529 580 L532 570 L535 560 L539 550 L542 540 L545 530 L548 520 L548 510 L547 500 L547 490 L547 480 L546 470 L546 460 L546 450 L545 440 L545 430 L545 420 L544 410 L544 400 L545 390 L546 380 L547 370 L549 360 L550 350 L551 340 L552 330 L553 320 L554 310 L555 300 L557 290 L558 280 L559 270 L560 260 L557 250 L555 240 L552 230 L550 220 L547 210 L544 200 L542 190 L539 180 L536 170 L534 160 L531 150 L529 140 L526 130 Z' style='fill:none;stroke:rgba(0,0,0,.25);stroke-width:2px'/><circle id='s3e0' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e1' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e2' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e3' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e4' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e5' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e6' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e7' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e8' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e9' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e10' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e11' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e12' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e13' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e14' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e15' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e16' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e17' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e18' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e19' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e20' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e21' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e22' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e23' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e24' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e25' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e26' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e27' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e28' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e29' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e30' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e31' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e32' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e33' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e34' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e35' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e36' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e37' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e38' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e39' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e40' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e41' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e42' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e43' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e44' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e45' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e46' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e47' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e48' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e49' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e50' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e51' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e52' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e53' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e54' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e55' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e56' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e57' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e58' r='0' style='fill:#e8321e;stroke:none'/><circle id='s3e59' r='0' style='fill:#e8321e;stroke:none'/></svg>
+<div id='s3tv' class='abs' style='left:1080px;top:330px;width:560px;height:420px;background:#bdb8ad;border:6px solid #111'></div>
+<div id='s3pd' class='abs' style='left:1300px;top:470px;width:120px;height:120px;border-radius:50%;background:#2a2926'></div>
+<div id='s3tl' class='abs f-thin' style='left:1080px;top:765px;font-size:30px;white-space:nowrap'>형광판의 상 — 어두운 곳 = 전자가 적게 투과</div>
+<div id='s3f' class='abs f-sans' style='left:1080px;top:150px;font-size:96px;white-space:nowrap'>T = e<sup style='font-size:50px'>−t/Λ</sup></div>
+<div id='s3b1' class='abs f-sans' style='left:1080px;top:830px;font-size:34px;white-space:nowrap'>① 얇은 시료 ② 산란 많으면 어둡게 ③ 전 시야 동시</div>
+<div id='s3b2' class='abs f-thin' style='left:1084px;top:895px;font-size:32px;white-space:nowrap'>M = M<sub>1</sub> × M<sub>2</sub> (대물 × 투사)</div></div>
+  </div>
+
+  <!-- s4: SEM: 래스터 스캔과 영상 구성 -->
+  <div class="sc" id="s4">
+<div class='mk-bg mk-swiss'><div id='hn' class='abs f-sans' style='left:160px;top:70px;font-size:150px;line-height:1;color:#e8321e;white-space:nowrap'>04</div><div id='ht' class='abs f-sans' style='left:420px;top:92px;font-size:80px;white-space:nowrap'>SEM</div><div class='abs' style='left:498px;top:122px;width:44px;height:16px;background:#111'></div><div class='abs' style='left:458px;top:238px;width:124px;height:24px;border:5px solid #111;border-radius:50%'></div><div class='abs' style='left:470px;top:348px;width:22px;height:24px;border:5px solid #e8321e'></div><div class='abs' style='left:548px;top:348px;width:22px;height:24px;border:5px solid #e8321e'></div><div class='abs' style='left:458px;top:458px;width:124px;height:24px;border:5px solid #111;border-radius:50%'></div><div class='abs f-sans' style='left:640px;top:112px;font-size:32px;white-space:nowrap'>전자총</div><div class='abs f-sans' style='left:640px;top:232px;font-size:32px;white-space:nowrap'>집속렌즈</div><div class='abs f-sans' style='left:640px;top:342px;font-size:32px;white-space:nowrap'>주사 코일</div><div class='abs f-sans' style='left:640px;top:452px;font-size:32px;white-space:nowrap'>대물렌즈</div><div class='abs' style='left:340px;top:700px;width:360px;height:70px;background:#6b665c'></div><div class='abs' style='left:420px;top:640px;width:120px;height:62px;border-radius:60px 60px 0 0;background:#8d8575'></div><div class='abs' style='left:600px;top:676px;width:70px;height:26px;background:#e8321e'></div><div class='abs f-thin' style='left:340px;top:790px;font-size:28px;white-space:nowrap'>시료 표면 (돌기 · 금 패드)</div><div class='abs' style='left:700px;top:600px;width:60px;height:40px;background:#111'></div><div class='abs f-sans' style='left:620px;top:556px;font-size:30px;white-space:nowrap'>검출기</div>
+<svg class='abs' width='1920' height='1080' style='left:0;top:0'><path id='s4bm' d='' style='fill:none;stroke:#e8321e;stroke-width:5px'/><g id='s4se'></g></svg><div id='s4c0_0' class='abs' style='left:1020px;top:260px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c0_1' class='abs' style='left:1060px;top:260px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c0_2' class='abs' style='left:1100px;top:260px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c0_3' class='abs' style='left:1140px;top:260px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c0_4' class='abs' style='left:1180px;top:260px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c0_5' class='abs' style='left:1220px;top:260px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c0_6' class='abs' style='left:1260px;top:260px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c0_7' class='abs' style='left:1300px;top:260px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c0_8' class='abs' style='left:1340px;top:260px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c0_9' class='abs' style='left:1380px;top:260px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c0_10' class='abs' style='left:1420px;top:260px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c0_11' class='abs' style='left:1460px;top:260px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c0_12' class='abs' style='left:1500px;top:260px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c0_13' class='abs' style='left:1540px;top:260px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c0_14' class='abs' style='left:1580px;top:260px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c0_15' class='abs' style='left:1620px;top:260px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c1_0' class='abs' style='left:1020px;top:300px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c1_1' class='abs' style='left:1060px;top:300px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c1_2' class='abs' style='left:1100px;top:300px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c1_3' class='abs' style='left:1140px;top:300px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c1_4' class='abs' style='left:1180px;top:300px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c1_5' class='abs' style='left:1220px;top:300px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c1_6' class='abs' style='left:1260px;top:300px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c1_7' class='abs' style='left:1300px;top:300px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c1_8' class='abs' style='left:1340px;top:300px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c1_9' class='abs' style='left:1380px;top:300px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c1_10' class='abs' style='left:1420px;top:300px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c1_11' class='abs' style='left:1460px;top:300px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c1_12' class='abs' style='left:1500px;top:300px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c1_13' class='abs' style='left:1540px;top:300px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c1_14' class='abs' style='left:1580px;top:300px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c1_15' class='abs' style='left:1620px;top:300px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c2_0' class='abs' style='left:1020px;top:340px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c2_1' class='abs' style='left:1060px;top:340px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c2_2' class='abs' style='left:1100px;top:340px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c2_3' class='abs' style='left:1140px;top:340px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c2_4' class='abs' style='left:1180px;top:340px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c2_5' class='abs' style='left:1220px;top:340px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c2_6' class='abs' style='left:1260px;top:340px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c2_7' class='abs' style='left:1300px;top:340px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c2_8' class='abs' style='left:1340px;top:340px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c2_9' class='abs' style='left:1380px;top:340px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c2_10' class='abs' style='left:1420px;top:340px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c2_11' class='abs' style='left:1460px;top:340px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c2_12' class='abs' style='left:1500px;top:340px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c2_13' class='abs' style='left:1540px;top:340px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c2_14' class='abs' style='left:1580px;top:340px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c2_15' class='abs' style='left:1620px;top:340px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c3_0' class='abs' style='left:1020px;top:380px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c3_1' class='abs' style='left:1060px;top:380px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c3_2' class='abs' style='left:1100px;top:380px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c3_3' class='abs' style='left:1140px;top:380px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c3_4' class='abs' style='left:1180px;top:380px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c3_5' class='abs' style='left:1220px;top:380px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c3_6' class='abs' style='left:1260px;top:380px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c3_7' class='abs' style='left:1300px;top:380px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c3_8' class='abs' style='left:1340px;top:380px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c3_9' class='abs' style='left:1380px;top:380px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c3_10' class='abs' style='left:1420px;top:380px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c3_11' class='abs' style='left:1460px;top:380px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c3_12' class='abs' style='left:1500px;top:380px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c3_13' class='abs' style='left:1540px;top:380px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c3_14' class='abs' style='left:1580px;top:380px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c3_15' class='abs' style='left:1620px;top:380px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c4_0' class='abs' style='left:1020px;top:420px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c4_1' class='abs' style='left:1060px;top:420px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c4_2' class='abs' style='left:1100px;top:420px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c4_3' class='abs' style='left:1140px;top:420px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c4_4' class='abs' style='left:1180px;top:420px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c4_5' class='abs' style='left:1220px;top:420px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c4_6' class='abs' style='left:1260px;top:420px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c4_7' class='abs' style='left:1300px;top:420px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c4_8' class='abs' style='left:1340px;top:420px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c4_9' class='abs' style='left:1380px;top:420px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c4_10' class='abs' style='left:1420px;top:420px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c4_11' class='abs' style='left:1460px;top:420px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c4_12' class='abs' style='left:1500px;top:420px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c4_13' class='abs' style='left:1540px;top:420px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c4_14' class='abs' style='left:1580px;top:420px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c4_15' class='abs' style='left:1620px;top:420px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c5_0' class='abs' style='left:1020px;top:460px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c5_1' class='abs' style='left:1060px;top:460px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c5_2' class='abs' style='left:1100px;top:460px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c5_3' class='abs' style='left:1140px;top:460px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c5_4' class='abs' style='left:1180px;top:460px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c5_5' class='abs' style='left:1220px;top:460px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c5_6' class='abs' style='left:1260px;top:460px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c5_7' class='abs' style='left:1300px;top:460px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c5_8' class='abs' style='left:1340px;top:460px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c5_9' class='abs' style='left:1380px;top:460px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c5_10' class='abs' style='left:1420px;top:460px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c5_11' class='abs' style='left:1460px;top:460px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c5_12' class='abs' style='left:1500px;top:460px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c5_13' class='abs' style='left:1540px;top:460px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c5_14' class='abs' style='left:1580px;top:460px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c5_15' class='abs' style='left:1620px;top:460px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c6_0' class='abs' style='left:1020px;top:500px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c6_1' class='abs' style='left:1060px;top:500px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c6_2' class='abs' style='left:1100px;top:500px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c6_3' class='abs' style='left:1140px;top:500px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c6_4' class='abs' style='left:1180px;top:500px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c6_5' class='abs' style='left:1220px;top:500px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c6_6' class='abs' style='left:1260px;top:500px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c6_7' class='abs' style='left:1300px;top:500px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c6_8' class='abs' style='left:1340px;top:500px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c6_9' class='abs' style='left:1380px;top:500px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c6_10' class='abs' style='left:1420px;top:500px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c6_11' class='abs' style='left:1460px;top:500px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c6_12' class='abs' style='left:1500px;top:500px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c6_13' class='abs' style='left:1540px;top:500px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c6_14' class='abs' style='left:1580px;top:500px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c6_15' class='abs' style='left:1620px;top:500px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c7_0' class='abs' style='left:1020px;top:540px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c7_1' class='abs' style='left:1060px;top:540px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c7_2' class='abs' style='left:1100px;top:540px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c7_3' class='abs' style='left:1140px;top:540px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c7_4' class='abs' style='left:1180px;top:540px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c7_5' class='abs' style='left:1220px;top:540px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c7_6' class='abs' style='left:1260px;top:540px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c7_7' class='abs' style='left:1300px;top:540px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c7_8' class='abs' style='left:1340px;top:540px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c7_9' class='abs' style='left:1380px;top:540px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c7_10' class='abs' style='left:1420px;top:540px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c7_11' class='abs' style='left:1460px;top:540px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c7_12' class='abs' style='left:1500px;top:540px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c7_13' class='abs' style='left:1540px;top:540px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c7_14' class='abs' style='left:1580px;top:540px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c7_15' class='abs' style='left:1620px;top:540px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c8_0' class='abs' style='left:1020px;top:580px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c8_1' class='abs' style='left:1060px;top:580px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c8_2' class='abs' style='left:1100px;top:580px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c8_3' class='abs' style='left:1140px;top:580px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c8_4' class='abs' style='left:1180px;top:580px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c8_5' class='abs' style='left:1220px;top:580px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c8_6' class='abs' style='left:1260px;top:580px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c8_7' class='abs' style='left:1300px;top:580px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c8_8' class='abs' style='left:1340px;top:580px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c8_9' class='abs' style='left:1380px;top:580px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c8_10' class='abs' style='left:1420px;top:580px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c8_11' class='abs' style='left:1460px;top:580px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c8_12' class='abs' style='left:1500px;top:580px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c8_13' class='abs' style='left:1540px;top:580px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c8_14' class='abs' style='left:1580px;top:580px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c8_15' class='abs' style='left:1620px;top:580px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c9_0' class='abs' style='left:1020px;top:620px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c9_1' class='abs' style='left:1060px;top:620px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c9_2' class='abs' style='left:1100px;top:620px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c9_3' class='abs' style='left:1140px;top:620px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c9_4' class='abs' style='left:1180px;top:620px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c9_5' class='abs' style='left:1220px;top:620px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c9_6' class='abs' style='left:1260px;top:620px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c9_7' class='abs' style='left:1300px;top:620px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c9_8' class='abs' style='left:1340px;top:620px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c9_9' class='abs' style='left:1380px;top:620px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c9_10' class='abs' style='left:1420px;top:620px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c9_11' class='abs' style='left:1460px;top:620px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c9_12' class='abs' style='left:1500px;top:620px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c9_13' class='abs' style='left:1540px;top:620px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c9_14' class='abs' style='left:1580px;top:620px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c9_15' class='abs' style='left:1620px;top:620px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c10_0' class='abs' style='left:1020px;top:660px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c10_1' class='abs' style='left:1060px;top:660px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c10_2' class='abs' style='left:1100px;top:660px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c10_3' class='abs' style='left:1140px;top:660px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c10_4' class='abs' style='left:1180px;top:660px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c10_5' class='abs' style='left:1220px;top:660px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c10_6' class='abs' style='left:1260px;top:660px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c10_7' class='abs' style='left:1300px;top:660px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c10_8' class='abs' style='left:1340px;top:660px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c10_9' class='abs' style='left:1380px;top:660px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c10_10' class='abs' style='left:1420px;top:660px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c10_11' class='abs' style='left:1460px;top:660px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c10_12' class='abs' style='left:1500px;top:660px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c10_13' class='abs' style='left:1540px;top:660px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c10_14' class='abs' style='left:1580px;top:660px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c10_15' class='abs' style='left:1620px;top:660px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c11_0' class='abs' style='left:1020px;top:700px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c11_1' class='abs' style='left:1060px;top:700px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c11_2' class='abs' style='left:1100px;top:700px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c11_3' class='abs' style='left:1140px;top:700px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c11_4' class='abs' style='left:1180px;top:700px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c11_5' class='abs' style='left:1220px;top:700px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c11_6' class='abs' style='left:1260px;top:700px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c11_7' class='abs' style='left:1300px;top:700px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c11_8' class='abs' style='left:1340px;top:700px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c11_9' class='abs' style='left:1380px;top:700px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c11_10' class='abs' style='left:1420px;top:700px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c11_11' class='abs' style='left:1460px;top:700px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c11_12' class='abs' style='left:1500px;top:700px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c11_13' class='abs' style='left:1540px;top:700px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c11_14' class='abs' style='left:1580px;top:700px;width:38px;height:38px;background:#d9d4c7'></div><div id='s4c11_15' class='abs' style='left:1620px;top:700px;width:38px;height:38px;background:#d9d4c7'></div>
+<div id='s4t1' class='abs f-sans' style='left:1020px;top:760px;font-size:38px;white-space:nowrap'>한 점씩 · 줄 단위로 훑는다 (래스터 스캔)</div>
+<div id='s4t2' class='abs f-thin' style='left:1024px;top:825px;font-size:32px;white-space:nowrap'>이차전자 수율 δ ∝ 1/cosθ — 모서리·경사가 밝다</div>
+<div id='s4t3' class='abs f-sans' style='left:1020px;top:890px;font-size:38px;color:#e8321e;white-space:nowrap'>입체감 있는 표면 영상</div></div>
+  </div>
+
+  <!-- s5: TEM vs SEM 비교 -->
+  <div class="sc" id="s5">
+<div class='mk-bg mk-swiss'><div id='hn' class='abs f-sans' style='left:160px;top:70px;font-size:150px;line-height:1;color:#e8321e;white-space:nowrap'>05</div><div id='ht' class='abs f-sans' style='left:420px;top:92px;font-size:80px;white-space:nowrap'>TEM vs SEM</div><div id='hs' class='abs f-thin' style='left:424px;top:214px;font-size:36px;white-space:nowrap'>같은 시료, 다른 영상</div><div id='s5h1' class='abs f-sans' style='left:560px;top:270px;font-size:64px;color:#e8321e;white-space:nowrap'>TEM</div><div id='s5h2' class='abs f-sans' style='left:1180px;top:270px;font-size:64px;white-space:nowrap'>SEM</div><div id='s5r0' class='abs' style='left:160px;top:370px;width:1600px;height:80px;border-top:3px solid #111'><div class='abs f-thin' style='left:0;top:14px;font-size:36px;white-space:nowrap'>전자의 경로</div><div class='abs f-sans' style='left:400px;top:12px;font-size:40px;color:#e8321e;white-space:nowrap'>시료를 투과</div><div class='abs f-sans' style='left:1020px;top:12px;font-size:40px;white-space:nowrap'>표면을 주사</div></div><div id='s5r1' class='abs' style='left:160px;top:454px;width:1600px;height:80px;border-top:3px solid #111'><div class='abs f-thin' style='left:0;top:14px;font-size:36px;white-space:nowrap'>관찰 대상</div><div class='abs f-sans' style='left:400px;top:12px;font-size:40px;color:#e8321e;white-space:nowrap'>시료 내부 구조</div><div class='abs f-sans' style='left:1020px;top:12px;font-size:40px;white-space:nowrap'>표면 형상 (입체)</div></div><div id='s5r2' class='abs' style='left:160px;top:538px;width:1600px;height:80px;border-top:3px solid #111'><div class='abs f-thin' style='left:0;top:14px;font-size:36px;white-space:nowrap'>시료 조건</div><div class='abs f-sans' style='left:400px;top:12px;font-size:40px;color:#e8321e;white-space:nowrap'>아주 얇아야 함</div><div class='abs f-sans' style='left:1020px;top:12px;font-size:40px;white-space:nowrap'>두꺼워도 됨</div></div><div id='s5r3' class='abs' style='left:160px;top:622px;width:1600px;height:80px;border-top:3px solid #111'><div class='abs f-thin' style='left:0;top:14px;font-size:36px;white-space:nowrap'>영상</div><div class='abs f-sans' style='left:400px;top:12px;font-size:40px;color:#e8321e;white-space:nowrap'>흑백 명암 2차원</div><div class='abs f-sans' style='left:1020px;top:12px;font-size:40px;white-space:nowrap'>입체 음영 3차원</div></div><div id='s5r4' class='abs' style='left:160px;top:706px;width:1600px;height:80px;border-top:3px solid #111'><div class='abs f-thin' style='left:0;top:14px;font-size:36px;white-space:nowrap'>결상 방식</div><div class='abs f-sans' style='left:400px;top:12px;font-size:40px;color:#e8321e;white-space:nowrap'>전 시야 동시</div><div class='abs f-sans' style='left:1020px;top:12px;font-size:40px;white-space:nowrap'>점 단위 순차</div></div><div id='s5r5' class='abs' style='left:160px;top:790px;width:1600px;height:80px;border-top:3px solid #111'><div class='abs f-thin' style='left:0;top:14px;font-size:36px;white-space:nowrap'>분해능</div><div class='abs f-sans' style='left:400px;top:12px;font-size:40px;color:#e8321e;white-space:nowrap'>더 높음 (원자 수준)</div><div class='abs f-sans' style='left:1020px;top:12px;font-size:40px;white-space:nowrap'>TEM 보다 낮음</div></div>
+<div id='s5z' class='abs f-sans' style='left:160px;top:910px;font-size:44px;white-space:nowrap'>깊이 묻힌 금 입자 : <span style='color:#e8321e'>TEM 보인다</span> · <span style='color:#6b665c'>SEM 안 보인다</span></div></div>
+  </div>
+
+  <!-- s6: 정리 -->
+  <div class="sc" id="s6">
+<div class='mk-bg mk-swiss'>
+<div id='s6a' class='abs f-sans' style='left:160px;top:200px;font-size:110px;line-height:1.15;white-space:nowrap'>짧은 파장 → <span style='color:#e8321e'>높은 분해능</span></div>
+<div id='s6l' class='abs' style='left:160px;top:470px;width:900px;height:10px;background:#e8321e'></div>
+<div id='s6b' class='abs f-sans' style='left:160px;top:540px;font-size:80px;line-height:1.3;white-space:nowrap'>TEM <span style='color:#e8321e'>속</span>을 본다<br>SEM <span style='color:#e8321e'>겉</span>을 본다</div>
+<div id='s6c' class='abs f-thin' style='left:160px;top:900px;font-size:36px;white-space:nowrap'>실제 분해능은 렌즈 수차가 정한다 · 가속 전압 100 kV 에서 λ ≈ 3.7 pm</div></div>
+  </div>
+
+  <div id="mgError"></div>
+ </div>
+</div>
+
+<div id="bar">
+ <button id="play" aria-label="재생">▶ 재생</button>
+ <button id="restart">처음부터</button>
+ <input id="seek" type="range" min="0" step="0.01" value="0" aria-label="재생 위치">
+ <span id="time">0.0 / 0.0초</span>
+ <button id="mute">🔊 음악 켬</button>
+ <button id="fs">전체 화면</button>
+ <button id="rec">녹화 모드</button>
+ <span class="hint">Space 재생 · ← → 2초 이동 · R 처음부터 · M 음악 · F 전체화면 · H 녹화 모드</span>
+</div>
+
+<script>
+/* ===== 문구·설정 (content.config) ===== */
+const CONFIG = {};
+const MUSIC = {"on": true, "volume": 0.27, "bpm": 112, "melody_at": 15, "kick_at": 21, "hat_at": 28};
+
+/* ===== 공용 도우미 (템플릿 제공) ===== */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const cl = (x,a=0,b=1) => x<a?a:x>b?b:x;
+const P = (t,s,d) => cl((t-s)/d);                 // t가 s에서 d초 동안 0→1
+const eo = x => 1-Math.pow(1-x,3);                 // ease-out
+const eio = x => x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2; // ease-in-out
+const eb = x => {const c1=1.9,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)}; // 살짝 튀어 오르기
+const S = (el,o,tr) => {el.style.opacity=o; el.style.transform=tr||"none";};
+const colors=["y","p","b"], HEX={"y": "#f4cf5a", "p": "#f29aac", "b": "#8cc3e8", "c": "#f3f0e6"};
+/* 자주 쓰는 동작 */
+const typeText = (el,text,t,start,cps=18) => { el.textContent = text.slice(0, cl(Math.floor((t-start)*cps),0,text.length)); };
+const fadeUp = (el,t,start,dur=.6,dist=40) => { const a=eo(P(t,start,dur)); S(el,a,`translateY(${(1-a)*dist}px)`); };
+const popIn = (el,t,start,dur=.6) => { const a=P(t,start,dur); S(el,P(t,start,.1),`scale(${.4+.6*eb(a)})`); };
+const drawPath = (pathEl,t,start,dur=.8) => { pathEl.style.strokeDashoffset = 1-eio(P(t,start,dur)); }; // path에 pathLength="1" stroke-dasharray="1"
+
+/* 분필 사람 그림: person(색, 'down'|'point'|'wave'|'talk', 'smile'|'worry') → SVG 문자열 */
+function person(col,pose,mood){
+  const arms={down:"M60 92 L32 142 M60 92 L88 142",point:"M60 92 L32 142 M60 92 L114 56",wave:"M60 92 L30 142 M60 92 L98 34",talk:"M60 92 L32 142 M60 92 L110 100"}[pose]||"M60 92 L32 142 M60 92 L88 142";
+  const mouth=mood==="worry"?"M50 54 Q60 46 70 54":"M50 48 Q60 57 70 48";
+  return `<svg viewBox="0 0 120 220" width="100%" height="100%" fill="none" stroke="${col}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><circle cx="60" cy="36" r="26"/><circle cx="50" cy="33" r="2.6" fill="${col}"/><circle cx="70" cy="33" r="2.6" fill="${col}"/><path d="${mouth}"/><path d="M60 62 L60 150 M60 150 L36 214 M60 150 L84 214 ${arms}"/></svg>`;
+}
+
+window.__mgErrors = [];
+function reportError(where, e){
+  const msg = `${where}: ${e && e.message ? e.message : e}`;
+  if (!window.__mgErrors.includes(msg)) { window.__mgErrors.push(msg); console.error('[장면 오류] ' + msg); }
+  const box = $("#mgError"); box.textContent = window.__mgErrors.slice(-3).join("\n"); box.classList.add("on");
+}
+
+/* ===== MotionKit (내장) ===== */
+/* ==== MotionKit v1 (템플릿 내장) — 모든 함수는 t(장면 경과 초)의 순수 함수 ==== */
+window.MK=window.MK||(()=>{
+const c=(x,a=0,b=1)=>x<a?a:x>b?b:x;
+const p=(t,s,d)=>c((t-s)/d);
+const lerp=(a,b,k)=>a+(b-a)*k;
+const h=i=>{const s=Math.sin(i*127.1+311.7)*43758.5453;return s-Math.floor(s);};
+const n1=x=>{const i=Math.floor(x),f=x-i,u=f*f*(3-2*f);return lerp(h(i),h(i+1),u)*2-1;};
+const E={
+ lin:x=>x,
+ out:x=>1-Math.pow(1-x,3),
+ inOut:x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2,
+ expo:x=>x>=1?1:1-Math.pow(2,-10*x),
+ antic:x=>{const k=1.70158;return (k+1)*x*x*x-k*x*x;},
+ back:x=>{const k=1.70158,y=x-1;return 1+(k+1)*y*y*y+k*y*y;},
+ elastic:x=>x<=0?0:x>=1?1:Math.pow(2,-10*x)*Math.sin((x*10-.75)*2.0944)+1,
+ bounce:x=>{const n=7.5625,d=2.75;if(x<1/d)return n*x*x;if(x<2/d)return n*(x-=1.5/d)*x+.75;if(x<2.5/d)return n*(x-=2.25/d)*x+.9375;return n*(x-=2.625/d)*x+.984375;},
+ snap:x=>x<.2?-0.08*Math.sin(x/.2*Math.PI/2):1-Math.exp(-7*(x-.2))*Math.cos(9*(x-.2))*1.08
+};
+const ez=e=>typeof e==='function'?e:(E[e]||E.out);
+const spring=(x,damp=6,freq=1.6)=>x<=0?0:1-Math.exp(-damp*x)*Math.cos(6.2832*freq*x);
+const split=(el,mode='char',text)=>{const s=text!=null?text:el.textContent;el.innerHTML='';el._u=[];
+ (mode==='word'?s.split(/(\s+)/):Array.from(s)).forEach(ch=>{if(!ch)return;if(/^\s+$/.test(ch)){el.appendChild(document.createTextNode(ch));return;}
+ const sp=document.createElement('span');sp.className='mk-u';sp.textContent=ch;el.appendChild(sp);el._u.push(sp);});return el._u;};
+const kinetic=(el,t,start,o={})=>{const u=el._u||split(el,o.mode);const {type='rise',gap=.045,dur=.7,dist=80,order='lr'}=o;const n=u.length;
+ u.forEach((sp,i)=>{const j=order==='rl'?n-1-i:order==='center'?Math.abs(i-(n-1)/2):order==='random'?h(i+7)*n:i;
+  const k=p(t,start+j*gap,dur);let op=c(k*3),tr='',e;
+  switch(type){
+   case 'drop':e=E.bounce(k);tr=`translateY(${(e-1)*dist*2}px)`;op=k>0?1:0;break;
+   case 'flip':e=E.back(k);tr=`perspective(600px) rotateX(${(1-e)*-90}deg)`;break;
+   case 'pop':e=E.elastic(k);tr=`scale(${e})`;op=k>0?1:0;break;
+   case 'scatter':{e=E.expo(k);const a=h(i)*2-1,b=h(i+50)*2-1;tr=`translate(${(1-e)*a*dist*4}px,${(1-e)*b*dist*3}px) rotate(${(1-e)*a*180}deg)`;break;}
+   case 'blur':e=E.out(k);sp.style.filter=`blur(${(1-e)*14}px)`;tr=`scale(${1.3-.3*e})`;break;
+   case 'wave':e=E.out(k);tr=`translateY(${(1-e)*dist+Math.sin(t*4-i*.5)*8*e}px)`;break;
+   default:e=E.back(k);tr=`translateY(${(1-e)*dist}px)`;
+  }
+  sp.style.opacity=op;sp.style.transform=tr;});};
+const kineticOut=(el,t,start,o={})=>{const u=el._u||split(el,o.mode);const {gap=.03,dur=.45,dist=60}=o;
+ u.forEach((sp,i)=>{const k=E.antic(p(t,start+i*gap,dur));if(k<=0&&t<start)return;sp.style.opacity=1-c(k);sp.style.transform=`translateY(${-k*dist}px)`;});};
+const stagger=(els,t,start,o,fn)=>{const {gap=.08,dur=.6,ease='back'}=o||{};const f=ez(ease);Array.from(els).forEach((el,i)=>fn(el,f(p(t,start+i*gap,dur)),i));};
+const reveal=(el,t,start,dur,o={})=>{const {shape='circle',x=50,y=50,ease='inOut',dir='left'}=o;const k=ez(ease)(p(t,start,dur));let cp;
+ if(shape==='wipe'){const r=(1-k)*100;cp=dir==='right'?`inset(0 0 0 ${r}%)`:dir==='up'?`inset(${r}% 0 0 0)`:dir==='down'?`inset(0 0 ${r}% 0)`:`inset(0 ${r}% 0 0)`;}
+ else if(shape==='diag'){const a=k*200;cp=`polygon(0 0,${a}% 0,${a-100}% 100%,0 100%)`;}
+ else if(shape==='iris'){const r=(1-k)*50;cp=`inset(${r}% ${r}% ${r}% ${r}% round ${r}%)`;}
+ else cp=`circle(${k*150}% at ${x}% ${y}%)`;
+ el.style.clipPath=cp;el.style.webkitClipPath=cp;};
+const camera=(el,t,keys,ease='inOut')=>{let a=keys[0],b=keys[keys.length-1];
+ if(t<=a.t)b=a;else if(t>=b.t)a=b;else for(let i=0;i<keys.length-1;i++)if(t>=keys[i].t&&t<=keys[i+1].t){a=keys[i];b=keys[i+1];break;}
+ const k=a===b?0:ez(ease)((t-a.t)/(b.t-a.t));const g=(q,d)=>lerp(a[q]??d,b[q]??d,k);
+ el.style.transformOrigin='960px 540px';el.style.transform=`translate(${g('x',0)}px,${g('y',0)}px) scale(${g('s',1)}) rotate(${g('r',0)}deg)`;};
+const ngon=(sides,N=72,r=200,cx=0,cy=0,rot=-90)=>{const P=[];for(let i=0;i<N;i++){const s=i/N;
+ if(!sides){const a=(rot+360*s)*Math.PI/180;P.push([cx+r*Math.cos(a),cy+r*Math.sin(a)]);continue;}
+ const f=s*sides,j=Math.floor(f),u=f-j,A=(rot+360*j/sides)*Math.PI/180,B=(rot+360*(j+1)/sides)*Math.PI/180;
+ P.push([cx+r*lerp(Math.cos(A),Math.cos(B),u),cy+r*lerp(Math.sin(A),Math.sin(B),u)]);}return P;};
+const morph=(el,A,B,k)=>el.setAttribute('points',A.map((a,i)=>`${lerp(a[0],B[i][0],k).toFixed(1)},${lerp(a[1],B[i][1],k).toFixed(1)}`).join(' '));
+const ball=(el,t,start,o={})=>{const {h:H=400,decay=.55,fall=.55,sq=.35}=o;const g=2*H/(fall*fall);let tt=t-start,y=H,v=0;
+ if(tt>0){if(tt<fall){y=H-.5*g*tt*tt;v=-g*tt;}else{tt-=fall;let hk=H*decay,vk=Math.sqrt(2*g*hk),T=2*vk/g,n=0;
+  while(tt>T&&hk>1&&n++<30){tt-=T;hk*=decay;vk=Math.sqrt(2*g*hk);T=2*vk/g;}
+  if(hk<=1||n>=30){y=0;v=0;}else{y=vk*tt-.5*g*tt*tt;v=vk-g*tt;}}}
+ const sp=Math.abs(v)/Math.sqrt(2*g*H);let sx=1,sy=1;
+ if(y<H*.04&&sp>.05){sx=1+sq*sp;sy=1-sq*sp;}else{sy=1+.25*sp;sx=1-.15*sp;}
+ el.style.transformOrigin='50% 100%';el.style.transform=`translateY(${-y}px) scale(${sx},${sy})`;return y;};
+const boil=(el,t,amt=1.5,fps=8,base='')=>{const f=Math.floor(t*fps);el.style.transform=`${base} translate(${(h(f)*2-1)*amt}px,${(h(f+9)*2-1)*amt}px) rotate(${(h(f+3)*2-1)*amt*.3}deg)`;};
+const misreg=(el,t,amt=4,fps=10)=>{const f=Math.floor(t*fps);el.style.transform=`translate(${(h(f+1)*2-1)*amt}px,${(h(f+2)*2-1)*amt}px)`;};
+const grain=(el,t,fps=12)=>{const f=Math.floor(t*fps);el.style.backgroundPosition=`${Math.floor(h(f)*256)}px ${Math.floor(h(f+5)*256)}px`;};
+const count=(el,t,start,dur,from,to,dec=0,ease='out')=>{el.textContent=lerp(from,to,ez(ease)(p(t,start,dur))).toFixed(dec);};
+const scramble=(el,text,t,start,dur,chars='01▲■●◆ABCDEFGHJKLMNPRSTUVWXYZ')=>{const k=p(t,start,dur),n=text.length,done=Math.floor(k*n),f=Math.floor(t*20);let s='';
+ for(let i=0;i<n;i++){if(i<done||text[i]===' ')s+=text[i];else if(k>0&&i<done+6)s+=chars[Math.floor(h(i+f*13)*chars.length)];}el.textContent=s;};
+const drawAll=(root,t,start,o={})=>{const {dur=1.2,gap=.15,ease='inOut'}=o;root.querySelectorAll('path,line,polyline,circle,rect').forEach((el,i)=>{
+ el.setAttribute('pathLength','1');el.style.strokeDasharray='1';el.style.strokeDashoffset=1-ez(ease)(p(t,start+i*gap,dur));});};
+const particles=(cv,t,o={})=>{const ctx=cv.getContext('2d');const {n=160,mode='drift',color='255,255,255',size=2.2,speed=.08,glow=0,cx=960,cy=540,alpha=1}=o;
+ ctx.clearRect(0,0,cv.width,cv.height);ctx.save();if(glow){ctx.shadowBlur=glow;ctx.shadowColor=`rgba(${color},1)`;}
+ for(let i=0;i<n;i++){let x,y;const a=h(i+3),b=h(i+91),z=.3+.7*h(i+17);
+  if(mode==='orbit'){const R=80+a*620,w=(.15+.6/(1+R/200))*(b<.5?1:-1),ang=b*6.2832+t*w;x=cx+R*Math.cos(ang);y=cy+R*Math.sin(ang)*.42;}
+  else if(mode==='rise'){x=a*cv.width+n1(i+t*.5)*30;y=((b*cv.height-t*speed*600*z)%cv.height+cv.height)%cv.height;}
+  else{x=a*cv.width+n1(i*1.7+t*speed*3)*120;y=b*cv.height+n1(i*2.3+50+t*speed*3)*120;}
+  ctx.globalAlpha=alpha*z*(.55+.45*Math.sin(t*2+i));ctx.fillStyle=`rgb(${color})`;ctx.beginPath();ctx.arc(x,y,size*z,0,6.2832);ctx.fill();}
+ ctx.restore();};
+/* 준비: 웹폰트·그레인 텍스처 (한 번만) */
+(()=>{try{if(!document.getElementById('mk-fonts')){const l=document.createElement('link');l.id='mk-fonts';l.rel='stylesheet';
+ l.href='https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;900&family=IBM+Plex+Sans+KR:wght@300;600&family=Do+Hyeon&family=Nanum+Myeongjo:wght@400;800&display=swap';document.head.appendChild(l);}
+ const cv=document.createElement('canvas');cv.width=cv.height=256;const g=cv.getContext('2d'),im=g.createImageData(256,256);
+ for(let i=0;i<im.data.length;i+=4){const v=Math.floor(h(i*.25+1)*255);im.data[i]=im.data[i+1]=im.data[i+2]=v;im.data[i+3]=255;}
+ g.putImageData(im,0,0);document.documentElement.style.setProperty('--mk-noise',`url(${cv.toDataURL()})`);}catch(e){}})();
+return {c,p,lerp,h,n1,E,ez,spring,split,kinetic,kineticOut,stagger,reveal,camera,ngon,morph,ball,boil,misreg,grain,count,scramble,drawAll,particles};
+})();
+/* ==== /MotionKit ==== */
+
+
+/* ===== setup_js (장면 요소 준비: 한 번 실행, 여기서 선언한 const/function은 장면 코드에서 쓸 수 있다) ===== */
+
+const G=id=>document.getElementById(id);
+const op=(el,v)=>{el.style.opacity=Math.max(0,Math.min(1,v));};
+const TAU2=Math.PI*2;
+const rise=(el,t,s,d,dy,dx)=>{const p=MK.E.out(MK.p(t,s,d||.7));op(el,p);el.style.transform='translate('+((1-p)*(dx||0))+'px,'+((1-p)*(dy===undefined?24:dy))+'px)';};
+const popS=(el,t,s,d)=>{const p=MK.E.back(MK.p(t,s,d||.5));op(el,Math.min(1,p));el.style.transform='scale('+Math.max(0,p)+')';};
+const dr=(el,t,s,d)=>{el.setAttribute('pathLength','1');el.style.strokeDasharray='1';el.style.strokeDashoffset=1-MK.E.inOut(MK.p(t,s,d||.8));};
+function setC(el,x,y,r){el.setAttribute('cx',x.toFixed(1));el.setAttribute('cy',y.toFixed(1));if(r!==undefined)el.setAttribute('r',Math.max(0,r).toFixed(1));}
+function setL(el,x1,y1,x2,y2){el.setAttribute('x1',x1.toFixed(1));el.setAttribute('y1',y1.toFixed(1));el.setAttribute('x2',x2.toFixed(1));el.setAttribute('y2',y2.toFixed(1));}
+function box(el,x,y,w,h){el.style.left=x+'px';el.style.top=y+'px';el.style.width=w+'px';el.style.height=h+'px';}
+const hsh=i=>{const x=Math.sin(i*127.1+311.7)*43758.5453;return x-Math.floor(x);};
+
+
+/* ===== 장면 ===== */
+const SC=[
+ {id:"s0",d:7,up(t){
+
+MK.reveal(G('s0bar'),t,.2,.9,{shape:'wipe',dir:'top'});op(G('s0k'),MK.p(t,.5,.7));
+MK.kinetic(G('s0t'),t,.8,{type:'rise',gap:.07,dur:.8});MK.kinetic(G('s0u'),t,1.8,{type:'flip',gap:.06,dur:.8});rise(G('s0c'),t,3.4,.8,20,-30);
+for(let i=0;i<24;i++){const ph=((t*.25+hsh(i))%1),x=1300+(hsh(i+50)-.5)*300,y=100+ph*880;setC(G('s0d'+i),x,y,t>.8?5*Math.min(1,ph*8)*(1-Math.max(0,ph-.85)*6):0);}
+
+ }},
+ {id:"s1",d:13,up(t){
+rise(G('hn'),t,.1,.6,0,-40);MK.kinetic(G('ht'),t,.3,{type:'rise',gap:.03,dur:.6});if(G('hs'))rise(G('hs'),t,1.1,.6,14);
+MK.kinetic(G('s1f'),t,1.2,{type:'pop',gap:.06,dur:.6});rise(G('s1fs'),t,2.2,.6,10);
+MK.reveal(G('s1ax'),t,2.6,.8,{shape:'wipe',dir:'left'});op(G('s1b'),MK.p(t,3.6,.5));rise(G('s1bl'),t,3.8,.5,0,-20);
+const e=G('s1e'),p=MK.E.back(MK.p(t,5,.5));op(e,Math.min(1,p));e.style.transform='scale('+Math.max(0,p)+')';rise(G('s1el'),t,5.2,.5,0,-20);
+dr(G('s1a'),t,6.4,1.2);op(G('s1n'),MK.p(t,7.2,.4));MK.count(G('s1nv'),t,7.4,2,0,150000,0);G('s1nv').textContent=Number(G('s1nv').textContent.replace(/,/g,'')||0).toLocaleString();rise(G('s1nl'),t,9.6,.7,10,-20);
+
+ }},
+ {id:"s2",d:10,up(t){
+rise(G('hn'),t,.1,.6,0,-40);MK.kinetic(G('ht'),t,.3,{type:'rise',gap:.03,dur:.6});if(G('hs'))rise(G('hs'),t,1.1,.6,14);
+dr(G('s2c1'),t,1.6,1.4);dr(G('s2c2'),t,2.4,1.4);dr(G('s2c3'),t,3.6,1.4);
+op(G('s2l1'),MK.p(t,2.6,.5));op(G('s2l2'),MK.p(t,3.4,.5));const m=MK.E.back(MK.p(t,5.2,.5));G('s2m').setAttribute('r',(14*Math.max(0,m)).toFixed(1));op(G('s2l3'),MK.p(t,5.4,.5));
+rise(G('s2t'),t,6,.7,14,-20);rise(G('s2s'),t,7,.7,10,-20);
+
+ }},
+ {id:"s3",d:16,up(t){
+rise(G('hn'),t,.1,.6,0,-40);MK.kinetic(G('ht'),t,.3,{type:'rise',gap:.03,dur:.6});if(G('hs'))rise(G('hs'),t,1.1,.6,14);
+const hwf=y=>{const TBj=[[130,6],[260,40],[400,24],[520,28],[590,6],[650,30],[800,80]];for(let i=0;i<TBj.length-1;i++)if(y<=TBj[i+1][0]){const[a,fa]=TBj[i],[b,fb]=TBj[i+1];return fa+(fb-fa)*(y-a)/(b-a);}return 80;};
+const on=MK.p(t,1.6,.6);
+for(let i=0;i<60;i++){const ph=((t*.26+hsh(i))%1),y=130+ph*670,u=hsh(i+100)*2-1,x=520+u*hwf(y);let ok=t>1.6;if(y>400){const inP=Math.abs(u)<.28,T=inP?.04:.7;if(hsh(i+200)>T)ok=false;}setC(G('s3e'+i),x,y,ok?4:0);}
+G('s3pa').style.opacity=MK.p(t,2.4,.5);
+op(G('s3tv'),MK.p(t,6,.6));op(G('s3tl'),MK.p(t,6.4,.6));const pd=G('s3pd');const q=MK.E.out(MK.p(t,7,.9));pd.style.opacity=q;pd.style.transform='scale('+(.4+.6*q)+')';
+MK.kinetic(G('s3f'),t,8.4,{type:'pop',gap:.05,dur:.6});rise(G('s3b1'),t,10.4,.7,10,-20);rise(G('s3b2'),t,12.4,.7,10,-20);
+
+ }},
+ {id:"s4",d:16,up(t){
+rise(G('hn'),t,.1,.6,0,-40);MK.kinetic(G('ht'),t,.3,{type:'rise',gap:.03,dur:.6});if(G('hs'))rise(G('hs'),t,1.1,.6,14);
+const NX=16,NY=12,CS=40;
+const hgt=(c,r)=>{const d=Math.hypot(c-5,r-6);let h=0;if(d<3.6)h+=Math.sqrt(13-d*d)*.8;if(c>10&&c<14&&r>2&&r<9)h+=1;return h;};
+const sg=(c,r)=>{const gx=(hgt(c+.5,r)-hgt(c-.5,r)),gy=(hgt(c,r+.5)-hgt(c,r-.5));return Math.min(1,Math.max(0,(Math.sqrt(1+gx*gx+gy*gy)-.95)/1.2));};
+const T0=2,RATE=14,k=Math.max(0,Math.floor((t-T0)*RATE));
+for(let r=0;r<NY;r++)for(let c=0;c<NX;c++){const e=G('s4c'+r+'_'+c),i=r*NX+c,v=sg(c,r),g=Math.round(235-205*v);e.style.background=i<k?'rgb('+g+','+g+','+Math.max(0,g-8)+')':'#d9d4c7';e.style.opacity=MK.p(t,1+(r+c)*.02,.4);}
+const cur=Math.min(NX*NY-1,k),cc=cur%NX,x=450+(cc/NX-.5)*300+0,tip=640;const bm=G('s4bm');bm.setAttribute('d',t>1.6?'M520 138 L520 360 L'+(x+70)+' '+tip:'');
+const se=G('s4se');if(!se.children.length){for(let i=0;i<4;i++){const l=document.createElementNS('http://www.w3.org/2000/svg','line');l.style.stroke='#e8321e';l.style.strokeWidth='3px';se.appendChild(l);}}
+[...se.children].forEach((l,i)=>{setL(l,x+70,tip,700,620+i*8);l.style.opacity=t>2?.8:0;});
+rise(G('s4t1'),t,4,.7,10,-20);rise(G('s4t2'),t,7,.7,10,-20);rise(G('s4t3'),t,12,.7,10,-20);
+
+ }},
+ {id:"s5",d:12,up(t){
+rise(G('hn'),t,.1,.6,0,-40);MK.kinetic(G('ht'),t,.3,{type:'rise',gap:.03,dur:.6});if(G('hs'))rise(G('hs'),t,1.1,.6,14);
+rise(G('s5h1'),t,1.4,.5,0,-20);rise(G('s5h2'),t,1.8,.5,0,-20);for(let i=0;i<6;i++)rise(G('s5r'+i),t,2.2+i*.8,.6,14);rise(G('s5z'),t,8.6,.8,12,-20);
+
+ }},
+ {id:"s6",d:7,up(t){
+
+MK.kinetic(G('s6a'),t,.3,{type:'rise',gap:.04,dur:.7,mode:'word'});MK.reveal(G('s6l'),t,1.8,.9,{shape:'wipe',dir:'left'});rise(G('s6b'),t,2.6,.8,16,-20);rise(G('s6c'),t,5,.7,8);
+
+ }}
+];
+let acc=0; SC.forEach(s=>{s.el=$("#"+s.id);s.s=acc;acc+=s.d;});
+const TOTAL=acc;
+
+/* ===== 배경음악: 코드로 합성한 단순 멜로디 (외부 음원 없음) ===== */
+const BPM=MUSIC.bpm||112, SD=60/BPM/2;
+const CH=[[48,52,55],[43,47,50],[45,48,52],[41,45,48]];   // C G Am F
+const MEL=[76,0,79,0,76,74,72,0, 74,0,71,0,74,76,74,0, 72,0,76,0,81,0,79,76, 77,0,76,74,72,0,0,0];
+const ARP=[0,1,2,1,0,1,2,1];
+const mf=m=>440*Math.pow(2,(m-69)/12);
+let actx=null,master=null,noiseBuf=null,muted=!MUSIC.on,nextStep=0,baseA=0,baseT=0;
+function initAudio(){
+  if(!actx){
+    try{actx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return;}
+    master=actx.createGain();master.gain.value=0;master.connect(actx.destination);
+    noiseBuf=actx.createBuffer(1,actx.sampleRate*.1,actx.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  }
+  if(actx.state!=="running")actx.resume().then(syncAudio);
+  syncAudio();
+}
+function syncAudio(){if(actx){baseA=actx.currentTime;baseT=T;nextStep=Math.ceil(T/SD-1e-6);}}
+function tone(f,t,dur,type,g){const o=actx.createOscillator(),v=actx.createGain();o.type=type;o.frequency.value=f;
+  v.gain.setValueAtTime(0.0001,t);v.gain.linearRampToValueAtTime(g,t+.012);v.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(v).connect(master);o.start(t);o.stop(t+dur+.05);}
+function kick(t){const o=actx.createOscillator(),v=actx.createGain();o.frequency.setValueAtTime(140,t);o.frequency.exponentialRampToValueAtTime(45,t+.14);
+  v.gain.setValueAtTime(.55,t);v.gain.exponentialRampToValueAtTime(.001,t+.25);o.connect(v).connect(master);o.start(t);o.stop(t+.3);}
+function hat(t){const s=actx.createBufferSource(),h=actx.createBiquadFilter(),v=actx.createGain();s.buffer=noiseBuf;h.type="highpass";h.frequency.value=7000;
+  v.gain.setValueAtTime(.07,t);v.gain.exponentialRampToValueAtTime(.001,t+.05);s.connect(h).connect(v).connect(master);s.start(t);s.stop(t+.08);}
+function playStep(n,at,tl){
+  const bar=Math.floor(n/8)%4, st=n%8, ch=CH[bar];
+  const nt=ch[ARP[st]]+24+(st>=4&&ARP[st]===0?12:0);
+  tone(mf(nt),at,.22,"triangle",.07);
+  if(st===0||st===3||st===6)tone(mf(ch[0]),at,.32,"sine",.22);
+  if(tl>=MUSIC.melody_at){const m=MEL[n%32];if(m)tone(mf(m),at,.42,"sine",.13),tone(mf(m+12),at,.2,"sine",.025);}
+  if(tl>=MUSIC.kick_at&&(st===0||st===4))kick(at);
+  if(tl>=MUSIC.hat_at&&st%2===1)hat(at);
+}
+function audioTick(){
+  if(!actx||actx.state!=="running")return;
+  const vol=(muted?0:MUSIC.volume)*(1-P(T,TOTAL-3,3))*(playing?1:0);
+  master.gain.setTargetAtTime(vol,actx.currentTime,.05);
+  if(!playing||muted)return;
+  const now=actx.currentTime;
+  while(nextStep*SD<T+.2){const st=nextStep*SD;if(st>=T-.03&&st<TOTAL-.5)playStep(nextStep,now+Math.max(0,st-T),st);nextStep++;}
+}
+
+/* ===== 재생 엔진 ===== */
+let T=0,playing=false,last=null,cur=null;
+function render(t){
+  let sc=SC[SC.length-1]; for(const s of SC){if(t<s.s+s.d){sc=s;break;}}
+  if(cur!==sc){SC.forEach(s=>s.el.style.display="none");sc.el.style.display="block";cur=sc;}
+  const lt=t-sc.s, isLast=sc===SC[SC.length-1];
+  sc.el.style.opacity=P(lt,0,.25)*(isLast?1:1-P(lt,sc.d-.35,.35));
+  try { sc.up(lt); } catch (e) { reportError(sc.id, e); }
+  $("#seek").value=t; $("#time").textContent=`${t.toFixed(1)} / ${TOTAL.toFixed(1)}초`;
+}
+function frame(ts){
+  if(playing){
+    if(actx&&actx.state==="running"){T=baseT+(actx.currentTime-baseA);}
+    else{if(last!==null)T+=(ts-last)/1000;last=ts;}
+    if(T>=TOTAL){T=TOTAL;setPlay(false);}
+  } else last=null;
+  audioTick(); render(T); requestAnimationFrame(frame);
+}
+function setPlay(p){playing=p;last=null;syncAudio();$("#play").textContent=p?"❚❚ 일시정지":"▶ 재생";$("#play").setAttribute("aria-label",p?"일시정지":"재생");}
+$("#seek").max=TOTAL;
+$("#mute").textContent=muted?"🔇 음악 끔":"🔊 음악 켬";
+$("#play").onclick=()=>{initAudio();if(T>=TOTAL)T=0;setPlay(!playing);};
+$("#restart").onclick=()=>{initAudio();T=0;setPlay(true);};
+$("#seek").oninput=e=>{T=+e.target.value;syncAudio();};
+$("#mute").onclick=()=>{initAudio();muted=!muted;$("#mute").textContent=muted?"🔇 음악 끔":"🔊 음악 켬";syncAudio();};
+function toggleFS(){try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}catch(e){}}
+function toggleRec(){document.body.classList.toggle("rec");fit();}
+$("#fs").onclick=toggleFS; $("#rec").onclick=toggleRec;
+addEventListener("keydown",e=>{
+  if(e.target.tagName==="BUTTON"&&e.code==="Space")return;
+  initAudio();
+  if(e.code==="Space"){e.preventDefault();$("#play").click();}
+  else if(e.key==="f"||e.key==="F")toggleFS();
+  else if(e.key==="h"||e.key==="H")toggleRec();
+  else if(e.key==="m"||e.key==="M")$("#mute").click();
+  else if(e.key==="r"||e.key==="R"){T=0;setPlay(true);}
+  else if(e.key==="ArrowRight"){T=Math.min(TOTAL,T+2);syncAudio();}
+  else if(e.key==="ArrowLeft"){T=Math.max(0,T-2);syncAudio();}
+});
+function fit(){const w=$("#wrap"),s=Math.min(w.clientWidth/1920,w.clientHeight/1080);$("#stage").style.transform=`translate(-50%,-50%) scale(${s})`;}
+addEventListener("resize",fit); fit();
+window.__mg = { TOTAL, SC, render: t => { T = t; render(t); }, get T(){ return T; } };
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>케플러 법칙에서 뉴턴 만유인력으로 — 시뮬레이션으로 이해하기</title>
+<!-- kepler-newton · 케플러 3법칙과 뉴턴의 만유인력 유도 수업 덱 (역학과 에너지) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap">
+<style>
+:root{
+  --bg:#dfe5f0; --slide:#f5f7fc; --panel:#ffffff; --ink:#14203a; --muted:#54617b; --line:#c9d2e4;
+  --blue:#1f5fd1; --onblue:#ffffff; --amber:#b45f00; --green:#0c7a58; --red:#b8321f;
+  --blue-soft:#dce8fb; --amber-soft:#fbe8cf;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+    --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+    --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+  --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+  --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;overflow:hidden}
+#viewport{position:relative;width:100%;height:100%;overflow:hidden}
+#deck{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center center;background:var(--slide);box-shadow:0 12px 70px rgba(0,0,0,.28);overflow:hidden}
+.slide{position:absolute;inset:0;display:none;flex-direction:column;padding:84px 88px 52px;gap:24px;background:var(--slide);font-size:32px;line-height:1.4}
+.slide.active{display:flex}
+.hd{display:flex;align-items:baseline;justify-content:space-between;gap:24px;flex:none}
+.hd h2{font-size:58px;line-height:1.15;margin:0;font-weight:800;letter-spacing:-.01em}
+.hd .src{font-size:26px;color:var(--muted);white-space:nowrap}
+.body{flex:1;min-height:0;display:grid;gap:36px}
+.side{display:flex;flex-direction:column;gap:18px;min-height:0}
+canvas{display:block;border-radius:16px;background:#0a1330}
+.box{background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:20px 26px}
+.box h3{margin:0 0 8px;font-size:30px}
+.sm{font-size:26px;color:var(--muted)}
+.lead{font-size:40px;line-height:1.35}
+.k{color:var(--amber);font-weight:700}.p{color:var(--blue);font-weight:700}.ok{color:var(--green);font-weight:700}.bad{color:var(--red);font-weight:700}
+/* math */
+.m{font-family:'STIX Two Text','Times New Roman',serif;font-style:italic;font-size:1.1em;white-space:nowrap}
+.m .u,.u{font-style:normal}
+.m sub,.m sup{font-size:.68em;line-height:0;font-style:normal}
+.fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.15;margin:0 .12em;font-size:.95em}
+.fr>span:first-child{padding:0 .2em .06em;border-bottom:.07em solid currentColor}
+.fr>span:last-child{padding-top:.06em}
+.sq{white-space:nowrap}.sq .rad{border-top:.07em solid currentColor;padding:0 .15em;margin-left:-.04em}
+.eq{font-size:44px;text-align:center;padding:6px 0}
+/* controls */
+.ctl{display:flex;flex-direction:column;gap:4px}
+.ctl .row{display:flex;justify-content:space-between;align-items:baseline;font-size:27px;gap:12px}
+.ctl .val{font-weight:700;font-variant-numeric:tabular-nums}
+.rangew{position:relative}
+input[type=range]{width:100%;height:44px;-webkit-appearance:none;appearance:none;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:38px;height:38px;border-radius:50%;background:var(--blue);margin-top:-13px;border:4px solid var(--panel);box-shadow:0 1px 6px rgba(0,0,0,.35)}
+input[type=range]::-moz-range-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;background:var(--blue);border:4px solid var(--panel)}
+input[type=range]:focus-visible{outline:3px solid var(--blue);outline-offset:4px;border-radius:8px}
+.marks{position:relative;height:60px;font-size:22px;color:var(--muted)}
+.marks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.btns{display:flex;gap:12px;flex-wrap:wrap}
+.btn,.chip{font:inherit;font-size:27px;font-weight:700;padding:10px 24px;border-radius:12px;border:2px solid var(--blue);background:var(--panel);color:var(--blue);cursor:pointer;line-height:1.25}
+.btn.pri{background:var(--blue);color:var(--onblue)}
+.chip{padding:8px 18px;font-size:26px;border-color:var(--line);color:var(--ink);font-weight:500}
+.chip.on{border-color:var(--blue);background:var(--blue-soft);font-weight:700}
+.btn:focus-visible,.chip:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.chips{display:flex;gap:10px;flex-wrap:wrap}
+/* step reveal */
+.st{display:grid;grid-template-columns:46px 1fr;gap:14px;padding:8px 14px;border-radius:14px;opacity:0;transform:translateY(10px);transition:opacity .35s,transform .35s;border:2px solid transparent}
+.st.on{opacity:.55;transform:none}
+.st.cur{opacity:1;background:var(--panel);border-color:var(--blue)}
+.st .n{width:42px;height:42px;border-radius:50%;background:var(--blue);color:var(--onblue);display:grid;place-items:center;font-weight:800;font-size:24px;margin-top:2px}
+.st .tl{display:flex;flex-wrap:wrap;gap:2px 14px;align-items:baseline}
+.st .t{font-size:23px;color:var(--muted);line-height:1.3}
+.st b{font-size:27px}
+.st .eq{font-size:35px;line-height:1.1;text-align:left;padding:2px 0}
+/* cover */
+.cover{flex-direction:row;align-items:center;gap:56px}
+.cover.active{display:flex}
+.cv-l{flex:1;display:flex;flex-direction:column;gap:28px}
+.cv-l h1{font-size:200px;line-height:1;margin:0;font-weight:800;letter-spacing:-.04em}
+.cv-tag{font-size:30px;color:var(--muted)}
+.q{border-left:8px solid var(--blue);border-radius:6px;padding:8px 0 8px 28px;font-size:36px;line-height:1.45}
+/* table */
+table.t{border-collapse:collapse;width:100%;font-size:27px}
+table.t th,table.t td{padding:10px 14px;border-bottom:2px solid var(--line);text-align:right;white-space:nowrap}
+table.t th:first-child,table.t td:first-child,table.t th:last-child,table.t td:last-child{text-align:left}
+table.t th{font-size:24px;color:var(--muted);font-weight:500}
+table.t tbody tr{cursor:pointer}
+table.t tbody tr.on{background:var(--blue-soft);font-weight:700}
+/* HUD / notes */
+#hud{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:10px;align-items:center;background:rgba(10,19,48,.86);color:#e9effd;padding:8px 14px;border-radius:14px;font-size:18px;opacity:0;transition:opacity .3s;z-index:20}
+#hud.show{opacity:1}
+#hud button{font:inherit;font-size:18px;color:#e9effd;background:transparent;border:1.5px solid rgba(233,239,253,.5);border-radius:8px;padding:4px 12px;cursor:pointer}
+#notes{position:absolute;left:0;right:0;bottom:0;background:rgba(10,19,48,.94);color:#eaf0ff;padding:26px 88px 34px;font-size:30px;line-height:1.5;display:none;z-index:15}
+#notes.on{display:block}
+#notes b{color:#ffb454}
+
+.ko{font-family:'Noto Sans KR',sans-serif;font-style:normal;font-size:.8em}
+#bar{position:absolute;top:14px;left:88px;right:88px;height:54px;display:flex;justify-content:space-between;align-items:center;z-index:12}
+#bar .bl{font-size:26px;font-weight:800}
+#bar .br{display:flex;gap:10px}
+.tb{font:inherit;font-size:24px;font-weight:700;padding:7px 18px;border-radius:12px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;line-height:1.2}
+.tb:hover{border-color:var(--blue)}.tb.on{border-color:var(--blue);background:var(--blue-soft)}
+.tb:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+#help{position:absolute;inset:0;background:rgba(6,11,30,.82);display:none;align-items:center;justify-content:center;z-index:30}
+#help.on{display:flex}
+.hp{background:var(--panel);color:var(--ink);border-radius:22px;padding:36px 52px 40px;width:1320px;max-height:960px;overflow:auto;font-size:27px;line-height:1.5;border:2px solid var(--line)}
+.hp h3{font-size:40px;margin:0 0 14px}.hp h4{font-size:29px;margin:18px 0 6px;color:var(--blue)}
+.hp .g{display:grid;grid-template-columns:230px 1fr;gap:6px 22px}
+.hp kbd{font:inherit;font-size:24px;font-weight:700;background:var(--blue-soft);border:2px solid var(--line);border-radius:8px;padding:1px 10px;margin-right:4px}
+#ask{position:absolute;inset:0;background:rgba(6,11,30,.6);display:none;align-items:center;justify-content:center;z-index:25;cursor:pointer}
+#ask.on{display:flex}
+#ask .ak{background:var(--panel);color:var(--ink);border-radius:24px;border-left:16px solid var(--blue);padding:44px 72px 40px 60px;width:1500px;box-shadow:0 20px 80px rgba(0,0,0,.45)}
+#ask .ah{font-size:30px;color:var(--blue);font-weight:800;margin-bottom:18px}
+#ask .aq{font-size:54px;line-height:1.4;font-weight:700;margin:10px 0;letter-spacing:-.01em}
+#ask .aq span{color:var(--blue);margin-right:14px}
+#ask .af{font-size:24px;color:var(--muted);margin-top:22px}
+#notes .nh{font-size:24px;color:#9db0d8;margin-bottom:6px}
+#notes .nq{margin:4px 0 10px;font-size:29px}
+#notes .ni{margin:6px 0;font-size:27px;line-height:1.45}
+#notes .nx{color:#ff9d9d;font-weight:700}#notes .nv{color:#5eead4;font-weight:700}
+@media (prefers-reduced-motion: reduce){.st{transition:none}}
+#simError{position:absolute;left:88px;right:88px;top:76px;z-index:40;background:rgba(184,50,31,.95);color:#fff;font-size:22px;line-height:1.4;padding:10px 18px;border-radius:12px;white-space:pre-wrap;display:none}
+#simError.on{display:block}
+/* ---- extra_css ---- */
+
+</style>
+</head>
+<body>
+<div id="viewport">
+<div id="deck">
+
+<!-- s1 -->
+<section class="slide cover" id="s1">
+  <div class="cv-l"><div class="cv-tag">역학과 에너지 · 케플러 법칙에서 뉴턴 만유인력으로</div>
+    <h1>법칙에서 힘으로</h1>
+    <p class="lead" style="margin:0">행성은 왜 타원을 돌까?</p>
+    <div class="q">세 법칙은 “어떻게”만 말해 준다. “왜”는 어떻게 알아낼까?</div>
+    <div class="sm">❓ 조작법 · 📝 오개념 노트 · → / Space 로 시작</div></div>
+  <canvas id="c-hero"></canvas>
+</section>
+
+<!-- s2 -->
+<section class="slide" id="s2">
+  <header class="hd"><h2>관측에서 역학으로: 사람과 사건</h2><span class="src">과학사 흐름 (1546~1727)</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="c-pp"></canvas>
+    <div class="side">
+      <div class="chips" id="pp-chips"></div>
+      <div class="box"><div class="sm" style="color:var(--ink)" id="pp-info">&nbsp;</div></div>
+    </div>
+</div>
+</section>
+
+<!-- s3 -->
+<section class="slide" id="s3">
+  <header class="hd"><h2>제1법칙: 행성은 타원 궤도를 돈다</h2><span class="src">케플러 제1법칙 (타원 궤도의 법칙)</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="c-l1"></canvas>
+    <div class="side">
+      <div class="box"><div class="eq" style="font-size:40px"><div class="eq"><span class="m"> r<sub>1</sub> + r<sub>2</sub> = 2a </span></div></div><div class="sm" style="text-align:center">태양은 타원의 한 초점 F₁ 에 있다</div></div>
+      <div class="ctl"><div class="row"><span>이심률 e</span><span class="val" id="l1-ev">0.4</span></div><input id="l1-e" type="range" min="0" max="0.8" step="0.05" value="0.4"></div><div class="ctl"><div class="row"><span>행성 위치 (진근점이각)</span><span class="val" id="l1-nv">60°</span></div><input id="l1-n" type="range" min="0" max="360" step="5" value="60"></div>
+      <div class="box"><div class="sm" style="color:var(--ink)" id="l1-info">&nbsp;</div></div>
+    </div>
+</div>
+</section>
+
+<!-- s4 -->
+<section class="slide" id="s4">
+  <header class="hd"><h2>제2법칙: 같은 시간에 쓰는 면적은 같다</h2><span class="src">케플러 제2법칙 (면적 속도 일정)</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="c-l2"></canvas>
+    <div class="side">
+      <div class="box"><div class="eq" style="font-size:36px"><div class="eq"><span class="m"> <span class="fr"><span>Δ A</span><span>Δ t</span></span> = <span class="ko">일정</span> </span></div></div><div class="sm" style="text-align:center">같은 시간(T/12) 동안 휩쓰는 파란 부채꼴의 넓이는 모두 같다</div></div>
+      <div class="ctl"><div class="row"><span>이심률 e</span><span class="val" id="l2-ev">0.5</span></div><input id="l2-e" type="range" min="0" max="0.8" step="0.05" value="0.5"></div>
+      <div class="btns"><button class="btn pri" id="l2-play">⏸ 일시정지</button><button class="btn" id="l2-reset">↺ 처음으로</button></div>
+      <div class="box"><div class="sm" style="color:var(--ink)" id="l2-info">&nbsp;</div></div>
+    </div>
+</div>
+</section>
+
+<!-- s5 -->
+<section class="slide" id="s5">
+  <header class="hd"><h2>제3법칙: T²은 a³에 비례한다</h2><span class="src">케플러 제3법칙 (조화의 법칙)</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="c-l3"></canvas>
+    <div class="side">
+      <div class="box"><div class="eq" style="font-size:38px"><div class="eq"><span class="m"> T<sup>2</sup> = k a<sup>3</sup>,&nbsp;&nbsp; k = <span class="fr"><span>4π<sup>2</sup></span><span>GM</span></span> </span></div></div></div>
+      <div class="chips"><button class="chip on" data-m="cube">a³ – T² (직선)</button><button class="chip" data-m="raw">a – T (곡선)</button><button class="chip" data-r="inner">화성까지</button><button class="chip on" data-r="all">해왕성까지</button></div>
+      <div class="ctl"><div class="row"><span>중심별 질량 M (태양 = 1)</span><span class="val" id="l3-Mv">1 M☉</span></div><input id="l3-M" type="range" min="0.5" max="3" step="0.1" value="1"></div><div class="ctl"><div class="row"><span>내 행성의 a</span><span class="val" id="l3-av">4 AU</span></div><input id="l3-a" type="range" min="0.3" max="30" step="0.1" value="4"></div>
+    </div>
+</div>
+</section>
+
+<!-- s6 -->
+<section class="slide" id="s6" data-steps="5">
+  <header class="hd"><h2>법칙에서 만유인력으로 (뉴턴의 도약)</h2><span class="src">원운동 + 제3법칙 + 작용·반작용 (→ 키로 진행)</span></header>
+<div class="body" style="grid-template-columns:1fr 760px">
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>원운동 구심력</b><span class="t">반지름 r, 속력 v</span></div><div class="eq"><span class="m">F = m v² / r</span></div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>속력과 주기</b><span class="t">한 바퀴 둘레 / 주기</span></div><div class="eq"><span class="m">v = 2πr / T</span></div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>대입하기</b><span class="t">①에 ②를 대입</span></div><div class="eq"><span class="m">F = 4π² m r / T²</span></div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>제3법칙 대입</b><span class="t">T² = k r³</span></div><div class="eq"><span class="m">F = (4π²/k) · m / r²</span></div></div></div>
+<div class="st" data-i="5"><div class="n">5</div><div><div class="tl"><b>작용·반작용</b></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">태양이 당기는 힘이 m 에 비례하면 행성이 당기는 힘은 M 에 비례 → 4π²/k ∝ M<br><b class="ok">F = GMm / r²</b> (만유인력 법칙)</div></div></div></div>
+<div class="side">
+      <canvas id="c-dv"></canvas>
+      <div class="ctl"><div class="row"><span>궤도 반지름 r</span><span class="val" id="dv-rv">1.5 AU</span></div><input id="dv-r" type="range" min="0.4" max="4" step="0.1" value="1.5"></div><div class="ctl"><div class="row"><span>중심별 질량 M</span><span class="val" id="dv-Mv">1 M☉</span></div><input id="dv-M" type="range" min="0.5" max="3" step="0.1" value="1"></div>
+      <div class="box"><div class="sm" style="color:var(--ink)" id="dv-info">&nbsp;</div></div>
+    </div>
+</div>
+</section>
+
+<!-- s7 -->
+<section class="slide" id="s7">
+  <header class="hd"><h2>정리하고 확인하기</h2><span class="src">케플러 법칙에서 만유인력으로</span></header>
+<div class="body" style="grid-template-columns:1fr 760px">
+<div class="side" style="gap:18px">
+      <div class="box"><h3>① 케플러의 세 법칙</h3><div class="sm" style="color:var(--ink)">타원 궤도(태양은 초점) · 면적속도 일정 · T² ∝ a³. 관측에서 얻은 <b>규칙</b>이다.</div></div>
+      <div class="box"><h3>② 뉴턴의 도약</h3><div class="sm" style="color:var(--ink)">구심력 + 제3법칙 → F ∝ 1/r². 작용·반작용으로 F = GMm/r². 규칙의 <b>원인</b>을 힘으로 설명.</div></div>
+      <div class="box"><h3>③ 다음 시간</h3><div class="sm" style="color:var(--ink)">F = GMm/r² 로 위치 에너지와 우물, 탈출 속도를 다룬다.</div></div>
+    </div>
+    <div class="side" style="gap:14px">
+      <div class="chips" id="qz-tabs"></div>
+      <div class="box" style="border-color:var(--blue)"><h3 id="qz-h">확인 문제</h3><div id="qz-q" style="font-size:28px;line-height:1.5"></div><div class="btns" id="qz-o" style="margin-top:14px;flex-direction:column;align-items:stretch"></div><div id="qz-fb" style="margin-top:14px;font-size:25px;line-height:1.5;min-height:110px"></div></div>
+    </div>
+</div>
+</section>
+
+<div id="notes"></div>
+<div id="bar"><div class="bl">🪐 케플러 법칙에서 뉴턴 만유인력으로 <span class="sm">· 역학과 에너지 · 시공간과 운동</span></div><div class="br"><button class="tb" id="b-help">❓ 조작법</button><button class="tb" id="b-ask">💬 발문 띄우기</button><button class="tb" id="b-notes">📝 오개념 교정 노트</button><button class="tb" id="b-theme">🌙 다크 전환</button></div></div>
+<div id="ask" role="dialog" aria-label="발문"></div>
+<div id="help" role="dialog" aria-label="조작법 설명"><div class="hp">
+<h3>조작법</h3>
+<h4>키보드</h4>
+<div class="g"><div><kbd>→</kbd><kbd>Space</kbd></div><div>다음 (단계가 있는 슬라이드는 단계부터 진행)</div>
+<div><kbd>←</kbd></div><div>이전 (단계도 거꾸로)</div>
+<div><kbd>Home</kbd><kbd>End</kbd></div><div>처음 / 마지막 슬라이드</div>
+<div><kbd>F</kbd></div><div>전체 화면</div>
+<div><kbd>Q</kbd></div><div>이 슬라이드의 <b>발문(학생용 질문)</b>을 화면 위에 크게 띄우기 / 닫기 (아무 곳이나 클릭해도 닫힘)</div>
+<div><kbd>N</kbd></div><div>오개념 교정 노트 열기/닫기 (교사용)</div>
+<div><kbd>T</kbd></div><div>다크 / 라이트 전환</div>
+<div><kbd>?</kbd><kbd>Esc</kbd></div><div>조작법 열기 / 닫기</div></div>
+<h4>화면 조작</h4>
+<div class="g"><div>슬라이더</div><div>드래그하는 즉시 시뮬레이션에 반영</div>
+<div>칩</div><div>2번 인물 선택, 5번 그래프 모드·범위, 7번 문제 선택</div>
+<div>▶ ⏸ ↺</div><div>4번: 면적 부채꼴 재생 / 일시정지 / 처음으로</div>
+<div>→ 키</div><div>6번: 유도 단계가 한 줄씩 나타남</div>
+<div>슬라이더 키보드</div><div>슬라이더를 클릭해 초점이 있는 동안에는 ← → 가 값 조절에 쓰입니다. 마우스로 놓으면 자동 해제</div></div>
+<h4>수업 진행 팁</h4>
+<div>① 학생에게 결과를 <b>먼저 예측</b>하게 하고 → ② 슬라이더로 확인하고 → ③ 식으로 정리하면 오개념이 잘 교정됩니다.</div>
+<div class="btns" style="margin-top:22px"><button class="btn pri" id="help-x">닫기 (Esc)</button></div>
+</div></div>
+<div id="simError"></div>
+</div>
+<div id="hud"><button id="h-prev" aria-label="이전">◀</button><span id="h-pg">1 / 1</span><button id="h-next" aria-label="다음">▶</button><button id="h-fs" aria-label="전체화면">⛶</button></div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   공통 유틸 / 그리기 도우미 (템플릿 제공)
+   ===================================================================== */
+const DECK = {"title":"케플러 법칙에서 뉴턴 만유인력으로","notes":{"s1":{"q":"“행성은 어떤 모양의 길을 돌까? 빠르기는 일정할까?”를 먼저 예측하게 하세요.","m":[["행성은 원 궤도를 돈다.","실제로는 타원이다. 단지 대부분 원에 가깝다 (지구 e = 0.017)"],["법칙을 알면 원인도 안다.","케플러 법칙은 현상의 규칙. 원인은 뉴턴이 중력으로 밝혔다"]]},"s2":{"q":"인물 칩을 눌러 업적을 확인하고, “관측 → 법칙 → 원인” 흐름으로 정리하세요. 일화(커피하우스 내기 등)는 사료에 따라 해석이 다르다는 점도 언급할 수 있습니다.","m":[["뉴턴이 혼자서 모든 것을 발견했다.","브라헤의 관측, 케플러의 법칙, 훅의 제안, 핼리의 후원 위에서 가능했다"],["핼리의 질문 때문에 뉴턴이 만유인력을 처음 생각했다.","뉴턴은 이전부터 연구했고, 핼리의 방문(1684)이 정리·출판의 계기가 되었다 (전해지는 설명)"]]},"s3":{"q":"e 를 키우면서 두 초점이 벌어지는 것과, 위치를 바꿔도 r₁ + r₂ 가 2a 로 일정한 것을 확인하게 하세요.","m":[["태양은 타원의 중심에 있다.","태양은 두 초점 중 하나(F₁). 중심 C 와 구분해서 보여 준다"],["행성의 궤도는 크게 찌그러진 타원이다.","실제 행성 궤도는 거의 원에 가깝다 (e < 0.21). 화면 e 는 과장"]]},"s4":{"q":"근일점 쪽 부채꼴은 길고 좁고, 원일점 쪽은 짧고 넓습니다. 넓이가 같다는 수치를 확인하게 하세요. 면적속도 일정 = 각운동량 보존(중심력)으로 연결.","m":[["근일점에서 행성이 더 빨라지는 것은 태양이 더 세게 끌어서 “가속”했기 때문만이다.","속도 방향과 중력의 방향 성분을 함께 고려. 핵심 법칙은 각운동량 보존(면적속도 일정)"],["면적이 같으니 이동 거리도 같다.","같은 시간에 이동 거리는 근일점에서 더 길다 (속력이 크므로)"]]},"s5":{"q":"표의 T²/a³ 가 모두 약 1임을 확인한 뒤, a–T 곡선과 a³–T² 직선을 비교하게 하세요. M 슬라이더로 기울기 = 1/M 임을 확인합니다.","m":[["무거운 행성일수록 공전 주기가 길다.","T²/a³ 는 행성 질량과 무관, 중심별 질량 M 에만 의존 (4π²/GM)"],["T 는 a 에 정비례한다.","T ∝ a^(3/2) : 곡선"],["토성 값이 1 에서 벗어난 것은 측정 실수이다.","목성의 섭동 등 다른 행성의 영향. 법칙은 한 별 주위 이상적 2체 문제의 결과"]]},"s6":{"q":"→ 키로 한 줄씩 보여 주고, 각 단계에서 “무엇을 대입했는가”를 학생이 말하게 하세요. 4단계에서 r² 가 분모에 남는 것이 핵심입니다.","m":[["케플러 제3법칙만으로 만유인력이 증명된다.","제3법칙 + 원운동 근사 + 제3법칙(작용·반작용)이 필요. 타원 궤도 일반 증명은 미적분이 필요"],["태양이 행성을 당기는 힘이 더 크다.","크기는 같고 방향이 반대(작용·반작용)"]]},"s7":{"q":"확인 문제를 풀게 하고, 마지막 질문은 “규칙 vs 원인”으로 정리합니다.","m":[["케플러 법칙은 틀린 것이 되었다.","뉴턴 역학으로 설명되는 정확한 규칙이다 (이상적인 2체 문제)"],["면적속도 일정은 중력 때문에만 성립한다.","모든 중심력(힘의 방향이 중심을 향함)에서 각운동량 보존으로 성립"]]}},"ask":{"s1":["행성의 궤도를 설명하는 규칙은 어떻게 알아냈을까?","규칙을 알면 그 원인(힘)도 알 수 있을까?"],"s2":["법칙(케플러)과 원인(뉴턴) 사이에서 훅과 핼리는 어떤 역할을 했을까?","관측 자료가 없었다면 케플러의 법칙은 나올 수 있었을까?"],"s3":["타원 위 어느 점에서든 r₁ + r₂ 는 어떻게 될까?","이심률 e 가 0 이면 타원은 어떤 모양일까? 태양은 어디에 있을까?"],"s4":["근일점과 원일점에서 속력은 어느 쪽이 클까?","속력이 달라도 “같은 시간 동안 쓰는 면적”은 같다. 왜 그럴까?"],"s5":["8개 행성의 T²/a³ 값은 서로 어떻게 비교될까?","중심별이 태양보다 무거우면 직선의 기울기는 어떻게 될까?"],"s6":["구심력 식과 제3법칙을 결합하면 힘은 거리에 어떻게 의존할까?","태양이 행성을 당기는 힘과 행성이 태양을 당기는 힘은 어떤 관계일까?"],"s7":["케플러의 법칙과 뉴턴의 만유인력 법칙의 가장 큰 차이를 한 문장으로 말해 보자."]}};
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const TAU = Math.PI * 2, DPR = 2;
+const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const C = { bg: '#0a1330', grid: 'rgba(160,190,255,.22)', text: '#e3ecff', dim: '#9db0d8', KE: '#ffb454', PE: '#7fb2ff', E: '#ffffff', ok: '#5eead4', bad: '#ff9d9d' };
+const font = (px, w = 500, it = false) => `${it ? 'italic ' : ''}${w} ${px}px 'Noto Sans KR',sans-serif`;
+const mathFont = px => `italic 400 ${px}px 'STIX Two Text','Times New Roman',serif`;
+function setupCanvas(cv, W, H) { cv.width = W * DPR; cv.height = H * DPR; cv.style.width = W + 'px'; cv.style.height = H + 'px'; const c = cv.getContext('2d'); c.setTransform(DPR, 0, 0, DPR, 0, 0); return c; }
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function makeStars(W, H, n, seed) { const r = mulberry(seed); return Array.from({ length: n }, () => [r() * W, r() * H, .25 + r() * .55, r() < .12 ? 3 : 2]); }
+function drawStars(ctx, stars) { stars.forEach(([x, y, a, s]) => { ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(x, y, s, s); }); }
+function arrow(ctx, x0, y0, x1, y1, color, lw = 4, head = 15) {
+  const a = Math.atan2(y1 - y0, x1 - x0); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - Math.cos(a) * head * .6, y1 - Math.sin(a) * head * .6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - head * Math.cos(a - .45), y1 - head * Math.sin(a - .45)); ctx.lineTo(x1 - head * Math.cos(a + .45), y1 - head * Math.sin(a + .45)); ctx.closePath(); ctx.fill();
+}
+function mathRun(ctx, x, y, parts) { let cx = x; parts.forEach(q => { ctx.font = q.f; ctx.fillStyle = q.c; ctx.fillText(q.t, cx, y + (q.dy || 0)); cx += ctx.measureText(q.t).width; }); return cx; }
+function bindRange(id, cb) { const el = $('#' + id); el.addEventListener('input', () => cb(parseFloat(el.value))); el.addEventListener('change', () => el.blur()); return el; }
+const fmt = (x, d = 2) => (x < 0 ? '−' : '') + Math.abs(x).toFixed(d);
+
+/* 오류 표시: 슬라이드 코드 예외를 화면 상단과 window.__wsErrors에 남긴다 (헤드리스 검사용) */
+window.__wsErrors = [];
+function reportError(where, e) {
+  const msg = `${where}: ${e && e.message ? e.message : e}`;
+  if (!window.__wsErrors.includes(msg)) { window.__wsErrors.push(msg); console.error('[슬라이드 오류] ' + msg); }
+  const box = document.getElementById('simError'); box.textContent = window.__wsErrors.slice(-3).join('\n'); box.classList.add('on');
+}
+function safe(where, fn, ...args) { try { return fn && fn(...args); } catch (e) { reportError(where, e); } }
+
+/* =====================================================================
+   shared_js (주제별 물리 계산부·공용 시뮬레이터)
+   ===================================================================== */
+/* PHYSICS-START */
+const TAU2 = 2 * Math.PI;
+const AU = 1.495978707e11, YR = 3.15576e7, GMS = 1.32712440018e20;   // SI: 1 AU, 1년(율리우스년), 태양 GM
+const V0 = TAU2 * AU / YR / 1000;                                       // 1 AU 원궤도 속력 ≈ 29.78 km/s
+const PLANETS = [['수성', 0.387, 0.241], ['금성', 0.723, 0.615], ['지구', 1.0, 1.0], ['화성', 1.524, 1.881],
+  ['목성', 5.204, 11.862], ['토성', 9.582, 29.457], ['천왕성', 19.201, 84.011], ['해왕성', 30.047, 164.79]];
+const Tof = (a, M) => Math.sqrt(a * a * a / M);                          // 제3법칙 (AU, M☉, 년)
+const KEP = {
+  solveE(Mn, e) {
+    Mn = ((Mn % TAU2) + TAU2) % TAU2; let E = e < 0.8 ? Mn : Math.PI;
+    for (let i = 0; i < 60; i++) { const d = (E - e * Math.sin(E) - Mn) / (1 - e * Math.cos(E)); E -= d; if (Math.abs(d) < 1e-13) break; }
+    return E;
+  },
+  nu(t, e) { // t: 근일점 통과 후 경과 시간(주기 단위) → 누적 진근점이각
+    const n = Math.floor(t), E = this.solveE(TAU2 * (t - n), e);
+    let v = 2 * Math.atan2(Math.sqrt(1 + e) * Math.sin(E / 2), Math.sqrt(1 - e) * Math.cos(E / 2)); if (v < 0) v += TAU2;
+    return v + TAU2 * n;
+  },
+  r(nu, e, a = 1) { return a * (1 - e * e) / (1 + e * Math.cos(nu)); },
+  area(n1, n2, e, a = 1) { const N = 400, h = (n2 - n1) / N; let s = 0; for (let i = 0; i <= N; i++) { const r = this.r(n1 + i * h, e, a); s += (i === 0 || i === N ? 1 : i % 2 ? 4 : 2) * r * r; } return 0.5 * s * h / 3; },
+  speed(r, a, M = 1) { return V0 * Math.sqrt(M * (2 / r - 1 / a)); },
+  areaRate(t, e) { const h = 1e-5, r = this.r(this.nu(t, e), e); return 0.5 * r * r * (this.nu(t + h, e) - this.nu(t - h, e)) / (2 * h); }
+};
+function gravCalc(r, M, m) {
+  const T = Tof(r, M), v = TAU2 * r * AU / (T * YR) / 1000, ac = (v / V0) ** 2 / r;
+  return { T, v, ac, Fc: m * ac, Fg: M * m / (r * r) };
+}
+/* PHYSICS-END */
+
+function bg(ctx, W, H) { ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H); }
+function txt(ctx, s, x, y, col, px, w, al) { ctx.font = font(px || 24, w || 400); ctx.fillStyle = col || C.text; ctx.textAlign = al || 'left'; ctx.fillText(s, x, y); ctx.textAlign = 'left'; }
+function disc(ctx, x, y, r, col) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); }
+function sunDraw(ctx, x, y, r) { const g = ctx.createRadialGradient(x, y, 1, x, y, r * 2.4); g.addColorStop(0, 'rgba(255,200,110,.85)'); g.addColorStop(1, 'rgba(255,200,110,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 2.4, 0, TAU); ctx.fill(); disc(ctx, x, y, r, '#ffc766'); }
+const nice = m => { const p = 10 ** Math.floor(Math.log10(m)), f = m / p; return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * p; };
+const fmtTick = v => (Math.abs(v) >= 1000 ? String(Math.round(v)) : String(+v.toPrecision(3)));
+const f2 = v => v.toFixed(2), f3 = v => v.toFixed(3);
+
+const PEOPLE = [
+  { id: 'brahe', name: '티코 브라헤', life: [1546, 1601], what: '망원경 이전 시대에 가장 정밀한 육안 행성 관측 기록(특히 화성)을 남겼다.', need: '관측 자료가 있어야 케플러가 원 궤도와 8′ 어긋남을 알아챌 수 있었다.', ev: '1601 사망 · 관측 기록이 케플러에게 넘어감' },
+  { id: 'galileo', name: '갈릴레오 갈릴레이', life: [1564, 1642], what: '망원경으로 목성의 위성·금성의 위상을 관측하고, 경사면 실험으로 관성·낙하 운동을 연구했다.', need: '지상의 운동 법칙과 천체 관측의 증거를 제공했다. 두 세계를 묶은 것은 뉴턴.', ev: '' },
+  { id: 'kepler', name: '요하네스 케플러', life: [1571, 1630], what: '제1·2법칙(1609, 《신천문학》), 제3법칙(1619, 《우주의 조화》)을 발견했다.', need: '법칙은 “어떻게”만 말할 뿐 “왜”는 설명하지 않는다 → 힘의 문제로 이어짐.', ev: '1609 제1·2법칙 · 1619 제3법칙' },
+  { id: 'newton', name: '아이작 뉴턴', life: [1642, 1727], what: '운동 법칙과 만유인력 법칙을 세우고 《프린키피아》(1687)로 지상과 천상을 통합했다.', need: '“내가 더 멀리 보았다면 거인들의 어깨 위에 서 있었기 때문이다.” (1675년 편지, 전해지는 표현)', ev: '1687 《프린키피아》' },
+  { id: 'hooke', name: '로버트 훅', life: [1635, 1703], what: '1679~80년 편지에서 행성 운동을 직선 관성과 중심 인력의 합으로 보고 역제곱 인력을 제안했다.', need: '직관은 있었으나 타원 궤도를 수학적으로 증명하지는 못했다. 뉴턴과 우선권 논쟁.', ev: '1679 뉴턴에게 편지' },
+  { id: 'halley', name: '에드먼드 핼리', life: [1656, 1742], what: '1684년 뉴턴을 찾아가 “역제곱 인력이면 궤도는?”이라고 물었고, 《프린키피아》 출판을 돕고 비용을 부담했다.', need: '뉴턴의 계산이 책으로 나오게 한 촉매.', ev: '1684 뉴턴 방문 · 1687 출판' }
+];
+const QUIZ = [
+  { q: '케플러 제2법칙(면적속도 일정)에 대한 설명으로 옳은 것은?', o: ['① 행성의 궤도는 태양을 한 초점으로 하는 원이다.', '② 근일점에서 공전 속력이 가장 느리다.', '③ 태양과 행성을 잇는 선분이 같은 시간에 쓸고 지나가는 면적은 일정하다.', '④ 공전 주기의 제곱은 장반지름의 제곱에 비례한다.'], a: 2, ex: '같은 시간에 휩쓰는 면적이 같으므로 근일점에서 가장 빠르고 원일점에서 가장 느리다. ①은 제1법칙(타원), ④는 제3법칙(세제곱).' },
+  { q: '케플러 제3법칙(T² ∝ r³)과 원운동의 구심력 식을 결합해 얻는 중력의 성질은?', o: ['① 거리에 비례한다.', '② 거리의 제곱에 반비례한다.', '③ 두 물체의 부피에 비례한다.', '④ 공전 주기에 반비례한다.'], a: 1, ex: 'F = 4π²mr/T² 에 T² = kr³ 을 넣으면 F = (4π²/k)·m/r² 이 되어 역제곱이다.' },
+  { q: '1684년 뉴턴을 찾아가 《프린키피아》의 집필·출판으로 이어지게 한 인물은?', o: ['① 갈릴레이', '② 코페르니쿠스', '③ 핼리', '④ 데카르트'], a: 2, ex: '핼리는 역제곱 힘에서 궤도가 어떤 곡선이 되는지 물었고, 뉴턴의 계산을 확인한 뒤 출판을 도왔다.' },
+  { q: '행성 A는 장반지름 1 AU, 주기 1년이다. 같은 별을 도는 행성 B의 장반지름이 4 AU일 때 공전 주기는?', o: ['① 2년', '② 4년', '③ 8년', '④ 16년'], a: 2, ex: 'T² ∝ a³ 이므로 a 가 4배이면 a³ 은 64배, T 는 √64 = 8배(8년)이다.' }
+];
+
+function TESTS() {
+  const out = [], near = (a, b, e = 1e-9) => Math.abs(a - b) <= e * Math.max(1, Math.abs(b));
+  let res = 0; for (const [Mn, e] of [[0.3, 0.9], [3, 0.5], [6, 0.8], [1, 0]]) { const E = KEP.solveE(Mn, e); res = Math.max(res, Math.abs(E - e * Math.sin(E) - Mn)); }
+  out.push(['케플러 방정식 E − e sinE = M 잔차', res < 1e-12, res.toExponential(1)]);
+  out.push(['1 AU 원궤도 속력 ≈ 29.78 km/s (지구)', Math.abs(V0 - 29.78) < 0.02, V0.toFixed(3)]);
+  let ok = true, mx = 0; for (const e of [.2, .5, .8]) for (const nu of [0, 1, 2.2, 4, 5.5]) { const r1 = KEP.r(nu, e), x = r1 * Math.cos(nu), y = r1 * Math.sin(nu), r2 = Math.hypot(x + 2 * e, y); mx = Math.max(mx, Math.abs(r1 + r2 - 2)); if (Math.abs(r1 + r2 - 2) > 1e-12) ok = false; }
+  out.push(['제1법칙: 두 초점까지 거리의 합 r₁ + r₂ = 2a', ok, '최대 오차 ' + mx.toExponential(1)]);
+  const e1 = 0.7; let worst = 0;
+  for (let k = 0; k < 12; k++) { const A = KEP.area(KEP.nu(k / 12, e1), KEP.nu((k + 1) / 12, e1), e1); worst = Math.max(worst, Math.abs(A / (Math.PI * Math.sqrt(1 - e1 * e1) / 12) - 1)); }
+  out.push(['제2법칙: 같은 시간(T/12) 구간 면적 = πab/12 (e = 0.7)', worst < 1e-5, '최대 상대오차 ' + worst.toExponential(1)]);
+  const e2 = 0.5, ar = [0.02, 0.25, 0.5, 0.9].map(t => KEP.areaRate(t, e2));
+  out.push(['면적속도 dA/dt = π√(1−e²) AU²/yr 일정', ar.every(x => near(x, Math.PI * Math.sqrt(1 - e2 * e2), 1e-6)), ar.map(f3).join(', ')]);
+  const e3 = 0.6, rp = 1 - e3, ra = 1 + e3, L = 2 * Math.PI * Math.sqrt(1 - e3 * e3), k2 = V0 / TAU2;
+  out.push(['각운동량 보존 v = L/r 이 비스-비바 식과 일치 (근일점·원일점)', near(L / rp * k2, KEP.speed(rp, 1)) && near(L / ra * k2, KEP.speed(ra, 1)), '']);
+  out.push(['v근일점 / v원일점 = (1+e)/(1−e)', near(KEP.speed(rp, 1) / KEP.speed(ra, 1), (1 + e3) / (1 - e3)), f2((1 + e3) / (1 - e3))]);
+  out.push(['SI: 2π√(AU³/GM☉) = 1년', Math.abs(TAU2 * Math.sqrt(AU ** 3 / GMS) / YR - 1) < 1e-3, (TAU2 * Math.sqrt(AU ** 3 / GMS) / YR).toFixed(5)]);
+  const ks = PLANETS.map(p => p[2] ** 2 / p[1] ** 3);
+  out.push(['8행성 T²/a³ 모두 1 ± 2% (토성은 섭동으로 약 1.4% 벗어남)', ks.every(k => Math.abs(k - 1) < 0.02), Math.min(...ks).toFixed(4) + ' ~ ' + Math.max(...ks).toFixed(4)]);
+  const Tsi = (a, M) => TAU2 * Math.sqrt((a * AU) ** 3 / (GMS * M)) / YR;
+  out.push(['SI 공식과 T = √(a³/M) 일치 (M = 0.5, 1, 3)', [0.5, 1, 3].every(M => near(Tof(2.3, M), Tsi(2.3, M), 1e-3)), '']);
+  out.push(['중심별 질량 2배 → T²/a³ 절반', near(Tsi(1, 2) ** 2 / Tsi(1, 1) ** 2, 0.5), '']);
+  const g1 = gravCalc(0.7, 2, 1.5);
+  out.push(['구심력 m v²/r = 만유인력 GMm/r²', near(g1.Fc, g1.Fg), `${g1.Fc.toFixed(4)} = ${g1.Fg.toFixed(4)}`]);
+  out.push(['역제곱: r 2배 → F 1/4배', near(gravCalc(2, 1, 1).Fg / gravCalc(1, 1, 1).Fg, 0.25) && near(gravCalc(2, 1, 1).Fc / gravCalc(1, 1, 1).Fc, 0.25), '']);
+  out.push(['퀴즈 4: a = 4 AU → T = 8년', near(Tof(4, 1), 8), '']);
+  const fin = [[0.4, 3, 0.2], [4, 0.5, 3], [1, 1, 1]].every(([r, M, m]) => Object.values(gravCalc(r, M, m)).every(Number.isFinite)) && [0, 0.8].every(e => Number.isFinite(KEP.areaRate(0, e)) && Number.isFinite(KEP.nu(0.37, e)));
+  out.push(['슬라이더 양 끝값에서 NaN·Infinity 없음', fin, '']);
+  return out;
+}
+
+
+/* =====================================================================
+   슬라이드별 모듈: { start(), stop(), frame(dt), onStep(step) }
+   ===================================================================== */
+const REG = {};
+/* ---- s1 ---- */
+REG["s1"] = safe("s1.init", function () {
+
+  const W = 820, H = 820, ctx = setupCanvas($('#c-hero'), W, H), stars = makeStars(W, H, 130, 3); let t = 0;
+  const orbs = [[.3, C.PE], [.55, C.ok], [.75, C.KE]];
+  function draw() {
+    bg(ctx, W, H); drawStars(ctx, stars); const s = 330, cx = W / 2, cy = H / 2;
+    orbs.forEach(([e, col], i) => {
+      const a = 1 - i * .27, sxx = cx + e * a * s, pt = nu => { const r = KEP.r(nu, e, a); return [sxx + s * r * Math.cos(nu), cy - s * r * Math.sin(nu)]; };
+      ctx.strokeStyle = 'rgba(160,190,255,.35)'; ctx.lineWidth = 2; ctx.beginPath(); for (let k = 0; k <= 160; k++) { const p = pt(TAU * k / 160); k ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); } ctx.stroke();
+      const T = Math.pow(a, 1.5), nu = KEP.nu(t / T, e), p = pt(nu); disc(ctx, p[0], p[1], 9, col);
+    });
+    const e0 = orbs[0][1]; sunDraw(ctx, cx + orbs[0][0] * s, cy, 14);
+    txt(ctx, '같은 태양, 다른 궤도 — 안쪽일수록 빠르다', 26, H - 24, C.dim, 22);
+  }
+  return { start() { t = 0; draw(); }, frame(dt) { t += dt * .18; draw(); } };
+
+});
+
+/* ---- s2 ---- */
+REG["s2"] = safe("s2.init", function () {
+
+  const W = 1040, H = 830, ctx = setupCanvas($('#c-pp'), W, H); let sel = 'kepler';
+  const Y0 = 1540, Y1 = 1735, X = y => 60 + (y - Y0) / (Y1 - Y0) * (W - 110);
+  const EV = [[1601, '브라헤 사망'], [1609, '제1·2법칙'], [1619, '제3법칙'], [1679, '훅의 편지'], [1684, '핼리의 방문'], [1687, '프린키피아']];
+  const COLS = { brahe: '#ffb454', galileo: '#4fd1a1', kepler: '#7aa9ff', newton: '#ff8f7a', hooke: '#c6a7ff', halley: '#6ee7f2' };
+  function draw() {
+    bg(ctx, W, H); txt(ctx, '생몰 기간과 주요 사건', 24, 40, C.dim, 24);
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 2; for (let y = 1550; y <= 1730; y += 20) { ctx.beginPath(); ctx.moveTo(X(y), 70); ctx.lineTo(X(y), 540); ctx.stroke(); txt(ctx, String(y), X(y), 570, C.dim, 18, 400, 'center'); }
+    PEOPLE.forEach((p, i) => { const y = 100 + i * 62, on = p.id === sel; ctx.globalAlpha = on ? 1 : .55; ctx.fillStyle = COLS[p.id]; ctx.fillRect(X(p.life[0]), y, X(p.life[1]) - X(p.life[0]), on ? 34 : 24); ctx.globalAlpha = 1; txt(ctx, p.name, X(p.life[0]) + 6, y - 6, on ? C.text : C.dim, on ? 24 : 20, on ? 700 : 400); });
+    EV.forEach(([y, n], i) => { const x = X(y); ctx.strokeStyle = C.KE; ctx.lineWidth = 3; ctx.setLineDash([5, 6]); ctx.beginPath(); ctx.moveTo(x, 72); ctx.lineTo(x, 540); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = C.KE; ctx.beginPath(); ctx.arc(x, 540, 7, 0, TAU); ctx.fill(); txt(ctx, `${y} ${n}`, x, 610 + (i % 3) * 38, C.KE, 21, 500, 'center'); });
+    txt(ctx, '관측 자료(브라헤) → 법칙(케플러) → 원인(뉴턴)', 24, H - 40, C.text, 28, 700);
+  }
+  function info() { const p = PEOPLE.find(q => q.id === sel); $('#pp-info').innerHTML = `<b class="k">${p.name}</b> (${p.life[0]}~${p.life[1]})<br>${p.what}<br><span class="sm">${p.need}</span>`; $$('#pp-chips .chip').forEach(c => c.classList.toggle('on', c.dataset.id === sel)); draw(); }
+  $('#pp-chips').innerHTML = PEOPLE.map(p => `<button class="chip" data-id="${p.id}">${p.name.split(' ').pop()}</button>`).join('');
+  $$('#pp-chips .chip').forEach(c => c.onclick = () => { sel = c.dataset.id; info(); });
+  return { start() { info(); } };
+
+});
+
+/* ---- s3 ---- */
+REG["s3"] = safe("s3.init", function () {
+
+  const W = 1040, H = 830, ctx = setupCanvas($('#c-l1'), W, H); let e = .4, nu = 60 * Math.PI / 180;
+  function draw() {
+    bg(ctx, W, H); const s = 380, cx = W / 2, cy = H / 2 + 10, b = Math.sqrt(1 - e * e), sx = cx + e * s, fx = cx - e * s;
+    const pt = n => { const r = KEP.r(n, e); return [sx + s * r * Math.cos(n), cy - s * r * Math.sin(n)]; };
+    ctx.setLineDash([8, 8]); ctx.strokeStyle = 'rgba(160,190,255,.3)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, s, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = C.text; ctx.lineWidth = 4; ctx.beginPath(); for (let k = 0; k <= 200; k++) { const p = pt(TAU * k / 200); k ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); } ctx.stroke();
+    ctx.strokeStyle = C.dim; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx - 8, cy); ctx.lineTo(cx + 8, cy); ctx.moveTo(cx, cy - 8); ctx.lineTo(cx, cy + 8); ctx.stroke(); txt(ctx, '중심 C', cx - 20, cy + 32, C.dim, 22);
+    disc(ctx, fx, cy, 6, C.dim); txt(ctx, e > .02 ? 'F₂ (빈 초점)' : '', fx - 40, cy + 32, C.dim, 22); sunDraw(ctx, sx, cy, 12); txt(ctx, 'F₁ 태양', sx - 30, cy + 40, '#ffc766', 22, 600);
+    const p = pt(nu), r1 = KEP.r(nu, e), r2 = Math.hypot(p[0] - fx, p[1] - cy) / s;
+    ctx.lineWidth = 4; ctx.strokeStyle = C.KE; ctx.beginPath(); ctx.moveTo(sx, cy); ctx.lineTo(p[0], p[1]); ctx.stroke(); ctx.strokeStyle = C.PE; ctx.beginPath(); ctx.moveTo(fx, cy); ctx.lineTo(p[0], p[1]); ctx.stroke();
+    txt(ctx, 'r₁', (sx + p[0]) / 2 + 8, (cy + p[1]) / 2 - 10, C.KE, 26, 700); txt(ctx, 'r₂', (fx + p[0]) / 2 - 24, (cy + p[1]) / 2 - 10, C.PE, 26, 700); disc(ctx, p[0], p[1], 10, '#9bd0ff');
+    txt(ctx, '점선 원: 같은 a 의 원 (e = 0 일 때와 비교)', 24, 40, C.dim, 22); txt(ctx, `r₁ + r₂ = ${f3(r1)} + ${f3(r2)} = ${f3(r1 + r2)} (2a = 2)`, W / 2, H - 28, C.ok, 28, 700, 'center');
+  }
+  function info() { const r1 = KEP.r(nu, e); $('#l1-info').innerHTML = `e = ${f2(e)} → ${e < .01 ? '<b class="k">원</b>' : '타원'}<br>근일점 ${f2(1 - e)} AU · 원일점 ${f2(1 + e)} AU<br><span class="sm">실제 이심률: 지구 0.017, 화성 0.093, 수성 0.206 — 화면은 모양을 보이려고 크게 잡았다.</span>`; $('#l1-ev').textContent = f2(e); $('#l1-nv').textContent = Math.round(nu * 180 / Math.PI) + '°'; draw(); }
+  bindRange('l1-e', v => { e = v; info(); }); bindRange('l1-n', v => { nu = v * Math.PI / 180; info(); });
+  return { start() { info(); } };
+
+});
+
+/* ---- s4 ---- */
+REG["s4"] = safe("s4.init", function () {
+
+  const W = 1040, H = 830, ctx = setupCanvas($('#c-l2'), W, H); let e = .5, t = 0, run = true;
+  function draw() {
+    bg(ctx, W, H); const s = 360, cx = W / 2, cy = H / 2 + 10, sx = cx + e * s, pt = n => { const r = KEP.r(n, e); return [sx + s * r * Math.cos(n), cy - s * r * Math.sin(n)]; };
+    const nuNow = KEP.nu(t, e), r = KEP.r(nuNow, e), cur = Math.floor((((t % 1) + 1) % 1) * 12), bd = []; for (let k = 0; k <= 12; k++) bd.push(k === 12 ? KEP.nu(1, e) : KEP.nu(k / 12, e));
+    for (let k = 0; k < 12; k++) { ctx.fillStyle = k === cur ? 'rgba(122,169,255,.6)' : (k % 2 ? 'rgba(122,169,255,.14)' : 'rgba(122,169,255,.26)'); ctx.beginPath(); ctx.moveTo(sx, cy); for (let i = 0; i <= 24; i++) { const p = pt(bd[k] + (bd[k + 1] - bd[k]) * i / 24); ctx.lineTo(p[0], p[1]); } ctx.closePath(); ctx.fill(); }
+    ctx.strokeStyle = C.dim; ctx.lineWidth = 2; ctx.beginPath(); for (let k = 0; k <= 180; k++) { const p = pt(TAU * k / 180); k ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); } ctx.stroke();
+    sunDraw(ctx, sx, cy, 11); const p = pt(nuNow); ctx.setLineDash([5, 6]); ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(sx, cy); ctx.lineTo(p[0], p[1]); ctx.stroke(); ctx.setLineDash([]); disc(ctx, p[0], p[1], 9, '#9bd0ff');
+    const v = KEP.speed(r, 1); txt(ctx, `r = ${f3(r)} AU   v = ${v.toFixed(1)} km/s`, 24, 42, C.text, 26, 500);
+    txt(ctx, '근일점: 가장 빠름', sx + 10, cy - 14, C.ok, 22, 600); if (e > .15) txt(ctx, '원일점: 가장 느림', cx - s - e * s + 12, cy - 14, C.bad, 22, 600);
+    const dAdt = KEP.areaRate(t, e); txt(ctx, `면적속도 dA/dt = ${f3(dAdt)} AU²/yr (일정)`, W - 24, H - 28, C.PE, 26, 700, 'right');
+    info(r, v, bd, cur);
+  }
+  function info(r, v, bd, cur) { const A = KEP.area(bd[cur], bd[cur + 1], e); $('#l2-info').innerHTML = `구간 ${cur + 1}/12 면적 <b class="k">${f3(A)} AU²</b> (πab/12 = ${f3(Math.PI * Math.sqrt(1 - e * e) / 12)})<br>근일점 쪽 구간 ${f3(KEP.area(bd[0], bd[1], e))} · 원일점 쪽 구간 ${f3(KEP.area(bd[5], bd[6], e))}<br><span class="sm">v근일점 / v원일점 = (1+e)/(1−e) = ${f2((1 + e) / (1 - e))}</span>`; $('#l2-play').textContent = run ? '⏸ 일시정지' : '▶ 재생'; }
+  bindRange('l2-e', v => { e = v; $('#l2-ev').textContent = f2(e); draw(); }); $('#l2-play').onclick = () => { run = !run; draw(); }; $('#l2-reset').onclick = () => { t = 0; draw(); };
+  return { start() { t = 0; $('#l2-ev').textContent = f2(e); draw(); }, frame(dt) { if (run) t += Math.min(dt, 1 / 30) * .2; draw(); } };
+
+});
+
+/* ---- s5 ---- */
+REG["s5"] = safe("s5.init", function () {
+
+  const W = 1040, H = 830, ctx = setupCanvas($('#c-l3'), W, H); let M = 1, au = 4, mode = 'cube', rg = 'all';
+  function draw() {
+    bg(ctx, W, H); const raw = mode === 'raw', inner = rg === 'inner', pw = raw ? 1 : 3, qw = raw ? 1 : 2, amax = Math.max(inner ? 1.524 : 30.047, au), vis = PLANETS.filter(p => p[1] <= amax * 1.0001), Xv = a => a ** pw, Yv = T => T ** qw;
+    const xmax = Xv(amax) * 1.08, ymax = Math.max(Yv(Tof(amax, M)), ...vis.map(p => Yv(p[2]))) * 1.08, l = 100, r = W - 40, t = 70, bt = H - 90, gx = x => l + x / xmax * (r - l), gy = y => bt - y / ymax * (bt - t), sx = nice(xmax / 5), sy = nice(ymax / 5);
+    ctx.lineWidth = 1; ctx.strokeStyle = C.grid; for (let x = 0; x <= xmax; x += sx) { ctx.beginPath(); ctx.moveTo(gx(x), t); ctx.lineTo(gx(x), bt); ctx.stroke(); txt(ctx, fmtTick(x), gx(x), bt + 28, C.dim, 20, 400, 'center'); }
+    for (let y = 0; y <= ymax; y += sy) { ctx.beginPath(); ctx.moveTo(l, gy(y)); ctx.lineTo(r, gy(y)); ctx.stroke(); txt(ctx, fmtTick(y), l - 10, gy(y) + 7, C.dim, 20, 400, 'right'); }
+    ctx.strokeStyle = C.dim; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(l, t); ctx.lineTo(l, bt); ctx.lineTo(r, bt); ctx.stroke();
+    txt(ctx, raw ? 'a (AU)' : 'a³ (AU³)', (l + r) / 2, bt + 66, C.text, 24, 500, 'center'); txt(ctx, raw ? 'T (년)' : 'T² (년²)', l, t - 20, C.text, 24, 500);
+    ctx.strokeStyle = C.PE; ctx.lineWidth = 3.5; ctx.beginPath(); for (let i = 0; i <= 160; i++) { const a = amax * i / 160, x = gx(Xv(a)), y = gy(Yv(Tof(a, M))); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke();
+    let last = -99; vis.forEach(p => { const x = gx(Xv(p[1])), y = gy(Yv(p[2])); disc(ctx, x, y, 8, C.KE); if (x - last > 40) { txt(ctx, p[0], x, y - 16, C.text, 20, 500, 'center'); last = x; } });
+    const uT = Tof(au, M), ux = gx(Xv(au)), uy = gy(Yv(uT)); ctx.fillStyle = C.ok; ctx.fillRect(ux - 9, uy - 9, 18, 18); txt(ctx, '내 행성', ux, uy + 36, C.ok, 20, 600, 'center');
+    txt(ctx, `파란 선: M = ${M} M☉ 인 별 주위의 T² = a³/M`, l, 40, C.PE, 22, 600);
+    const tx = l + 24, ty = t + 16; ctx.fillStyle = 'rgba(14,22,46,.82)'; ctx.fillRect(tx - 12, ty - 8, 470, 9 * 28 + 52);
+    ['행성', 'a (AU)', 'T (년)', 'T²/a³'].forEach((h, k) => txt(ctx, h, tx + [0, 120, 250, 370][k], ty + 22, C.dim, 20, 600));
+    PLANETS.concat([['내 행성', au, uT, 0]]).forEach((p, i) => { const y = ty + 52 + i * 28, col = i === 8 ? C.ok : C.text; txt(ctx, p[0], tx, y, col, 20); txt(ctx, String(i === 8 ? au.toFixed(1) : p[1]), tx + 120, y, col, 20); txt(ctx, String(i === 8 ? uT.toFixed(2) : p[2]), tx + 250, y, col, 20); txt(ctx, (p[2] ** 2 / p[1] ** 3).toFixed(3), tx + 370, y, i === 8 ? C.ok : C.KE, 20, 600); });
+  }
+  function refresh() { $('#l3-Mv').textContent = M.toFixed(1) + ' M☉'; $('#l3-av').textContent = au.toFixed(1) + ' AU'; $$('#s5 .chip[data-m]').forEach(c => c.classList.toggle('on', c.dataset.m === mode)); $$('#s5 .chip[data-r]').forEach(c => c.classList.toggle('on', c.dataset.r === rg)); draw(); }
+  bindRange('l3-M', v => { M = v; refresh(); }); bindRange('l3-a', v => { au = v; refresh(); });
+  $$('#s5 .chip[data-m]').forEach(c => c.onclick = () => { mode = c.dataset.m; refresh(); }); $$('#s5 .chip[data-r]').forEach(c => c.onclick = () => { rg = c.dataset.r; refresh(); });
+  return { start() { refresh(); } };
+
+});
+
+/* ---- s6 ---- */
+REG["s6"] = safe("s6.init", function () {
+
+  const W = 760, H = 520, ctx = setupCanvas($('#c-dv'), W, H); let r = 1.5, M = 1, th = 0;
+  function draw() {
+    bg(ctx, W, H); const cx = W / 2, cy = H / 2 + 6, sp = 205 / 4, R = r * sp, g = gravCalc(r, M, 1);
+    ctx.setLineDash([6, 7]); ctx.strokeStyle = 'rgba(160,190,255,.3)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, cy, sp, 0, TAU); ctx.stroke(); ctx.setLineDash([]); txt(ctx, '1 AU', cx + sp * .71 + 4, cy - sp * .71 - 4, C.dim, 18);
+    ctx.strokeStyle = C.dim; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.stroke(); sunDraw(ctx, cx, cy, 7 + 4 * Math.cbrt(M));
+    const px = cx + R * Math.cos(th), py = cy - R * Math.sin(th); disc(ctx, px, py, 8, '#9bd0ff');
+    const tx = -Math.sin(th), ty = -Math.cos(th), nx = (cx - px) / R, ny = (cy - py) / R; arrow(ctx, px, py, px + tx * 56, py + ty * 56, C.KE, 4); arrow(ctx, px, py, px + nx * 56, py + ny * 56, C.PE, 4);
+    txt(ctx, 'v', px + tx * 62, py + ty * 62, C.KE, 22, 700); txt(ctx, 'F', px + nx * 62, py + ny * 62, C.PE, 22, 700); txt(ctx, '화살표 길이는 방향 표시용(고정)', 16, H - 16, C.dim, 18);
+    txt(ctx, `m v²/r = ${f2(g.Fc)}   GMm/r² = ${f2(g.Fg)}  (지구–태양 = 1)`, 16, 34, C.PE, 22, 600);
+  }
+  function info() { const g = gravCalc(r, M, 1); $('#dv-rv').textContent = r.toFixed(1) + ' AU'; $('#dv-Mv').textContent = M.toFixed(1) + ' M☉'; $('#dv-info').innerHTML = `T = ${f2(g.T)} yr, v = ${g.v.toFixed(1)} km/s, T²/r³ = ${f3(g.T * g.T / r ** 3)} = 1/M<br>r 을 2배로 하면 F 는 <b class="k">1/4배</b> (구심력과 만유인력이 같은 값)`; draw(); }
+  bindRange('dv-r', v => { r = v; info(); }); bindRange('dv-M', v => { M = v; info(); });
+  return { start() { info(); }, frame(dt) { th += Math.min(dt, 1 / 30) * TAU * .25 / Tof(r, M); draw(); } };
+
+});
+
+/* ---- s7 ---- */
+REG["s7"] = safe("s7.init", function () {
+
+  let qi = 0, done = {};
+  function show() {
+    const q = QUIZ[qi]; $('#qz-h').textContent = `확인 문제 ${qi + 1} / ${QUIZ.length}`; $('#qz-q').textContent = q.q;
+    $('#qz-o').innerHTML = q.o.map((t, i) => `<button class="btn" data-i="${i}">${t}</button>`).join('');
+    $$('#qz-o .btn').forEach(b => b.onclick = () => { const i = +b.dataset.i; done[qi] = i; fb(); });
+    $$('#qz-tabs .chip').forEach((c, k) => c.classList.toggle('on', k === qi)); fb();
+  }
+  function fb() { const q = QUIZ[qi], d = done[qi]; $('#qz-fb').innerHTML = d === undefined ? '' : (d === q.a ? '<span class="ok">정답!</span> ' : '<span class="bad">다시 생각해 보자.</span> ') + (d === q.a ? q.ex : ''); }
+  $('#qz-tabs').innerHTML = QUIZ.map((_, k) => `<button class="chip" data-k="${k}">문제 ${k + 1}</button>`).join('');
+  $$('#qz-tabs .chip').forEach(c => c.onclick = () => { qi = +c.dataset.k; show(); });
+  return { start() { show(); } };
+
+});
+
+/* =====================================================================
+   슬라이드 관리자
+   ===================================================================== */
+const slides = $$('.slide'), deck = $('#deck'); let cur = -1, step = 0, activeFrame = null, activeId = '', hudTimer = 0;
+const NOTES = DECK.notes, ASK = DECK.ask, CIRC = ['①', '②', '③', '④', '⑤'];
+function renderNotes(i) {
+  const n = NOTES[slides[i].id]; if (!n) { $('#notes').innerHTML = ''; return; }
+  $('#notes').innerHTML = `<div class="nh">📝 오개념 교정 노트 · 슬라이드 ${i + 1} / ${slides.length}<span style="float:right">발문을 화면에 띄우기: Q 키</span></div>` + (n.q ? `<div class="nq">💬 발문: ${n.q}</div>` : '') +
+    (n.m || []).map(([a, b]) => `<div class="ni"><span class="nx">❌ 오개념</span> ${a}<br><span class="nv">✅ 교정</span> ${b}</div>`).join('');
+}
+function renderAsk(i) {
+  const q = ASK[slides[i].id] || [];
+  $('#ask').innerHTML = `<div class="ak"><div class="ah">💬 생각해 보기 · ${i + 1} / ${slides.length}</div>` + (q.length ? q.map((t, k) => `<div class="aq">${q.length > 1 ? `<span>${CIRC[k] || (k + 1) + '.'}</span>` : ''}${t}</div>`).join('') : '<div class="aq" style="color:var(--muted)">이 슬라이드에는 발문이 없습니다.</div>') + '<div class="af">Q 키 · Esc · 화면 클릭으로 닫기</div></div>';
+}
+function toggleAsk(force) { const on = $('#ask').classList.toggle('on', force); $('#b-ask').classList.toggle('on', on); }
+const maxStep = i => +(slides[i].dataset.steps || 0);
+function fit() { const vp = $('#viewport'), s = Math.min(vp.clientWidth / 1920, vp.clientHeight / 1080); deck.style.transform = `translate(-50%,-50%) scale(${s})`; }
+function fitSteps() { // 단계 목록이 영역을 넘으면 자동 축소 (실제 렌더링 높이 기준)
+  if (cur < 0) return; const side = $('.side.steps', slides[cur]); if (!side) return;
+  side.style.transform = ''; side.style.width = '';
+  if (side.clientHeight > 0 && side.scrollHeight > side.clientHeight + 1) { const k = side.clientHeight / side.scrollHeight; side.style.transformOrigin = 'top left'; side.style.transform = `scale(${k})`; side.style.width = (100 / k) + '%'; }
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitSteps);
+function applyStep() {
+  $$('.st', slides[cur]).forEach(el => { el.classList.toggle('on', +el.dataset.i <= step); el.classList.toggle('cur', +el.dataset.i === step); });
+  const id = slides[cur].id, r = REG[id]; r && r.onStep && safe(id + '.onStep', () => r.onStep(step));
+}
+function show(i, st = 0) {
+  i = Math.max(0, Math.min(slides.length - 1, i));
+  if (cur >= 0) { const oid = slides[cur].id, o = REG[oid]; o && o.stop && safe(oid + '.stop', () => o.stop()); slides[cur].classList.remove('active'); }
+  cur = i; step = Math.min(st, maxStep(i)); slides[i].classList.add('active');
+  const id = slides[i].id, r = REG[id]; activeFrame = r && r.frame ? (dt => r.frame(dt)) : null; activeId = id;
+  fitSteps(); r && r.start && safe(id + '.start', () => r.start());
+  $('#h-pg').textContent = `${i + 1} / ${slides.length}`; renderNotes(i); renderAsk(i); toggleAsk(false); applyStep();
+}
+const next = () => { if (step < maxStep(cur)) { step++; applyStep(); } else if (cur < slides.length - 1) show(cur + 1); };
+const prev = () => { if (step > 0) { step--; applyStep(); } else if (cur > 0) show(cur - 1, maxStep(cur - 1)); };
+function isDark() { const r = document.documentElement; return r.dataset.theme === 'dark' || (!r.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches); }
+function themeBtn() { $('#b-theme').textContent = isDark() ? '☀ 라이트 전환' : '🌙 다크 전환'; }
+function toggleTheme() { document.documentElement.dataset.theme = isDark() ? 'light' : 'dark'; themeBtn(); }
+function toggleNotes() { const on = $('#notes').classList.toggle('on'); $('#b-notes').classList.toggle('on', on); }
+function toggleHelp(force) { const on = $('#help').classList.toggle('on', force); $('#b-help').classList.toggle('on', on); }
+function fullscreen() { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) { } }
+function poke() { $('#hud').classList.add('show'); clearTimeout(hudTimer); hudTimer = setTimeout(() => $('#hud').classList.remove('show'), 2600); }
+document.addEventListener('keydown', e => {
+  const t = e.target; if (t && t.tagName === 'INPUT' && t.type === 'range' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); next(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+  else if (e.key === 'Home') show(0); else if (e.key === 'End') show(slides.length - 1);
+  else if (e.key === 'f' || e.key === 'F') fullscreen(); else if (e.key === 'n' || e.key === 'N') toggleNotes(); else if (e.key === 't' || e.key === 'T') toggleTheme(); else if (e.key === 'q' || e.key === 'Q') toggleAsk(); else if (e.key === '?' || e.key === 'h' || e.key === 'H') toggleHelp(); else if (e.key === 'Escape') { toggleHelp(false); toggleAsk(false); if ($('#notes').classList.contains('on')) toggleNotes(); }
+});
+$('#h-prev').onclick = prev; $('#h-next').onclick = next; $('#h-fs').onclick = fullscreen; $('#b-help').onclick = () => toggleHelp(); $('#b-ask').onclick = () => toggleAsk(); $('#ask').onclick = () => toggleAsk(false); $('#help-x').onclick = () => toggleHelp(false); $('#help').onclick = e => { if (e.target.id === 'help') toggleHelp(false); }; $('#b-notes').onclick = toggleNotes; $('#b-theme').onclick = toggleTheme;
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
+['mousemove', 'touchstart', 'pointerdown'].forEach(ev => document.addEventListener(ev, poke, { passive: true }));
+window.addEventListener('resize', () => { fit(); fitSteps(); }); fit();
+let lastT = performance.now();
+(function loop(now) {
+  const dt = Math.min(.05, (now - lastT) / 1000); lastT = now;
+  if (activeFrame) { try { activeFrame(dt); } catch (e) { reportError(activeId + '.frame', e); activeFrame = null; } }
+  requestAnimationFrame(loop);
+})(lastT);
+
+/* 물리 검증: shared_js에 TESTS() → [[이름, 통과여부, 설명], ...] 가 있으면 콘솔에 출력 */
+(function runSelfTests() {
+  if (typeof TESTS !== 'function') { console.log('물리 검증 항목 없음'); return; }
+  let results = [];
+  try { results = TESTS() || []; } catch (e) { reportError('TESTS', e); return; }
+  console.log('=== ' + DECK.title + ' 물리 검증 ==='); let pass = 0;
+  for (const [name, ok, detail] of results) { console.log(`[${ok ? 'PASS' : 'FAIL'}] ${name}${detail ? ' — ' + detail : ''}`); if (ok) pass++; }
+  console.log(pass === results.length ? '모든 검증 통과' : '일부 검증 실패 — 콘솔 확인 필요');
+  window.__wsSelfTest = { pass, total: results.length };
+})();
+
+window.__deck = { show, next, get cur() { return cur; }, get step() { return step; }, count: slides.length, maxStep };
+let startAt = 0; try { const h = parseInt(location.hash.slice(1), 10); if (h >= 1 && h <= slides.length) startAt = h - 1; } catch (e) { }
+themeBtn(); show(startAt); poke();
+</script>
+</body>
+</html>

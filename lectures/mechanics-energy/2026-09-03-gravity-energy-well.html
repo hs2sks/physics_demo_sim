@@ -1,1326 +1,878 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>역학과 에너지: 중력법칙과 에너지 우물, 그리고 쥘 베른</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- KaTeX for Math rendering -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&display=swap');
-    body {
-      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
-      background-color: #0b0f19;
-      color: #f3f4f6;
-    }
-    .custom-scrollbar::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #374151;
-      border-radius: 3px;
-    }
-    .orbit-canvas {
-      background: radial-gradient(circle at center, #111827 0%, #030712 100%);
-    }
-    .energy-canvas {
-      background: #0d111d;
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>역학과 에너지: 중력법칙과 에너지 우물, 그리고 쥘 베른</title>
+<!-- gravity-energy-well · 역제곱 법칙·달 검증·캐번디시, 중력 우물과 궤도, 원자·터널링으로의 확장, 쥘 베른의 대포 분석 (역학과 에너지) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap">
+<style>
+:root{
+  --bg:#dfe5f0; --slide:#f5f7fc; --panel:#ffffff; --ink:#14203a; --muted:#54617b; --line:#c9d2e4;
+  --blue:#1f5fd1; --onblue:#ffffff; --amber:#b45f00; --green:#0c7a58; --red:#b8321f;
+  --blue-soft:#dce8fb; --amber-soft:#fbe8cf;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+    --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+    --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+  --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+  --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;overflow:hidden}
+#viewport{position:relative;width:100%;height:100%;overflow:hidden}
+#deck{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center center;background:var(--slide);box-shadow:0 12px 70px rgba(0,0,0,.28);overflow:hidden}
+.slide{position:absolute;inset:0;display:none;flex-direction:column;padding:84px 88px 52px;gap:24px;background:var(--slide);font-size:32px;line-height:1.4}
+.slide.active{display:flex}
+.hd{display:flex;align-items:baseline;justify-content:space-between;gap:24px;flex:none}
+.hd h2{font-size:58px;line-height:1.15;margin:0;font-weight:800;letter-spacing:-.01em}
+.hd .src{font-size:26px;color:var(--muted);white-space:nowrap}
+.body{flex:1;min-height:0;display:grid;gap:36px}
+.side{display:flex;flex-direction:column;gap:18px;min-height:0}
+canvas{display:block;border-radius:16px;background:#0a1330}
+.box{background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:20px 26px}
+.box h3{margin:0 0 8px;font-size:30px}
+.sm{font-size:26px;color:var(--muted)}
+.lead{font-size:40px;line-height:1.35}
+.k{color:var(--amber);font-weight:700}.p{color:var(--blue);font-weight:700}.ok{color:var(--green);font-weight:700}.bad{color:var(--red);font-weight:700}
+/* math */
+.m{font-family:'STIX Two Text','Times New Roman',serif;font-style:italic;font-size:1.1em;white-space:nowrap}
+.m .u,.u{font-style:normal}
+.m sub,.m sup{font-size:.68em;line-height:0;font-style:normal}
+.fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.15;margin:0 .12em;font-size:.95em}
+.fr>span:first-child{padding:0 .2em .06em;border-bottom:.07em solid currentColor}
+.fr>span:last-child{padding-top:.06em}
+.sq{white-space:nowrap}.sq .rad{border-top:.07em solid currentColor;padding:0 .15em;margin-left:-.04em}
+.eq{font-size:44px;text-align:center;padding:6px 0}
+/* controls */
+.ctl{display:flex;flex-direction:column;gap:4px}
+.ctl .row{display:flex;justify-content:space-between;align-items:baseline;font-size:27px;gap:12px}
+.ctl .val{font-weight:700;font-variant-numeric:tabular-nums}
+.rangew{position:relative}
+input[type=range]{width:100%;height:44px;-webkit-appearance:none;appearance:none;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:38px;height:38px;border-radius:50%;background:var(--blue);margin-top:-13px;border:4px solid var(--panel);box-shadow:0 1px 6px rgba(0,0,0,.35)}
+input[type=range]::-moz-range-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;background:var(--blue);border:4px solid var(--panel)}
+input[type=range]:focus-visible{outline:3px solid var(--blue);outline-offset:4px;border-radius:8px}
+.marks{position:relative;height:60px;font-size:22px;color:var(--muted)}
+.marks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.btns{display:flex;gap:12px;flex-wrap:wrap}
+.btn,.chip{font:inherit;font-size:27px;font-weight:700;padding:10px 24px;border-radius:12px;border:2px solid var(--blue);background:var(--panel);color:var(--blue);cursor:pointer;line-height:1.25}
+.btn.pri{background:var(--blue);color:var(--onblue)}
+.chip{padding:8px 18px;font-size:26px;border-color:var(--line);color:var(--ink);font-weight:500}
+.chip.on{border-color:var(--blue);background:var(--blue-soft);font-weight:700}
+.btn:focus-visible,.chip:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.chips{display:flex;gap:10px;flex-wrap:wrap}
+/* step reveal */
+.st{display:grid;grid-template-columns:46px 1fr;gap:14px;padding:8px 14px;border-radius:14px;opacity:0;transform:translateY(10px);transition:opacity .35s,transform .35s;border:2px solid transparent}
+.st.on{opacity:.55;transform:none}
+.st.cur{opacity:1;background:var(--panel);border-color:var(--blue)}
+.st .n{width:42px;height:42px;border-radius:50%;background:var(--blue);color:var(--onblue);display:grid;place-items:center;font-weight:800;font-size:24px;margin-top:2px}
+.st .tl{display:flex;flex-wrap:wrap;gap:2px 14px;align-items:baseline}
+.st .t{font-size:23px;color:var(--muted);line-height:1.3}
+.st b{font-size:27px}
+.st .eq{font-size:35px;line-height:1.1;text-align:left;padding:2px 0}
+/* cover */
+.cover{flex-direction:row;align-items:center;gap:56px}
+.cover.active{display:flex}
+.cv-l{flex:1;display:flex;flex-direction:column;gap:28px}
+.cv-l h1{font-size:200px;line-height:1;margin:0;font-weight:800;letter-spacing:-.04em}
+.cv-tag{font-size:30px;color:var(--muted)}
+.q{border-left:8px solid var(--blue);border-radius:6px;padding:8px 0 8px 28px;font-size:36px;line-height:1.45}
+/* table */
+table.t{border-collapse:collapse;width:100%;font-size:27px}
+table.t th,table.t td{padding:10px 14px;border-bottom:2px solid var(--line);text-align:right;white-space:nowrap}
+table.t th:first-child,table.t td:first-child,table.t th:last-child,table.t td:last-child{text-align:left}
+table.t th{font-size:24px;color:var(--muted);font-weight:500}
+table.t tbody tr{cursor:pointer}
+table.t tbody tr.on{background:var(--blue-soft);font-weight:700}
+/* HUD / notes */
+#hud{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:10px;align-items:center;background:rgba(10,19,48,.86);color:#e9effd;padding:8px 14px;border-radius:14px;font-size:18px;opacity:0;transition:opacity .3s;z-index:20}
+#hud.show{opacity:1}
+#hud button{font:inherit;font-size:18px;color:#e9effd;background:transparent;border:1.5px solid rgba(233,239,253,.5);border-radius:8px;padding:4px 12px;cursor:pointer}
+#notes{position:absolute;left:0;right:0;bottom:0;background:rgba(10,19,48,.94);color:#eaf0ff;padding:26px 88px 34px;font-size:30px;line-height:1.5;display:none;z-index:15}
+#notes.on{display:block}
+#notes b{color:#ffb454}
+
+.ko{font-family:'Noto Sans KR',sans-serif;font-style:normal;font-size:.8em}
+#bar{position:absolute;top:14px;left:88px;right:88px;height:54px;display:flex;justify-content:space-between;align-items:center;z-index:12}
+#bar .bl{font-size:26px;font-weight:800}
+#bar .br{display:flex;gap:10px}
+.tb{font:inherit;font-size:24px;font-weight:700;padding:7px 18px;border-radius:12px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;line-height:1.2}
+.tb:hover{border-color:var(--blue)}.tb.on{border-color:var(--blue);background:var(--blue-soft)}
+.tb:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+#help{position:absolute;inset:0;background:rgba(6,11,30,.82);display:none;align-items:center;justify-content:center;z-index:30}
+#help.on{display:flex}
+.hp{background:var(--panel);color:var(--ink);border-radius:22px;padding:36px 52px 40px;width:1320px;max-height:960px;overflow:auto;font-size:27px;line-height:1.5;border:2px solid var(--line)}
+.hp h3{font-size:40px;margin:0 0 14px}.hp h4{font-size:29px;margin:18px 0 6px;color:var(--blue)}
+.hp .g{display:grid;grid-template-columns:230px 1fr;gap:6px 22px}
+.hp kbd{font:inherit;font-size:24px;font-weight:700;background:var(--blue-soft);border:2px solid var(--line);border-radius:8px;padding:1px 10px;margin-right:4px}
+#ask{position:absolute;inset:0;background:rgba(6,11,30,.6);display:none;align-items:center;justify-content:center;z-index:25;cursor:pointer}
+#ask.on{display:flex}
+#ask .ak{background:var(--panel);color:var(--ink);border-radius:24px;border-left:16px solid var(--blue);padding:44px 72px 40px 60px;width:1500px;box-shadow:0 20px 80px rgba(0,0,0,.45)}
+#ask .ah{font-size:30px;color:var(--blue);font-weight:800;margin-bottom:18px}
+#ask .aq{font-size:54px;line-height:1.4;font-weight:700;margin:10px 0;letter-spacing:-.01em}
+#ask .aq span{color:var(--blue);margin-right:14px}
+#ask .af{font-size:24px;color:var(--muted);margin-top:22px}
+#notes .nh{font-size:24px;color:#9db0d8;margin-bottom:6px}
+#notes .nq{margin:4px 0 10px;font-size:29px}
+#notes .ni{margin:6px 0;font-size:27px;line-height:1.45}
+#notes .nx{color:#ff9d9d;font-weight:700}#notes .nv{color:#5eead4;font-weight:700}
+@media (prefers-reduced-motion: reduce){.st{transition:none}}
+#simError{position:absolute;left:88px;right:88px;top:76px;z-index:40;background:rgba(184,50,31,.95);color:#fff;font-size:22px;line-height:1.4;padding:10px 18px;border-radius:12px;white-space:pre-wrap;display:none}
+#simError.on{display:block}
+/* ---- extra_css ---- */
+
+</style>
 </head>
-<body class="min-h-screen flex flex-col custom-scrollbar selection:bg-indigo-500 selection:text-white">
+<body>
+<div id="viewport">
+<div id="deck">
 
-  <!-- 상단 네비게이션 바 -->
-  <header class="border-b border-gray-800 bg-gray-900/90 backdrop-blur sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-      <div class="flex items-center space-x-3">
-        <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/30">
-          G
-        </div>
-        <div>
-          <span class="font-bold text-lg tracking-tight text-white block">중력 역학 & 에너지 우물 탐구실</span>
-          <span class="text-xs text-gray-400">역학과 에너지 심화 탐구 프로그램</span>
-        </div>
-      </div>
+<!-- s1 -->
+<section class="slide cover" id="s1">
+  <div class="cv-l"><div class="cv-tag">역학과 에너지 · 그리고 쥘 베른의 《지구에서 달까지》</div>
+    <h1>중력 법칙과 에너지 우물</h1>
+    <p class="lead" style="margin:0">중력은 거리의 제곱에 반비례한다. 그러면 지구를 벗어나려면 얼마나 빨라야 할까?</p>
+    <div class="q">대포로 우주선을 달까지 쏘던 1865년의 소설은 왜 실제로는 불가능할까?</div>
+    <div class="sm">❓ 조작법 · 📝 오개념 노트 · → / Space 로 시작</div></div>
+  <canvas id="c-hero"></canvas>
+</section>
 
-      <!-- 모듈 전환 탭 -->
-      <nav class="hidden md:flex space-x-1 bg-gray-800/80 p-1 rounded-xl border border-gray-700/60">
-        <button onclick="switchTab(1)" id="tab-btn-1" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all bg-indigo-600 text-white shadow">
-          1. 중력법칙 유도
-        </button>
-        <button onclick="switchTab(2)" id="tab-btn-2" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all text-gray-300 hover:text-white hover:bg-gray-700/50">
-          2. 에너지 곡선 & 궤도
-        </button>
-        <button onclick="switchTab(3)" id="tab-btn-3" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all text-gray-300 hover:text-white hover:bg-gray-700/50">
-          3. 양자 터널링 확장
-        </button>
-        <button onclick="switchTab(4)" id="tab-btn-4" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all text-gray-300 hover:text-white hover:bg-gray-700/50">
-          4. 쥘 베른과 우주비행
-        </button>
-      </nav>
+<!-- s2 -->
+<section class="slide" id="s2">
+  <header class="hd"><h2>역제곱 법칙은 왜 필연적일까?</h2><span class="src">탐구 · 3차원 공간의 기하학 (비유)</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="c-sq"></canvas>
+    <div class="side">
+      <div class="box"><div class="eq" style="font-size:40px"><div class="eq"><span class="m"> I = <span class="fr"><span>P</span><span>4π r<sup>2</sup></span></span> ∝ <span class="fr"><span>1</span><span>r<sup>2</sup></span></span> </span></div></div><div class="sm" style="text-align:center">구 표면적 4πr² 에 같은 양이 퍼진다</div></div>
+      <div class="ctl"><div class="row"><span>거리 r</span><span class="val" id="sq-dv">2 배</span></div><input id="sq-d" type="range" min="1" max="4" step="0.1" value="2"></div>
+      <div class="box"><div class="sm" style="color:var(--ink)" id="sq-info">&nbsp;</div></div>
+      <div class="box"><div class="sm" style="color:var(--ink)"><b class="k">비유</b> 점광원의 밝기, 스프레이 페인트의 두께, 소리의 세기는 모두 1/r² 로 줄어든다. 중력 역시 점 질량에서 나오는 “영향”이 구면으로 퍼진다고 생각하면 1/r² 가 자연스럽다. (비유이며, 중력이 실제로 무언가 퍼져 나가는 것은 아님)</div></div>
+    </div>
+</div>
+</section>
 
-      <!-- 모바일 드롭다운 -->
-      <div class="md:hidden">
-        <select id="mobile-tab-select" onchange="switchTab(parseInt(this.value))" class="bg-gray-800 border border-gray-700 text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-indigo-500">
-          <option value="1">1. 중력법칙 유도</option>
-          <option value="2">2. 에너지 곡선 & 궤도</option>
-          <option value="3">3. 양자 터널링 확장</option>
-          <option value="4">4. 쥘 베른과 우주비행</option>
-        </select>
+<!-- s3 -->
+<section class="slide" id="s3" data-steps="5">
+  <header class="hd"><h2>달은 사과처럼 떨어지고 있을까?</h2><span class="src">뉴턴의 달 검증 (Moon test)</span></header>
+<div class="body" style="grid-template-columns:1fr 760px">
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>달의 관측 가속도</b><span class="t">r = 3.84×10⁸ m, T = 27.3일</span></div><div class="eq"><span class="m">a<sub>달</sub> = <span class="fr"><span>4π<sup>2</sup> r</span><span>T<sup>2</sup></span></span> ≈ 2.72×10<sup>-3</sup> <span class="ko"> m/s</span><sup>2</sup></span></div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>지표면의 중력가속도</b><span class="t">사과가 떨어지는 가속도</span></div><div class="eq"><span class="m">g = 9.80 <span class="ko"> m/s</span><sup>2</sup></span></div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>역제곱 법칙의 예측</b><span class="t">달은 지구 중심에서 약 60 R_E</span></div><div class="eq"><span class="m">a = <span class="fr"><span>g</span><span>60<sup>2</sup></span></span> = <span class="fr"><span>9.80</span><span>3600</span></span> ≈ 2.72×10<sup>-3</sup></span></div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>관측과 비교</b><span class="t">일치 (약 0.2% 이내)</span></div><div class="eq"><span class="m">a<sub><span class="ko">예측</span></sub> ≈ a<sub>달</sub></span></div></div></div>
+<div class="st" data-i="5"><div class="n">5</div><div><div class="tl"><b>지상과 천상의 통합</b></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">사과의 낙하와 달의 공전은 <b class="ok">같은 중력</b>이다.<br><span class="sm">거리 r 에 반비례하지 않고 r² 에 반비례(n = 2)</span></div></div></div></div>
+<div class="side">
+      <canvas id="c-mt"></canvas>
+      <div class="ctl"><div class="row"><span>가정: 힘이 1/r<sup>n</sup> 에 비례할 때 지수 n</span><span class="val" id="mt-nv">1</span></div><input id="mt-n" type="range" min="1" max="3" step="0.1" value="1"></div>
+      <div class="box"><div class="sm" style="color:var(--ink)" id="mt-info">&nbsp;</div></div>
+    </div>
+</div>
+</section>
+
+<!-- s4 -->
+<section class="slide" id="s4">
+  <header class="hd"><h2>캐번디시: 비례상수 G 를 재다</h2><span class="src">1798 · 비틀림 저울 (예시값 포함)</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="c-cv"></canvas>
+    <div class="side">
+      <div class="box"><div class="eq" style="font-size:38px"><div class="eq"><span class="m"> F = G <span class="fr"><span>m<sub>1</sub> m<sub>2</sub></span><span>r<sup>2</sup></span></span> </span></div></div></div>
+      <div class="ctl"><div class="row"><span>큰 납구 질량 (예시)</span><span class="val" id="cv-Mv">158 kg</span></div><input id="cv-M" type="range" min="50" max="200" step="1" value="158"></div><div class="ctl"><div class="row"><span>두 납구 중심 거리 (예시)</span><span class="val" id="cv-dv">0.23 m</span></div><input id="cv-d" type="range" min="0.15" max="0.4" step="0.01" value="0.23"></div>
+      <div class="box"><div class="sm" style="color:var(--ink)" id="cv-info">&nbsp;</div></div>
+      <div class="box"><div class="eq" style="font-size:34px"><div class="eq"><span class="m"> g = <span class="fr"><span>GM<sub>E</sub></span><span>R<sub>E</sub><sup>2</sup></span></span> ⇒ M<sub>E</sub> = <span class="fr"><span>g R<sub>E</sub><sup>2</sup></span><span>G</span></span> </span></div></div><div class="sm" style="text-align:center;color:var(--ink)" id="cv-me">&nbsp;</div></div>
+    </div>
+</div>
+</section>
+
+<!-- s5 -->
+<section class="slide" id="s5">
+  <header class="hd"><h2>중력 우물과 총 에너지</h2><span class="src">교과서 32쪽 · 위치 에너지 U = −GMm/r</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="c-wl"></canvas>
+    <div class="side">
+      <div class="box"><div class="eq" style="font-size:36px"><div class="eq"><span class="m"> U(r) = -<span class="fr"><span>GMm</span><span>r</span></span>, &nbsp;&nbsp; E = K + U </span></div></div><div class="sm" style="text-align:center">무한히 먼 곳을 U = 0 으로 잡으면 U 는 항상 음수</div></div>
+      <div class="ctl"><div class="row"><span>총 에너지 E (GMm/R 단위)</span><span class="val" id="wl-Ev">-0.5</span></div><input id="wl-E" type="range" min="-1" max="0.6" step="0.05" value="-0.5"></div><div class="ctl"><div class="row"><span>현재 위치 r (R 단위)</span><span class="val" id="wl-rv">1.5</span></div><input id="wl-r" type="range" min="1" max="8" step="0.05" value="1.5"></div>
+      <div class="chips"><button class="chip" data-e="-0.5">원궤도 E = −½</button><button class="chip" data-e="-0.2">타원 E = −0.2</button><button class="chip" data-e="0">E = 0 (탈출 경계)</button><button class="chip" data-e="0.4">E &gt; 0</button></div>
+      <div class="box"><div class="sm" style="color:var(--ink)" id="wl-info">&nbsp;</div></div>
+    </div>
+</div>
+</section>
+
+<!-- s6 -->
+<section class="slide" id="s6">
+  <header class="hd"><h2>발사 속도와 궤도의 모양</h2><span class="src">교과서 32~33쪽 · E 의 부호와 궤도</span></header>
+<div class="body" style="grid-template-columns:1000px 1fr">
+<canvas id="c-ob"></canvas>
+    <div class="side">
+      <div class="chips"><button class="chip" data-v="5.8">낙하 5.8</button><button class="chip on" data-v="7.91">원궤도 7.91</button><button class="chip" data-v="9.5">타원 9.5</button><button class="chip" data-v="11.19">탈출 11.19</button><button class="chip" data-v="13.5">쌍곡선 13.5</button></div>
+      <div class="ctl"><div class="row"><span>지표면 수평 발사 속력</span><span class="val" id="ob-vv">7.91 km/s</span></div><input id="ob-v" type="range" min="4.5" max="15" step="0.05" value="7.91"></div>
+      <canvas id="c-ow"></canvas>
+      <div class="box"><div class="sm" style="color:var(--ink)" id="ob-info">&nbsp;</div></div>
+      <div class="btns"><button class="btn pri" id="ob-play">⏸ 일시정지</button><button class="btn" id="ob-reset">↺ 다시 발사</button></div>
+    </div>
+</div>
+</section>
+
+<!-- s7 -->
+<section class="slide" id="s7" data-steps="6">
+  <header class="hd"><h2>에너지 보존으로 탈출 속도 구하기</h2><span class="src">교과서 33쪽 · 단계별 유도 (→ 키로 진행)</span></header>
+<div class="body" style="grid-template-columns:1fr 760px">
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>역학적 에너지 보존</b><span class="t">지표면 발사 → 거리 r</span></div><div class="eq"><span class="m">½mv<sub>0</sub>² − <span class="fr"><span>GMm</span><span>R</span></span> = ½mv² − <span class="fr"><span>GMm</span><span>r</span></span></span></div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>무한히 먼 곳</b><span class="t">U → 0</span></div><div class="eq"><span class="m">r → ∞ ⇒ − <span class="fr"><span>GMm</span><span>r</span></span> → 0</span></div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>겨우 도달하는 경계</b><span class="t">v = 0 이면 우변 = 0</span></div><div class="eq"><span class="m"><span class="ko">우변</span> = 0 ⇒ E = 0</span></div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>발사 시점에 적용</b><span class="t">필요한 K = |U|</span></div><div class="eq"><span class="m">½mv<sub>0</sub>² − <span class="fr"><span>GMm</span><span>R</span></span> = 0</span></div></div></div>
+<div class="st" data-i="5"><div class="n">5</div><div><div class="tl"><b>v₀ 구하기</b><span class="t">이것이 탈출 속도</span></div><div class="eq"><span class="m">v<sub>e</sub> = <span class="sq">√<span class="rad"><span class="fr"><span>2GM</span><span>R</span></span></span></span> = <span class="sq">√<span class="rad">2gR</span></span></span></div></div></div>
+<div class="st" data-i="6"><div class="n">6</div><div><div class="tl"><b>m 은 사라진다</b></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">탈출 속도는 <b class="ok">물체의 질량과 무관</b>하고 중심 천체의 M, R 로 정해진다.</div></div></div></div>
+<canvas id="c-ve"></canvas>
+</div>
+</section>
+
+<!-- s8 -->
+<section class="slide" id="s8">
+  <header class="hd"><h2>우물의 보편성: 원자에서 원자핵까지</h2><span class="src">교과서 밖 심화 · 모양은 같고 눈금만 다르다</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="c-un"></canvas>
+    <div class="side">
+      <div class="chips"><button class="chip on" data-k="h">수소 원자 (쿨롱)</button><button class="chip" data-k="lj">분자 (레너드-존스)</button><button class="chip" data-k="nu">원자핵 (핵력 + 쿨롱 장벽)</button></div>
+      <div class="box"><div class="eq" style="font-size:34px" id="un-eq">&nbsp;</div></div>
+      <div class="box"><div class="sm" style="color:var(--ink)" id="un-info">&nbsp;</div></div>
+      <div class="box"><div class="sm" style="color:var(--ink)">공통점: 에너지 곡선의 <b class="k">우물 안(E &lt; 0 또는 장벽 아래)</b>에 있으면 묶여 있고, 우물을 벗어날 에너지를 받으면 떨어져 나간다. 그림의 눈금은 개략적(상대적)이다.</div></div>
+    </div>
+</div>
+</section>
+
+<!-- s9 -->
+<section class="slide" id="s9">
+  <header class="hd"><h2>고전은 못 넘는 장벽, 양자는 새어 나간다</h2><span class="src">교과서 밖 심화 · 양자 터널링 (예시값)</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="c-tn"></canvas>
+    <div class="side">
+      <div class="box"><div class="sm" style="color:var(--ink)">전자(V₀ = 5 eV 장벽, 예시)가 에너지 E 로 두께 L 의 장벽에 입사</div><div class="eq" style="font-size:32px"><div class="eq"><span class="m"> T ≈ e<sup>-2κ L</sup>,&nbsp;&nbsp; κ = <span class="fr"><span><span class="sq">√<span class="rad">2m(V<sub>0</sub>-E)</span></span></span><span>ħ</span></span> </span></div></div></div>
+      <div class="ctl"><div class="row"><span>입자 에너지 E</span><span class="val" id="tn-Ev">3 eV</span></div><input id="tn-E" type="range" min="1" max="4.5" step="0.1" value="3"></div><div class="ctl"><div class="row"><span>장벽 두께 L</span><span class="val" id="tn-Lv">0.5 nm</span></div><input id="tn-L" type="range" min="0.1" max="1" step="0.05" value="0.5"></div>
+      <div class="box"><div class="sm" style="color:var(--ink)" id="tn-info">&nbsp;</div></div>
+    </div>
+</div>
+</section>
+
+<!-- s10 -->
+<section class="slide" id="s10">
+  <header class="hd"><h2>쥘 베른 ①: 지구와 달 사이의 중성점</h2><span class="src">《지구에서 달까지》(1865) · 소설과 물리</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="c-np"></canvas>
+    <div class="side">
+      <div class="box"><div class="eq" style="font-size:34px"><div class="eq"><span class="m"> <span class="fr"><span>GM<sub>E</sub></span><span>x<sup>2</sup></span></span> = <span class="fr"><span>GM<sub>M</sub></span><span>(D-x)<sup>2</sup></span></span> ⇒ x ≈ 0.90 D </span></div></div><div class="sm" style="text-align:center">M<sub>E</sub> ≈ 81 M<sub>M</sub>, D ≈ 384,400 km</div></div>
+      <div class="ctl"><div class="row"><span>우주선 위치 (지구 중심에서)</span><span class="val" id="np-xv">0.5 D</span></div><input id="np-x" type="range" min="0.05" max="0.98" step="0.01" value="0.5"></div>
+      <div class="box"><div class="sm" style="color:var(--ink)" id="np-info">&nbsp;</div></div>
+      <div class="box"><div class="sm" style="color:var(--ink)"><b class="k">소설의 정확성</b> 탈출 속도를 약 11 km/s (소설 속 초속 12,000야드 ≈ 10.97 km/s)로 계산, 적도에 가까운 플로리다 발사로 자전 속도(적도 465 m/s, 위도 28°에서 약 410 m/s)를 이용, 중성점에서의 중력 상쇄까지 묘사했다.</div></div>
+    </div>
+</div>
+</section>
+
+<!-- s11 -->
+<section class="slide" id="s11">
+  <header class="hd"><h2>쥘 베른 ②: 대포로는 왜 안 될까?</h2><span class="src">콜롬비아드 · 가속도 a = v²/2L</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="c-cn"></canvas>
+    <div class="side">
+      <div class="box"><div class="eq" style="font-size:38px"><div class="eq"><span class="m"> v<sup>2</sup> = 2aL ⇒ a = <span class="fr"><span>v<sup>2</sup></span><span>2L</span></span> </span></div></div></div>
+      <div class="ctl"><div class="row"><span>포신 길이 L (로그 눈금)</span><span class="val" id="cn-Lv">2.44</span></div><input id="cn-L" type="range" min="2" max="6.3" step="0.02" value="2.44"></div>
+      <div class="chips"><button class="chip" data-L="274">콜롬비아드 274 m</button><button class="chip" data-L="1280000">5 g 이하 ≈ 1,280 km</button></div>
+      <div class="box"><div class="sm" style="color:var(--ink)" id="cn-info">&nbsp;</div></div>
+      <div class="box"><div class="sm" style="color:var(--ink)"><b class="bad">대기 마찰</b> 해수면에서 11.2 km/s ≈ 마하 33. 충격파로 포탄 표면이 극도로 가열된다. 그래서 오늘날에는 대기 위에서 천천히 가속하는 <b class="ok">로켓</b>을 쓴다.</div></div>
+    </div>
+</div>
+</section>
+
+<!-- s12 -->
+<section class="slide" id="s12">
+  <header class="hd"><h2>정리하고 확인하기</h2><span class="src">중력 법칙 · 에너지 우물 · 쥘 베른</span></header>
+<div class="body" style="grid-template-columns:1fr 760px">
+<div class="side" style="gap:20px">
+      <div class="box"><h3>① 중력 법칙</h3><div class="sm" style="color:var(--ink)">F = GMm/r². 달 검증으로 지상·천상의 중력이 같음을 확인, 캐번디시가 G 를 측정해 지구 질량을 계산.</div></div>
+      <div class="box"><h3>② 에너지 우물</h3><div class="sm" style="color:var(--ink)">U = −GMm/r, E = K + U. E &lt; 0 속박(원·타원), E = 0 포물선, E &gt; 0 쌍곡선. 탈출 속도 vₑ = √(2GM/R) ≈ 11.2 km/s.</div></div>
+      <div class="box"><h3>③ 확장과 융합</h3><div class="sm" style="color:var(--ink)">우물의 모양은 원자·분자·원자핵에서도 쓰인다. 쥘 베른의 계산은 탈출 속도에서는 맞았지만 가속도·대기 마찰에서는 불가능했다.</div></div>
+    </div>
+    <div class="side" style="gap:20px">
+      <div class="box" style="border-color:var(--blue)">
+        <h3>확인 문제</h3>
+        <div style="font-size:30px;line-height:1.5">지구에서 발사한 우주선의 총 역학적 에너지가 E = 0 일 때 궤도의 모양과 무한대에서의 속력은?</div>
+        <div class="btns" style="margin-top:18px;flex-direction:column;align-items:stretch">
+          <button class="btn" data-q="a">① 타원, 속력 11.2 km/s 유지</button><button class="btn" data-q="b">② 포물선, 무한대에서 속력 0</button>
+          <button class="btn" data-q="c">③ 원, 무한대에 도달하지 못함</button><button class="btn" data-q="d">④ 쌍곡선, 무한대에서 속력이 남음</button></div>
+        <div id="q12-fb" style="margin-top:16px;font-size:28px;line-height:1.5;min-height:120px"></div>
       </div>
     </div>
-  </header>
+</div>
+</section>
 
-  <!-- 메인 컨텐츠 영역 -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+<div id="notes"></div>
+<div id="bar"><div class="bl">🌍 중력 법칙과 에너지 우물, 그리고 쥘 베른 <span class="sm">· 케플러 법칙에서 뉴턴 만유인력까지의 후속 수업</span></div><div class="br"><button class="tb" id="b-help">❓ 조작법</button><button class="tb" id="b-ask">💬 발문 띄우기</button><button class="tb" id="b-notes">📝 오개념 교정 노트</button><button class="tb" id="b-theme">🌙 다크 전환</button></div></div>
+<div id="ask" role="dialog" aria-label="발문"></div>
+<div id="help" role="dialog" aria-label="조작법 설명"><div class="hp">
+<h3>조작법</h3>
+<h4>키보드</h4>
+<div class="g"><div><kbd>→</kbd><kbd>Space</kbd></div><div>다음 (단계가 있는 슬라이드는 단계부터 진행)</div>
+<div><kbd>←</kbd></div><div>이전 (단계도 거꾸로)</div>
+<div><kbd>Home</kbd><kbd>End</kbd></div><div>처음 / 마지막 슬라이드</div>
+<div><kbd>F</kbd></div><div>전체 화면</div>
+<div><kbd>Q</kbd></div><div>이 슬라이드의 <b>발문(학생용 질문)</b>을 화면 위에 크게 띄우기 / 닫기 (아무 곳이나 클릭해도 닫힘)</div>
+<div><kbd>N</kbd></div><div>오개념 교정 노트 열기/닫기 (교사용)</div>
+<div><kbd>T</kbd></div><div>다크 / 라이트 전환</div>
+<div><kbd>?</kbd><kbd>Esc</kbd></div><div>조작법 열기 / 닫기</div></div>
+<h4>화면 조작</h4>
+<div class="g"><div>슬라이더</div><div>드래그하는 즉시 시뮬레이션에 반영</div>
+<div>칩(프리셋)</div><div>5·6·8·11번: 값을 한 번에 설정</div>
+<div>▶ ⏸ ↺</div><div>6번 궤도: 재생 / 일시정지 / 다시 발사</div>
+<div>→ 키</div><div>3·7번: 유도 단계가 한 줄씩 나타남</div>
+<div>슬라이더 키보드</div><div>슬라이더를 클릭해 초점이 있는 동안에는 ← → 가 값 조절에 쓰입니다. 마우스로 놓으면 자동 해제</div></div>
+<h4>수업 진행 팁</h4>
+<div>① 학생에게 결과를 <b>먼저 예측</b>하게 하고 → ② 슬라이더로 확인하고 → ③ 식으로 정리하면 오개념이 잘 교정됩니다.</div>
+<div class="btns" style="margin-top:22px"><button class="btn pri" id="help-x">닫기 (Esc)</button></div>
+</div></div>
+<div id="simError"></div>
+</div>
+<div id="hud"><button id="h-prev" aria-label="이전">◀</button><span id="h-pg">1 / 1</span><button id="h-next" aria-label="다음">▶</button><button id="h-fs" aria-label="전체화면">⛶</button></div>
+</div>
 
-    <!-- ================================================================= -->
-    <!-- 모듈 1: 만유인력 법칙의 수학적·물리학적 유도 과정 -->
-    <!-- ================================================================= -->
-    <section id="module-1" class="space-y-6">
-      <div class="bg-gradient-to-r from-gray-900 via-indigo-950/40 to-gray-900 border border-indigo-900/40 rounded-2xl p-6 shadow-xl">
-        <span class="inline-block px-2.5 py-1 bg-indigo-500/20 text-indigo-300 rounded text-xs font-semibold mb-2 border border-indigo-500/30">
-          탐구 모듈 01
-        </span>
-        <h2 class="text-2xl font-bold text-white tracking-tight">케플러 법칙에서 뉴턴 만유인력 법칙으로의 도약</h2>
-        <p class="text-sm text-gray-300 mt-1 max-w-3xl leading-relaxed">
-          뉴턴은 케플러가 발견한 경험적 규칙(케플러 제3법칙)에 등속 원운동 역학을 결합하여 역제곱 법칙($F \propto 1/r^2$)을 밝혀냈으며, 
-          작용·반작용의 원리를 적용하여 우주 모든 질량 사이에 작용하는 대칭적 인력을 완성했습니다.
-        </p>
-      </div>
+<script>
+'use strict';
+/* =====================================================================
+   공통 유틸 / 그리기 도우미 (템플릿 제공)
+   ===================================================================== */
+const DECK = {"title":"중력 법칙과 에너지 우물, 그리고 쥘 베른","notes":{"s1":{"q":"학생 예측을 먼저 받으세요. “대포알을 세게 쏘면 지구로 안 떨어질까요? 얼마나 세게?”","m":[["우주에는 중력이 없다.","중력은 멀어질수록 작아질 뿐 0이 되지 않는다 (우물이 평평해질 뿐)"],["대포를 더 길게 만들면 달까지 갈 수 있다.","11번 슬라이드에서 가속도 계산으로 확인"]]},"s2":{"q":"거리를 1, 2, 3 으로 늘릴 때 같은 빛이 덮는 칸 수를 세어 보게 하세요. 면적은 거리의 제곱입니다.","m":[["거리가 2배이면 중력은 1/2배이다.","면적이 4배가 되므로 1/4배. 3배이면 1/9배"],["이것은 중력이 “퍼지는 물질”이라는 뜻이다.","구면 확산은 비유이다. 법칙의 근거는 케플러 제3법칙과 달 검증"]]},"s3":{"q":"먼저 n=1(거리에 반비례)로 예측해 보게 한 뒤, 슬라이더를 돌려 n=2에서 일치하는 것을 학생이 찾게 하세요.","m":[["달은 지구 중력을 받지 않는다(그래서 떨어지지 않는다).","달은 계속 지구로 “떨어지는” 중이다. 옆으로 빠르게 움직여서 지구를 빗겨 간다"],["예측과 관측이 “완벽히” 일치한다.","60 R_E 로 반올림하면 0.2% 이내, 실제 거리비 60.3 으로 하면 약 1% 차이. 근사임을 밝혀 준다"]]},"s4":{"q":"뉴턴은 F ∝ Mm/r² 까지만 알았고 G 의 크기는 몰랐습니다. G 가 매우 작아서 직접 측정이 어려웠다는 점이 핵심입니다.","m":[["캐번디시는 “지구의 질량”을 직접 달았다.","실제로 잰 것은 G. 지표면 g = GM/R² 에 넣어 M 을 계산한 것"],["납구 거리·질량은 자료에 있는 값이다.","화면의 질량 범위·거리는 예시이다. 원 실험 장치의 정확한 제원은 확인 필요"]]},"s5":{"q":"곡선(U)과 점선(E) 사이의 높이가 K 입니다. E 가 U 보다 낮아지는 곳에는 갈 수 없습니다(K < 0).","m":[["위치 에너지가 음수라는 것은 에너지가 없다는 뜻이다.","기준(무한대에서 0)보다 낮다는 뜻이다. 우물 바닥일수록 더 단단히 묶여 있다"],["E < 0 이면 지구로 반드시 떨어진다.","떨어지는 것이 아니라 r_max 까지 갔다가 돌아오는 속박 상태 — 원·타원 궤도도 E < 0"]]},"s6":{"q":"같은 지점에서 속력만 바꿔 쏩니다. 7.91, 9.5, 11.19, 13.5 km/s 를 차례로 보여 주고 E 의 부호를 연결하세요.","m":[["속력이 조금이라도 크면 지구를 벗어난다.","11.19 km/s 에 못 미치면(E<0) 타원으로 되돌아온다"],["탈출하면 속력이 0이 된다.","E = 0 일 때만 무한대에서 속력 0. E>0 이면 속력이 남아 있다"],["5.8 km/s 로 쏘면 타원이 될 것이다.","발사점이 근지점이 되려면 7.91 이상이 필요. 그보다 느리면 지면과 교차한다"]]},"s7":{"q":"→ 키로 한 줄씩 보여 주세요. 3단계에서 “E = 0” 이 경계임을 학생이 말하게 합니다.","m":[["무거운 물체일수록 더 빨리 쏴야 탈출한다.","m 이 양변에서 소거되어 탈출 속도는 질량과 무관"],["탈출 속도로 쏘면 계속 그 속도를 유지한다.","멀어질수록 중력에 의해 느려져 무한대에서 0"]]},"s8":{"q":"모양(우물)이 같다는 점을 짚고, 탈출 속도의 E ≥ 0 이 이온화·결합 해리 조건과 같은 논리임을 연결하세요.","m":[["원자 속 전자도 행성처럼 궤도를 돈다.","고전 궤도가 아니라 확률 구름. 에너지 우물이라는 점만 같은 비유"],["레너드-존스 식은 법칙이다.","실험을 잘 설명하는 모형식(경험식)이다"]]},"s9":{"q":"고전 우물에서는 E < V 인 영역에 갈 수 없습니다(K<0). 양자에서는 파동함수가 지수적으로 줄어들 뿐 0이 아닙니다. 두께에 지수적으로 민감한 점을 슬라이더로 확인하세요.","m":[["터널링은 입자가 장벽을 뚫고 지나가는 “구멍”이 생기는 것이다.","에너지가 부족한 입자가 확률적으로 반대편에서 나타나는 파동 현상"],["투과 확률은 두께에 비례해 줄어든다.","지수적으로 줄어든다: T ∝ e^(−2κL)"],["(주의) 이 슬라이드는 교과서 밖 심화이다.","전자·V₀ = 5 eV 는 예시값"]]},"s10":{"q":"질량이 81배 차이이므로 거리는 √81 = 9배 차이 → 지구에서 0.9D 입니다. 달에 훨씬 가까운 곳이라는 사실을 확인하세요.","m":[["중성점에서만 무중력이다.","우주선이 자유낙하(엔진 꺼짐)면 중성점이 아니어도 우주선 안은 겉보기 무중력. 소설의 “중성점에서 떠오름” 설명은 정확하지 않다"],["중성점에서는 중력이 사라진다.","두 중력이 크기가 같고 방향이 반대라 합이 0일 뿐, 각각은 0이 아님"]]},"s11":{"q":"274 m 에서 약 2.3만 g 임을 슬라이더로 보이고, 5 g 로 낮추려면 1,280 km 가 필요하다는 점까지 확인합니다. “왜 로켓인가”로 연결하세요.","m":[["대포를 더 세게 쏘면 해결된다.","속력이 11.2 km/s 로 정해져 있으므로 가속도를 줄이는 방법은 가속 거리를 늘리는 것뿐"],["중성점·탈출 속도 계산이 맞으니 소설은 전부 과학적이다.","정확한 부분(탈출 속도, 발사 위도)과 간과한 부분(가속도, 대기 마찰)을 구분"]]},"s12":{"q":"3차시 정리 질문: “E 의 부호로 궤도를 분류할 수 있는가?”, “왜 로켓이어야 했는가?”를 말해 보게 합니다.","m":[["E = 0 이면 우주선이 멈춘다.","무한대에서 속력이 0 이 되는 것이다. 그 사이 계속 움직인다"],["쥘 베른의 계산은 모두 틀렸다.","탈출 속도·발사 위도는 정확. 사람이 견딜 가속도와 대기 마찰을 고려하지 못했다"]]}},"ask":{"s1":["달까지 가는 데 필요한 속력은 어떻게 알 수 있을까?","우물에서 \"갇힌다\"와 \"벗어난다\"는 무엇이 결정할까?"],"s2":["거리가 2배, 3배가 되면 같은 빛이 덮는 면적은 몇 배가 될까?","중력이 1/r 이 아니라 1/r² 인 것은 우연일까, 필연일까?"],"s3":["사과를 떨어뜨리는 힘과 달을 붙잡는 힘이 같다면, 달의 가속도는 얼마여야 할까?","n 을 어떻게 놓아야 관측값과 맞을까?"],"s4":["1 kg 두 물체 사이의 중력은 왜 일상에서 느껴지지 않을까?","G 를 알면 왜 지구의 질량을 구할 수 있을까?"],"s5":["E 가 음수이면 물체는 어디까지 갈 수 있을까?","운동 에너지 K 는 곡선과 E 선 사이의 무엇으로 읽을까?"],"s6":["속력만 바꾸면 궤도는 어떻게 달라질까?","궤도가 원·타원·포물선·쌍곡선으로 나뉘는 기준은 무엇일까?"],"s7":["무한히 먼 곳에서 겨우 정지하려면 총 에너지 E 는 얼마여야 할까?","식에서 물체의 질량 m 은 어떻게 될까?"],"s8":["수소 원자의 전자와 지구 위성의 그래프는 어떤 점이 같을까?","두 원자 사이의 결합은 곡선의 어느 지점에서 생길까?"],"s9":["에너지가 장벽보다 작은데도 입자가 반대편에서 발견될 수 있을까?","장벽 두께를 2배로 하면 투과 확률은 2배 줄까?"],"s10":["지구와 달의 중력이 같아지는 지점은 어디쯤일까? 달에 더 가까울까, 지구에 더 가까울까?","그 지점에서 우주선 안의 사람은 떠오를까?"],"s11":["포신 안에서 정지 상태에서 11.2 km/s 까지 가속하면 가속도는 몇 g 일까?","사람이 견딜 만하게 만들려면 포신이 얼마나 길어야 할까?"],"s12":["소설과 현실의 차이를 에너지·가속도 관점에서 한 문장으로 설명해 보자."]}};
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const TAU = Math.PI * 2, DPR = 2;
+const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const C = { bg: '#0a1330', grid: 'rgba(160,190,255,.22)', text: '#e3ecff', dim: '#9db0d8', KE: '#ffb454', PE: '#7fb2ff', E: '#ffffff', ok: '#5eead4', bad: '#ff9d9d' };
+const font = (px, w = 500, it = false) => `${it ? 'italic ' : ''}${w} ${px}px 'Noto Sans KR',sans-serif`;
+const mathFont = px => `italic 400 ${px}px 'STIX Two Text','Times New Roman',serif`;
+function setupCanvas(cv, W, H) { cv.width = W * DPR; cv.height = H * DPR; cv.style.width = W + 'px'; cv.style.height = H + 'px'; const c = cv.getContext('2d'); c.setTransform(DPR, 0, 0, DPR, 0, 0); return c; }
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function makeStars(W, H, n, seed) { const r = mulberry(seed); return Array.from({ length: n }, () => [r() * W, r() * H, .25 + r() * .55, r() < .12 ? 3 : 2]); }
+function drawStars(ctx, stars) { stars.forEach(([x, y, a, s]) => { ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(x, y, s, s); }); }
+function arrow(ctx, x0, y0, x1, y1, color, lw = 4, head = 15) {
+  const a = Math.atan2(y1 - y0, x1 - x0); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - Math.cos(a) * head * .6, y1 - Math.sin(a) * head * .6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - head * Math.cos(a - .45), y1 - head * Math.sin(a - .45)); ctx.lineTo(x1 - head * Math.cos(a + .45), y1 - head * Math.sin(a + .45)); ctx.closePath(); ctx.fill();
+}
+function mathRun(ctx, x, y, parts) { let cx = x; parts.forEach(q => { ctx.font = q.f; ctx.fillStyle = q.c; ctx.fillText(q.t, cx, y + (q.dy || 0)); cx += ctx.measureText(q.t).width; }); return cx; }
+function bindRange(id, cb) { const el = $('#' + id); el.addEventListener('input', () => cb(parseFloat(el.value))); el.addEventListener('change', () => el.blur()); return el; }
+const fmt = (x, d = 2) => (x < 0 ? '−' : '') + Math.abs(x).toFixed(d);
 
-      <!-- 3단계 유도 단계 카드 -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <!-- 1단계 -->
-        <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-5 hover:border-indigo-500/50 transition-all flex flex-col justify-between">
-          <div>
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider">Step 1</span>
-              <span class="text-[11px] bg-gray-800 text-gray-400 px-2 py-0.5 rounded">원운동 역학</span>
-            </div>
-            <h3 class="font-bold text-white text-base mb-2">원궤도 가정과 구심가속도</h3>
-            <p class="text-xs text-gray-400 leading-relaxed mb-4">
-              행성이 태양 주위를 반지름 $r$, 주기 $T$로 등속 원운동한다고 가정하면, 궤도 선속도는 $v = \frac{2\pi r}{T}$입니다.
-            </p>
-            <div class="bg-gray-950 p-3 rounded-lg border border-gray-800 text-center text-sm font-mono text-indigo-200">
-              $$a_c = \frac{v^2}{r} = \frac{4\pi^2 r}{T^2}$$
-            </div>
-          </div>
-          <div class="mt-4 pt-3 border-t border-gray-800/80 text-[11px] text-gray-400">
-            💡 중심을 향해 당기는 가속도의 크기 규명
-          </div>
-        </div>
+/* 오류 표시: 슬라이드 코드 예외를 화면 상단과 window.__wsErrors에 남긴다 (헤드리스 검사용) */
+window.__wsErrors = [];
+function reportError(where, e) {
+  const msg = `${where}: ${e && e.message ? e.message : e}`;
+  if (!window.__wsErrors.includes(msg)) { window.__wsErrors.push(msg); console.error('[슬라이드 오류] ' + msg); }
+  const box = document.getElementById('simError'); box.textContent = window.__wsErrors.slice(-3).join('\n'); box.classList.add('on');
+}
+function safe(where, fn, ...args) { try { return fn && fn(...args); } catch (e) { reportError(where, e); } }
 
-        <!-- 2단계 -->
-        <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-5 hover:border-purple-500/50 transition-all flex flex-col justify-between">
-          <div>
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-xs font-bold text-purple-400 uppercase tracking-wider">Step 2</span>
-              <span class="text-[11px] bg-gray-800 text-gray-400 px-2 py-0.5 rounded">케플러 제3법칙</span>
-            </div>
-            <h3 class="font-bold text-white text-base mb-2">역제곱 법칙($1/r^2$)의 도출</h3>
-            <p class="text-xs text-gray-400 leading-relaxed mb-4">
-              조화의 법칙에 의해 주기와 궤도 반지름 사이에는 $T^2 = K r^3$ ($K$는 상수)의 관계가 성립합니다. 이를 대입합니다.
-            </p>
-            <div class="bg-gray-950 p-3 rounded-lg border border-gray-800 text-center text-sm font-mono text-purple-200">
-              $$a_c = \frac{4\pi^2 r}{K r^3} = \left(\frac{4\pi^2}{K}\right) \frac{1}{r^2}$$
-            </div>
-          </div>
-          <div class="mt-4 pt-3 border-t border-gray-800/80 text-[11px] text-gray-400">
-            💡 가속도가 정확히 거리의 제곱에 반비례함을 수학적으로 증명
-          </div>
-        </div>
+/* =====================================================================
+   shared_js (주제별 물리 계산부·공용 시뮬레이터)
+   ===================================================================== */
+/* PHYSICS-START */
+const R_E = 6371, GM = 398600;                         // km, km³/s²
+const G_SI = 6.674e-11, M_E = 5.972e24, R_E_M = 6.371e6, G0 = 9.8;
+const VU = Math.sqrt(GM / R_E);                          // 원궤도 속력 7.905 km/s
+const PHYS = (() => {
+  function deriv(x, y, vx, vy) { const r2 = x * x + y * y, r3 = r2 * Math.sqrt(r2); return [vx, vy, -x / r3, -y / r3]; }
+  function rk4Step(s, h) {
+    const [a1, b1, c1, d1] = deriv(s.x, s.y, s.vx, s.vy);
+    const [a2, b2, c2, d2] = deriv(s.x + .5 * h * a1, s.y + .5 * h * b1, s.vx + .5 * h * c1, s.vy + .5 * h * d1);
+    const [a3, b3, c3, d3] = deriv(s.x + .5 * h * a2, s.y + .5 * h * b2, s.vx + .5 * h * c2, s.vy + .5 * h * d2);
+    const [a4, b4, c4, d4] = deriv(s.x + h * a3, s.y + h * b3, s.vx + h * c3, s.vy + h * d3);
+    s.x += h / 6 * (a1 + 2 * a2 + 2 * a3 + a4); s.y += h / 6 * (b1 + 2 * b2 + 2 * b3 + b4);
+    s.vx += h / 6 * (c1 + 2 * c2 + 2 * c3 + c4); s.vy += h / 6 * (d1 + 2 * d2 + 2 * d3 + d4); s.t += h;
+  }
+  function adaptiveH(s) { const r = Math.hypot(s.x, s.y), v2 = s.vx * s.vx + s.vy * s.vy; return 0.008 * r / Math.sqrt(v2 + 1 / r); }
+  function apoapsis(v0u) { const E = .5 * v0u * v0u - 1; if (E >= 0) return Infinity; const D = 1 + 2 * E * v0u * v0u; return (-1 - Math.sqrt(Math.max(D, 0))) / (2 * E); }
+  function classify(v0u) { // v0u: 원궤도 속력(=√(GM/R)) 단위, 지표면에서 수평 발사
+    const E = .5 * v0u * v0u - 1;
+    if (v0u < 0.999) return { key: 'fall', E, text: '낙하 (지면에 부딪힘)', ecc: null };
+    if (Math.abs(v0u - 1) <= 0.001) return { key: 'circle', E, text: '원궤도 (E = E_min)', ecc: 0 };
+    if (E < -0.0005) return { key: 'ellipse', E, text: '타원 궤도 (E < 0, 속박)', ecc: v0u * v0u - 1 };
+    if (Math.abs(E) <= 0.0005) return { key: 'parabola', E, text: '포물선 (E = 0, 임계 탈출)', ecc: 1 };
+    return { key: 'escape', E, text: '쌍곡선 (E > 0, 탈출)', ecc: v0u * v0u - 1 };
+  }
+  const U = r => -1 / r;                                       // 위치 에너지, GMm/R 단위
+  const vEsc = (M = M_E, R = R_E_M) => Math.sqrt(2 * G_SI * M / R) / 1e3; // km/s
+  const lj = (r, sig = 1, eps = 1) => 4 * eps * ((sig / r) ** 12 - (sig / r) ** 6);
+  function tunnel(E, V0, L, m = 9.109e-31) { // 직사각형 장벽 투과율 (E<V0, E·V0 [eV], L [nm])
+    const hbar = 1.0546e-34, eV = 1.602e-19, kap = Math.sqrt(2 * m * (V0 - E) * eV) / hbar * 1e-9; // nm⁻¹
+    const s = Math.sinh(kap * L);
+    return { T: 1 / (1 + V0 * V0 * s * s / (4 * E * (V0 - E))), kap };
+  }
+  const moonAcc = (r = 3.844e8, T = 27.32 * 86400) => 4 * Math.PI ** 2 * r / (T * T);
+  const neutral = (MeOverMm = 81.3) => 1 / (1 + 1 / Math.sqrt(MeOverMm));  // 지구 중심에서 (거리 D 비율)
+  const cannonA = (v, L) => v * v / (2 * L);
+  return { rk4Step, adaptiveH, apoapsis, classify, U, vEsc, lj, tunnel, moonAcc, neutral, cannonA };
+})();
+/* PHYSICS-END */
 
-        <!-- 3단계 -->
-        <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-5 hover:border-emerald-500/50 transition-all flex flex-col justify-between">
-          <div>
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">Step 3</span>
-              <span class="text-[11px] bg-gray-800 text-gray-400 px-2 py-0.5 rounded">작용·반작용 대칭성</span>
-            </div>
-            <h3 class="font-bold text-white text-base mb-2">질량 의존성과 만유인력</h3>
-            <p class="text-xs text-gray-400 leading-relaxed mb-4">
-              행성이 받는 힘은 $F \propto m/r^2$입니다. 뉴턴 제3법칙(작용·반작용)에 의해 태양과 행성이 서로 주고받는 힘은 같으므로, 태양 질량 $M$에도 대칭적으로 비례해야 합니다.
-            </p>
-            <div class="bg-gray-950 p-3 rounded-lg border border-gray-800 text-center text-sm font-mono text-emerald-200">
-              $$F = G\frac{Mm}{r^2}$$
-            </div>
-          </div>
-          <div class="mt-4 pt-3 border-t border-gray-800/80 text-[11px] text-gray-400">
-            💡 $G$는 모든 천체에 보편적인 만유인력 상수 (캐번디시 측정)
-          </div>
-        </div>
-      </div>
+/* ===== 그리기 도우미 ===== */
+function bg(ctx, W, H) { ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H); }
+function txt(ctx, s, x, y, col, px, w, al) { ctx.font = font(px || 24, w || 400); ctx.fillStyle = col || C.text; ctx.textAlign = al || 'left'; ctx.fillText(s, x, y); ctx.textAlign = 'left'; }
+function planetDisc(ctx, cx, cy, r) {
+  const g = ctx.createRadialGradient(cx - r * .35, cy - r * .35, r * .1, cx, cy, r);
+  g.addColorStop(0, '#7fbcff'); g.addColorStop(.55, '#1f57b5'); g.addColorStop(1, '#0b2a66');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fill();
+}
+/* 중력 우물 곡선 U(r) = −1/r (r ≥ 1). X: r→픽셀, Y: E→픽셀 */
+function drawWell(ctx, X, Y, rmax, lw) {
+  ctx.strokeStyle = C.PE; ctx.lineWidth = lw || 5; ctx.beginPath();
+  ctx.moveTo(X(1), Y(1)); ctx.lineTo(X(1), Y(-1));
+  for (let r = 1; r <= rmax; r += .05) ctx.lineTo(X(r), Y(PHYS.U(r)));
+  ctx.stroke();
+}
 
-      <!-- 역제곱 법칙의 기하학적 직관: 구면 확산 비유 -->
-      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-        <h3 class="text-lg font-bold text-white mb-2 flex items-center space-x-2">
-          <span class="text-yellow-400">💡</span>
-          <span>역제곱 법칙($1/r^2$)은 왜 필연적인가? — 3차원 공간의 기하학적 희석</span>
-        </h3>
-        <p class="text-xs text-gray-400 mb-5 leading-relaxed">
-          역제곱 법칙은 신비로운 공식이 아니라, **우리가 살아가는 3차원 유클리드 공간에서 중심에서 뿜어져 나오는 '선속(Flux)'이 구면 전체로 균일하게 퍼져나갈 때 나타나는 자연스러운 기하학적 결과**입니다.
-        </p>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <!-- 비유 1: 빛의 밝기 (조도) 감소 -->
-          <div class="bg-gray-950 p-5 rounded-xl border border-gray-800 space-y-3">
-            <div class="flex items-center space-x-2">
-              <span class="text-xl">🕯️</span>
-              <h4 class="font-bold text-white text-sm">예시 1. 전등/촛불의 밝기(조도)와 거리</h4>
-            </div>
-            <p class="text-xs text-gray-300 leading-relaxed">
-              점광원에서 사방으로 방출되는 전체 빛 에너지(광속)는 거리가 멀어져도 보존됩니다. 
-              반지름 $r$인 가상의 구 표면적은 $A = 4\pi r^2$이므로, 단위 면적당 도달하는 빛의 양(조도 $I$)은 구면적에 반비례합니다:
-            </p>
-            <div class="bg-gray-900 p-2.5 rounded-lg border border-gray-800 text-center font-mono text-xs text-amber-300">
-              $$\text{밝기(조도) } I = \frac{P}{4\pi r^2} \propto \frac{1}{r^2}$$
-            </div>
-            <p class="text-[11px] text-gray-400">
-              거리가 <strong>$1\text{m} \to 2\text{m} \to 3\text{m}$</strong>로 멀어지면 동일한 빛이 덮어야 하는 면적이 <strong>$1 \to 4 \to 9$배</strong>로 넓어져, 밝기는 각각 <strong>$1 \to \frac{1}{4} \to \frac{1}{9}$</strong>로 급격히 어두워집니다.
-            </p>
-          </div>
-
-          <!-- 비유 2: 스프레이 페인트 & 소리의 감쇠 -->
-          <div class="bg-gray-950 p-5 rounded-xl border border-gray-800 space-y-3">
-            <div class="flex items-center space-x-2">
-              <span class="text-xl">🎨</span>
-              <h4 class="font-bold text-white text-sm">예시 2. 스프레이 페인트 도포 & 음파의 세기</h4>
-            </div>
-            <p class="text-xs text-gray-300 leading-relaxed">
-              노즐에서 일정한 속도로 분사되는 락카 스프레이를 떠올려 보세요. 도화지를 캔 앞에 대면 페인트가 좁은 면적에 빽빽하게 묻지만, 거리를 2배로 떼면 동일한 양의 입자가 4배 넓은 면적에 흩뿌려져 두께가 $1/4$로 얇아집니다.
-            </p>
-            <div class="bg-gray-900 p-2.5 rounded-lg border border-gray-800 text-center font-mono text-xs text-indigo-300">
-              $$\text{소리 음향 인텐시티 } I = \frac{P_{\text{acoustic}}}{4\pi r^2} \propto \frac{1}{r^2}$$
-            </div>
-            <p class="text-[11px] text-gray-400">
-              스피커에서 나는 소리나 Wi-Fi 무선 전파 역시 3차원 공간으로 균일하게 퍼지므로, 장애물이 없는 열린 공간에서 에너지 밀도는 언제나 **거리의 제곱에 반비례($1/r^2$)**하여 감쇠합니다.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <!-- 캐번디시의 비틀림 저울 실험 안내 -->
-      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-        <div class="flex items-center justify-between mb-3">
-          <div class="flex items-center space-x-2">
-            <span class="text-xl">⚖️</span>
-            <h3 class="text-lg font-bold text-white">뉴턴의 퍼즐을 완성하다: 캐번디시의 비틀림 저울 실험 (1798)</h3>
-          </div>
-          <span class="text-[11px] bg-indigo-950 text-indigo-300 border border-indigo-800 px-2.5 py-1 rounded-full font-medium">
-            "지구의 무게를 달다 (Weighing the Earth)"
-          </span>
-        </div>
-
-        <p class="text-xs text-gray-400 mb-5 leading-relaxed">
-          뉴턴은 만유인력 비례식 $F \propto Mm/r^2$을 세웠으나, 비례상수 $G$의 크기가 너무나 작아 실험실에서 물체 사이의 중력을 측정할 수 없었습니다. 
-          그로부터 111년 뒤, 헨리 캐번디시(Henry Cavendish)는 놀라운 정밀 기계 장치를 고안해 $G$를 사상 최초로 측정해 냈습니다.
-        </p>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <div class="bg-gray-950 p-4 rounded-xl border border-gray-800 space-y-2">
-            <span class="text-xs font-bold text-indigo-400 block">1. 얇은 석영선과 비틀림 저울</span>
-            <p class="text-[11px] text-gray-300 leading-relaxed">
-              가느다란 금속 와이어에 가벼운 막대를 매달고, 양 끝에 작은 납구(약 0.73 kg)를 달았습니다. 작은 힘에도 와이어가 미세하게 회전(비틀림)할 수 있도록 설계했습니다.
-            </p>
-          </div>
-          <div class="bg-gray-950 p-4 rounded-xl border border-gray-800 space-y-2">
-            <span class="text-xs font-bold text-purple-400 block">2. 거울과 광선 레버(빛 지침) 증폭</span>
-            <p class="text-[11px] text-gray-300 leading-relaxed">
-              작은 납구 곁에 거대한 납구(약 158 kg)를 가져가면 만유인력에 의해 미세하게 끌려옵니다. 회전축의 거울에 빛을 쏘아 반사된 빛의 이동 거리를 벽면 눈금으로 수백 배 증폭하여 나노미터급 변위를 측정했습니다.
-            </p>
-          </div>
-          <div class="bg-gray-950 p-4 rounded-xl border border-gray-800 space-y-2">
-            <span class="text-xs font-bold text-emerald-400 block">3. $G$ 측정 및 지구 질량 산출</span>
-            <p class="text-[11px] text-gray-300 leading-relaxed">
-              비틀림 복원 토크와 중력의 평형을 풀어 상수 $G \approx 6.74 \times 10^{-11}\text{ N}\cdot\text{m}^2/\text{kg}^2$을 구했습니다. 지표면 중력가속도 $g = G\frac{M_E}{R_E^2}$ 공식에 $G$를 대입하여 비로소 **지구의 총 질량($M_E \approx 5.97\times 10^{24}\text{ kg}$)**을 알아내었습니다.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <!-- 인터랙티브 사고실험: 뉴턴의 달 낙하 검증기 -->
-      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-        <h3 class="text-lg font-bold text-white mb-2 flex items-center space-x-2">
-          <span class="text-amber-400">🍎</span>
-          <span>뉴턴의 역사적 사고실험: 사과와 달의 낙하 (The Moon Test)</span>
-        </h3>
-        <p class="text-xs text-gray-400 mb-5 leading-relaxed">
-          뉴턴은 지표면에서 떨어지는 사과와 지구 주위를 도는 달이 **"동일한 중력에 의해 끊임없이 지구로 낙하하고 있다"**는 대담한 가설을 세우고,
-          실제 관측 데이터로 역제곱 법칙을 검증했습니다.
-        </p>
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
-          <div class="space-y-3 text-xs">
-            <div class="p-3 bg-gray-950 rounded-xl border border-gray-800 flex justify-between items-center">
-              <span class="text-gray-400">지표면 사과의 중력가속도 ($g$)</span>
-              <span class="font-mono text-amber-300 font-bold text-sm">9.80 m/s²</span>
-            </div>
-            <div class="p-3 bg-gray-950 rounded-xl border border-gray-800 flex justify-between items-center">
-              <span class="text-gray-400">지구 중심 - 지표면 거리 ($R_E$)</span>
-              <span class="font-mono text-blue-300 font-bold text-sm">약 6,371 km</span>
-            </div>
-            <div class="p-3 bg-gray-950 rounded-xl border border-gray-800 flex justify-between items-center">
-              <span class="text-gray-400">지구 중심 - 달 궤도 거리 ($r_{\text{moon}}$)</span>
-              <span class="font-mono text-purple-300 font-bold text-sm">약 60 · R_E (384,400 km)</span>
-            </div>
-            <div class="p-3 bg-indigo-950/40 rounded-xl border border-indigo-800/50 flex justify-between items-center">
-              <span class="text-indigo-200">역제곱 법칙 예측 가속도 비 ($1/60^2$)</span>
-              <span class="font-mono text-indigo-300 font-bold text-sm">1 / 3,600 배</span>
-            </div>
-          </div>
-
-          <div class="bg-gray-950 p-4 rounded-xl border border-gray-800 flex flex-col justify-center space-y-3">
-            <div class="text-xs font-semibold text-gray-300">달의 실제 관측 구심가속도 계산:</div>
-            <div class="text-[12px] font-mono text-emerald-400 bg-gray-900 p-2.5 rounded border border-gray-800">
-              $$a_{\text{moon}} = \frac{4\pi^2 r}{T^2} \approx \frac{4\pi^2 \times (3.84\times 10^8\text{ m})}{(27.3\times 86400\text{ s})^2} \approx 0.00272\text{ m/s}^2$$
-            </div>
-            <div class="text-[12px] font-mono text-amber-300 bg-gray-900 p-2.5 rounded border border-gray-800">
-              $$\frac{g}{3600} = \frac{9.80\text{ m/s}^2}{3600} \approx 0.00272\text{ m/s}^2$$
-            </div>
-            <p class="text-[11px] text-gray-400 italic">
-              두 값이 오차 없이 완벽히 일치함을 확인하여, 지상의 물리 법칙과 천체의 물리 법칙이 하나로 통합되었습니다.
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
+function TESTS() {
+  const out = [], near = (a, b, e) => Math.abs(a / b - 1) < e;
+  const c = { x: 1, y: 0, vx: 0, vy: 1, t: 0 }; while (c.t < TAU) PHYS.rk4Step(c, Math.min(.01, TAU - c.t));
+  out.push(['RK4 원궤도 한 바퀴 뒤 r = 1 유지', Math.abs(Math.hypot(c.x, c.y) - 1) < 1e-6, Math.hypot(c.x, c.y).toFixed(8)]);
+  const e = { x: 0, y: 1, vx: 1.25, vy: 0, t: 0 }, E0 = .5 * 1.25 ** 2 - 1; let rmax = 1;
+  for (let i = 0; i < 20000; i++) { PHYS.rk4Step(e, PHYS.adaptiveH(e)); rmax = Math.max(rmax, Math.hypot(e.x, e.y)); }
+  const E1 = .5 * (e.vx ** 2 + e.vy ** 2) - 1 / Math.hypot(e.x, e.y);
+  out.push(['타원 궤도 역학적 에너지 보존 (상대오차 < 1e-5)', Math.abs((E1 - E0) / E0) < 1e-5, ((E1 - E0) / E0).toExponential(1)]);
+  out.push(['원지점 해석해 = 수치해 (v₀ = 1.25)', near(PHYS.apoapsis(1.25), rmax, 1e-3), `${PHYS.apoapsis(1.25).toFixed(3)} vs ${rmax.toFixed(3)}`]);
+  out.push(['탈출 속도 = √2 × 원궤도 속력 ≈ 11.19 km/s', Math.abs(Math.SQRT2 * VU - 11.19) < 0.02 && PHYS.classify(Math.SQRT2).key === 'parabola', (Math.SQRT2 * VU).toFixed(3)]);
+  out.push(['SI 값으로 √(2GM/R) ≈ 11.19 km/s', Math.abs(PHYS.vEsc() - 11.19) < 0.03, PHYS.vEsc().toFixed(3)]);
+  out.push(['E_min = −1/2 (원궤도), U(R) = −1, U(∞) → 0', Math.abs(.5 - 1 + 0.5) < 1e-12 && PHYS.classify(1).E === -0.5 && PHYS.U(1) === -1 && Math.abs(PHYS.U(1e9)) < 1e-8, '']);
+  out.push(['역제곱: 거리 1 → 2 → 3 이면 1 : 1/4 : 1/9', [1, 2, 3].every((d, i) => near(1 / (d * d), [1, .25, 1 / 9][i], 1e-12)), '']);
+  const a = PHYS.moonAcc();
+  out.push(['달 구심가속도 4π²r/T² ≈ 2.72×10⁻³ m/s²', Math.abs(a - 2.72e-3) < 0.02e-3, a.toExponential(3)]);
+  out.push(['달 검증: g/60² 와 0.5% 이내 일치', near(a, G0 / 3600, 0.005), (a / (G0 / 3600)).toFixed(4)]);
+  out.push(['달 검증: 실제 거리비 60.34 R_E 로는 약 1% 차이', Math.abs(a / (G0 / 60.34 ** 2) - 1) < 0.02, (a / (G0 / 60.34 ** 2) - 1).toFixed(4)]);
+  out.push(['지구 질량 M = gR²/G ≈ 5.97×10²⁴ kg (1% 이내)', near(G0 * R_E_M ** 2 / G_SI, M_E, 0.01), (G0 * R_E_M ** 2 / G_SI).toExponential(3)]);
+  const F = G_SI * 0.73 * 158 / 0.23 ** 2;
+  out.push(['캐번디시 예시: 0.73 kg · 158 kg, 0.23 m → F ≈ 1.5×10⁻⁷ N', near(F, 1.5e-7, 0.05), F.toExponential(2)]);
+  const r0 = Math.pow(2, 1 / 6);
+  out.push(['레너드-존스: r = 2^(1/6)σ 에서 최소 U = −ε', Math.abs(PHYS.lj(r0) + 1) < 1e-12 && PHYS.lj(r0 * .98) > PHYS.lj(r0) && PHYS.lj(r0 * 1.02) > PHYS.lj(r0), '']);
+  const t0 = PHYS.tunnel(3, 5, 1e-6).T, t1 = PHYS.tunnel(3, 5, .3).T, t2 = PHYS.tunnel(3, 5, .6).T;
+  out.push(['터널링: L → 0 이면 T → 1, L이 커지면 T 감소', t0 > 0.999 && t1 > t2 && t2 > 0, `${t0.toFixed(4)}, ${t1.toExponential(2)}, ${t2.toExponential(2)}`]);
+  const tt = PHYS.tunnel(3, 5, 1.2), approx = 16 * 3 * 2 / 25 * Math.exp(-2 * tt.kap * 1.2);
+  out.push(['터널링: 두꺼운 장벽에서 T ≈ 16E(V₀−E)/V₀² · e^(−2κL)', near(tt.T, approx, 0.01), `${tt.T.toExponential(3)} vs ${approx.toExponential(3)}`]);
+  out.push(['터널링: 에너지가 V₀에 가까워져도 유한하고 T < 1', PHYS.tunnel(4.999, 5, .5).T < 1 && Number.isFinite(PHYS.tunnel(4.999, 5, .5).T), '']);
+  const xn = PHYS.neutral(), gE = 398600e9 / (xn * 3.844e8) ** 2, gM = 398600e9 / 81.3 / ((1 - xn) * 3.844e8) ** 2;
+  out.push(['지구–달 중성점: 지구 중심에서 약 0.90 D, 두 중력 같음', Math.abs(xn - 0.9) < 0.002 && near(gE, gM, 1e-9), `${xn.toFixed(4)} D`]);
+  const g23 = PHYS.cannonA(11200, 274) / G0;
+  out.push(['콜롬비아드: a = v²/2L ≈ 2.3×10⁴ g', Math.abs(g23 - 23358) < 5, g23.toFixed(0) + ' g']);
+  out.push(['5 g 이하로 가속하려면 포신 약 1280 km', near(11200 ** 2 / (2 * 5 * G0), 1.28e6, 0.002), (11200 ** 2 / (2 * 5 * G0) / 1e3).toFixed(0) + ' km']);
+  out.push(['11.2 km/s ≈ 마하 33 (음속 340 m/s)', Math.abs(11200 / 340 - 33) < 0.5, (11200 / 340).toFixed(1)]);
+  out.push(['자전 속도: 적도 465 m/s, 위도 28°에서 약 410 m/s', Math.abs(465 * Math.cos(28 * Math.PI / 180) - 410) < 1, (465 * Math.cos(28 * Math.PI / 180)).toFixed(0)]);
+  return out;
+}
 
 
-    <!-- ================================================================= -->
-    <!-- 모듈 2: 거리-에너지 그래프 & 궤도 시뮬레이터 -->
-    <!-- ================================================================= -->
-    <section id="module-2" class="space-y-6 hidden">
-      <div class="bg-gradient-to-r from-gray-900 via-blue-950/40 to-gray-900 border border-blue-900/40 rounded-2xl p-6 shadow-xl">
-        <span class="inline-block px-2.5 py-1 bg-blue-500/20 text-blue-300 rounded text-xs font-semibold mb-2 border border-blue-500/30">
-          탐구 모듈 02
-        </span>
-        <h2 class="text-2xl font-bold text-white tracking-tight">중력 포텐셜 에너지 곡선과 궤도의 기하학</h2>
-        <p class="text-sm text-gray-300 mt-1 max-w-3xl leading-relaxed">
-          만유인력 포텐셜 에너지는 무한대($r \to \infty$)를 기준점($U=0$)으로 설정하므로 음의 값($U(r) = -GMm/r$)을 갖는 **‘중력 우물’**을 형성합니다.
-          발사 속도와 총 역학적 에너지($E = K + U$)의 부호에 따라 물체의 궤도가 어떻게 변하는지 실시간으로 관찰해 보세요.
-        </p>
-      </div>
+/* =====================================================================
+   슬라이드별 모듈: { start(), stop(), frame(dt), onStep(step) }
+   ===================================================================== */
+const REG = {};
+/* ---- s1 ---- */
+REG["s1"] = safe("s1.init", function () {
 
-      <!-- 대화형 컨트롤 패널 & 상태 카드 -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- 좌측: 시뮬레이션 제어기 -->
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col justify-between space-y-4">
-          <div>
-            <h3 class="text-sm font-bold text-white uppercase tracking-wider text-gray-300 mb-4 flex items-center justify-between">
-              <span>발사 조건 설정</span>
-              <span id="speed-badge" class="px-2 py-0.5 text-xs rounded bg-indigo-500/20 text-indigo-300 font-mono">
-                v₀ = 7.91 km/s
-              </span>
-            </h3>
+  const W = 820, H = 820, ctx = setupCanvas($('#c-hero'), W, H), stars = makeStars(W, H, 130, 3);
+  const X = r => 90 + (r - 1) / 7 * (W - 150), Y = e => 130 + (.6 - e) / 1.7 * (H - 330);
+  const balls = [[-.5, C.PE, 'E < 0 : 우물에 갇힘'], [0, C.ok, 'E = 0 : 겨우 탈출'], [.35, C.KE, 'E > 0 : 탈출']].map(([E, col, name]) => ({ E, col, name, s: null }));
+  function launch(b) { const v = Math.sqrt(2 * (b.E + 1)); b.s = { x: 1, y: 0, vx: v, vy: 0, t: 0 }; }
+  balls.forEach(launch);
+  function draw() {
+    bg(ctx, W, H); drawStars(ctx, stars);
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X(1) - 20, Y(0)); ctx.lineTo(X(8), Y(0)); ctx.stroke();
+    txt(ctx, 'E = 0 (무한히 먼 곳)', X(4.4), Y(0) - 12, C.dim, 22); drawWell(ctx, X, Y, 8);
+    balls.forEach(b => { const r = Math.min(b.s.x, 8), px = X(r), py = Y(PHYS.U(r)); ctx.fillStyle = b.col; ctx.beginPath(); ctx.arc(px, py - 14, 12, 0, TAU); ctx.fill(); });
+    balls.forEach((b, i) => txt(ctx, '● ' + b.name, 26, H - 120 + i * 36, b.col, 26, 500));
+    txt(ctx, '중력 우물  U(r) = −GMm/r', 26, 44, C.text, 28, 700);
+  }
+  return { start() { balls.forEach(launch); draw(); }, stop() { },
+    frame() { if (REDUCED) { draw(); return; } balls.forEach(b => { for (let i = 0; i < 3; i++) { PHYS.rk4Step(b.s, .012); } if (b.s.x < 1 && b.s.vx < 0) b.s.vx = -b.s.vx, b.s.x = 1; if (b.s.x > 9) launch(b); }); draw(); } };
 
-            <!-- 발사 속도 슬라이더 -->
-            <div class="space-y-2 mb-4">
-              <div class="flex justify-between text-xs text-gray-400">
-                <span>초기 발사 속도 ($v_0$)</span>
-                <span id="speed-value" class="font-mono text-white font-bold">7.91 km/s</span>
-              </div>
-              <input type="range" id="velocity-slider" min="4.5" max="15.0" step="0.05" value="7.91" 
-                     class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
-              <div class="flex justify-between text-[10px] text-gray-500">
-                <span>4.5 (낙하)</span>
-                <span>7.91 (원궤도)</span>
-                <span>11.19 (탈출)</span>
-                <span>15.0 (쌍곡선)</span>
-              </div>
-            </div>
+});
 
-            <!-- 프리셋 버튼들 -->
-            <div class="grid grid-cols-2 gap-2 text-xs mb-4">
-              <button onclick="setSpeedPreset(5.8)" class="px-2.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-left border border-gray-700/60 transition">
-                📉 탄도 낙하 (E &lt; E_circ)
-              </button>
-              <button onclick="setSpeedPreset(7.91)" class="px-2.5 py-1.5 rounded-lg bg-indigo-900/50 hover:bg-indigo-800/50 text-indigo-200 text-left border border-indigo-700/60 transition font-medium">
-                ⭕ 제1우주속도 (원궤도)
-              </button>
-              <button onclick="setSpeedPreset(9.5)" class="px-2.5 py-1.5 rounded-lg bg-purple-900/40 hover:bg-purple-800/40 text-purple-200 text-left border border-purple-700/60 transition">
-                ⬭ 타원 궤도 (E &lt; 0)
-              </button>
-              <button onclick="setSpeedPreset(11.19)" class="px-2.5 py-1.5 rounded-lg bg-amber-900/40 hover:bg-amber-800/40 text-amber-200 text-left border border-amber-700/60 transition font-medium">
-                🚀 탈출속도 (포물선 E=0)
-              </button>
-              <button onclick="setSpeedPreset(13.5)" class="col-span-2 px-2.5 py-1.5 rounded-lg bg-rose-900/40 hover:bg-rose-800/40 text-rose-200 text-center border border-rose-700/60 transition">
-                ⚡ 과잉 에너지 탈출 (쌍곡선 E &gt; 0)
-              </button>
-            </div>
+/* ---- s2 ---- */
+REG["s2"] = safe("s2.init", function () {
 
-            <!-- 시뮬레이션 제어 버튼 -->
-            <div class="flex space-x-2">
-              <button id="play-pause-btn" onclick="toggleSim()" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1 shadow">
-                <span id="play-icon">❚❚ 일시정지</span>
-              </button>
-              <button onclick="resetSim()" class="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-bold transition border border-gray-700">
-                ↺ 리셋
-              </button>
-            </div>
-          </div>
-
-          <!-- 시뮬레이션 재생 배속 제어기 -->
-          <div class="bg-gray-950 p-3.5 rounded-xl border border-gray-800 space-y-2">
-            <div class="flex justify-between items-center text-xs">
-              <span class="text-gray-400 font-semibold">시뮬레이션 배속 (시간 가속):</span>
-              <span id="speed-multiplier-label" class="font-mono text-indigo-400 font-bold">5x 배속</span>
-            </div>
-            <div class="grid grid-cols-5 gap-1.5">
-              <button onclick="setSimSpeed(1)" id="sim-spd-1" class="py-1 text-[11px] rounded bg-gray-800 text-gray-300 hover:bg-gray-700 font-mono transition">1x</button>
-              <button onclick="setSimSpeed(2)" id="sim-spd-2" class="py-1 text-[11px] rounded bg-gray-800 text-gray-300 hover:bg-gray-700 font-mono transition">2x</button>
-              <button onclick="setSimSpeed(5)" id="sim-spd-5" class="py-1 text-[11px] rounded bg-indigo-600 text-white font-bold font-mono transition">5x</button>
-              <button onclick="setSimSpeed(10)" id="sim-spd-10" class="py-1 text-[11px] rounded bg-gray-800 text-gray-300 hover:bg-gray-700 font-mono transition">10x</button>
-              <button onclick="setSimSpeed(25)" id="sim-spd-25" class="py-1 text-[11px] rounded bg-gray-800 text-gray-300 hover:bg-gray-700 font-mono transition">25x</button>
-            </div>
-          </div>
-
-          <!-- 상태 리포트 카드 -->
-          <div class="bg-gray-950 p-4 rounded-xl border border-gray-800 space-y-2 text-xs">
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">궤도 기하 분류:</span>
-              <span id="orbit-type" class="font-bold text-indigo-400">원궤도 (Circle)</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">총 역학적 에너지 $E$:</span>
-              <span id="energy-sign" class="font-mono font-bold text-blue-400">E < 0 (속박 상태)</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">물체 상태:</span>
-              <span id="motion-status" class="font-bold text-emerald-400">영구 궤도 운동</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 중앙 & 우측: 캔버스 2종 (2D 궤도 창 & 거리-에너지 곡선 창) -->
-        <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- 궤도 시뮬레이션 캔버스 -->
-          <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4 flex flex-col">
-            <div class="flex justify-between items-center mb-2">
-              <span class="text-xs font-bold text-gray-300">🪐 천체 궤도 평면 시뮬레이션</span>
-              <span class="text-[10px] text-gray-500">스케일 축척 적용</span>
-            </div>
-            <div class="relative flex-1 min-h-[280px] w-full rounded-xl overflow-hidden border border-gray-800">
-              <canvas id="orbitCanvas" class="orbit-canvas w-full h-full block"></canvas>
-              <div class="absolute bottom-2 left-2 text-[10px] text-gray-400 bg-gray-900/80 px-2 py-1 rounded backdrop-blur border border-gray-800">
-                파란색 원: 지구 ($R_E = 6,371\text{ km}$)
-              </div>
-            </div>
-          </div>
-
-          <!-- 거리-에너지 곡선 캔버스 -->
-          <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4 flex flex-col">
-            <div class="flex justify-between items-center mb-2">
-              <span class="text-xs font-bold text-gray-300">📈 거리-에너지($r-E$) 그래프 & 중력 우물</span>
-              <span class="text-[10px] text-indigo-400 font-mono">U(r) = -GMm/r</span>
-            </div>
-            <div class="relative flex-1 min-h-[280px] w-full rounded-xl overflow-hidden border border-gray-800">
-              <canvas id="energyCanvas" class="energy-canvas w-full h-full block"></canvas>
-              <div class="absolute top-2 right-2 text-[10px] text-gray-400 bg-gray-900/80 px-2 py-1 rounded backdrop-blur border border-gray-800 flex flex-col space-y-0.5">
-                <span class="flex items-center space-x-1"><span class="w-2 h-0.5 bg-rose-500 inline-block"></span><span>$U(r)$ 포텐셜 에너지</span></span>
-                <span class="flex items-center space-x-1"><span class="w-2 h-0.5 bg-emerald-400 inline-block"></span><span>$E$ 총 역학적 에너지</span></span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 수식 설명 카드: 탈출속도 유도 -->
-      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-        <h3 class="text-base font-bold text-white mb-3 flex items-center space-x-2">
-          <span>📐 역학적 에너지 보존을 통한 탈출속도($v_{\text{esc}}$)의 엄밀한 유도</span>
-        </h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-gray-300 leading-relaxed">
-          <div class="space-y-2">
-            <p>
-              지표면($r=R$)에서 쏘아 올린 물체가 지구의 중력권을 완전히 벗어나 무한대($r \to \infty$)에 도달하여 정지($v_\infty \ge 0$)하기 위한 최소한의 총 에너지는 $E = 0$입니다.
-            </p>
-            <div class="bg-gray-950 p-3 rounded-lg border border-gray-800 font-mono text-center text-sm text-amber-300">
-              $$E = K + U = \frac{1}{2}m v_{\text{esc}}^2 - \frac{GMm}{R} = 0$$
-            </div>
-            <p>
-              따라서 탈출속도는 질량 $m$과 무관하며 오직 중심 천체의 질량 $M$과 반지름 $R$에만 의존합니다:
-            </p>
-            <div class="bg-gray-950 p-3 rounded-lg border border-gray-800 font-mono text-center text-sm text-emerald-400">
-              $$v_{\text{esc}} = \sqrt{\frac{2GM}{R}} = \sqrt{2gR} \approx 11.2\text{ km/s}$$
-            </div>
-          </div>
-
-          <div class="bg-gray-950 p-4 rounded-xl border border-gray-800 space-y-3">
-            <h4 class="font-bold text-indigo-300 text-xs uppercase tracking-wider">에너지 준위에 따른 궤도 판별표</h4>
-            <div class="overflow-x-auto">
-              <table class="w-full text-left text-[11px]">
-                <thead class="border-b border-gray-800 text-gray-400">
-                  <tr>
-                    <th class="pb-1.5">총 에너지 ($E$)</th>
-                    <th class="pb-1.5">이심률 ($\epsilon$)</th>
-                    <th class="pb-1.5">궤도 형태</th>
-                    <th class="pb-1.5">운동 상태</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-900 font-mono text-gray-300">
-                  <tr>
-                    <td class="py-1.5 text-blue-400">E = E_min</td>
-                    <td>0</td>
-                    <td class="text-white">원 (Circle)</td>
-                    <td>속박 (Bound)</td>
-                  </tr>
-                  <tr>
-                    <td class="py-1.5 text-blue-400">E_min &lt; E &lt; 0</td>
-                    <td>0 &lt; \epsilon &lt; 1</td>
-                    <td class="text-white">타원 (Ellipse)</td>
-                    <td>속박 (Bound)</td>
-                  </tr>
-                  <tr>
-                    <td class="py-1.5 text-amber-400">E = 0</td>
-                    <td>1</td>
-                    <td class="text-white">포물선 (Parabola)</td>
-                    <td>임계 탈출 (Marginal)</td>
-                  </tr>
-                  <tr>
-                    <td class="py-1.5 text-rose-400">E &gt; 0</td>
-                    <td>\epsilon &gt; 1</td>
-                    <td class="text-white">쌍곡선 (Hyperbola)</td>
-                    <td>이탈 (Unbound)</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <p class="text-[10px] text-gray-500">
-              * $E_{\text{min}} = -\frac{GMm}{2R}$는 해당 반경에서 가능한 최소 에너지 상태(등속 원운동)를 의미합니다.
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-
-    <!-- ================================================================= -->
-    <!-- 모듈 3: 미시세계로의 확장 (양자 터널링 & 포텐셜 우물) -->
-    <!-- ================================================================= -->
-    <section id="module-3" class="space-y-6 hidden">
-      <div class="bg-gradient-to-r from-gray-900 via-purple-950/40 to-gray-900 border border-purple-900/40 rounded-2xl p-6 shadow-xl">
-        <span class="inline-block px-2.5 py-1 bg-purple-500/20 text-purple-300 rounded text-xs font-semibold mb-2 border border-purple-500/30">
-          탐구 모듈 03
-        </span>
-        <h2 class="text-2xl font-bold text-white tracking-tight">거리-에너지 곡선의 보편성: 원자핵에서 양자 터널링까지</h2>
-        <p class="text-sm text-gray-300 mt-1 max-w-3xl leading-relaxed">
-          거리-포텐셜 에너지 곡선 $U(r)$은 행성계에만 머무르지 않습니다.
-          원자 내부 전자의 결합, 분자 간 인력, 그리고 미시세계에서 고전역학의 한계를 뛰어넘는 **양자 터널링(Quantum Tunneling)** 현상을 이해하는 공통의 언어입니다.
-        </p>
-      </div>
-
-      <!-- 고전역학 vs 양자역학 비교 카드 인터랙티브 -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- 고전적 한계 카드 -->
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col justify-between">
-          <div>
-            <div class="flex items-center justify-between mb-3">
-              <span class="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 text-xs font-bold">고전역학 (Classical)</span>
-              <span class="text-xs text-gray-500">거시 세계</span>
-            </div>
-            <h3 class="text-lg font-bold text-white mb-2">포텐셜 우물과 넘을 수 없는 장벽</h3>
-            <p class="text-xs text-gray-400 leading-relaxed mb-4">
-              고전역학에서 입자의 운동 에너지는 항상 $K = E - U(r) \ge 0$이어야 합니다. 
-              총 에너지 $E$가 포텐셜 장벽의 높이 $V_0$보다 작다면($E < V_0$), 입자는 장벽을 결코 넘을 수 없고 반사되어 튕겨 나옵니다.
-            </p>
-            <div class="bg-gray-950 p-4 rounded-xl border border-gray-800 flex items-center justify-center min-h-[140px]">
-              <div class="text-center">
-                <div class="text-4xl mb-2">⚽ 🛑 🧱</div>
-                <p class="text-xs text-rose-400 font-semibold">장벽 투과 확률 = 0.00% (완전 반사)</p>
-                <p class="text-[11px] text-gray-500 mt-1">에너지가 부족한 물체는 영원히 우물에 갇힙니다.</p>
-              </div>
-            </div>
-          </div>
-          <div class="mt-4 pt-3 border-t border-gray-800 text-[11px] text-gray-400">
-            사례: 지구 탈출 속도에 도달하지 못한 인공위성이 지구 궤도를 벗어날 수 없는 이유
-          </div>
-        </div>
-
-        <!-- 양자 터널링 카드 -->
-        <div class="bg-gray-900 border border-purple-900/60 rounded-2xl p-5 flex flex-col justify-between bg-gradient-to-b from-gray-900 to-purple-950/20">
-          <div>
-            <div class="flex items-center justify-between mb-3">
-              <span class="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 text-xs font-bold">양자역학 (Quantum)</span>
-              <span class="text-xs text-purple-400">미시 세계</span>
-            </div>
-            <h3 class="text-lg font-bold text-white mb-2">물질파의 투과: 양자 터널링 (Tunneling)</h3>
-            <p class="text-xs text-gray-400 leading-relaxed mb-4">
-              입자가 파동성(드브로이 물질파 $\lambda = h/p$)을 가지므로, 슈뢰딩거 방정식에 의해 포텐셜 장벽 내부에서도 파동함수가 지수적으로 감쇠하며 존재($\psi \ne 0$)합니다.
-              따라서 에너지가 장벽보다 작아도 일정 확률로 장벽을 통과해 탈출합니다.
-            </p>
-            <div class="bg-gray-950 p-4 rounded-xl border border-gray-800 flex items-center justify-center min-h-[140px]">
-              <div class="text-center">
-                <div class="text-4xl mb-2">〰️ 🧱 〰️</div>
-                <p class="text-xs text-emerald-400 font-semibold">투과 확률: $T \approx e^{-2\kappa L} > 0$</p>
-                <p class="text-[11px] text-purple-300 mt-1">포텐셜 장벽을 마치 '터널' 뚫듯 통과하여 출현</p>
-              </div>
-            </div>
-          </div>
-          <div class="mt-4 pt-3 border-t border-gray-800 text-[11px] text-gray-400">
-            사례: 태양의 핵융합(양성자 쿨롱 장벽 극복), 방사성 $\alpha$ 붕괴, 주사터널링현미경(STM)
-          </div>
-        </div>
-      </div>
-
-      <!-- 양자 터널링 에너지 장벽 & 파동함수 인터랙티브 시각화 -->
-      <div class="bg-gray-900 border border-purple-900/40 rounded-2xl p-6 space-y-4">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <h3 class="text-base font-bold text-white flex items-center space-x-2">
-              <span>🔬 에너지 장벽 $V(x)$와 파동함수 $\psi(x)$의 지수 감쇠 시각화</span>
-            </h3>
-            <p class="text-xs text-gray-400 mt-1">
-              에너지 $E$가 장벽의 높이 $V_0$보다 낮음에도($E < V_0$), 벽 내부에서 지수적으로 감쇠하며 반대편으로 살아남는 물질파를 관찰해 보세요.
-            </p>
-          </div>
-          <!-- 장벽 두께/높이 조절 슬라이더 -->
-          <div class="flex items-center space-x-3 text-xs bg-gray-950 px-3 py-2 rounded-xl border border-gray-800">
-            <span class="text-gray-400">장벽 두께 ($L$):</span>
-            <input type="range" id="barrier-width-slider" min="30" max="120" value="65" 
-                   class="w-24 h-1.5 bg-gray-700 rounded appearance-none cursor-pointer accent-purple-500">
-            <span id="barrier-width-val" class="font-mono text-purple-300 font-bold">65 nm</span>
-          </div>
-        </div>
-
-        <!-- 터널링 캔버스 -->
-        <div class="relative w-full h-64 bg-gray-950 rounded-xl overflow-hidden border border-gray-800">
-          <canvas id="tunnelingCanvas" class="w-full h-full block"></canvas>
-          <div class="absolute bottom-2 left-3 text-[11px] text-gray-400 flex items-center space-x-4 bg-gray-900/80 px-2.5 py-1 rounded backdrop-blur border border-gray-800">
-            <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 bg-purple-600/50 inline-block rounded-sm border border-purple-400"></span><span>포텐셜 장벽 $V_0$</span></span>
-            <span class="flex items-center space-x-1"><span class="w-3 h-0.5 bg-amber-400 inline-block"></span><span>입자 에너지 $E$</span></span>
-            <span class="flex items-center space-x-1"><span class="w-3 h-0.5 bg-cyan-400 inline-block"></span><span>물질파 파동함수 $\psi(x)$</span></span>
-          </div>
-          <div class="absolute top-2 right-3 text-[11px] font-mono text-emerald-400 bg-gray-900/80 px-2.5 py-1 rounded backdrop-blur border border-gray-800">
-            투과 확률 $T$: <span id="tunnel-prob-val" class="font-bold">12.4%</span>
-          </div>
-        </div>
-
-        <div class="p-3 bg-gray-950 rounded-xl border border-gray-800 text-[11px] text-gray-300 leading-relaxed">
-          💡 <strong>에너지 곡선 상의 해석:</strong> 고전역학에서는 장벽 내부의 운동에너지가 $K = E - V(x) < 0$이 되어 <strong>존재할 수 없는 금지 구역</strong>이지만, 양자역학에서는 파동함수가 0이 되지 않고 $e^{-\kappa x}$ ($\kappa = \sqrt{2m(V_0-E)}/\hbar$)로 감쇠하며 장벽을 관통합니다. 장벽이 얇을수록 투과 확률이 기하급수적으로 높아집니다.
-        </div>
-      </div>
-
-      <!-- 포텐셜 그래프의 다양한 적용 분야 아코디언/탭 -->
-      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-        <h3 class="text-base font-bold text-white mb-4">🌐 거리-포텐셜 에너지 곡선 $U(r)$의 물리학 전 분야 확장</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-          <div class="p-4 bg-gray-950 rounded-xl border border-gray-800 space-y-2">
-            <span class="font-bold text-blue-400 block text-sm">1. 보어의 수소 원자 모형</span>
-            <p class="text-gray-400 leading-relaxed">
-              쿨롱 인력 포텐셜 $U(r) = -k\frac{e^2}{r}$에 의해 전자가 원자핵 주위 궤도에 구속됩니다. 
-              이온화 에너지(탈출 조건) 역시 총 에너지 $E \ge 0$이 되는 순간을 의미합니다.
-            </p>
-          </div>
-          <div class="p-4 bg-gray-950 rounded-xl border border-gray-800 space-y-2">
-            <span class="font-bold text-purple-400 block text-sm">2. 분자 간 레너드-존스 포텐셜</span>
-            <p class="text-gray-400 leading-relaxed">
-              두 원자가 접근할 때 전자구름 반발력($1/r^{12}$)과 반데르발스 인력($-1/r^6$)이 평형을 이루는 에너지 최소 지점($r_0$)에서 화학 결합이 형성됩니다.
-            </p>
-          </div>
-          <div class="p-4 bg-gray-950 rounded-xl border border-gray-800 space-y-2">
-            <span class="font-bold text-emerald-400 block text-sm">3. 원자핵의 $\alpha$ 붕괴와 핵융합</span>
-            <p class="text-gray-400 leading-relaxed">
-              강한 핵력(인력 우물)과 양성자 간 쿨롱 반발력(전기적 장벽)이 중첩됩니다. 태양 중심 온도가 고전적 점화 온도에 못 미침에도 양자 터널링 덕분에 핵융합이 지속됩니다.
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-
-    <!-- ================================================================= -->
-    <!-- 모듈 4: 쥘 베른과 우주비행 (문학과 과학의 만남) -->
-    <!-- ================================================================= -->
-    <section id="module-4" class="space-y-6 hidden">
-      <div class="bg-gradient-to-r from-gray-900 via-amber-950/40 to-gray-900 border border-amber-900/40 rounded-2xl p-6 shadow-xl">
-        <span class="inline-block px-2.5 py-1 bg-amber-500/20 text-amber-300 rounded text-xs font-semibold mb-2 border border-amber-500/30">
-          융합 모듈 04
-        </span>
-        <h2 class="text-2xl font-bold text-white tracking-tight">과학과 문학의 만남: 쥘 베른의 《지구에서 달까지》(1865)</h2>
-        <p class="text-sm text-gray-300 mt-1 max-w-3xl leading-relaxed">
-          인류가 최초로 달에 착륙하기 104년 전, 프랑스의 SF 작가 쥘 베른은 당대 최고의 뉴턴 역학 계산을 바탕으로 대포를 쏘아 달에 가는 우주선을 묘사했습니다.
-          소설 속 놀라운 과학적 혜안과, 당시 간과되었던 치명적인 물리학적 한계를 분석해 봅니다.
-        </p>
-      </div>
-
-      <!-- 과학적 예지 vs 치명적 한계 비교 -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- 눈부신 과학적 정합성 -->
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-4">
-          <div class="flex items-center space-x-2 text-emerald-400 font-bold text-sm">
-            <span>✨ 소설이 보여준 경이로운 과학적 정확성</span>
-          </div>
-          <ul class="space-y-3 text-xs text-gray-300">
-            <li class="flex items-start space-x-2">
-              <span class="text-emerald-400 font-bold">✓</span>
-              <div>
-                <strong class="text-white">정확한 탈출속도 산정:</strong>
-                당시 수학자 앙리 가르송(Henri Garcet)의 조언을 받아, 지구 중력을 벗어나기 위한 포구 초속도를 약 <strong>11.2 km/s (36,000 ft/s)</strong>로 계산하여 설정함.
-              </div>
-            </li>
-            <li class="flex items-start space-x-2">
-              <span class="text-emerald-400 font-bold">✓</span>
-              <div>
-                <strong class="text-white">발사 장소(위도)의 탁월한 선택:</strong>
-                지구의 자전 선속도(약 $465\text{ m/s}$) 도움을 가장 많이 받기 위해 적도에 가까운 미국 플로리다주 탬파 인근(스톤스 힐)을 발사 장소로 선정. (1969년 아폴로 11호가 발사된 케네디 우주센터와 불과 약 150 km 거리!)
-              </div>
-            </li>
-            <li class="flex items-start space-x-2">
-              <span class="text-emerald-400 font-bold">✓</span>
-              <div>
-                <strong class="text-white">우주선 내 무중력 상태 묘사:</strong>
-                지구와 달 사이에서 양쪽의 만유인력이 상쇄되는 지점(중성점)을 지날 때 탑승자들과 물체가 공중에 떠오르는 무중력(유사 중력 평형) 현상을 기술함.
-              </div>
-            </li>
-          </ul>
-        </div>
-
-        <!-- 물리학적 오류 및 한계 (가속도 계산기 포함) -->
-        <div class="bg-gray-900 border border-rose-900/40 rounded-2xl p-5 space-y-4">
-          <div class="flex items-center space-x-2 text-rose-400 font-bold text-sm">
-            <span>⚠️ 소설이 간과한 치명적인 물리학적 한계</span>
-          </div>
-          <div class="space-y-3 text-xs text-gray-300">
-            <p class="leading-relaxed">
-              쥘 베른의 대포 ‘콜롬비아드(Columbiad)’는 포신 길이가 약 $274\text{ m}$ (900 ft)였습니다. 
-              포신 안에서 정지 상태에서 $11.2\text{ km/s}$까지 가속될 때 탑승자가 받게 되는 가속도를 계산해 보면 충격적인 결과가 나옵니다.
-            </p>
-
-            <!-- 인터랙티브 콜롬비아드 가속도 계산 위젯 -->
-            <div class="bg-gray-950 p-4 rounded-xl border border-gray-800 space-y-3">
-              <div class="flex justify-between items-center text-xs">
-                <span class="text-gray-400">포신 길이 ($L$): <strong>274 m</strong></span>
-                <span class="text-gray-400">탈출속도 ($v$): <strong>11,200 m/s</strong></span>
-              </div>
-              <div class="text-[12px] font-mono text-center text-amber-300 bg-gray-900 p-2.5 rounded border border-gray-800">
-                $$a = \frac{v^2}{2L} = \frac{(11,200\text{ m/s})^2}{2 \times 274\text{ m}} \approx 228,900\text{ m/s}^2$$
-              </div>
-              <div class="p-2.5 bg-rose-950/40 rounded border border-rose-800/50 text-center">
-                <span class="text-rose-300 font-bold text-sm">발사 시 가속도: 약 23,300 g</span>
-                <p class="text-[11px] text-gray-400 mt-0.5">인간의 한계(약 $5\sim 9\ g$)의 수천 배로, 탑승자는 즉각 액체처럼 으스러짐</p>
-              </div>
-            </div>
-
-            <div class="text-[11px] text-gray-400">
-              🚨 <strong>대기 마찰 문제:</strong> 해수면 고도에서 마하 33의 극초음속으로 발사되면 대기 압축 충격파로 인해 발생한 수천 도의 마찰열로 포탄이 발사 직후 증발함.
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 탐구 토론 질문 & 형성 평가 퀴즈 -->
-      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-        <h3 class="text-base font-bold text-white mb-3">💬 과학 수업 토론 과제: "왜 대포가 아니라 로켓이어야 했는가?"</h3>
-        <p class="text-xs text-gray-300 mb-4 leading-relaxed">
-          쥘 베른의 거대 대포 방식과 현대 치올콥스키의 다단 로켓 방식을 비교하며, 물리학이 어떻게 기술적 불가능을 극복했는지 토론해 보세요.
-        </p>
-
-        <!-- 자가 진단 퀴즈 -->
-        <div class="bg-gray-950 p-4 rounded-xl border border-gray-800 space-y-4">
-          <div class="text-xs font-bold text-indigo-300">💡 확인 퀴즈</div>
-          <p class="text-xs text-white">
-            Q. 지구에서 발사된 우주선의 총 역학적 에너지 $E = K + U$가 정확히 $0$일 때의 궤도 형태와 탈출 후 무한대 거리에서의 최종 속력은?
-          </p>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-            <button onclick="checkQuizAnswer(false)" class="p-2.5 rounded-lg bg-gray-900 hover:bg-gray-800 border border-gray-700 text-left text-gray-300">
-              ① 타원 궤도, 속력 $11.2\text{ km/s}$ 유지
-            </button>
-            <button onclick="checkQuizAnswer(true)" class="p-2.5 rounded-lg bg-gray-900 hover:bg-gray-800 border border-gray-700 text-left text-gray-300">
-              ② 포물선 궤도, 무한대에서 속력 $0\text{ m/s}$에 수렴
-            </button>
-            <button onclick="checkQuizAnswer(false)" class="p-2.5 rounded-lg bg-gray-900 hover:bg-gray-800 border border-gray-700 text-left text-gray-300">
-              ③ 원 궤도, 무한대 도달 불가능
-            </button>
-            <button onclick="checkQuizAnswer(false)" class="p-2.5 rounded-lg bg-gray-900 hover:bg-gray-800 border border-gray-700 text-left text-gray-300">
-              ④ 쌍곡선 궤도, 무한대에서 양의 잉여 속력 보유
-            </button>
-          </div>
-          <div id="quiz-result" class="hidden p-3 rounded-lg text-xs font-medium"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 하단 참고 문헌 및 자료 출처 안내 (객관적 데이터 준수) -->
-    <footer class="mt-12 pt-6 border-t border-gray-800 text-xs text-gray-500 space-y-2">
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-        <span class="font-medium text-gray-400">데이터 및 과학사적 출처 (Academic Sources):</span>
-        <span class="text-[11px] text-gray-500">지구 질량 $M_E \approx 5.972\times 10^{24}\text{ kg}$, 반경 $R_E \approx 6,371\text{ km}$, $G = 6.674\times 10^{-11}\text{ N}\cdot\text{m}^2/\text{kg}^2$</span>
-      </div>
-      <ul class="list-disc list-inside text-[11px] space-y-1 text-gray-500">
-        <li>Isaac Newton, <em>Philosophiae Naturalis Principia Mathematica</em> (1687) - Book 3, "The System of the World".</li>
-        <li>Jules Verne, <em>De la Terre à la Lune</em> (From the Earth to the Moon, 1865) - 포신 제원 및 포구 탄속 계산.</li>
-        <li>David Halliday, Robert Resnick, Jearl Walker, <em>Fundamentals of Physics</em> (11th ed.), Chapter 13: Gravitation.</li>
-        <li>NASA Planetary Fact Sheet - Earth & Moon orbital parameters.</li>
-      </ul>
-    </footer>
-  </main>
-
-  <!-- ================================================================= -->
-  <!-- JavaScript 시뮬레이터 & 상호작용 엔진 -->
-  <!-- ================================================================= -->
-  <script>
-    // --- 탭 전환 로직 ---
-    function switchTab(tabIndex) {
-      for (let i = 1; i <= 4; i++) {
-        const mod = document.getElementById(`module-${i}`);
-        const btn = document.getElementById(`tab-btn-${i}`);
-        if (i === tabIndex) {
-          mod.classList.remove('hidden');
-          if (btn) {
-            btn.className = "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all bg-indigo-600 text-white shadow";
-          }
-        } else {
-          mod.classList.add('hidden');
-          if (btn) {
-            btn.className = "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all text-gray-300 hover:text-white hover:bg-gray-700/50";
-          }
-        }
-      }
-      const mobileSelect = document.getElementById('mobile-tab-select');
-      if (mobileSelect) mobileSelect.value = tabIndex;
-
-      // 탭 전환 시 캔버스 크기 재조정 및 리드로우
-      if (tabIndex === 2) {
-        setTimeout(() => {
-          resizeCanvases();
-          drawAll();
-        }, 50);
-      } else if (tabIndex === 3) {
-        setTimeout(() => {
-          resizeTunnelingCanvas();
-        }, 50);
-      }
-    }
-
-    // --- 시뮬레이션 상태 변수 ---
-    const R_E = 6371; // 지구 반지름 (km)
-    const GM = 398600; // 지구 중력상수 GM (km^3 / s^2)
-    const V_ESC = Math.sqrt(2 * GM / R_E); // 약 11.186 km/s
-    const V_CIRC = Math.sqrt(GM / R_E); // 약 7.91 km/s
-
-    let v0 = 7.91; // 현재 설정 속도 (km/s)
-    let isRunning = true;
-    let animFrameId = null;
-    let simSpeedMultiplier = 5; // 기본 속도 배속 (5배속)
-
-    // 위성 궤도 시뮬레이션 변수
-    let sat = {
-      x: 0,
-      y: -R_E,
-      vx: 7.91,
-      vy: 0,
-      trail: [],
-      crashed: false
-    };
-
-    const orbitCanvas = document.getElementById('orbitCanvas');
-    const orbitCtx = orbitCanvas.getContext('2d');
-    const energyCanvas = document.getElementById('energyCanvas');
-    const energyCtx = energyCanvas.getContext('2d');
-
-    // 양자 터널링 캔버스
-    const tunnelCanvas = document.getElementById('tunnelingCanvas');
-    const tunnelCtx = tunnelCanvas.getContext('2d');
-    let barrierWidth = 65;
-    let wavePhase = 0;
-
-    // 슬라이더 바인딩
-    const slider = document.getElementById('velocity-slider');
-    const speedVal = document.getElementById('speed-value');
-    const speedBadge = document.getElementById('speed-badge');
-
-    slider.addEventListener('input', (e) => {
-      setSpeedPreset(parseFloat(e.target.value));
+  const W = 1040, H = 830, ctx = setupCanvas($('#c-sq'), W, H); let d = 2;
+  const SX = 90, SY = 250, U = 170, h1 = 40;           // 광원 위치, 거리 1칸의 가로 길이, 거리 1에서 화면 반높이
+  function draw() {
+    bg(ctx, W, H); txt(ctx, '점광원 → 같은 빛이 거리에 따라 덮는 면적', 26, 40, C.dim, 24);
+    const x = k => SX + k * U;
+    ctx.fillStyle = 'rgba(255,214,120,.14)'; ctx.beginPath(); ctx.moveTo(SX, SY); ctx.lineTo(x(3.4), SY - 3.4 * h1); ctx.lineTo(x(3.4), SY + 3.4 * h1); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffd778'; ctx.beginPath(); ctx.arc(SX, SY, 14, 0, TAU); ctx.fill();
+    [1, 2, 3].forEach(k => { ctx.strokeStyle = C.text; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(x(k), SY - k * h1); ctx.lineTo(x(k), SY + k * h1); ctx.stroke(); txt(ctx, `${k} m`, x(k), SY + k * h1 + 30, C.dim, 22, 400, 'center'); });
+    ctx.strokeStyle = C.PE; ctx.lineWidth = 3; ctx.setLineDash([8, 8]); ctx.beginPath(); ctx.moveTo(x(d), 70); ctx.lineTo(x(d), SY + 3.4 * h1); ctx.stroke(); ctx.setLineDash([]);
+    txt(ctx, `r = ${d.toFixed(1)}`, x(d), 62, C.PE, 24, 700, 'center');
+    const cs = 56, top = 500; [1, 2, 3].forEach((k, i) => {
+      const gx = 70 + i * 330; txt(ctx, `${k} m 지점: 같은 빛이 ${k * k}칸에 퍼짐`, gx, top - 18, C.text, 22, 500);
+      for (let a = 0; a < k; a++) for (let b = 0; b < k; b++) { ctx.fillStyle = `rgba(255,214,120,${(.9 / (k * k)).toFixed(3)})`; ctx.fillRect(gx + a * cs, top + b * cs, cs - 3, cs - 3); ctx.strokeStyle = C.grid; ctx.strokeRect(gx + a * cs, top + b * cs, cs - 3, cs - 3); }
+      txt(ctx, `밝기 ${k === 1 ? '1' : '1/' + k * k}`, gx, top + k * cs + 34, C.KE, 26, 700);
     });
+  }
+  function refresh() { $('#sq-dv').textContent = d.toFixed(1) + ' 배'; $('#sq-info').innerHTML = `r = ${d.toFixed(1)} → 면적 ${(d * d).toFixed(2)}배 → 밝기·세기 <b class="k">${(1 / (d * d)).toFixed(3)}배</b><br>거리가 2배이면 1/4배, 3배이면 1/9배`; draw(); }
+  bindRange('sq-d', v => { d = v; refresh(); });
+  return { start() { refresh(); } };
 
-    // 배속 설정 함수
-    function setSimSpeed(speed) {
-      simSpeedMultiplier = speed;
-      document.getElementById('speed-multiplier-label').innerText = `${speed}x 배속`;
-      [1, 2, 5, 10, 25].forEach(s => {
-        const btn = document.getElementById(`sim-spd-${s}`);
-        if (s === speed) {
-          btn.className = "py-1 text-[11px] rounded bg-indigo-600 text-white font-bold font-mono transition";
-        } else {
-          btn.className = "py-1 text-[11px] rounded bg-gray-800 text-gray-300 hover:bg-gray-700 font-mono transition";
-        }
-      });
+});
+
+/* ---- s3 ---- */
+REG["s3"] = safe("s3.init", function () {
+
+  const W = 760, H = 520, ctx = setupCanvas($('#c-mt'), W, H); let n = 1;
+  const aObs = PHYS.moonAcc(), lo = -5.5, hi = 0.3, X = v => 40 + (Math.log10(v) - lo) / (hi - lo) * (W - 80);
+  function draw() {
+    bg(ctx, W, H); txt(ctx, '달 궤도에서의 가속도 (m/s², 로그 눈금)', 20, 38, C.dim, 24);
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(40, 300); ctx.lineTo(W - 40, 300); ctx.stroke();
+    for (let e = -5; e <= 0; e++) { const x = X(Math.pow(10, e)); ctx.beginPath(); ctx.moveTo(x, 292); ctx.lineTo(x, 308); ctx.stroke(); txt(ctx, '10' + (e === 0 ? '⁰' : '⁻' + '⁰¹²³⁴⁵'[-e]), x, 336, C.dim, 22, 400, 'center'); }
+    const pred = G0 / Math.pow(60, n);
+    ctx.fillStyle = C.ok; ctx.beginPath(); ctx.arc(X(aObs), 300, 14, 0, TAU); ctx.fill(); txt(ctx, `관측 a = ${aObs.toExponential(2)}`, X(aObs), 250, C.ok, 24, 700, 'center');
+    ctx.fillStyle = C.KE; ctx.beginPath(); ctx.moveTo(X(pred), 300); ctx.lineTo(X(pred) - 13, 336 + 10); ctx.lineTo(X(pred) + 13, 346); ctx.closePath(); ctx.fill();
+    txt(ctx, `예측 g/60ⁿ = ${pred.toExponential(2)}`, Math.min(Math.max(X(pred), 200), W - 200), 410, C.KE, 24, 700, 'center');
+    const ratio = pred / aObs; txt(ctx, ratio > 0.995 && ratio < 1.005 ? '일치!' : `예측 / 관측 = ${ratio < 10 ? ratio.toFixed(2) : ratio.toExponential(1)}`, W / 2, 470, ratio > .995 && ratio < 1.005 ? C.ok : C.bad, 28, 700, 'center');
+  }
+  function refresh() { $('#mt-nv').textContent = n.toFixed(1); const p = G0 / Math.pow(60, n); $('#mt-info').innerHTML = `n = ${n.toFixed(1)} → 예측 <b class="k">${p.toExponential(2)}</b> m/s², 관측 <b class="ok">${aObs.toExponential(2)}</b> m/s²<br>달까지 거리를 60 R<sub>E</sub> 로 놓음 (실제 60.3 R<sub>E</sub>)`; draw(); }
+  bindRange('mt-n', v => { n = v; refresh(); });
+  return { start() { refresh(); } };
+
+});
+
+/* ---- s4 ---- */
+REG["s4"] = safe("s4.init", function () {
+
+  const W = 1040, H = 830, ctx = setupCanvas($('#c-cv'), W, H); let M = 158, dd = .23, ph = 0;
+  function force() { return G_SI * 0.73 * M / (dd * dd); }
+  function draw() {
+    bg(ctx, W, H); txt(ctx, '비틀림 저울 (위에서 본 모습, 비틀림 각은 크게 과장)', 24, 38, C.dim, 24);
+    const cx = 520, cy = 360, L = 190, th = Math.min(force() / 4e-7, 1) * .28 * (1 + .06 * Math.sin(ph)) ;
+    const c = Math.cos(th), s = Math.sin(th), p1 = [cx - L * c, cy - L * s], p2 = [cx + L * c, cy + L * s];
+    ctx.strokeStyle = C.text; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.stroke();
+    ctx.fillStyle = C.dim; ctx.beginPath(); ctx.arc(cx, cy, 8, 0, TAU); ctx.fill();
+    [p1, p2].forEach(p => { ctx.fillStyle = '#9fb3d9'; ctx.beginPath(); ctx.arc(p[0], p[1], 20, 0, TAU); ctx.fill(); });
+    const bx = [[cx - L - 30 + 0, cy - 112], [cx + L + 30, cy + 112]];
+    bx.forEach(p => { ctx.fillStyle = '#6a7da8'; ctx.beginPath(); ctx.arc(p[0], p[1], 52, 0, TAU); ctx.fill(); });
+    arrow(ctx, p1[0], p1[1], p1[0] - 10, p1[1] - 70, C.KE, 5, 14); arrow(ctx, p2[0], p2[1], p2[0] + 10, p2[1] + 70, C.KE, 5, 14);
+    txt(ctx, '작은 납구 0.73 kg', cx - 120, cy + 70, C.dim, 22); txt(ctx, '큰 납구', cx + L - 20, cy + 190, C.dim, 22);
+    const wy = 640; ctx.strokeStyle = C.grid; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(120, wy); ctx.lineTo(W - 120, wy); ctx.stroke();
+    txt(ctx, '거울 → 빛 지렛대로 변위를 벽에서 크게 읽음', 120, wy + 40, C.dim, 22);
+    const spot = W / 2 + th * 1600; ctx.fillStyle = '#ffd778'; ctx.beginPath(); ctx.arc(spot, wy, 12, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,214,120,.5)'; ctx.setLineDash([6, 8]); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(spot, wy); ctx.stroke(); ctx.setLineDash([]);
+  }
+  function refresh() {
+    $('#cv-Mv').textContent = M + ' kg'; $('#cv-dv').textContent = dd.toFixed(2) + ' m';
+    $('#cv-info').innerHTML = `F = G·0.73·${M}/${dd.toFixed(2)}² = <b class="k">${force().toExponential(2)} N</b><br>머리카락 한 올의 무게(약 10⁻⁶ N)보다도 작다`;
+    $('#cv-me').innerHTML = `M<sub>E</sub> = ${G0}×(6.371×10⁶)² / 6.674×10⁻¹¹ ≈ <b class="k">${(G0 * R_E_M ** 2 / G_SI).toExponential(2)} kg</b>`; draw();
+  }
+  bindRange('cv-M', v => { M = v; refresh(); }); bindRange('cv-d', v => { dd = v; refresh(); });
+  return { start() { refresh(); }, frame(dt) { ph += dt * 2; draw(); } };
+
+});
+
+/* ---- s5 ---- */
+REG["s5"] = safe("s5.init", function () {
+
+  const W = 1040, H = 830, ctx = setupCanvas($('#c-wl'), W, H); let E = -.5, r = 1.5;
+  const X = x => 90 + (x - 1) / 7 * (W - 150), Y = e => 100 + (.7 - e) / 1.8 * (H - 240);
+  function allowedMax() { return E < 0 ? Math.min(8, -1 / E) : 8; }
+  function draw() {
+    bg(ctx, W, H); txt(ctx, '에너지 (GMm/R 단위)', 24, 40, C.dim, 24); txt(ctx, 'r →', W - 70, Y(0) + 34, C.dim, 24);
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X(1) - 20, Y(0)); ctx.lineTo(X(8), Y(0)); ctx.stroke();
+    txt(ctx, '0', 50, Y(0) + 8, C.dim, 22); txt(ctx, '−1', 40, Y(-1) + 8, C.dim, 22); txt(ctx, '지표면 r = R', X(1) + 10, Y(-1) + 38, C.dim, 22);
+    const rm = allowedMax(); ctx.fillStyle = 'rgba(94,234,212,.10)'; ctx.fillRect(X(1), Y(E), X(rm) - X(1), Y(-1) - Y(E) + 0);
+    ctx.fillStyle = 'rgba(94,234,212,.10)'; ctx.fillRect(X(1), Y(0.7), X(rm) - X(1), Y(E) - Y(0.7) - 0);
+    drawWell(ctx, X, Y, 8);
+    ctx.strokeStyle = C.E; ctx.lineWidth = 3; ctx.setLineDash([10, 7]); ctx.beginPath(); ctx.moveTo(X(1), Y(E)); ctx.lineTo(X(8), Y(E)); ctx.stroke(); ctx.setLineDash([]);
+    txt(ctx, `E = ${E.toFixed(2)}`, X(6.6), Y(E) - 12, C.E, 26, 700);
+    const rr = Math.min(r, rm), U = PHYS.U(rr), K = E - U;
+    arrow(ctx, X(rr), Y(U), X(rr), Y(E) + (K > 0 ? 4 : 0), C.KE, 5, 14); txt(ctx, 'K', X(rr) + 14, (Y(U) + Y(E)) / 2 + 8, C.KE, 28, 700);
+    ctx.fillStyle = '#fff2b0'; ctx.beginPath(); ctx.arc(X(rr), Y(U), 11, 0, TAU); ctx.fill();
+    if (E < 0) { ctx.strokeStyle = C.bad; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(X(rm), Y(E) - 24); ctx.lineTo(X(rm), Y(E) + 24); ctx.stroke(); txt(ctx, `갈 수 있는 가장 먼 곳 ${rm.toFixed(2)} R`, X(rm) - 250, Y(E) + 54, C.bad, 24, 500); }
+    else txt(ctx, 'K = E − U > 0 이 어디서나 성립 → 끝까지 멀어짐', X(2.6), Y(E) - 52, C.ok, 26, 700);
+  }
+  function refresh() {
+    $('#wl-Ev').textContent = E.toFixed(2); const rm = allowedMax(); if (r > rm) r = rm; $('#wl-r').value = r; $('#wl-rv').textContent = r.toFixed(2) + ' R';
+    const U = PHYS.U(r), K = E - U, v = Math.sqrt(Math.max(2 * K, 0)) * VU;
+    $('#wl-info').innerHTML = `r = ${r.toFixed(2)} R : U = ${U.toFixed(2)}, <b class="k">K = ${K.toFixed(2)}</b>, E = ${E.toFixed(2)}<br>이 위치에서의 속력 ≈ <b class="k">${v.toFixed(2)} km/s</b> (공전 방향 성분 무시)<br>` + (E < 0 ? `<b class="bad">E &lt; 0 : 속박</b> — r = ${rm.toFixed(2)} R 이상은 K &lt; 0 이어서 갈 수 없다` : `<b class="ok">E ≥ 0 : 탈출 가능</b>`); draw();
+  }
+  bindRange('wl-E', v => { E = v; refresh(); }); bindRange('wl-r', v => { r = v; refresh(); });
+  $$('#s5 .chip').forEach(c => c.onclick = () => { E = +c.dataset.e; $('#wl-E').value = E; refresh(); });
+  return { start() { refresh(); } };
+
+});
+
+/* ---- s6 ---- */
+REG["s6"] = safe("s6.init", function () {
+
+  const W = 1000, H = 830, ctx = setupCanvas($('#c-ob'), W, H), stars = makeStars(W, H, 150, 7), WW = 700, WH = 300, wctx = setupCanvas($('#c-ow'), WW, WH);
+  let v0 = 7.91, s, trail, running = true, status = 'flying', extent = 2.4, flash = 0, cls;
+  function reset() { const u = v0 / VU; cls = PHYS.classify(u); s = { x: 0, y: 1, vx: u, vy: 0, t: 0 }; trail = [[s.x, s.y]]; status = 'flying'; flash = 0; const ra = PHYS.apoapsis(u); extent = Number.isFinite(ra) ? Math.min(Math.max(1.25 * ra, 2.2), 6) : 3; running = true; info(); draw(); }
+  function stepSim() {
+    for (let i = 0; i < 4 && status === 'flying'; i++) {
+      PHYS.rk4Step(s, PHYS.adaptiveH(s)); const r = Math.hypot(s.x, s.y), vr = (s.x * s.vx + s.y * s.vy) / r;
+      if (r < 1 - 1e-4 && vr < 0) { status = 'crashed'; flash = 1; s.x /= r; s.y /= r; } else if (r > 30) status = 'escaped';
     }
-
-    // 장벽 두께 슬라이더
-    const barrierSlider = document.getElementById('barrier-width-slider');
-    const barrierVal = document.getElementById('barrier-width-val');
-    barrierSlider.addEventListener('input', (e) => {
-      barrierWidth = parseInt(e.target.value);
-      barrierVal.innerText = `${barrierWidth} nm`;
-    });
-
-    function setSpeedPreset(speed) {
-      v0 = parseFloat(speed.toFixed(2));
-      slider.value = v0;
-      speedVal.innerText = `${v0.toFixed(2)} km/s`;
-      speedBadge.innerText = `v₀ = ${v0.toFixed(2)} km/s`;
-      updateStateInfo();
-      resetSim();
+    const r = Math.hypot(s.x, s.y); if (r * 1.1 > extent) extent = Math.min(r * 1.1, 14); trail.push([s.x, s.y]); if (trail.length > 4000) trail.shift();
+  }
+  function drawWellMini() {
+    bg(wctx, WW, WH); const X = r => 60 + (r - 1) / 7 * (WW - 100), Y = e => 40 + (.6 - e) / 1.7 * (WH - 90), E = cls.E;
+    wctx.strokeStyle = C.grid; wctx.lineWidth = 2; wctx.beginPath(); wctx.moveTo(X(1) - 10, Y(0)); wctx.lineTo(X(8), Y(0)); wctx.stroke(); drawWell(wctx, X, Y, 8, 4);
+    wctx.strokeStyle = C.E; wctx.lineWidth = 3; wctx.setLineDash([8, 6]); wctx.beginPath(); wctx.moveTo(X(1), Y(E)); wctx.lineTo(X(8), Y(E)); wctx.stroke(); wctx.setLineDash([]);
+    const r = Math.min(Math.hypot(s.x, s.y), 8); wctx.fillStyle = '#fff2b0'; wctx.beginPath(); wctx.arc(X(r), Y(PHYS.U(r)), 9, 0, TAU); wctx.fill();
+    txt(wctx, `E = ${E.toFixed(2)}`, WW - 170, Y(E) - 10, C.E, 22, 700); txt(wctx, 'r →', WW - 60, Y(0) - 8, C.dim, 20);
+  }
+  function draw() {
+    bg(ctx, W, H); drawStars(ctx, stars); const sc = (Math.min(W, H) / 2 - 44) / extent, cx = W / 2, cy = H / 2, X = x => cx + x * sc, Y = y => cy - y * sc;
+    planetDisc(ctx, X(0), Y(0), Math.max(sc, 5));
+    const col = cls.key === 'escape' || cls.key === 'parabola' ? C.KE : cls.key === 'fall' ? C.bad : C.PE;
+    ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.globalAlpha = .9; ctx.beginPath(); trail.forEach(([x, y], i) => i ? ctx.lineTo(X(x), Y(y)) : ctx.moveTo(X(x), Y(y))); ctx.stroke(); ctx.globalAlpha = 1;
+    const r = Math.hypot(s.x, s.y), px = X(s.x), py = Y(s.y), v = Math.hypot(s.vx, s.vy);
+    if (status !== 'crashed' || flash > 0) {
+      if (v > 0) arrow(ctx, px, py, px + s.vx / v * Math.min(30 + 70 * v, 130), py - s.vy / v * Math.min(30 + 70 * v, 130), C.KE, 4);
+      const gl = Math.min(90, Math.max(22, 70 / (r * r))); arrow(ctx, px, py, px - s.x / r * gl, py + s.y / r * gl, C.PE, 4);
     }
+    ctx.fillStyle = '#fff2b0'; ctx.beginPath(); ctx.arc(px, py, 8, 0, TAU); ctx.fill();
+    if (flash > 0) { ctx.strokeStyle = `rgba(255,180,80,${flash})`; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(px, py, 20 + (1 - flash) * 50, 0, TAU); ctx.stroke(); }
+    txt(ctx, `r = ${r.toFixed(2)} R`, 24, 42, C.text, 26, 500); txt(ctx, `v = ${(v * VU).toFixed(2)} km/s`, 24, 76, C.text, 26, 500);
+    txt(ctx, '━ 속도 v', W - 190, 40, C.KE, 22); txt(ctx, '━ 중력', W - 190, 70, C.PE, 22); txt(ctx, 'R = 지구 반지름 (6371 km)', 24, H - 24, C.dim, 22);
+    if (status === 'crashed') txt(ctx, '지면에 떨어졌다', cx, H - 70, C.bad, 40, 800, 'center');
+    if (status === 'escaped') txt(ctx, '무한히 멀어지는 중…', cx, H - 70, C.KE, 40, 800, 'center');
+    drawWellMini();
+  }
+  function info() { $('#ob-info').innerHTML = `<b class="k">${cls.text}</b><br>E = ${cls.E.toFixed(2)} (GMm/R), 이심률 e ≈ ${cls.ecc === null ? '—' : cls.ecc.toFixed(2)}<br><span class="sm">E = −½ 원 · −½ &lt; E &lt; 0 타원 · E = 0 포물선 · E &gt; 0 쌍곡선</span>`; $('#ob-play').textContent = running ? '⏸ 일시정지' : '▶ 재생'; }
+  bindRange('ob-v', v => { v0 = v; $('#ob-vv').textContent = v.toFixed(2) + ' km/s'; $$('#s6 .chip').forEach(c => c.classList.toggle('on', Math.abs(+c.dataset.v - v) < .006)); reset(); });
+  $$('#s6 .chip').forEach(c => c.onclick = () => { v0 = +c.dataset.v; $('#ob-v').value = v0; $('#ob-vv').textContent = v0.toFixed(2) + ' km/s'; $$('#s6 .chip').forEach(x => x.classList.toggle('on', x === c)); reset(); });
+  $('#ob-play').onclick = () => { if (status !== 'flying') reset(); else running = !running; info(); }; $('#ob-reset').onclick = () => reset();
+  return { start() { reset(); }, stop() { running = false; }, frame(dt) { if (running && status === 'flying') stepSim(); if (flash > 0) flash -= dt * 1.5; draw(); } };
 
-    function updateStateInfo() {
-      const orbitTypeElem = document.getElementById('orbit-type');
-      const energySignElem = document.getElementById('energy-sign');
-      const motionStatusElem = document.getElementById('motion-status');
+});
 
-      // 에너지 E = 1/2 v^2 - GM/R
-      const E = 0.5 * (v0 * v0) - (GM / R_E);
+/* ---- s7 ---- */
+REG["s7"] = safe("s7.init", function () {
 
-      if (v0 < 6.8) {
-        orbitTypeElem.innerText = "탄도 낙하 (Sub-orbital)";
-        orbitTypeElem.className = "font-bold text-rose-400";
-        energySignElem.innerText = `E < 0 (${E.toFixed(1)} MJ/kg)`;
-        energySignElem.className = "font-mono font-bold text-blue-400";
-        motionStatusElem.innerText = "지표면 충돌 (재진입)";
-        motionStatusElem.className = "font-bold text-rose-400";
-      } else if (Math.abs(v0 - V_CIRC) < 0.15) {
-        orbitTypeElem.innerText = "완전 원궤도 (Circular)";
-        orbitTypeElem.className = "font-bold text-emerald-400";
-        energySignElem.innerText = `E = E_min (${E.toFixed(1)} MJ/kg)`;
-        energySignElem.className = "font-mono font-bold text-blue-400";
-        motionStatusElem.innerText = "영구 등속 원운동";
-        motionStatusElem.className = "font-bold text-emerald-400";
-      } else if (v0 < V_ESC - 0.05) {
-        orbitTypeElem.innerText = "타원 궤도 (Elliptical)";
-        orbitTypeElem.className = "font-bold text-purple-400";
-        energySignElem.innerText = `E < 0 (${E.toFixed(1)} MJ/kg)`;
-        energySignElem.className = "font-mono font-bold text-blue-400";
-        motionStatusElem.innerText = "영구 속박 궤도";
-        motionStatusElem.className = "font-bold text-purple-400";
-      } else if (Math.abs(v0 - V_ESC) <= 0.1) {
-        orbitTypeElem.innerText = "포물선 궤도 (Parabolic)";
-        orbitTypeElem.className = "font-bold text-amber-400";
-        energySignElem.innerText = `E ≈ 0.00 MJ/kg (임계 탈출)`;
-        energySignElem.className = "font-mono font-bold text-amber-400";
-        motionStatusElem.innerText = "무한대로 이탈 (속도 0 수렴)";
-        motionStatusElem.className = "font-bold text-amber-400";
-      } else {
-        orbitTypeElem.innerText = "쌍곡선 궤도 (Hyperbolic)";
-        orbitTypeElem.className = "font-bold text-rose-400";
-        energySignElem.innerText = `E > 0 (+${E.toFixed(1)} MJ/kg)`;
-        energySignElem.className = "font-mono font-bold text-rose-400";
-        motionStatusElem.innerText = "과잉 속도로 중력권 탈출";
-        motionStatusElem.className = "font-bold text-rose-400";
-      }
-    }
+  const W = 760, H = 830, ctx = setupCanvas($('#c-ve'), W, H); let step = 0;
+  const X = r => 100 + (r - 1) / 7 * (W - 140), Y = e => 80 + (.7 - e) / 1.9 * (H - 210);
+  function draw() {
+    bg(ctx, W, H); txt(ctx, '에너지 (GMm/R 단위)', 20, 40, C.dim, 24); txt(ctx, 'r →', W - 60, Y(0) + 34, C.dim, 24);
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X(1) - 30, Y(0)); ctx.lineTo(X(8), Y(0)); ctx.stroke();
+    txt(ctx, '0', 60, Y(0) + 8, C.dim, 22); txt(ctx, '−1', 54, Y(-1) + 8, C.dim, 22); drawWell(ctx, X, Y, 8);
+    txt(ctx, 'U(r) = −GMm/r', X(3.2), Y(-1 / 3.2) + 58, C.PE, 24, 700);
+    if (step >= 1) { ctx.strokeStyle = C.E; ctx.lineWidth = 3; ctx.setLineDash([10, 7]); ctx.beginPath(); ctx.moveTo(X(1), Y(0)); ctx.lineTo(X(8), Y(0)); ctx.stroke(); ctx.setLineDash([]); txt(ctx, step >= 3 ? 'E = 0' : 'E (보존)', X(5.8), Y(0) - 14, C.E, 26, 700); }
+    if (step >= 3) { arrow(ctx, X(1.1), Y(-1), X(1.1), Y(0) + 4, C.KE, 6, 16); txt(ctx, 'K = ½mv₀² = GMm/R', X(1.3), Y(-.5) + 8, C.KE, 26, 700); ctx.fillStyle = '#fff2b0'; ctx.beginPath(); ctx.arc(X(1), Y(-1), 11, 0, TAU); ctx.fill(); }
+    if (step >= 4) { txt(ctx, 'v₀ = vₑ = √(2GM/R) ≈ 11.19 km/s', 30, H - 70, C.ok, 28, 700); txt(ctx, `(= √2 × ${VU.toFixed(2)} km/s)`, 30, H - 34, C.dim, 22); }
+  }
+  return { start() { step = 0; draw(); }, onStep(k) { step = k; draw(); } };
 
-    function toggleSim() {
-      isRunning = !isRunning;
-      const playIcon = document.getElementById('play-icon');
-      if (isRunning) {
-        playIcon.innerText = "❚❚ 일시정지";
-        lastTime = performance.now();
-        simLoop(performance.now());
-      } else {
-        playIcon.innerText = "▶ 재생";
-        if (animFrameId) cancelAnimationFrame(animFrameId);
-      }
-    }
+});
 
-    function resetSim() {
-      sat.x = 0;
-      sat.y = -R_E;
-      sat.vx = v0;
-      sat.vy = 0;
-      sat.trail = [];
-      sat.crashed = false;
-      drawAll();
-    }
+/* ---- s8 ---- */
+REG["s8"] = safe("s8.init", function () {
 
-    // --- 캔버스 반응형 리사이즈 ---
-    function resizeCanvases() {
-      const containerOrbit = orbitCanvas.parentElement;
-      const containerEnergy = energyCanvas.parentElement;
-      if (containerOrbit) {
-        orbitCanvas.width = containerOrbit.clientWidth * window.devicePixelRatio;
-        orbitCanvas.height = containerOrbit.clientHeight * window.devicePixelRatio;
-      }
-      if (containerEnergy) {
-        energyCanvas.width = containerEnergy.clientWidth * window.devicePixelRatio;
-        energyCanvas.height = containerEnergy.clientHeight * window.devicePixelRatio;
-      }
-      resizeTunnelingCanvas();
-    }
+  const W = 1040, H = 830, ctx = setupCanvas($('#c-un'), W, H); let kind = 'h', ph = 0;
+  const INFO = {
+    h: ['U(r) = −k e<sup>2</sup> / r', '전자가 핵의 쿨롱 인력에 속박. 이온화 = 총 에너지 E ≥ 0 이 되는 순간 (탈출 속도와 같은 논리). 수소 바닥상태 E = −13.6 eV'],
+    lj: ['U(r) = 4ε [ (σ/r)<sup>12</sup> − (σ/r)<sup>6</sup> ]', '가까우면 반발(1/r¹²), 멀면 인력(−1/r⁶). 최소점 r = 2^(1/6)σ 에서 결합이 생긴다. 우물 깊이 ε = 결합 에너지'],
+    nu: ['U ≈ −V<sub>0</sub> (r &lt; R),&nbsp; kZe<sup>2</sup>/r (r &gt; R)', '핵력 우물 + 쿨롱 장벽. 고전적으로는 장벽을 못 넘지만 α 입자는 터널링으로 새어 나온다 (α 붕괴, 교과서 밖 심화)']
+  };
+  function curve(k) { // [x0,x1,fn(x)→U] 정규화(-1..+1) 개략도
+    if (k === 'h') return [.35, 8, r => -1 / r];
+    if (k === 'lj') return [.88, 3.2, r => PHYS.lj(r)];
+    return [.2, 6, r => r < 1 ? -1.3 : .9 / r];
+  }
+  function draw() {
+    bg(ctx, W, H); const [x0, x1, f] = curve(kind), X = x => 90 + (x - x0) / (x1 - x0) * (W - 160), ymin = kind === 'h' ? -2.2 : kind === 'lj' ? -1.4 : -1.7, ymax = kind === 'h' ? .6 : kind === 'lj' ? 1.2 : 1.2, Y = e => 60 + (ymax - e) / (ymax - ymin) * (H - 180);
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X(x0), Y(0)); ctx.lineTo(X(x1), Y(0)); ctx.stroke(); txt(ctx, 'U(r)', 24, 44, C.dim, 24); txt(ctx, 'r →', W - 80, Y(0) + 34, C.dim, 24);
+    ctx.strokeStyle = C.PE; ctx.lineWidth = 5; ctx.beginPath(); let first = true;
+    for (let i = 0; i <= 400; i++) { const x = x0 + (x1 - x0) * i / 400, y = f(x); if (y > ymax + .5) { first = true; continue; } first ? ctx.moveTo(X(x), Y(Math.min(y, ymax))) : ctx.lineTo(X(x), Y(Math.min(y, ymax))); first = false; } ctx.stroke();
+    const t = (Math.sin(ph) + 1) / 2;
+    if (kind === 'h') { const E = -.5, rt = 2, r = 1 + (rt - 1) * t; ctx.strokeStyle = C.E; ctx.setLineDash([10, 7]); ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(X(.5), Y(E)); ctx.lineTo(X(rt), Y(E)); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = '#fff2b0'; ctx.beginPath(); ctx.arc(X(r), Y(-1 / r), 11, 0, TAU); ctx.fill(); txt(ctx, 'E < 0 : 속박된 전자', X(2.6), Y(E) + 40, C.E, 26, 700); }
+    if (kind === 'lj') { const r0 = Math.pow(2, 1 / 6), E = -.6, rl = 1.02, rr = 1.55, r = rl + (rr - rl) * t; ctx.strokeStyle = C.E; ctx.setLineDash([10, 7]); ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(X(rl - .06), Y(E)); ctx.lineTo(X(rr + .3), Y(E)); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = '#fff2b0'; ctx.beginPath(); ctx.arc(X(r), Y(PHYS.lj(r)), 11, 0, TAU); ctx.fill(); ctx.strokeStyle = C.ok; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(X(r0), Y(-1) + 8); ctx.lineTo(X(r0), Y(-1) + 70); ctx.stroke(); txt(ctx, '결합 거리 r₀ = 2^(1/6)σ', X(r0) + 14, Y(-1) + 70, C.ok, 24, 700); txt(ctx, 'ε (우물 깊이)', X(2.2), Y(-1) + 8, C.dim, 24); }
+    if (kind === 'nu') { const E = .35, xr = .9 / E; ctx.strokeStyle = C.E; ctx.setLineDash([10, 7]); ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(X(.3), Y(E)); ctx.lineTo(X(xr + .5), Y(E)); ctx.stroke(); ctx.setLineDash([]); txt(ctx, 'α 입자 E (장벽 꼭대기보다 낮다)', X(.25), Y(E) - 14, C.E, 24, 700); const px = X(.55 + .25 * Math.sin(ph * 2)); ctx.fillStyle = '#fff2b0'; ctx.beginPath(); ctx.arc(px, Y(-1.3) - 16, 11, 0, TAU); ctx.fill(); arrow(ctx, X(1.1), Y(E) + 8, X(xr + .6), Y(E) + 8, C.ok, 5, 14); txt(ctx, '터널링으로 장벽을 통과', X(1.8), Y(E) + 52, C.ok, 24, 700); txt(ctx, '핵력 우물', X(.25), Y(-1.3) + 40, C.dim, 22); txt(ctx, '쿨롱 장벽', X(1.6), Y(.9 / 1.6) - 20, C.dim, 22); }
+  }
+  function refresh() { $('#un-eq').innerHTML = INFO[kind][0]; $('#un-info').textContent = INFO[kind][1]; $$('#s8 .chip').forEach(c => c.classList.toggle('on', c.dataset.k === kind)); draw(); }
+  $$('#s8 .chip').forEach(c => c.onclick = () => { kind = c.dataset.k; refresh(); });
+  return { start() { refresh(); }, frame(dt) { ph += dt * 1.6; draw(); } };
 
-    function resizeTunnelingCanvas() {
-      if (tunnelCanvas && tunnelCanvas.parentElement) {
-        tunnelCanvas.width = tunnelCanvas.parentElement.clientWidth * window.devicePixelRatio;
-        tunnelCanvas.height = tunnelCanvas.parentElement.clientHeight * window.devicePixelRatio;
-      }
-    }
+});
 
-    window.addEventListener('resize', () => {
-      resizeCanvases();
-      drawAll();
-    });
+/* ---- s9 ---- */
+REG["s9"] = safe("s9.init", function () {
 
-    // --- 수치 적분(Verlet 및 시간 배속 반영) 시뮬레이션 루프 ---
-    let lastTime = performance.now();
+  const W = 1040, H = 830, ctx = setupCanvas($('#c-tn'), W, H); let E = 3, L = .5, ph = 0; const V0 = 5;
+  function draw() {
+    bg(ctx, W, H); const { T, kap } = PHYS.tunnel(E, V0, L), x0 = 430, bw = 160 + L * 340, Yv = e => 560 - e * 80;
+    txt(ctx, '에너지 장벽 V(x) 와 파동', 24, 40, C.dim, 24);
+    ctx.fillStyle = 'rgba(160,110,255,.35)'; ctx.fillRect(x0, Yv(V0), bw, Yv(0) - Yv(V0)); ctx.strokeStyle = '#a06eff'; ctx.lineWidth = 3; ctx.strokeRect(x0, Yv(V0), bw, Yv(0) - Yv(V0)); txt(ctx, 'V₀ = 5 eV', x0 + 8, Yv(V0) - 12, '#c6a7ff', 24, 700);
+    ctx.strokeStyle = C.E; ctx.lineWidth = 3; ctx.setLineDash([10, 7]); ctx.beginPath(); ctx.moveTo(40, Yv(E)); ctx.lineTo(W - 40, Yv(E)); ctx.stroke(); ctx.setLineDash([]); txt(ctx, `E = ${E.toFixed(1)} eV`, 50, Yv(E) - 12, C.E, 24, 700);
+    const yc = Yv(E) - 0, amp = 70, kw = .06;
+    ctx.strokeStyle = C.ok; ctx.lineWidth = 4; ctx.beginPath();
+    for (let x = 40; x <= W - 40; x += 3) {
+      let a;
+      if (x < x0) a = amp * Math.cos(kw * x - ph); else if (x < x0 + bw) a = amp * Math.exp(-kap * (x - x0) / 340) * Math.cos(kw * x0 - ph) * 1; else a = amp * Math.sqrt(T) * Math.cos(kw * x - ph + .4);
+      x === 40 ? ctx.moveTo(x, yc - a) : ctx.lineTo(x, yc - a);
+    } ctx.stroke();
+    txt(ctx, '입사파', 100, yc + 120, C.dim, 22); txt(ctx, '장벽 안: 지수 감쇠', x0 - 10, Yv(0) + 40, C.dim, 22); txt(ctx, `투과파 (진폭 ∝ √T = ${Math.sqrt(T).toFixed(3)})`, x0 + bw + 20, yc + 120, C.dim, 22);
+    txt(ctx, '개략도: 진폭·파장은 실제 비율이 아님', 40, H - 30, C.dim, 22);
+  }
+  function refresh() { $('#tn-Ev').textContent = E.toFixed(1) + ' eV'; $('#tn-Lv').textContent = L.toFixed(2) + ' nm'; const { T, kap } = PHYS.tunnel(E, V0, L); $('#tn-info').innerHTML = `κ = ${kap.toFixed(2)} nm⁻¹, κL = ${(kap * L).toFixed(2)}<br>투과 확률 <b class="k">T = ${T < .01 ? T.toExponential(2) : (T * 100).toFixed(2) + ' %'}</b><br><span class="sm">고전역학: E &lt; V₀ 이면 T = 0. 장벽이 얇을수록, E 가 V₀ 에 가까울수록 T 가 커진다.</span>`; draw(); }
+  bindRange('tn-E', v => { E = v; refresh(); }); bindRange('tn-L', v => { L = v; refresh(); });
+  return { start() { refresh(); }, frame(dt) { ph += dt * 4; draw(); } };
 
-    function simLoop(now) {
-      if (!isRunning) return;
-      const deltaSec = Math.min((now - lastTime) / 1000, 0.05);
-      // 배속 적용: 기본 250에 사용자 배속 계수(1~25x) 반영
-      const dt = deltaSec * 80 * simSpeedMultiplier; 
-      lastTime = now;
+});
 
-      if (!sat.crashed) {
-        // 높은 배속에서도 궤도 안정성을 위해 서브스텝 비례 증가
-        const substeps = Math.max(6, Math.floor(simSpeedMultiplier * 1.5));
-        const subDt = dt / substeps;
-        for (let i = 0; i < substeps; i++) {
-          const r = Math.sqrt(sat.x * sat.x + sat.y * sat.y);
-          if (r <= R_E - 10) {
-            sat.crashed = true;
-            break;
-          }
-          // 중력 가속도 a = -GM / r^2
-          const a = -GM / (r * r);
-          const ax = a * (sat.x / r);
-          const ay = a * (sat.y / r);
+/* ---- s10 ---- */
+REG["s10"] = safe("s10.init", function () {
 
-          sat.vx += ax * subDt;
-          sat.vy += ay * subDt;
-          sat.x += sat.vx * subDt;
-          sat.y += sat.vy * subDt;
-        }
+  const W = 1040, H = 830, ctx = setupCanvas($('#c-np'), W, H); let f = .5;
+  const D = 3.844e8, GME = 3.986e14, GMM = GME / 81.3, xn = PHYS.neutral();
+  const gE = x => GME / (x * D) ** 2, gM = x => GMM / ((1 - x) * D) ** 2;
+  function draw() {
+    bg(ctx, W, H); const X = x => 80 + x * (W - 220), cy = 230;
+    planetDisc(ctx, X(0) - 10, cy, 44); ctx.fillStyle = '#c9c9d4'; ctx.beginPath(); ctx.arc(X(1) + 40, cy, 18, 0, TAU); ctx.fill(); txt(ctx, '지구', X(0) - 30, cy + 80, C.dim, 22); txt(ctx, '달', X(1) + 28, cy + 50, C.dim, 22);
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X(0) + 40, cy); ctx.lineTo(X(1), cy); ctx.stroke();
+    ctx.strokeStyle = C.ok; ctx.lineWidth = 3; ctx.setLineDash([6, 6]); ctx.beginPath(); ctx.moveTo(X(xn), cy - 70); ctx.lineTo(X(xn), cy + 70); ctx.stroke(); ctx.setLineDash([]); txt(ctx, '중성점 0.90 D', X(xn), cy - 84, C.ok, 22, 700, 'center');
+    const a = gE(f), b = gM(f), net = b - a, sc = 5000;     // 화살표 배율: 1 m/s² = 5000 px (선형)
+    ctx.fillStyle = '#fff2b0'; ctx.beginPath(); ctx.arc(X(f), cy, 10, 0, TAU); ctx.fill();
+    const la = Math.min(a * sc, 150), lb = Math.min(b * sc, 150); arrow(ctx, X(f), cy - 26, X(f) - la, cy - 26, C.PE, 5, 14); arrow(ctx, X(f), cy + 26, X(f) + lb, cy + 26, C.KE, 5, 14);
+    txt(ctx, 'g_지구', X(f) - la - 8, cy - 40, C.PE, 22, 500, 'right'); txt(ctx, 'g_달', X(f) + lb + 8, cy + 56, C.KE, 22, 500);
+    txt(ctx, '화살표는 선형(150 px에서 잘림)', 20, 40, C.dim, 22);
+    const gx0 = 80, gx1 = W - 140, gy = 640, ys = 7000, GX = x => gx0 + (x - .05) / .93 * (gx1 - gx0);
+    txt(ctx, '우주선이 받는 알짜 가속도 (+: 달 쪽, ±0.03 m/s² 범위)', 20, gy - 130, C.dim, 22);
+    ctx.strokeStyle = C.grid; ctx.beginPath(); ctx.moveTo(gx0, gy); ctx.lineTo(gx1, gy); ctx.stroke();
+    ctx.strokeStyle = C.text; ctx.lineWidth = 4; ctx.beginPath(); let st = true;
+    for (let x = .05; x <= .98; x += .005) { const n = gM(x) - gE(x), y = Math.max(-.03, Math.min(.03, n)) * -3000; st ? ctx.moveTo(GX(x), gy + y) : ctx.lineTo(GX(x), gy + y); st = false; } ctx.stroke();
+    ctx.fillStyle = C.ok; ctx.beginPath(); ctx.arc(GX(xn), gy, 9, 0, TAU); ctx.fill(); ctx.fillStyle = '#fff2b0'; ctx.beginPath(); ctx.arc(GX(f), gy - Math.max(-.03, Math.min(.03, net)) * 3000, 9, 0, TAU); ctx.fill();
+    txt(ctx, '지구 중력이 우세', gx0, gy + 70, C.PE, 22); txt(ctx, '달 중력이 우세', gx1 - 190, gy - 70, C.KE, 22);
+  }
+  function refresh() { $('#np-xv').textContent = f.toFixed(2) + ' D'; const a = gE(f), b = gM(f); $('#np-info').innerHTML = `지구 중심에서 ${(f * D / 1e3).toFixed(0)} km<br>g<sub>지구</sub> = ${a.toExponential(2)}, g<sub>달</sub> = ${b.toExponential(2)} m/s²<br>알짜 = <b class="k">${(b - a).toExponential(2)} m/s²</b> ${Math.abs(f - xn) < .012 ? '<b class="ok">← 중성점 부근</b>' : ''}`; draw(); }
+  bindRange('np-x', v => { f = v; refresh(); });
+  return { start() { refresh(); } };
 
-        // 궤적 기록 (최대 500점)
-        sat.trail.push({ x: sat.x, y: sat.y });
-        if (sat.trail.length > 500) sat.trail.shift();
-      }
+});
 
-      wavePhase += 0.08 * (simSpeedMultiplier / 5);
+/* ---- s11 ---- */
+REG["s11"] = safe("s11.init", function () {
 
-      drawAll();
-      drawQuantumTunneling();
-      animFrameId = requestAnimationFrame(simLoop);
-    }
+  const W = 1040, H = 830, ctx = setupCanvas($('#c-cn'), W, H); let lg = 2.44; const v = 11200;
+  const lo = 0, hi = 6, X = a => 80 + (Math.log10(a) - lo) / (hi - lo) * (W - 140);
+  function draw() {
+    const L = Math.pow(10, lg), a = PHYS.cannonA(v, L) / G0; bg(ctx, W, H);
+    txt(ctx, `포신 안에서의 가속도 (g 단위, 로그 눈금)  —  v = 11.2 km/s`, 24, 42, C.dim, 24);
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X(1), 300); ctx.lineTo(X(1e6), 300); ctx.stroke();
+    for (let e = 0; e <= 6; e++) { const x = X(Math.pow(10, e)); ctx.beginPath(); ctx.moveTo(x, 292); ctx.lineTo(x, 308); ctx.stroke(); txt(ctx, e === 0 ? '1' : '10' + '⁰¹²³⁴⁵⁶'[e], x, 340, C.dim, 22, 400, 'center'); }
+    [[9, '전투기 조종사 한계 ≈ 9 g', C.ok], [5, '(5 g)', C.ok]].forEach(([g, name, col], i) => { ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(X(g), 210); ctx.lineTo(X(g), 300); ctx.stroke(); if (i === 0) txt(ctx, name, X(g) - 10, 196, col, 22, 700); });
+    const col = a <= 9 ? C.ok : C.bad; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(X(Math.max(a, 1)), 300, 16, 0, TAU); ctx.fill();
+    txt(ctx, `${a < 100 ? a.toFixed(1) : Math.round(a).toLocaleString()} g`, X(Math.max(a, 1)), 270, col, 34, 800, 'center');
+    txt(ctx, a > 9 ? '사람이 견딜 수 없다' : '가속도는 견딜 만하지만 포신이 너무 길다', W / 2, 440, col, 30, 700, 'center');
+    txt(ctx, `포신 길이 L = ${L < 1e4 ? L.toFixed(0) + ' m' : (L / 1e3).toFixed(0) + ' km'}`, W / 2, 500, C.text, 30, 700, 'center');
+    ctx.strokeStyle = C.text; ctx.lineWidth = 12; const bl = 80 + (lg - 2) / 4.3 * (W - 200); ctx.beginPath(); ctx.moveTo(80, 600); ctx.lineTo(bl, 600); ctx.stroke(); txt(ctx, '포신 (길이 비율, 로그)', 80, 650, C.dim, 22);
+  }
+  function refresh() { const L = Math.pow(10, lg), a = PHYS.cannonA(v, L) / G0; $('#cn-Lv').textContent = L < 1e4 ? L.toFixed(0) + ' m' : (L / 1e3).toFixed(0) + ' km'; $('#cn-info').innerHTML = `a = (11,200)² / (2 × ${L < 1e4 ? L.toFixed(0) : L.toExponential(2)}) = <b class="k">${a < 100 ? a.toFixed(1) : Math.round(a).toLocaleString()} g</b><br>발사 시간 약 ${(2 * L / v).toFixed(L < 1e4 ? 3 : 0)} 초`; draw(); }
+  bindRange('cn-L', x => { lg = x; refresh(); });
+  $$('#s11 .chip').forEach(c => c.onclick = () => { lg = Math.log10(+c.dataset.L); $('#cn-L').value = lg; refresh(); });
+  return { start() { refresh(); } };
 
-    // --- 양자 터널링 장벽 및 파동함수 렌더러 ---
-    function drawQuantumTunneling() {
-      if (!tunnelCanvas) return;
-      const w = tunnelCanvas.width;
-      const h = tunnelCanvas.height;
-      tunnelCtx.clearRect(0, 0, w, h);
+});
 
-      const dpr = window.devicePixelRatio || 1;
-      const barrierPxWidth = barrierWidth * 2.2 * dpr;
-      const barrierLeft = (w - barrierPxWidth) / 2;
-      const barrierRight = barrierLeft + barrierPxWidth;
+/* ---- s12 ---- */
+REG["s12"] = safe("s12.init", function () {
 
-      const groundY = h - 35 * dpr;
-      const barrierHeight = 160 * dpr;
-      const barrierTopY = groundY - barrierHeight;
-      const energyLevelY = groundY - 105 * dpr; // E < V0
+  $$('#s12 [data-q]').forEach(b => b.onclick = () => {
+    const ok = b.dataset.q === 'b';
+    $('#q12-fb').innerHTML = ok ? '<span class="ok">정답: ②</span><br>E = 0 이면 포물선(임계 탈출). 무한히 멀어질수록 속력이 0 으로 수렴한다.' : '<span class="bad">다시 생각해 보자.</span><br>E &lt; 0 이면 타원·원(속박), E &gt; 0 이면 쌍곡선(속력이 남음). E = 0 은 경계다.';
+  });
+  return {};
 
-      // 포텐셜 장벽 배경 박스
-      tunnelCtx.fillStyle = "rgba(147, 51, 234, 0.2)";
-      tunnelCtx.fillRect(barrierLeft, barrierTopY, barrierPxWidth, barrierHeight);
-      tunnelCtx.strokeStyle = "#a855f7";
-      tunnelCtx.lineWidth = 2 * dpr;
-      tunnelCtx.strokeRect(barrierLeft, barrierTopY, barrierPxWidth, barrierHeight);
+});
 
-      // 장벽 높이 라벨 V_0
-      tunnelCtx.fillStyle = "#c084fc";
-      tunnelCtx.font = `bold ${10 * dpr}px monospace`;
-      tunnelCtx.fillText("포텐셜 장벽 V₀", barrierLeft + 8 * dpr, barrierTopY + 18 * dpr);
+/* =====================================================================
+   슬라이드 관리자
+   ===================================================================== */
+const slides = $$('.slide'), deck = $('#deck'); let cur = -1, step = 0, activeFrame = null, activeId = '', hudTimer = 0;
+const NOTES = DECK.notes, ASK = DECK.ask, CIRC = ['①', '②', '③', '④', '⑤'];
+function renderNotes(i) {
+  const n = NOTES[slides[i].id]; if (!n) { $('#notes').innerHTML = ''; return; }
+  $('#notes').innerHTML = `<div class="nh">📝 오개념 교정 노트 · 슬라이드 ${i + 1} / ${slides.length}<span style="float:right">발문을 화면에 띄우기: Q 키</span></div>` + (n.q ? `<div class="nq">💬 발문: ${n.q}</div>` : '') +
+    (n.m || []).map(([a, b]) => `<div class="ni"><span class="nx">❌ 오개념</span> ${a}<br><span class="nv">✅ 교정</span> ${b}</div>`).join('');
+}
+function renderAsk(i) {
+  const q = ASK[slides[i].id] || [];
+  $('#ask').innerHTML = `<div class="ak"><div class="ah">💬 생각해 보기 · ${i + 1} / ${slides.length}</div>` + (q.length ? q.map((t, k) => `<div class="aq">${q.length > 1 ? `<span>${CIRC[k] || (k + 1) + '.'}</span>` : ''}${t}</div>`).join('') : '<div class="aq" style="color:var(--muted)">이 슬라이드에는 발문이 없습니다.</div>') + '<div class="af">Q 키 · Esc · 화면 클릭으로 닫기</div></div>';
+}
+function toggleAsk(force) { const on = $('#ask').classList.toggle('on', force); $('#b-ask').classList.toggle('on', on); }
+const maxStep = i => +(slides[i].dataset.steps || 0);
+function fit() { const vp = $('#viewport'), s = Math.min(vp.clientWidth / 1920, vp.clientHeight / 1080); deck.style.transform = `translate(-50%,-50%) scale(${s})`; }
+function fitSteps() { // 단계 목록이 영역을 넘으면 자동 축소 (실제 렌더링 높이 기준)
+  if (cur < 0) return; const side = $('.side.steps', slides[cur]); if (!side) return;
+  side.style.transform = ''; side.style.width = '';
+  if (side.clientHeight > 0 && side.scrollHeight > side.clientHeight + 1) { const k = side.clientHeight / side.scrollHeight; side.style.transformOrigin = 'top left'; side.style.transform = `scale(${k})`; side.style.width = (100 / k) + '%'; }
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitSteps);
+function applyStep() {
+  $$('.st', slides[cur]).forEach(el => { el.classList.toggle('on', +el.dataset.i <= step); el.classList.toggle('cur', +el.dataset.i === step); });
+  const id = slides[cur].id, r = REG[id]; r && r.onStep && safe(id + '.onStep', () => r.onStep(step));
+}
+function show(i, st = 0) {
+  i = Math.max(0, Math.min(slides.length - 1, i));
+  if (cur >= 0) { const oid = slides[cur].id, o = REG[oid]; o && o.stop && safe(oid + '.stop', () => o.stop()); slides[cur].classList.remove('active'); }
+  cur = i; step = Math.min(st, maxStep(i)); slides[i].classList.add('active');
+  const id = slides[i].id, r = REG[id]; activeFrame = r && r.frame ? (dt => r.frame(dt)) : null; activeId = id;
+  fitSteps(); r && r.start && safe(id + '.start', () => r.start());
+  $('#h-pg').textContent = `${i + 1} / ${slides.length}`; renderNotes(i); renderAsk(i); toggleAsk(false); applyStep();
+}
+const next = () => { if (step < maxStep(cur)) { step++; applyStep(); } else if (cur < slides.length - 1) show(cur + 1); };
+const prev = () => { if (step > 0) { step--; applyStep(); } else if (cur > 0) show(cur - 1, maxStep(cur - 1)); };
+function isDark() { const r = document.documentElement; return r.dataset.theme === 'dark' || (!r.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches); }
+function themeBtn() { $('#b-theme').textContent = isDark() ? '☀ 라이트 전환' : '🌙 다크 전환'; }
+function toggleTheme() { document.documentElement.dataset.theme = isDark() ? 'light' : 'dark'; themeBtn(); }
+function toggleNotes() { const on = $('#notes').classList.toggle('on'); $('#b-notes').classList.toggle('on', on); }
+function toggleHelp(force) { const on = $('#help').classList.toggle('on', force); $('#b-help').classList.toggle('on', on); }
+function fullscreen() { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) { } }
+function poke() { $('#hud').classList.add('show'); clearTimeout(hudTimer); hudTimer = setTimeout(() => $('#hud').classList.remove('show'), 2600); }
+document.addEventListener('keydown', e => {
+  const t = e.target; if (t && t.tagName === 'INPUT' && t.type === 'range' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); next(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+  else if (e.key === 'Home') show(0); else if (e.key === 'End') show(slides.length - 1);
+  else if (e.key === 'f' || e.key === 'F') fullscreen(); else if (e.key === 'n' || e.key === 'N') toggleNotes(); else if (e.key === 't' || e.key === 'T') toggleTheme(); else if (e.key === 'q' || e.key === 'Q') toggleAsk(); else if (e.key === '?' || e.key === 'h' || e.key === 'H') toggleHelp(); else if (e.key === 'Escape') { toggleHelp(false); toggleAsk(false); if ($('#notes').classList.contains('on')) toggleNotes(); }
+});
+$('#h-prev').onclick = prev; $('#h-next').onclick = next; $('#h-fs').onclick = fullscreen; $('#b-help').onclick = () => toggleHelp(); $('#b-ask').onclick = () => toggleAsk(); $('#ask').onclick = () => toggleAsk(false); $('#help-x').onclick = () => toggleHelp(false); $('#help').onclick = e => { if (e.target.id === 'help') toggleHelp(false); }; $('#b-notes').onclick = toggleNotes; $('#b-theme').onclick = toggleTheme;
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
+['mousemove', 'touchstart', 'pointerdown'].forEach(ev => document.addEventListener(ev, poke, { passive: true }));
+window.addEventListener('resize', () => { fit(); fitSteps(); }); fit();
+let lastT = performance.now();
+(function loop(now) {
+  const dt = Math.min(.05, (now - lastT) / 1000); lastT = now;
+  if (activeFrame) { try { activeFrame(dt); } catch (e) { reportError(activeId + '.frame', e); activeFrame = null; } }
+  requestAnimationFrame(loop);
+})(lastT);
 
-      // 에너지 E 수평선
-      tunnelCtx.strokeStyle = "#fbbf24";
-      tunnelCtx.lineWidth = 2 * dpr;
-      tunnelCtx.beginPath();
-      tunnelCtx.moveTo(20 * dpr, energyLevelY);
-      tunnelCtx.lineTo(w - 20 * dpr, energyLevelY);
-      tunnelCtx.stroke();
+/* 물리 검증: shared_js에 TESTS() → [[이름, 통과여부, 설명], ...] 가 있으면 콘솔에 출력 */
+(function runSelfTests() {
+  if (typeof TESTS !== 'function') { console.log('물리 검증 항목 없음'); return; }
+  let results = [];
+  try { results = TESTS() || []; } catch (e) { reportError('TESTS', e); return; }
+  console.log('=== ' + DECK.title + ' 물리 검증 ==='); let pass = 0;
+  for (const [name, ok, detail] of results) { console.log(`[${ok ? 'PASS' : 'FAIL'}] ${name}${detail ? ' — ' + detail : ''}`); if (ok) pass++; }
+  console.log(pass === results.length ? '모든 검증 통과' : '일부 검증 실패 — 콘솔 확인 필요');
+  window.__wsSelfTest = { pass, total: results.length };
+})();
 
-      tunnelCtx.fillStyle = "#fbbf24";
-      tunnelCtx.font = `bold ${10 * dpr}px monospace`;
-      tunnelCtx.fillText("입자 에너지 E (E < V₀)", 25 * dpr, energyLevelY - 6 * dpr);
-
-      // 파동함수 계산 및 렌더링
-      const k1 = 0.05 / dpr; // 장벽 외부 파수
-      const kappa = 0.035 / dpr; // 장벽 내부 감쇠 계수
-      const decayFactor = Math.exp(-kappa * barrierPxWidth);
-      const amp1 = 30 * dpr; // 입사 진폭
-      const amp3 = amp1 * decayFactor; // 투과 진폭
-
-      // 투과 확률 업데이트
-      const probPercent = (decayFactor * decayFactor * 100).toFixed(1);
-      const probElem = document.getElementById('tunnel-prob-val');
-      if (probElem) probElem.innerText = `${probPercent}%`;
-
-      tunnelCtx.beginPath();
-      tunnelCtx.strokeStyle = "#38bdf8";
-      tunnelCtx.lineWidth = 2.5 * dpr;
-
-      let first = true;
-      for (let x = 20 * dpr; x <= w - 20 * dpr; x += 1.5 * dpr) {
-        let yWave = 0;
-        if (x < barrierLeft) {
-          // 영역 I: 입사파 + 반사파 합성
-          yWave = amp1 * Math.sin(k1 * x - wavePhase);
-        } else if (x <= barrierRight) {
-          // 영역 II: 장벽 내부 지수 감쇠
-          const dx = x - barrierLeft;
-          const decay = Math.exp(-kappa * dx);
-          yWave = amp1 * decay * Math.sin(k1 * barrierLeft - wavePhase);
-        } else {
-          // 영역 III: 장벽 통과 후 투과파
-          const dxFromRight = x - barrierRight;
-          yWave = amp3 * Math.sin(k1 * dxFromRight + (k1 * barrierLeft - wavePhase));
-        }
-
-        const yPlot = energyLevelY + yWave;
-        if (first) {
-          tunnelCtx.moveTo(x, yPlot);
-          first = false;
-        } else {
-          tunnelCtx.lineTo(x, yPlot);
-        }
-      }
-      tunnelCtx.stroke();
-
-      // 바닥 기준선
-      tunnelCtx.strokeStyle = "rgba(75, 85, 99, 0.4)";
-      tunnelCtx.lineWidth = 1 * dpr;
-      tunnelCtx.beginPath();
-      tunnelCtx.moveTo(20 * dpr, groundY);
-      tunnelCtx.lineTo(w - 20 * dpr, groundY);
-      tunnelCtx.stroke();
-    }
-
-    // --- 전체 렌더링 함수 ---
-    function drawAll() {
-      drawOrbit();
-      drawEnergyGraph();
-    }
-
-    function drawOrbit() {
-      const w = orbitCanvas.width;
-      const h = orbitCanvas.height;
-      orbitCtx.clearRect(0, 0, w, h);
-
-      const dpr = window.devicePixelRatio || 1;
-      const cx = w / 2;
-      const cy = h / 2;
-      // 스케일: 화면에 약 40,000 km 반경까지 보이도록
-      const viewRadius = 38000;
-      const scale = Math.min(w, h) / (2 * viewRadius);
-
-      orbitCtx.save();
-      orbitCtx.translate(cx, cy);
-
-      // 격자 원 가이드선
-      orbitCtx.strokeStyle = "rgba(75, 85, 99, 0.2)";
-      orbitCtx.lineWidth = 1 * dpr;
-      [R_E, 15000, 25000, 35786].forEach(radius => {
-        orbitCtx.beginPath();
-        orbitCtx.arc(0, 0, radius * scale, 0, 2 * Math.PI);
-        orbitCtx.stroke();
-      });
-
-      // 정지궤도 라벨
-      orbitCtx.fillStyle = "rgba(156, 163, 175, 0.4)";
-      orbitCtx.font = `${9 * dpr}px monospace`;
-      orbitCtx.fillText("정지궤도 (35,786 km)", 10 * dpr, -35786 * scale);
-
-      // 중심 지구 그리기
-      const earthRadiusPx = Math.max(R_E * scale, 6 * dpr);
-      const earthGrad = orbitCtx.createRadialGradient(0, 0, earthRadiusPx * 0.2, 0, 0, earthRadiusPx);
-      earthGrad.addColorStop(0, "#60a5fa");
-      earthGrad.addColorStop(0.8, "#2563eb");
-      earthGrad.addColorStop(1, "#1e3a8a");
-
-      orbitCtx.beginPath();
-      orbitCtx.arc(0, 0, earthRadiusPx, 0, 2 * Math.PI);
-      orbitCtx.fillStyle = earthGrad;
-      orbitCtx.fill();
-      orbitCtx.strokeStyle = "#93c5fd";
-      orbitCtx.lineWidth = 1.5 * dpr;
-      orbitCtx.stroke();
-
-      // 위성 궤적
-      if (sat.trail.length > 1) {
-        orbitCtx.beginPath();
-        orbitCtx.moveTo(sat.trail[0].x * scale, sat.trail[0].y * scale);
-        for (let i = 1; i < sat.trail.length; i++) {
-          orbitCtx.lineTo(sat.trail[i].x * scale, sat.trail[i].y * scale);
-        }
-        orbitCtx.strokeStyle = "rgba(129, 140, 248, 0.8)";
-        orbitCtx.lineWidth = 2 * dpr;
-        orbitCtx.stroke();
-      }
-
-      // 위성 현재 위치
-      const satPxX = sat.x * scale;
-      const satPxY = sat.y * scale;
-
-      orbitCtx.beginPath();
-      orbitCtx.arc(satPxX, satPxY, 4 * dpr, 0, 2 * Math.PI);
-      orbitCtx.fillStyle = sat.crashed ? "#f43f5e" : "#38bdf8";
-      orbitCtx.fill();
-      orbitCtx.strokeStyle = "#ffffff";
-      orbitCtx.lineWidth = 1 * dpr;
-      orbitCtx.stroke();
-
-      if (sat.crashed) {
-        orbitCtx.fillStyle = "#f43f5e";
-        orbitCtx.font = `${10 * dpr}px sans-serif`;
-        orbitCtx.fillText("💥 추락", satPxX + 6 * dpr, satPxY - 6 * dpr);
-      }
-
-      orbitCtx.restore();
-    }
-
-    function drawEnergyGraph() {
-      const w = energyCanvas.width;
-      const h = energyCanvas.height;
-      energyCtx.clearRect(0, 0, w, h);
-
-      const dpr = window.devicePixelRatio || 1;
-      const padLeft = 45 * dpr;
-      const padRight = 20 * dpr;
-      const padTop = 30 * dpr;
-      const padBottom = 30 * dpr;
-
-      const graphW = w - padLeft - padRight;
-      const graphH = h - padTop - padBottom;
-
-      // 물리적 좌표축 범위
-      const rMin = R_E;
-      const rMax = 45000;
-      const eMin = -70; // MJ/kg
-      const eMax = 25;  // MJ/kg
-
-      function toScreenX(r) {
-        return padLeft + ((r - rMin) / (rMax - rMin)) * graphW;
-      }
-      function toScreenY(e) {
-        return padTop + ((eMax - e) / (eMax - eMin)) * graphH;
-      }
-
-      // 0 준위 기준선 (U=0 탈출선)
-      const yZero = toScreenY(0);
-      energyCtx.strokeStyle = "rgba(156, 163, 175, 0.4)";
-      energyCtx.setLineDash([4 * dpr, 3 * dpr]);
-      energyCtx.beginPath();
-      energyCtx.moveTo(padLeft, yZero);
-      energyCtx.lineTo(w - padRight, yZero);
-      energyCtx.stroke();
-      energyCtx.setLineDash([]);
-
-      // 축 레이블
-      energyCtx.fillStyle = "rgba(156, 163, 175, 0.8)";
-      energyCtx.font = `${9 * dpr}px monospace`;
-      energyCtx.fillText("E = 0 (기준선)", w - padRight - 65 * dpr, yZero - 5 * dpr);
-      energyCtx.fillText("U(r) [MJ/kg]", 5 * dpr, padTop - 10 * dpr);
-      energyCtx.fillText("거리 r (km)", w - padRight - 50 * dpr, h - 8 * dpr);
-
-      // U(r) 포텐셜 곡선 그리기
-      energyCtx.beginPath();
-      let first = true;
-      for (let r = rMin; r <= rMax; r += 500) {
-        const u = -GM / r;
-        const sx = toScreenX(r);
-        const sy = toScreenY(u);
-        if (first) {
-          energyCtx.moveTo(sx, sy);
-          first = false;
-        } else {
-          energyCtx.lineTo(sx, sy);
-        }
-      }
-      energyCtx.strokeStyle = "#f43f5e";
-      energyCtx.lineWidth = 2.5 * dpr;
-      energyCtx.stroke();
-
-      // 현재 총 에너지 E 수평선
-      const currentE = 0.5 * (v0 * v0) - (GM / R_E);
-      const yCurE = toScreenY(currentE);
-
-      energyCtx.strokeStyle = currentE >= 0 ? "#fbbf24" : "#34d399";
-      energyCtx.lineWidth = 2 * dpr;
-      energyCtx.beginPath();
-      energyCtx.moveTo(padLeft, yCurE);
-      energyCtx.lineTo(w - padRight, yCurE);
-      energyCtx.stroke();
-
-      // 현재 에너지 텍스트
-      energyCtx.fillStyle = currentE >= 0 ? "#fbbf24" : "#34d399";
-      energyCtx.font = `bold ${10 * dpr}px monospace`;
-      energyCtx.fillText(`총 에너지 E = ${currentE.toFixed(1)}`, padLeft + 10 * dpr, yCurE - 6 * dpr);
-
-      // 현재 위성의 실시간 위치 r 표시
-      const currR = Math.sqrt(sat.x * sat.x + sat.y * sat.y);
-      if (currR >= rMin && currR <= rMax) {
-        const sx = toScreenX(currR);
-        const currU = -GM / currR;
-        const sy = toScreenY(currU);
-
-        // 점선 수직 바
-        energyCtx.strokeStyle = "rgba(56, 189, 248, 0.4)";
-        energyCtx.lineWidth = 1 * dpr;
-        energyCtx.beginPath();
-        energyCtx.moveTo(sx, yCurE);
-        energyCtx.lineTo(sx, sy);
-        energyCtx.stroke();
-
-        // 에너지 곡선 위의 위성 점
-        energyCtx.beginPath();
-        energyCtx.arc(sx, sy, 4 * dpr, 0, 2 * Math.PI);
-        energyCtx.fillStyle = "#38bdf8";
-        energyCtx.fill();
-        energyCtx.strokeStyle = "#ffffff";
-        energyCtx.stroke();
-      }
-    }
-
-    // --- 퀴즈 체크 함수 ---
-    function checkQuizAnswer(isCorrect) {
-      const res = document.getElementById('quiz-result');
-      res.classList.remove('hidden');
-      if (isCorrect) {
-        res.className = "p-3 rounded-lg text-xs font-medium bg-emerald-950/70 border border-emerald-700 text-emerald-300";
-        res.innerHTML = "🎉 <strong>정답입니다!</strong> 총 역학적 에너지가 $E = 0$일 때 궤도는 정확히 <strong>포물선(Parabola)</strong>이 되며, 무한대 거리($r \\to \\infty$)에서 운동 에너지가 정확히 0이 되어 속력이 0에 수렴합니다. 이때의 속도가 바로 탈출속도입니다.";
-      } else {
-        res.className = "p-3 rounded-lg text-xs font-medium bg-rose-950/70 border border-rose-700 text-rose-300";
-        res.innerHTML = "❌ <strong>다시 생각해 보세요!</strong> $E < 0$이면 타원/원, $E = 0$이면 포물선, $E > 0$이면 쌍곡선 궤도를 그립니다.";
-      }
-      if (window.renderMathInElement) {
-        renderMathInElement(res, { delimiters: [{left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false}] });
-      }
-    }
-
-    // --- 페이지 초기화 로드 ---
-    window.addEventListener('load', () => {
-      // KaTeX 자동 수식 렌더링
-      if (window.renderMathInElement) {
-        renderMathInElement(document.body, {
-          delimiters: [
-            {left: "$$", right: "$$", display: true},
-            {left: "$", right: "$", display: false}
-          ],
-          throwOnError: false
-        });
-      }
-      resizeCanvases();
-      updateStateInfo();
-      resetSim();
-      simLoop(performance.now());
-    });
-  </script>
+window.__deck = { show, next, get cur() { return cur; }, get step() { return step; }, count: slides.length, maxStep };
+let startAt = 0; try { const h = parseInt(location.hash.slice(1), 10); if (h >= 1 && h <= slides.length) startAt = h - 1; } catch (e) { }
+themeBtn(); show(startAt); poke();
+</script>
 </body>
 </html>

@@ -2,493 +2,899 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>CCD 이미지 센서 작동원리 시뮬레이션</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/iconfont/tabler-icons.min.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CCD 이미지 센서</title>
 <style>
   :root {
-    --color-background-primary: #ffffff;
-    --color-background-secondary: #f1efe8;
-    --color-background-tertiary: #e8e6dd;
-    --color-background-info: #e6f1fb;
-    --color-text-primary: #1a1a1a;
-    --color-text-secondary: #5f5e5a;
-    --color-text-info: #0c447c;
-    --color-border-tertiary: rgba(60,60,55,0.15);
-    --color-border-secondary: rgba(60,60,55,0.3);
-    --color-border-info: #378add;
-    --border-radius-md: 8px;
-    --border-radius-lg: 12px;
-    --b: var(--color-border-tertiary);
+    --bg: #f4f6fa; --panel: #ffffff; --ink: #1c2733; --sub: #5a6b7d;
+    --accent: #1f6fd6; --accent2: #d64545; --ok: #1e8f4e;
+    --border: #d7dee8; --radius: 10px;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --color-background-primary: #1e1e1c;
-      --color-background-secondary: #2c2c2a;
-      --color-background-tertiary: #232321;
-      --color-background-info: #0c447c;
-      --color-text-primary: #f1efe8;
-      --color-text-secondary: #b4b2a9;
-      --color-text-info: #b5d4f4;
-      --color-border-tertiary: rgba(220,220,210,0.15);
-      --color-border-secondary: rgba(220,220,210,0.3);
-    }
-  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
   body {
-    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
-    background: var(--color-background-primary);
-    color: var(--color-text-primary);
-    max-width: 760px;
-    margin: 0 auto;
-    padding: 24px 16px 60px;
+    font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+    background: var(--bg); color: var(--ink);
+    padding: 12px; font-size: 15px;
   }
-  .t { fill: var(--color-text-primary); font-size: 14px; }
-  .ts { fill: var(--color-text-secondary); font-size: 12px; }
-  .th { fill: var(--color-text-primary); font-size: 14px; font-weight: 500; }
-  .c-amber { fill: #FAEEDA; stroke: #854F0B; }
-  .c-amber .t, .c-amber .th { fill: #633806; }
-  @media (prefers-color-scheme: dark) {
-    .c-amber { fill: #633806; stroke: #FAC775; }
-    .c-amber .t, .c-amber .th { fill: #FAEEDA; }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  header h1 { font-size: 1.25em; }
+  header .spacer { flex: 1; }
+  a.home { text-decoration:none; color:var(--sub); border:1px solid var(--border); padding:6px 12px; border-radius:8px; font-size:0.9em; white-space:nowrap; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .tabs button { flex: 0 0 auto; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 1em; }
+  .tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .layout { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .sim-col { flex: 2 1 480px; display: flex; flex-direction: column; gap: 12px; }
+  .side-col { flex: 1 1 320px; display: flex; flex-direction: column; gap: 12px; }
+
+  #sceneWrap { position: relative; width: 100%; aspect-ratio: 16/10; border-radius: 8px; overflow: hidden; background: radial-gradient(circle at 50% 30%, #16233a, #060a12 75%); }
+  #sceneWrap canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #hoverHint { position:absolute; left:8px; bottom:8px; color:#9fb3d9; font-size:0.78em; background:rgba(6,10,18,0.55); padding:4px 8px; border-radius:6px; pointer-events:none; }
+  #hoverHint:empty { display: none; }
+  #simError { position:absolute; left:8px; right:8px; top:8px; color:#fff; background:rgba(214,69,69,0.92); padding:6px 10px; border-radius:6px; font-size:0.82em; white-space:pre-wrap; }
+
+  .scenario-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .scenario-picker button { flex: 1 1 30%; min-width: 120px; padding: 8px 6px; font-size: 0.86em; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  .scenario-picker button.active { background: #eaf1fd; border-color: var(--accent); color: var(--accent); font-weight: 700; }
+
+  .param { margin-bottom: 10px; }
+  .param label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 4px; font-size: 0.92em; }
+  .param label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .param input[type=range] { width: 100%; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .hint { color: var(--sub); font-size: 0.83em; margin-top: 2px; line-height: 1.5; }
+
+  button { font-size: 1em; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.warn { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .controls-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.82em; color: var(--sub); margin-top: 8px; }
+  .legend:empty { display: none; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .swatch { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .swatch.bar { border-radius: 2px; }
+
+  table.readout { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+  table.readout td { padding: 4px 2px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  table.readout td:first-child { color: var(--sub); }
+  table.readout td:last-child { text-align: right; font-weight: 700; }
+
+  details { margin-top: 6px; }
+  summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+  .formula-body { padding: 8px 2px; line-height: 1.8; font-size: 0.92em; }
+  .formula-body .eq { font-size: 1.08em; text-align: center; margin: 6px 0; font-family: Georgia, serif; }
+  .note { border-left: 3px solid var(--accent); background: #eef4fd; padding: 8px 10px; border-radius: 6px; font-size: 0.86em; margin-top: 8px; line-height: 1.6; }
+  .note:empty { display: none; }
+  .misconception { border-left: 3px solid var(--accent2); background: #fdeeee; padding: 8px 10px; border-radius: 6px; font-size: 0.86em; margin-top: 8px; line-height: 1.6; }
+
+  canvas.chart { width: 100%; background: #fff; border: 1px solid var(--border); border-radius: 6px; }
+
+  body.projector { font-size: 19px; }
+  body.projector button { padding: 12px 18px; }
+  body.projector .scenario-picker button { font-size: 1em; padding: 12px 8px; }
+
+  @media (max-width: 720px) {
+    body { font-size: 16px; padding: 8px; }
+    .layout { flex-direction: column; }
+    .sim-col, .side-col { flex: 1 1 100%; }
+    button { padding: 11px 14px; }
+    input[type=range] { height: 26px; }
   }
-  @keyframes pulseGlow { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
-  .activeGate { animation: pulseGlow 0.9s ease-in-out infinite; }
-  button {
-    background: transparent;
-    border: 0.5px solid var(--color-border-secondary);
-    border-radius: var(--border-radius-md);
-    color: var(--color-text-primary);
-    cursor: pointer;
-    font-size: 14px;
-    padding: 8px 12px;
-  }
-  button:hover { background: var(--color-background-secondary); }
-  button:active { transform: scale(0.98); }
-  input[type="range"] { accent-color: var(--color-border-info); }
-  .stepBtn { padding: 8px 16px; font-size: 13px; }
-  .stepBtn.active { background: var(--color-background-info); border-color: var(--color-border-info); color: var(--color-text-info); }
-  .tabRow { display: flex; gap: 8px; margin-bottom: 1.5rem; flex-wrap: wrap; }
-  .ctrlRow { display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; flex-wrap: wrap; }
-  .iconBtn { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; padding: 0; }
-  .nextBtn { display: flex; align-items: center; gap: 6px; }
-  h1 { font-size: 20px; font-weight: 500; }
+/* ---- 레시피 입력 extra_css ---- */
+
 </style>
 </head>
 <body>
-<a href="../../index.html" title="홈으로" style="position:fixed;left:12px;bottom:12px;z-index:99999;background:rgba(255,255,255,.94);color:#1c2733;text-decoration:none;padding:8px 13px;border-radius:9px;font:600 14px/1 'Segoe UI','Malgun Gothic',sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.22);border:1px solid rgba(0,0,0,.12)">🏠 홈</a>
 
-<h1>CCD 이미지 센서 작동원리 시뮬레이션</h1>
-<p style="color:var(--color-text-secondary); font-size:14px;">전하 축적부터 버킷 브리게이드 전송, 출력 앰프까지 3단계로 체험합니다.</p>
+<header>
+  
+  <h1>📷 CCD 이미지 센서</h1>
+  <span class="spacer"></span>
+  <button id="projectorBtn" title="프로젝터용 큰 글씨 모드">🖥 큰 글씨 모드</button>
+</header>
 
-<div class="tabRow" id="tabRow"></div>
-<div id="panelHost"></div>
+<div class="tabs" id="tabs"></div>
+
+<div class="layout">
+
+  <div class="sim-col">
+    <div class="panel">
+      <div id="sceneWrap">
+        <div id="hoverHint"></div>
+        <div id="simError" hidden></div>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="panel" id="graphPanel" hidden>
+      <canvas id="chartCanvas" class="chart" width="440" height="220"></canvas>
+      <div class="hint" id="chartHint"></div>
+    </div>
+  </div>
+
+  <div class="side-col">
+
+    <div class="panel" id="scenarioPanel">
+      <div class="scenario-picker" id="scenarioPicker"></div>
+      <div id="scenarioBody"></div>
+      <div id="customPanel"></div>
+    </div>
+
+    <div class="panel" id="readoutPanel">
+      <b id="readoutTitle"></b>
+      <table class="readout" id="readout"></table>
+      <div class="note" id="readoutNote"></div>
+    </div>
+
+    <div class="panel">
+      <details id="formulaDetails">
+        <summary>📐 관련 공식 보기</summary>
+        <div class="formula-body" id="formulaBody"></div>
+      </details>
+    </div>
+
+    <div class="panel" id="misconceptionPanel"></div>
+
+  </div>
+</div>
+
 
 <script>
-const panels = ['accumulate', 'vertical', 'horizontal'];
-const labels = {accumulate: '1. 전하 축적', vertical: '2. 수직 전송 (버킷 브리게이드)', horizontal: '3. 수평 전송 + 출력'};
-let current = 'accumulate';
-
-const sharedState = { grid: null, exitedRow: null };
-
-const N = 5;
-const cellW = 56;
-const cellH = 30;
-const wellDepth = 38;
-const originX = 280;
-const originY = 60;
-
-function isoX(col, row) { return originX + (col - row) * (cellW/2); }
-function isoY(col, row) { return originY + (col + row) * (cellH/2); }
-
-function renderTabs() {
-  const row = document.getElementById('tabRow');
-  row.innerHTML = '';
-  panels.forEach(p => {
-    const btn = document.createElement('button');
-    btn.className = 'stepBtn' + (p === current ? ' active' : '');
-    btn.textContent = labels[p];
-    btn.onclick = () => { current = p; renderTabs(); renderPanel(); };
-    row.appendChild(btn);
-  });
-}
-
-function renderPanel() {
-  const host = document.getElementById('panelHost');
-  if (current === 'accumulate') { host.innerHTML = accumulateHTML(); initAccumulate(); }
-  if (current === 'vertical') { host.innerHTML = verticalHTML(); initVertical(); }
-  if (current === 'horizontal') { host.innerHTML = horizontalHTML(); initHorizontal(); }
-}
-
-function wellSVG(col, row, fillRatio, idAttr) {
-  const cx = isoX(col, row);
-  const cy = isoY(col, row);
-  const topPts = [
-    [cx, cy - cellH/2],
-    [cx + cellW/2, cy],
-    [cx, cy + cellH/2],
-    [cx - cellW/2, cy]
-  ];
-  const topPath = 'M' + topPts.map(p => p.join(',')).join(' L') + ' Z';
-  const leftWallTop = [[cx - cellW/2, cy], [cx, cy + cellH/2]];
-  const leftWallBottom = [[cx - cellW/2, cy + wellDepth], [cx, cy + cellH/2 + wellDepth]];
-  const rightWallTop = [[cx, cy + cellH/2], [cx + cellW/2, cy]];
-  const rightWallBottom = [[cx, cy + cellH/2 + wellDepth], [cx + cellW/2, cy + wellDepth]];
-  const leftPath = 'M' + leftWallTop[0] + ' L' + leftWallTop[1] + ' L' + leftWallBottom[1] + ' L' + leftWallBottom[0] + ' Z';
-  const rightPath = 'M' + rightWallTop[0] + ' L' + rightWallTop[1] + ' L' + rightWallBottom[1] + ' L' + rightWallBottom[0] + ' Z';
-  const floorPath = 'M' + [cx - cellW/2, cy + wellDepth] + ' L' + [cx, cy + cellH/2 + wellDepth] + ' L' + [cx + cellW/2, cy + wellDepth] + ' L' + [cx, cy - cellH/2 + wellDepth] + ' Z';
-
-  const fh = Math.max(0, Math.min(1, fillRatio)) * wellDepth;
-  const fillTopY = wellDepth - fh;
-  const liquidTopPts = [
-    [cx, cy - cellH/2 + fillTopY],
-    [cx + cellW/2, cy + fillTopY],
-    [cx, cy + cellH/2 + fillTopY],
-    [cx - cellW/2, cy + fillTopY]
-  ];
-  const liquidTopPath = 'M' + liquidTopPts.map(p => p.join(',')).join(' L') + ' Z';
-  const liquidLeftPath = 'M' + [cx - cellW/2, cy + fillTopY] + ' L' + [cx, cy + cellH/2 + fillTopY] + ' L' + [cx, cy + cellH/2 + wellDepth] + ' L' + [cx - cellW/2, cy + wellDepth] + ' Z';
-  const liquidRightPath = 'M' + [cx, cy + cellH/2 + fillTopY] + ' L' + [cx + cellW/2, cy + fillTopY] + ' L' + [cx + cellW/2, cy + wellDepth] + ' L' + [cx, cy + cellH/2 + wellDepth] + ' Z';
-
-  let s = '';
-  s += '<path d="' + floorPath + '" fill="var(--color-background-tertiary)" stroke="var(--b)" stroke-width="0.5"/>';
-  s += '<path d="' + leftPath + '" fill="var(--color-background-secondary)" stroke="var(--b)" stroke-width="0.5" opacity="0.9"/>';
-  s += '<path d="' + rightPath + '" fill="var(--color-background-primary)" stroke="var(--b)" stroke-width="0.5" opacity="0.55"/>';
-  if (fh > 0.5) {
-    s += '<path class="liquid" data-well="' + idAttr + '" d="' + liquidLeftPath + '" fill="#0C447C" opacity="0.75"/>';
-    s += '<path class="liquid" data-well="' + idAttr + '" d="' + liquidRightPath + '" fill="#185FA5" opacity="0.6"/>';
-    s += '<path class="liquid" data-well="' + idAttr + '" d="' + liquidTopPath + '" fill="#85B7EB" opacity="0.7"/>';
-    s += '<line x1="' + (cx - cellW/4) + '" y1="' + (cy + fillTopY - cellH/4) + '" x2="' + cx + '" y2="' + (cy + fillTopY) + '" stroke="#E6F1FB" stroke-width="1.5" opacity="0.7" stroke-linecap="round"/>';
+const WS_CONFIG = {
+ "title": "CCD 이미지 센서",
+ "renderer": "canvas2d",
+ "scene": {
+  "aspect": "16/10",
+  "hint": ""
+ },
+ "legend": [
+  {
+   "label": "전자(전하)",
+   "color": "#7fd6ff"
+  },
+  {
+   "label": "게이트·출력 노드",
+   "color": "#ffb454"
+  },
+  {
+   "label": "화소 우물",
+   "color": "#7aa9ff"
+  },
+  {
+   "label": "포화·불량",
+   "color": "#ff5d73"
   }
-  s += '<path d="' + topPath + '" fill="none" stroke="var(--b)" stroke-width="0.5"/>';
-  return s;
-}
-
-function gatePhaseBarSVG(col, row, phaseIndex, activePhase) {
-  const cx = isoX(col, row);
-  const cyBase = isoY(col, row) + wellDepth + cellH/2 + 10;
-  const segW = (cellW - 8) / 3;
-  let s = '';
-  for (let p=0; p<3; p++){
-    const isActive = p === activePhase;
-    const color = isActive ? '#EF9F27' : 'var(--color-border-tertiary)';
-    const cls = isActive ? 'class="activeGate"' : '';
-    const x = cx - cellW/2 + 4 + p*segW;
-    s += '<rect ' + cls + ' x="' + x + '" y="' + cyBase + '" width="' + (segW - 2) + '" height="5" rx="2" fill="' + color + '"/>';
+ ],
+ "tabs": [
+  {
+   "id": "photo",
+   "label": "① 빛 → 전하"
+  },
+  {
+   "id": "vert",
+   "label": "② 수직 전송"
+  },
+  {
+   "id": "horiz",
+   "label": "③ 수평 전송·출력"
+  },
+  {
+   "id": "frame",
+   "label": "④ 사진 한 장 읽기"
   }
-  return s;
-}
-
-function gateLegendSVG(x, y) {
-  let s = '<g>';
-  const phaseLabel = ['φ1', 'φ2', 'φ3'];
-  for (let p=0;p<3;p++){
-    s += '<rect x="' + (x + p*70) + '" y="' + y + '" width="14" height="5" rx="2" fill="' + (p===0?'#EF9F27':'var(--color-border-tertiary)') + '"/>';
-    s += '<text class="ts" x="' + (x + p*70 + 20) + '" y="' + (y+4) + '" dominant-baseline="central">' + phaseLabel[p] + '</text>';
-  }
-  s += '</g>';
-  return s;
-}
-
-function accumulateHTML() {
-  return '\
-    <div class="ctrlRow">\
-      <label style="font-size:14px; color:var(--color-text-secondary); min-width:90px;">빛의 세기</label>\
-      <input type="range" id="lightSlider" min="0" max="100" value="50" style="flex:1;">\
-      <span id="lightOut" style="font-size:14px; font-weight:500; min-width:40px; text-align:right;">50%</span>\
-    </div>\
-    <div id="accSvgHost"></div>\
-    <div id="accInfo" style="background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:0.875rem 1rem; font-size:13px; color:var(--color-text-secondary); margin-top:1rem;">\
-      픽셀(우물)을 클릭하면 그 위치의 전하량을 볼 수 있습니다. 빛이 셀수록 우물에 더 많은 전하(파란 액체)가 채워집니다.\
-    </div>\
-    <div style="display:flex; justify-content:flex-end; margin-top:1rem;">\
-      <button class="nextBtn" id="toVerticalBtn">이 전하로 수직 전송 보기 <i class="ti ti-arrow-right" aria-hidden="true"></i></button>\
-    </div>\
-  ';
-}
-
-function initAccumulate() {
-  const slider = document.getElementById('lightSlider');
-  const out = document.getElementById('lightOut');
-  const host = document.getElementById('accSvgHost');
-  const info = document.getElementById('accInfo');
-  const toVerticalBtn = document.getElementById('toVerticalBtn');
-  let pattern = [];
-  for (let r=0;r<N;r++){ pattern.push([]); for (let c=0;c<N;c++){ pattern[r].push(0.2 + Math.random()*0.8); } }
-  let currentGrid = [];
-
-  function computeGrid() {
-    const intensity = Number(slider.value) / 100;
-    currentGrid = pattern.map(rowArr => rowArr.map(v => Math.min(1, v * intensity)));
-    return intensity;
-  }
-
-  function render() {
-    const intensity = computeGrid();
-    out.textContent = Math.round(intensity*100) + '%';
-    const maxY = isoY(0, N-1) + cellH/2 + wellDepth + 30;
-    const minX = isoX(0, N-1) - cellW/2 - 20;
-    const maxX = isoX(N-1, 0) + cellW/2 + 20;
-    let svg = '<svg width="100%" viewBox="' + minX + ' 0 ' + (maxX-minX) + ' ' + maxY + '" role="img"><title>전하 축적 등각투영도</title><desc>5x5 픽셀 우물에 빛의 세기에 비례한 전하가 액체처럼 채워지는 모습</desc>';
-    for (let r=0;r<N;r++){
-      for (let c=0;c<N;c++){
-        svg += '<g class="node wellGroup" data-r="' + r + '" data-c="' + c + '" style="cursor:pointer;">' + wellSVG(c, r, currentGrid[r][c], r+'_'+c) + '</g>';
-      }
+ ],
+ "scenarios": [
+  {
+   "id": "photo",
+   "tab": "photo",
+   "name": "광전 효과로 전하 모으기",
+   "section": "전하 축적",
+   "desc": "밴드갭보다 에너지가 큰 광자가 전자-양공 쌍을 만들고, 전자는 화소의 퍼텐셜 우물에 모입니다. 파장·빛의 세기·노출 시간을 바꿔 전하량을 보세요.",
+   "misconception_title": "오개념: 빛이 강하기만 하면 센서는 어떤 빛이든 찍는다",
+   "misconception": "광자 하나의 에너지(hc/λ)가 Si 밴드갭 1.12 eV 보다 작은 1107 nm 이상의 빛은 전자를 만들지 못해 찍히지 않는다. 또 우물은 가득 차면 포화되어 더는 밝기 차이를 기록하지 못한다.",
+   "formula": [
+    {
+     "eq_html": "E = hf = hc / λ &gt; E<sub>g<\/sub>",
+     "text_html": "광자가 전자를 만들 조건 (Si: E_g = 1.12 eV → λ &lt; 1107 nm)"
+    },
+    {
+     "eq_html": "Q = η · Φ · t",
+     "text_html": "전하량 = 양자 효율 × 광자 수 속도 × 노출 시간 (포화 전까지)"
     }
-    svg += '</svg>';
-    host.innerHTML = svg;
-    host.querySelectorAll('.wellGroup').forEach(g => {
-      g.onclick = () => {
-        const r = Number(g.dataset.r), c = Number(g.dataset.c);
-        info.innerHTML = '<span style="color:var(--color-text-primary); font-weight:500;">픽셀 (' + (r+1) + '행, ' + (c+1) + '열)</span> — 전하량 약 ' + Math.round(currentGrid[r][c]*100) + '%';
-      };
+   ],
+   "params": [
+    {
+     "key": "lw",
+     "label": "빛의 파장 λ",
+     "min": 300,
+     "max": 1200,
+     "step": 10,
+     "value": 550,
+     "unit": "nm"
+    },
+    {
+     "key": "ph",
+     "label": "빛의 세기",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 40,
+     "unit": "%"
+    },
+    {
+     "key": "tex",
+     "label": "노출 시간",
+     "min": 1,
+     "max": 50,
+     "step": 1,
+     "value": 10,
+     "unit": "ms"
+    }
+   ],
+   "chart": true
+  },
+  {
+   "id": "vertical",
+   "tab": "vert",
+   "name": "수직 전송 — 3상 양동이 릴레이",
+   "section": "버킷 브리게이드",
+   "desc": "게이트 전압을 φ₁→φ₂→φ₃ 순서로 바꾸면 깊은 우물이 한 칸씩 이동하고 전하 묶음이 따라갑니다. ▶ 로 전송을 보며 전송 효율을 낮춰 보세요.",
+   "misconception_title": "오개념: 전하는 도선을 따라 전류처럼 흘러간다",
+   "misconception": "CCD 는 전하를 도선으로 흘리지 않는다. 게이트 전압으로 만든 전위 우물을 옮겨 전하 묶음을 건넨다(양동이 릴레이). 건널 때마다 일부가 남아 CTE 가 낮으면 영상이 번진다.",
+   "formula": [
+    {
+     "eq_html": "선두 묶음 = CTE<sup>3n<\/sup>",
+     "text_html": "3상이라 한 화소 이동 = 게이트 3번 전송"
+    },
+    {
+     "eq_html": "Σ 전하 = 일정",
+     "text_html": "남은 꼬리와 합치면 전하는 보존된다"
+    }
+   ],
+   "params": [
+    {
+     "key": "cte",
+     "label": "게이트당 전송 효율 CTE",
+     "min": 0.9,
+     "max": 1,
+     "step": 0.001,
+     "value": 0.98
+    },
+    {
+     "key": "clk",
+     "label": "전송 속도",
+     "min": 1,
+     "max": 8,
+     "step": 1,
+     "value": 3,
+     "unit": "단계/초"
+    }
+   ],
+   "animated": true,
+   "chart": true,
+   "status_hint": "▶ 재생 / ⏸ 멈춤: 3상 클럭이 전하를 옮긴다"
+  },
+  {
+   "id": "horiz",
+   "tab": "horiz",
+   "name": "수평 전송과 출력 증폭기",
+   "section": "출력",
+   "desc": "맨 아래 줄은 수평 레지스터로 옮겨져 한 화소씩 출력 노드에 도착합니다. 출력 노드의 용량 C 와 ADC 비트를 바꿔 전압과 디지털 값을 비교하세요.",
+   "misconception_title": "오개념: 화소마다 따로 증폭기가 있어 동시에 읽는다",
+   "misconception": "CCD 는 전하를 끝까지 옮겨 한 개의 출력 증폭기에서 차례로 읽는다. 화소마다 증폭기를 두는 것은 CMOS 센서이다. 출력 노드 용량이 작을수록 전자 하나당 전압이 커진다.",
+   "formula": [
+    {
+     "eq_html": "V = Q / C",
+     "text_html": "출력 노드에서 전하 → 전압"
+    },
+    {
+     "eq_html": "변환 이득 = q / C",
+     "text_html": "전자 1개당 전압 (C 가 작을수록 크다)"
+    },
+    {
+     "eq_html": "디지털 값 = V / V<sub>fs<\/sub> × 2<sup>비트<\/sup>",
+     "text_html": "ADC 양자화"
+    }
+   ],
+   "params": [
+    {
+     "key": "cfd",
+     "label": "출력 노드 용량 C",
+     "min": 2,
+     "max": 50,
+     "step": 1,
+     "value": 10,
+     "unit": "fF"
+    },
+    {
+     "key": "bits",
+     "label": "ADC 비트 수",
+     "min": 8,
+     "max": 14,
+     "step": 1,
+     "value": 12,
+     "unit": "bit"
+    }
+   ],
+   "animated": true,
+   "chart": true,
+   "status_hint": "▶ 재생 / ⏸ 멈춤: 화소가 차례로 출력"
+  },
+  {
+   "id": "image",
+   "tab": "frame",
+   "name": "사진 한 장이 읽히는 순서",
+   "section": "전체 프레임",
+   "desc": "한 줄씩 수직 전송 → 수평 레지스터에서 화소 출력 → 출력 순서대로 화면에 채우면 사진이 복원됩니다. 노출을 늘려 포화되는 화소를 보세요.",
+   "misconception_title": "오개념: 센서의 모든 화소가 한 순간에 동시에 읽힌다",
+   "misconception": "CCD 는 노출이 끝난 뒤 화소를 한 개씩 순서대로 읽는다. 읽는 데 걸리는 시간은 화소 수 ÷ 화소 클럭이라, 화소가 많을수록 오래 걸린다.",
+   "formula": [
+    {
+     "eq_html": "읽는 시간 = N / f<sub>clk<\/sub>",
+     "text_html": "1200만 화소, 100 MHz → 0.12 초"
+    },
+    {
+     "eq_html": "출력 순서 → 위치",
+     "text_html": "읽은 순서를 알면 영상을 다시 배열할 수 있다"
+    }
+   ],
+   "params": [
+    {
+     "key": "ex2",
+     "label": "노출 배율",
+     "min": 2,
+     "max": 40,
+     "step": 1,
+     "value": 10,
+     "unit": "ms"
+    },
+    {
+     "key": "fclk",
+     "label": "화소 클럭",
+     "min": 1,
+     "max": 100,
+     "step": 1,
+     "value": 20,
+     "unit": "MHz"
+    }
+   ],
+   "animated": true,
+   "status_hint": "▶ 재생 / ⏸ 멈춤: 줄 → 화소 순서로 읽기"
+  }
+ ],
+ "common_params": null,
+ "readout_title": "측정값"
+};
+</script>
+<script>
+/* ============================ 시뮬레이션 코드 (레시피 입력 sim_js) ============================ */
+/* ============ CCD 이미지 센서 — 물리 계산 (DOM 없음) ============ */
+const E_G = 1.12, FW = 20000, E_CH = 1.602176634e-19;   // Si 밴드갭(eV), 최대 전하 용량(예시, 전자 수), 전자 전하(C)
+const QE_PTS = [[300, .15], [400, .45], [550, .85], [700, .80], [900, .45], [1000, .15], [1107, 0]];
+const CC = {
+  E(nm) { return 1239.84 / nm; },
+  cutoff() { return 1239.84 / E_G; },
+  qe(nm) { if (nm >= 1107) return 0; if (nm <= 300) return .15; for (let i = 0; i < QE_PTS.length - 1; i++) { const [a, fa] = QE_PTS[i], [b, fb] = QE_PTS[i + 1]; if (nm <= b) return fa + (fb - fa) * (nm - a) / (b - a); } return 0; },
+  collect(nm, flux, ms, scale = 1) { const raw = this.qe(nm) * flux * ms * scale; return { raw, q: Math.min(FW, raw), sat: raw > FW }; },
+  /* 3상 전송: 게이트 g 에 전하 q[g]. 단계 s 마다 g%3 == s%3 인 게이트의 전하가 CTE 비율만큼 g+1 로 이동(나머지는 남는다) */
+  step(q, s, cte) { const n = q.length; let out = 0; const mv = new Array(n).fill(0); for (let g = s % 3; g < n; g += 3) { mv[g] = q[g] * cte; } for (let g = 0; g < n; g++) if (mv[g]) { q[g] -= mv[g]; if (g + 1 < n) q[g + 1] += mv[g]; else out += mv[g]; } return out; },
+  shift(q0, cte, pixels) { const q = q0.slice(); let out = 0; for (let s = 0; s < 3 * pixels; s++) out += this.step(q, s, cte); return { q, out }; },
+  gain(cfd_fF, gsf = 0.85) { return E_CH / (cfd_fF * 1e-15) * gsf * 1e6; },               // µV/e⁻ (소스 팔로어 이득 포함)
+  dn(qe_, cfd, bits) { const v = qe_ * this.gain(cfd), vfs = FW * this.gain(cfd); return Math.min(2 ** bits - 1, Math.round(v / vfs * 2 ** bits)); },
+  readTime(npix, fMHz) { return npix / (fMHz * 1e6); },
+};
+const NI = 8;
+function imgVal(x, y) { const dx = (x - 3.5) / 3.6, dy = (y - 3.5) / 3.6, r = Math.hypot(dx, dy); return Math.max(.08, Math.min(1, (1 - r * r) * 1.05 + (x > 4 && y < 3 ? .25 : 0))); }
+const IMG = []; for (let y = 0; y < NI; y++) { IMG.push([]); for (let x = 0; x < NI; x++) IMG[y].push(imgVal(x, y)); }
+/* 전체 프레임 읽기: 맨 아래 줄부터 수평 레지스터로 내리고(수직 전송), 수평 레지스터에서 한 화소씩 출력 */
+function readoutOrder() { const o = []; for (let r = NI - 1; r >= 0; r--) { o.push({ k: 'v', r }); for (let c = 0; c < NI; c++) o.push({ k: 'h', r, c }); } return o; }
+const ORDER = readoutOrder();
+function readState(k) { // k 개의 이벤트가 끝난 상태
+  const rows = []; let hreg = null, out = []; let next = NI - 1; for (let i = 0; i < NI; i++) rows.push(true);
+  for (let i = 0; i < k && i < ORDER.length; i++) { const e = ORDER[i]; if (e.k === 'v') { rows[e.r] = false; hreg = { r: e.r, got: [] }; } else { hreg.got.push(e.c); out.push([e.r, e.c]); } }
+  return { rows, hreg, out };
+}
+
+/* ============ 그리기 도우미 ============ */
+const COL = { bg: '#0f1a33', text: '#e3ecff', dim: '#9db0d8', ok: '#5eead4', bad: '#ff5d73', e: '#7fd6ff', gate: '#ffb454', grid: 'rgba(160,190,255,.18)', pix: '#7aa9ff' };
+const W0 = 1000, H0 = 625;
+function begin(api) { const { ctx, width: w, height: h } = api; ctx.fillStyle = COL.bg; ctx.fillRect(0, 0, w, h); const k = Math.min(w / W0, h / H0); ctx.save(); ctx.translate((w - W0 * k) / 2, (h - H0 * k) / 2); ctx.scale(k, k); return ctx; }
+function txt(ctx, s, x, y, col, px, wt, al) { ctx.font = `${wt || 600} ${px || 18}px sans-serif`; ctx.fillStyle = col || COL.text; ctx.textAlign = al || 'left'; ctx.fillText(s, x, y); ctx.textAlign = 'left'; }
+function arrow(ctx, x0, y0, x1, y1, col, lw = 3) {
+  const len = Math.hypot(x1 - x0, y1 - y0); if (len < 3) return; const a = Math.atan2(y1 - y0, x1 - x0), hd = Math.min(12, len * .5);
+  ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - Math.cos(a) * hd * .7, y1 - Math.sin(a) * hd * .7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - hd * Math.cos(a - .45), y1 - hd * Math.sin(a - .45)); ctx.lineTo(x1 - hd * Math.cos(a + .45), y1 - hd * Math.sin(a + .45)); ctx.closePath(); ctx.fill();
+}
+function wlColor(nm) { if (nm >= 1107) return '#8a5a5a'; if (nm > 750) return '#b04040'; const h = nm < 450 ? 270 - (nm - 380) * 0.9 : nm < 500 ? 210 - (nm - 450) * 1.2 : nm < 570 ? 150 - (nm - 500) * 1.4 : nm < 620 ? 50 - (nm - 570) * .5 : 20 - (nm - 620) * .15; return `hsl(${Math.max(0, h)},90%,60%)`; }
+function plot(api, o) {
+  const ch = api.chart; if (!ch) return; const cv = ch.canvas, c2 = ch.ctx, cw = cv.width, chh = cv.height, sc = cw / (cv.clientWidth || cw);
+  c2.save(); c2.setTransform(1, 0, 0, 1, 0, 0); c2.fillStyle = COL.bg; c2.fillRect(0, 0, cw, chh);
+  const l = 56 * sc, r = cw - 16 * sc, t = 20 * sc, b = chh - 36 * sc, X = v => l + (v - o.xmin) / (o.xmax - o.xmin) * (r - l), Y = v => b - (v - o.ymin) / (o.ymax - o.ymin) * (b - t);
+  c2.font = `${12 * sc}px sans-serif`; c2.fillStyle = COL.dim; c2.strokeStyle = COL.grid; c2.lineWidth = sc;
+  (o.xt || []).forEach(v => { c2.beginPath(); c2.moveTo(X(v), t); c2.lineTo(X(v), b); c2.stroke(); c2.fillText(String(v), X(v) - 8 * sc, b + 16 * sc); });
+  (o.yt || []).forEach(v => { c2.beginPath(); c2.moveTo(l, Y(v)); c2.lineTo(r, Y(v)); c2.stroke(); c2.fillText(String(v), 6 * sc, Y(v) + 4 * sc); });
+  c2.fillText(o.xl || '', r - 130 * sc, b + 30 * sc); c2.fillText(o.yl || '', 6 * sc, t - 6 * sc);
+  (o.curves || []).forEach(cv2 => { c2.strokeStyle = cv2.col || COL.e; c2.lineWidth = 2.5 * sc; c2.beginPath(); for (let i = 0; i <= 160; i++) { const x = o.xmin + (o.xmax - o.xmin) * i / 160, y = Math.min(Math.max(cv2.fn(x), o.ymin), o.ymax); i ? c2.lineTo(X(x), Y(y)) : c2.moveTo(X(x), Y(y)); } c2.stroke(); });
+  (o.marks || []).forEach(m => { c2.fillStyle = m.col || COL.ok; c2.beginPath(); c2.arc(X(m.x), Y(Math.min(Math.max(m.y, o.ymin), o.ymax)), 6 * sc, 0, 2 * Math.PI); c2.fill(); if (m.lab) c2.fillText(m.lab, X(m.x) + 9 * sc, Y(m.y) - 8 * sc); });
+  c2.restore();
+}
+
+/* ============ 1. 빛 → 전하 ============ */
+function drawPhoto(api) {
+  const P = api.P, ctx = begin(api), flux = P.ph * 20, ex = P.tex, E = CC.E(P.lw), qe = CC.qe(P.lw), cl = CC.collect(P.lw, flux, ex), col = wlColor(P.lw);
+  // 픽셀 한 개 단면 (퍼텐셜 우물)
+  const wx = 90, wy = 200, ww = 230, wh = 230;
+  txt(ctx, '화소 한 개의 퍼텐셜 우물 (단면)', wx, 60, COL.dim, 18);
+  for (let i = 0; i < 6; i++) { const x = wx + 20 + i * 38, ok = P.lw < 1107; arrow(ctx, x, 80, x, ok ? wy + 20 : wy + 10, col, 2.5); if (!ok) { ctx.strokeStyle = COL.bad; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 6, wy + 40); ctx.lineTo(x + 6, wy + 52); ctx.stroke(); } }
+  txt(ctx, `광자 ${P.lw} nm`, wx + ww / 2, 74, col, 17, 700, 'center');
+  ctx.fillStyle = '#2b3c6b'; ctx.fillRect(wx - 20, wy + wh, ww + 40, 26); ctx.strokeStyle = COL.pix; ctx.lineWidth = 3; ctx.strokeRect(wx, wy, ww, wh);
+  const fh = wh * cl.q / FW; ctx.fillStyle = 'rgba(127,214,255,.6)'; ctx.fillRect(wx + 2, wy + wh - fh, ww - 4, fh);
+  const nd = Math.round(60 * cl.q / FW); for (let i = 0; i < nd; i++) { const x = wx + 10 + ((i * 53) % (ww - 20)), y = wy + wh - 8 - ((i * 29) % Math.max(10, fh - 8)); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y, 3, 0, 2 * Math.PI); ctx.fill(); }
+  if (cl.sat) { txt(ctx, '포화! 넘친 전하는 이웃 화소로 번진다(블루밍)', wx - 10, wy - 12, COL.bad, 15); }
+  txt(ctx, `전자 ${Math.round(cl.q).toLocaleString()} 개`, wx + ww / 2, wy + wh + 50, COL.e, 20, 700, 'center'); txt(ctx, `최대 ${FW.toLocaleString()} 개 (예시)`, wx + ww / 2, wy + wh + 76, COL.dim, 15, 400, 'center');
+  // 8×8 화소 밝기
+  const gx = 470, gy = 120, cs = 52; txt(ctx, '센서 8×8 화소: 한 장의 사진', gx, 80, COL.dim, 18);
+  for (let y = 0; y < NI; y++) for (let x = 0; x < NI; x++) { const q = CC.collect(P.lw, flux, ex, IMG[y][x]), f = q.q / FW; const v = Math.round(255 * f); ctx.fillStyle = `rgb(${v},${v},${Math.min(255, v + 25)})`; ctx.fillRect(gx + x * cs, gy + y * cs, cs - 3, cs - 3); if (q.sat) { ctx.strokeStyle = COL.bad; ctx.lineWidth = 2; ctx.strokeRect(gx + x * cs + 1, gy + y * cs + 1, cs - 5, cs - 5); } }
+  txt(ctx, P.lw >= 1107 ? `λ ≥ ${CC.cutoff().toFixed(0)} nm : 광자 에너지 ${E.toFixed(2)} eV < 밴드갭 ${E_G} eV → 전자를 만들지 못한다` : `광자 ${E.toFixed(2)} eV > 밴드갭 ${E_G} eV → 전자-양공 쌍 생성`, gx, 570, P.lw >= 1107 ? COL.bad : COL.ok, 16);
+  api.setReadout([['광자 에너지 hc/λ', E.toFixed(2) + ' eV'], ['Si 한계 파장', CC.cutoff().toFixed(0) + ' nm'], ['양자 효율 QE', (qe * 100).toFixed(0) + ' %'], ['생성 전자(포화 전)', Math.round(cl.raw).toLocaleString() + ' 개'], ['저장 전자', Math.round(cl.q).toLocaleString() + ' 개 (' + (100 * cl.q / FW).toFixed(0) + ' %)']]);
+  api.setNote('광전 효과: 밴드갭(Si 1.12 eV)보다 에너지가 큰 광자만 전자를 만든다. QE 곡선은 개략 예시이고, 최대 전하 용량 20,000 개와 광자 수는 개념 설명용 값이다. 빨간 테두리 화소는 포화되었다.');
+  plot(api, { xmin: 300, xmax: 1200, ymin: 0, ymax: 1, xt: [300, 550, 800, 1107], yt: [0, .5, 1], xl: '파장 (nm)', yl: 'QE', curves: [{ fn: l => CC.qe(l) }], marks: [{ x: P.lw, y: qe, lab: (qe * 100).toFixed(0) + ' %' }] });
+  ctx.restore();
+}
+
+/* ============ 2. 수직 전송 (3상 버킷 브리게이드) ============ */
+const VS = { q: null, step: 0, acc: 0, pix: 0, hold: 0, cte: null };
+const VP0 = [0.25, 0.9, 0.5, 1.0, 0.35]; const NP = 5, NG = 3 * (NP + 3);
+function vReset(cte) { VS.q = new Array(NG).fill(0); VP0.forEach((v, i) => VS.q[3 * i] = v); VS.step = 0; VS.acc = 0; VS.pix = 0; VS.hold = 0; VS.cte = cte; VS.out = 0; }
+function drawVertical(api) {
+  const P = api.P, ctx = begin(api); if (VS.cte !== P.cte || !VS.q) vReset(P.cte);
+  const x0 = 60, gw = 36, gy = 150, ph = VS.step % 3;   // 직전 단계 후 전하가 모인 위상: 다음 이동 대상은 (step % 3)
+  txt(ctx, '수직 CCD 열: 화소마다 게이트 3개 (φ₁ φ₂ φ₃)', x0, 60, COL.dim, 18);
+  const act = (VS.step) % 3; // 현재 전하가 들어 있는(깊은 우물) 위상
+  for (let g = 0; g < NG; g++) {
+    const x = x0 + g * gw, p = g % 3, deep = p === act; ctx.fillStyle = deep ? COL.gate : '#3a4570'; ctx.fillRect(x + 2, gy, gw - 4, 26); txt(ctx, 'φ' + (p + 1), x + gw / 2, gy + 19, deep ? '#1a1200' : COL.dim, 13, 700, 'center');
+    const dpt = deep ? 150 : 60; ctx.strokeStyle = COL.pix; ctx.lineWidth = 2.5; ctx.strokeRect(x + 3, gy + 40, gw - 6, dpt);
+    const h = Math.min(dpt, VS.q[g] * 150); if (h > .5) { ctx.fillStyle = 'rgba(127,214,255,.75)'; ctx.fillRect(x + 4, gy + 40 + dpt - h, gw - 8, h); }
+  }
+  for (let i = 0; i <= NP + 2; i++) { ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.setLineDash([4, 5]); ctx.beginPath(); ctx.moveTo(x0 + 3 * i * gw, gy - 10); ctx.lineTo(x0 + 3 * i * gw, gy + 210); ctx.stroke(); ctx.setLineDash([]); }
+  txt(ctx, '→ 읽는 쪽 (아래)', x0 + NG * gw - 150, gy + 235, COL.dim, 15);
+  const n = VS.pix, lead = Math.pow(P.cte, 3 * n);
+  txt(ctx, `${n} 화소 이동 · 단계 ${VS.step} · 깊은 우물 = φ${act + 1}`, x0, 430, COL.text, 20, 700);
+  txt(ctx, `원래 ${(VP0[3] * 100).toFixed(0)} 인 전하 묶음의 현재 크기 ${(VP0[3] * lead * 100).toFixed(0)} (이론 CTE^(3n) = ${(lead * 100).toFixed(1)} %)`, x0, 462, COL.ok, 17);
+  txt(ctx, '게이트 전압을 φ₁→φ₂→φ₃ 순으로 켜면 깊은 우물이 한 칸씩 옮겨 가고, 전하가 따라간다 (양동이 릴레이)', x0, 520, COL.dim, 16);
+  const tot = VS.q.reduce((a, b) => a + b, 0) + VS.out; txt(ctx, `총 전하 (읽은 것 포함) ${(tot * 100).toFixed(1)} — 보존됨`, x0, 560, COL.dim, 15);
+  api.setStatus(`φ${act + 1} 가 깊다 · ${n} 화소 이동 · CTE ${P.cte.toFixed(3)}`);
+  api.setReadout([['게이트당 전송 효율 CTE', P.cte.toFixed(3)], ['한 화소 이동(게이트 3번)', (Math.pow(P.cte, 3) * 100).toFixed(2) + ' %'], ['n 화소 이동 후 남는 비율', (lead * 100).toFixed(1) + ' %'], ['놓고 간 전하 (꼬리)', ((1 - lead) * 100).toFixed(1) + ' %'], ['이동한 화소 수', n]]);
+  api.setNote('전선을 따라 흐르는 것이 아니라 전위 우물을 한 칸씩 옮겨 전하 묶음을 건넨다. 실제 CTE 는 0.99999 이상이지만 눈에 보이도록 0.9 부터 조절하게 했다. 전송이 불완전하면 영상이 번진다.');
+  plot(api, { xmin: 0, xmax: 40, ymin: 0, ymax: 1, xt: [0, 10, 20, 30, 40], yt: [0, .5, 1], xl: '이동한 화소 수 n', yl: '남는 비율', curves: [{ fn: m => Math.pow(P.cte, 3 * m) }], marks: [{ x: Math.min(n, 40), y: lead, lab: (lead * 100).toFixed(0) + ' %' }] });
+  ctx.restore();
+}
+
+/* ============ 3. 수평 전송과 출력 ============ */
+const HS = { t: 0 };
+const HROW = [0.25, 0.9, 0.5, 1.0, 0.35, 0.7, 0.15, 0.55];
+function drawHoriz(api) {
+  const P = api.P, ctx = begin(api), g = CC.gain(P.cfd), vmax = FW * g * 1e-6, per = 1.1, n = HROW.length, tt = HS.t / per, kk = Math.floor(tt) % (n + 2), fr = tt - Math.floor(tt);
+  const x0 = 70, y0 = 150, cw = 80; txt(ctx, '수평 레지스터: 한 줄을 출력 쪽으로 밀어낸다', x0, 70, COL.dim, 18);
+  // 패킷 위치: i 번째 패킷은 kk+fr 칸 이동 (출력은 오른쪽 끝)
+  for (let c = 0; c < n; c++) { ctx.strokeStyle = COL.pix; ctx.lineWidth = 2; ctx.strokeRect(x0 + c * cw, y0, cw - 6, 80); }
+  for (let i = 0; i < n; i++) { const posi = i + kk + fr; if (posi >= n) continue; const x = x0 + posi * cw; ctx.fillStyle = 'rgba(127,214,255,.8)'; const h = HROW[i] * 70; ctx.fillRect(x + 3, y0 + 76 - h, cw - 12, h); }
+  // 출력 노드
+  const ox = x0 + n * cw + 20; ctx.strokeStyle = COL.gate; ctx.lineWidth = 3; ctx.strokeRect(ox, y0 + 10, 70, 60); txt(ctx, '출력 노드', ox + 35, y0 - 8, COL.gate, 15, 700, 'center'); txt(ctx, `C = ${P.cfd} fF`, ox + 35, y0 + 45, COL.text, 14, 600, 'center');
+  ctx.beginPath(); ctx.moveTo(ox + 70, y0 + 40); ctx.lineTo(ox + 110, y0 + 40); ctx.stroke(); ctx.beginPath(); ctx.moveTo(ox + 110, y0 + 20); ctx.lineTo(ox + 110, y0 + 60); ctx.lineTo(ox + 140, y0 + 40); ctx.closePath(); ctx.stroke(); txt(ctx, '증폭기', ox + 105, y0 + 82, COL.gate, 14, 600, 'center');
+  // 파형
+  const wx = 70, wy = 420, ww = 840, wh = 140; txt(ctx, '출력 전압 (영상 신호)', wx, 330, COL.dim, 18); ctx.strokeStyle = COL.grid; ctx.lineWidth = 1; ctx.strokeRect(wx, wy - wh, ww, wh);
+  const done = Math.min(n, kk + (fr > .5 ? 1 : 0)); ctx.strokeStyle = COL.ok; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(wx, wy - 10);
+  const slot = ww / n; for (let i = 0; i < done; i++) { const idx = n - 1 - i, v = HROW[idx], y = wy - 10 - v * (wh - 30); ctx.lineTo(wx + i * slot, y); ctx.lineTo(wx + (i + .9) * slot, y); ctx.lineTo(wx + (i + .95) * slot, wy - 10); ctx.lineTo(wx + (i + 1) * slot, wy - 10); }
+  ctx.stroke();
+  const dns = HROW.map(v => CC.dn(v * FW, P.cfd, P.bits));
+  txt(ctx, '출력 순서 → ' + HROW.slice().reverse().map((v, i) => `${dns[n - 1 - i]}`).join(' · ') + ' (디지털 값)', wx, 590, COL.text, 17);
+  api.setStatus(`${Math.min(done, n)} / ${n} 화소 출력`);
+  api.setReadout([['변환 이득 (e⁻당 전압)', g.toFixed(1) + ' µV/e⁻'], ['최대 신호 전압', (vmax * 1000).toFixed(0) + ' mV'], ['ADC 비트', P.bits + ' bit'], ['전자/최소 단위(LSB)', (FW / 2 ** P.bits).toFixed(1) + ' 개'], ['가장 밝은 화소 디지털 값', Math.max(...dns)]]);
+  api.setNote('전하를 전압으로 바꾸는 출력 노드 용량 C 가 작을수록 전자 하나당 전압(변환 이득 = q/C)이 커진다. CCD 는 센서 전체가 출력 증폭기 하나로 읽는 것이 특징이다(CMOS 는 화소마다 증폭기). 소스 팔로어 이득 0.85 와 최대 전하 20,000 개는 예시이다.');
+  plot(api, { xmin: 0, xmax: FW, ymin: 0, ymax: 400, xt: [0, 5000, 10000, 15000, 20000], yt: [0, 100, 200, 300, 400], xl: '전하 (전자 수)', yl: '전압 (mV)', curves: [{ fn: q => q * g * 1e-3 }, { fn: q => q * CC.gain(Math.min(50, P.cfd * 2)) * 1e-3, col: COL.gate }], marks: [{ x: FW, y: vmax * 1000, lab: (vmax * 1000).toFixed(0) + ' mV' }] });
+  ctx.restore();
+}
+
+/* ============ 4. 전체 프레임 읽기 ============ */
+const IS = { t: 0 };
+function drawImage(api) {
+  const P = api.P, ctx = begin(api), k = Math.floor(IS.t * 6) % (ORDER.length + 8), st = readState(Math.min(k, ORDER.length)), cs = 44, x0 = 70, y0 = 120, sc = P.ex2 / 10;
+  const val = (r, c) => Math.min(1, IMG[r][c] * sc);
+  txt(ctx, '센서 (아래 줄부터 한 줄씩 수평 레지스터로)', x0, 70, COL.dim, 17);
+  for (let r = 0; r < NI; r++) for (let c = 0; c < NI; c++) { const x = x0 + c * cs, y = y0 + r * cs; if (st.rows[r]) { const v = Math.round(255 * val(r, c)); ctx.fillStyle = `rgb(${v},${v},${Math.min(255, v + 25)})`; } else ctx.fillStyle = 'rgba(160,190,255,.07)'; ctx.fillRect(x, y, cs - 3, cs - 3); }
+  const hy = y0 + NI * cs + 14; txt(ctx, '수평 레지스터', x0, hy + 38, COL.dim, 14);
+  for (let c = 0; c < NI; c++) { const x = x0 + c * cs; ctx.strokeStyle = COL.gate; ctx.lineWidth = 2; ctx.strokeRect(x, hy, cs - 3, 30); if (st.hreg && !st.hreg.got.includes(c)) { const v = Math.round(255 * val(st.hreg.r, c)); ctx.fillStyle = `rgb(${v},${v},${Math.min(255, v + 25)})`; ctx.fillRect(x + 2, hy + 2, cs - 7, 26); } }
+  arrow(ctx, x0 + NI * cs + 20, hy + 15, x0 + NI * cs + 70, hy + 15, COL.gate, 3); txt(ctx, '출력', x0 + NI * cs + 20, hy - 6, COL.gate, 14);
+  const rx = 560; txt(ctx, '복원된 영상 (읽은 순서대로 채움)', rx, 70, COL.dim, 17);
+  const got = {}; st.out.forEach(([r, c]) => got[r * NI + c] = 1);
+  for (let r = 0; r < NI; r++) for (let c = 0; c < NI; c++) { const x = rx + c * cs, y = y0 + r * cs; if (got[r * NI + c]) { const v = Math.round(255 * val(r, c)); ctx.fillStyle = `rgb(${v},${v},${Math.min(255, v + 25)})`; } else ctx.fillStyle = 'rgba(160,190,255,.07)'; ctx.fillRect(x, y, cs - 3, cs - 3); }
+  const n = NI * NI, tr = CC.readTime(n, P.fclk), real = CC.readTime(12e6, 100);
+  txt(ctx, `이 센서(${n} 화소) 읽기 ${(tr * 1e6).toFixed(2)} µs · ${st.out.length} / ${n}`, x0, 590, COL.text, 17);
+  api.setStatus(`${st.out.length} / ${n} 화소 읽음`);
+  api.setReadout([['노출 배율', P.ex2 + ' ms'], ['화소 클럭', P.fclk + ' MHz'], ['이 센서 읽는 시간', (tr * 1e6).toFixed(2) + ' µs'], ['1200만 화소(100 MHz)', (real * 1000).toFixed(0) + ' ms'], ['포화된 화소', IMG.flat().filter(v => v * sc > 1).length + ' 개']]);
+  api.setNote('한 줄씩 수직 전송 → 수평 레지스터에서 한 화소씩 출력 → 출력 순서대로 화면에 다시 배열하면 사진이 복원된다. 노출을 늘리면 밝은 화소부터 포화(흰색)된다. 읽는 시간 = 화소 수 ÷ 화소 클럭 (1200만 화소는 예시).');
+  ctx.restore();
+}
+
+const DRAW = { photo: drawPhoto, vertical: drawVertical, horiz: drawHoriz, image: drawImage };
+const SIM = {
+  enter(api) { VS.q = null; HS.t = 0; IS.t = 0; api.setPlaying && api.setPlaying(!!{ vertical: 1, horiz: 1, image: 1 }[api.scenario.id]); },
+  reset(api) { VS.q = null; HS.t = 0; IS.t = 0; api.refresh(); },
+  update(api) { (DRAW[api.scenario.id] || drawPhoto)(api); },
+  frame(api, dt) {
+    const playing = typeof api.playing === 'function' ? api.playing() : api.playing; if (playing === false) return;
+    dt = Math.min(dt, 1 / 30); const id = api.scenario.id, P = api.P;
+    if (id === 'vertical') {
+      if (VS.cte !== P.cte || !VS.q) vReset(P.cte);
+      if (VS.hold > 0) { VS.hold -= dt; if (VS.hold <= 0) vReset(P.cte); }
+      else { VS.acc += dt * P.clk; while (VS.acc >= 1) { VS.acc -= 1; VS.out += CC.step(VS.q, VS.step, P.cte); VS.step++; VS.pix = Math.floor(VS.step / 3); if (VS.pix >= NP + 2) { VS.hold = 1.5; break; } } }
+    } else if (id === 'horiz') HS.t += dt; else if (id === 'image') IS.t += dt;
+    (DRAW[id] || drawPhoto)(api);
+  },
+  tests() {
+    const T = [], near = (a, b, e) => Math.abs(a / b - 1) < e;
+    T.push(['Si 한계 파장 = hc/E_g ≈ 1107 nm', Math.abs(CC.cutoff() - 1107) < 1, CC.cutoff().toFixed(1)]);
+    T.push(['QE: 한계 파장 이상 0, 가시광선(550 nm) 최대', CC.qe(1107) === 0 && CC.qe(1200) === 0 && CC.qe(550) >= CC.qe(450) && CC.qe(550) >= CC.qe(900), '']);
+    const c1 = CC.collect(550, 1000, 5), c2 = CC.collect(550, 1000, 10); T.push(['전하량은 노출 시간에 비례 (포화 전)', near(c2.q, 2 * c1.q, 1e-12) && !c1.sat, c1.q.toFixed(0)]);
+    const cs = CC.collect(550, 1e5, 50); T.push(['최대 전하 용량에서 포화 (넘침)', cs.q === FW && cs.sat, '']);
+    const q0 = new Array(30).fill(0); q0[0] = 1; const r = CC.shift(q0, .99, 4); const lead = r.q[12];
+    T.push(['3상 전송: 선두 묶음 = CTE^(3n)', near(lead, Math.pow(.99, 12), 1e-12), lead.toFixed(4)]);
+    T.push(['3상 전송: 전하 보존 (읽은 양 포함)', Math.abs(r.q.reduce((a, b) => a + b, 0) + r.out - 1) < 1e-12, '']);
+    const r1 = CC.shift(q0, 1, 5); T.push(['CTE = 1 이면 완벽 이동 (꼬리 없음)', Math.abs(r1.q[15] - 1) < 1e-12 && r1.q.filter((v, i) => i !== 15 && v > 1e-12).length === 0, '']);
+    T.push(['변환 이득 = q/C: 10 fF → 16 µV/e⁻ (소스 팔로어 전)', near(CC.gain(10, 1), 16.02, 0.001), CC.gain(10, 1).toFixed(2)]);
+    T.push(['C 를 절반으로 하면 이득 2배', near(CC.gain(5) / CC.gain(10), 2, 1e-12), '']);
+    T.push(['ADC: 단조 증가, 최대 전하 = 최댓값', CC.dn(1000, 10, 12) < CC.dn(5000, 10, 12) && CC.dn(FW, 10, 12) === 2 ** 12 - 1 && CC.dn(0, 10, 12) === 0, '']);
+    const rec = {}; for (let i = 0; i < ORDER.length; i++) { const e = ORDER[i]; if (e.k === 'h') rec[e.r * NI + e.c] = 1; } T.push(['프레임 읽기: 모든 화소를 한 번씩 읽는다 (복원 가능)', Object.keys(rec).length === NI * NI && ORDER.length === NI * (NI + 1), '']);
+    T.push(['읽는 시간 = 화소 수 / 클럭: 1200만 화소, 100 MHz → 0.12 s', near(CC.readTime(12e6, 100), .12, 1e-12), '']);
+    T.push(['슬라이더 양 끝값에서 NaN·Infinity 없음', [300, 1200].every(l => Number.isFinite(CC.qe(l))) && [1, 50].every(c => Number.isFinite(CC.gain(c)) && Number.isFinite(CC.dn(100, c, 8))), '']);
+    return T;
+  },
+};
+
+</script>
+<script>
+"use strict";
+/* ============================ 공용 UI 프레임워크 (템플릿) ============================ */
+(function () {
+  const C = WS_CONFIG;
+  const $ = (id) => document.getElementById(id);
+  const P = {};
+  const ui = { tab: C.tabs[0].id, scenarioId: null, playing: false };
+  const lastScenarioOfTab = {};
+
+  function addDefaults(params) { (params || []).forEach(p => { if (!(p.key in P)) P[p.key] = p.value; }); }
+  C.scenarios.forEach(s => { addDefaults(s.params); addDefaults(s.choices); });
+  if (C.common_params) addDefaults(C.common_params.params);
+
+  function current() { return C.scenarios.find(s => s.id === ui.scenarioId); }
+  function scenariosOfTab(tab) { return C.scenarios.filter(s => s.tab === tab); }
+  function fmtVal(v, unit) {
+    if (!unit) return String(v);
+    return /^[°%′″]/.test(unit) ? v + unit : v + " " + unit;
+  }
+
+  function showError(where, e) {
+    const box = $("simError");
+    box.hidden = false;
+    box.textContent = "시뮬레이션 오류 (" + where + "): " + (e && e.message ? e.message : e);
+    console.error(e);
+  }
+  const SIMOBJ = (typeof SIM !== "undefined") ? SIM : null;
+  function call(hook, ...args) {
+    if (!SIMOBJ || typeof SIMOBJ[hook] !== "function") return undefined;
+    try { return SIMOBJ[hook](api, ...args); } catch (e) { showError(hook, e); return undefined; }
+  }
+
+  /* ---------- 렌더러 ---------- */
+  const wrap = $("sceneWrap");
+  const api = {
+    config: C, P,
+    get scenario() { return current(); },
+    get tab() { return ui.tab; },
+    get playing() { return ui.playing; },
+    setPlaying(b) { ui.playing = !!b; updatePlayButton(); },
+    boxHalf: (C.scene && C.scene.box_half) || 16,
+    sceneEl: wrap,
+    THREE: window.THREE || null,
+    scene: null, camera: null, renderer: null, controls: null,
+    canvas: null, ctx: null, width: 0, height: 0,
+    custom: $("customPanel"),
+    chart: {
+      canvas: $("chartCanvas"),
+      ctx: $("chartCanvas").getContext("2d"),
+      setHint(html) { $("chartHint").innerHTML = html; },
+    },
+    setReadout(rows) {
+      const tbl = $("readout");
+      tbl.innerHTML = "";
+      (rows || []).forEach(r => {
+        const tr = document.createElement("tr");
+        const a = document.createElement("td"); a.textContent = r[0];
+        const b = document.createElement("td"); b.textContent = r[1];
+        tr.append(a, b); tbl.appendChild(tr);
+      });
+    },
+    setNote(text) { $("readoutNote").textContent = text || ""; },
+    setStatus(text) { const el = $("wsStatus"); if (el) el.textContent = text || ""; },
+    setParam(key, v) {
+      P[key] = v;
+      const el = $("p_" + key); if (el) el.value = v;
+      const vEl = $("p_" + key + "_val"); if (vEl) vEl.textContent = fmtVal(v, vEl.dataset.unit);
+    },
+    refresh() { call("update"); },
+  };
+
+  function initRenderer() {
+    const sc = C.scene || {};
+    if (C.renderer === "three") {
+      if (!window.THREE) { showError("init", "Three.js를 불러오지 못했습니다 (인터넷 연결 확인)"); return false; }
+      const T = window.THREE;
+      api.scene = new T.Scene();
+      api.camera = new T.PerspectiveCamera(45, wrap.clientWidth / wrap.clientHeight, 0.1, 500);
+      const cp = sc.camera || [26, 20, 30];
+      api.camera.position.set(cp[0], cp[1], cp[2]);
+      api.renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
+      api.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      wrap.insertBefore(api.renderer.domElement, wrap.firstChild);
+      api.controls = new T.OrbitControls(api.camera, api.renderer.domElement);
+      api.controls.enableDamping = true;
+      api.controls.dampingFactor = 0.08;
+      api.controls.target.set(0, 0, 0);
+      api.scene.add(new T.AmbientLight(0xffffff, 0.55));
+      const dl = new T.DirectionalLight(0xffffff, 0.9);
+      dl.position.set(20, 30, 15);
+      api.scene.add(dl);
+      if (sc.grid !== false) api.scene.add(new T.GridHelper(api.boxHalf * 2, 16, 0x3a5a8a, 0x1f3352));
+      if (sc.axes !== false) api.scene.add(new T.AxesHelper(api.boxHalf * 0.6));
+    } else {
+      api.canvas = document.createElement("canvas");
+      wrap.insertBefore(api.canvas, wrap.firstChild);
+      api.ctx = api.canvas.getContext("2d");
+    }
+    window.addEventListener("resize", onResize);
+    onResize();
+    return true;
+  }
+
+  function onResize() {
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    api.width = w; api.height = h;
+    if (api.renderer) {
+      api.camera.aspect = w / h;
+      api.camera.updateProjectionMatrix();
+      api.renderer.setSize(w, h);
+    } else if (api.canvas) {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      api.canvas.width = Math.round(w * dpr);
+      api.canvas.height = Math.round(h * dpr);
+      api.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (ui.scenarioId) call("update");
+    }
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    if (api.controls) api.controls.update();
+    call("frame", 1 / 60);
+    if (api.renderer) api.renderer.render(api.scene, api.camera);
+  }
+
+  /* ---------- UI ---------- */
+  function renderTabs() {
+    const box = $("tabs");
+    box.innerHTML = "";
+    box.hidden = C.tabs.length < 2;
+    C.tabs.forEach(t => {
+      const b = document.createElement("button");
+      b.textContent = t.label;
+      b.className = t.id === ui.tab ? "active" : "";
+      b.addEventListener("click", () => switchTab(t.id));
+      box.appendChild(b);
     });
   }
-  slider.addEventListener('input', render);
-  render();
 
-  toVerticalBtn.onclick = () => {
-    computeGrid();
-    sharedState.grid = currentGrid.map(rowArr => rowArr.slice());
-    current = 'vertical';
+  function renderPicker() {
+    const box = $("scenarioPicker");
+    const list = scenariosOfTab(ui.tab);
+    box.innerHTML = "";
+    box.hidden = list.length < 2;
+    list.forEach(s => {
+      const b = document.createElement("button");
+      b.textContent = s.name;
+      b.className = s.id === ui.scenarioId ? "active" : "";
+      b.addEventListener("click", () => selectScenario(s.id));
+      box.appendChild(b);
+    });
+  }
+
+  function sliderEl(p) {
+    const div = document.createElement("div");
+    div.className = "param";
+    const label = document.createElement("label");
+    label.textContent = p.label + " ";
+    const val = document.createElement("span");
+    val.className = "val"; val.id = "p_" + p.key + "_val"; val.dataset.unit = p.unit || "";
+    val.textContent = fmtVal(P[p.key], p.unit);
+    label.appendChild(val);
+    const inp = document.createElement("input");
+    inp.type = "range"; inp.id = "p_" + p.key;
+    inp.min = p.min; inp.max = p.max; inp.step = p.step; inp.value = P[p.key];
+    inp.addEventListener("input", () => {
+      const v = parseFloat(inp.value);
+      P[p.key] = v;
+      val.textContent = fmtVal(v, p.unit);
+      call("update");
+    });
+    div.append(label, inp);
+    return div;
+  }
+
+  function choiceEl(c) {
+    const row = document.createElement("div");
+    row.className = "row"; row.style.marginBottom = "8px";
+    if (c.label) { const l = document.createElement("b"); l.style.fontSize = "0.9em"; l.textContent = c.label; row.appendChild(l); }
+    c.options.forEach(o => {
+      const b = document.createElement("button");
+      b.textContent = o.label;
+      b.className = P[c.key] === o.value ? "primary" : "";
+      b.addEventListener("click", () => {
+        P[c.key] = o.value;
+        row.querySelectorAll("button").forEach(x => x.className = "");
+        b.className = "primary";
+        call("update");
+      });
+      row.appendChild(b);
+    });
+    return row;
+  }
+
+  function renderControls() {
+    const s = current();
+    const body = $("scenarioBody");
+    body.innerHTML = "";
+    if (s.desc || s.section) {
+      const p = document.createElement("p");
+      p.className = "hint"; p.style.marginBottom = "10px";
+      if (s.section) { const b = document.createElement("b"); b.textContent = s.section; p.appendChild(b); if (s.desc) p.appendChild(document.createTextNode(" — ")); }
+      if (s.desc) p.appendChild(document.createTextNode(s.desc));
+      body.appendChild(p);
+    }
+    (s.choices || []).forEach(c => body.appendChild(choiceEl(c)));
+    (s.params || []).forEach(p => body.appendChild(sliderEl(p)));
+    if (s.animated) {
+      const st = document.createElement("div");
+      st.className = "hint"; st.id = "wsStatus";
+      st.textContent = s.status_hint || "";
+      body.appendChild(st);
+      const row = document.createElement("div");
+      row.className = "controls-row";
+      const play = document.createElement("button");
+      play.id = "playBtn"; play.className = "primary";
+      play.addEventListener("click", () => { ui.playing = !ui.playing; updatePlayButton(); });
+      const reset = document.createElement("button");
+      reset.textContent = "↺ 리셋";
+      reset.addEventListener("click", () => { ui.playing = false; updatePlayButton(); call("reset"); call("update"); });
+      row.append(play, reset);
+      body.appendChild(row);
+      updatePlayButton();
+    }
+    const cp = C.common_params;
+    if (cp && s.use_common !== false) {
+      const hr = document.createElement("hr");
+      hr.style.cssText = "margin:10px 0;border:none;border-top:1px solid var(--border)";
+      body.appendChild(hr);
+      if (cp.title) { const b = document.createElement("b"); b.style.fontSize = "0.9em"; b.textContent = cp.title; body.appendChild(b); }
+      cp.params.forEach(p => body.appendChild(sliderEl(p)));
+    }
+  }
+
+  function updatePlayButton() {
+    const b = $("playBtn");
+    if (b) b.textContent = ui.playing ? "⏸ 일시정지" : "▶ 재생";
+  }
+
+  function renderFormula() {
+    const s = current();
+    const body = $("formulaBody");
+    body.innerHTML = (s.formula || []).map(f =>
+      (f.eq_html ? `<div class="eq">${f.eq_html}</div>` : "") + (f.text_html || "")
+    ).join("");
+  }
+
+  function renderMisconception() {
+    const s = current();
+    const panel = $("misconceptionPanel");
+    panel.innerHTML = "";
+    panel.hidden = !s.misconception;
+    if (!s.misconception) return;
+    const box = document.createElement("div");
+    box.className = "misconception";
+    const b = document.createElement("b");
+    b.textContent = s.misconception_title || "💡 흔한 오개념";
+    box.append(b, document.createElement("br"), document.createTextNode(s.misconception));
+    panel.appendChild(box);
+  }
+
+  function enterScenario() {
+    ui.playing = false;
+    const s = current();
+    $("graphPanel").hidden = !s.chart;
+    $("chartHint").innerHTML = "";
+    api.custom.innerHTML = "";
+    api.setReadout([]); api.setNote("");
+    renderPicker(); renderControls(); renderFormula(); renderMisconception();
+    call("enter");
+    call("update");
+  }
+
+  function selectScenario(id) {
+    ui.scenarioId = id;
+    lastScenarioOfTab[ui.tab] = id;
+    enterScenario();
+  }
+
+  function switchTab(tab) {
+    ui.tab = tab;
     renderTabs();
-    renderPanel();
-  };
-}
-
-function verticalHTML() {
-  return '\
-    <div class="ctrlRow">\
-      <button class="iconBtn" id="playBtn" aria-label="재생"><i class="ti ti-player-play" aria-hidden="true"></i></button>\
-      <button class="iconBtn" id="stepBtn" aria-label="한 단계"><i class="ti ti-step-into" aria-hidden="true"></i></button>\
-      <button class="iconBtn" id="resetBtn" aria-label="초기화"><i class="ti ti-refresh" aria-hidden="true"></i></button>\
-      <label style="font-size:14px; color:var(--color-text-secondary); margin-left:8px;">속도</label>\
-      <input type="range" id="speedSlider" min="1" max="5" value="3" style="flex:1;">\
-    </div>\
-    <div id="vertSvgHost"></div>\
-    <div id="vertInfo" style="background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:0.875rem 1rem; font-size:13px; color:var(--color-text-secondary); margin-top:1rem;">\
-      재생 버튼을 누르면 3상(φ1→φ2→φ3) 게이트 전압이 순서대로 켜지며, 전위 우물이 옆으로 이동해 전하를 한 행씩 아래로 밀어냅니다. 맨 아래 줄에 도달한 전하는 수평 시프트 레지스터로 전달됩니다.\
-    </div>\
-    <div style="display:flex; justify-content:flex-end; margin-top:1rem;">\
-      <button class="nextBtn" id="toHorizontalBtn">이 전하로 수평 전송 보기 <i class="ti ti-arrow-right" aria-hidden="true"></i></button>\
-    </div>\
-  ';
-}
-
-function initVertical() {
-  const playBtn = document.getElementById('playBtn');
-  const stepBtn = document.getElementById('stepBtn');
-  const resetBtn = document.getElementById('resetBtn');
-  const speedSlider = document.getElementById('speedSlider');
-  const host = document.getElementById('vertSvgHost');
-  const info = document.getElementById('vertInfo');
-  const toHorizontalBtn = document.getElementById('toHorizontalBtn');
-
-  let grid = [];
-  let exitedRow = new Array(N).fill(0);
-  let exitedCount = 0;
-  let playing = false;
-  let timer = null;
-  let gatePhase = 0;
-
-  function initGrid() {
-    if (sharedState.grid) {
-      grid = sharedState.grid.map(r => r.slice());
-    } else {
-      grid = [];
-      for (let r=0;r<N;r++){ grid.push([]); for (let c=0;c<N;c++){ grid[r].push(0.3 + Math.random()*0.7); } }
-    }
-    exitedRow = new Array(N).fill(0);
-    exitedCount = 0;
-    gatePhase = 0;
+    selectScenario(lastScenarioOfTab[tab] || scenariosOfTab(tab)[0].id);
   }
 
-  function shiftDown() {
-    if (grid.every(rowArr => rowArr.every(v => v === 0)) && exitedCount === 0) return;
-    const bottomHadCharge = grid[N-1].some(v => v > 0);
-    const newGrid = grid.map(rowArr => rowArr.slice());
-    for (let r=N-1; r>0; r--){
-      for (let c=0;c<N;c++){ newGrid[r][c] = grid[r-1][c]; }
-    }
-    for (let c=0;c<N;c++){ newGrid[0][c] = 0; }
-    if (bottomHadCharge) {
-      exitedRow = grid[N-1].slice();
-      exitedCount++;
-    } else {
-      exitedRow = new Array(N).fill(0);
-    }
-    grid = newGrid;
-    gatePhase = (gatePhase + 1) % 3;
+  function renderLegend() {
+    const box = $("legend");
+    (C.legend || []).forEach(l => {
+      const span = document.createElement("span");
+      const sw = document.createElement("i");
+      sw.className = "swatch" + (l.shape === "bar" ? " bar" : "");
+      sw.style.background = l.color;
+      span.append(sw, document.createTextNode(l.label));
+      box.appendChild(span);
+    });
   }
 
-  function render() {
-    const maxY = isoY(0, N-1) + cellH/2 + wellDepth + 90;
-    const minX = isoX(0, N-1) - cellW/2 - 20;
-    const maxX = isoX(N-1, 0) + cellW/2 + 20;
-    let svg = '<svg width="100%" viewBox="' + minX + ' 0 ' + (maxX-minX) + ' ' + maxY + '" role="img"><title>수직 버킷 브리게이드 전송</title><desc>3상 게이트 전압이 순환하며 각 열의 전하를 한 행씩 아래로 이동시키는 모습</desc>';
-    for (let r=0;r<N;r++){
-      for (let c=0;c<N;c++){
-        svg += wellSVG(c, r, grid[r][c], r+'_'+c);
-      }
+  function runSelfTests() {
+    if (!SIMOBJ || typeof SIMOBJ.tests !== "function") { console.log("물리 검증 항목 없음"); return; }
+    let results = [];
+    try { results = SIMOBJ.tests() || []; } catch (e) { showError("tests", e); return; }
+    console.log("=== " + C.title + " 물리 검증 ===");
+    let pass = 0;
+    for (const [name, ok, detail] of results) {
+      console.log(`[${ok ? "PASS" : "FAIL"}] ${name}${detail ? " — " + detail : ""}`);
+      if (ok) pass++;
     }
-    const bottomRow = N-1;
-    for (let c=0;c<N;c++){
-      svg += gatePhaseBarSVG(c, bottomRow, c, gatePhase);
-    }
-    const legendX = isoX(0, N-1) - cellW/2;
-    const legendY = isoY(0, N-1) + cellH/2 + wellDepth + 36;
-    svg += gateLegendSVG(legendX, legendY);
-    const labelY = legendY + 26;
-    svg += '<text class="ts" x="' + ((minX+maxX)/2) + '" y="' + labelY + '" text-anchor="middle">수평 시프트 레지스터로 전달된 행: ' + exitedCount + '개</text>';
-    svg += '</svg>';
-    host.innerHTML = svg;
+    console.log(pass === results.length ? "모든 검증 통과" : "일부 검증 실패 — 콘솔 확인 필요");
+    window.__wsSelfTest = { pass, total: results.length };
   }
 
-  function tick() { shiftDown(); render(); }
-
-  function play() {
-    if (timer) clearInterval(timer);
-    playing = true;
-    playBtn.innerHTML = '<i class="ti ti-player-pause" aria-hidden="true"></i>';
-    const speed = Number(speedSlider.value);
-    const interval = 1100 - speed*150;
-    timer = setInterval(tick, interval);
-  }
-  function pause() {
-    if (timer) clearInterval(timer);
-    playing = false;
-    playBtn.innerHTML = '<i class="ti ti-player-play" aria-hidden="true"></i>';
-  }
-
-  playBtn.onclick = () => { playing ? pause() : play(); };
-  stepBtn.onclick = () => { pause(); tick(); };
-  resetBtn.onclick = () => { pause(); initGrid(); render(); };
-  speedSlider.oninput = () => { if (playing) play(); };
-
-  toHorizontalBtn.onclick = () => {
-    pause();
-    sharedState.exitedRow = exitedRow.some(v => v > 0) ? exitedRow.slice() : grid[N-1].slice();
-    current = 'horizontal';
+  /* ---------- 시작 ---------- */
+  $("readoutTitle").textContent = C.readout_title || "측정값";
+  $("hoverHint").textContent = (C.scene && C.scene.hint != null) ? C.scene.hint
+    : (C.renderer === "three" ? "마우스 드래그: 회전 · 휠: 확대/축소" : "");
+  $("projectorBtn").addEventListener("click", () => document.body.classList.toggle("projector"));
+  renderLegend();
+  if (!SIMOBJ) showError("load", "sim_js에 SIM 객체가 정의되지 않았습니다");
+  if (initRenderer()) {
+    call("init");
     renderTabs();
-    renderPanel();
-  };
-
-  initGrid();
-  render();
-}
-
-function horizontalHTML() {
-  return '\
-    <div class="ctrlRow">\
-      <button class="iconBtn" id="hPlayBtn" aria-label="재생"><i class="ti ti-player-play" aria-hidden="true"></i></button>\
-      <button class="iconBtn" id="hStepBtn" aria-label="한 단계"><i class="ti ti-step-into" aria-hidden="true"></i></button>\
-      <button class="iconBtn" id="hResetBtn" aria-label="초기화"><i class="ti ti-refresh" aria-hidden="true"></i></button>\
-      <label style="font-size:14px; color:var(--color-text-secondary); margin-left:8px;">속도</label>\
-      <input type="range" id="hSpeedSlider" min="1" max="5" value="3" style="flex:1;">\
-    </div>\
-    <div id="horizSvgHost"></div>\
-    <div style="display:flex; gap:16px; margin-top:1rem; flex-wrap:wrap;">\
-      <div style="flex:1; min-width:200px; background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:0.875rem 1rem;">\
-        <p style="font-size:12px; color:var(--color-text-secondary); margin:0 0 4px;">출력 앰프 전압</p>\
-        <p style="font-size:22px; font-weight:500; margin:0;" id="ampVoltage">0.00 V</p>\
-      </div>\
-      <div style="flex:1; min-width:200px; background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:0.875rem 1rem;">\
-        <p style="font-size:12px; color:var(--color-text-secondary); margin:0 0 4px;">읽어낸 픽셀 수</p>\
-        <p style="font-size:22px; font-weight:500; margin:0;" id="pixelCount">0 / 5</p>\
-      </div>\
-    </div>\
-    <p style="font-size:13px; color:var(--color-text-secondary); margin-top:1rem;">수직 전송으로 내려온 한 줄(행)이 수평 시프트 레지스터에 들어가면, 3상 게이트 전압이 순서대로 켜지며 한 칸씩 출력 앰프 쪽으로 이동해 차례로 전압값으로 변환됩니다. 모든 픽셀이 동일한 앰프를 거치기 때문에 CCD는 픽셀 간 노이즈 편차가 적습니다.</p>\
-  ';
-}
-
-function initHorizontal() {
-  const playBtn = document.getElementById('hPlayBtn');
-  const stepBtn = document.getElementById('hStepBtn');
-  const resetBtn = document.getElementById('hResetBtn');
-  const speedSlider = document.getElementById('hSpeedSlider');
-  const host = document.getElementById('horizSvgHost');
-  const voltageOut = document.getElementById('ampVoltage');
-  const countOut = document.getElementById('pixelCount');
-
-  const rowY = 1;
-  let row = [];
-  let ampValue = 0;
-  let readCount = 0;
-  let playing = false;
-  let timer = null;
-  let gatePhase = 0;
-
-  const ampCol = N;
-
-  function initRow() {
-    if (sharedState.exitedRow) {
-      row = sharedState.exitedRow.slice();
-    } else {
-      row = [];
-      for (let c=0;c<N;c++){ row.push(0.3 + Math.random()*0.7); }
-    }
-    ampValue = 0;
-    readCount = 0;
-    gatePhase = 0;
+    switchTab(ui.tab);
+    animate();
   }
-
-  function shiftRight() {
-    if (row.every(v => v === 0) && readCount >= N) return;
-    let exited = row[N-1];
-    for (let c=N-1;c>0;c--){ row[c] = row[c-1]; }
-    row[0] = 0;
-    if (exited > 0) { ampValue = exited; readCount++; }
-    gatePhase = (gatePhase + 1) % 3;
-  }
-
-  function render() {
-    const maxY = isoY(0, rowY) + cellH/2 + wellDepth + 90;
-    const minX = isoX(0, rowY) - cellW/2 - 30;
-    const maxX = isoX(ampCol, rowY) + cellW/2 + 40;
-    let svg = '<svg width="100%" viewBox="' + minX + ' 0 ' + (maxX-minX) + ' ' + maxY + '" role="img"><title>수평 전송과 출력 앰프</title><desc>3상 게이트 전압에 따라 수평 시프트 레지스터를 따라 전하가 한 칸씩 이동하여 출력 앰프에서 전압으로 변환되는 모습</desc>';
-    for (let c=0;c<N;c++){ svg += wellSVG(c, rowY, row[c], 'h'+c); }
-    for (let c=0;c<N;c++){ svg += gatePhaseBarSVG(c, rowY, c, gatePhase); }
-    const ampX = isoX(ampCol, rowY);
-    const ampYc = isoY(ampCol, rowY);
-    const glow = ampValue > 0.05 ? 'opacity="1"' : 'opacity="0.4"';
-    svg += '<circle cx="' + ampX + '" cy="' + (ampYc + cellH/2) + '" r="20" class="c-amber" stroke-width="0.5" ' + glow + '/>';
-    svg += '<text class="ts" x="' + ampX + '" y="' + (ampYc + cellH/2) + '" text-anchor="middle" dominant-baseline="central">앰프</text>';
-    const arrowX1 = isoX(0, rowY) - 40;
-    svg += '<text class="ts" x="' + arrowX1 + '" y="' + (isoY(0,rowY)+cellH/2) + '" text-anchor="middle">입력</text>';
-    const legendX = isoX(0, rowY) - cellW/2;
-    const legendY = isoY(0, rowY) + cellH/2 + wellDepth + 36;
-    svg += gateLegendSVG(legendX, legendY);
-    svg += '</svg>';
-    host.innerHTML = svg;
-    voltageOut.textContent = (ampValue * 3.3).toFixed(2) + ' V';
-    countOut.textContent = Math.min(readCount, N) + ' / ' + N;
-  }
-
-  function tick() { shiftRight(); render(); if (readCount >= N) pause(); }
-
-  function play() {
-    if (timer) clearInterval(timer);
-    playing = true;
-    playBtn.innerHTML = '<i class="ti ti-player-pause" aria-hidden="true"></i>';
-    const speed = Number(speedSlider.value);
-    const interval = 1000 - speed*140;
-    timer = setInterval(tick, interval);
-  }
-  function pause() {
-    if (timer) clearInterval(timer);
-    playing = false;
-    playBtn.innerHTML = '<i class="ti ti-player-play" aria-hidden="true"></i>';
-  }
-
-  playBtn.onclick = () => { playing ? pause() : play(); };
-  stepBtn.onclick = () => { pause(); tick(); };
-  resetBtn.onclick = () => { pause(); initRow(); render(); };
-  speedSlider.oninput = () => { if (playing) play(); };
-
-  initRow();
-  render();
-}
-
-renderTabs();
-renderPanel();
+  runSelfTests();
+})();
 </script>
+
 </body>
 </html>
+<!--claude-meta
+category: 반도체
+slug: ccd-sensor
+icon: 📷
+title: CCD 이미지 센서
+desc: 빛이 전하가 되고, 전하 묶음이 우물을 따라 전송되어 출력 증폭기에서 영상이 되기까지 (고2 물리학 · 첨단 과학)
+-->

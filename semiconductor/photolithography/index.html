@@ -3,332 +3,1206 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>포토리소그래피 공정 7단계 시뮬레이션</title>
+<title>포토리소그래피 공정 7단계</title>
 <style>
-  :root{
-    --color-background-primary:#ffffff;
-    --color-background-secondary:#f1efe8;
-    --color-background-tertiary:#e8e6dd;
-    --color-text-primary:#1a1a1a;
-    --color-text-secondary:#5f5e5a;
-    --color-text-tertiary:#8a8880;
-    --color-border-tertiary:rgba(60,60,55,0.15);
-    --color-border-secondary:rgba(60,60,55,0.30);
-    --border-radius-md:8px;
-    --border-radius-lg:12px;
-    --font-sans:-apple-system,"Segoe UI","Malgun Gothic",sans-serif;
-    --font-mono:"JetBrains Mono","Consolas",monospace;
+  :root {
+    --bg: #f4f6fa; --panel: #ffffff; --ink: #1c2733; --sub: #5a6b7d;
+    --accent: #1f6fd6; --accent2: #d64545; --ok: #1e8f4e;
+    --border: #d7dee8; --radius: 10px;
   }
-  body{ font-family:var(--font-sans); background:var(--color-background-secondary); color:var(--color-text-primary); margin:0; padding:16px; }
-  .wrap-outer{ max-width:900px; margin:0 auto; }
-  h1.page-title{ font-size:1.3rem; margin:4px 0 2px; }
-  p.page-sub{ color:var(--color-text-secondary); font-size:.9rem; margin-bottom:8px; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+  body {
+    font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+    background: var(--bg); color: var(--ink);
+    padding: 12px; font-size: 15px;
+  }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  header h1 { font-size: 1.25em; }
+  header .spacer { flex: 1; }
+  a.home { text-decoration:none; color:var(--sub); border:1px solid var(--border); padding:6px 12px; border-radius:8px; font-size:0.9em; white-space:nowrap; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .tabs button { flex: 0 0 auto; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 1em; }
+  .tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .layout { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .sim-col { flex: 2 1 480px; display: flex; flex-direction: column; gap: 12px; }
+  .side-col { flex: 1 1 320px; display: flex; flex-direction: column; gap: 12px; }
+
+  #sceneWrap { position: relative; width: 100%; aspect-ratio: 16/10; border-radius: 8px; overflow: hidden; background: radial-gradient(circle at 50% 30%, #16233a, #060a12 75%); }
+  #sceneWrap canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #hoverHint { position:absolute; left:8px; bottom:8px; color:#9fb3d9; font-size:0.78em; background:rgba(6,10,18,0.55); padding:4px 8px; border-radius:6px; pointer-events:none; }
+  #hoverHint:empty { display: none; }
+  #simError { position:absolute; left:8px; right:8px; top:8px; color:#fff; background:rgba(214,69,69,0.92); padding:6px 10px; border-radius:6px; font-size:0.82em; white-space:pre-wrap; }
+
+  .scenario-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .scenario-picker button { flex: 1 1 30%; min-width: 120px; padding: 8px 6px; font-size: 0.86em; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  .scenario-picker button.active { background: #eaf1fd; border-color: var(--accent); color: var(--accent); font-weight: 700; }
+
+  .param { margin-bottom: 10px; }
+  .param label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 4px; font-size: 0.92em; }
+  .param label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .param input[type=range] { width: 100%; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .hint { color: var(--sub); font-size: 0.83em; margin-top: 2px; line-height: 1.5; }
+
+  button { font-size: 1em; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.warn { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .controls-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.82em; color: var(--sub); margin-top: 8px; }
+  .legend:empty { display: none; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .swatch { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .swatch.bar { border-radius: 2px; }
+
+  table.readout { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+  table.readout td { padding: 4px 2px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  table.readout td:first-child { color: var(--sub); }
+  table.readout td:last-child { text-align: right; font-weight: 700; }
+
+  details { margin-top: 6px; }
+  summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+  .formula-body { padding: 8px 2px; line-height: 1.8; font-size: 0.92em; }
+  .formula-body .eq { font-size: 1.08em; text-align: center; margin: 6px 0; font-family: Georgia, serif; }
+  .note { border-left: 3px solid var(--accent); background: #eef4fd; padding: 8px 10px; border-radius: 6px; font-size: 0.86em; margin-top: 8px; line-height: 1.6; }
+  .note:empty { display: none; }
+  .misconception { border-left: 3px solid var(--accent2); background: #fdeeee; padding: 8px 10px; border-radius: 6px; font-size: 0.86em; margin-top: 8px; line-height: 1.6; }
+
+  canvas.chart { width: 100%; background: #fff; border: 1px solid var(--border); border-radius: 6px; }
+
+  body.projector { font-size: 19px; }
+  body.projector button { padding: 12px 18px; }
+  body.projector .scenario-picker button { font-size: 1em; padding: 12px 8px; }
+
+  @media (max-width: 720px) {
+    body { font-size: 16px; padding: 8px; }
+    .layout { flex-direction: column; }
+    .sim-col, .side-col { flex: 1 1 100%; }
+    button { padding: 11px 14px; }
+    input[type=range] { height: 26px; }
+  }
+/* ---- 레시피 입력 extra_css ---- */
+
 </style>
 </head>
 <body>
-<a href="../../index.html" title="홈으로" style="position:fixed;left:12px;bottom:12px;z-index:99999;background:rgba(255,255,255,.94);color:#1c2733;text-decoration:none;padding:8px 13px;border-radius:9px;font:600 14px/1 'Segoe UI','Malgun Gothic',sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.22);border:1px solid rgba(0,0,0,.12)">🏠 홈</a>
-<div class="wrap-outer">
-<h1 class="page-title">🔬 포토리소그래피 공정 7단계</h1>
-<p class="page-sub">반도체 회로를 새기는 노광 공정을 단계별로 체험합니다.</p>
 
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-.pw{padding:1rem 0}
-.prow{display:flex;align-items:center;gap:0;margin-bottom:1.25rem;overflow-x:auto;padding-bottom:4px}
-.pd{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--color-border-secondary);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--color-text-tertiary);cursor:pointer;transition:all .2s;flex-shrink:0;background:var(--color-background-primary)}
-.pd.on{background:#185FA5;border-color:#185FA5;color:#E6F1FB;font-weight:500}
-.pd.dn{background:#E1F5EE;border-color:#1D9E75;color:#085041}
-.pl{flex:1;height:1.5px;background:var(--color-border-tertiary);min-width:8px}
-.pl.dn{background:#1D9E75}
-.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden}
-.ch{padding:.875rem 1.25rem;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;gap:10px}
-.sn{font-size:11px;color:var(--color-text-tertiary);white-space:nowrap}
-.st{font-size:15px;font-weight:500;color:var(--color-text-primary)}
-.tg{font-size:11px;padding:2px 10px;border-radius:20px;margin-left:auto;white-space:nowrap;flex-shrink:0}
-.bd{display:grid;grid-template-columns:1fr 1fr;gap:0}
-.vp{padding:1rem;border-right:0.5px solid var(--color-border-tertiary);display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:240px}
-.ip{padding:1.25rem;display:flex;flex-direction:column;gap:.875rem}
-.lb{font-size:11px;font-weight:500;color:var(--color-text-tertiary);letter-spacing:.04em;margin-bottom:2px}
-.vl{font-size:13px;color:var(--color-text-primary);line-height:1.6}
-.mn{font-size:12px;font-family:var(--font-mono);padding:7px 10px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);border-left:3px solid #185FA5;color:var(--color-text-primary);white-space:pre}
-.ht{font-size:12px;color:var(--color-text-secondary);line-height:1.55;border-left:3px solid #EF9F27;padding-left:8px}
-.sr{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--color-text-secondary)}
-.sr input{flex:1}
-.sv{min-width:52px;text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--color-text-primary)}
-.nav{display:flex;justify-content:space-between;align-items:center;padding:.75rem 1.25rem;border-top:0.5px solid var(--color-border-tertiary)}
-.nav button{padding:5px 14px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-primary);cursor:pointer;font-size:13px}
-.nav button:hover{background:var(--color-background-secondary)}
-.nav button:disabled{opacity:.3;cursor:default}
-.nav .nb{background:#185FA5;border-color:#185FA5;color:#E6F1FB}
-.nav .nb:hover{background:#0C447C}
-</style>
-<h2 class="sr-only">포토리소그래피 공정 7단계 인터랙티브 시뮬레이션 — 세로축 회전, 볼록렌즈, 고정 웨이퍼 식각 포함</h2>
-<div class="pw">
-<div class="prow" id="prog"></div>
-<div class="card">
-  <div class="ch"><span class="sn" id="sn"></span><span class="st" id="st"></span><span class="tg" id="stag"></span></div>
-  <div class="bd">
-    <div class="vp" id="vis"></div>
-    <div class="ip" id="info"></div>
+<header>
+  
+  <h1>🔬 포토리소그래피 공정 7단계</h1>
+  <span class="spacer"></span>
+  <button id="projectorBtn" title="프로젝터용 큰 글씨 모드">🖥 큰 글씨 모드</button>
+</header>
+
+<div class="tabs" id="tabs"></div>
+
+<div class="layout">
+
+  <div class="sim-col">
+    <div class="panel">
+      <div id="sceneWrap">
+        <div id="hoverHint"></div>
+        <div id="simError" hidden></div>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="panel" id="graphPanel" hidden>
+      <canvas id="chartCanvas" class="chart" width="440" height="220"></canvas>
+      <div class="hint" id="chartHint"></div>
+    </div>
   </div>
-  <div class="nav">
-    <button id="bp" onclick="go(-1)">← 이전</button>
-    <span style="font-size:12px;color:var(--color-text-tertiary)" id="nl"></span>
-    <button class="nb" id="bn" onclick="go(1)">다음 →</button>
+
+  <div class="side-col">
+
+    <div class="panel" id="scenarioPanel">
+      <div class="scenario-picker" id="scenarioPicker"></div>
+      <div id="scenarioBody"></div>
+      <div id="customPanel"></div>
+    </div>
+
+    <div class="panel" id="readoutPanel">
+      <b id="readoutTitle"></b>
+      <table class="readout" id="readout"></table>
+      <div class="note" id="readoutNote"></div>
+    </div>
+
+    <div class="panel">
+      <details id="formulaDetails">
+        <summary>📐 관련 공식 보기</summary>
+        <div class="formula-body" id="formulaBody"></div>
+      </details>
+    </div>
+
+    <div class="panel" id="misconceptionPanel"></div>
+
   </div>
 </div>
-</div>
+
+
 <script>
-const SF='var(--font-sans)';
-function t(x,y,s,fill,ta,fs){return`<text x="${x}" y="${y}" font-size="${fs||10}" fill="${fill||'var(--color-text-primary)'}" font-family="${SF}" text-anchor="${ta||'middle'}">${s}</text>`;}
-
-const S=[
-{ti:"웨이퍼 세정",tag:{b:"#E1F5EE",c:"#085041",tx:"준비 단계"},
- concept:"표면 오염 제거",formula:"세정액: NH₄OH + H₂O₂ + 물\n(RCA 세정법)",
- easy:"마치 요리 전 도마를 깨끗이 닦는 것처럼,\n실리콘 판(웨이퍼)에 붙은 먼지·기름·이온을\n완전히 제거합니다.\n\n반도체 공장은 수술실보다 1000배 이상\n깨끗한 클린룸에서 이 작업을 합니다.",
- hint:"먼지 1개가 회로를 망가뜨릴 수 있어요.\n머리카락 굵기의 1/1000 크기 입자도 위험합니다.",draw:"clean"},
-
-{ti:"산화막 형성",tag:{b:"#E6F1FB",c:"#0C447C",tx:"절연층"},
- concept:"SiO₂ — 실리콘 이산화물 (산화막)",formula:"Si + O₂ → SiO₂\n(900~1200°C 고온 로에서 반응)",
- easy:"철을 공기에 두면 녹(산화철)이 슬듯,\n실리콘을 고온 산소 속에 넣으면\n표면에 얇은 유리막(SiO₂, 산화막)이 생깁니다.\n\n이 막은 전기를 차단하는 절연체로,\n회로 사이를 전기적으로 분리하는 벽 역할입니다.",
- hint:"슬라이더로 산화막 두께를 바꿔보세요.\n두꺼울수록 절연 성능이 높아집니다.",draw:"oxide",slider:{id:"ox",label:"산화막 두께",min:5,max:80,val:25,unit:"nm"}},
-
-{ti:"포토레지스트 도포",tag:{b:"#FAEEDA",c:"#633806",tx:"스핀 코팅"},
- concept:"세로축 회전 + 원심력으로 균일한 막 형성",formula:"두께 ∝ √점도 / 회전속도\n→ 빨리 돌릴수록 얇아짐",
- easy:"웨이퍼 중심을 지나는 세로축(스핀들)을 기준으로\n고속 회전하면, 가운데 떨어뜨린 감광액(PR)이\n원심력으로 바깥으로 퍼지며 얇은 막이 됩니다.\n\n회전이 빠를수록 원심력이 커져\nPR이 더 멀리, 더 얇게 퍼집니다.",
- hint:"슬라이더로 rpm을 바꿔보세요.\n세로축을 중심으로 회전하는 모습을 확인하세요.",draw:"spin",slider:{id:"rpm",label:"회전 속도",min:500,max:4000,val:2000,unit:"rpm",step:100}},
-
-{ti:"노광 (빛 쬐기)",tag:{b:"#FAECE7",c:"#712B13",tx:"핵심 단계 ★"},
- concept:"빛의 파동성 — 파장이 짧을수록 더 미세한 패턴",formula:"최소 선폭 R = k·λ / NA\n→ 파장(λ) 짧을수록 더 가는 선 가능",
- easy:"① UV 광원에서 빛이 내려옵니다.\n② 마스크(회로 패턴이 새겨진 판)를 통과해\n   패턴 모양대로만 빛이 선택적으로 지나갑니다.\n③ 볼록렌즈(투영 광학계)가 그 패턴을\n   4~5배 작게 줄여 감광액에 새겨 넣습니다.\n\n파장이 짧을수록 더 가는 선을 만들 수 있어요.",
- hint:"파장 슬라이더를 움직여 최소 선폭 변화를 확인하세요.\n볼록렌즈가 빛을 좁혀 패턴을 축소합니다.",draw:"expose",slider:{id:"wl",label:"빛의 파장 λ",min:13,max:436,val:193,unit:"nm",step:1}},
-
-{ti:"현상 (패턴 드러내기)",tag:{b:"#E1F5EE",c:"#085041",tx:"화학 반응"},
- concept:"빛 에너지(E=hf)가 화학 결합을 끊음",formula:"E = hf = hc/λ\n(파장 짧을수록 광자 에너지 큼)",
- easy:"사진 필름을 현상하듯,\n현상액을 부으면 빛을 받아 변한 부분이\n씻겨나가 패턴이 드러납니다.\n\n양성(+) PR: 빛 받은 곳 → 제거\n음성(−) PR: 빛 받은 곳 → 경화·남음\n\n빛 에너지(E=hf)가 분자 결합을 끊어\n이 과정이 가능합니다.",
- hint:"버튼을 눌러 현상 과정을 단계별로 확인하세요.",draw:"develop"},
-
-{ti:"식각 (파내기)",tag:{b:"#EEEDFE",c:"#3C3489",tx:"패턴 전사"},
- concept:"플라즈마 건식 식각 — 이온만 수직으로 이동",formula:"건식 식각: 이온이 수직으로 충돌\n→ PR이 없는 곳만 아래 방향으로 제거",
- easy:"웨이퍼는 고정되어 있고,\n플라즈마 이온이 위에서 수직으로 내려옵니다.\n\nPR이 있는 곳: 이온이 PR에 막혀 재료 보호\nPR이 없는 곳: 이온이 충돌 → 재료 제거\n\n수직 방향으로만 파내기 때문에 옆면이 깨끗해\n나노미터 수준의 정밀한 홈을 만들 수 있습니다.",
- hint:"웨이퍼는 절대 움직이지 않아요.\n이온만 위에서 내려옵니다. 슬라이더로 깊이를 조절해보세요.",draw:"etch",slider:{id:"ed",label:"식각 깊이",min:5,max:55,val:20,unit:"nm",step:5}},
-
-{ti:"포토레지스트 제거",tag:{b:"#EAF3DE",c:"#27500A",tx:"공정 완료"},
- concept:"7단계 반복 → 수십억 개 트랜지스터",formula:"O₂ 플라즈마 애싱 또는 유기 용제\n→ PR 완전 제거 후 최종 구조 확인",
- easy:"임무를 다한 감광막을 산소 플라즈마나\n용제로 완전히 제거하면,\n원하는 회로 패턴이 새겨진 칩이 완성됩니다.\n\n이 7단계를 수십~수백 번 반복하면\n엄지손톱 크기 칩 안에 수십억 개의\n트랜지스터가 만들어집니다!",
- hint:"이 7단계가 반복되어 스마트폰 칩,\nPC CPU, 메모리가 탄생합니다.",draw:"final"}
-];
-
-let cur=0,devSt=0;
-
-function drawClean(el){
-  el.innerHTML=`<svg width="220" height="185" viewBox="0 0 220 185">
-  <defs><linearGradient id="cgS" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#85B7EB"/><stop offset="100%" stop-color="#378ADD"/></linearGradient></defs>
-  <rect x="20" y="122" width="180" height="40" rx="6" fill="url(#cgS)"/>
-  <rect x="20" y="122" width="180" height="40" rx="6" fill="none" stroke="#185FA5" stroke-width="0.5"/>
-  ${t(110,146,'Si 웨이퍼','#E6F1FB','middle',12)}
-  <rect x="28" y="115" width="164" height="8" rx="2" fill="#F09595" opacity="0.5"/>
-  ${t(110,110,'오염물 (유기물·이온)','var(--color-text-secondary)','middle',9)}
-  ${[42,65,88,112,136,158,180].map((x,i)=>`<circle cx="${x}" cy="${97-(i%3)*11}" r="3.5" fill="none" stroke="#1D9E75" stroke-width="1"><animate attributeName="cy" values="${97-(i%3)*11};${60-(i%2)*10};${97-(i%3)*11}" dur="${1.1+i*0.15}s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.8;0;0.8" dur="${1.1+i*0.15}s" repeatCount="indefinite"/></circle>`).join('')}
-  ${t(110,28,'세정액 분자가 오염물을 들어올림','#0F6E56','middle',10)}
-  </svg>`;}
-
-function drawOxide(el,v){v=v||25;const oh=Math.round(v*0.55+6);
-  el.innerHTML=`<svg width="220" height="195" viewBox="0 0 220 195">
-  <defs><linearGradient id="ogS" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#85B7EB"/><stop offset="100%" stop-color="#378ADD"/></linearGradient>
-  <linearGradient id="ogO" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#B5D4F4"/><stop offset="100%" stop-color="#85B7EB"/></linearGradient></defs>
-  ${t(110,13,'고온로 (900~1200°C)','var(--color-text-tertiary)','middle',9)}
-  ${[45,75,105,135,165].map((x,i)=>`<path d="M${x} 20 Q${x+5} 30 ${x} 40 Q${x+5} 50 ${x} 60" fill="none" stroke="#EF9F27" stroke-width="1.2" opacity="0.5"><animate attributeName="opacity" values="0.2;0.7;0.2" dur="${0.8+i*0.1}s" repeatCount="indefinite"/></path>`).join('')}
-  <rect x="20" y="${128-oh}" width="180" height="${oh}" rx="4" fill="url(#ogO)"/>
-  <rect x="20" y="${128-oh}" width="180" height="${oh}" rx="4" fill="none" stroke="#185FA5" stroke-width="0.5"/>
-  ${t(110,128-oh/2+4,`SiO₂ 산화막 (${v}nm)`,'#0C447C','middle',10)}
-  <rect x="20" y="128" width="180" height="45" rx="4" fill="url(#ogS)"/>
-  ${t(110,155,'Si 웨이퍼','#E6F1FB','middle',12)}
-  <line x1="204" y1="${128-oh}" x2="214" y2="${128-oh}" stroke="#185FA5" stroke-width="0.5"/>
-  <line x1="204" y1="128" x2="214" y2="128" stroke="#185FA5" stroke-width="0.5"/>
-  <line x1="209" y1="${128-oh}" x2="209" y2="128" stroke="#185FA5" stroke-width="0.5"/>
-  ${t(215,128-oh/2+4,`${v}nm`,'#185FA5','start',8)}
-  </svg>`;}
-
-function drawSpin(el,v){
-  v=v||2000;
-  const thick=Math.max(40,Math.round(3100-v*0.55));
-  const dur=(2.0-(v/4000)*1.2).toFixed(1);
-  const prRx=Math.round(22+(v/4000)*60);
-  const prRy=Math.max(3,Math.round(11-(v/4000)*8));
-  el.innerHTML=`<svg width="220" height="200" viewBox="0 0 220 200">
-  <defs><marker id="mSp" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#185FA5" stroke-width="1.5"/></marker>
-  <linearGradient id="spSi" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#85B7EB"/><stop offset="100%" stop-color="#378ADD"/></linearGradient></defs>
-  ${t(110,11,'▲ 세로축 (회전축 = 스핀들)','var(--color-text-tertiary)','middle',9)}
-  <line x1="110" y1="14" x2="110" y2="100" stroke="#5F5E5A" stroke-width="2.5" stroke-linecap="round"/>
-  <path d="M 40 134 Q 25 118 40 103" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#mSp)"/>
-  <path d="M 180 103 Q 195 118 180 134" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#mSp)"/>
-  <ellipse cx="110" cy="123" ry="13" fill="url(#spSi)" stroke="#185FA5" stroke-width="0.5"><animate attributeName="rx" values="82;0;82" dur="${dur}s" repeatCount="indefinite"/></ellipse>
-  <ellipse cx="110" cy="111" ry="6" fill="#B5D4F4" stroke="#85B7EB" stroke-width="0.5"><animate attributeName="rx" values="82;0;82" dur="${dur}s" repeatCount="indefinite"/></ellipse>
-  <ellipse cx="110" cy="104" ry="${prRy}" fill="#EF9F27" stroke="#BA7517" stroke-width="0.5" opacity="0.9"><animate attributeName="rx" values="${prRx};0;${prRx}" dur="${dur}s" repeatCount="indefinite"/></ellipse>
-  <line x1="110" y1="136" x2="110" y2="144" stroke="#5F5E5A" stroke-width="2.5"/>
-  <rect x="92" y="144" width="36" height="14" rx="3" fill="#B4B2A9" stroke="#888780" stroke-width="0.5"/>
-  ${t(110,154,'척 (Chuck)','#444441','middle',8)}
-  <line x1="35" y1="117" x2="19" y2="117" stroke="#EF9F27" stroke-width="1.5"/><polygon points="19,114 12,117 19,120" fill="#EF9F27"/>
-  <line x1="185" y1="117" x2="201" y2="117" stroke="#EF9F27" stroke-width="1.5"/><polygon points="201,114 208,117 201,120" fill="#EF9F27"/>
-  ${t(8,128,'원심력','#854F0B','start',8)}
-  ${t(196,106,'PR','#633806','start',8)}
-  ${t(196,114,'SiO₂','#0C447C','start',8)}
-  ${t(196,125,'Si','#1D3E6E','start',8)}
-  ${t(110,173,`${v.toLocaleString()} rpm → 두께 ≈ ${thick}nm`,'var(--color-text-primary)','middle',10)}
-  ${t(110,187,'빠를수록 PR이 얇고 균일하게 퍼짐 (원심력 ↑)','var(--color-text-secondary)','middle',9)}
-  </svg>`;}
-
-function drawExpose(el,v){
-  v=v||193;
-  const minW=Math.round(0.61*v/0.85);
-  const techL=v<=14?"EUV":v<=200?"ArF UV":v<=250?"KrF UV":"가시광 수준";
-  const rc=v<=14?"#1D9E75":v<=200?"#7F77DD":v<=300?"#378ADD":"#D4537E";
-  const lc=v<=200?"#CED5FF":"#FEF3C7";
-  const yMsk=44,yLns=86,yPR=122;
-  const rxs=[54,68,82,96,110,124,138,152,166];
-  const slots=[{x1:84,x2:104},{x1:122,x2:142}];
-  const crxs=[52,70,90,110,130,150,168];
-  const scale=0.50;const cx=110;
-  el.innerHTML=`<svg width="220" height="208" viewBox="0 0 220 208">
-  <defs><marker id="mEx" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="${rc}" stroke-width="1.5"/></marker></defs>
-  <rect x="50" y="4" width="120" height="14" rx="3" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
-  ${t(110,14,`UV 광원 — λ=${v}nm (${techL})`,'#633806','middle',8.5)}
-  ${rxs.map((x,i)=>`<line x1="${x}" y1="18" x2="${x}" y2="${yMsk}" stroke="${rc}" stroke-width="${x===110?1.8:1}"><animate attributeName="opacity" values="0.85;0.25;0.85" dur="0.8s" begin="${(i*0.08).toFixed(2)}s" repeatCount="indefinite"/></line>`).join('')}
-  ${t(42,yMsk-3,'마스크 (회로 패턴판)','var(--color-text-secondary)','start',8.5)}
-  <rect x="42" y="${yMsk}" width="136" height="14" rx="2" fill="#888780" opacity="0.7"/>
-  ${slots.map(s=>`<rect x="${s.x1}" y="${yMsk}" width="${s.x2-s.x1}" height="14" fill="#FAEEDA" opacity="0.9"/>`).join('')}
-  ${t(73,yMsk+9,'차단','var(--color-text-tertiary)','middle',7)}
-  ${t(113,yMsk+9,'통과','#854F0B','middle',7)}
-  ${t(152,yMsk+9,'차단','var(--color-text-tertiary)','middle',7)}
-  ${slots.map((s,i)=>`<line x1="${(s.x1+s.x2)/2}" y1="${yMsk+14}" x2="${(s.x1+s.x2)/2}" y2="${yLns}" stroke="${rc}" stroke-width="2.2" opacity="0.9"><animate attributeName="opacity" values="0.9;0.35;0.9" dur="0.8s" begin="${(i*0.1).toFixed(2)}s" repeatCount="indefinite"/></line>`).join('')}
-  <path d="M 46 ${yLns} Q 110 ${yLns-20} 174 ${yLns} Q 110 ${yLns+20} 46 ${yLns} Z" fill="${lc}" fill-opacity="0.55" stroke="${rc}" stroke-width="1" opacity="0.9"/>
-  ${t(178,yLns,'볼록렌즈','#0C447C','start',8.5)}
-  ${t(178,yLns+11,'4~5배 축소','var(--color-text-tertiary)','start',7.5)}
-  ${crxs.map(x=>{const xp=Math.round(cx+(x-cx)*scale);return`<line x1="${x}" y1="${yLns+12}" x2="${xp}" y2="${yPR}" stroke="${rc}" stroke-width="0.9" opacity="0.45"/>`;}).join('')}
-  <line x1="48" y1="${yLns+12}" x2="${Math.round(cx+(48-cx)*scale)}" y2="${yPR}" stroke="${rc}" stroke-width="1.2" opacity="0.35"/>
-  <line x1="172" y1="${yLns+12}" x2="${Math.round(cx+(172-cx)*scale)}" y2="${yPR}" stroke="${rc}" stroke-width="1.2" opacity="0.35"/>
-  ${t(110,(yLns+yPR)/2+4,'← 좁아짐 (패턴 축소) →',rc,'middle',8)}
-  <rect x="42" y="${yPR}" width="136" height="14" rx="2" fill="#EF9F27" stroke="#BA7517" stroke-width="0.5" opacity="0.9"/>
-  ${t(110,yPR+9,'포토레지스트 (PR)','#633806','middle',8.5)}
-  <rect x="42" y="${yPR+14}" width="136" height="8" rx="1" fill="#B5D4F4" stroke="#85B7EB" stroke-width="0.5"/>
-  ${t(110,yPR+20,'SiO₂','#0C447C','middle',7.5)}
-  <rect x="42" y="${yPR+22}" width="136" height="34" rx="3" fill="#378ADD" stroke="#185FA5" stroke-width="0.5"/>
-  ${t(110,yPR+43,'Si 웨이퍼','#E6F1FB','middle',11)}
-  ${t(110,188,`λ = ${v}nm → 최소 선폭 ≈ ${minW}nm`,'var(--color-text-primary)','middle',10)}
-  ${t(110,200,'파장 짧을수록 더 가는 패턴 가능','var(--color-text-secondary)','middle',9)}
-  </svg>`;}
-
-function drawDevelop(el,_,reset){
-  if(reset)devSt=0;
-  const pats=[{x:28,w:40},{x:88,w:44},{x:152,w:32}];
-  const exp=[{x:68,w:20},{x:132,w:20}];
-  el.innerHTML=`<svg width="220" height="195" viewBox="0 0 220 195">
-  <defs><linearGradient id="dvS" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#85B7EB"/><stop offset="100%" stop-color="#378ADD"/></linearGradient>
-  <marker id="dvA" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#D85A30" stroke-width="1.5"/></marker></defs>
-  ${devSt===0?`<rect x="22" y="68" width="176" height="16" rx="2" fill="#EF9F27" opacity="0.9"/>
-  ${exp.map(e=>`<rect x="${e.x}" y="68" width="${e.w}" height="16" fill="#F0997B" opacity="0.85"/>`).join('')}
-  ${t(110,57,'빛 받은 부분(연한 주황) = 제거될 부분','#633806','middle',9)}`:`
-  ${pats.map(p=>`<rect x="${p.x}" y="68" width="${p.w}" height="16" rx="2" fill="#EF9F27" opacity="0.9"/>`).join('')}
-  ${devSt===1?exp.map(e=>`<path d="M${e.x+e.w/2} 66 L${e.x+e.w/2} 52" fill="none" stroke="#D85A30" stroke-width="1.5" marker-end="url(#dvA)"/>`).join(''):''}
-  ${devSt===1?t(110,47,'노광 부위 씻겨나감','#D85A30','middle',9):''}
-  ${devSt===2?t(110,47,'현상 완료 — 패턴 드러남','#0F6E56','middle',10):''}`}
-  <rect x="22" y="84" width="176" height="8" rx="1" fill="#B5D4F4" stroke="#85B7EB" stroke-width="0.5"/>
-  <rect x="22" y="92" width="176" height="44" rx="4" fill="url(#dvS)"/>
-  ${t(110,118,'Si 웨이퍼','#E6F1FB','middle',11)}
-  ${t(110,152,'E = hf = hc/λ  (광자 에너지로 결합 끊김)','#0F6E56','middle',9)}
-  ${t(110,165,devSt===0?"현상 전 — 패턴이 숨어있음":devSt===1?"현상 중 — 노광 부위 제거 중":"현상 완료 — 패턴 선명하게 드러남",'var(--color-text-primary)','middle',10)}
-  </svg>
-  <div style="text-align:center;margin-top:8px">
-    <button onclick="nxtDev()" style="font-size:12px;padding:4px 14px;border-radius:6px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-secondary);cursor:pointer;color:var(--color-text-primary)">${devSt<2?"현상 진행 →":"처음으로 ↺"}</button>
-  </div>`;}
-window.nxtDev=function(){devSt=(devSt+1)%3;drawDevelop(document.getElementById('vis'));};
-
-function drawEtch(el,v){
-  v=v||20;
-  const sH=18;
-  const ePx=Math.min(sH+16,Math.round(v*0.65));
-  const s2e=Math.min(sH,ePx);
-  const sie=Math.max(0,ePx-sH);
-  const pB=[{x:22,w:40},{x:80,w:54},{x:152,w:42}];
-  const gv=[{x:62,w:18},{x:134,w:18}];
-  const yPR=48,pH=16,yS2=64,ySi=82,siH=48;
-  const ixs=[28,40,52,65,78,91,104,117,130,143,156,169,182];
-  function iRow(y1,y2,dly){
-    return ixs.map((x,i)=>`<line x1="${x}" y1="${y1}" x2="${x}" y2="${y2}" stroke="#AFA9EC" stroke-width="1.2"><animate attributeName="opacity" values="0.9;0.05;0.9" dur="0.9s" begin="${(dly+i*0.046).toFixed(2)}s" repeatCount="indefinite"/></line><polygon points="${x-2},${y2} ${x+2},${y2} ${x},${y2+5}" fill="#7F77DD"><animate attributeName="opacity" values="0.75;0.05;0.75" dur="0.9s" begin="${(dly+i*0.046).toFixed(2)}s" repeatCount="indefinite"/></polygon>`).join('');
+const WS_CONFIG = {
+ "title": "포토리소그래피 공정 7단계",
+ "renderer": "canvas2d",
+ "scene": {
+  "aspect": "16/10",
+  "hint": ""
+ },
+ "legend": [
+  {
+   "label": "Si 웨이퍼",
+   "color": "#6f7fb2"
+  },
+  {
+   "label": "산화막 SiO₂",
+   "color": "#7fd6ff"
+  },
+  {
+   "label": "포토레지스트",
+   "color": "#ffb454"
+  },
+  {
+   "label": "노광된 PR",
+   "color": "#ff6b4a"
+  },
+  {
+   "label": "자외선·이온",
+   "color": "#b48cff"
   }
-  el.innerHTML=`<svg width="220" height="198" viewBox="0 0 220 198">
-  <defs><linearGradient id="etSi" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#85B7EB"/><stop offset="100%" stop-color="#378ADD"/></linearGradient></defs>
-  ${t(110,9,'플라즈마 이온만 수직으로 이동 (웨이퍼는 고정!)','#534AB7','middle',8.5)}
-  ${iRow(13,23,0)}${iRow(25,35,0.3)}${iRow(37,45,0.6)}
-  ${pB.map(p=>`<rect x="${p.x}" y="${yPR}" width="${p.w}" height="${pH}" rx="2" fill="#EF9F27" stroke="#BA7517" stroke-width="0.5"/>`).join('')}
-  ${pB.map(p=>t(p.x+p.w/2,yPR+10,'PR (보호)','#633806','middle',7.5)).join('')}
-  <rect x="22" y="${yS2}" width="176" height="${sH}" fill="#B5D4F4" stroke="#85B7EB" stroke-width="0.5"/>
-  ${gv.map(g=>`<rect x="${g.x}" y="${yS2}" width="${g.w}" height="${s2e}" fill="var(--color-background-primary)"/><rect x="${g.x}" y="${yS2}" width="${g.w}" height="${s2e}" fill="none" stroke="#534AB7" stroke-width="0.6" stroke-dasharray="2 2"/>`).join('')}
-  ${t(19,yS2+11,'SiO₂','#0C447C','end',8)}
-  <rect x="22" y="${ySi}" width="176" height="${siH}" rx="3" fill="url(#etSi)"/>
-  ${sie>0?gv.map(g=>`<rect x="${g.x}" y="${ySi}" width="${g.w}" height="${Math.min(siH-8,sie)}" fill="var(--color-background-primary)"/><rect x="${g.x}" y="${ySi}" width="${g.w}" height="${Math.min(siH-8,sie)}" fill="none" stroke="#3B6D11" stroke-width="0.6" stroke-dasharray="2 2"/>`).join(''):''}
-  ${t(110,ySi+30,'Si 웨이퍼 (고정)','#E6F1FB','middle',11)}
-  ${t(110,145,`식각 깊이: ${v}nm`,'var(--color-text-primary)','middle',10)}
-  ${t(110,159,'PR이 없는 곳만 식각 / 웨이퍼는 고정됨','#534AB7','middle',9)}
-  ${t(110,173,'이온이 수직으로 내려옴 = 건식(플라즈마) 식각','var(--color-text-secondary)','middle',9)}
-  </svg>`;}
-
-function drawFinal(el){
-  const pats=[{x:28,w:40},{x:88,w:44},{x:152,w:32}];
-  const ch=[{x:68,w:20},{x:132,w:20}];
-  el.innerHTML=`<svg width="220" height="180" viewBox="0 0 220 180">
-  <defs><linearGradient id="fnS" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#85B7EB"/><stop offset="100%" stop-color="#378ADD"/></linearGradient>
-  <linearGradient id="fnC" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#9FE1CB"/><stop offset="100%" stop-color="#5DCAA5"/></linearGradient>
-  <linearGradient id="fnO" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#B5D4F4"/><stop offset="100%" stop-color="#85B7EB"/></linearGradient></defs>
-  ${t(110,13,'PR 제거 완료 — 최종 회로 패턴','#27500A','middle',10)}
-  ${pats.map(p=>`<rect x="${p.x}" y="26" width="${p.w}" height="8" rx="2" fill="url(#fnO)" opacity="0.8"/><rect x="${p.x}" y="34" width="${p.w}" height="18" rx="2" fill="url(#fnC)" opacity="0.9"/>`).join('')}
-  <rect x="22" y="52" width="176" height="6" rx="1" fill="url(#fnO)" opacity="0.6"/>
-  <rect x="22" y="58" width="176" height="44" rx="4" fill="url(#fnS)"/>
-  ${t(110,84,'Si 웨이퍼','#E6F1FB','middle',11)}
-  ${t(26,106,'SiO₂','var(--color-text-tertiary)','start',8)}
-  ${t(26,118,'회로홈','#0F6E56','start',8)}
-  <line x1="104" y1="102" x2="104" y2="124" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>
-  ${t(112,112,'7단계 수십~수백 회 반복','var(--color-text-secondary)','start',9)}
-  ${t(112,125,'→ 수십억 트랜지스터 완성!','#1D9E75','start',9)}
-  ${t(110,142,'스마트폰 CPU · 메모리 · GPU 모두 이렇게 만들어집니다','var(--color-text-secondary)','middle',9)}
-  </svg>`;}
-
-const DR={clean:drawClean,oxide:drawOxide,spin:drawSpin,expose:drawExpose,develop:drawDevelop,etch:drawEtch,final:drawFinal};
-
-function render(){
-  const s=S[cur];
-  document.getElementById('sn').textContent=`STEP ${cur+1} / ${S.length}`;
-  document.getElementById('st').textContent=s.ti;
-  const tg=document.getElementById('stag');tg.textContent=s.tag.tx;tg.style.background=s.tag.b;tg.style.color=s.tag.c;
-  const vis=document.getElementById('vis');
-  DR[s.draw](vis,s.slider?s.slider.val:null,true);
-  const slH=s.slider?`<div class="sr"><span>${s.slider.label}</span><input type="range" id="sl_${s.slider.id}" min="${s.slider.min}" max="${s.slider.max}" value="${s.slider.val}" step="${s.slider.step||1}" oninput="updSl()"><span class="sv" id="sv_${s.slider.id}">${s.slider.val} ${s.slider.unit}</span></div>`:'';
-  document.getElementById('info').innerHTML=`
-    <div><div class="lb">핵심 개념</div><div class="vl" style="font-weight:500">${s.concept}</div></div>
-    <div><div class="lb">관련 식</div><div class="mn">${s.formula}</div></div>
-    ${slH}
-    <div><div class="lb">쉽게 이해하기</div><div class="vl" style="white-space:pre-line;font-size:13px">${s.easy}</div></div>
-    <div><div class="ht">${s.hint}</div></div>`;
-  const pg=document.getElementById('prog');pg.innerHTML='';
-  S.forEach((_,i)=>{
-    const d=document.createElement('div');d.className='pd'+(i<cur?' dn':i===cur?' on':'');d.textContent=i<cur?'✓':i+1;d.onclick=()=>{cur=i;render();};pg.appendChild(d);
-    if(i<S.length-1){const l=document.createElement('div');l.className='pl'+(i<cur?' dn':'');pg.appendChild(l);}
-  });
-  document.getElementById('bp').disabled=cur===0;
-  document.getElementById('bn').textContent=cur===S.length-1?'처음으로 ↺':'다음 →';
-  document.getElementById('nl').textContent=`${cur+1} / ${S.length}`;
-}
-window.updSl=function(){
-  const s=S[cur];if(!s.slider)return;
-  const v=parseInt(document.getElementById('sl_'+s.slider.id).value);
-  document.getElementById('sv_'+s.slider.id).textContent=v+' '+s.slider.unit;
-  DR[s.draw](document.getElementById('vis'),v);
+ ],
+ "tabs": [
+  {
+   "id": "prep",
+   "label": "① 준비: 세정·산화·도포"
+  },
+  {
+   "id": "pattern",
+   "label": "② 패턴: 노광·현상"
+  },
+  {
+   "id": "carve",
+   "label": "③ 새기기: 식각·제거"
+  },
+  {
+   "id": "all",
+   "label": "④ 7단계 한눈에"
+  }
+ ],
+ "scenarios": [
+  {
+   "id": "clean",
+   "tab": "prep",
+   "name": "① 세정 — 먼지 하나가 칩을 죽인다",
+   "section": "1단계",
+   "desc": "웨이퍼 표면의 먼지·기름·이온을 RCA 세정(NH₄OH + H₂O₂ + 물)으로 없앱니다. 결함 밀도 D 와 칩 면적 A 를 바꿔 수율이 어떻게 달라지는지 보세요.",
+   "misconception_title": "오개념: 칩이 크든 작든 먼지가 몇 개 있어도 수율은 비슷하다",
+   "misconception": "치명적 먼지가 한 개라도 있는 칩은 불량이다. 평균 결함 수가 D·A 이면 수율은 e^(−D·A) 로 줄어, 같은 먼지라도 칩이 클수록 훨씬 많이 버려진다.",
+   "formula": [
+    {
+     "eq_html": "Y = e<sup>−D·A<\/sup>",
+     "text_html": "포아송 수율: D 결함 밀도, A 칩 면적"
+    },
+    {
+     "eq_html": "D·A = 1 ⇒ Y ≈ 37 %",
+     "text_html": "칩당 평균 결함이 1개이면 63 %가 불량"
+    }
+   ],
+   "params": [
+    {
+     "key": "dd",
+     "label": "결함 밀도 D",
+     "min": 0,
+     "max": 3,
+     "step": 0.05,
+     "value": 0.5,
+     "unit": "/cm²"
+    },
+    {
+     "key": "da",
+     "label": "칩 면적 A",
+     "min": 0.2,
+     "max": 2,
+     "step": 0.1,
+     "value": 1,
+     "unit": "cm²"
+    }
+   ],
+   "chart": true
+  },
+  {
+   "id": "oxide",
+   "tab": "prep",
+   "name": "② 산화 — 실리콘 위에 유리막",
+   "section": "2단계",
+   "desc": "900~1200 °C 산소 분위기에서 Si 표면에 SiO₂ 절연막이 자랍니다. 온도와 시간을 바꿔 두께를 확인하세요. 점선은 원래 표면입니다.",
+   "misconception_title": "오개념: 산화막은 실리콘 표면 위에 새로 쌓이는 층이다",
+   "misconception": "산화는 실리콘 자체가 산소와 반응하는 것이라 두께의 약 44 %는 원래 표면보다 아래쪽(Si 가 소모된 자리)에 있다. 또 두꺼워질수록 산소가 확산해 들어가야 해서 성장이 느려진다(√t).",
+   "formula": [
+    {
+     "eq_html": "Si + O<sub>2<\/sub> → SiO<sub>2<\/sub>",
+     "text_html": "건식 열산화"
+    },
+    {
+     "eq_html": "x<sup>2<\/sup> + A·x = B·t",
+     "text_html": "Deal–Grove 모형 (얇을 때 x ≈ (B/A)·t, 두꺼울 때 x ≈ √(B·t))"
+    },
+    {
+     "eq_html": "x<sub>Si<\/sub> = 0.44 x<sub>ox<\/sub>",
+     "text_html": "소모되는 Si 두께"
+    }
+   ],
+   "params": [
+    {
+     "key": "ot",
+     "label": "온도",
+     "min": 800,
+     "max": 1200,
+     "step": 25,
+     "value": 1000,
+     "unit": "°C"
+    },
+    {
+     "key": "om",
+     "label": "시간",
+     "min": 5,
+     "max": 180,
+     "step": 5,
+     "value": 60,
+     "unit": "분"
+    }
+   ],
+   "chart": true
+  },
+  {
+   "id": "spin",
+   "tab": "prep",
+   "name": "③ 도포 — 스핀 코팅",
+   "section": "3단계",
+   "desc": "웨이퍼 중심의 세로축을 기준으로 고속 회전시키면 감광액(PR)이 원심력으로 퍼져 얇고 고른 막이 됩니다. ▶ 로 회전을 보며 rpm 을 바꿔 보세요.",
+   "misconception_title": "오개념: 회전이 빠르면 감광막이 더 두꺼워진다",
+   "misconception": "원심력이 클수록 PR 이 더 멀리·더 많이 밀려나가 막이 얇아진다. 두께는 대략 1/√ω 에 비례하므로 회전을 4배로 하면 두께가 절반이 된다.",
+   "formula": [
+    {
+     "eq_html": "h ∝ ω<sup>−1/2<\/sup>",
+     "text_html": "경험식: 회전 각속도 ω 가 클수록 얇아짐"
+    },
+    {
+     "eq_html": "h(4ω) = h(ω) / 2",
+     "text_html": "회전을 4배로 하면 두께 1/2"
+    }
+   ],
+   "params": [
+    {
+     "key": "rp",
+     "label": "회전 속도",
+     "min": 500,
+     "max": 6000,
+     "step": 100,
+     "value": 2000,
+     "unit": "rpm"
+    }
+   ],
+   "choices": [
+    {
+     "key": "vis",
+     "label": "PR 점도",
+     "value": "mid",
+     "options": [
+      {
+       "value": "low",
+       "label": "저점도"
+      },
+      {
+       "value": "mid",
+       "label": "중점도"
+      },
+      {
+       "value": "high",
+       "label": "고점도"
+      }
+     ]
+    }
+   ],
+   "animated": true,
+   "chart": true,
+   "status_hint": "▶ 재생 / ⏸ 멈춤: 웨이퍼가 세로축으로 회전"
+  },
+  {
+   "id": "expose",
+   "tab": "pattern",
+   "name": "④ 노광 — 빛으로 패턴 새기기",
+   "section": "4단계 ★",
+   "desc": "UV 광원의 빛이 마스크의 투명한 부분만 지나고, 볼록렌즈가 상을 ¼ 로 줄여 감광막에 새깁니다. 파장·NA·k₁ 을 바꾸고 새길 패턴의 반피치를 정해 보세요.",
+   "misconception_title": "오개념: 렌즈로 축소만 하면 아무리 가는 선도 새길 수 있다",
+   "misconception": "빛의 회절 때문에 최소 선폭은 R = k₁λ/NA 로 정해진다. 가는 선을 새기려면 파장 λ 를 줄이거나 NA 를 키워야 하고, 대신 초점 심도(0.5λ/NA²)는 줄어든다. 그래서 EUV(13.5 nm)까지 왔다.",
+   "formula": [
+    {
+     "eq_html": "R = k<sub>1<\/sub> λ / NA",
+     "text_html": "최소 선폭 (k₁ ≥ 0.25)"
+    },
+    {
+     "eq_html": "E = hf = hc / λ",
+     "text_html": "광자 에너지: 파장이 짧을수록 크다"
+    },
+    {
+     "eq_html": "DOF = k<sub>2<\/sub> λ / NA<sup>2<\/sup>",
+     "text_html": "초점 심도"
+    }
+   ],
+   "params": [
+    {
+     "key": "wl",
+     "label": "빛의 파장 λ",
+     "min": 13,
+     "max": 436,
+     "step": 1,
+     "value": 193,
+     "unit": "nm"
+    },
+    {
+     "key": "na",
+     "label": "개구수 NA",
+     "min": 0.1,
+     "max": 1.35,
+     "step": 0.01,
+     "value": 0.85
+    },
+    {
+     "key": "k1",
+     "label": "공정 계수 k₁",
+     "min": 0.25,
+     "max": 0.8,
+     "step": 0.01,
+     "value": 0.4
+    },
+    {
+     "key": "hp",
+     "label": "새길 패턴의 반피치",
+     "min": 10,
+     "max": 300,
+     "step": 5,
+     "value": 120,
+     "unit": "nm"
+    }
+   ],
+   "chart": true
+  },
+  {
+   "id": "develop",
+   "tab": "pattern",
+   "name": "⑤ 현상 — 패턴 드러내기",
+   "section": "5단계",
+   "desc": "현상액으로 빛에 의해 변한 감광막을 씻어 냅니다. 양성은 빛 받은 곳이, 음성은 빛 못 받은 곳이 제거됩니다. 노광량을 바꿔 남는 감광막을 보세요.",
+   "misconception_title": "오개념: 빛을 받은 곳은 항상 감광막이 남는다",
+   "misconception": "양성(+) PR 은 빛 받은 곳이 제거되고, 음성(−) PR 은 빛 받은 곳이 경화되어 남는다. 어느 쪽이든 노광량이 문턱(D₀) 근처에서 급격히 바뀌기 때문에 노광량 조절이 중요하다.",
+   "formula": [
+    {
+     "eq_html": "E<sub>photon<\/sub> = hc/λ &gt; E<sub>bond<\/sub>",
+     "text_html": "광자 에너지가 결합 에너지보다 커야 화학 결합이 끊어진다"
+    },
+    {
+     "eq_html": "남는 비율 = 1/(1 + (D/D₀)<sup>2γ<\/sup>)",
+     "text_html": "양성 PR 대비 곡선 (개략식)"
+    }
+   ],
+   "params": [
+    {
+     "key": "ds",
+     "label": "노광량 D",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 20,
+     "unit": "mJ/cm²"
+    }
+   ],
+   "choices": [
+    {
+     "key": "tone",
+     "label": "감광막 종류",
+     "value": "pos",
+     "options": [
+      {
+       "value": "pos",
+       "label": "양성 (+)"
+      },
+      {
+       "value": "neg",
+       "label": "음성 (−)"
+      }
+     ]
+    }
+   ],
+   "chart": true
+  },
+  {
+   "id": "etch",
+   "tab": "carve",
+   "name": "⑥ 식각 — 파내기",
+   "section": "6단계",
+   "desc": "남은 감광막이 마스크가 되어 PR 이 없는 곳의 산화막을 제거합니다. 건식(플라즈마)과 습식(용액)을 바꾸어 옆 침식 차이를 보세요.",
+   "misconception_title": "오개념: 식각은 어느 방식이든 위에서 아래로만 깎인다",
+   "misconception": "습식 식각은 용액이 모든 방향으로 녹여 감광막 아래까지 파고드는 등방성 식각이다. 이온이 수직으로 입사하는 건식 식각이어야 나노미터 폭의 가는 홈을 만들 수 있다.",
+   "formula": [
+    {
+     "eq_html": "옆 침식 = ρ × 깊이",
+     "text_html": "ρ: 습식 ≈ 1, 건식 ≪ 1 (예시)"
+    },
+    {
+     "eq_html": "PR 소모 = 깊이 / 선택비",
+     "text_html": "선택비 S = 대상 식각 속도 / PR 식각 속도"
+    }
+   ],
+   "params": [
+    {
+     "key": "ed",
+     "label": "식각 깊이",
+     "min": 20,
+     "max": 300,
+     "step": 10,
+     "value": 100,
+     "unit": "nm"
+    },
+    {
+     "key": "sel",
+     "label": "선택비 (산화막:PR)",
+     "min": 3,
+     "max": 30,
+     "step": 1,
+     "value": 10
+    }
+   ],
+   "choices": [
+    {
+     "key": "method",
+     "label": "식각 방식",
+     "value": "dry",
+     "options": [
+      {
+       "value": "dry",
+       "label": "건식 (플라즈마)"
+      },
+      {
+       "value": "wet",
+       "label": "습식 (용액)"
+      }
+     ]
+    }
+   ],
+   "animated": true,
+   "chart": true,
+   "status_hint": "▶ 재생 / ⏸ 멈춤: 이온이 위에서 수직으로 입사"
+  },
+  {
+   "id": "strip",
+   "tab": "carve",
+   "name": "⑦ 제거 — 감광막 벗기기",
+   "section": "7단계",
+   "desc": "임무를 마친 감광막을 O₂ 플라즈마(애싱)나 용제로 제거하면 산화막에 패턴이 남습니다. 시간을 늘려 완전히 제거되는 지점을 찾아보세요.",
+   "misconception_title": "오개념: 7단계를 한 번 거치면 칩이 완성된다",
+   "misconception": "한 번의 7단계는 한 층의 패턴을 만든다. 수십~수백 번을 층마다 반복해야 엄지손톱 크기의 칩 안에 수십억 개의 트랜지스터가 만들어진다.",
+   "formula": [
+    {
+     "eq_html": "남은 PR = 초기 두께 − 제거 속도 × 시간",
+     "text_html": "애싱 시간이 모자라면 잔여물이 남는다"
+    },
+    {
+     "eq_html": "총 단계 수 = 7 × 층 수",
+     "text_html": "층마다 7단계 반복"
+    }
+   ],
+   "params": [
+    {
+     "key": "at",
+     "label": "애싱 시간",
+     "min": 0,
+     "max": 6,
+     "step": 0.1,
+     "value": 1,
+     "unit": "분"
+    },
+    {
+     "key": "lay",
+     "label": "칩의 층 수 (예시)",
+     "min": 1,
+     "max": 40,
+     "step": 1,
+     "value": 20,
+     "unit": "층"
+    }
+   ],
+   "chart": true
+  },
+  {
+   "id": "flow",
+   "tab": "all",
+   "name": "7단계 한눈에 보기",
+   "section": "전체 흐름",
+   "desc": "▶ 를 누르면 웨이퍼가 7단계를 거치며 단면이 바뀝니다. 슬라이더로 단계를 고르고 양성/음성 PR 을 비교해 보세요.",
+   "misconception_title": "오개념: 감광막은 최종 칩에 남아 회로가 된다",
+   "misconception": "감광막(PR)은 패턴을 옮기는 임시 마스크일 뿐이다. 식각이 끝나면 완전히 제거하고, 남는 것은 산화막·실리콘에 새겨진 패턴이다.",
+   "formula": [
+    {
+     "eq_html": "세정 → 산화 → 도포 → 노광 → 현상 → 식각 → 제거",
+     "text_html": "한 층의 패턴 전사 순서"
+    },
+    {
+     "eq_html": "R = k<sub>1<\/sub> λ / NA",
+     "text_html": "노광 단계가 선폭을 정한다"
+    }
+   ],
+   "params": [
+    {
+     "key": "stp",
+     "label": "단계 (0 = 시작)",
+     "min": 0,
+     "max": 7,
+     "step": 1,
+     "value": 0
+    }
+   ],
+   "choices": [
+    {
+     "key": "tone2",
+     "label": "감광막 종류",
+     "value": "pos",
+     "options": [
+      {
+       "value": "pos",
+       "label": "양성 (+)"
+      },
+      {
+       "value": "neg",
+       "label": "음성 (−)"
+      }
+     ]
+    }
+   ],
+   "animated": true,
+   "status_hint": "▶ 재생 / ⏸ 멈춤: 2초마다 다음 단계"
+  }
+ ],
+ "common_params": null,
+ "readout_title": "측정값"
 };
-function go(d){if(d===1&&cur===S.length-1)cur=0;else cur=Math.max(0,Math.min(S.length-1,cur+d));render();}
-render();
+</script>
+<script>
+/* ============================ 시뮬레이션 코드 (레시피 입력 sim_js) ============================ */
+/* ============ 포토리소그래피 7단계 — 물리 계산 (DOM 없음) ============ */
+const PH = {
+  /* 포아송 수율: 치명 결함이 없는 칩의 비율 */
+  yieldPoisson(D, A) { return Math.exp(-D * A); },
+  /* 건식 열산화 (Deal–Grove): x² + A·x = B·t, 상수는 900~1200 °C 문헌값을 지나는 아레니우스 근사(τ 무시) */
+  dg(Tc) { const T = Tc + 273.15, u = 1 / 1273.15 - 1 / T; const B = Math.exp(-4.448 + 12627 * u), BA = Math.exp(-2.645 + 25857 * u); return { B, BA, A: B / BA }; }, // µm²/h, µm/h, µm
+  oxide(Tc, min) { const { B, A } = this.dg(Tc), t = min / 60; return A / 2 * (Math.sqrt(1 + 4 * B * t / (A * A)) - 1) * 1000; }, // nm
+  /* 스핀 코팅: 두께 ∝ ω^(-1/2) (예시 기준: 중점도 2000 rpm에서 1.0 µm) */
+  spin(rpm, vis) { return 1.0 * Math.sqrt(2000 / rpm) * ({ low: 0.6, mid: 1.0, high: 1.7 }[vis] || 1); }, // µm
+  /* 광학 */
+  E_eV(nm) { return 1239.84 / nm; },
+  rayleigh(lam, na, k1) { return k1 * lam / na; },
+  dof(lam, na, k2 = 0.5) { return k2 * lam / (na * na); },
+  mtf(f) { f = Math.min(Math.max(f, 0), 1); return 2 / Math.PI * (Math.acos(f) - f * Math.sqrt(1 - f * f)); }, // 무결점 원형 동공 비간섭 결상
+  contrast(hp, lam, na) { return this.mtf((1 / (2 * hp)) / (2 * na / lam)); }, // 반피치 hp(nm)의 선·공간 패턴 대비
+  /* 현상 대비 곡선 (개략 시그모이드) */
+  remain(D, D0, gam, tone) { const r = 1 / (1 + Math.pow(D / D0, 2 * gam)); return tone === 'neg' ? 1 - r : r; },
+  /* 식각 */
+  etch(depth, S, iso, prInit) { return { under: iso * depth, prLeft: prInit - depth / S }; },
+  ash(prNm, rate, min) { return Math.max(0, prNm - rate * min); },
+};
+const SRC = [[436, 'g-line (Hg)'], [365, 'i-line (Hg)'], [248, 'KrF 엑시머'], [193, 'ArF 엑시머'], [13.5, 'EUV']];
+const srcName = nm => SRC.reduce((a, b) => Math.abs(Math.log(b[0] / nm)) < Math.abs(Math.log(a[0] / nm)) ? b : a)[1];
+
+/* ============ 그리기 도우미 ============ */
+const COL = { bg: '#0f1a33', text: '#e3ecff', dim: '#9db0d8', si: '#6f7fb2', ox: '#7fd6ff', pr: '#ffb454', prx: '#ff6b4a', mask: '#3a4570', uv: '#b48cff', ok: '#5eead4', bad: '#ff5d73', grid: 'rgba(160,190,255,.18)' };
+const W0 = 1000, H0 = 625, WIN = [[.10, .26], [.42, .58], [.74, .90]];
+function begin(api) { const { ctx, width: w, height: h } = api; ctx.fillStyle = COL.bg; ctx.fillRect(0, 0, w, h); const k = Math.min(w / W0, h / H0); ctx.save(); ctx.translate((w - W0 * k) / 2, (h - H0 * k) / 2); ctx.scale(k, k); return ctx; }
+function txt(ctx, s, x, y, col, px, wt, al) { ctx.font = `${wt || 600} ${px || 18}px sans-serif`; ctx.fillStyle = col || COL.text; ctx.textAlign = al || 'left'; ctx.fillText(s, x, y); ctx.textAlign = 'left'; }
+function arrow(ctx, x0, y0, x1, y1, col, lw = 3) {
+  const len = Math.hypot(x1 - x0, y1 - y0); if (len < 3) return; const a = Math.atan2(y1 - y0, x1 - x0), hd = Math.min(12, len * .5);
+  ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - Math.cos(a) * hd * .7, y1 - Math.sin(a) * hd * .7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - hd * Math.cos(a - .45), y1 - hd * Math.sin(a - .45)); ctx.lineTo(x1 - hd * Math.cos(a + .45), y1 - hd * Math.sin(a + .45)); ctx.closePath(); ctx.fill();
+}
+function segs(inside) { const e = []; if (inside) { WIN.forEach(w => e.push(w)); } else { let p = 0; WIN.forEach(([a, b]) => { e.push([p, a]); p = b; }); e.push([p, 1]); } return e; }
+const SX = 150, SW = 700, SYB = 430, SIH = 95;
+function band(ctx, inside, yTop, h, col) { if (h <= 0) return; ctx.fillStyle = col; segs(inside).forEach(([a, b]) => ctx.fillRect(SX + a * SW, yTop, (b - a) * SW, h)); }
+/* 단면: o = {ox:{top,bot,etch,under}, pr:{h, mode, hw}} (모든 길이는 px) */
+function section(ctx, o) {
+  ctx.fillStyle = COL.si; ctx.fillRect(SX, SYB, SW, SIH);
+  txt(ctx, 'Si 웨이퍼', SX + 8, SYB + SIH - 10, '#dfe7ff', 16);
+  let top = 0;
+  if (o.ox) {
+    const t = o.ox.top, b = o.ox.bot || 0, tot = t + b, et = o.ox.etch || 0, u = o.ox.under || 0; top = t;
+    band(ctx, false, SYB - t, tot, COL.ox);
+    const rem = Math.max(0, tot - et); band(ctx, true, SYB - t + et, rem, COL.ox);
+    if (et > 0) { // 식각으로 파인 공간(배경색)과 옆 방향 침식
+      ctx.fillStyle = COL.bg;
+      WIN.forEach(([a, b2]) => {
+        const x0 = SX + a * SW, x1 = SX + b2 * SW, yT = SYB - t, yB = yT + Math.min(et, tot);
+        ctx.beginPath(); ctx.moveTo(x0 - u, yT);
+        if (u > 0.5) ctx.ellipse(x0, yT, u, Math.min(et, tot), 0, Math.PI, Math.PI / 2, true); else ctx.lineTo(x0, yB);
+        ctx.lineTo(x1, yB);
+        if (u > 0.5) ctx.ellipse(x1, yT, u, Math.min(et, tot), 0, Math.PI / 2, 0, true); else ctx.lineTo(x1, yT);
+        ctx.closePath(); ctx.fill();
+        if (et > tot) ctx.fillRect(x0, yB, x1 - x0, et - tot); // Si 과식각
+      });
+    }
+  }
+  if (o.pr && o.pr.h > 0) {
+    const h = o.pr.h, y0 = SYB - top - h, m = o.pr.mode;
+    if (m === 'full') band(ctx, false, y0, h, COL.pr), band(ctx, true, y0, h, COL.pr);
+    else if (m === 'exp') { band(ctx, false, y0, h, COL.pr); band(ctx, true, y0, h, COL.prx); }
+    else if (m === 'pos') { band(ctx, false, y0, h, COL.pr); band(ctx, true, y0 + h - o.pr.hw, o.pr.hw, COL.pr); }
+    else if (m === 'neg') { band(ctx, true, y0 + h - o.pr.hw, o.pr.hw, COL.pr); band(ctx, false, y0 + h, 0, COL.pr); }
+  }
+  ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.setLineDash([6, 5]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(SX - 20, SYB); ctx.lineTo(SX + SW + 20, SYB); ctx.stroke(); ctx.setLineDash([]);
+}
+function labelBox(ctx, lines, x, y) { lines.forEach((l, i) => txt(ctx, l[0], x, y + i * 28, l[1] || COL.text, 18)); }
+
+/* ============ 차트 ============ */
+function plot(api, o) {
+  const ch = api.chart; if (!ch) return; const cv = ch.canvas, c2 = ch.ctx, cw = cv.width, chh = cv.height, sc = cw / (cv.clientWidth || cw);
+  c2.save(); c2.setTransform(1, 0, 0, 1, 0, 0); c2.fillStyle = COL.bg; c2.fillRect(0, 0, cw, chh);
+  const l = 56 * sc, r = cw - 16 * sc, t = 20 * sc, b = chh - 36 * sc, X = v => l + (o.log ? (Math.log10(v) - Math.log10(o.xmin)) / (Math.log10(o.xmax) - Math.log10(o.xmin)) : (v - o.xmin) / (o.xmax - o.xmin)) * (r - l), Y = v => b - (v - o.ymin) / (o.ymax - o.ymin) * (b - t);
+  c2.font = `${12 * sc}px sans-serif`; c2.fillStyle = COL.dim; c2.strokeStyle = COL.grid; c2.lineWidth = sc;
+  (o.xt || []).forEach(v => { c2.beginPath(); c2.moveTo(X(v), t); c2.lineTo(X(v), b); c2.stroke(); c2.fillText(String(v), X(v) - 8 * sc, b + 16 * sc); });
+  (o.yt || []).forEach(v => { c2.beginPath(); c2.moveTo(l, Y(v)); c2.lineTo(r, Y(v)); c2.stroke(); c2.fillText(String(v), 6 * sc, Y(v) + 4 * sc); });
+  c2.fillText(o.xl || '', r - 120 * sc, b + 30 * sc); c2.fillText(o.yl || '', 6 * sc, t - 6 * sc);
+  (o.curves || []).forEach(cv2 => { c2.strokeStyle = cv2.col || COL.ox; c2.lineWidth = 2.5 * sc; c2.beginPath(); let st = true; for (let i = 0; i <= 160; i++) { const x = o.log ? o.xmin * Math.pow(o.xmax / o.xmin, i / 160) : o.xmin + (o.xmax - o.xmin) * i / 160, y = cv2.fn(x); if (!Number.isFinite(y)) continue; const py = Y(Math.min(Math.max(y, o.ymin), o.ymax)); st ? c2.moveTo(X(x), py) : c2.lineTo(X(x), py); st = false; } c2.stroke(); });
+  (o.marks || []).forEach(m => { c2.fillStyle = m.col || COL.ok; c2.beginPath(); c2.arc(X(m.x), Y(Math.min(Math.max(m.y, o.ymin), o.ymax)), 6 * sc, 0, 2 * Math.PI); c2.fill(); if (m.lab) { c2.fillStyle = m.col || COL.ok; c2.fillText(m.lab, X(m.x) + 9 * sc, Y(m.y) - 8 * sc); } });
+  c2.restore();
+}
+
+/* ============ 1. 세정 : 포아송 수율 ============ */
+const RNG = (() => { let s = 12345; const r = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; const o = []; for (let i = 0; i < 1000; i++) o.push([r(), r()]); return o; })();
+function drawClean(api) {
+  const P = api.P, ctx = begin(api), n = 12, die = 36, ox = 70, oy = 90, N = Math.min(RNG.length, Math.round(P.dd * P.da * n * n));
+  const hit = new Array(n * n).fill(0); for (let i = 0; i < N; i++) { const gx = Math.min(n - 1, Math.floor(RNG[i][0] * n)), gy = Math.min(n - 1, Math.floor(RNG[i][1] * n)); hit[gy * n + gx]++; }
+  txt(ctx, `웨이퍼 위 ${n}×${n} 칩 (칩 하나 = ${P.da.toFixed(1)} cm², 예시)`, ox, 60, COL.dim, 18);
+  let good = 0; for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const ok = hit[j * n + i] === 0; if (ok) good++; ctx.fillStyle = ok ? 'rgba(94,234,212,.45)' : 'rgba(255,93,115,.55)'; ctx.fillRect(ox + i * die, oy + j * die, die - 3, die - 3); }
+  for (let i = 0; i < N; i++) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ox + RNG[i][0] * n * die, oy + RNG[i][1] * n * die, 2.6, 0, 2 * Math.PI); ctx.fill(); }
+  const Ym = good / (n * n), Yt = PH.yieldPoisson(P.dd, P.da);
+  labelBox(ctx, [[`결함(먼지) 수  ${N} 개`, '#fff'], [`이 웨이퍼의 수율  ${(Ym * 100).toFixed(0)} %`, COL.ok], [`포아송 예측  e^(−D·A) = ${(Yt * 100).toFixed(0)} %`, COL.pr]], 560, 150);
+  txt(ctx, '흰 점 = 치명적 먼지 · 빨간 칩 = 불량', 560, 270, COL.dim, 16);
+  txt(ctx, '머리카락 굵기의 1/1000 먼지도 회로 하나를 끊는다', 560, 320, COL.text, 17);
+  txt(ctx, 'RCA 세정(NH₄OH + H₂O₂ + 물) + 클린룸으로 D 를 낮춘다', 560, 350, COL.dim, 16);
+  api.setReadout([['결함 밀도 D', P.dd.toFixed(2) + ' /cm²'], ['칩 면적 A', P.da.toFixed(1) + ' cm²'], ['평균 결함/칩 D·A', (P.dd * P.da).toFixed(2)], ['예측 수율', (Yt * 100).toFixed(1) + ' %'], ['이 웨이퍼 수율', (Ym * 100).toFixed(0) + ' %']]);
+  api.setNote('칩이 클수록, 먼지가 많을수록 수율이 급격히 떨어진다. 그림의 수율은 12×12 칩 표본이라 예측값과 조금 다를 수 있다. (D·A 수치는 개념 설명용 예시)');
+  plot(api, { xmin: 0, xmax: 3, ymin: 0, ymax: 1, xt: [0, 1, 2, 3], yt: [0, .5, 1], xl: 'D (결함/cm²)', yl: '수율', curves: [{ fn: d => PH.yieldPoisson(d, P.da) }], marks: [{ x: P.dd, y: Yt, lab: `${(Yt * 100).toFixed(0)} %` }] });
+  ctx.restore();
+}
+
+/* ============ 2. 산화 ============ */
+function drawOxide(api) {
+  const P = api.P, ctx = begin(api), x = PH.oxide(P.ot, P.om), { B, BA, A } = PH.dg(P.ot), sc = .5; // px per nm (과장)
+  const top = .56 * x * sc, bot = .44 * x * sc; section(ctx, { ox: { top, bot }, pr: null });
+  txt(ctx, `산화막 SiO₂ ${x.toFixed(0)} nm`, SX + SW - 10, SYB - top - 14, COL.ox, 20, 700, 'right');
+  txt(ctx, `원래 Si 표면 (점선) — 위로 ${(.56 * x).toFixed(0)} nm, 아래로 ${(.44 * x).toFixed(0)} nm (Si 가 소모됨)`, SX, SYB + SIH + 30, COL.dim, 17);
+  txt(ctx, `고온 로 ${P.ot} °C · O₂ 분위기 · ${P.om} 분`, SX, 70, COL.text, 22, 700); txt(ctx, 'Si + O₂ → SiO₂', SX, 105, COL.pr, 20);
+  for (let i = 0; i < 9; i++) arrow(ctx, SX + 40 + i * 78, 150, SX + 40 + i * 78, SYB - top - 40, 'rgba(255,255,255,.25)', 2);
+  txt(ctx, '두께 눈금은 보기 좋게 과장 (0.5 px/nm)', SX, 600, COL.dim, 15);
+  api.setReadout([['온도 · 시간', `${P.ot} °C · ${P.om} min`], ['산화막 두께 x', x.toFixed(1) + ' nm'], ['소모된 Si (0.44x)', (.44 * x).toFixed(1) + ' nm'], ['포물선 상수 B', B.toExponential(2) + ' µm²/h'], ['선형 상수 B/A', BA.toFixed(3) + ' µm/h']]);
+  api.setNote('Deal–Grove 모형(건식 O₂)의 문헌 상수를 이은 근사식이다(교과서 밖 심화, 초기 산화막은 무시). 초기에는 시간에 비례해 자라고, 두꺼워지면 √시간 에 비례해 느려진다.');
+  plot(api, { xmin: 0, xmax: 180, ymin: 0, ymax: 400, xt: [0, 60, 120, 180], yt: [0, 100, 200, 300, 400], xl: '시간 (분)', yl: '두께 (nm)', curves: [{ fn: m => PH.oxide(P.ot, m) }, { fn: m => PH.oxide(Math.min(1200, P.ot + 100), m), col: COL.pr }], marks: [{ x: P.om, y: x, lab: x.toFixed(0) + ' nm' }] });
+  ctx.restore();
+}
+
+/* ============ 3. 스핀 코팅 ============ */
+const SS = { t: 0 };
+function drawSpin(api) {
+  const P = api.P, ctx = begin(api), hum = PH.spin(P.rp, P.vis), cx = 250, cy = 330, R = 170, ang = SS.t * Math.min(P.rp / 2000, 3) * 6;
+  txt(ctx, '위에서 본 웨이퍼 (세로축 회전)', 100, 60, COL.dim, 18);
+  ctx.fillStyle = COL.si; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 2 * Math.PI); ctx.fill();
+  const sp = Math.min(1, (SS.t % 3) / 1.6); ctx.fillStyle = 'rgba(255,180,84,.85)'; ctx.beginPath(); ctx.arc(cx, cy, R * (.12 + .88 * sp), 0, 2 * Math.PI); ctx.fill();
+  ctx.strokeStyle = 'rgba(15,26,51,.7)'; ctx.lineWidth = 3; for (let i = 0; i < 6; i++) { const a = ang + i * Math.PI / 3; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + R * Math.cos(a), cy + R * Math.sin(a)); ctx.stroke(); }
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(cx, cy, 7, 0, 2 * Math.PI); ctx.fill(); txt(ctx, '스핀들', cx + 12, cy - 12, COL.text, 15);
+  arrow(ctx, cx + R + 30, cy - 30, cx + R + 30, cy + 30, COL.ok, 4); txt(ctx, 'ω', cx + R + 40, cy + 6, COL.ok, 20);
+  const sx = 560, w = 340, y0 = 440, sc = 90; // 단면: 1 µm = 90 px (과장)
+  txt(ctx, '단면: 감광막 두께', sx, 120, COL.dim, 18);
+  ctx.fillStyle = COL.si; ctx.fillRect(sx, y0, w, 60); ctx.fillStyle = COL.pr; ctx.fillRect(sx, y0 - hum * sc, w, hum * sc);
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(sx + w + 12, y0 - hum * sc); ctx.lineTo(sx + w + 12, y0); ctx.stroke();
+  txt(ctx, `${hum.toFixed(2)} µm`, sx + w + 22, y0 - hum * sc / 2 + 6, COL.pr, 22, 700);
+  txt(ctx, `${P.rp} rpm · ${{ low: '저점도', mid: '중점도', high: '고점도' }[P.vis]} PR`, sx, 80, COL.text, 22, 700);
+  api.setReadout([['회전 속도', P.rp + ' rpm'], ['감광막 두께', hum.toFixed(2) + ' µm'], ['2배 빠르게(×2)', (hum / Math.SQRT2).toFixed(2) + ' µm'], ['4배 빠르게(×4)', (hum / 2).toFixed(2) + ' µm']]);
+  api.setNote('두께 ∝ 1/√ω 의 경험식이다. 점도별 배율과 기준값(중점도 2000 rpm에서 1.0 µm)은 개념 설명용 예시이다. 단면의 두께 눈금은 과장되어 있다.');
+  plot(api, { xmin: 500, xmax: 6000, ymin: 0, ymax: 3, xt: [500, 2000, 4000, 6000], yt: [0, 1, 2, 3], xl: 'rpm', yl: '두께 (µm)', curves: [{ fn: r => PH.spin(r, P.vis) }], marks: [{ x: P.rp, y: hum, lab: hum.toFixed(2) + ' µm' }] });
+  ctx.restore();
+}
+
+/* ============ 4. 노광 ============ */
+function drawExpose(api) {
+  const P = api.P, ctx = begin(api), lam = P.wl, na = P.na, R = PH.rayleigh(lam, na, P.k1), fc = 2 * na / lam, m = PH.contrast(P.hp, lam, na), mReq = PH.mtf(.25 / P.k1), ok = P.hp >= R - 1e-9;
+  const E = PH.E_eV(lam);
+  // 광학 경로
+  ctx.fillStyle = COL.uv; ctx.globalAlpha = .25; ctx.fillRect(110, 70, 260, 220); ctx.globalAlpha = 1;
+  txt(ctx, `${srcName(lam)} ${lam} nm`, 240, 52, COL.uv, 20, 700, 'center');
+  for (let i = 0; i < 7; i++) arrow(ctx, 135 + i * 36, 80, 135 + i * 36, 150, COL.uv, 2.5);
+  ctx.fillStyle = COL.mask; ctx.fillRect(110, 150, 260, 14); ctx.fillStyle = COL.bg; WIN.forEach(([a, b]) => ctx.fillRect(110 + a * 260, 150, (b - a) * 260, 14)); txt(ctx, '마스크 (회로 패턴)', 380, 162, COL.text, 17);
+  for (let i = 0; i < 3; i++) { const cxm = 110 + (WIN[i][0] + WIN[i][1]) / 2 * 260; ctx.strokeStyle = 'rgba(180,140,255,.55)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cxm - 16, 164); ctx.lineTo(240 + (cxm - 240) * .25, 400); ctx.moveTo(cxm + 16, 164); ctx.lineTo(240 + (cxm - 240) * .25, 400); ctx.stroke(); }
+  ctx.fillStyle = 'rgba(127,214,255,.3)'; ctx.strokeStyle = COL.ox; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(240, 255, 120, 22, 0, 0, 2 * Math.PI); ctx.fill(); ctx.stroke(); txt(ctx, '볼록렌즈 (투영 광학계, 상을 ¼ 로 축소)', 380, 262, COL.ox, 16);
+  ctx.fillStyle = COL.si; ctx.fillRect(160, 410, 160, 22); ctx.fillStyle = COL.pr; ctx.fillRect(160, 398, 160, 12); txt(ctx, '웨이퍼 + 감광막', 330, 428, COL.dim, 16);
+  // 결상 곡선
+  const gx = 540, gw = 420, gy = 400, gh = 150; txt(ctx, `웨이퍼 위 빛의 세기 (반피치 ${P.hp} nm 패턴)`, gx, 110, COL.dim, 18);
+  ctx.strokeStyle = COL.grid; ctx.lineWidth = 1; ctx.strokeRect(gx, gy - gh, gw, gh);
+  const pitch = 2 * P.hp, per = 4; ctx.strokeStyle = ok ? COL.ok : COL.bad; ctx.lineWidth = 3.5; ctx.beginPath(); for (let i = 0; i <= 200; i++) { const x = i / 200 * per * pitch, I = .5 * (1 + m * Math.cos(2 * Math.PI * x / pitch + Math.PI)); const px = gx + i / 200 * gw, py = gy - I * gh * .92 - 6; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.stroke();
+  ctx.setLineDash([6, 5]); ctx.strokeStyle = COL.pr; ctx.lineWidth = 2; ctx.beginPath(); const thr = gy - .5 * gh * .92 - 6; ctx.moveTo(gx, thr); ctx.lineTo(gx + gw, thr); ctx.stroke(); ctx.setLineDash([]); txt(ctx, '현상 문턱', gx + gw - 4, thr - 6, COL.pr, 14, 600, 'right');
+  txt(ctx, ok ? `대비 ${m.toFixed(2)} ≥ ${mReq.toFixed(2)} → 해상 가능` : `대비 ${m.toFixed(2)} < ${mReq.toFixed(2)} → 번져서 해상 불가`, gx, 445, ok ? COL.ok : COL.bad, 20, 700);
+  txt(ctx, `광자 에너지 E = hc/λ = ${E.toFixed(2)} eV`, gx, 500, COL.text, 18); txt(ctx, `최소 선폭 R = k₁λ/NA = ${R.toFixed(1)} nm`, gx, 530, COL.pr, 20, 700);
+  api.setReadout([['광원', `${srcName(lam)} · ${lam} nm`], ['광자 에너지 E', E.toFixed(2) + ' eV'], ['최소 선폭 R = k₁λ/NA', R.toFixed(1) + ' nm'], ['초점 심도 0.5λ/NA²', PH.dof(lam, na).toFixed(0) + ' nm'], ['패턴 대비 / 요구', `${m.toFixed(2)} / ${mReq.toFixed(2)}`]]);
+  api.setNote('k₁ 은 공정 기술 수준을 담은 계수(물리적 한계 0.25)이고, 광학계는 이상적인 비간섭 결상으로 단순화했다. 파장을 줄이거나 NA 를 키우면 가는 선을 만들 수 있지만 초점 심도는 줄어든다.');
+  plot(api, { xmin: 10, xmax: 450, ymin: 1, ymax: 1000, log: true, xt: [10, 100, 400], yt: [1, 10, 100, 1000], xl: 'λ (nm)', yl: 'R (nm)', curves: [{ fn: l => PH.rayleigh(l, na, P.k1) }], marks: SRC.map(([l, n]) => ({ x: l, y: PH.rayleigh(l, na, P.k1), col: COL.pr })).concat([{ x: lam, y: R, col: COL.ok, lab: R.toFixed(0) + ' nm' }]) });
+  ctx.restore();
+}
+
+/* ============ 5. 현상 ============ */
+function drawDevelop(api) {
+  const P = api.P, ctx = begin(api), D0 = 30, gam = 3, neg = P.tone === 'neg', f = PH.remain(P.ds, D0, gam, P.tone), pH = 72, E = PH.E_eV(193), hw = pH * f;
+  txt(ctx, `${neg ? '음성(−)' : '양성(+)'} 감광막 · 노광량 ${P.ds} mJ/cm²`, SX, 50, COL.text, 22, 700);
+  txt(ctx, '노광 후 — 빛 받은 곳은 빨강', SX, 82, COL.dim, 16);
+  ctx.save(); ctx.translate(0, -215); section(ctx, { ox: null, pr: { h: pH, mode: 'exp' } }); ctx.restore();
+  txt(ctx, `현상 후 — 빛 받은 곳 ${neg ? '남음' : '씻겨 나감'} (남은 비율 ${(f * 100).toFixed(0)} %)`, SX, 340, COL.ok, 17, 600);
+  section(ctx, { ox: null, pr: { h: pH, mode: neg ? 'neg' : 'pos', hw: hw } });
+  txt(ctx, `광자 에너지 hc/λ (ArF 193 nm) = ${E.toFixed(1)} eV  >  C–C 결합 에너지 ≈ 3.6 eV → 결합이 끊어진다`, SX, 580, COL.dim, 16);
+  api.setReadout([['노광량 D', P.ds + ' mJ/cm²'], ['기준 D₀ (비율 ½)', D0 + ' mJ/cm²'], ['빛 받은 곳 남은 비율', (f * 100).toFixed(1) + ' %'], ['빛 못 받은 곳 남은 비율', (neg ? 0 : 100) + ' %']]);
+  api.setNote('대비 곡선은 시그모이드로 단순화한 개략 모형이다(D₀=30 mJ/cm², 대비 γ=3, 예시값). 양성은 빛 받은 곳이, 음성은 빛 못 받은 곳이 씻겨 나간다. 음성에서는 노광량이 모자라면 패턴이 남지 않는다.');
+  plot(api, { xmin: 0, xmax: 100, ymin: 0, ymax: 1, xt: [0, 30, 60, 100], yt: [0, .5, 1], xl: '노광량 (mJ/cm²)', yl: '남는 비율', curves: [{ fn: d => PH.remain(d, D0, gam, 'pos'), col: COL.pr }, { fn: d => PH.remain(d, D0, gam, 'neg'), col: COL.ox }], marks: [{ x: P.ds, y: f, lab: (f * 100).toFixed(0) + ' %' }] });
+  ctx.restore();
+}
+
+/* ============ 6. 식각 ============ */
+const ES = { t: 0 };
+function drawEtch(api) {
+  const P = api.P, ctx = begin(api), dry = P.method === 'dry', iso = dry ? .05 : 1, S = P.sel, prInit = 600, e = PH.etch(P.ed, S, iso, prInit), sc = .2;
+  const tot = 300 * sc, d = Math.min(P.ed, 300) * sc, u = e.under * sc; const prh = Math.max(0, e.prLeft) * sc;
+  section(ctx, { ox: { top: tot, bot: 0, etch: P.ed * sc, under: Math.min(u, 90) }, pr: { h: prh, mode: 'pos', hw: 0 } });
+  if (dry && ES.t >= 0) { for (let i = 0; i < 12; i++) { const wi = WIN[i % 3], fx = SX + (wi[0] + (wi[1] - wi[0]) * (((i * 37) % 100) / 100)) * SW, ph = (ES.t * .9 + i * .13) % 1, y = 150 + ph * (SYB - tot + d - 150); if (y < SYB - tot + d) { ctx.fillStyle = COL.uv; ctx.beginPath(); ctx.arc(fx, y, 4, 0, 2 * Math.PI); ctx.fill(); } } txt(ctx, '플라즈마 이온이 위에서 수직으로 입사', SX, 120, COL.uv, 18); }
+  else { ctx.fillStyle = 'rgba(127,214,255,.18)'; ctx.fillRect(SX - 20, 150, SW + 40, SYB - tot - 150); txt(ctx, '식각 용액 (모든 방향으로 녹인다)', SX, 120, COL.ox, 18); }
+  txt(ctx, `${dry ? '건식(플라즈마)' : '습식(용액)'} 식각 · 깊이 ${P.ed} nm`, SX, 70, COL.text, 22, 700);
+  txt(ctx, `옆으로 파인 거리 ${e.under.toFixed(0)} nm`, SX + SW, SYB + SIH + 30, e.under > 20 ? COL.bad : COL.ok, 18, 600, 'right');
+  if (e.prLeft <= 0) txt(ctx, '감광막이 다 닳았다 — 마스크 역할 상실 ⚠', SX, 590, COL.bad, 20, 700);
+  api.setReadout([['방식', dry ? '건식 (이방성)' : '습식 (등방성)'], ['식각 깊이', P.ed + ' nm'], ['옆 방향 침식', e.under.toFixed(0) + ' nm'], ['선택비 (산화막:PR)', S + ' : 1'], ['남은 감광막', Math.max(0, e.prLeft).toFixed(0) + ' nm']]);
+  api.setNote('두께·선택비·침식 비율(건식 5 %, 습식 100 %)은 개념 설명용 예시값이다. 산화막 300 nm, 감광막 600 nm 에서 시작한다고 가정했다. 깊이가 300 nm 를 넘으면 아래 Si 까지 파인다.');
+  plot(api, { xmin: 0, xmax: 300, ymin: 0, ymax: 300, xt: [0, 100, 200, 300], yt: [0, 100, 200, 300], xl: '식각 깊이 (nm)', yl: '옆 침식 (nm)', curves: [{ fn: x => x * .05, col: COL.uv }, { fn: x => x * 1.0, col: COL.ox }], marks: [{ x: P.ed, y: e.under, lab: e.under.toFixed(0) + ' nm' }] });
+  ctx.restore();
+}
+
+/* ============ 7. 감광막 제거 ============ */
+function drawStrip(api) {
+  const P = api.P, ctx = begin(api), rate = 300, init = 600, left = PH.ash(init, rate, P.at), sc = .2;
+  section(ctx, { ox: { top: 300 * sc, bot: 0, etch: 300 * sc, under: 2 }, pr: { h: left * sc, mode: 'pos', hw: 0 } });
+  txt(ctx, `O₂ 플라즈마 애싱 ${P.at.toFixed(1)} 분`, SX, 70, COL.text, 22, 700);
+  if (left > 0) { for (let i = 0; i < 10; i++) { const x = SX + 40 + i * 70 + (i % 3) * 8; arrow(ctx, x, 150 + (i % 2) * 15, x, SYB - 300 * sc - left * sc - 6, COL.uv, 2.5); } txt(ctx, `남은 감광막 ${left.toFixed(0)} nm`, SX, 590, COL.pr, 20, 700); }
+  else txt(ctx, '감광막 제거 완료 — 산화막 패턴만 남음', SX, 590, COL.ok, 20, 700);
+  const clear = init / rate;
+  api.setReadout([['애싱 시간', P.at.toFixed(1) + ' 분'], ['남은 감광막', left.toFixed(0) + ' nm'], ['완전 제거에 필요한 시간', clear.toFixed(1) + ' 분'], ['층 수', P.lay + ' 층'], ['누적 공정 단계', 7 * P.lay + ' 단계']]);
+  api.setNote('제거 속도 300 nm/min 은 예시이다. 실제로는 시간이 모자라면 잔여물이 남아 다음 층의 불량이 된다. 이 7단계를 층마다 반복해 수십~수백 번 거친다.');
+  plot(api, { xmin: 0, xmax: 6, ymin: 0, ymax: 600, xt: [0, 2, 4, 6], yt: [0, 300, 600], xl: '시간 (분)', yl: '남은 PR (nm)', curves: [{ fn: m => PH.ash(init, rate, m) }], marks: [{ x: P.at, y: left, lab: left.toFixed(0) + ' nm' }] });
+  ctx.restore();
+}
+
+/* ============ 8. 7단계 한눈에 ============ */
+const STEPS = ['시작: 맨 웨이퍼', '① 세정', '② 산화', '③ 감광막 도포', '④ 노광', '⑤ 현상', '⑥ 식각', '⑦ 감광막 제거'];
+const PRIN = ['', '표면 오염 제거 (수율 e^(−DA))', 'Si + O₂ → SiO₂ (절연막)', '원심력으로 균일한 막 (두께 ∝ ω^(−1/2))', '빛(E = hc/λ)으로 PR 성질 변화, R = k₁λ/NA', '빛 받은 PR 이 씻겨 나가 패턴 드러남', '이온이 수직으로 PR 없는 곳만 제거', 'O₂ 플라즈마로 PR 제거 → 회로 패턴 완성'];
+const FS = { t: 0, last: -1 };
+function drawFlow(api) {
+  const P = api.P, ctx = begin(api), k = Math.round(P.stp), neg = P.tone2 === 'neg', sc = .2, oxT = 300 * sc, prH = 120;
+  txt(ctx, STEPS[k], SX, 60, COL.text, 26, 700); txt(ctx, PRIN[k] || '실리콘 웨이퍼에서 시작', SX, 95, COL.dim, 18);
+  const o = { ox: null, pr: null };
+  if (k >= 2) o.ox = { top: oxT, bot: 0 };
+  if (k === 3) o.pr = { h: prH, mode: 'full' };
+  if (k === 4) o.pr = { h: prH, mode: 'exp' };
+  if (k === 5) o.pr = { h: prH, mode: neg ? 'neg' : 'pos', hw: neg ? prH : 0 };
+  if (k === 6) { o.pr = { h: prH, mode: neg ? 'neg' : 'pos', hw: neg ? prH : 0 }; o.ox.etch = oxT; o.ox.under = 2; }
+  if (k === 7) { o.ox.etch = oxT; o.ox.under = 2; }
+  section(ctx, o);
+  if (k === 4) { for (let i = 0; i < 9; i++) arrow(ctx, SX + 40 + i * 78, 130, SX + 40 + i * 78, SYB - oxT - prH - 60, COL.uv, 2.5); ctx.fillStyle = COL.mask; ctx.fillRect(SX, SYB - oxT - prH - 50, SW, 12); ctx.fillStyle = COL.bg; WIN.forEach(([a, b]) => ctx.fillRect(SX + a * SW, SYB - oxT - prH - 50, (b - a) * SW, 12)); txt(ctx, '마스크', SX + SW + 8, SYB - oxT - prH - 40, COL.text, 15); }
+  if (k === 1) { for (let i = 0; i < 12; i++) { ctx.fillStyle = '#fff'; ctx.globalAlpha = .6 + .4 * Math.sin(FS.t * 4 + i); ctx.beginPath(); ctx.arc(SX + 30 + i * 55, SYB - 12 - (i % 3) * 6, 2.5, 0, 2 * Math.PI); ctx.fill(); ctx.globalAlpha = 1; } }
+  if (k === 6) { for (let i = 0; i < 10; i++) { const wi = WIN[i % 3], fx = SX + (wi[0] + (wi[1] - wi[0]) * (((i * 37) % 100) / 100)) * SW, ph = (FS.t * .9 + i * .13) % 1, y = 150 + ph * (SYB - oxT - 150); ctx.fillStyle = COL.uv; ctx.beginPath(); ctx.arc(fx, y, 4, 0, 2 * Math.PI); ctx.fill(); } }
+  for (let i = 0; i < 8; i++) { ctx.fillStyle = i === k ? COL.ok : (i < k ? 'rgba(94,234,212,.5)' : 'rgba(160,190,255,.25)'); ctx.beginPath(); ctx.arc(SX + 20 + i * 98, 585, i === k ? 11 : 8, 0, 2 * Math.PI); ctx.fill(); }
+  api.setStatus(`${STEPS[k]} — ${PRIN[k] || ''}`);
+  api.setReadout([['현재 단계', STEPS[k]], ['PR 종류', neg ? '음성(−)' : '양성(+)'], ['반복', '층마다 ①~⑦ 반복 → 수십~수백 번']]);
+  api.setNote('▶ 를 누르면 7단계가 차례로 진행된다. 슬라이더로 원하는 단계를 직접 고를 수 있다. 막 두께 비율은 보기 좋게 과장했다.');
+  ctx.restore();
+}
+
+const DRAW = { clean: drawClean, oxide: drawOxide, spin: drawSpin, expose: drawExpose, develop: drawDevelop, etch: drawEtch, strip: drawStrip, flow: drawFlow };
+const SIM = {
+  enter(api) { SS.t = 0; ES.t = 0; FS.t = 0; FS.last = -1; api.setPlaying && api.setPlaying(!!{ spin: 1, etch: 1, flow: 1 }[api.scenario.id]); },
+  reset(api) { SS.t = 0; ES.t = 0; FS.t = 0; FS.last = -1; if (api.scenario.id === 'flow') api.setParam('stp', 0); api.refresh(); },
+  update(api) { (DRAW[api.scenario.id] || drawFlow)(api); },
+  frame(api, dt) {
+    const playing = typeof api.playing === 'function' ? api.playing() : api.playing; if (playing === false) return;
+    dt = Math.min(dt, 1 / 30); const id = api.scenario.id;
+    if (id === 'spin') SS.t += dt; else if (id === 'etch') ES.t += dt;
+    else if (id === 'flow') { FS.t += dt; const k = Math.floor(FS.t / 2.2) % 8; if (k !== FS.last) { FS.last = k; api.setParam('stp', k); } }
+    (DRAW[id] || drawFlow)(api);
+  },
+  tests() {
+    const T = [], near = (a, b, e) => Math.abs(a / b - 1) < e;
+    T.push(['수율: D·A = 0 이면 1, D·A = 1 이면 1/e', PH.yieldPoisson(0, 1) === 1 && near(PH.yieldPoisson(1, 1), Math.E ** -1, 1e-12), '']);
+    T.push(['수율: 칩 면적이 2배이면 수율은 제곱', near(PH.yieldPoisson(.8, 2), PH.yieldPoisson(.8, 1) ** 2, 1e-12), '']);
+    let ok = true; for (const [Tc, mn] of [[900, 30], [1000, 60], [1100, 90], [1200, 120]]) { const x = PH.oxide(Tc, mn) / 1000, { A, B } = PH.dg(Tc); if (Math.abs(x * x + A * x - B * mn / 60) > 1e-9) ok = false; }
+    T.push(['Deal–Grove: x² + A·x = B·t 를 만족', ok, '']);
+    const x1 = PH.oxide(1000, 60); T.push(['건식 산화 1000 °C · 1시간 ≈ 50 nm (문헌 대략값 45~60)', x1 > 45 && x1 < 60, x1.toFixed(1) + ' nm']);
+    const th = PH.oxide(1000, .6), { BA } = PH.dg(1000); T.push(['초기(얇을 때): x ≈ (B/A)·t', near(th / 1000, BA * (.6 / 60), 0.03), th.toFixed(2) + ' nm']);
+    const tk = PH.oxide(1200, 6000) / 1000, { B: B2 } = PH.dg(1200); T.push(['오래 산화(두꺼울 때): x ≈ √(B·t)', near(tk, Math.sqrt(B2 * 100), 0.02), tk.toFixed(2) + ' µm']);
+    T.push(['온도·시간이 클수록 산화막이 두껍다', PH.oxide(1100, 60) > PH.oxide(1000, 60) && PH.oxide(1000, 120) > PH.oxide(1000, 60), '']);
+    T.push(['스핀 코팅: 회전 4배 → 두께 1/2, 점도 고 > 중 > 저', near(PH.spin(500, 'mid') / PH.spin(2000, 'mid'), 2, 1e-12) && PH.spin(2000, 'high') > PH.spin(2000, 'mid') && PH.spin(2000, 'mid') > PH.spin(2000, 'low'), '']);
+    T.push(['광자 에너지: 193 nm → 6.42 eV, 13.5 nm → 91.8 eV', near(PH.E_eV(193), 6.424, 0.001) && near(PH.E_eV(13.5), 91.84, 0.001), PH.E_eV(193).toFixed(2) + ' / ' + PH.E_eV(13.5).toFixed(1)]);
+    T.push(['레일리 선폭: ArF 액침(NA 1.35, k₁ 0.3) ≈ 42.9 nm, EUV(NA 0.33, k₁ 0.4) ≈ 16.4 nm', near(PH.rayleigh(193, 1.35, .3), 42.89, 0.002) && near(PH.rayleigh(13.5, .33, .4), 16.36, 0.002), '']);
+    T.push(['MTF: f = 0 이면 1, 차단 주파수에서 0, 단조 감소', Math.abs(PH.mtf(0) - 1) < 1e-12 && Math.abs(PH.mtf(1)) < 1e-12 && PH.mtf(.3) > PH.mtf(.6) && PH.mtf(.6) > PH.mtf(.9), '']);
+    const lam = 193, na = .85, k1 = .4, R = PH.rayleigh(lam, na, k1); T.push(['반피치 = R 일 때 대비가 요구 대비 MTF(0.25/k₁)와 같다', Math.abs(PH.contrast(R, lam, na) - PH.mtf(.25 / k1)) < 1e-12, PH.contrast(R, lam, na).toFixed(3)]);
+    T.push(['초점 심도는 NA² 에 반비례', near(PH.dof(193, .5) / PH.dof(193, 1), 4, 1e-12), '']);
+    T.push(['현상: 양성 D=0 → 1, D=D₀ → ½, 양성+음성 = 1', PH.remain(0, 30, 3, 'pos') === 1 && Math.abs(PH.remain(30, 30, 3, 'pos') - .5) < 1e-12 && Math.abs(PH.remain(17, 30, 3, 'pos') + PH.remain(17, 30, 3, 'neg') - 1) < 1e-12, '']);
+    const dryE = PH.etch(100, 10, .05, 600), wetE = PH.etch(100, 10, 1, 600); T.push(['식각: 습식 옆 침식 = 깊이, 건식 ≪ 습식, PR 소모 = 깊이/선택비', wetE.under === 100 && dryE.under < wetE.under / 10 && Math.abs(dryE.prLeft - 590) < 1e-9, '']);
+    T.push(['애싱: 600 nm 를 300 nm/min 으로 2분에 제거, 이후 0', PH.ash(600, 300, 2) === 0 && PH.ash(600, 300, 1) === 300 && PH.ash(600, 300, 5) === 0, '']);
+    const fin = [[800, 5], [1200, 180]].every(([a, b]) => Number.isFinite(PH.oxide(a, b))) && [10, 450].every(l => Number.isFinite(PH.rayleigh(l, .1, .25)) && Number.isFinite(PH.contrast(5, l, 1.35)));
+    T.push(['슬라이더 양 끝값에서 NaN·Infinity 없음', fin, '']);
+    return T;
+  },
+};
+
+</script>
+<script>
+"use strict";
+/* ============================ 공용 UI 프레임워크 (템플릿) ============================ */
+(function () {
+  const C = WS_CONFIG;
+  const $ = (id) => document.getElementById(id);
+  const P = {};
+  const ui = { tab: C.tabs[0].id, scenarioId: null, playing: false };
+  const lastScenarioOfTab = {};
+
+  function addDefaults(params) { (params || []).forEach(p => { if (!(p.key in P)) P[p.key] = p.value; }); }
+  C.scenarios.forEach(s => { addDefaults(s.params); addDefaults(s.choices); });
+  if (C.common_params) addDefaults(C.common_params.params);
+
+  function current() { return C.scenarios.find(s => s.id === ui.scenarioId); }
+  function scenariosOfTab(tab) { return C.scenarios.filter(s => s.tab === tab); }
+  function fmtVal(v, unit) {
+    if (!unit) return String(v);
+    return /^[°%′″]/.test(unit) ? v + unit : v + " " + unit;
+  }
+
+  function showError(where, e) {
+    const box = $("simError");
+    box.hidden = false;
+    box.textContent = "시뮬레이션 오류 (" + where + "): " + (e && e.message ? e.message : e);
+    console.error(e);
+  }
+  const SIMOBJ = (typeof SIM !== "undefined") ? SIM : null;
+  function call(hook, ...args) {
+    if (!SIMOBJ || typeof SIMOBJ[hook] !== "function") return undefined;
+    try { return SIMOBJ[hook](api, ...args); } catch (e) { showError(hook, e); return undefined; }
+  }
+
+  /* ---------- 렌더러 ---------- */
+  const wrap = $("sceneWrap");
+  const api = {
+    config: C, P,
+    get scenario() { return current(); },
+    get tab() { return ui.tab; },
+    get playing() { return ui.playing; },
+    setPlaying(b) { ui.playing = !!b; updatePlayButton(); },
+    boxHalf: (C.scene && C.scene.box_half) || 16,
+    sceneEl: wrap,
+    THREE: window.THREE || null,
+    scene: null, camera: null, renderer: null, controls: null,
+    canvas: null, ctx: null, width: 0, height: 0,
+    custom: $("customPanel"),
+    chart: {
+      canvas: $("chartCanvas"),
+      ctx: $("chartCanvas").getContext("2d"),
+      setHint(html) { $("chartHint").innerHTML = html; },
+    },
+    setReadout(rows) {
+      const tbl = $("readout");
+      tbl.innerHTML = "";
+      (rows || []).forEach(r => {
+        const tr = document.createElement("tr");
+        const a = document.createElement("td"); a.textContent = r[0];
+        const b = document.createElement("td"); b.textContent = r[1];
+        tr.append(a, b); tbl.appendChild(tr);
+      });
+    },
+    setNote(text) { $("readoutNote").textContent = text || ""; },
+    setStatus(text) { const el = $("wsStatus"); if (el) el.textContent = text || ""; },
+    setParam(key, v) {
+      P[key] = v;
+      const el = $("p_" + key); if (el) el.value = v;
+      const vEl = $("p_" + key + "_val"); if (vEl) vEl.textContent = fmtVal(v, vEl.dataset.unit);
+    },
+    refresh() { call("update"); },
+  };
+
+  function initRenderer() {
+    const sc = C.scene || {};
+    if (C.renderer === "three") {
+      if (!window.THREE) { showError("init", "Three.js를 불러오지 못했습니다 (인터넷 연결 확인)"); return false; }
+      const T = window.THREE;
+      api.scene = new T.Scene();
+      api.camera = new T.PerspectiveCamera(45, wrap.clientWidth / wrap.clientHeight, 0.1, 500);
+      const cp = sc.camera || [26, 20, 30];
+      api.camera.position.set(cp[0], cp[1], cp[2]);
+      api.renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
+      api.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      wrap.insertBefore(api.renderer.domElement, wrap.firstChild);
+      api.controls = new T.OrbitControls(api.camera, api.renderer.domElement);
+      api.controls.enableDamping = true;
+      api.controls.dampingFactor = 0.08;
+      api.controls.target.set(0, 0, 0);
+      api.scene.add(new T.AmbientLight(0xffffff, 0.55));
+      const dl = new T.DirectionalLight(0xffffff, 0.9);
+      dl.position.set(20, 30, 15);
+      api.scene.add(dl);
+      if (sc.grid !== false) api.scene.add(new T.GridHelper(api.boxHalf * 2, 16, 0x3a5a8a, 0x1f3352));
+      if (sc.axes !== false) api.scene.add(new T.AxesHelper(api.boxHalf * 0.6));
+    } else {
+      api.canvas = document.createElement("canvas");
+      wrap.insertBefore(api.canvas, wrap.firstChild);
+      api.ctx = api.canvas.getContext("2d");
+    }
+    window.addEventListener("resize", onResize);
+    onResize();
+    return true;
+  }
+
+  function onResize() {
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    api.width = w; api.height = h;
+    if (api.renderer) {
+      api.camera.aspect = w / h;
+      api.camera.updateProjectionMatrix();
+      api.renderer.setSize(w, h);
+    } else if (api.canvas) {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      api.canvas.width = Math.round(w * dpr);
+      api.canvas.height = Math.round(h * dpr);
+      api.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (ui.scenarioId) call("update");
+    }
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    if (api.controls) api.controls.update();
+    call("frame", 1 / 60);
+    if (api.renderer) api.renderer.render(api.scene, api.camera);
+  }
+
+  /* ---------- UI ---------- */
+  function renderTabs() {
+    const box = $("tabs");
+    box.innerHTML = "";
+    box.hidden = C.tabs.length < 2;
+    C.tabs.forEach(t => {
+      const b = document.createElement("button");
+      b.textContent = t.label;
+      b.className = t.id === ui.tab ? "active" : "";
+      b.addEventListener("click", () => switchTab(t.id));
+      box.appendChild(b);
+    });
+  }
+
+  function renderPicker() {
+    const box = $("scenarioPicker");
+    const list = scenariosOfTab(ui.tab);
+    box.innerHTML = "";
+    box.hidden = list.length < 2;
+    list.forEach(s => {
+      const b = document.createElement("button");
+      b.textContent = s.name;
+      b.className = s.id === ui.scenarioId ? "active" : "";
+      b.addEventListener("click", () => selectScenario(s.id));
+      box.appendChild(b);
+    });
+  }
+
+  function sliderEl(p) {
+    const div = document.createElement("div");
+    div.className = "param";
+    const label = document.createElement("label");
+    label.textContent = p.label + " ";
+    const val = document.createElement("span");
+    val.className = "val"; val.id = "p_" + p.key + "_val"; val.dataset.unit = p.unit || "";
+    val.textContent = fmtVal(P[p.key], p.unit);
+    label.appendChild(val);
+    const inp = document.createElement("input");
+    inp.type = "range"; inp.id = "p_" + p.key;
+    inp.min = p.min; inp.max = p.max; inp.step = p.step; inp.value = P[p.key];
+    inp.addEventListener("input", () => {
+      const v = parseFloat(inp.value);
+      P[p.key] = v;
+      val.textContent = fmtVal(v, p.unit);
+      call("update");
+    });
+    div.append(label, inp);
+    return div;
+  }
+
+  function choiceEl(c) {
+    const row = document.createElement("div");
+    row.className = "row"; row.style.marginBottom = "8px";
+    if (c.label) { const l = document.createElement("b"); l.style.fontSize = "0.9em"; l.textContent = c.label; row.appendChild(l); }
+    c.options.forEach(o => {
+      const b = document.createElement("button");
+      b.textContent = o.label;
+      b.className = P[c.key] === o.value ? "primary" : "";
+      b.addEventListener("click", () => {
+        P[c.key] = o.value;
+        row.querySelectorAll("button").forEach(x => x.className = "");
+        b.className = "primary";
+        call("update");
+      });
+      row.appendChild(b);
+    });
+    return row;
+  }
+
+  function renderControls() {
+    const s = current();
+    const body = $("scenarioBody");
+    body.innerHTML = "";
+    if (s.desc || s.section) {
+      const p = document.createElement("p");
+      p.className = "hint"; p.style.marginBottom = "10px";
+      if (s.section) { const b = document.createElement("b"); b.textContent = s.section; p.appendChild(b); if (s.desc) p.appendChild(document.createTextNode(" — ")); }
+      if (s.desc) p.appendChild(document.createTextNode(s.desc));
+      body.appendChild(p);
+    }
+    (s.choices || []).forEach(c => body.appendChild(choiceEl(c)));
+    (s.params || []).forEach(p => body.appendChild(sliderEl(p)));
+    if (s.animated) {
+      const st = document.createElement("div");
+      st.className = "hint"; st.id = "wsStatus";
+      st.textContent = s.status_hint || "";
+      body.appendChild(st);
+      const row = document.createElement("div");
+      row.className = "controls-row";
+      const play = document.createElement("button");
+      play.id = "playBtn"; play.className = "primary";
+      play.addEventListener("click", () => { ui.playing = !ui.playing; updatePlayButton(); });
+      const reset = document.createElement("button");
+      reset.textContent = "↺ 리셋";
+      reset.addEventListener("click", () => { ui.playing = false; updatePlayButton(); call("reset"); call("update"); });
+      row.append(play, reset);
+      body.appendChild(row);
+      updatePlayButton();
+    }
+    const cp = C.common_params;
+    if (cp && s.use_common !== false) {
+      const hr = document.createElement("hr");
+      hr.style.cssText = "margin:10px 0;border:none;border-top:1px solid var(--border)";
+      body.appendChild(hr);
+      if (cp.title) { const b = document.createElement("b"); b.style.fontSize = "0.9em"; b.textContent = cp.title; body.appendChild(b); }
+      cp.params.forEach(p => body.appendChild(sliderEl(p)));
+    }
+  }
+
+  function updatePlayButton() {
+    const b = $("playBtn");
+    if (b) b.textContent = ui.playing ? "⏸ 일시정지" : "▶ 재생";
+  }
+
+  function renderFormula() {
+    const s = current();
+    const body = $("formulaBody");
+    body.innerHTML = (s.formula || []).map(f =>
+      (f.eq_html ? `<div class="eq">${f.eq_html}</div>` : "") + (f.text_html || "")
+    ).join("");
+  }
+
+  function renderMisconception() {
+    const s = current();
+    const panel = $("misconceptionPanel");
+    panel.innerHTML = "";
+    panel.hidden = !s.misconception;
+    if (!s.misconception) return;
+    const box = document.createElement("div");
+    box.className = "misconception";
+    const b = document.createElement("b");
+    b.textContent = s.misconception_title || "💡 흔한 오개념";
+    box.append(b, document.createElement("br"), document.createTextNode(s.misconception));
+    panel.appendChild(box);
+  }
+
+  function enterScenario() {
+    ui.playing = false;
+    const s = current();
+    $("graphPanel").hidden = !s.chart;
+    $("chartHint").innerHTML = "";
+    api.custom.innerHTML = "";
+    api.setReadout([]); api.setNote("");
+    renderPicker(); renderControls(); renderFormula(); renderMisconception();
+    call("enter");
+    call("update");
+  }
+
+  function selectScenario(id) {
+    ui.scenarioId = id;
+    lastScenarioOfTab[ui.tab] = id;
+    enterScenario();
+  }
+
+  function switchTab(tab) {
+    ui.tab = tab;
+    renderTabs();
+    selectScenario(lastScenarioOfTab[tab] || scenariosOfTab(tab)[0].id);
+  }
+
+  function renderLegend() {
+    const box = $("legend");
+    (C.legend || []).forEach(l => {
+      const span = document.createElement("span");
+      const sw = document.createElement("i");
+      sw.className = "swatch" + (l.shape === "bar" ? " bar" : "");
+      sw.style.background = l.color;
+      span.append(sw, document.createTextNode(l.label));
+      box.appendChild(span);
+    });
+  }
+
+  function runSelfTests() {
+    if (!SIMOBJ || typeof SIMOBJ.tests !== "function") { console.log("물리 검증 항목 없음"); return; }
+    let results = [];
+    try { results = SIMOBJ.tests() || []; } catch (e) { showError("tests", e); return; }
+    console.log("=== " + C.title + " 물리 검증 ===");
+    let pass = 0;
+    for (const [name, ok, detail] of results) {
+      console.log(`[${ok ? "PASS" : "FAIL"}] ${name}${detail ? " — " + detail : ""}`);
+      if (ok) pass++;
+    }
+    console.log(pass === results.length ? "모든 검증 통과" : "일부 검증 실패 — 콘솔 확인 필요");
+    window.__wsSelfTest = { pass, total: results.length };
+  }
+
+  /* ---------- 시작 ---------- */
+  $("readoutTitle").textContent = C.readout_title || "측정값";
+  $("hoverHint").textContent = (C.scene && C.scene.hint != null) ? C.scene.hint
+    : (C.renderer === "three" ? "마우스 드래그: 회전 · 휠: 확대/축소" : "");
+  $("projectorBtn").addEventListener("click", () => document.body.classList.toggle("projector"));
+  renderLegend();
+  if (!SIMOBJ) showError("load", "sim_js에 SIM 객체가 정의되지 않았습니다");
+  if (initRenderer()) {
+    call("init");
+    renderTabs();
+    switchTab(ui.tab);
+    animate();
+  }
+  runSelfTests();
+})();
 </script>
 
-</div>
 </body>
 </html>
+<!--claude-meta
+category: 반도체
+slug: photolithography
+icon: 🔬
+title: 포토리소그래피 공정 7단계
+desc: 세정·산화·도포·노광·현상·식각·제거 7단계를 단면과 슬라이더로 조작하며 이해 (고2 물리학 · 첨단 과학)
+-->

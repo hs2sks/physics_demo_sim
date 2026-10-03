@@ -36,6 +36,11 @@
   footer .fine { margin-top: 18px; font-size: 0.85em; opacity: .8; }
   footer .fine a { color: inherit; margin: 0 6px; }
   footer .fine a:hover { color: var(--accent); }
+  .card .thumb { display:block; width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:8px; border:1px solid var(--border); margin-bottom:10px; background:#eef2f7; }
+  .recent .card { padding:14px; }
+  .recent .card .title { font-size:1.05em; margin:6px 0 0; }
+  .recent .card .meta { margin:0 0 2px; display:flex; gap:8px; align-items:center; font-size:0.8em; }
+  .recent .card .date { font-family:monospace; color:var(--accent); }
   section { margin-top: 30px; }
   h2.sec { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; font-size: 1.25em; padding-bottom: 8px; margin-bottom: 14px; border-bottom: 2px solid var(--border); }
   h2.sec small { font-size: 0.68em; font-weight: 400; color: var(--sub); }
@@ -80,6 +85,11 @@
       <a class="secondary" href="https://board.crazyray.uk/gallery">📋 과제방 (제출 목록)</a>
     </div>
   </div>
+  <section class="recent" id="recent" hidden>
+    <h2 class="sec"><span>🆕 최근 올라온 것</span><small>수업 자료 · 모션그래픽 새 소식</small></h2>
+    <div class="grid" id="recent-grid"></div>
+  </section>
+
   <section>
     <details class="acc" data-key="lectures" open>
     <summary><h2 class="sec"><span>📚 수업 자료</span><small>수업 시간에 사용한 프레젠테이션 · 모션그래픽 · 복습용</small></h2></summary>
@@ -114,7 +124,7 @@
     </details>
   </section>
 
-  <section>
+  <section id="sims">
     <details class="acc" data-key="sims" open>
     <summary><h2 class="sec"><span>🧪 물리 시뮬레이션 모음</span><small>분야별 인터랙티브 시뮬레이션 · 실험 분석 도구</small></h2></summary>
     <div class="grid">
@@ -217,5 +227,29 @@
     try { localStorage.removeItem('home-acc-' + d.dataset.key); } catch (e) {}
   });
 </script>
+<script>
+  // 최근 올라온 것: 수업 자료·모션그래픽 index.json에서 날짜순으로 각 2개씩 가져온다.
+  (function () {
+    var esc = function (t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+    var SRC = [{ dir: 'lectures', label: '수업 자료' }, { dir: 'motion-graphic', label: '모션그래픽' }];
+    Promise.all(SRC.map(function (s) {
+      return fetch(s.dir + '/index.json').then(function (r) { return r.json(); }).then(function (a) {
+        return a.slice().sort(function (x, y) { return String(y.date).localeCompare(String(x.date)); }).slice(0, 2)
+          .map(function (d) { d._dir = s.dir; d._label = s.label; return d; });
+      }).catch(function () { return []; });
+    })).then(function (r) {
+      var items = r[0].concat(r[1]).sort(function (x, y) { return String(y.date).localeCompare(String(x.date)); });
+      if (!items.length) return;
+      document.getElementById('recent-grid').innerHTML = items.map(function (d) {
+        return '<a class="card" href="' + esc(d._dir + '/' + d.path) + '" target="_blank" rel="noopener">' +
+          (d.thumb ? '<img class="thumb" src="' + esc(d._dir + '/' + d.thumb) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
+          '<div class="meta"><span class="pill tag">' + esc(d._label) + '</span><span class="date">' + esc(d.date) + '</span></div>' +
+          '<div class="title">' + esc(d.title) + '</div></a>';
+      }).join('');
+      document.getElementById('recent').hidden = false;
+    });
+  })();
+</script>
+<script src="site-nav.js"></script>
 </body>
 </html>

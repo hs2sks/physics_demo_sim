@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>포토리소그래피 7단계 — 모션그래픽</title>
+<!-- photolithography-7steps · 세정·산화·도포·노광·현상·식각·제거 7단계를 단면으로 살펴보는 모션그래픽 (LINE 스타일) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Nanum+Pen+Script&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<style>
+:root{
+  --page:#e7e3d8; --ink:#23261f; --barbg:#d8d3c6;
+  --board:#1f3d31; --chalk:#f3f0e6; --yellow:#f4cf5a; --pink:#f29aac; --blue:#8cc3e8; --wood:#6b4a2f;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#111513;--ink:#e6e6de;--barbg:#1c211e}}
+:root[data-theme="dark"]{--page:#111513;--ink:#e6e6de;--barbg:#1c211e}
+html{height:100%} body{height:100%;margin:0}
+body{background:var(--page);color:var(--ink);font-family:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;display:flex;flex-direction:column;overflow:hidden}
+#wrap{flex:1;position:relative;overflow:hidden}
+#stage{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center center;overflow:hidden;color:var(--chalk);
+  background:
+    radial-gradient(ellipse 900px 500px at 25% 20%,rgba(255,255,255,.07),transparent 70%),
+    radial-gradient(ellipse 700px 400px at 75% 70%,rgba(255,255,255,.05),transparent 70%),
+    radial-gradient(ellipse 1400px 700px at 50% 110%,rgba(0,0,0,.35),transparent 70%),
+    var(--board);
+  box-shadow:inset 0 0 0 22px var(--wood), inset 0 0 0 26px #4d341f, inset 0 0 120px rgba(0,0,0,.45);
+}
+#tray{position:absolute;left:22px;right:22px;bottom:22px;height:18px;background:linear-gradient(#7a5738,#50361f)}
+.stick{position:absolute;bottom:40px;height:12px;border-radius:6px}
+.dsp{font-family:"Black Han Sans","Malgun Gothic",sans-serif;font-weight:400}
+.pen{font-family:"Nanum Pen Script",cursive}
+.ch{text-shadow:0 0 1px currentColor,0 0 10px rgba(255,255,255,.12)}
+.sc{position:absolute;inset:0;display:none}
+.row{position:absolute;left:0;right:0;text-align:center;white-space:nowrap;will-change:transform,opacity}
+.abs{position:absolute;will-change:transform,opacity}
+.y{color:var(--yellow)} .p{color:var(--pink)} .b{color:var(--blue)}
+.card{position:absolute;border:4px solid rgba(243,240,230,.85);border-radius:22px 12px 26px 14px;background:var(--board)}
+.fig{position:absolute;transform-origin:50% 100%}
+.fig svg{display:block;overflow:visible}
+
+/* control bar */
+#bar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--barbg);font-size:15px;flex-wrap:wrap}
+#bar button{font:inherit;padding:7px 14px;border-radius:8px;border:1px solid rgba(127,127,127,.5);background:var(--page);color:var(--ink);cursor:pointer}
+#bar button:focus-visible,#seek:focus-visible{outline:3px solid #3b82f6;outline-offset:2px}
+#seek{flex:1;min-width:140px}
+#time{font-variant-numeric:tabular-nums;min-width:92px}
+.hint{opacity:.7}
+body.rec #bar{display:none}
+@media (max-width:640px){.hint{display:none}}
+#mgError{position:absolute;left:40px;right:40px;top:40px;z-index:50;background:rgba(184,50,31,.95);color:#fff;font:22px/1.4 sans-serif;padding:10px 18px;border-radius:12px;white-space:pre-wrap;display:none}
+#mgError.on{display:block}
+body.nodecor #tray, body.nodecor .stick{display:none}
+/* ---- theme ---- */
+:root{--board:#1f3d31;--chalk:#f3f0e6;--yellow:#f4cf5a;--pink:#f29aac;--blue:#8cc3e8;--wood:#6b4a2f}
+/* ---- MotionKit 스타일 프리셋 (내장) ---- */
+/* ==== MotionKit 스타일 프리셋 (템플릿 내장) ==== */
+.mk-u{display:inline-block;will-change:transform,opacity}
+.mk-bg{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden}
+.mk-grain{position:absolute;left:0;top:0;width:1920px;height:1080px;pointer-events:none;background-image:var(--mk-noise);opacity:.13;mix-blend-mode:multiply}
+/* 글꼴 */
+.f-sans{font-family:'Noto Sans KR','Black Han Sans',sans-serif;font-weight:900;letter-spacing:-.04em}
+.f-thin{font-family:'Noto Sans KR',sans-serif;font-weight:300;letter-spacing:.02em}
+.f-plex{font-family:'IBM Plex Sans KR',sans-serif;font-weight:300}
+.f-mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+.f-paper{font-family:'Do Hyeon','Black Han Sans',sans-serif}
+.f-serif{font-family:'Nanum Myeongjo',serif}
+/* 1. SWISS — 그리드·원색·굵은 산세리프 */
+.mk-swiss{background:#f2efe8;color:#111;background-image:repeating-linear-gradient(90deg,rgba(0,0,0,.06) 0 1px,transparent 1px 160px)}
+.mk-swiss .accent{background:#e8321e}
+/* 2. LINE — 블루프린트 선화 */
+.mk-line{background:radial-gradient(ellipse at 50% 40%,#13305a,#060e1d 75%);color:#d8ecff}
+.mk-line .grid{position:absolute;inset:0;background-image:linear-gradient(rgba(140,200,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(140,200,255,.08) 1px,transparent 1px);background-size:60px 60px}
+.mk-line svg *{fill:none;stroke:#8fd0ff;stroke-width:3;stroke-linecap:round}
+/* 3. PAPER — 종이 컷아웃 */
+.mk-paper{background:radial-gradient(circle at 30% 20%,#f6eedf,#e6d8bf);color:#3b2f22}
+.mk-paper .card{position:absolute;border-radius:18px;box-shadow:0 10px 0 rgba(0,0,0,.08),0 22px 40px rgba(60,40,10,.18)}
+/* 4. RISO — 형광 잉크 겹침 */
+.mk-riso{background:#f4f0e6;color:#1a1a1a}
+.mk-riso .ink-p{color:#ff48b0;fill:#ff48b0;mix-blend-mode:multiply}
+.mk-riso .ink-b{color:#0078bf;fill:#0078bf;mix-blend-mode:multiply}
+.mk-riso .ink-y{color:#ffe800;fill:#ffe800;mix-blend-mode:multiply}
+/* 5. COSMIC — 입자·글로우·세리프 */
+.mk-cosmic{background:radial-gradient(circle at 50% 60%,#22124a,#04030c 70%);color:#f5f0ff}
+.mk-cosmic .glow{text-shadow:0 0 24px rgba(190,160,255,.7)}
+/* 6. CHALK — 기존 칠판 테마는 .mk-bg 없이 템플릿 그대로 쓴다 */
+/* ==== /MotionKit CSS ==== */
+
+/* ---- extra_css ---- */
+
+</style>
+</head>
+<body class="nodecor">
+<div id="wrap">
+ <div id="stage">
+  <div id="tray"></div>
+  <div class="stick" style="left:300px;width:90px;background:#f3f0e6"></div>
+  <div class="stick" style="left:420px;width:60px;background:#f4cf5a"></div>
+  <div class="stick" style="left:1500px;width:70px;background:#f29aac"></div>
+
+  <!-- s0: 제목: 웨이퍼와 7단계 -->
+  <div class="sc" id="s0">
+<div class='mk-bg mk-line'><div class='grid'></div>
+<div id='s0k' class='abs f-mono' style='left:150px;top:230px;font-size:36px;letter-spacing:.2em;color:#8fd0ff;white-space:nowrap'>PHOTOLITHOGRAPHY</div>
+<div id='s0t' class='abs f-plex' style='left:140px;top:300px;font-size:140px;font-weight:700;white-space:nowrap'>포토리소그래피</div>
+<div id='s0u' class='abs f-plex' style='left:146px;top:492px;font-size:48px;color:#ffd24a;white-space:nowrap'>빛으로 그린 회로를 실리콘에 새긴다</div>
+<div id='s0n' class='abs f-plex' style='left:140px;top:600px;font-size:300px;font-weight:700;line-height:1;color:#ffd24a;white-space:nowrap'>7</div>
+<div id='s0s' class='abs f-mono' style='left:330px;top:760px;font-size:56px;white-space:nowrap'>STEPS</div>
+<svg class='abs' width='1920' height='1080' style='left:0;top:0'><defs><clipPath id='s0cp'><circle cx='1500' cy='540' r='320'/></clipPath></defs>
+<g id='s0g'><circle id='s0w' cx='1500' cy='540' r='325' pathLength='1' stroke-dasharray='1' stroke-dashoffset='1' style='fill:none;stroke:#8fd0ff;stroke-width:4px'/><line id='s0v0' x1='1203.0' y1='215' x2='1203.0' y2='865' clip-path='url(#s0cp)'/><line id='s0h0' x1='1170' y1='243.0' x2='1830' y2='243.0' clip-path='url(#s0cp)'/><line id='s0v1' x1='1257.0' y1='215' x2='1257.0' y2='865' clip-path='url(#s0cp)'/><line id='s0h1' x1='1170' y1='297.0' x2='1830' y2='297.0' clip-path='url(#s0cp)'/><line id='s0v2' x1='1311.0' y1='215' x2='1311.0' y2='865' clip-path='url(#s0cp)'/><line id='s0h2' x1='1170' y1='351.0' x2='1830' y2='351.0' clip-path='url(#s0cp)'/><line id='s0v3' x1='1365.0' y1='215' x2='1365.0' y2='865' clip-path='url(#s0cp)'/><line id='s0h3' x1='1170' y1='405.0' x2='1830' y2='405.0' clip-path='url(#s0cp)'/><line id='s0v4' x1='1419.0' y1='215' x2='1419.0' y2='865' clip-path='url(#s0cp)'/><line id='s0h4' x1='1170' y1='459.0' x2='1830' y2='459.0' clip-path='url(#s0cp)'/><line id='s0v5' x1='1473.0' y1='215' x2='1473.0' y2='865' clip-path='url(#s0cp)'/><line id='s0h5' x1='1170' y1='513.0' x2='1830' y2='513.0' clip-path='url(#s0cp)'/><line id='s0v6' x1='1527.0' y1='215' x2='1527.0' y2='865' clip-path='url(#s0cp)'/><line id='s0h6' x1='1170' y1='567.0' x2='1830' y2='567.0' clip-path='url(#s0cp)'/><line id='s0v7' x1='1581.0' y1='215' x2='1581.0' y2='865' clip-path='url(#s0cp)'/><line id='s0h7' x1='1170' y1='621.0' x2='1830' y2='621.0' clip-path='url(#s0cp)'/><line id='s0v8' x1='1635.0' y1='215' x2='1635.0' y2='865' clip-path='url(#s0cp)'/><line id='s0h8' x1='1170' y1='675.0' x2='1830' y2='675.0' clip-path='url(#s0cp)'/><line id='s0v9' x1='1689.0' y1='215' x2='1689.0' y2='865' clip-path='url(#s0cp)'/><line id='s0h9' x1='1170' y1='729.0' x2='1830' y2='729.0' clip-path='url(#s0cp)'/><line id='s0v10' x1='1743.0' y1='215' x2='1743.0' y2='865' clip-path='url(#s0cp)'/><line id='s0h10' x1='1170' y1='783.0' x2='1830' y2='783.0' clip-path='url(#s0cp)'/><line id='s0v11' x1='1797.0' y1='215' x2='1797.0' y2='865' clip-path='url(#s0cp)'/><line id='s0h11' x1='1170' y1='837.0' x2='1830' y2='837.0' clip-path='url(#s0cp)'/></g></svg></div>
+  </div>
+
+  <!-- s1: ① 세정 ② 산화 -->
+  <div class="sc" id="s1">
+<div class='mk-bg mk-line'><div class='grid'></div><div id='hn' class='abs f-mono' style='left:150px;top:70px;font-size:34px;letter-spacing:.2em;color:#8fd0ff;white-space:nowrap'>STEP 01 · 02</div><div id='ht' class='abs f-plex' style='left:146px;top:112px;font-size:90px;font-weight:700;white-space:nowrap'>세정 · 산화</div>
+<div id='s1si1' class='abs' style='left:160px;top:720px;width:700px;height:120px;background:#5d6c9c;'></div><div id='s1sl' class='abs f-plex' style='left:180px;top:850px;font-size:30px;color:#eaf6ff;white-space:nowrap'>Si 웨이퍼</div><div id='s1p0' class='abs' style='left:200px;top:688px;width:10px;height:10px;border-radius:50%;background:#fff'></div><div id='s1p1' class='abs' style='left:252px;top:680px;width:13px;height:13px;border-radius:50%;background:#fff'></div><div id='s1p2' class='abs' style='left:304px;top:672px;width:16px;height:16px;border-radius:50%;background:#fff'></div><div id='s1p3' class='abs' style='left:356px;top:688px;width:10px;height:10px;border-radius:50%;background:#fff'></div><div id='s1p4' class='abs' style='left:408px;top:680px;width:13px;height:13px;border-radius:50%;background:#fff'></div><div id='s1p5' class='abs' style='left:460px;top:672px;width:16px;height:16px;border-radius:50%;background:#fff'></div><div id='s1p6' class='abs' style='left:512px;top:688px;width:10px;height:10px;border-radius:50%;background:#fff'></div><div id='s1p7' class='abs' style='left:564px;top:680px;width:13px;height:13px;border-radius:50%;background:#fff'></div><div id='s1p8' class='abs' style='left:616px;top:672px;width:16px;height:16px;border-radius:50%;background:#fff'></div><div id='s1p9' class='abs' style='left:668px;top:688px;width:10px;height:10px;border-radius:50%;background:#fff'></div><div id='s1p10' class='abs' style='left:720px;top:680px;width:13px;height:13px;border-radius:50%;background:#fff'></div><div id='s1p11' class='abs' style='left:772px;top:672px;width:16px;height:16px;border-radius:50%;background:#fff'></div>
+<svg class='abs' width='1920' height='1080' style='left:0;top:0'><path id='s1a' d='M190 650 L860 650' pathLength='1' stroke-dasharray='1' stroke-dashoffset='1' style='fill:none;stroke:#8fd0ff;stroke-width:6px'/></svg>
+<div id='s1c1' class='abs f-plex' style='left:160px;top:330px;width:700px;font-size:40px;line-height:1.45;color:#eaf6ff'>먼지 · 기름 · 이온을 씻어 낸다<br><span style='color:#8fd0ff;font-size:32px'>NH₄OH + H₂O₂ + 물 (RCA 세정)</span></div>
+<div id='s1c2' class='abs f-mono' style='left:160px;top:900px;font-size:32px;color:#ffd24a;white-space:nowrap'>수율 Y = e^(−D·A)</div>
+<div id='s1si2' class='abs' style='left:1020px;top:720px;width:700px;height:120px;background:#5d6c9c;'></div><div id='s1ox' class='abs' style='left:1020px;top:720px;width:700px;height:0px;background:#7fd6ff;'></div>
+<div id='s1l2' class='abs' style='left:1000px;top:720px;width:740px;height:0;border-top:3px dashed rgba(255,255,255,.55)'></div>
+<svg class='abs' width='1920' height='1080' style='left:0;top:0'><g id='s1o2'></g></svg>
+<div id='s1t2' class='abs f-mono' style='left:1020px;top:330px;font-size:100px;color:#ff6b6b;white-space:nowrap'><span id='s1tv'>25</span> °C</div>
+<div id='s1f2' class='abs f-mono' style='left:1020px;top:470px;font-size:56px;white-space:nowrap'>Si + O₂ → SiO₂</div>
+<div id='s1d2' class='abs f-plex' style='left:1020px;top:570px;width:720px;font-size:34px;line-height:1.5;color:#8fd0ff'>절연막 · 두께의 44 %는 Si 가 소모된 아래쪽</div>
+<div id='s1x2' class='abs f-mono' style='left:1020px;top:900px;font-size:34px;color:#eaf6ff;white-space:nowrap'>x² + A·x = B·t</div></div>
+  </div>
+
+  <!-- s2: ③ 감광막 도포 (스핀 코팅) -->
+  <div class="sc" id="s2">
+<div class='mk-bg mk-line'><div class='grid'></div><div id='hn' class='abs f-mono' style='left:150px;top:70px;font-size:34px;letter-spacing:.2em;color:#8fd0ff;white-space:nowrap'>STEP 03</div><div id='ht' class='abs f-plex' style='left:146px;top:112px;font-size:90px;font-weight:700;white-space:nowrap'>감광막 도포</div><div id='hs' class='abs f-plex' style='left:150px;top:236px;font-size:36px;color:#8fd0ff;white-space:nowrap'>스핀 코팅</div>
+<svg class='abs' width='1920' height='1080' style='left:0;top:0'><circle id='s2w' cx='480' cy='640' r='260' style='fill:#5d6c9c;stroke:#8fd0ff;stroke-width:4px'/><circle id='s2p' cx='480' cy='640' r='0' style='fill:#ffb454;stroke:none'/>
+<g id='s2sp'></g><circle cx='480' cy='640' r='9' style='fill:#fff;stroke:none'/>
+<path id='s2om' d='M770 520 A300 300 0 0 1 770 760' style='fill:none;stroke:#5fe0a0;stroke-width:5px' stroke-dasharray='1' pathLength='1' stroke-dashoffset='1'/></svg>
+<div id='s2ol' class='abs f-mono' style='left:800px;top:620px;font-size:48px;color:#5fe0a0;white-space:nowrap'>ω</div>
+<div id='s2f' class='abs f-mono' style='left:1020px;top:330px;font-size:100px;white-space:nowrap'>h ∝ ω<sup style='font-size:50px'>−½</sup></div>
+<div id='s2lab' class='abs f-plex' style='left:1020px;top:480px;font-size:36px;color:#8fd0ff;white-space:nowrap'>회전이 빠를수록 얇고 고르게</div>
+<div id='s2b1' class='abs' style='left:1020px;top:880px;width:160px;height:120px;background:#ffb454;'></div><div id='s2b2' class='abs' style='left:1260px;top:880px;width:160px;height:120px;background:#ffb454;'></div>
+<div id='s2n1' class='abs f-mono' style='left:1020px;top:900px;font-size:32px;color:#eaf6ff;white-space:nowrap'>1000 rpm</div><div id='s2n2' class='abs f-mono' style='left:1260px;top:900px;font-size:32px;color:#eaf6ff;white-space:nowrap'>4000 rpm</div>
+<div id='s2r' class='abs f-plex' style='left:1480px;top:700px;width:380px;font-size:44px;line-height:1.4;color:#ffd24a'>4배 빠르게<br>두께 ½</div></div>
+  </div>
+
+  <!-- s3: ④ 노광: 마스크·렌즈·R=k1λ/NA -->
+  <div class="sc" id="s3">
+<div class='mk-bg mk-line'><div class='grid'></div><div id='hn' class='abs f-mono' style='left:150px;top:70px;font-size:34px;letter-spacing:.2em;color:#8fd0ff;white-space:nowrap'>STEP 04 ★</div><div id='ht' class='abs f-plex' style='left:146px;top:112px;font-size:90px;font-weight:700;white-space:nowrap'>노광</div><div id='hs' class='abs f-plex' style='left:150px;top:236px;font-size:36px;color:#8fd0ff;white-space:nowrap'>빛으로 패턴을 새긴다</div>
+<div id='s3lamp' class='abs' style='left:200px;top:300px;width:620px;height:40px;background:#b48cff;opacity:.5'></div><div id='s3ll' class='abs f-mono' style='left:840px;top:305px;font-size:30px;color:#b48cff;white-space:nowrap'>UV 광원</div>
+<div id='s3mk' class='abs' style='left:200px;top:470px;width:620px;height:16px;background:#5d6c9c'></div>
+<div id='s3g1' class='abs' style='left:260px;top:468px;width:70px;height:20px;background:#0b1a33'></div><div id='s3g2' class='abs' style='left:470px;top:468px;width:70px;height:20px;background:#0b1a33'></div><div id='s3g3' class='abs' style='left:680px;top:468px;width:70px;height:20px;background:#0b1a33'></div>
+<div id='s3ml' class='abs f-mono' style='left:840px;top:466px;font-size:30px;color:#eaf6ff;white-space:nowrap'>마스크</div>
+<svg class='abs' width='1920' height='1080' style='left:0;top:0'><ellipse id='s3lens' cx='510' cy='620' rx='250' ry='34' style='fill:rgba(127,214,255,.2);stroke:#8fd0ff;stroke-width:4px'/><line id='s3q0' x1='0' y1='0' x2='0' y2='0' style='stroke:#b48cff;stroke-width:3px'/><line id='s3u0' x1='0' y1='0' x2='0' y2='0' style='stroke:#b48cff;stroke-width:3px'/><line id='s3q1' x1='0' y1='0' x2='0' y2='0' style='stroke:#b48cff;stroke-width:3px'/><line id='s3u1' x1='0' y1='0' x2='0' y2='0' style='stroke:#b48cff;stroke-width:3px'/><line id='s3q2' x1='0' y1='0' x2='0' y2='0' style='stroke:#b48cff;stroke-width:3px'/><line id='s3u2' x1='0' y1='0' x2='0' y2='0' style='stroke:#b48cff;stroke-width:3px'/><line id='s3q3' x1='0' y1='0' x2='0' y2='0' style='stroke:#b48cff;stroke-width:3px'/><line id='s3u3' x1='0' y1='0' x2='0' y2='0' style='stroke:#b48cff;stroke-width:3px'/><line id='s3q4' x1='0' y1='0' x2='0' y2='0' style='stroke:#b48cff;stroke-width:3px'/><line id='s3u4' x1='0' y1='0' x2='0' y2='0' style='stroke:#b48cff;stroke-width:3px'/><line id='s3q5' x1='0' y1='0' x2='0' y2='0' style='stroke:#b48cff;stroke-width:3px'/><line id='s3u5' x1='0' y1='0' x2='0' y2='0' style='stroke:#b48cff;stroke-width:3px'/></svg>
+<div id='s3ln' class='abs f-mono' style='left:780px;top:600px;font-size:30px;color:#8fd0ff;white-space:nowrap'>볼록렌즈 · ¼ 축소</div>
+<div id='s3si' class='abs' style='left:360px;top:900px;width:300px;height:70px;background:#5d6c9c;'></div><div id='s3pr' class='abs' style='left:360px;top:870px;width:300px;height:30px;background:#ffb454;'></div>
+<div id='s3x1' class='abs' style='left:395px;top:870px;width:30px;height:30px;background:#ff6b4a'></div><div id='s3x2' class='abs' style='left:500px;top:870px;width:30px;height:30px;background:#ff6b4a'></div><div id='s3x3' class='abs' style='left:605px;top:870px;width:30px;height:30px;background:#ff6b4a'></div>
+<div id='s3f' class='abs f-mono' style='left:1060px;top:250px;font-size:86px;white-space:nowrap'>R = k₁λ / NA</div>
+<div id='s3sub' class='abs f-plex' style='left:1064px;top:356px;font-size:32px;color:#8fd0ff;white-space:nowrap'>파장 λ 가 짧을수록 더 가는 선</div>
+<div id='s3r0' class='abs f-mono' style='left:1060px;top:430px;font-size:34px;white-space:nowrap'>g-line</div><div id='s3b0' class='abs' style='left:1270px;top:440px;width:414.2px;height:30px;background:#b48cff'></div><div id='s3v0' class='abs f-mono' style='left:1700.2px;top:430px;font-size:34px;color:#ffd24a;white-space:nowrap'>436 nm</div><div id='s3r1' class='abs f-mono' style='left:1060px;top:504px;font-size:34px;white-space:nowrap'>i-line</div><div id='s3b1' class='abs' style='left:1270px;top:514px;width:346.75px;height:30px;background:#b48cff'></div><div id='s3v1' class='abs f-mono' style='left:1632.75px;top:504px;font-size:34px;color:#ffd24a;white-space:nowrap'>365 nm</div><div id='s3r2' class='abs f-mono' style='left:1060px;top:578px;font-size:34px;white-space:nowrap'>KrF</div><div id='s3b2' class='abs' style='left:1270px;top:588px;width:235.6px;height:30px;background:#b48cff'></div><div id='s3v2' class='abs f-mono' style='left:1521.6px;top:578px;font-size:34px;color:#ffd24a;white-space:nowrap'>248 nm</div><div id='s3r3' class='abs f-mono' style='left:1060px;top:652px;font-size:34px;white-space:nowrap'>ArF</div><div id='s3b3' class='abs' style='left:1270px;top:662px;width:183.35px;height:30px;background:#b48cff'></div><div id='s3v3' class='abs f-mono' style='left:1469.35px;top:652px;font-size:34px;color:#ffd24a;white-space:nowrap'>193 nm</div><div id='s3r4' class='abs f-mono' style='left:1060px;top:726px;font-size:34px;white-space:nowrap'>EUV</div><div id='s3b4' class='abs' style='left:1270px;top:736px;width:12.825px;height:30px;background:#b48cff'></div><div id='s3v4' class='abs f-mono' style='left:1298.825px;top:726px;font-size:34px;color:#ffd24a;white-space:nowrap'>13.5 nm</div>
+<div id='s3e' class='abs f-mono' style='left:1064px;top:830px;font-size:44px;color:#5fe0a0;white-space:nowrap'>E = hc/λ ↑ 광자 에너지는 커진다</div></div>
+  </div>
+
+  <!-- s4: ⑤ 현상: 양성/음성 비교 -->
+  <div class="sc" id="s4">
+<div class='mk-bg mk-line'><div class='grid'></div><div id='hn' class='abs f-mono' style='left:150px;top:70px;font-size:34px;letter-spacing:.2em;color:#8fd0ff;white-space:nowrap'>STEP 05</div><div id='ht' class='abs f-plex' style='left:146px;top:112px;font-size:90px;font-weight:700;white-space:nowrap'>현상</div><div id='hs' class='abs f-plex' style='left:150px;top:236px;font-size:36px;color:#8fd0ff;white-space:nowrap'>빛 받은 곳이 씻겨 나간다 (양성)</div>
+<div id='s4si' class='abs' style='left:160px;top:820px;width:760px;height:70px;background:#5d6c9c;'></div><div id='s4pr' class='abs' style='left:160px;top:730px;width:760px;height:90px;background:#ffb454;'></div>
+<div id='s4x1' class='abs' style='left:230px;top:730px;width:120px;height:90px;background:#ff6b4a'></div><div id='s4x2' class='abs' style='left:480px;top:730px;width:120px;height:90px;background:#ff6b4a'></div><div id='s4x3' class='abs' style='left:730px;top:730px;width:120px;height:90px;background:#ff6b4a'></div>
+<div id='s4lq' class='abs f-plex' style='left:160px;top:380px;width:760px;font-size:40px;line-height:1.45;color:#eaf6ff'>현상액이 변한 PR 을 씻어 낸다<br><span style='color:#8fd0ff;font-size:32px'>빛 에너지 hf 가 분자 결합을 끊어서</span></div>
+<svg class='abs' width='1920' height='1080' style='left:0;top:0'><path id='s4w' d='M170 690 Q400 640 640 690 T910 690' pathLength='1' stroke-dasharray='1' stroke-dashoffset='1' style='fill:none;stroke:#8fd0ff;stroke-width:5px'/></svg>
+<div id='s4pl' class='abs f-mono' style='left:160px;top:900px;font-size:36px;color:#ffd24a;white-space:nowrap'>양성(+): 빛 받은 곳 제거</div>
+<div id='s4si2' class='abs' style='left:1020px;top:820px;width:760px;height:70px;background:#5d6c9c;'></div><div id='s4a' class='abs' style='left:1050px;top:740px;width:120px;height:80px;background:#ffb454;'></div><div id='s4b' class='abs' style='left:1300px;top:740px;width:120px;height:80px;background:#ffb454;'></div><div id='s4c' class='abs' style='left:1550px;top:740px;width:120px;height:80px;background:#ffb454;'></div>
+<div id='s4nl' class='abs f-mono' style='left:1020px;top:900px;font-size:36px;color:#ff8fb3;white-space:nowrap'>음성(−): 빛 받은 곳 남음</div>
+<div id='s4nn' class='abs f-plex' style='left:1020px;top:500px;width:760px;font-size:34px;line-height:1.5;color:#eaf6ff'>같은 마스크, 반대 패턴</div></div>
+  </div>
+
+  <!-- s5: ⑥ 식각: 건식 vs 습식 -->
+  <div class="sc" id="s5">
+<div class='mk-bg mk-line'><div class='grid'></div><div id='hn' class='abs f-mono' style='left:150px;top:70px;font-size:34px;letter-spacing:.2em;color:#8fd0ff;white-space:nowrap'>STEP 06</div><div id='ht' class='abs f-plex' style='left:146px;top:112px;font-size:90px;font-weight:700;white-space:nowrap'>식각</div><div id='hs' class='abs f-plex' style='left:150px;top:236px;font-size:36px;color:#8fd0ff;white-space:nowrap'>파내기 — 이온은 수직으로</div>
+<div id='s5si' class='abs' style='left:160px;top:830px;width:760px;height:60px;background:#5d6c9c;'></div><div id='s5ol' class='abs' style='left:160px;top:730px;width:150px;height:100px;background:#7fd6ff;'></div><div id='s5om' class='abs' style='left:460px;top:730px;width:150px;height:100px;background:#7fd6ff;'></div><div id='s5or' class='abs' style='left:760px;top:730px;width:160px;height:100px;background:#7fd6ff;'></div>
+<div id='s5oa' class='abs' style='left:310px;top:730px;width:150px;height:100px;background:#7fd6ff;'></div><div id='s5ob' class='abs' style='left:610px;top:730px;width:150px;height:100px;background:#7fd6ff;'></div>
+<div id='s5p1' class='abs' style='left:160px;top:700px;width:150px;height:30px;background:#ffb454;'></div><div id='s5p2' class='abs' style='left:460px;top:700px;width:150px;height:30px;background:#ffb454;'></div><div id='s5p3' class='abs' style='left:760px;top:700px;width:160px;height:30px;background:#ffb454;'></div>
+<svg class='abs' width='1920' height='1080' style='left:0;top:0'><g id='s5ion'></g></svg>
+<div id='s5dl' class='abs f-mono' style='left:160px;top:920px;font-size:34px;color:#5fe0a0;white-space:nowrap'>건식: 수직 → 가는 홈 가능</div>
+<div id='s5si2' class='abs' style='left:1020px;top:830px;width:760px;height:60px;background:#5d6c9c;'></div><div id='s5wl' class='abs' style='left:1020px;top:730px;width:150px;height:100px;background:#7fd6ff;'></div><div id='s5wm' class='abs' style='left:1320px;top:730px;width:150px;height:100px;background:#7fd6ff;'></div><div id='s5wr' class='abs' style='left:1620px;top:730px;width:160px;height:100px;background:#7fd6ff;'></div><div id='s5xa' class='abs' style='left:1170px;top:730px;width:150px;height:100px;background:#7fd6ff;'></div><div id='s5xb' class='abs' style='left:1470px;top:730px;width:150px;height:100px;background:#7fd6ff;'></div>
+<div id='s5q1' class='abs' style='left:1020px;top:700px;width:150px;height:30px;background:#ffb454;'></div><div id='s5q2' class='abs' style='left:1320px;top:700px;width:150px;height:30px;background:#ffb454;'></div><div id='s5q3' class='abs' style='left:1620px;top:700px;width:160px;height:30px;background:#ffb454;'></div>
+<div id='s5liq' class='abs' style='left:1020px;top:640px;width:760px;height:60px;background:rgba(127,214,255,.18)'></div>
+<div id='s5wl2' class='abs f-mono' style='left:1020px;top:920px;font-size:34px;color:#ff6b6b;white-space:nowrap'>습식: 사방 → 옆 침식</div>
+<div id='s5nt' class='abs f-plex' style='left:160px;top:400px;width:1600px;font-size:36px;line-height:1.5;color:#eaf6ff'>남은 PR 이 마스크 — PR 이 없는 곳의 산화막만 제거</div></div>
+  </div>
+
+  <!-- s6: ⑦ 제거와 반복 -->
+  <div class="sc" id="s6">
+<div class='mk-bg mk-line'><div class='grid'></div><div id='hn' class='abs f-mono' style='left:150px;top:70px;font-size:34px;letter-spacing:.2em;color:#8fd0ff;white-space:nowrap'>STEP 07</div><div id='ht' class='abs f-plex' style='left:146px;top:112px;font-size:90px;font-weight:700;white-space:nowrap'>제거 · 반복</div><div id='hs' class='abs f-plex' style='left:150px;top:236px;font-size:36px;color:#8fd0ff;white-space:nowrap'>임시 마스크를 벗기면 패턴이 남는다</div>
+<div id='s6si' class='abs' style='left:160px;top:830px;width:640px;height:60px;background:#5d6c9c;'></div><div id='s6a' class='abs' style='left:160px;top:730px;width:130px;height:100px;background:#7fd6ff;'></div><div id='s6b' class='abs' style='left:420px;top:730px;width:130px;height:100px;background:#7fd6ff;'></div><div id='s6c' class='abs' style='left:680px;top:730px;width:120px;height:100px;background:#7fd6ff;'></div>
+<div id='s6pa' class='abs' style='left:160px;top:700px;width:130px;height:30px;background:#ffb454;'></div><div id='s6pb' class='abs' style='left:420px;top:700px;width:130px;height:30px;background:#ffb454;'></div><div id='s6pc' class='abs' style='left:680px;top:700px;width:120px;height:30px;background:#ffb454;'></div>
+<div id='s6o2' class='abs f-mono' style='left:160px;top:560px;font-size:40px;color:#b48cff;white-space:nowrap'>O₂ 플라즈마 · 애싱</div>
+<div id='s6st' class='abs' style='left:1000px;top:330px;width:760px;height:600px'></div>
+<div id='s6x' class='abs f-mono' style='left:1000px;top:110px;font-size:70px;white-space:nowrap'>7단계 × <span id='s6nv'>1</span> 층</div>
+<div id='s6y' class='abs f-plex' style='left:1004px;top:215px;width:760px;font-size:36px;line-height:1.5;color:#8fd0ff'>한 층의 패턴을 만들 때마다 반복해<br>수십 ~ 수백 번 거친다</div>
+<div id='s6z' class='abs f-plex' style='left:160px;top:920px;font-size:40px;color:#ffd24a;white-space:nowrap'>엄지손톱 크기의 칩에 수십억 개의 트랜지스터</div></div>
+  </div>
+
+  <!-- s7: 정리: 7단계 -->
+  <div class="sc" id="s7">
+<div class='mk-bg mk-line'><div class='grid'></div><div id='s7t' class='abs f-plex' style='left:146px;top:130px;font-size:100px;font-weight:700;white-space:nowrap'>빛으로 새기는 <span style='color:#ffd24a'>7단계</span></div><div id='s7c0' class='abs' style='left:160px;top:360px;width:210px;height:260px;border-top:6px solid #8fd0ff'><div class='f-mono' style='font-size:34px;color:#8fd0ff'>01</div><div class='f-plex' style='font-size:60px;font-weight:700;margin-top:14px;color:#eaf6ff'>세정</div></div><div id='s7c1' class='abs' style='left:396px;top:360px;width:210px;height:260px;border-top:6px solid #8fd0ff'><div class='f-mono' style='font-size:34px;color:#8fd0ff'>02</div><div class='f-plex' style='font-size:60px;font-weight:700;margin-top:14px;color:#eaf6ff'>산화</div></div><div id='s7c2' class='abs' style='left:632px;top:360px;width:210px;height:260px;border-top:6px solid #8fd0ff'><div class='f-mono' style='font-size:34px;color:#8fd0ff'>03</div><div class='f-plex' style='font-size:60px;font-weight:700;margin-top:14px;color:#eaf6ff'>도포</div></div><div id='s7c3' class='abs' style='left:868px;top:360px;width:210px;height:260px;border-top:6px solid #ffd24a'><div class='f-mono' style='font-size:34px;color:#8fd0ff'>04</div><div class='f-plex' style='font-size:60px;font-weight:700;margin-top:14px;color:#ffd24a'>노광</div></div><div id='s7c4' class='abs' style='left:1104px;top:360px;width:210px;height:260px;border-top:6px solid #8fd0ff'><div class='f-mono' style='font-size:34px;color:#8fd0ff'>05</div><div class='f-plex' style='font-size:60px;font-weight:700;margin-top:14px;color:#eaf6ff'>현상</div></div><div id='s7c5' class='abs' style='left:1340px;top:360px;width:210px;height:260px;border-top:6px solid #8fd0ff'><div class='f-mono' style='font-size:34px;color:#8fd0ff'>06</div><div class='f-plex' style='font-size:60px;font-weight:700;margin-top:14px;color:#eaf6ff'>식각</div></div><div id='s7c6' class='abs' style='left:1576px;top:360px;width:210px;height:260px;border-top:6px solid #8fd0ff'><div class='f-mono' style='font-size:34px;color:#8fd0ff'>07</div><div class='f-plex' style='font-size:60px;font-weight:700;margin-top:14px;color:#eaf6ff'>제거</div></div>
+<div id='s7b' class='abs f-plex' style='left:150px;top:760px;font-size:44px;line-height:1.6;color:#eaf6ff;white-space:nowrap'>핵심은 노광 — <span style='color:#ffd24a'>R = k₁λ / NA</span><br><span style='color:#8fd0ff;font-size:36px'>파장이 짧고 NA 가 클수록 더 작은 회로</span></div></div>
+  </div>
+
+  <div id="mgError"></div>
+ </div>
+</div>
+
+<div id="bar">
+ <button id="play" aria-label="재생">▶ 재생</button>
+ <button id="restart">처음부터</button>
+ <input id="seek" type="range" min="0" step="0.01" value="0" aria-label="재생 위치">
+ <span id="time">0.0 / 0.0초</span>
+ <button id="mute">🔊 음악 켬</button>
+ <button id="fs">전체 화면</button>
+ <button id="rec">녹화 모드</button>
+ <span class="hint">Space 재생 · ← → 2초 이동 · R 처음부터 · M 음악 · F 전체화면 · H 녹화 모드</span>
+</div>
+
+<script>
+/* ===== 문구·설정 (content.config) ===== */
+const CONFIG = {};
+const MUSIC = {"on": true, "volume": 0.27, "bpm": 112, "melody_at": 15, "kick_at": 21, "hat_at": 28};
+
+/* ===== 공용 도우미 (템플릿 제공) ===== */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const cl = (x,a=0,b=1) => x<a?a:x>b?b:x;
+const P = (t,s,d) => cl((t-s)/d);                 // t가 s에서 d초 동안 0→1
+const eo = x => 1-Math.pow(1-x,3);                 // ease-out
+const eio = x => x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2; // ease-in-out
+const eb = x => {const c1=1.9,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)}; // 살짝 튀어 오르기
+const S = (el,o,tr) => {el.style.opacity=o; el.style.transform=tr||"none";};
+const colors=["y","p","b"], HEX={"y": "#f4cf5a", "p": "#f29aac", "b": "#8cc3e8", "c": "#f3f0e6"};
+/* 자주 쓰는 동작 */
+const typeText = (el,text,t,start,cps=18) => { el.textContent = text.slice(0, cl(Math.floor((t-start)*cps),0,text.length)); };
+const fadeUp = (el,t,start,dur=.6,dist=40) => { const a=eo(P(t,start,dur)); S(el,a,`translateY(${(1-a)*dist}px)`); };
+const popIn = (el,t,start,dur=.6) => { const a=P(t,start,dur); S(el,P(t,start,.1),`scale(${.4+.6*eb(a)})`); };
+const drawPath = (pathEl,t,start,dur=.8) => { pathEl.style.strokeDashoffset = 1-eio(P(t,start,dur)); }; // path에 pathLength="1" stroke-dasharray="1"
+
+/* 분필 사람 그림: person(색, 'down'|'point'|'wave'|'talk', 'smile'|'worry') → SVG 문자열 */
+function person(col,pose,mood){
+  const arms={down:"M60 92 L32 142 M60 92 L88 142",point:"M60 92 L32 142 M60 92 L114 56",wave:"M60 92 L30 142 M60 92 L98 34",talk:"M60 92 L32 142 M60 92 L110 100"}[pose]||"M60 92 L32 142 M60 92 L88 142";
+  const mouth=mood==="worry"?"M50 54 Q60 46 70 54":"M50 48 Q60 57 70 48";
+  return `<svg viewBox="0 0 120 220" width="100%" height="100%" fill="none" stroke="${col}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><circle cx="60" cy="36" r="26"/><circle cx="50" cy="33" r="2.6" fill="${col}"/><circle cx="70" cy="33" r="2.6" fill="${col}"/><path d="${mouth}"/><path d="M60 62 L60 150 M60 150 L36 214 M60 150 L84 214 ${arms}"/></svg>`;
+}
+
+window.__mgErrors = [];
+function reportError(where, e){
+  const msg = `${where}: ${e && e.message ? e.message : e}`;
+  if (!window.__mgErrors.includes(msg)) { window.__mgErrors.push(msg); console.error('[장면 오류] ' + msg); }
+  const box = $("#mgError"); box.textContent = window.__mgErrors.slice(-3).join("\n"); box.classList.add("on");
+}
+
+/* ===== MotionKit (내장) ===== */
+/* ==== MotionKit v1 (템플릿 내장) — 모든 함수는 t(장면 경과 초)의 순수 함수 ==== */
+window.MK=window.MK||(()=>{
+const c=(x,a=0,b=1)=>x<a?a:x>b?b:x;
+const p=(t,s,d)=>c((t-s)/d);
+const lerp=(a,b,k)=>a+(b-a)*k;
+const h=i=>{const s=Math.sin(i*127.1+311.7)*43758.5453;return s-Math.floor(s);};
+const n1=x=>{const i=Math.floor(x),f=x-i,u=f*f*(3-2*f);return lerp(h(i),h(i+1),u)*2-1;};
+const E={
+ lin:x=>x,
+ out:x=>1-Math.pow(1-x,3),
+ inOut:x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2,
+ expo:x=>x>=1?1:1-Math.pow(2,-10*x),
+ antic:x=>{const k=1.70158;return (k+1)*x*x*x-k*x*x;},
+ back:x=>{const k=1.70158,y=x-1;return 1+(k+1)*y*y*y+k*y*y;},
+ elastic:x=>x<=0?0:x>=1?1:Math.pow(2,-10*x)*Math.sin((x*10-.75)*2.0944)+1,
+ bounce:x=>{const n=7.5625,d=2.75;if(x<1/d)return n*x*x;if(x<2/d)return n*(x-=1.5/d)*x+.75;if(x<2.5/d)return n*(x-=2.25/d)*x+.9375;return n*(x-=2.625/d)*x+.984375;},
+ snap:x=>x<.2?-0.08*Math.sin(x/.2*Math.PI/2):1-Math.exp(-7*(x-.2))*Math.cos(9*(x-.2))*1.08
+};
+const ez=e=>typeof e==='function'?e:(E[e]||E.out);
+const spring=(x,damp=6,freq=1.6)=>x<=0?0:1-Math.exp(-damp*x)*Math.cos(6.2832*freq*x);
+const split=(el,mode='char',text)=>{const s=text!=null?text:el.textContent;el.innerHTML='';el._u=[];
+ (mode==='word'?s.split(/(\s+)/):Array.from(s)).forEach(ch=>{if(!ch)return;if(/^\s+$/.test(ch)){el.appendChild(document.createTextNode(ch));return;}
+ const sp=document.createElement('span');sp.className='mk-u';sp.textContent=ch;el.appendChild(sp);el._u.push(sp);});return el._u;};
+const kinetic=(el,t,start,o={})=>{const u=el._u||split(el,o.mode);const {type='rise',gap=.045,dur=.7,dist=80,order='lr'}=o;const n=u.length;
+ u.forEach((sp,i)=>{const j=order==='rl'?n-1-i:order==='center'?Math.abs(i-(n-1)/2):order==='random'?h(i+7)*n:i;
+  const k=p(t,start+j*gap,dur);let op=c(k*3),tr='',e;
+  switch(type){
+   case 'drop':e=E.bounce(k);tr=`translateY(${(e-1)*dist*2}px)`;op=k>0?1:0;break;
+   case 'flip':e=E.back(k);tr=`perspective(600px) rotateX(${(1-e)*-90}deg)`;break;
+   case 'pop':e=E.elastic(k);tr=`scale(${e})`;op=k>0?1:0;break;
+   case 'scatter':{e=E.expo(k);const a=h(i)*2-1,b=h(i+50)*2-1;tr=`translate(${(1-e)*a*dist*4}px,${(1-e)*b*dist*3}px) rotate(${(1-e)*a*180}deg)`;break;}
+   case 'blur':e=E.out(k);sp.style.filter=`blur(${(1-e)*14}px)`;tr=`scale(${1.3-.3*e})`;break;
+   case 'wave':e=E.out(k);tr=`translateY(${(1-e)*dist+Math.sin(t*4-i*.5)*8*e}px)`;break;
+   default:e=E.back(k);tr=`translateY(${(1-e)*dist}px)`;
+  }
+  sp.style.opacity=op;sp.style.transform=tr;});};
+const kineticOut=(el,t,start,o={})=>{const u=el._u||split(el,o.mode);const {gap=.03,dur=.45,dist=60}=o;
+ u.forEach((sp,i)=>{const k=E.antic(p(t,start+i*gap,dur));if(k<=0&&t<start)return;sp.style.opacity=1-c(k);sp.style.transform=`translateY(${-k*dist}px)`;});};
+const stagger=(els,t,start,o,fn)=>{const {gap=.08,dur=.6,ease='back'}=o||{};const f=ez(ease);Array.from(els).forEach((el,i)=>fn(el,f(p(t,start+i*gap,dur)),i));};
+const reveal=(el,t,start,dur,o={})=>{const {shape='circle',x=50,y=50,ease='inOut',dir='left'}=o;const k=ez(ease)(p(t,start,dur));let cp;
+ if(shape==='wipe'){const r=(1-k)*100;cp=dir==='right'?`inset(0 0 0 ${r}%)`:dir==='up'?`inset(${r}% 0 0 0)`:dir==='down'?`inset(0 0 ${r}% 0)`:`inset(0 ${r}% 0 0)`;}
+ else if(shape==='diag'){const a=k*200;cp=`polygon(0 0,${a}% 0,${a-100}% 100%,0 100%)`;}
+ else if(shape==='iris'){const r=(1-k)*50;cp=`inset(${r}% ${r}% ${r}% ${r}% round ${r}%)`;}
+ else cp=`circle(${k*150}% at ${x}% ${y}%)`;
+ el.style.clipPath=cp;el.style.webkitClipPath=cp;};
+const camera=(el,t,keys,ease='inOut')=>{let a=keys[0],b=keys[keys.length-1];
+ if(t<=a.t)b=a;else if(t>=b.t)a=b;else for(let i=0;i<keys.length-1;i++)if(t>=keys[i].t&&t<=keys[i+1].t){a=keys[i];b=keys[i+1];break;}
+ const k=a===b?0:ez(ease)((t-a.t)/(b.t-a.t));const g=(q,d)=>lerp(a[q]??d,b[q]??d,k);
+ el.style.transformOrigin='960px 540px';el.style.transform=`translate(${g('x',0)}px,${g('y',0)}px) scale(${g('s',1)}) rotate(${g('r',0)}deg)`;};
+const ngon=(sides,N=72,r=200,cx=0,cy=0,rot=-90)=>{const P=[];for(let i=0;i<N;i++){const s=i/N;
+ if(!sides){const a=(rot+360*s)*Math.PI/180;P.push([cx+r*Math.cos(a),cy+r*Math.sin(a)]);continue;}
+ const f=s*sides,j=Math.floor(f),u=f-j,A=(rot+360*j/sides)*Math.PI/180,B=(rot+360*(j+1)/sides)*Math.PI/180;
+ P.push([cx+r*lerp(Math.cos(A),Math.cos(B),u),cy+r*lerp(Math.sin(A),Math.sin(B),u)]);}return P;};
+const morph=(el,A,B,k)=>el.setAttribute('points',A.map((a,i)=>`${lerp(a[0],B[i][0],k).toFixed(1)},${lerp(a[1],B[i][1],k).toFixed(1)}`).join(' '));
+const ball=(el,t,start,o={})=>{const {h:H=400,decay=.55,fall=.55,sq=.35}=o;const g=2*H/(fall*fall);let tt=t-start,y=H,v=0;
+ if(tt>0){if(tt<fall){y=H-.5*g*tt*tt;v=-g*tt;}else{tt-=fall;let hk=H*decay,vk=Math.sqrt(2*g*hk),T=2*vk/g,n=0;
+  while(tt>T&&hk>1&&n++<30){tt-=T;hk*=decay;vk=Math.sqrt(2*g*hk);T=2*vk/g;}
+  if(hk<=1||n>=30){y=0;v=0;}else{y=vk*tt-.5*g*tt*tt;v=vk-g*tt;}}}
+ const sp=Math.abs(v)/Math.sqrt(2*g*H);let sx=1,sy=1;
+ if(y<H*.04&&sp>.05){sx=1+sq*sp;sy=1-sq*sp;}else{sy=1+.25*sp;sx=1-.15*sp;}
+ el.style.transformOrigin='50% 100%';el.style.transform=`translateY(${-y}px) scale(${sx},${sy})`;return y;};
+const boil=(el,t,amt=1.5,fps=8,base='')=>{const f=Math.floor(t*fps);el.style.transform=`${base} translate(${(h(f)*2-1)*amt}px,${(h(f+9)*2-1)*amt}px) rotate(${(h(f+3)*2-1)*amt*.3}deg)`;};
+const misreg=(el,t,amt=4,fps=10)=>{const f=Math.floor(t*fps);el.style.transform=`translate(${(h(f+1)*2-1)*amt}px,${(h(f+2)*2-1)*amt}px)`;};
+const grain=(el,t,fps=12)=>{const f=Math.floor(t*fps);el.style.backgroundPosition=`${Math.floor(h(f)*256)}px ${Math.floor(h(f+5)*256)}px`;};
+const count=(el,t,start,dur,from,to,dec=0,ease='out')=>{el.textContent=lerp(from,to,ez(ease)(p(t,start,dur))).toFixed(dec);};
+const scramble=(el,text,t,start,dur,chars='01▲■●◆ABCDEFGHJKLMNPRSTUVWXYZ')=>{const k=p(t,start,dur),n=text.length,done=Math.floor(k*n),f=Math.floor(t*20);let s='';
+ for(let i=0;i<n;i++){if(i<done||text[i]===' ')s+=text[i];else if(k>0&&i<done+6)s+=chars[Math.floor(h(i+f*13)*chars.length)];}el.textContent=s;};
+const drawAll=(root,t,start,o={})=>{const {dur=1.2,gap=.15,ease='inOut'}=o;root.querySelectorAll('path,line,polyline,circle,rect').forEach((el,i)=>{
+ el.setAttribute('pathLength','1');el.style.strokeDasharray='1';el.style.strokeDashoffset=1-ez(ease)(p(t,start+i*gap,dur));});};
+const particles=(cv,t,o={})=>{const ctx=cv.getContext('2d');const {n=160,mode='drift',color='255,255,255',size=2.2,speed=.08,glow=0,cx=960,cy=540,alpha=1}=o;
+ ctx.clearRect(0,0,cv.width,cv.height);ctx.save();if(glow){ctx.shadowBlur=glow;ctx.shadowColor=`rgba(${color},1)`;}
+ for(let i=0;i<n;i++){let x,y;const a=h(i+3),b=h(i+91),z=.3+.7*h(i+17);
+  if(mode==='orbit'){const R=80+a*620,w=(.15+.6/(1+R/200))*(b<.5?1:-1),ang=b*6.2832+t*w;x=cx+R*Math.cos(ang);y=cy+R*Math.sin(ang)*.42;}
+  else if(mode==='rise'){x=a*cv.width+n1(i+t*.5)*30;y=((b*cv.height-t*speed*600*z)%cv.height+cv.height)%cv.height;}
+  else{x=a*cv.width+n1(i*1.7+t*speed*3)*120;y=b*cv.height+n1(i*2.3+50+t*speed*3)*120;}
+  ctx.globalAlpha=alpha*z*(.55+.45*Math.sin(t*2+i));ctx.fillStyle=`rgb(${color})`;ctx.beginPath();ctx.arc(x,y,size*z,0,6.2832);ctx.fill();}
+ ctx.restore();};
+/* 준비: 웹폰트·그레인 텍스처 (한 번만) */
+(()=>{try{if(!document.getElementById('mk-fonts')){const l=document.createElement('link');l.id='mk-fonts';l.rel='stylesheet';
+ l.href='https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;900&family=IBM+Plex+Sans+KR:wght@300;600&family=Do+Hyeon&family=Nanum+Myeongjo:wght@400;800&display=swap';document.head.appendChild(l);}
+ const cv=document.createElement('canvas');cv.width=cv.height=256;const g=cv.getContext('2d'),im=g.createImageData(256,256);
+ for(let i=0;i<im.data.length;i+=4){const v=Math.floor(h(i*.25+1)*255);im.data[i]=im.data[i+1]=im.data[i+2]=v;im.data[i+3]=255;}
+ g.putImageData(im,0,0);document.documentElement.style.setProperty('--mk-noise',`url(${cv.toDataURL()})`);}catch(e){}})();
+return {c,p,lerp,h,n1,E,ez,spring,split,kinetic,kineticOut,stagger,reveal,camera,ngon,morph,ball,boil,misreg,grain,count,scramble,drawAll,particles};
+})();
+/* ==== /MotionKit ==== */
+
+
+/* ===== setup_js (장면 요소 준비: 한 번 실행, 여기서 선언한 const/function은 장면 코드에서 쓸 수 있다) ===== */
+
+const G=id=>document.getElementById(id);
+const op=(el,v)=>{el.style.opacity=Math.max(0,Math.min(1,v));};
+const TAU2=Math.PI*2;
+const rise=(el,t,s,d,dy,dx)=>{const p=MK.E.out(MK.p(t,s,d||.7));op(el,p);el.style.transform='translate('+((1-p)*(dx||0))+'px,'+((1-p)*(dy===undefined?24:dy))+'px)';};
+const popS=(el,t,s,d)=>{const p=MK.E.back(MK.p(t,s,d||.5));op(el,Math.min(1,p));el.style.transform='scale('+Math.max(0,p)+')';};
+const dr=(el,t,s,d)=>{el.setAttribute('pathLength','1');el.style.strokeDasharray='1';el.style.strokeDashoffset=1-MK.E.inOut(MK.p(t,s,d||.8));};
+function setC(el,x,y,r){el.setAttribute('cx',x.toFixed(1));el.setAttribute('cy',y.toFixed(1));if(r!==undefined)el.setAttribute('r',Math.max(0,r).toFixed(1));}
+function setL(el,x1,y1,x2,y2){el.setAttribute('x1',x1.toFixed(1));el.setAttribute('y1',y1.toFixed(1));el.setAttribute('x2',x2.toFixed(1));el.setAttribute('y2',y2.toFixed(1));}
+function box(el,x,y,w,h){el.style.left=x+'px';el.style.top=y+'px';el.style.width=w+'px';el.style.height=h+'px';}
+const hsh=i=>{const x=Math.sin(i*127.1+311.7)*43758.5453;return x-Math.floor(x);};
+
+
+/* ===== 장면 ===== */
+const SC=[
+ {id:"s0",d:7,up(t){
+
+MK.scramble(G('s0k'),'PHOTOLITHOGRAPHY',t,.2,1);MK.kinetic(G('s0t'),t,.6,{type:'rise',gap:.06,dur:.8});rise(G('s0u'),t,2,.8,16,-30);
+MK.kinetic(G('s0n'),t,2.6,{type:'pop',gap:.1,dur:.7});rise(G('s0s'),t,3.4,.6,0,-30);
+const w=G('s0w');dr(w,t,.4,1.4);
+for(let i=0;i<12;i++){['s0v','s0h'].forEach(p=>{const e=G(p+i);e.setAttribute('pathLength','1');e.style.strokeDasharray='1';e.style.strokeDashoffset=1-MK.E.out(MK.p(t,1.2+i*.08,.7));e.style.strokeWidth='1.5px';e.style.opacity=.7;});}
+G('s0g').style.transformOrigin='1500px 540px';G('s0g').style.transform='rotate('+(t*8)+'deg)';
+
+ }},
+ {id:"s1",d:13,up(t){
+op(G('hn'),MK.p(t,0,.5));MK.kinetic(G('ht'),t,.2,{type:'rise',gap:.04,dur:.6});
+rise(G('s1si1'),t,.6,.6,20);rise(G('s1sl'),t,.9,.6,0,-20);rise(G('s1c1'),t,1,.7,16);
+for(let i=0;i<12;i++){const p=G('s1p'+i),a=MK.p(t,.8+i*.04,.3),out=MK.E.antic(MK.p(t,3.2+i*.12,.9));p.style.opacity=a*(1-MK.p(t,3.6+i*.12,.6));p.style.transform='translate('+(out*160)+'px,'+(-out*70-out*out*40)+'px)';}
+dr(G('s1a'),t,3,1.2);G('s1a').style.opacity=t>3?1-MK.p(t,5,.5):0;rise(G('s1c2'),t,5.4,.6,0,-20);
+rise(G('s1si2'),t,6,.6,20);const gp=MK.E.inOut(MK.p(t,7.2,3.4)),tox=140*gp;
+const ox=G('s1ox');ox.style.top=(720-.56*tox)+'px';ox.style.height=tox+'px';G('s1l2').style.opacity=MK.p(t,7,.4);
+op(G('s1t2'),MK.p(t,6.6,.5));G('s1tv').textContent=Math.round(25+975*MK.E.inOut(MK.p(t,6.8,2.6)));
+rise(G('s1f2'),t,7.2,.7,14);rise(G('s1d2'),t,9.8,.7,14);rise(G('s1x2'),t,11,.6,10);
+const og=G('s1o2');if(!og.children.length){for(let i=0;i<8;i++){const l=document.createElementNS('http://www.w3.org/2000/svg','line');l.style.stroke='rgba(255,255,255,.35)';l.style.strokeWidth='2px';og.appendChild(l);}}
+[...og.children].forEach((l,i)=>{const x=1060+i*86,ph=((t*.5+i*.13)%1),y=640+ph*60;setL(l,x,y-40,x,y);l.style.opacity=t>7?(1-ph)*.9:0;});
+
+ }},
+ {id:"s2",d:10,up(t){
+op(G('hn'),MK.p(t,0,.5));MK.kinetic(G('ht'),t,.2,{type:'rise',gap:.04,dur:.6});
+const sp=G('s2sp');if(!sp.children.length){for(let i=0;i<6;i++){const l=document.createElementNS('http://www.w3.org/2000/svg','line');l.style.stroke='rgba(15,26,51,.7)';l.style.strokeWidth='3px';sp.appendChild(l);}}
+const ang=t*(2+MK.E.inOut(MK.p(t,.5,3))*7);[...sp.children].forEach((l,i)=>{const a=ang+i*Math.PI/3;setL(l,480,640,480+260*Math.cos(a),640+260*Math.sin(a));});
+const pr=MK.E.out(MK.p(t,1,2.6));G('s2p').setAttribute('r',(260*pr).toFixed(1));dr(G('s2om'),t,2,.9);op(G('s2ol'),MK.p(t,2.6,.4));
+MK.kinetic(G('s2f'),t,3.4,{type:'pop',gap:.06,dur:.6});rise(G('s2lab'),t,4.4,.6,14);
+const h1=110,h2=55;[['s2b1',h1,5],['s2b2',h2,5.8]].forEach(([id,h,s])=>{const e=G(id),p=MK.E.out(MK.p(t,s,.9));e.style.top=(1000-h*p)+'px';e.style.height=(h*p)+'px';});
+op(G('s2n1'),MK.p(t,5,.4));op(G('s2n2'),MK.p(t,5.8,.4));rise(G('s2r'),t,7,.7,12,-20);
+
+ }},
+ {id:"s3",d:16,up(t){
+op(G('hn'),MK.p(t,0,.5));MK.kinetic(G('ht'),t,.2,{type:'rise',gap:.04,dur:.6});
+op(G('s3lamp'),.25+.25*Math.sin(t*3)*MK.p(t,.4,.5));rise(G('s3ll'),t,.8,.5,0,-20);
+MK.reveal(G('s3mk'),t,1.2,.7,{shape:'wipe',dir:'left'});['s3g1','s3g2','s3g3'].forEach((id,i)=>op(G(id),MK.p(t,1.6+i*.15,.3)));op(G('s3ml'),MK.p(t,1.8,.5));
+const ptsT=[270,320,480,530,690,740],ptsB=[395,425,500,530,605,635];
+for(let i=0;i<6;i++){const u=G('s3q'+i),v=G('s3u'+i),p1=MK.p(t,2.4+(i>>1)*.3,.9),p2=MK.p(t,4.2+(i>>1)*.3,1.2);setL(u,ptsT[i],340,ptsT[i],340+130*p1);setL(v,ptsT[i],470,ptsT[i]+(ptsB[i]-ptsT[i])*p2,470+400*p2);v.style.opacity=p2>0?1:0;}
+G('s3lens').style.opacity=MK.p(t,3.6,.6);rise(G('s3ln'),t,4,.5,0,-20);
+['s3si','s3pr'].forEach((id,i)=>rise(G(id),t,3.2+i*.2,.5,20));['s3x1','s3x2','s3x3'].forEach((id,i)=>op(G(id),MK.p(t,6.2+i*.3,.4)));
+MK.kinetic(G('s3f'),t,6.6,{type:'pop',gap:.05,dur:.6});rise(G('s3sub'),t,7.6,.6,10);
+const lams=[436,365,248,193,13.5];lams.forEach((l,i)=>{const s=8.2+i*.7;rise(G('s3r'+i),t,s,.4,0,-20);const b=G('s3b'+i),p=MK.E.out(MK.p(t,s,.6));b.style.transformOrigin='left';b.style.transform='scaleX('+p+')';op(G('s3v'+i),MK.p(t,s+.2,.4));});
+rise(G('s3e'),t,12.6,.7,12);
+
+ }},
+ {id:"s4",d:10,up(t){
+op(G('hn'),MK.p(t,0,.5));MK.kinetic(G('ht'),t,.2,{type:'rise',gap:.04,dur:.6});
+rise(G('s4si'),t,.6,.5,20);rise(G('s4pr'),t,.8,.5,20);['s4x1','s4x2','s4x3'].forEach((id,i)=>op(G(id),MK.p(t,1.2+i*.2,.4)));rise(G('s4lq'),t,1.6,.7,12);
+dr(G('s4w'),t,3,1);G('s4w').style.opacity=t>3?1-MK.p(t,5.6,.5):0;
+['s4x1','s4x2','s4x3'].forEach((id,i)=>{const e=G(id),p=MK.E.inOut(MK.p(t,4+i*.35,1.4));e.style.top=(730+90*p)+'px';e.style.height=(90*(1-p))+'px';});
+rise(G('s4pl'),t,5.8,.6,0,-20);
+rise(G('s4si2'),t,6.4,.5,20);['s4a','s4b','s4c'].forEach((id,i)=>rise(G(id),t,6.6+i*.25,.5,20));rise(G('s4nn'),t,6.8,.6,10);rise(G('s4nl'),t,7.6,.6,0,-20);
+
+ }},
+ {id:"s5",d:11,up(t){
+op(G('hn'),MK.p(t,0,.5));MK.kinetic(G('ht'),t,.2,{type:'rise',gap:.04,dur:.6});
+['s5si','s5ol','s5om','s5or','s5oa','s5ob'].forEach((id,i)=>rise(G(id),t,.6+i*.05,.5,16));['s5p1','s5p2','s5p3'].forEach((id,i)=>rise(G(id),t,1+i*.15,.5,12));rise(G('s5nt'),t,1.6,.7,12);
+const gi=G('s5ion');if(!gi.children.length){for(let i=0;i<14;i++){const c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.style.fill='#b48cff';c.style.stroke='none';gi.appendChild(c);}}
+const dp=MK.E.inOut(MK.p(t,3,3.4));
+['s5oa','s5ob'].forEach(id=>{const e=G(id);e.style.top=(730+100*dp)+'px';e.style.height=(100*(1-dp))+'px';});
+[...gi.children].forEach((c,i)=>{const win=i%2?[310,460]:[610,760],x=win[0]+12+((i*37)%110),ph=(t*.9+i*.17)%1,y=500+ph*(700-500+100*dp);setC(c,x,y,t>2.8&&t<6.8?5:0);});
+rise(G('s5dl'),t,6.6,.6,0,-20);
+rise(G('s5si2'),t,6.8,.5,16);['s5wl','s5wm','s5wr','s5xa','s5xb'].forEach((id,i)=>rise(G(id),t,6.9+i*.08,.5,16));['s5q1','s5q2','s5q3'].forEach((id,i)=>rise(G(id),t,7.2+i*.1,.5,12));
+op(G('s5liq'),MK.p(t,7.6,.5)*.9);
+const up=MK.E.inOut(MK.p(t,8,2.4));
+const wl=G('s5wl');wl.style.width=(150-55*up)+'px';
+const wm=G('s5wm');wm.style.left=(1320+55*up)+'px';wm.style.width=(150-110*up)+'px';
+const wr=G('s5wr');wr.style.left=(1620+55*up)+'px';wr.style.width=(160-55*up)+'px';
+['s5xa','s5xb'].forEach(id=>{const e=G(id);e.style.top=(730+100*up)+'px';e.style.height=(100*(1-up))+'px';});
+rise(G('s5wl2'),t,9.6,.6,0,-20);
+
+ }},
+ {id:"s6",d:10,up(t){
+op(G('hn'),MK.p(t,0,.5));MK.kinetic(G('ht'),t,.2,{type:'rise',gap:.04,dur:.6});
+['s6si','s6a','s6b','s6c'].forEach((id,i)=>rise(G(id),t,.6+i*.05,.5,16));['s6pa','s6pb','s6pc'].forEach((id,i)=>{const e=G(id),p=MK.E.inOut(MK.p(t,2.6+i*.3,1.4));e.style.opacity=MK.p(t,1.2,.4)*(1-p);e.style.transform='translateY('+(-60*p)+'px)';});
+op(G('s6o2'),MK.p(t,1.8,.5)*(1-MK.p(t,5,.5)));
+const stk=G('s6st');if(!stk.children.length){const cols=['#5d6c9c','#7fd6ff','#ffb454','#7fd6ff','#5d6c9c','#ffb454','#7fd6ff','#5d6c9c'];cols.forEach((c,i)=>{const d=document.createElement('div');d.style.cssText='position:absolute;left:0;width:620px;height:46px;background:'+c;stk.appendChild(d);});}
+[...stk.children].forEach((d,i)=>{const p=MK.E.out(MK.p(t,5+i*.3,.6));d.style.top=(550-i*66)+'px';d.style.opacity=p;d.style.transform='translateX('+((1-p)*-60)+'px)';});
+op(G('s6x'),MK.p(t,5,.5));MK.count(G('s6nv'),t,5.4,3,1,40,0);rise(G('s6y'),t,5.8,.7,10);rise(G('s6z'),t,8,.8,14,-30);
+
+ }},
+ {id:"s7",d:7,up(t){
+
+MK.kinetic(G('s7t'),t,.2,{type:'rise',gap:.05,dur:.7});
+for(let i=0;i<7;i++)rise(G('s7c'+i),t,1+i*.3,.5,30);
+rise(G('s7b'),t,4,.8,14,-20);
+
+ }}
+];
+let acc=0; SC.forEach(s=>{s.el=$("#"+s.id);s.s=acc;acc+=s.d;});
+const TOTAL=acc;
+
+/* ===== 배경음악: 코드로 합성한 단순 멜로디 (외부 음원 없음) ===== */
+const BPM=MUSIC.bpm||112, SD=60/BPM/2;
+const CH=[[48,52,55],[43,47,50],[45,48,52],[41,45,48]];   // C G Am F
+const MEL=[76,0,79,0,76,74,72,0, 74,0,71,0,74,76,74,0, 72,0,76,0,81,0,79,76, 77,0,76,74,72,0,0,0];
+const ARP=[0,1,2,1,0,1,2,1];
+const mf=m=>440*Math.pow(2,(m-69)/12);
+let actx=null,master=null,noiseBuf=null,muted=!MUSIC.on,nextStep=0,baseA=0,baseT=0;
+function initAudio(){
+  if(!actx){
+    try{actx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return;}
+    master=actx.createGain();master.gain.value=0;master.connect(actx.destination);
+    noiseBuf=actx.createBuffer(1,actx.sampleRate*.1,actx.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  }
+  if(actx.state!=="running")actx.resume().then(syncAudio);
+  syncAudio();
+}
+function syncAudio(){if(actx){baseA=actx.currentTime;baseT=T;nextStep=Math.ceil(T/SD-1e-6);}}
+function tone(f,t,dur,type,g){const o=actx.createOscillator(),v=actx.createGain();o.type=type;o.frequency.value=f;
+  v.gain.setValueAtTime(0.0001,t);v.gain.linearRampToValueAtTime(g,t+.012);v.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(v).connect(master);o.start(t);o.stop(t+dur+.05);}
+function kick(t){const o=actx.createOscillator(),v=actx.createGain();o.frequency.setValueAtTime(140,t);o.frequency.exponentialRampToValueAtTime(45,t+.14);
+  v.gain.setValueAtTime(.55,t);v.gain.exponentialRampToValueAtTime(.001,t+.25);o.connect(v).connect(master);o.start(t);o.stop(t+.3);}
+function hat(t){const s=actx.createBufferSource(),h=actx.createBiquadFilter(),v=actx.createGain();s.buffer=noiseBuf;h.type="highpass";h.frequency.value=7000;
+  v.gain.setValueAtTime(.07,t);v.gain.exponentialRampToValueAtTime(.001,t+.05);s.connect(h).connect(v).connect(master);s.start(t);s.stop(t+.08);}
+function playStep(n,at,tl){
+  const bar=Math.floor(n/8)%4, st=n%8, ch=CH[bar];
+  const nt=ch[ARP[st]]+24+(st>=4&&ARP[st]===0?12:0);
+  tone(mf(nt),at,.22,"triangle",.07);
+  if(st===0||st===3||st===6)tone(mf(ch[0]),at,.32,"sine",.22);
+  if(tl>=MUSIC.melody_at){const m=MEL[n%32];if(m)tone(mf(m),at,.42,"sine",.13),tone(mf(m+12),at,.2,"sine",.025);}
+  if(tl>=MUSIC.kick_at&&(st===0||st===4))kick(at);
+  if(tl>=MUSIC.hat_at&&st%2===1)hat(at);
+}
+function audioTick(){
+  if(!actx||actx.state!=="running")return;
+  const vol=(muted?0:MUSIC.volume)*(1-P(T,TOTAL-3,3))*(playing?1:0);
+  master.gain.setTargetAtTime(vol,actx.currentTime,.05);
+  if(!playing||muted)return;
+  const now=actx.currentTime;
+  while(nextStep*SD<T+.2){const st=nextStep*SD;if(st>=T-.03&&st<TOTAL-.5)playStep(nextStep,now+Math.max(0,st-T),st);nextStep++;}
+}
+
+/* ===== 재생 엔진 ===== */
+let T=0,playing=false,last=null,cur=null;
+function render(t){
+  let sc=SC[SC.length-1]; for(const s of SC){if(t<s.s+s.d){sc=s;break;}}
+  if(cur!==sc){SC.forEach(s=>s.el.style.display="none");sc.el.style.display="block";cur=sc;}
+  const lt=t-sc.s, isLast=sc===SC[SC.length-1];
+  sc.el.style.opacity=P(lt,0,.25)*(isLast?1:1-P(lt,sc.d-.35,.35));
+  try { sc.up(lt); } catch (e) { reportError(sc.id, e); }
+  $("#seek").value=t; $("#time").textContent=`${t.toFixed(1)} / ${TOTAL.toFixed(1)}초`;
+}
+function frame(ts){
+  if(playing){
+    if(actx&&actx.state==="running"){T=baseT+(actx.currentTime-baseA);}
+    else{if(last!==null)T+=(ts-last)/1000;last=ts;}
+    if(T>=TOTAL){T=TOTAL;setPlay(false);}
+  } else last=null;
+  audioTick(); render(T); requestAnimationFrame(frame);
+}
+function setPlay(p){playing=p;last=null;syncAudio();$("#play").textContent=p?"❚❚ 일시정지":"▶ 재생";$("#play").setAttribute("aria-label",p?"일시정지":"재생");}
+$("#seek").max=TOTAL;
+$("#mute").textContent=muted?"🔇 음악 끔":"🔊 음악 켬";
+$("#play").onclick=()=>{initAudio();if(T>=TOTAL)T=0;setPlay(!playing);};
+$("#restart").onclick=()=>{initAudio();T=0;setPlay(true);};
+$("#seek").oninput=e=>{T=+e.target.value;syncAudio();};
+$("#mute").onclick=()=>{initAudio();muted=!muted;$("#mute").textContent=muted?"🔇 음악 끔":"🔊 음악 켬";syncAudio();};
+function toggleFS(){try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}catch(e){}}
+function toggleRec(){document.body.classList.toggle("rec");fit();}
+$("#fs").onclick=toggleFS; $("#rec").onclick=toggleRec;
+addEventListener("keydown",e=>{
+  if(e.target.tagName==="BUTTON"&&e.code==="Space")return;
+  initAudio();
+  if(e.code==="Space"){e.preventDefault();$("#play").click();}
+  else if(e.key==="f"||e.key==="F")toggleFS();
+  else if(e.key==="h"||e.key==="H")toggleRec();
+  else if(e.key==="m"||e.key==="M")$("#mute").click();
+  else if(e.key==="r"||e.key==="R"){T=0;setPlay(true);}
+  else if(e.key==="ArrowRight"){T=Math.min(TOTAL,T+2);syncAudio();}
+  else if(e.key==="ArrowLeft"){T=Math.max(0,T-2);syncAudio();}
+});
+function fit(){const w=$("#wrap"),s=Math.min(w.clientWidth/1920,w.clientHeight/1080);$("#stage").style.transform=`translate(-50%,-50%) scale(${s})`;}
+addEventListener("resize",fit); fit();
+window.__mg = { TOTAL, SC, render: t => { T = t; render(t); }, get T(){ return T; } };
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>보일·샤를 법칙 가상 실험실</title>
+<style>
+  :root{--bg:#f4f6fa;--panel:#fff;--ink:#1c2733;--sub:#5a6b7d;--accent:#1f6fd6;--ok:#1e8f4e;--warn:#c07c00;--bad:#c0392b;--border:#d7dee8;--radius:12px;--soft:#eef4fd}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Segoe UI","Malgun Gothic",sans-serif;background:var(--bg);color:var(--ink);line-height:1.6;padding:16px 16px 70px}
+  .wrap{max-width:900px;margin:0 auto}
+  .back{display:inline-block;color:var(--sub);text-decoration:none;font-size:.9em;margin-bottom:8px}
+  .back:hover{color:var(--accent)}
+  h1{font-size:1.5em}
+  header p{color:var(--sub);margin-top:2px;font-size:.93em}
+  h2{font-size:1.08em;margin-bottom:10px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-top:14px}
+  .grp{margin-top:12px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:.93em}
+  .grp input{width:80px}
+  .small{font-size:.82em;color:var(--sub)}
+  .tabs{display:flex;gap:6px;margin-top:14px}
+  .tabs button{flex:1;padding:10px 6px;border:1px solid var(--border);background:var(--panel);border-radius:10px;font:600 1em inherit;font-family:inherit;cursor:pointer;color:var(--sub)}
+  .tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  input,select{font:inherit;padding:5px 8px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--ink);min-width:0}
+  input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  button.btn{font:600 .92em inherit;font-family:inherit;padding:7px 12px;border-radius:8px;border:1px solid var(--accent);background:#fff;color:var(--accent);cursor:pointer}
+  button.btn:hover{background:var(--soft)}
+  button.btn.pri{background:var(--accent);color:#fff}
+  button.btn.on{background:var(--accent);color:#fff}
+  canvas{display:block;width:100%;height:auto;background:#fff;border:1px solid var(--border);border-radius:10px}
+  .ctl{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-top:10px;font-size:.93em}
+  .ctl .seg{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+  .status{margin-top:8px;font-size:.88em;color:var(--sub);min-height:1.5em}
+  .status b{color:var(--ink)}
+  .loupes{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px}
+  .loupes figure{flex:1 1 300px;max-width:360px}
+  .loupes figure.v{flex:0 0 150px}
+  .loupes figcaption{font-size:.82em;color:var(--sub);margin-top:3px}
+  details summary{cursor:pointer;font-weight:700;list-style:none}
+  details summary::before{content:"▸ ";color:var(--accent)}
+  details[open] summary::before{content:"▾ "}
+  ol.steps{margin:8px 0 0 20px;font-size:.93em}
+  ol.steps li{margin-bottom:3px}
+  .tw{overflow-x:auto}
+  table.dt{border-collapse:collapse;width:100%;min-width:520px;font-size:.92em}
+  table.dt th,table.dt td{border:1px solid var(--border);padding:4px 6px;text-align:center}
+  table.dt th{background:var(--soft);font-weight:600;font-size:.9em}
+  table.dt th.calc,table.dt td.calc{background:#f7f9fb;color:#33475b;white-space:nowrap}
+  table.dt td input{width:100%;min-width:70px;text-align:right}
+  table.dt button.x{border:none;background:none;color:var(--sub);cursor:pointer;font-size:1em}
+  .row2{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin-bottom:10px;font-size:.93em}
+  .row2 input{width:110px}
+  .res{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin:10px 0}
+  .res div{background:var(--soft);border-radius:10px;padding:8px 10px}
+  .res .k{font-size:.8em;color:var(--sub)}
+  .res .v{font-size:1.15em;font-weight:700}
+  .res .v.bad{color:var(--bad)}.res .v.ok{color:var(--ok)}
+  .msg{font-size:.9em;color:var(--warn);margin:6px 0}
+  ul.clues{margin:6px 0 0 20px;font-size:.9em}
+  ul.clues li{margin-bottom:3px}
+  .diag label{display:block;padding:4px 0;font-size:.93em;cursor:pointer}
+  .reveal{margin-top:12px}
+  .reveal .item{border-left:4px solid var(--accent);background:var(--soft);padding:8px 12px;border-radius:0 10px 10px 0;margin-top:8px;font-size:.9em}
+  .teacher .item,.reveal .item.hit{border-color:var(--ok)}.reveal .item.miss{border-color:var(--bad)}
+  .reveal .item b.t,.teacher .item b.t{display:block}
+  .teacher{border:2px dashed var(--warn);background:#fff9ec}
+  .homebtn{position:fixed;left:12px;bottom:12px;z-index:99999;background:rgba(255,255,255,.94);color:#1c2733;text-decoration:none;padding:8px 13px;border-radius:9px;font:600 14px/1 'Segoe UI','Malgun Gothic',sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.22);border:1px solid rgba(0,0,0,.12)}
+  .hide{display:none}
+  @media(max-width:520px){body{padding:10px 10px 70px}.card{padding:12px}.loupes figure.v{flex:1 1 150px}}
+</style>
+</head>
+<body>
+<a class="homebtn" href="../../index.html" title="홈으로">🏠 홈</a>
+<div class="wrap">
+  <a class="back" href="../index.html">← 열역학</a>
+  <header>
+    <h1>🧪 보일·샤를 법칙 가상 실험실</h1>
+    <p>물리실험노트 「6. 보일의 법칙·샤를의 법칙」을 가상으로 해 봅니다. 눈금과 온도를 <b>직접 읽어 표에 입력</b>하면 그래프와 오차가 계산됩니다. 교실에서 잰 실제 값을 표에 넣어도 같은 방식으로 분석됩니다.</p>
+    <div class="grp"><label for="grp">모둠 번호</label><input id="grp" type="number" min="1" max="999" value="1">
+      <span class="small">모둠마다 장치 상태(오차 원인)가 다릅니다. 같은 번호는 같은 장치를 불러옵니다. 오차 원인은 ⑤ 단계에서 확인합니다.</span></div>
+    <div class="tabs" role="tablist"><button id="tb-charles" class="on" data-tab="charles">샤를 법칙 (Ⅱ)</button><button id="tb-boyle" data-tab="boyle">보일 법칙 (Ⅰ)</button></div>
+  </header>
+
+  <!-- ================= 샤를 ================= -->
+  <section id="tab-charles">
+    <div class="card"><details open><summary>① 실험 안내 — 압력이 일정할 때 공기의 부피와 온도</summary>
+      <ol class="steps">
+        <li>공기기둥(약 8 cm)을 가둔 가는 유리관이 눈금자 옆에 고정되어 있습니다. 관 전체가 물에 잠겼는지 먼저 살펴봅니다.</li>
+        <li>얼음물에서 시작합니다. <b>공기기둥 아래쪽 끝</b>의 눈금을 읽어 아래 칸에 적습니다(한 번만).</li>
+        <li>불을 약하게 켜 물을 데우고, 원하는 온도 근처에서 불을 끈 뒤 <b>저으면서 수은이 완전히 멈추기를 기다립니다.</b></li>
+        <li>멈춘 뒤 <b>수온 t</b>와 <b>공기기둥 위쪽 끝(수은 마개 아래 면)의 눈금</b>을 확대 창에서 읽어 표에 입력합니다.</li>
+        <li>온도를 조금씩 올리며 80 ℃ 이하에서 6점 이상 반복합니다.</li>
+        <li>분석: l–t 그래프의 가로축 절편 t₀, 0 ℃ 길이 l₀, 부피팽창률 α = (l − l₀)/(l₀·t)의 평균을 구하고 기준값 1/273 ≈ 3.66×10⁻³ /℃와 비교합니다.</li>
+      </ol></details></div>
+
+    <div class="card"><h2>② 가상 장치</h2>
+      <canvas id="c-scene" width="640" height="420" aria-label="샤를 법칙 실험 장치"></canvas>
+      <div class="ctl">
+        <span class="seg">불세기 <button class="btn on" data-pw="0">끔</button><button class="btn" data-pw="1">약</button><button class="btn" data-pw="2">중</button><button class="btn" data-pw="3">강</button></span>
+        <label><input type="checkbox" id="c-stir"> 저어주기</label>
+        <span class="seg"><button class="btn pri" id="c-run">⏸ 시간 멈춤</button>
+          <select id="c-speed" aria-label="시간 배속"><option value="5">시간 ×5</option><option value="15" selected>시간 ×15</option><option value="40">시간 ×40</option></select></span>
+        <button class="btn" id="c-reset">얼음물로 다시 시작</button>
+      </div>
+      <div class="status" id="c-status"></div>
+      <div class="loupes">
+        <figure><canvas id="c-lp-top" width="340" height="110"></canvas><figcaption>🔍 공기기둥 <b>위쪽 끝</b> 눈금 (cm) — 눈금자 한 칸 = 1 mm</figcaption></figure>
+        <figure><canvas id="c-lp-bot" width="340" height="110"></canvas><figcaption>🔍 공기기둥 <b>아래쪽 끝</b> 눈금 (cm)</figcaption></figure>
+        <figure><canvas id="c-lp-th" width="340" height="110"></canvas><figcaption>🔍 온도계 (℃) — 한 칸 = 0.1 ℃</figcaption></figure>
+      </div>
+    </div>
+
+    <div class="card"><h2>③ 측정값 입력</h2>
+      <div class="row2"><label>공기기둥 아래쪽 끝의 눈금 <input id="c-bottom" inputmode="decimal" placeholder="예: 3.00"> cm</label></div>
+      <div class="tw" id="c-table"></div>
+      <div class="ctl"><button class="btn" id="c-add">＋ 행 추가</button><button class="btn" id="c-clear">표 지우기</button><span class="small">입력한 값은 이 브라우저에만 저장됩니다(모둠 번호별).</span></div>
+    </div>
+
+    <div class="card"><h2>④ 분석</h2>
+      <div id="c-msg" class="msg"></div>
+      <div class="res" id="c-res"></div>
+      <canvas id="c-plot" width="640" height="380" aria-label="l-t 그래프"></canvas>
+      <div class="small" style="margin-top:4px">● 입력한 점 / 빨간 선 = 최소제곱 직선(가로축까지 연장) / 회색 점선 = 오차 없는 이상적인 공기(t₀ = −273.15 ℃)</div>
+      <canvas id="c-res-plot" width="640" height="240" style="margin-top:10px" aria-label="잔차"></canvas>
+      <div class="small" style="margin-top:4px">직선에서 벗어난 정도(잔차, mm). 측정한 순서대로 나열되어 있습니다.</div>
+      <h2 style="margin-top:14px">자료에서 읽을 수 있는 단서</h2>
+      <ul class="clues" id="c-clues"></ul>
+    </div>
+
+    <div class="card diag"><h2>⑤ 오차 원인 찾기</h2>
+      <p class="small">이 모둠의 장치에는 아래 중 <b>네 가지</b>가 있습니다. 위 그래프와 단서를 보고 의심되는 것을 모두 고른 뒤 정답을 확인하세요.</p>
+      <div id="c-diag"></div>
+      <div class="ctl"><button class="btn pri" id="c-check">정답 확인</button></div>
+      <div class="reveal" id="c-reveal"></div>
+    </div>
+    <div class="card teacher hide" id="c-teacher"></div>
+  </section>
+
+  <!-- ================= 보일 ================= -->
+  <section id="tab-boyle" class="hide">
+    <div class="card"><details open><summary>① 실험 안내 — 온도가 일정할 때 공기의 압력과 부피</summary>
+      <ol class="steps">
+        <li>수은 30 cm를 넣은 긴 유리관(한쪽 닫힘)이 방안지를 붙인 판자 위에 있습니다. 처음에는 수평입니다.</li>
+        <li><b>기압계로 기압 H₀</b>를 재서 아래 칸에 적습니다.</li>
+        <li>관을 천천히 기울여 자세를 바꿉니다(수직 → 수평 → 거꾸로). 수은이 멈춘 뒤 확대 창에서 읽습니다: 수은기둥의 <b>두 끝의 높이</b>(방안지 눈금)와 <b>공기기둥 길이 L</b>(자).</li>
+        <li>끝으로 처음의 수직 자세로 다시 돌아와 L이 변하지 않았는지 확인합니다.</li>
+        <li>실험이 끝나면 <b>기압 H₁</b>을 다시 잽니다.</li>
+        <li>분석: 압력 P = H + (수은 열린 쪽 끝 높이 − 공기 쪽 끝 높이), V ∝ L. L–1/P 그래프가 원점을 지나는 직선이고 P×L이 일정한지 확인합니다.</li>
+      </ol></details></div>
+
+    <div class="card"><h2>② 가상 장치</h2>
+      <canvas id="b-scene" width="640" height="380" aria-label="보일 법칙 실험 장치"></canvas>
+      <div class="ctl">
+        <label>자세 θ <input type="range" id="b-ang" min="-90" max="90" step="1" value="0" style="width:200px"> <b id="b-angv">0°</b></label>
+        <span class="seg"><button class="btn" data-th="90">90°</button><button class="btn" data-th="60">60°</button><button class="btn" data-th="30">30°</button><button class="btn" data-th="0">0°</button><button class="btn" data-th="-30">−30°</button><button class="btn" data-th="-60">−60°</button><button class="btn" data-th="-90">−90°</button></span>
+      </div>
+      <div class="ctl"><button class="btn" id="b-wait">⏱ 30초 기다리기</button><button class="btn" id="b-baro">기압계 읽기</button><span id="b-barolog" class="small"></span></div>
+      <div class="small">θ &gt; 0: 닫힌 끝이 아래(열린 끝이 위), θ = 0: 수평, θ &lt; 0: 닫힌 끝이 위(거꾸로). 슬라이더는 놓을 때 적용됩니다.</div>
+      <div class="status" id="b-status"></div>
+      <div class="loupes">
+        <figure><canvas id="b-lp-L" width="340" height="110"></canvas><figcaption>🔍 <b>공기기둥 길이 L</b> (자의 눈금, cm) — 자의 0은 닫힌 끝</figcaption></figure>
+        <figure class="v"><canvas id="b-lp-o" width="150" height="260"></canvas><figcaption>🔍 수은 <b>열린 쪽 끝</b> 높이 (방안지, cm)</figcaption></figure>
+        <figure class="v"><canvas id="b-lp-a" width="150" height="260"></canvas><figcaption>🔍 수은 <b>공기 쪽 끝</b> 높이 (방안지, cm)</figcaption></figure>
+      </div>
+    </div>
+
+    <div class="card"><h2>③ 측정값 입력</h2>
+      <div class="row2"><label>실험 전 기압 H₀ <input id="b-h0" inputmode="decimal" placeholder="예: 760.0"> mmHg</label><label>실험 후 기압 H₁ <input id="b-h1" inputmode="decimal" placeholder="예: 760.0"> mmHg</label></div>
+      <div class="tw" id="b-table"></div>
+      <div class="ctl"><button class="btn" id="b-add">＋ 행 추가</button><button class="btn" id="b-clear">표 지우기</button><span class="small">높이는 열린 쪽이 위일 때 (열린 쪽 − 공기 쪽)이 +, 거꾸로면 −가 되도록 읽은 값 그대로 입력합니다.</span></div>
+    </div>
+
+    <div class="card"><h2>④ 분석</h2>
+      <div id="b-msg" class="msg"></div>
+      <div class="res" id="b-res"></div>
+      <canvas id="b-plot" width="640" height="380" aria-label="L-1/P 그래프"></canvas>
+      <div class="small" style="margin-top:4px">● 입력한 점 / 빨간 선 = 최소제곱 직선(L 축까지 연장) / 회색 점선 = PV 평균에 맞춘 원점을 지나는 이상선</div>
+      <canvas id="b-res-plot" width="640" height="240" style="margin-top:10px" aria-label="PV 편차"></canvas>
+      <div class="small" style="margin-top:4px">행마다 P×L이 평균에서 벗어난 정도(%). 측정한 순서대로입니다.</div>
+      <h2 style="margin-top:14px">자료에서 읽을 수 있는 단서</h2>
+      <ul class="clues" id="b-clues"></ul>
+    </div>
+
+    <div class="card diag"><h2>⑤ 오차 원인 찾기</h2>
+      <p class="small">이 모둠의 장치에는 아래 중 <b>네 가지</b>가 있습니다. 그래프와 단서를 보고 의심되는 것을 모두 고른 뒤 정답을 확인하세요.</p>
+      <div id="b-diag"></div>
+      <div class="ctl"><button class="btn pri" id="b-check">정답 확인</button></div>
+      <div class="reveal" id="b-reveal"></div>
+    </div>
+    <div class="card teacher hide" id="b-teacher"></div>
+  </section>
+</div>
+<script id="model">
+/* ===== 모델: 물리 + 오차 요인 (UI와 분리, node에서 검증) ===== */
+const T0K = 273.15, REF_ALPHA = 1 / T0K;
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function rngOf(seed){const r=mulberry32((seed|0)*2654435761>>>0||1);for(let i=0;i<5;i++)r();
+  return {r:r,range:(a,b)=>a+(b-a)*r(),sign:()=>r()<.5?-1:1,
+    g:()=>{let u=0;while(!u)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r());}};}
+function shuffle(arr,r){const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));const t=a[i];a[i]=a[j];a[j]=t;}return a;}
+function num(v){const x=parseFloat(String(v==null?'':v).replace(',','.'));return isFinite(x)?x:NaN;}
+function psat(T){return Math.pow(10,8.07131-1730.63/(233.426+T));} // 물의 포화수증기압 mmHg
+
+/* ---- 선형·2차 맞춤 ---- */
+function linfit(xs,ys){const n=xs.length;let sx=0,sy=0,sxx=0,sxy=0,syy=0;
+  for(let i=0;i<n;i++){sx+=xs[i];sy+=ys[i];sxx+=xs[i]*xs[i];sxy+=xs[i]*ys[i];syy+=ys[i]*ys[i];}
+  const d=n*sxx-sx*sx;const b=(n*sxy-sx*sy)/d,a=(sy-b*sx)/n;
+  let ss=0;for(let i=0;i<n;i++){const e=ys[i]-(a+b*xs[i]);ss+=e*e;}
+  const s2=n>2?ss/(n-2):NaN,sb=Math.sqrt(s2*n/d),sa=Math.sqrt(s2*sxx/d);
+  const sst=syy-sy*sy/n;
+  return {a:a,b:b,sa:sa,sb:sb,r2:sst>0?1-ss/sst:1,sd:Math.sqrt(s2)};}
+function quadCoef(xs,ys){ // y=c0+c1x+c2x^2, 정규방정식
+  const n=xs.length;let S=[0,0,0,0,0],T=[0,0,0];
+  for(let i=0;i<n;i++){let p=1;for(let k=0;k<5;k++){S[k]+=p;if(k<3)T[k]+=p*ys[i];p*=xs[i];}}
+  const M=[[S[0],S[1],S[2],T[0]],[S[1],S[2],S[3],T[1]],[S[2],S[3],S[4],T[2]]];
+  for(let i=0;i<3;i++){let m=i;for(let r=i+1;r<3;r++)if(Math.abs(M[r][i])>Math.abs(M[m][i]))m=r;const t=M[i];M[i]=M[m];M[m]=t;
+    if(Math.abs(M[i][i])<1e-12)return null;
+    for(let r=0;r<3;r++)if(r!==i){const f=M[r][i]/M[i][i];for(let c=i;c<4;c++)M[r][c]-=f*M[i][c];}}
+  return [M[0][3]/M[0][0],M[1][3]/M[1][1],M[2][3]/M[2][2]];}
+
+/* =====================  샤를 법칙 장치  ===================== */
+const CH_FACTORS=[
+ {id:'zero',label:'온도계 영점이 어긋나 있다',
+  look:'모든 점이 가로축 방향으로 같은 만큼 밀립니다. 기울기는 거의 그대로이고 가로축 절편만 −273 ℃에서 벗어납니다.',
+  fix:'얼음물(0 ℃)에 온도계를 넣어 영점을 먼저 확인합니다.',
+  detail:p=>'온도계가 실제보다 '+(p.zero>0?'+':'')+p.zero.toFixed(2)+' ℃ 어긋남'},
+ {id:'lag',label:'공기가 물의 온도를 늦게 따라간다',
+  look:'가열 직후에 읽을수록 같은 온도에서 공기기둥이 짧게 읽혀 점들이 아래로 처지고, 기울기가 작아집니다.',
+  fix:'불을 끄고 저으면서 수은이 완전히 멈출 때까지 기다린 뒤 읽습니다.',
+  detail:p=>'기체가 물에 맞춰지는 데 걸리는 시간 상수 약 '+p.tauG.toFixed(0)+' 초'},
+ {id:'stick',label:'수은 마개가 관 벽에 달라붙는다',
+  look:'잔차의 부호가 한동안 같다가 한꺼번에 바뀌는 계단 모양입니다. 오르내림 방향에 따라 길이가 달라집니다.',
+  fix:'관을 가볍게 두드려 수은이 풀리게 한 뒤 읽습니다.',
+  detail:p=>'수은이 '+(p.stick*10).toFixed(1)+' mm 이상 밀려야 움직임'},
+ {id:'partial',label:'공기기둥 윗부분이 수면 밖에 나와 있다',
+  look:'수면 밖의 공기는 실온에 머물러 팽창이 덜합니다. 기울기가 작아지고 가로축 절편이 −273 ℃보다 왼쪽(더 낮은 쪽)으로 갑니다.',
+  fix:'공기기둥 전체와 수은 마개가 물에 잠기도록 관을 세웁니다.',
+  detail:p=>'공기기둥의 약 '+(p.fOut*100).toFixed(0)+' % 가 물 밖'},
+ {id:'vapor',label:'관 안이 젖어 수증기가 섞인다',
+  look:'온도가 높을수록 길이가 이상값보다 크게 늘어 곡선이 위로 휩니다(2차항이 +).',
+  fix:'관 안을 말린 뒤 사용합니다.',
+  detail:p=>'관 안 습도 계수 '+p.phi.toFixed(2)},
+ {id:'leak',label:'공기가 서서히 샌다',
+  look:'시간이 지날수록(= 뒤쪽 측정일수록) 길이가 이상값보다 줄어 곡선이 아래로 휘고 기울기가 작아집니다.',
+  fix:'수은 마개와 관 끝의 밀봉을 확인하고 실험을 빨리 마칩니다.',
+  detail:p=>'10분마다 공기가 약 '+((1-Math.exp(-600/p.tauLeak))*100).toFixed(1)+' % 줄어듦'},
+ {id:'dead',label:'닫힌 끝 안쪽에 눈금으로 안 보이는 빈 공간이 있다',
+  look:'보이는 길이에 항상 같은 값이 빠져 있어, 0 ℃ 길이 l₀가 작아 보이고 α가 크게 나옵니다. 가로축 절편은 −273 ℃보다 오른쪽으로 갑니다.',
+  fix:'관 끝의 둥근 부분까지 공기기둥으로 보고 보정하거나, 눈금 읽는 방법을 정해 둡니다.',
+  detail:p=>'보이지 않는 공기 '+(p.dead*10).toFixed(1)+' mm'},
+ {id:'baro',label:'실험하는 동안 대기압이 변한다',
+  look:'압력이 바뀌면 같은 온도에서도 길이가 달라집니다. 순서에 따라 점들이 한 방향으로 서서히 어긋납니다.',
+  fix:'짧은 시간에 실험을 마치고, 시작·끝 기압을 함께 기록합니다.',
+  detail:p=>'30분당 '+(p.dP>0?'+':'')+p.dP.toFixed(0)+' mmHg 변화'}
+];
+const HEAT=[0,0.10,0.22,0.40]; // 불세기별 가열 속도 ℃/s
+function makeCharles(seed){
+  const R=rngOf(seed*31+7);
+  const act=shuffle(CH_FACTORS.map(f=>f.id),R.r).slice(0,4);
+  const on=id=>act.indexOf(id)>=0;
+  const p={act:act,Troom:R.range(20,25),G0:R.range(7.6,8.6),xb:Math.round(R.range(2,4)*10)/10,
+    zero:on('zero')?R.sign()*R.range(1.5,3.5):0,
+    tauG:on('lag')?R.range(40,70):6,
+    stick:on('stick')?R.range(0.03,0.07):0,
+    fOut:on('partial')?R.range(0.06,0.16):0,
+    phi:on('vapor')?R.range(0.04,0.10):0,
+    tauLeak:on('leak')?R.range(30000,60000):Infinity,
+    dead:on('dead')?R.range(0.3,0.7):0,
+    dP:on('baro')?R.sign()*R.range(8,18):0,
+    gradK:R.range(4,8)};
+  const s={t:0,Tw:R.range(3,6),grad:0,power:0,stir:false,H0:R.range(752,770),plug:0};
+  s.Tg=s.Tw;
+  const L={p:p,s:s};s.plug=charlesTarget(L);return L;}
+function charlesTarget(L){const p=L.p,s=L.s;
+  const Teff=(1-p.fOut)*s.Tg+p.fOut*p.Troom;
+  let G=p.G0*(1+Teff/T0K);
+  if(p.dP)G*=s.H0/(s.H0+p.dP*Math.min(s.t,3600)/1800);
+  if(isFinite(p.tauLeak))G*=Math.exp(-s.t/p.tauLeak);
+  if(p.phi)G/=(1-p.phi*psat(s.Tg)/s.H0);
+  return G-p.dead;}
+function stepCharles(L,dt){const p=L.p,s=L.s;let rem=dt;
+  while(rem>1e-9){const h=Math.min(rem,1);rem-=h;
+    const heat=HEAT[s.power];
+    s.Tw+=(heat-0.0009*(s.Tw-p.Troom))*h;if(s.Tw>99)s.Tw=99;
+    const gEq=s.stir?0:p.gradK*heat,tg=s.stir?3:40;
+    s.grad+=(gEq-s.grad)*(1-Math.exp(-h/tg));
+    s.Tg+=(s.Tw-s.Tg)*(1-Math.exp(-h/p.tauG));
+    s.t+=h;
+    const tgt=charlesTarget(L);
+    if(!p.stick)s.plug=tgt;
+    else if(Math.abs(tgt-s.plug)>p.stick)s.plug=tgt-Math.sign(tgt-s.plug)*p.stick*0.3;}}
+function charlesView(L){const p=L.p,s=L.s;
+  return {thermo:s.Tw+s.grad+p.zero,top:p.xb+s.plug,bottom:p.xb,
+    surface:p.fOut?p.xb+(1-p.fOut)*s.plug:Math.min(24.5,p.xb+p.G0*1.35+1.2)};}
+function analyzeCharles(rows,bottom){
+  const pts=[];rows.forEach((r,i)=>{const t=num(r.t),top=num(r.top);
+    if(isFinite(t)&&isFinite(top)&&isFinite(bottom))pts.push({i:i,t:t,l:top-bottom});});
+  if(pts.length<3)return {ok:false,n:pts.length};
+  const ts=pts.map(q=>q.t),ls=pts.map(q=>q.l),f=linfit(ts,ls);
+  const l0=f.a,x0=-f.a/f.b;
+  const alphas=pts.map(q=>q.t>=15?(q.l-l0)/(l0*q.t):NaN);
+  const use=alphas.filter(isFinite);
+  const am=use.length?use.reduce((a,b)=>a+b,0)/use.length:NaN;
+  const quad=pts.length>=5?quadCoef(ts,ls):null;
+  return {ok:true,n:pts.length,pts:pts,fit:f,l0:l0,x0:x0,alphas:alphas,alpha:am,
+    err:isFinite(am)?Math.abs(am-REF_ALPHA)/REF_ALPHA*100:NaN,
+    errFit:Math.abs(f.b/f.a-REF_ALPHA)/REF_ALPHA*100,
+    slopeRatio:f.b*T0K/f.a, curv:quad?quad[2]*1e4:NaN,
+    res:pts.map(q=>q.l-(f.a+f.b*q.t)),trange:Math.max.apply(null,ts)-Math.min.apply(null,ts)};}
+
+/* =====================  보일 법칙 장치  ===================== */
+const BO_FACTORS=[
+ {id:'baro',label:'기압계 값이 실험 중 변하거나 기압계에 오차가 있다',
+  look:'PV가 측정 순서에 따라 한 방향으로 서서히 변합니다(기압이 바뀌므로).',
+  fix:'실험 전·후 기압을 모두 재서 평균을 쓰고, 빨리 끝냅니다.',
+  detail:p=>'기압이 초당 '+(p.baroRate>0?'+':'')+p.baroRate.toFixed(3)+' mmHg씩 변함, 기압계 오프셋 '+(p.baroOff>0?'+':'')+p.baroOff.toFixed(1)+' mmHg'},
+ {id:'plumb',label:'방안지(연직 기준)가 기울어져 붙어 있다',
+  look:'수평 자세에서도 수은기둥 높이가 0이 아닌 값으로 읽히고, 비스듬한 자세일수록 압력이 틀어져 PV가 압력에 따라 체계적으로 달라집니다.',
+  fix:'추흔들이의 연직선과 방안지 눈금을 정확히 맞춥니다.',
+  detail:p=>'방안지가 '+(p.eps>0?'+':'')+p.eps.toFixed(1)+'° 기울어짐'},
+ {id:'hand',label:'손의 열로 기체 온도가 오른다',
+  look:'관을 만져 기울인 직후의 측정에서 PV가 커집니다. 가만히 기다린 뒤 읽은 값과 차이가 납니다.',
+  fix:'관을 잡은 뒤 잠시 기다려 온도가 식은 후 읽습니다.',
+  detail:p=>'기울일 때마다 약 '+p.w1.toFixed(1)+' K 상승(시간 상수 약 '+p.tauW.toFixed(0)+' 초)'},
+ {id:'leak',label:'기울일 때마다 공기가 조금씩 샌다',
+  look:'뒤에 측정한 값일수록 PV가 작아집니다. 처음 자세로 되돌려 다시 재면 L이 처음보다 짧습니다(매뉴얼 (6) 확인 단계).',
+  fix:'수은 사이에 공기 거품이 없는지 확인하고 관을 천천히 기울입니다.',
+  detail:p=>'움직일 때마다 공기가 약 '+(p.lam*100).toFixed(1)+' % 감소'},
+ {id:'dead',label:'닫힌 끝 안쪽에 눈금으로 안 보이는 빈 공간이 있다',
+  look:'L–1/P 그래프의 직선이 원점을 지나지 않고 L 축 아래쪽으로 어긋납니다. 압력이 클수록 PV가 작아집니다.',
+  fix:'닫힌 끝의 빈 공간을 보정해 공기 부피로 씁니다.',
+  detail:p=>'보이지 않는 공기 '+(p.dead*10).toFixed(1)+' mm'},
+ {id:'viscous',label:'수은이 천천히 움직이는데 덜 기다리고 읽는다',
+  look:'기울인 직후의 값은 직전 자세 쪽으로 치우쳐 있습니다. 같은 자세인데 읽는 시각에 따라 L이 다릅니다.',
+  fix:'수은이 완전히 멈춘 것을 확인한 뒤 읽습니다.',
+  detail:p=>'수은이 평형에 가까워지는 시간 상수 약 '+p.tauM.toFixed(0)+' 초'},
+ {id:'ruler',label:'자의 눈금이 실제와 조금 다르다',
+  look:'PV 값이 전체적으로 일정 비율 어긋나지만 일정하게 유지되므로 PV=일정 확인만으로는 드러나지 않습니다.',
+  fix:'다른 자와 비교해 보거나 눈금 간격을 직접 검증합니다.',
+  detail:p=>'자의 눈금이 '+((p.ruler-1)*100>0?'+':'')+((p.ruler-1)*100).toFixed(2)+' % 어긋남'}
+];
+function makeBoyle(seed){
+  const R=rngOf(seed*57+3);
+  const act=shuffle(BO_FACTORS.map(f=>f.id),R.r).slice(0,4);
+  const on=id=>act.indexOf(id)>=0;
+  const p={act:act,H0:Math.round(R.range(752,770)*10)/10,h:R.range(299,301),Gh:R.range(28,32),
+    baroRate:on('baro')?R.sign()*R.range(0.008,0.02):0,baroOff:on('baro')?R.sign()*R.range(1,3):0,
+    eps:on('plumb')?R.sign()*R.range(1.5,4):0,
+    w1:on('hand')?R.range(0.8,2):0,tauW:R.range(60,120),
+    lam:on('leak')?R.range(0.004,0.012):0,
+    dead:on('dead')?R.range(0.3,0.9):0,
+    tauM:on('viscous')?R.range(10,18):1.5,
+    ruler:on('ruler')?1+R.sign()*R.range(0.004,0.01):1,
+    noiseSeed:seed};
+  const s={t:0,theta:0,warm:0,leakF:1,G:p.Gh,moves:0};
+  s.G=boyleEq(p,s);return {p:p,s:s,R:rngOf(seed*13+5)};}
+function boyleH(p,s){return p.H0+p.baroRate*Math.min(s.t,3600);}
+function boyleEq(p,s){const P=boyleH(p,s)+p.h*Math.sin(s.theta*Math.PI/180);
+  return p.Gh*(p.H0/P)*(1+s.warm/295)*s.leakF;}
+function stepBoyle(L,dt){const p=L.p,s=L.s;let rem=dt;
+  while(rem>1e-9){const h=Math.min(rem,0.5);rem-=h;s.t+=h;
+    s.warm*=Math.exp(-h/p.tauW);
+    const eq=boyleEq(p,s);s.G+=(eq-s.G)*(1-Math.exp(-h/p.tauM));}}
+function boyleMove(L,theta){const p=L.p,s=L.s;if(Math.abs(theta-s.theta)<0.5){s.theta=theta;return;}
+  s.moves++;s.theta=theta;s.warm+=p.w1;if(p.lam)s.leakF*=(1-p.lam);}
+function boyleGeom(L){const p=L.p,s=L.s,th=s.theta*Math.PI/180,c=Math.cos(th),sn=Math.sin(th);
+  const cx=50-50*c,cy=55-50*sn; // 닫힌 끝(방안지 좌표, cm)
+  const ax=cx+s.G*c,ay=cy+s.G*sn; // 공기-수은 경계
+  const bx=ax+p.h/10*c,by=ay+p.h/10*sn; // 수은의 열린 쪽 끝
+  const e=p.eps*Math.PI/180,ce=Math.cos(e),se=Math.sin(e);
+  const yr=(x,y)=>y*ce+x*se;
+  return {Lvis:(s.G-p.dead)*p.ruler,yAir:yr(ax,ay),yOpen:yr(bx,by),
+    pts:{cx:cx,cy:cy,ax:ax,ay:ay,bx:bx,by:by},th:th};}
+function boyleBaro(L){const p=L.p,s=L.s;return Math.round((boyleH(p,s)+p.baroOff+L.R.g()*0.15)*10)/10;}
+function analyzeBoyle(rows,Hb,Ha){
+  const hs=[Hb,Ha].filter(isFinite);if(!hs.length)return {ok:false,n:0,noH:true};
+  const H=hs.reduce((a,b)=>a+b,0)/hs.length;const pts=[];
+  rows.forEach((r,i)=>{const yt=num(r.yt),yb=num(r.yb),Lv=num(r.L);
+    if(isFinite(yt)&&isFinite(yb)&&isFinite(Lv)){const hv=(yt-yb)*10,P=H+hv;if(P>100)pts.push({i:i,hv:hv,P:P,L:Lv,x:1000/P,pv:P*Lv});}});
+  if(pts.length<3)return {ok:false,n:pts.length};
+  const f=linfit(pts.map(q=>q.x),pts.map(q=>q.L));
+  const mean=pts.reduce((a,q)=>a+q.pv,0)/pts.length;
+  const dev=pts.map(q=>(q.pv-mean)/mean*100);
+  const sd=Math.sqrt(dev.reduce((a,d)=>a+d*d,0)/pts.length);
+  const maxDev=Math.max.apply(null,dev.map(Math.abs));
+  const idx=pts.map((q,k)=>k),trend=pts.length>=4?linfit(idx,dev).b:NaN;
+  const vsP=pts.length>=4?linfit(pts.map(q=>q.P/100),dev).b:NaN;
+  let rep=null;for(let a=0;a<pts.length;a++)for(let b=a+3;b<pts.length;b++){
+    if(Math.abs(pts[a].P-pts[b].P)<15){const d=(pts[b].L-pts[a].L)/pts[a].L*100;if(!rep||Math.abs(d)>Math.abs(rep.d))rep={a:pts[a].i,b:pts[b].i,d:d};}}
+  return {ok:true,n:pts.length,H:H,pts:pts,fit:f,mean:mean,dev:dev,sd:sd,maxDev:maxDev,trend:trend,vsP:vsP,rep:rep};}
+</script>
+<script id="ui">
+/* ===== UI ===== */
+const $=s=>document.querySelector(s);
+const fmt=(x,d)=>isFinite(x)?x.toFixed(d):'–';
+function el(id){return document.getElementById(id);}
+let GROUP=1,TAB='charles',C=null,B=null;
+const TEACHER=/(^|[#&])t=1/.test(location.hash);
+
+/* ---------- 표 ---------- */
+function makeTable(host,spec){
+  const st={rows:[]};
+  try{const j=JSON.parse(localStorage.getItem(spec.key)||'null');if(Array.isArray(j))st.rows=j;}catch(e){}
+  if(!st.rows.length)st.rows=[{}];
+  host.innerHTML='';
+  const tbl=document.createElement('table');tbl.className='dt';host.appendChild(tbl);
+  function save(){try{localStorage.setItem(spec.key,JSON.stringify(st.rows));}catch(e){}}
+  function build(){
+    tbl.innerHTML='<thead><tr><th>#</th>'+spec.inputs.map(c=>'<th>'+c.label+'</th>').join('')+spec.calcs.map(c=>'<th class="calc">'+c+'</th>').join('')+'<th></th></tr></thead>';
+    const tb=document.createElement('tbody');
+    st.rows.forEach((row,i)=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML='<td>'+(i+1)+'</td>'+spec.inputs.map(c=>'<td><input inputmode="decimal" data-k="'+c.k+'" aria-label="'+c.label.replace(/<[^>]*>/g,' ')+' '+(i+1)+'행" value="'+(row[c.k]==null?'':row[c.k])+'"></td>').join('')+spec.calcs.map(()=>'<td class="calc"></td>').join('')+'<td><button class="x" title="행 삭제" aria-label="'+(i+1)+'행 삭제">✕</button></td>';
+      tr.querySelectorAll('input').forEach(inp=>inp.addEventListener('input',()=>{row[inp.dataset.k]=inp.value;save();api.changed();}));
+      tr.querySelector('.x').addEventListener('click',()=>{st.rows.splice(i,1);if(!st.rows.length)st.rows.push({});save();build();api.changed();});
+      tb.appendChild(tr);
+    });
+    tbl.appendChild(tb);
+  }
+  const api={rows:()=>st.rows,
+    changed(){const trs=tbl.tBodies[0].rows;const out=spec.calc(st.rows);
+      st.rows.forEach((row,i)=>{for(let j=0;j<spec.calcs.length;j++)trs[i].cells[1+spec.inputs.length+j].textContent=out[i]?out[i][j]:'';});
+      spec.onChange&&spec.onChange();},
+    add(){st.rows.push({});save();build();api.changed();},
+    clear(){st.rows=[{}];save();build();api.changed();}};
+  build();return api;}
+function loadVal(key){try{return localStorage.getItem(key)||'';}catch(e){return '';}}
+function saveVal(key,v){try{localStorage.setItem(key,v);}catch(e){}}
+
+/* ---------- 그리기 도구 ---------- */
+function niceStep(range,n){const raw=range/n,p=Math.pow(10,Math.floor(Math.log10(raw))),f=raw/p;return (f<1.5?1:f<3?2:f<7?5:10)*p;}
+function plot(cv,cfg){
+  const ctx=cv.getContext('2d'),W=cv.width,H=cv.height,m={l:56,r:16,t:14,b:42};
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+  const X=x=>m.l+(x-cfg.x0)/(cfg.x1-cfg.x0)*(W-m.l-m.r),Y=y=>H-m.b-(y-cfg.y0)/(cfg.y1-cfg.y0)*(H-m.t-m.b);
+  ctx.font='12px sans-serif';ctx.lineWidth=1;
+  const sx=niceStep(cfg.x1-cfg.x0,8),sy=niceStep(cfg.y1-cfg.y0,6);
+  ctx.strokeStyle='#e6ebf2';ctx.fillStyle='#5a6b7d';ctx.textAlign='center';
+  for(let x=Math.ceil(cfg.x0/sx)*sx;x<=cfg.x1+1e-9;x+=sx){ctx.beginPath();ctx.moveTo(X(x),m.t);ctx.lineTo(X(x),H-m.b);ctx.stroke();ctx.fillText(+x.toPrecision(6),X(x),H-m.b+15);}
+  ctx.textAlign='right';
+  for(let y=Math.ceil(cfg.y0/sy)*sy;y<=cfg.y1+1e-9;y+=sy){ctx.beginPath();ctx.moveTo(m.l,Y(y));ctx.lineTo(W-m.r,Y(y));ctx.stroke();ctx.fillText(+y.toPrecision(6),m.l-5,Y(y)+4);}
+  ctx.strokeStyle='#8795a5';ctx.lineWidth=1.4;
+  if(cfg.y0<0&&cfg.y1>0){ctx.beginPath();ctx.moveTo(m.l,Y(0));ctx.lineTo(W-m.r,Y(0));ctx.stroke();}
+  if(cfg.x0<0&&cfg.x1>0){ctx.beginPath();ctx.moveTo(X(0),m.t);ctx.lineTo(X(0),H-m.b);ctx.stroke();}
+  ctx.strokeRect(m.l,m.t,W-m.l-m.r,H-m.t-m.b);
+  ctx.save();ctx.beginPath();ctx.rect(m.l,m.t,W-m.l-m.r,H-m.t-m.b);ctx.clip();
+  (cfg.lines||[]).forEach(L=>{ctx.strokeStyle=L.color;ctx.lineWidth=L.w||2;ctx.setLineDash(L.dash||[]);ctx.beginPath();ctx.moveTo(X(L.x1),Y(L.y1));ctx.lineTo(X(L.x2),Y(L.y2));ctx.stroke();});
+  ctx.setLineDash([]);
+  (cfg.bars||[]).forEach(b=>{ctx.fillStyle=b.color;const w=Math.max(6,Math.min(30,(W-m.l-m.r)/(cfg.bars.length*1.8)));ctx.fillRect(X(b.x)-w/2,Math.min(Y(0),Y(b.y)),w,Math.abs(Y(b.y)-Y(0)));});
+  (cfg.pts||[]).forEach(p=>{ctx.fillStyle=p.color||'#1f6fd6';ctx.beginPath();ctx.arc(X(p.x),Y(p.y),4.5,0,7);ctx.fill();});
+  ctx.restore();
+  (cfg.marks||[]).forEach(k=>{ctx.fillStyle=k.color;ctx.beginPath();ctx.arc(X(k.x),Y(k.y),5,0,7);ctx.fill();ctx.font='bold 12px sans-serif';ctx.textAlign=k.align||'left';ctx.fillText(k.text,X(k.x)+(k.align==='right'?-8:8),Y(k.y)-8);});
+  ctx.fillStyle='#1c2733';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText(cfg.xl,(W+m.l-m.r)/2,H-6);
+  ctx.save();ctx.translate(14,(H-m.b+m.t)/2);ctx.rotate(-Math.PI/2);ctx.fillText(cfg.yl,0,0);ctx.restore();}
+function emptyPlot(cv,text){const c=cv.getContext('2d');c.clearRect(0,0,cv.width,cv.height);c.fillStyle='#fff';c.fillRect(0,0,cv.width,cv.height);c.fillStyle='#8795a5';c.font='14px sans-serif';c.textAlign='center';c.fillText(text,cv.width/2,cv.height/2);}
+
+/* 확대 창: 눈금자(1 mm 또는 0.1 단위) 위에 물체 경계를 그린다.
+   horizontal: 값이 오른쪽으로 증가. vertical: 값이 위로 증가. */
+function loupe(cv,o){
+  const ctx=cv.getContext('2d'),W=cv.width,H=cv.height,hz=o.dir!=='v';
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+  const len=hz?W:H,c=Math.round(o.value/o.unit)*o.unit,px=len/o.span;
+  const P=v=>hz?(len/2+(v-c)*px):(len/2-(v-c)*px);
+  const band=hz?{x:0,y:66,w:W,h:44}:{x:92,y:0,w:58,h:H};
+  /* 물체 */
+  ctx.save();
+  if(hz){o.object(ctx,P,{y0:16,y1:52,px:px,W:W,H:H});}
+  else{o.object(ctx,P,{x0:14,x1:56,px:px,W:W,H:H});}
+  ctx.restore();
+  /* 자 */
+  ctx.fillStyle='#fff6d6';ctx.fillRect(band.x,band.y,band.w,band.h);
+  ctx.strokeStyle='#b9a24a';ctx.lineWidth=1;ctx.strokeRect(band.x,band.y,band.w,band.h);
+  ctx.fillStyle='#4a3f10';ctx.font='11px sans-serif';
+  const n0=Math.floor((c-o.span/2)/o.minor),n1=Math.ceil((c+o.span/2)/o.minor);
+  for(let n=n0;n<=n1;n++){const v=n*o.minor,p=P(v);if(p<0||p>len)continue;
+    const isMaj=Math.abs(v/o.unit-Math.round(v/o.unit))<1e-6,isHalf=!isMaj&&Math.abs(v/(o.unit/2)-Math.round(v/(o.unit/2)))<1e-6;
+    const L=isMaj?20:isHalf?14:8;ctx.strokeStyle='#4a3f10';ctx.lineWidth=isMaj?1.4:1;ctx.beginPath();
+    if(hz){ctx.moveTo(p,band.y);ctx.lineTo(p,band.y+L);}else{ctx.moveTo(band.x,p);ctx.lineTo(band.x+L,p);}ctx.stroke();
+    if(isMaj){const lab=(+v.toFixed(3)).toString();
+      if(hz){ctx.textAlign='center';ctx.fillText(lab,p,band.y+34);}else{ctx.textAlign='left';ctx.fillText(lab,band.x+24,p+4);}}}
+  ctx.strokeStyle='#d7dee8';ctx.lineWidth=1;ctx.strokeRect(0,0,W,H);}
+
+/* =========================  샤를  ========================= */
+let cRun=true,cSpeed=15,cLastPlug=0,cMoving=false,cPhase=0;
+const cBottomKey=()=>'bcl1-c-bottom-'+GROUP;
+function charlesNew(){C=makeCharles(GROUP);cLastPlug=C.s.plug;cMoving=false;}
+let cTable=null;
+function charlesBuildTable(){
+  cTable=makeTable(el('c-table'),{key:'bcl1-c-rows-'+GROUP,
+    inputs:[{k:'t',label:'수온 t<br>(℃)'},{k:'top',label:'공기기둥 위쪽 끝 눈금<br>(cm)'}],
+    calcs:['길이 l<br>(cm)','α<br>(×10⁻³ /℃)'],
+    calc(rows){const b=num(el('c-bottom').value),a=charlesA();
+      return rows.map((r,i)=>{const t=num(r.t),top=num(r.top);const l=top-b;
+        const al=(a&&a.ok&&isFinite(t)&&t>=15&&isFinite(l))?(l-a.l0)/(a.l0*t)*1000:NaN;
+        return [isFinite(l)?l.toFixed(2):'',isFinite(al)?al.toFixed(3):''];});},
+    onChange:charlesAnalyze});}
+function charlesA(){return cTable?analyzeCharles(cTable.rows(),num(el('c-bottom').value)):null;}
+function charlesAnalyze(){
+  const a=analyzeCharles(cTable.rows(),num(el('c-bottom').value));
+  const trs=el('c-table').querySelector('tbody').rows;
+  cTable.rows().forEach((r,i)=>{const t=num(r.t),top=num(r.top),l=top-num(el('c-bottom').value);
+    const al=(a.ok&&isFinite(t)&&t>=15&&isFinite(l))?(l-a.l0)/(a.l0*t)*1000:NaN;
+    const c=trs[i].cells;c[1+2+1].textContent=isFinite(al)?al.toFixed(3):'';});
+  const res=el('c-res'),msg=el('c-msg'),clues=el('c-clues');
+  if(!a.ok){res.innerHTML='';clues.innerHTML='';msg.textContent=isFinite(num(el('c-bottom').value))?'아래쪽 끝 눈금과 표 3행 이상(수온·위쪽 눈금)을 입력하면 분석이 나타납니다.':'먼저 공기기둥 아래쪽 끝의 눈금을 입력하세요.';
+    emptyPlot(el('c-plot'),'측정값을 입력하면 그래프가 나타납니다');emptyPlot(el('c-res-plot'),'');return;}
+  msg.textContent=(a.n<6?'점이 '+a.n+'개입니다. 6점 이상이 좋습니다. ':'')+(a.trange<40?'온도 범위가 '+a.trange.toFixed(0)+' ℃로 좁아 절편이 불안정합니다. 80 ℃ 가까이까지 측정해 보세요.':'');
+  const bad=a.err>10;
+  res.innerHTML=
+   '<div><div class="k">0 ℃일 때 길이 l₀ (그래프)</div><div class="v">'+a.l0.toFixed(2)+' cm</div></div>'+
+   '<div><div class="k">가로축 절편 t₀ (기준 −273.15 ℃)</div><div class="v">'+a.x0.toFixed(0)+' ℃</div></div>'+
+   '<div><div class="k">부피팽창률 α 평균 (기준 3.661)</div><div class="v">'+(a.alpha*1000).toFixed(3)+' ×10⁻³/℃</div></div>'+
+   '<div><div class="k">α의 오차율</div><div class="v '+(bad?'bad':'ok')+'">'+fmt(a.err,1)+' %</div></div>'+
+   '<div><div class="k">기울기로 구한 α = b/l₀</div><div class="v">'+(a.fit.b/a.fit.a*1000).toFixed(3)+' ×10⁻³/℃</div></div>';
+  const ts=a.pts.map(p=>p.t),tmin=Math.min(-300,a.x0-20),ymax=Math.max.apply(null,a.pts.map(p=>p.l))*1.15;
+  const lines=[{x1:-273.15,y1:0,x2:100,y2:a.l0*(1+100/T0K),color:'#9aa6b4',dash:[6,5],w:1.6},
+    {x1:Math.max(tmin,a.x0-10),y1:a.fit.a+a.fit.b*Math.max(tmin,a.x0-10),x2:100,y2:a.fit.a+a.fit.b*100,color:'#c0392b',w:2},
+    {x1:-273.15,y1:-1,x2:-273.15,y2:ymax*2,color:'#c8d0da',dash:[2,4],w:1}];
+  plot(el('c-plot'),{x0:Math.floor(tmin/50)*50,x1:100,y0:0,y1:Math.ceil(ymax),xl:'수온 t (℃)',yl:'공기기둥 길이 l (cm)',lines:lines,
+    pts:a.pts.map(p=>({x:p.t,y:p.l})),marks:[{x:a.x0,y:0,color:'#c0392b',text:'t₀ = '+a.x0.toFixed(0)+' ℃',align:a.x0<-200?'left':'right'}]});
+  const rmm=a.res.map(r=>r*10),rm=Math.max(2,Math.ceil(Math.max.apply(null,rmm.map(Math.abs))));
+  plot(el('c-res-plot'),{x0:0,x1:a.n+1,y0:-rm,y1:rm,xl:'측정 순서',yl:'잔차 (mm)',bars:rmm.map((r,k)=>({x:k+1,y:r,color:r>=0?'#1f6fd6':'#c0392b'}))});
+  /* 단서 */
+  const idx=a.res.map((r,k)=>k),trend=a.n>=4?linfit(idx,a.res.map(r=>r*10)).b:NaN;
+  const L=[];
+  L.push('기울기 비(실험 기울기 ÷ 이상 기울기): <b>'+a.slopeRatio.toFixed(2)+'</b> '+(a.slopeRatio<0.95?'→ 이상값보다 완만합니다.':a.slopeRatio>1.05?'→ 이상값보다 가파릅니다.':'→ 이상값과 비슷합니다.'));
+  L.push('가로축 절편 t₀가 −273.15 ℃에서 <b>'+(a.x0+T0K>0?'+':'')+(a.x0+T0K).toFixed(0)+' ℃</b> 벗어났습니다.');
+  if(isFinite(a.curv))L.push('곡률(2차항 ×10⁴): <b>'+a.curv.toFixed(2)+'</b> '+(a.curv>0.5?'→ 위로 휜 곡선(고온에서 늘어남).':a.curv<-0.5?'→ 아래로 휜 곡선(고온에서 덜 늘어남).':'→ 거의 직선.'));
+  L.push('잔차의 표준편차: <b>'+(a.fit.sd*10).toFixed(2)+' mm</b> (읽기 오차만이라면 보통 0.5 mm 이하).');
+  if(isFinite(trend))L.push('측정 순서에 따른 잔차 추세: <b>'+(trend>=0?'+':'')+trend.toFixed(2)+' mm/행</b> '+(Math.abs(trend)>0.5?'→ 시간이 갈수록 한 방향으로 어긋납니다.':'→ 뚜렷하지 않습니다.'));
+  L.push('측정 직전 대기·저음이 충분했는지, 수은 마개가 멈춘 것을 확인했는지 되돌아보세요.');
+  clues.innerHTML=L.map(x=>'<li>'+x+'</li>').join('');}
+
+function drawCharles(){
+  const cv=el('c-scene'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height,p=C.p,s=C.s,v=charlesView(C);
+  const y0=360,K=13.5,yc=c=>y0-c*K;
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+  /* 비커 + 물 */
+  const bx=150,bw=270,hot=Math.min(1,Math.max(0,(s.Tw-5)/90));
+  const surfY=Math.max(30,yc(v.surface));
+  const wc='hsl('+(205-hot*185)+',70%,'+(78-hot*10)+'%)';
+  ctx.fillStyle=wc;ctx.fillRect(bx+2,surfY,bw-4,y0-surfY);
+  ctx.strokeStyle='#6b7c8e';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(bx,24);ctx.lineTo(bx,y0);ctx.lineTo(bx+bw,y0);ctx.lineTo(bx+bw,24);ctx.stroke();
+  ctx.strokeStyle='rgba(255,255,255,.8)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(bx+2,surfY);ctx.lineTo(bx+bw-2,surfY);ctx.stroke();
+  /* 눈금자 */
+  const rx=212;ctx.fillStyle='#fff6d6';ctx.fillRect(rx,yc(20),26,yc(0)-yc(20));ctx.strokeStyle='#b9a24a';ctx.lineWidth=1;ctx.strokeRect(rx,yc(20),26,yc(0)-yc(20));
+  ctx.fillStyle='#4a3f10';ctx.font='10px sans-serif';ctx.textAlign='left';
+  for(let c=0;c<=20;c++){const y=yc(c);ctx.strokeStyle='#4a3f10';ctx.beginPath();ctx.moveTo(rx+26,y);ctx.lineTo(rx+(c%2?18:10),y);ctx.stroke();if(c%2===0)ctx.fillText(c,rx+1,y+3);}
+  /* 유리관 */
+  const tx=262,tw=14,tbot=yc(v.bottom-0.25),ttop=yc(v.bottom+19.7);
+  ctx.fillStyle='rgba(200,225,245,.55)';ctx.strokeStyle='#5d7a94';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(tx,ttop);ctx.lineTo(tx,tbot-6);ctx.arc(tx+tw/2,tbot-6,tw/2,Math.PI,0,true);ctx.lineTo(tx+tw,ttop);ctx.fill();ctx.stroke();
+  ctx.fillStyle='rgba(235,245,255,.95)';ctx.fillRect(tx+1.5,yc(v.top),tw-3,yc(v.bottom)-yc(v.top));
+  const g=ctx.createLinearGradient(tx,0,tx+tw,0);g.addColorStop(0,'#8f9aa6');g.addColorStop(.5,'#e4e9ee');g.addColorStop(1,'#8f9aa6');
+  ctx.fillStyle=g;ctx.fillRect(tx+1.5,yc(v.top+0.5),tw-3,yc(v.top)-yc(v.top+0.5));
+  ctx.fillStyle='#1c2733';ctx.font='11px sans-serif';ctx.textAlign='left';ctx.fillText('수은 마개',tx+tw+6,yc(v.top+0.25)+3);ctx.fillText('공기기둥',tx+tw+6,yc((v.top+v.bottom)/2)+3);
+  /* 온도계 */
+  const hx=366,hb=y0-14,ht=70;
+  ctx.fillStyle='#f4f6f8';ctx.strokeStyle='#5d7a94';ctx.lineWidth=1.6;ctx.beginPath();ctx.rect(hx,ht,8,hb-ht);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#d03a2f';ctx.beginPath();ctx.arc(hx+4,hb+6,8,0,7);ctx.fill();ctx.stroke();
+  const fh=Math.max(0,Math.min(1.05,v.thermo/100))*(hb-ht-6);ctx.fillRect(hx+2.5,hb-fh,3,fh);
+  ctx.fillStyle='#1c2733';ctx.font='10px sans-serif';ctx.textAlign='left';
+  for(let t=0;t<=100;t+=20){const y=hb-t/100*(hb-ht-6);ctx.beginPath();ctx.moveTo(hx+8,y);ctx.lineTo(hx+13,y);ctx.stroke();ctx.fillText(t,hx+15,y+3);}
+  /* 젓개 */
+  if(s.stir){cPhase+=0.5;}
+  const sx=396+(s.stir?Math.sin(cPhase)*6:0);ctx.strokeStyle='#8a6d3b';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(sx,50);ctx.lineTo(sx,y0-40);ctx.stroke();
+  ctx.fillStyle='#8a6d3b';ctx.font='11px sans-serif';ctx.fillText('젓개',sx-10,44);
+  /* 버너 */
+  ctx.fillStyle='#4a5560';ctx.fillRect(bx+90,y0+34,90,18);ctx.fillRect(bx+125,y0+22,20,14);
+  if(s.power>0){const fl=14+s.power*9+Math.sin(cPhase*1.3+performance.now()/90)*3;
+    const gr=ctx.createLinearGradient(0,y0+22,0,y0+22-fl);gr.addColorStop(0,'#3a7bd5');gr.addColorStop(.5,'#f6a623');gr.addColorStop(1,'rgba(255,230,120,0)');
+    ctx.fillStyle=gr;ctx.beginPath();ctx.ellipse(bx+135,y0+22-fl/2,7+s.power*1.5,fl/2+4,0,0,7);ctx.fill();}
+  ctx.fillStyle='#4a5560';ctx.font='11px sans-serif';ctx.fillText('버너',bx+118,y0+48);
+  ctx.fillStyle='#5a6b7d';ctx.textAlign='right';ctx.fillText('눈금자 0–20 cm · 온도계 0–100 ℃',W-10,H-8);
+  ctx.textAlign='left';ctx.fillText('500 cc 비커의 물',bx+8,40);
+  /* 확대 창 */
+  loupe(el('c-lp-top'),{value:v.top,unit:1,minor:0.1,span:2.4,object:(c,P)=>{const x=P(v.top);
+      c.fillStyle='#e8f3fc';c.fillRect(0,16,x,36);c.fillStyle=g2(c,16,52);c.fillRect(x,16,P(v.top+0.5)-x,36);
+      c.strokeStyle='#5d7a94';c.lineWidth=2;c.strokeRect(-4,16,el('c-lp-top').width+8,36);
+      c.fillStyle='#1c2733';c.font='11px sans-serif';c.textAlign='left';c.fillText('공기',6,38);c.fillText('수은 마개',Math.min(x+8,260),38);}});
+  loupe(el('c-lp-bot'),{value:v.bottom,unit:1,minor:0.1,span:2.4,object:(c,P)=>{const x=P(v.bottom);
+      c.fillStyle='#e8f3fc';c.fillRect(x,16,el('c-lp-bot').width-x,36);c.fillStyle='rgba(200,225,245,.8)';c.fillRect(x-22,16,22,36);
+      c.strokeStyle='#5d7a94';c.lineWidth=2;c.strokeRect(x-22,16,el('c-lp-bot').width+8,36);
+      c.fillStyle='#1c2733';c.font='11px sans-serif';c.textAlign='left';c.fillText('닫힌 끝 → 공기',Math.max(6,x+8),38);}});
+  loupe(el('c-lp-th'),{value:v.thermo,unit:1,minor:0.1,span:6,object:(c,P)=>{const x=P(v.thermo);
+      c.fillStyle='#f4f6f8';c.fillRect(0,22,el('c-lp-th').width,26);c.fillStyle='#d03a2f';c.fillRect(0,28,x,14);
+      c.strokeStyle='#5d7a94';c.lineWidth=2;c.strokeRect(-4,22,el('c-lp-th').width+8,26);}});
+  /* 상태 */
+  const mv=Math.abs(s.plug-cLastPlug)>2e-5;cLastPlug=s.plug;cMoving=mv||(cMoving&&Math.random()<.5);
+  const mm=Math.floor(s.t/60),ss=Math.floor(s.t%60);
+  el('c-status').innerHTML='경과 시간 <b>'+mm+'분 '+(ss<10?'0':'')+ss+'초</b> · 수은 마개: <b>'+(cMoving?'움직이는 중 ⏳':'멈춤 ✔')+'</b>'+(s.power>0?' · 가열 중 🔥':'')+(s.stir?' · 젓는 중':'');
+}
+function g2(c,y0,y1){const g=c.createLinearGradient(0,y0,0,y1);g.addColorStop(0,'#8f9aa6');g.addColorStop(.5,'#e4e9ee');g.addColorStop(1,'#8f9aa6');return g;}
+
+/* =========================  보일  ========================= */
+let bTable=null,bLastG=0,bMoving=false;
+function boyleNew(){B=makeBoyle(GROUP);bLastG=B.s.G;}
+function boyleBuildTable(){
+  bTable=makeTable(el('b-table'),{key:'bcl1-b-rows-'+GROUP,
+    inputs:[{k:'yt',label:'열린 쪽 끝 높이<br>(cm)'},{k:'yb',label:'공기 쪽 끝 높이<br>(cm)'},{k:'L',label:'공기기둥 길이 L<br>(cm)'}],
+    calcs:['h<br>(mmHg)','P<br>(mmHg)','P×L','편차<br>(%)'],
+    calc(rows){const a=boyleA();const m={};if(a&&a.ok)a.pts.forEach((q,k)=>m[q.i]=[q,a.dev[k]]);
+      return rows.map((r,i)=>{const yt=num(r.yt),yb=num(r.yb),hv=(yt-yb)*10;
+        const H=boyleH_in();const P=H+hv;
+        return [isFinite(hv)?hv.toFixed(1):'',isFinite(P)&&isFinite(hv)?P.toFixed(1):'',m[i]?m[i][0].pv.toFixed(0):'',m[i]?(m[i][1]>=0?'+':'')+m[i][1].toFixed(2):''];});},
+    onChange:boyleAnalyze});}
+function boyleH_in(){const a=num(el('b-h0').value),b=num(el('b-h1').value),h=[a,b].filter(isFinite);return h.length?h.reduce((x,y)=>x+y,0)/h.length:NaN;}
+function boyleA(){return bTable?analyzeBoyle(bTable.rows(),num(el('b-h0').value),num(el('b-h1').value)):null;}
+function boyleAnalyze(){
+  const a=boyleA(),res=el('b-res'),msg=el('b-msg'),clues=el('b-clues');
+  if(!a.ok){res.innerHTML='';clues.innerHTML='';msg.textContent=a.noH?'먼저 기압 H₀(실험 전)를 입력하세요.':'표 3행 이상(두 끝의 높이와 L)을 입력하면 분석이 나타납니다.';
+    emptyPlot(el('b-plot'),'측정값을 입력하면 그래프가 나타납니다');emptyPlot(el('b-res-plot'),'');return;}
+  msg.textContent=(isFinite(num(el('b-h0').value))&&isFinite(num(el('b-h1').value))?'':'기압 H₁(실험 후)을 입력하면 전·후 평균을 씁니다. ')+(a.n<6?'점이 '+a.n+'개입니다. 6점 이상이 좋습니다.':'');
+  const bad=a.maxDev>3;
+  res.innerHTML=
+   '<div><div class="k">사용한 대기압 H (전·후 평균)</div><div class="v">'+a.H.toFixed(1)+' mmHg</div></div>'+
+   '<div><div class="k">P×L 평균 (일정해야 함)</div><div class="v">'+a.mean.toFixed(0)+'</div></div>'+
+   '<div><div class="k">P×L의 편차 (표준편차)</div><div class="v '+(a.sd>1.5?'bad':'ok')+'">'+a.sd.toFixed(2)+' %</div></div>'+
+   '<div><div class="k">P×L의 최대 편차</div><div class="v '+(bad?'bad':'ok')+'">'+a.maxDev.toFixed(2)+' %</div></div>'+
+   '<div><div class="k">직선이 L축과 만나는 값 (이상: 0)</div><div class="v">'+a.fit.a.toFixed(2)+' cm</div></div>';
+  const xs=a.pts.map(q=>q.x),ys=a.pts.map(q=>q.L),xm=Math.max.apply(null,xs)*1.12,ym=Math.max.apply(null,ys)*1.15;
+  plot(el('b-plot'),{x0:0,x1:xm,y0:Math.min(0,a.fit.a*1.3),y1:ym,xl:'1/P (×10⁻³ /mmHg)',yl:'공기기둥 길이 L (cm)',
+    lines:[{x1:0,y1:0,x2:xm,y2:a.mean/1000*xm,color:'#9aa6b4',dash:[6,5],w:1.6},{x1:0,y1:a.fit.a,x2:xm,y2:a.fit.a+a.fit.b*xm,color:'#c0392b',w:2}],
+    pts:a.pts.map(q=>({x:q.x,y:q.L})),marks:[{x:0,y:a.fit.a,color:'#c0392b',text:'L축 절편 '+a.fit.a.toFixed(2)+' cm'}]});
+  const rm=Math.max(2,Math.ceil(a.maxDev));
+  plot(el('b-res-plot'),{x0:0,x1:a.n+1,y0:-rm,y1:rm,xl:'측정 순서',yl:'P×L 편차 (%)',bars:a.dev.map((d,k)=>({x:k+1,y:d,color:d>=0?'#1f6fd6':'#c0392b'}))});
+  const L=[];
+  L.push('P×L의 최대 편차 <b>'+a.maxDev.toFixed(2)+' %</b> — 읽기 오차만이라면 보통 1 % 안팎입니다.');
+  if(isFinite(a.trend))L.push('측정 순서에 따른 P×L 변화: <b>'+(a.trend>=0?'+':'')+a.trend.toFixed(2)+' %/행</b> '+(Math.abs(a.trend)>0.4?'→ 시간·횟수가 쌓일수록 한 방향으로 변합니다.':'→ 뚜렷하지 않습니다.'));
+  if(isFinite(a.vsP))L.push('압력이 클수록 P×L 변화: <b>'+(a.vsP>=0?'+':'')+a.vsP.toFixed(2)+' %/100 mmHg</b> '+(Math.abs(a.vsP)>0.5?'→ 압력(자세)에 따라 체계적으로 달라집니다.':'→ 뚜렷하지 않습니다.'));
+  L.push('L–1/P 직선의 L축 절편: <b>'+a.fit.a.toFixed(2)+' cm</b> '+(Math.abs(a.fit.a)>0.3?'→ 원점을 지나지 않습니다.':'→ 원점 근처입니다.'));
+  if(a.rep)L.push('거의 같은 압력인 '+(a.rep.a+1)+'행과 '+(a.rep.b+1)+'행에서 L이 <b>'+(a.rep.d>=0?'+':'')+a.rep.d.toFixed(2)+' %</b> 달라졌습니다(매뉴얼 (6)의 확인).');
+  L.push('기울인 직후에 바로 읽었는지, 관을 오래 잡고 있었는지, 수은이 멈춘 뒤에 읽었는지 되돌아보세요.');
+  clues.innerHTML=L.map(x=>'<li>'+x+'</li>').join('');}
+
+function drawBoyle(){
+  const cv=el('b-scene'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height,p=B.p,s=B.s,g=boyleGeom(B);
+  const S=3.4,cx0=320,cy0=190,PX=x=>cx0+(x-50)*S,PY=y=>cy0-(y-55)*S;
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+  /* 판자 + 방안지(기울기 ε 반영) */
+  ctx.fillStyle='#d9c7a3';ctx.fillRect(60,12,520,356);ctx.strokeStyle='#8b7550';ctx.lineWidth=2;ctx.strokeRect(60,12,520,356);
+  ctx.save();ctx.beginPath();ctx.rect(70,20,500,340);ctx.clip();ctx.translate(cx0,cy0);ctx.rotate(-p.eps*Math.PI/180);
+  ctx.fillStyle='#f4fbf1';ctx.fillRect(-300,-260,600,520);
+  for(let k=-300;k<=300;k+=S*1){const mj=Math.round(k/S)%10===0;ctx.strokeStyle=mj?'#9fcf9a':'#d6ecd2';ctx.lineWidth=mj?1:.6;
+    ctx.beginPath();ctx.moveTo(k,-260);ctx.lineTo(k,260);ctx.stroke();ctx.beginPath();ctx.moveTo(-300,k);ctx.lineTo(300,k);ctx.stroke();}
+  ctx.restore();
+  /* 추흔들이(참 연직선) */
+  ctx.strokeStyle='#333';ctx.lineWidth=1.4;ctx.setLineDash([]);ctx.beginPath();ctx.moveTo(90,12);ctx.lineTo(90,300);ctx.stroke();
+  ctx.fillStyle='#333';ctx.beginPath();ctx.moveTo(90,318);ctx.lineTo(84,298);ctx.lineTo(96,298);ctx.fill();
+  ctx.font='11px sans-serif';ctx.textAlign='left';ctx.fillText('추(연직선)',96,310);
+  /* 유리관 */
+  ctx.save();ctx.translate(PX(g.pts.cx),PY(g.pts.cy));ctx.rotate(-g.th);
+  const len=100*S,gl=s.G*S,hl=p.h/10*S,w=11;
+  ctx.fillStyle='rgba(200,225,245,.55)';ctx.strokeStyle='#4f6d86';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(0,-w/2);ctx.lineTo(len,-w/2);ctx.lineTo(len,w/2);ctx.lineTo(0,w/2);ctx.arc(0,0,w/2,Math.PI/2,Math.PI*1.5,false);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#eaf4ff';ctx.fillRect(1,-w/2+1.5,gl,w-3);
+  const gr=ctx.createLinearGradient(0,-w/2,0,w/2);gr.addColorStop(0,'#8f9aa6');gr.addColorStop(.5,'#e4e9ee');gr.addColorStop(1,'#8f9aa6');
+  ctx.fillStyle=gr;ctx.fillRect(gl,-w/2+1.5,hl,w-3);
+  ctx.fillStyle='#1c2733';ctx.font='11px sans-serif';ctx.textAlign='left';
+  if(Math.abs(g.th)>Math.PI*0.75||true){}
+  ctx.restore();
+  const lab=(x,y,t)=>{ctx.fillStyle='#1c2733';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText(t,x,y);};
+  lab(PX(g.pts.cx)+(Math.cos(g.th)<0?10:-0),PY(g.pts.cy)+(Math.sin(g.th)>0?20:-12),'닫힌 끝');
+  lab(PX(g.pts.ax+(g.pts.bx-g.pts.ax)/2),PY(g.pts.ay+(g.pts.by-g.pts.ay)/2)-12,'수은 30 cm');
+  lab(PX(g.pts.cx+(g.pts.ax-g.pts.cx)/2),PY(g.pts.cy+(g.pts.ay-g.pts.cy)/2)+22,'공기');
+  ctx.fillStyle='#5a6b7d';ctx.textAlign='right';ctx.fillText('θ = '+s.theta.toFixed(0)+'° · 관 길이 약 1 m · 방안지 1칸 = 1 cm',W-8,H-6);
+  /* 확대 창 */
+  const mercSide=Math.sin(g.th)>=0?1:-1; // 수은이 공기 쪽 끝보다 위(+)인지
+  loupe(el('b-lp-L'),{value:g.Lvis,unit:1,minor:0.1,span:2.4,object:(c,P)=>{const x=P(g.Lvis);
+      c.fillStyle='#e8f3fc';c.fillRect(-4,16,x+4,36);c.fillStyle=g2(c,16,52);c.fillRect(x,16,el('b-lp-L').width-x+4,36);
+      c.strokeStyle='#5d7a94';c.lineWidth=2;c.strokeRect(-4,16,el('b-lp-L').width+8,36);
+      c.fillStyle='#1c2733';c.font='11px sans-serif';c.textAlign='left';c.fillText('공기',6,38);c.fillText('수은',Math.min(x+8,300),38);}});
+  const vObj=(val,hgUp)=>(c,P)=>{const y=P(val);c.fillStyle='#e8f3fc';c.fillRect(14,0,42,260);
+      c.fillStyle=g2(c,0,0);const gg=c.createLinearGradient(14,0,56,0);gg.addColorStop(0,'#8f9aa6');gg.addColorStop(.5,'#e4e9ee');gg.addColorStop(1,'#8f9aa6');c.fillStyle=gg;
+      if(hgUp)c.fillRect(14,0,42,y);else c.fillRect(14,y,42,260-y);
+      c.strokeStyle='#5d7a94';c.lineWidth=2;c.strokeRect(14,-4,42,268);c.fillStyle='#1c2733';c.font='11px sans-serif';c.textAlign='center';
+      c.fillText('수은',35,hgUp?Math.max(14,y-8):Math.min(250,y+16));c.fillText('공기',35,hgUp?Math.min(250,y+16):Math.max(14,y-8));};
+  /* 공기 쪽 끝: 수은은 θ>0이면 위쪽. 열린 쪽 끝: 수은은 θ>0이면 아래쪽(경계 아래) */
+  loupe(el('b-lp-a'),{dir:'v',value:g.yAir,unit:1,minor:0.1,span:2.5,object:vObj(g.yAir,mercSide>0)});
+  loupe(el('b-lp-o'),{dir:'v',value:g.yOpen,unit:1,minor:0.1,span:2.5,object:vObj(g.yOpen,mercSide<0)});
+  const mv=Math.abs(s.G-bLastG)>1e-4;bLastG=s.G;bMoving=mv||(bMoving&&Math.random()<.5);
+  el('b-status').innerHTML='경과 <b>'+Math.floor(s.t/60)+'분 '+Math.floor(s.t%60)+'초</b> · 수은: <b>'+(bMoving?'움직이는 중 ⏳':'멈춤 ✔')+'</b>';
+}
+
+/* =========================  진단/정답  ========================= */
+function diagBuild(prefix,list){el(prefix+'-diag').innerHTML=list.map(f=>'<label><input type="checkbox" value="'+f.id+'"> '+f.label+'</label>').join('');el(prefix+'-reveal').innerHTML='';}
+function reveal(prefix,list,lab,enabled){
+  const picks=Array.from(document.querySelectorAll('#'+prefix+'-diag input:checked')).map(i=>i.value),act=lab.p.act;
+  const hits=picks.filter(x=>act.indexOf(x)>=0),wrong=picks.filter(x=>act.indexOf(x)<0);
+  let h='<div class="item"><b class="t">결과: '+hits.length+' / '+act.length+'개를 찾았고, 잘못 고른 것 '+wrong.length+'개</b>'+(picks.length?'':'아직 아무것도 고르지 않았습니다. ')+'오차 요인들이 서로 상쇄되면 전체 오차율은 작게 나올 수도 있습니다.</div>';
+  act.forEach(id=>{const f=list.filter(x=>x.id===id)[0];
+    h+='<div class="item '+(picks.indexOf(id)>=0?'hit':'miss')+'"><b class="t">'+(picks.indexOf(id)>=0?'✔ 찾음':'✘ 놓침')+' — '+f.label+'</b>'+f.detail(lab.p)+'.<br>자료에서는: '+f.look+'<br>줄이는 방법: '+f.fix+'</div>';});
+  wrong.forEach(id=>{const f=list.filter(x=>x.id===id)[0];h+='<div class="item"><b class="t">이 장치에는 없는 요인 — '+f.label+'</b>자료의 다른 특징을 이 원인으로 착각했을 수 있습니다.</div>';});
+  el(prefix+'-reveal').innerHTML=h;}
+function teacherPanel(prefix,list,lab){const box=el(prefix+'-teacher');
+  if(!TEACHER){box.classList.add('hide');return;}box.classList.remove('hide');
+  box.innerHTML='<h2>교사용: 모둠 '+GROUP+'의 숨은 오차 요인</h2>'+lab.p.act.map(id=>{const f=list.filter(x=>x.id===id)[0];return '<div class="item"><b class="t">'+f.label+'</b>'+f.detail(lab.p)+'</div>';}).join('');}
+
+/* =========================  연결  ========================= */
+function startGroup(g){
+  GROUP=Math.max(1,Math.min(999,Math.floor(g)||1));el('grp').value=GROUP;
+  charlesNew();boyleNew();
+  el('c-bottom').value=loadVal(cBottomKey());
+  el('b-h0').value=loadVal('bcl1-b-h0-'+GROUP);el('b-h1').value=loadVal('bcl1-b-h1-'+GROUP);
+  charlesBuildTable();boyleBuildTable();
+  cTable.changed();bTable.changed();
+  diagBuild('c',CH_FACTORS);diagBuild('b',BO_FACTORS);
+  teacherPanel('c',CH_FACTORS,C);teacherPanel('b',BO_FACTORS,B);
+  document.querySelectorAll('[data-pw]').forEach(b=>b.classList.toggle('on',b.dataset.pw==='0'));
+  el('c-stir').checked=false;el('b-ang').value=0;el('b-angv').textContent='0°';el('b-barolog').textContent='';
+  try{history.replaceState(null,'','#g='+GROUP+(TEACHER?'&t=1':''));}catch(e){}}
+function setTab(t){TAB=t;['charles','boyle'].forEach(k=>{el('tab-'+k).classList.toggle('hide',k!==t);el('tb-'+k).classList.toggle('on',k===t);});}
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
+el('grp').addEventListener('change',()=>startGroup(+el('grp').value));
+/* 샤를 */
+document.querySelectorAll('[data-pw]').forEach(b=>b.addEventListener('click',()=>{C.s.power=+b.dataset.pw;document.querySelectorAll('[data-pw]').forEach(x=>x.classList.toggle('on',x===b));}));
+el('c-stir').addEventListener('change',e=>{C.s.stir=e.target.checked;});
+el('c-run').addEventListener('click',()=>{cRun=!cRun;el('c-run').textContent=cRun?'⏸ 시간 멈춤':'▶ 시간 흐르게';});
+el('c-speed').addEventListener('change',e=>{cSpeed=+e.target.value;});
+el('c-reset').addEventListener('click',()=>{charlesNew();document.querySelectorAll('[data-pw]').forEach(b=>b.classList.toggle('on',b.dataset.pw==='0'));el('c-stir').checked=false;});
+el('c-bottom').addEventListener('input',()=>{saveVal(cBottomKey(),el('c-bottom').value);cTable.changed();});
+el('c-add').addEventListener('click',()=>cTable.add());
+el('c-clear').addEventListener('click',()=>{if(confirm('샤를 실험 표를 모두 지울까요?'))cTable.clear();});
+el('c-check').addEventListener('click',()=>reveal('c',CH_FACTORS,C));
+/* 보일 */
+el('b-ang').addEventListener('input',()=>{el('b-angv').textContent=el('b-ang').value+'°';});
+el('b-ang').addEventListener('change',()=>boyleMove(B,+el('b-ang').value));
+document.querySelectorAll('[data-th]').forEach(b=>b.addEventListener('click',()=>{const th=+b.dataset.th;boyleMove(B,th);el('b-ang').value=th;el('b-angv').textContent=th+'°';}));
+el('b-wait').addEventListener('click',()=>stepBoyle(B,30));
+el('b-baro').addEventListener('click',()=>{const r=boyleBaro(B);B.baroLog=(B.baroLog||[]).concat(r).slice(-4);el('b-barolog').textContent='기압계: '+B.baroLog.map(x=>x.toFixed(1)).join(' → ')+' mmHg';});
+el('b-h0').addEventListener('input',()=>{saveVal('bcl1-b-h0-'+GROUP,el('b-h0').value);bTable.changed();});
+el('b-h1').addEventListener('input',()=>{saveVal('bcl1-b-h1-'+GROUP,el('b-h1').value);bTable.changed();});
+el('b-add').addEventListener('click',()=>bTable.add());
+el('b-clear').addEventListener('click',()=>{if(confirm('보일 실험 표를 모두 지울까요?'))bTable.clear();});
+el('b-check').addEventListener('click',()=>reveal('b',BO_FACTORS,B));
+
+let lastT=performance.now();
+function frame(){const now=performance.now(),dt=Math.min(0.25,(now-lastT)/1000);lastT=now;
+  try{stepBoyle(B,dt);if(cRun)stepCharles(C,dt*cSpeed);if(TAB==='charles')drawCharles();else drawBoyle();}catch(e){console.error(e);}
+}
+(function init(){const m=/(^|[#&])g=(\d+)/.exec(location.hash);startGroup(m?+m[2]:1);setTab('charles');drawCharles();drawBoyle();setInterval(frame,50);})();
+window.__lab={get C(){return C;},get B(){return B;},get cTable(){return cTable;},get bTable(){return bTable;},startGroup:startGroup,setTab:setTab};
+</script>
+</body>
+</html>

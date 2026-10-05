@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>전기장의 개념과 컴퓨터 모델링</title>
+<title>전기장 개념</title>
 <style>
   :root {
     --bg: #f4f6fa; --panel: #ffffff; --ink: #1c2733; --sub: #5a6b7d;
@@ -94,7 +94,7 @@
 
 <header>
   <a class="home" href="../index.html">🏠 홈</a>
-  <h1>⚡ 전기장의 개념과 컴퓨터 모델링</h1>
+  <h1>⚡ 전기장 개념</h1>
   <span class="spacer"></span>
   <button id="projectorBtn" title="프로젝터용 큰 글씨 모드">🖥 큰 글씨 모드</button>
 </header>
@@ -147,7 +147,7 @@
 
 <script>
 const WS_CONFIG = {
- "title": "전기장의 개념과 컴퓨터 모델링",
+ "title": "전기장 개념",
  "renderer": "canvas2d",
  "scene": {
   "hint": "A1·A3에서는 캔버스를 클릭하거나 끌어 관측점을 옮길 수 있다"
@@ -1010,7 +1010,7 @@ function worldFromEvent(e, cv) { const r = cv.getBoundingClientRect(), px = (e.c
 function snap(v, lim, st) { v = Math.max(-lim, Math.min(lim, v)); return +(Math.round(v / st) * st).toFixed(3); }
 function dragTo(e, cv) {
   const id = API.scenario && API.scenario.id; if (id !== 'a1' && id !== 'a3') return;
-  const w = worldFromEvent(e, cv); try { API.setParam('xo', snap(w[0], 2.8, 0.05)); API.setParam('yo', snap(w[1], 1.4, 0.05)); } catch (err) { /* 슬라이더 연동 실패 시 무시 */ }
+  const w = worldFromEvent(e, cv); try { API.setParam('xo', snap(w[0], 2.8, 0.05)); API.setParam('yo', snap(w[1], 1.4, 0.05)); API.refresh(); } catch (err) { /* 슬라이더 연동 실패 시 무시 */ }
 }
 
 const SIM = {
@@ -1027,7 +1027,7 @@ const SIM = {
   reset(api) { API = api; ST.sig = null; ST.s = null; },
   update(api) { API = api; const id = api.scenario.id; if (animId(id)) syncAnim(api, id); drawAny(api, id); },
   frame(api, dt) {
-    API = api; const id = api.scenario.id; if (!animId(id)) return;
+    API = api; const id = api.scenario.id; if (!animId(id) || !api.playing) return;
     if (dt > 1) dt /= 1000; dt = Math.min(dt, 0.05); syncAnim(api, id); const s = ST.s;
     if (id === 'b1') advanceB1(api, dt);
     else if (id === 'b2') { s.t += dt * s.T / 5; if (s.t > s.T) { s.t = s.T; s.hold += dt; if (s.hold > 1.2) { s.t = 0; s.hold = 0; } } }
@@ -1299,12 +1299,15 @@ const SIM = {
       const row = document.createElement("div");
       row.className = "controls-row";
       const play = document.createElement("button");
-      play.id = "playBtn"; play.className = "primary";
-      play.addEventListener("click", () => { ui.playing = !ui.playing; updatePlayButton(); });
+      play.id = "playBtn"; play.textContent = "▶ 재생";
+      play.addEventListener("click", () => { ui.playing = true; updatePlayButton(); });
+      const pause = document.createElement("button");
+      pause.id = "pauseBtn"; pause.textContent = "⏸ 일시정지";
+      pause.addEventListener("click", () => { ui.playing = false; updatePlayButton(); });
       const reset = document.createElement("button");
       reset.textContent = "↺ 리셋";
       reset.addEventListener("click", () => { ui.playing = false; updatePlayButton(); call("reset"); call("update"); });
-      row.append(play, reset);
+      row.append(play, pause, reset);
       body.appendChild(row);
       updatePlayButton();
     }
@@ -1319,8 +1322,9 @@ const SIM = {
   }
 
   function updatePlayButton() {
-    const b = $("playBtn");
-    if (b) b.textContent = ui.playing ? "⏸ 일시정지" : "▶ 재생";
+    const p = $("playBtn"), q = $("pauseBtn");
+    if (p) p.className = ui.playing ? "" : "primary";
+    if (q) q.className = ui.playing ? "primary" : "";
   }
 
   function renderFormula() {
@@ -1418,6 +1422,6 @@ const SIM = {
 category: electromagnetism
 slug: electric-field-modeling
 icon: ⚡
-title: 전기장의 개념과 컴퓨터 모델링
+title: 전기장 개념
 desc: 점전하의 장 계산, 장 합성, 장 속 입자의 운동 예측, 장의 지연과 상대론적 패턴까지 — 교재 13.8~13.9를 HTML로 옮긴 시뮬레이션
 -->

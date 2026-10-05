@@ -150,7 +150,7 @@ const WS_CONFIG = {
  "title": "전기장 개념",
  "renderer": "canvas2d",
  "scene": {
-  "hint": "A1·A3에서는 캔버스를 클릭하거나 끌어 관측점을 옮길 수 있다"
+  "hint": "A1·A3에서는 캔버스를 끌어 관측점을, A2에서는 반지름을 조절할 수 있다"
  },
  "legend": [
   {
@@ -798,7 +798,7 @@ function drawA1(api) {
   label(ctx, 'r', (PX(0) + PX(xo)) / 2 - 10, (PY(0) + PY(yo)) / 2 - 12, COL.sub, 15, 'center');
   drawCharge(ctx, PX(0), PY(0), q, 14);
   label(ctx, 'q₁ = ' + fmtQ(q), PX(0), PY(0) + 30, COL.text, 13, 'center');
-  dot(ctx, PX(xo), PY(yo), 5, '#fff'); label(ctx, '관측점 r_obs', PX(xo) + 9, PY(yo) + 16, COL.sub, 12);
+  ring(ctx, PX(xo), PY(yo)); dot(ctx, PX(xo), PY(yo), 5, '#fff'); label(ctx, '관측점 r_obs', PX(xo) + 9, PY(yo) + 16, COL.sub, 12);
   if (r < 0.15) { label(ctx, '관측점이 전하와 너무 가깝다 (r → 0 에서는 E를 정의할 수 없다)', api.width / 2, 24, COL.warn, 15, 'center'); api.setReadout([['r', '≈ 0'], ['|E|', '정의 불가']]); return; }
   const E = fieldAt([{ x: 0, y: 0, q }], xo, yo), Em = Math.hypot(E[0], E[1]);
   let sf = SF_NM; if (mode === 'norm' && Em > 0) sf = 0.6 / Em;
@@ -846,7 +846,7 @@ function drawA3(api) {
   }
   drawCharge(ctx, PX(c1.x), PY(c1.y), qa, 13); drawCharge(ctx, PX(c2.x), PY(c2.y), qb, 13);
   label(ctx, 'q₁ ' + fmtQ(qa), PX(c1.x), PY(c1.y) + 28, COL.text, 12, 'center'); label(ctx, 'q₂ ' + fmtQ(qb), PX(c2.x), PY(c2.y) + 28, COL.text, 12, 'center');
-  dot(ctx, PX(xo), PY(yo), 5, '#fff');
+  ring(ctx, PX(xo), PY(yo)); dot(ctx, PX(xo), PY(yo), 5, '#fff');
   if (Math.hypot(xo - c1.x, yo - c1.y) < 0.15 || Math.hypot(xo - c2.x, yo - c2.y) < 0.15) { label(ctx, '관측점이 전하와 너무 가깝다', api.width / 2, 24, COL.warn, 15, 'center'); api.setReadout([['상태', 'r → 0 : E 정의 불가']]); return; }
   const e1 = fieldAt([c1], xo, yo), e2 = fieldAt([c2], xo, yo), en = [e1[0] + e2[0], e1[1] + e2[1]];
   if (CH(api, 'map', 'off') !== 'grid') {
@@ -1008,9 +1008,11 @@ function drawAny(api, id) {
 }
 function worldFromEvent(e, cv) { const r = cv.getBoundingClientRect(), px = (e.clientX - r.left) * API.width / r.width, py = (e.clientY - r.top) * API.height / r.height; return [(px - V.cx) / V.s, (V.cy - py) / V.s]; }
 function snap(v, lim, st) { v = Math.max(-lim, Math.min(lim, v)); return +(Math.round(v / st) * st).toFixed(3); }
+function ring(ctx, x, y) { ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
 function dragTo(e, cv) {
-  const id = API.scenario && API.scenario.id; if (id !== 'a1' && id !== 'a3') return;
-  const w = worldFromEvent(e, cv); try { API.setParam('xo', snap(w[0], 2.8, 0.05)); API.setParam('yo', snap(w[1], 1.4, 0.05)); API.refresh(); } catch (err) { /* 슬라이더 연동 실패 시 무시 */ }
+  const id = API.scenario && API.scenario.id; if (id !== 'a1' && id !== 'a2' && id !== 'a3') return;
+  const w = worldFromEvent(e, cv);
+  if (id === 'a2') { try { API.setParam('Rc', snap(Math.max(0.8, Math.hypot(w[0], w[1])), 2.4, 0.05)); API.refresh(); } catch (err) { } return; } try { API.setParam('xo', snap(w[0], 2.8, 0.05)); API.setParam('yo', snap(w[1], 1.4, 0.05)); API.refresh(); } catch (err) { /* 슬라이더 연동 실패 시 무시 */ }
 }
 
 const SIM = {
@@ -1018,20 +1020,27 @@ const SIM = {
     API = api; const cv = api.ctx && api.ctx.canvas;
     if (cv && !cv._efBound) {
       cv._efBound = true; cv.style.touchAction = 'none';
-      cv.addEventListener('pointerdown', e => { DRAG = true; try { cv.setPointerCapture(e.pointerId); } catch (_) { } dragTo(e, cv); });
+      cv.addEventListener('pointerdown', e => { DRAG = true; try { cv.setPointerCapture(e.pointerId); } catch (_) { } dragTo(e, cv); API.refresh(); });
       cv.addEventListener('pointermove', e => { if (DRAG) dragTo(e, cv); });
-      const up = () => { DRAG = false; }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+      const up = () => { DRAG = false; API.refresh(); }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
     }
   },
   enter(api) { API = api; ST.sig = null; ST.s = null; },
   reset(api) { API = api; ST.sig = null; ST.s = null; },
-  update(api) { API = api; const id = api.scenario.id; if (animId(id)) syncAnim(api, id); drawAny(api, id); },
+  update(api) { API = api; const id = api.scenario.id; if (api.ctx) api.ctx.canvas.style.cursor = (id === 'a1' || id === 'a2' || id === 'a3') ? (DRAG ? 'grabbing' : 'grab') : ''; if (animId(id)) syncAnim(api, id); drawAny(api, id); },
   frame(api, dt) {
     API = api; const id = api.scenario.id; if (!animId(id) || !api.playing) return;
-    if (dt > 1) dt /= 1000; dt = Math.min(dt, 0.05); syncAnim(api, id); const s = ST.s;
+    if (dt > 1) dt /= 1000; dt = Math.min(dt, 0.05) * (api.P.speed || 1); syncAnim(api, id); const s = ST.s;
     if (id === 'b1') advanceB1(api, dt);
     else if (id === 'b2') { s.t += dt * s.T / 5; if (s.t > s.T) { s.t = s.T; s.hold += dt; if (s.hold > 1.2) { s.t = 0; s.hold = 0; } } }
     else if (id === 'c1') { s.t += dt * s.Tend * 1.15 / 6; if (s.t > s.Tend) { s.t = s.Tend; s.hold += dt; if (s.hold > 1.2) { s.t = -0.15 * s.Tend; s.hold = 0; } } }
+    drawAny(api, id);
+  },
+  step(api) {
+    API = api; const id = api.scenario.id; if (!animId(id)) return; syncAnim(api, id); const s = ST.s;
+    if (id === 'b1') { if (!s.halt) { b1Step(s); s.trail.push([s.x, s.y]); } }
+    else if (id === 'b2') s.t = Math.min(s.T, s.t + s.T / 200);
+    else if (id === 'c1') s.t = Math.min(s.Tend, s.t + s.Tend / 200);
     drawAny(api, id);
   },
   tests() {
@@ -1092,6 +1101,7 @@ const SIM = {
   const ui = { tab: C.tabs[0].id, scenarioId: null, playing: false };
   const lastScenarioOfTab = {};
 
+  P.speed = 1;
   function addDefaults(params) { (params || []).forEach(p => { if (!(p.key in P)) P[p.key] = p.value; }); }
   C.scenarios.forEach(s => { addDefaults(s.params); addDefaults(s.choices); });
   if (C.common_params) addDefaults(C.common_params.params);
@@ -1296,6 +1306,7 @@ const SIM = {
       st.className = "hint"; st.id = "wsStatus";
       st.textContent = s.status_hint || "";
       body.appendChild(st);
+      body.appendChild(sliderEl({ key: "speed", label: "재생 속도", min: 0.25, max: 2, step: 0.25, value: 1, unit: "×" }));
       const row = document.createElement("div");
       row.className = "controls-row";
       const play = document.createElement("button");
@@ -1307,7 +1318,10 @@ const SIM = {
       const reset = document.createElement("button");
       reset.textContent = "↺ 리셋";
       reset.addEventListener("click", () => { ui.playing = false; updatePlayButton(); call("reset"); call("update"); });
-      row.append(play, pause, reset);
+      const step = document.createElement("button");
+      step.textContent = "⏭ 1스텝"; step.title = "일시정지한 상태에서 한 스텝씩 진행";
+      step.addEventListener("click", () => { ui.playing = false; updatePlayButton(); call("step"); });
+      row.append(play, pause, step, reset);
       body.appendChild(row);
       updatePlayButton();
     }

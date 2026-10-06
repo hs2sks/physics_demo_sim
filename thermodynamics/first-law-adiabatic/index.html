@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>열역학 제1법칙 — 병뚜껑·자전거 펌프의 단열 과정</title>
+<style>
+  :root {
+    --bg: #f4f6fa; --panel: #ffffff; --ink: #1c2733; --sub: #5a6b7d;
+    --accent: #1f6fd6; --accent2: #d64545; --ok: #1e8f4e;
+    --border: #d7dee8; --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+  body {
+    font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+    background: var(--bg); color: var(--ink);
+    padding: 12px; font-size: 15px;
+  }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  header h1 { font-size: 1.25em; }
+  header .spacer { flex: 1; }
+  a.home { text-decoration:none; color:var(--sub); border:1px solid var(--border); padding:6px 12px; border-radius:8px; font-size:0.9em; white-space:nowrap; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .tabs button { flex: 0 0 auto; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 1em; }
+  .tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .layout { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .sim-col { flex: 2 1 480px; display: flex; flex-direction: column; gap: 12px; }
+  .side-col { flex: 1 1 320px; display: flex; flex-direction: column; gap: 12px; }
+
+  #sceneWrap { position: relative; width: 100%; aspect-ratio: 16/10; border-radius: 8px; overflow: hidden; background: radial-gradient(circle at 50% 30%, #16233a, #060a12 75%); }
+  #sceneWrap canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #hoverHint { position:absolute; left:8px; bottom:8px; color:#9fb3d9; font-size:0.78em; background:rgba(6,10,18,0.55); padding:4px 8px; border-radius:6px; pointer-events:none; }
+  #hoverHint:empty { display: none; }
+  #simError { position:absolute; left:8px; right:8px; top:8px; color:#fff; background:rgba(214,69,69,0.92); padding:6px 10px; border-radius:6px; font-size:0.82em; white-space:pre-wrap; }
+
+  .scenario-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .scenario-picker button { flex: 1 1 30%; min-width: 120px; padding: 8px 6px; font-size: 0.86em; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  .scenario-picker button.active { background: #eaf1fd; border-color: var(--accent); color: var(--accent); font-weight: 700; }
+
+  .param { margin-bottom: 10px; }
+  .param label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 4px; font-size: 0.92em; }
+  .param label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .param input[type=range] { width: 100%; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .hint { color: var(--sub); font-size: 0.83em; margin-top: 2px; line-height: 1.5; }
+
+  button { font-size: 1em; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.warn { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .controls-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.82em; color: var(--sub); margin-top: 8px; }
+  .legend:empty { display: none; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .swatch { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .swatch.bar { border-radius: 2px; }
+
+  table.readout { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+  table.readout td { padding: 4px 2px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  table.readout td:first-child { color: var(--sub); }
+  table.readout td:last-child { text-align: right; font-weight: 700; }
+
+  details { margin-top: 6px; }
+  summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+  .formula-body { padding: 8px 2px; line-height: 1.8; font-size: 0.92em; }
+  .formula-body .eq { font-size: 1.08em; text-align: center; margin: 6px 0; font-family: Georgia, serif; }
+  .note { border-left: 3px solid var(--accent); background: #eef4fd; padding: 8px 10px; border-radius: 6px; font-size: 0.86em; margin-top: 8px; line-height: 1.6; }
+  .note:empty { display: none; }
+  .misconception { border-left: 3px solid var(--accent2); background: #fdeeee; padding: 8px 10px; border-radius: 6px; font-size: 0.86em; margin-top: 8px; line-height: 1.6; }
+
+  canvas.chart { width: 100%; background: #fff; border: 1px solid var(--border); border-radius: 6px; }
+
+  body.projector { font-size: 19px; }
+  body.projector button { padding: 12px 18px; }
+  body.projector .scenario-picker button { font-size: 1em; padding: 12px 8px; }
+
+  @media (max-width: 720px) {
+    body { font-size: 16px; padding: 8px; }
+    .layout { flex-direction: column; }
+    .sim-col, .side-col { flex: 1 1 100%; }
+    button { padding: 11px 14px; }
+    input[type=range] { height: 26px; }
+  }
+/* ---- 레시피 입력 extra_css ---- */
+
+</style>
+</head>
+<body>
+
+<header>
+  <a class="home" href="../../index.html">🏠 홈</a>
+  <h1>🍾 열역학 제1법칙 — 병뚜껑·자전거 펌프의 단열 과정</h1>
+  <span class="spacer"></span>
+  <button id="projectorBtn" title="프로젝터용 큰 글씨 모드">🖥 큰 글씨 모드</button>
+</header>
+
+<div class="tabs" id="tabs"></div>
+
+<div class="layout">
+
+  <div class="sim-col">
+    <div class="panel">
+      <div id="sceneWrap">
+        <div id="hoverHint"></div>
+        <div id="simError" hidden></div>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="panel" id="graphPanel" hidden>
+      <canvas id="chartCanvas" class="chart" width="440" height="220"></canvas>
+      <div class="hint" id="chartHint"></div>
+    </div>
+  </div>
+
+  <div class="side-col">
+
+    <div class="panel" id="scenarioPanel">
+      <div class="scenario-picker" id="scenarioPicker"></div>
+      <div id="scenarioBody"></div>
+      <div id="customPanel"></div>
+    </div>
+
+    <div class="panel" id="readoutPanel">
+      <b id="readoutTitle"></b>
+      <table class="readout" id="readout"></table>
+      <div class="note" id="readoutNote"></div>
+    </div>
+
+    <div class="panel">
+      <details id="formulaDetails">
+        <summary>📐 관련 공식 보기</summary>
+        <div class="formula-body" id="formulaBody"></div>
+      </details>
+    </div>
+
+    <div class="panel" id="misconceptionPanel"></div>
+
+  </div>
+</div>
+
+
+<script>
+const WS_CONFIG = {
+ "title": "열역학 제1법칙 — 병뚜껑·자전거 펌프의 단열 과정",
+ "renderer": "canvas2d",
+ "scene": {
+  "aspect": "16/10",
+  "hint": ""
+ },
+ "legend": [
+  {
+   "label": "열 Q",
+   "color": "#b48cff"
+  },
+  {
+   "label": "내부 에너지 변화 ΔU",
+   "color": "#7fd6ff"
+  },
+  {
+   "label": "기체가 한 일 W",
+   "color": "#ffb454"
+  }
+ ],
+ "tabs": [
+  {
+   "id": "bottle",
+   "label": "① 병뚜껑 열기 (단열 팽창)"
+  },
+  {
+   "id": "pump",
+   "label": "② 자전거 펌프 (단열 압축)"
+  },
+  {
+   "id": "cmp",
+   "label": "③ 등온 vs 단열 비교"
+  }
+ ],
+ "scenarios": [
+  {
+   "id": "bottle",
+   "tab": "bottle",
+   "name": "병뚜껑을 열면 왜 하얀 김이?",
+   "section": "일상 속 열역학 과정",
+   "desc": "탄산음료 병뚜껑을 여는 순간 병 속 기체가 팽창합니다. 예측을 고르고 🍾 뚜껑 열기를 눌러 보세요. 열 교환 슬라이더를 1 쪽으로 올리면 아주 천천히 연 경우를 볼 수 있어요.",
+   "misconception_title": "오개념: 열이 밖으로 빠져나가서 차가워진 거야",
+   "misconception": "뚜껑이 열리는 순간은 너무 빨라서 열이 드나들 시간이 없다(Q≈0). 기체가 바깥 공기를 밀어내며 일을 하고(W>0) 그만큼 내부 에너지가 줄어(ΔU=−W) 온도가 내려간다. 열 교환 슬라이더를 1로 올리면 같은 팽창에서도 온도가 거의 안 변한다.",
+   "formula": [
+    {
+     "eq_html": "Q = ΔU + W",
+     "text_html": "열역학 제1법칙 (W: 기체가 외부에 한 일, Q&gt;0: 흡열)"
+    },
+    {
+     "eq_html": "Q = 0  ⇒  ΔU = −W",
+     "text_html": "단열 팽창: 한 일만큼 내부 에너지(온도)가 감소"
+    },
+    {
+     "eq_html": "T V<sup>γ−1<\/sup> = 일정,  P V<sup>γ<\/sup> = 일정",
+     "text_html": "심화: 시뮬레이션 계산에 쓴 식 (교과서 범위 밖, 공기 γ≈1.4)"
+    }
+   ],
+   "params": [
+    {
+     "key": "pb_i",
+     "label": "병 안 압력",
+     "min": 1.5,
+     "max": 4,
+     "step": 0.1,
+     "value": 2.5,
+     "unit": "atm"
+    },
+    {
+     "key": "tb_i",
+     "label": "음료 온도",
+     "min": 0,
+     "max": 30,
+     "step": 1,
+     "value": 5,
+     "unit": "°C"
+    },
+    {
+     "key": "leak_b",
+     "label": "주변과 열 교환 정도 (0=순식간·단열 / 1=아주 천천히·등온)",
+     "min": 0,
+     "max": 1,
+     "step": 0.1,
+     "value": 0,
+     "unit": ""
+    }
+   ],
+   "animated": true,
+   "chart": false,
+   "status_hint": "예측 → 뚜껑 열기"
+  },
+  {
+   "id": "pump",
+   "tab": "pump",
+   "name": "자전거 펌프가 뜨거워지는 이유",
+   "section": "일상 속 열역학 과정",
+   "desc": "펌프를 빠르게 누르면 속 공기는 어떻게 될까요? 압축 후 길이를 정하고 ⬇ 펌프 누르기를 눌러 보세요. 손이 한 일(−W)이 어디로 가는지 장부에서 찾아보세요.",
+   "misconception_title": "오개념: 펌프가 뜨거워지는 건 마찰열 때문이다",
+   "misconception": "마찰도 있지만, 마찰이 전혀 없는 이 시뮬레이션에서도 공기를 빠르게 압축하면 온도가 오른다. 바깥이 기체에 한 일(W<0)이 내부 에너지로 쌓이기 때문(ΔU=−W>0). 실제 펌프에서 마찰과 압축의 기여 비율은 알 수 없음(확실하지 않음).",
+   "formula": [
+    {
+     "eq_html": "Q = ΔU + W",
+     "text_html": "압축이면 W&lt;0 (바깥이 기체에 일을 해 줌)"
+    },
+    {
+     "eq_html": "Q = 0  ⇒  ΔU = −W &gt; 0",
+     "text_html": "단열 압축: 받은 일만큼 내부 에너지(온도)가 증가"
+    },
+    {
+     "eq_html": "W = ∫ P dV",
+     "text_html": "P-V 그래프 아래 넓이가 일 (교과서 그림 Ⅱ-13)"
+    }
+   ],
+   "params": [
+    {
+     "key": "lf_p",
+     "label": "압축 후 공기 기둥 길이",
+     "min": 12,
+     "max": 28,
+     "step": 1,
+     "value": 15,
+     "unit": "cm"
+    },
+    {
+     "key": "t0_p",
+     "label": "처음 공기 온도",
+     "min": 10,
+     "max": 35,
+     "step": 1,
+     "value": 20,
+     "unit": "°C"
+    },
+    {
+     "key": "leak_p",
+     "label": "주변과 열 교환 정도 (0=순식간·단열 / 1=아주 천천히·등온)",
+     "min": 0,
+     "max": 1,
+     "step": 0.1,
+     "value": 0,
+     "unit": ""
+    }
+   ],
+   "animated": true,
+   "chart": false,
+   "status_hint": "예측 → 펌프 누르기"
+  },
+  {
+   "id": "cmp",
+   "tab": "cmp",
+   "name": "같은 팽창, 다른 과정",
+   "section": "등온 과정과 단열 과정",
+   "desc": "같은 부피 변화를 등온(온도 일정)과 단열(열 출입 없음)로 했을 때 장부와 P-V 그래프가 어떻게 다른지 비교합니다. 부피비를 1보다 작게 하면 압축이에요.",
+   "misconception_title": "오개념: 단열 과정은 온도가 일정한 과정이다",
+   "misconception": "단열은 열의 출입이 없는 것(Q=0), 등온은 온도가 변하지 않는 것(ΔT=0)이다. 단열에서는 온도가 변하고(ΔU=−W), 등온에서는 내부 에너지가 일정해서(ΔU=0) 열이 일로 바뀐다(Q=W). P-V 그래프에서 단열선이 더 가파르다.",
+   "formula": [
+    {
+     "eq_html": "등온: ΔU = 0  ⇒  Q = W",
+     "text_html": "흡수한 열이 모두 외부에 하는 일로 쓰임"
+    },
+    {
+     "eq_html": "단열: Q = 0  ⇒  ΔU = −W",
+     "text_html": "일을 하면 내부 에너지가 줄어 온도가 내려감"
+    }
+   ],
+   "params": [
+    {
+     "key": "rc",
+     "label": "부피비 V₂/V₁ (1보다 작으면 압축)",
+     "min": 0.4,
+     "max": 2.5,
+     "step": 0.1,
+     "value": 2,
+     "unit": ""
+    },
+    {
+     "key": "tc0",
+     "label": "처음 온도",
+     "min": 0,
+     "max": 40,
+     "step": 1,
+     "value": 20,
+     "unit": "°C"
+    },
+    {
+     "key": "pc0",
+     "label": "처음 압력",
+     "min": 1,
+     "max": 3,
+     "step": 0.5,
+     "value": 1,
+     "unit": "atm"
+    }
+   ],
+   "animated": true,
+   "chart": false,
+   "status_hint": "▶ 처음↔끝 왕복"
+  }
+ ],
+ "common_params": null,
+ "readout_title": "측정값"
+};
+</script>
+<script>
+/* ============================ 시뮬레이션 코드 (레시피 입력 sim_js) ============================ */
+const R_GAS=8.314,GAM=1.4,CVM=2.5*R_GAS,ATM=101325,K0=273.15;
+const PH={
+ nIdx(k){return 1+(GAM-1)*(1-k);},
+ T2(T1,r,n){return T1*Math.pow(r,1-n);},
+ P2(P1,r,n){return P1*Math.pow(r,-n);},
+ rP(P1,P2,n){return Math.pow(P1/P2,1/n);},
+ W(mol,T1,r,n){return Math.abs(n-1)<1e-9?mol*R_GAS*T1*Math.log(r):mol*R_GAS*T1*(1-Math.pow(r,1-n))/(n-1);},
+ dU(mol,T1,r,n){return mol*CVM*T1*(Math.pow(r,1-n)-1);},
+ es(Tc){return 6.112*Math.exp(17.62*Tc/(243.12+Tc));},
+ st(mol,T1,P1,V1,r,n){const W=PH.W(mol,T1,r,n),dU=PH.dU(mol,T1,r,n);return{r:r,V:V1*r,P:PH.P2(P1,r,n),T:PH.T2(T1,r,n),W:W,dU:dU,Q:dU+W};}
+};
+function bModel(pb,tb,k){const n=PH.nIdx(k),T1=tb+K0,P1=pb*ATM,V1=20e-6,mol=P1*V1/(R_GAS*T1);return{n:n,T1:T1,P1:P1,V1:V1,mol:mol,rEnd:PH.rP(P1,ATM,n),tb:tb};}
+function fogS(m,T2){return PH.es(m.tb)*(ATM/m.P1)/PH.es(T2-K0);}
+function pModel(Lf,t0,k){const n=PH.nIdx(k),T1=t0+K0,P1=ATM,V1=1.2e-4,mol=P1*V1/(R_GAS*T1);return{n:n,T1:T1,P1:P1,V1:V1,mol:mol,rEnd:Lf/30};}
+function cModel(rc,tc,pc){const T1=tc+K0,P1=pc*ATM,V1=1e-3;return{T1:T1,P1:P1,V1:V1,mol:P1*V1/(R_GAS*T1),rEnd:rc};}
+const COL={bg:'#0f1a33',text:'#e3ecff',dim:'#9db0d8',ok:'#5eead4',bad:'#ff5d73',a:'#7fd6ff',b:'#ffb454',c:'#b48cff',grid:'rgba(160,190,255,.18)'};
+const W0=1000,H0=625;
+function begin(api){const ctx=api.ctx,w=api.width,h=api.height;ctx.fillStyle=COL.bg;ctx.fillRect(0,0,w,h);const k=Math.min(w/W0,h/H0);ctx.save();ctx.translate((w-W0*k)/2,(h-H0*k)/2);ctx.scale(k,k);return ctx;}
+function txt(ctx,s,x,y,col,px,wt,al){ctx.font=(wt||600)+' '+(px||18)+'px sans-serif';ctx.fillStyle=col||COL.text;ctx.textAlign=al||'left';ctx.fillText(s,x,y);ctx.textAlign='left';}
+function arrow(ctx,x0,y0,x1,y1,col,lw){lw=lw||3;const len=Math.hypot(x1-x0,y1-y0);if(len<3)return;const a=Math.atan2(y1-y0,x1-x0),hd=Math.min(12,len*.5);ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=lw;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1-Math.cos(a)*hd*.7,y1-Math.sin(a)*hd*.7);ctx.stroke();ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x1-hd*Math.cos(a-.45),y1-hd*Math.sin(a-.45));ctx.lineTo(x1-hd*Math.cos(a+.45),y1-hd*Math.sin(a+.45));ctx.closePath();ctx.fill();}
+function fj(x){return Math.abs(x)<0.005?'0.00 J':(x>0?'+':'−')+Math.abs(x).toFixed(2)+' J';}
+function tcol(Tk){const t=Math.max(0,Math.min(1,(Tk-200)/260));return[Math.round(80+175*t),Math.round(170-100*t),Math.round(255-190*t)];}
+function rgba(Tk,a){const c=tcol(Tk);return'rgba('+c[0]+','+c[1]+','+c[2]+','+a+')';}
+const PART=[];(function(){let a=12345;function rnd(){a=(a*1664525+1013904223)>>>0;return a/4294967296;}for(let i=0;i<40;i++){const th=rnd()*6.283;PART.push({x:rnd(),y:rnd(),vx:Math.cos(th),vy:Math.sin(th)});}})();
+function stepParts(dt,Tk){const sp=0.9*Math.sqrt(Tk/293.15);PART.forEach(function(p){p.x+=p.vx*sp*dt;p.y+=p.vy*sp*dt;if(p.x<0){p.x=-p.x;p.vx=Math.abs(p.vx);}if(p.x>1){p.x=2-p.x;p.vx=-Math.abs(p.vx);}if(p.y<0){p.y=-p.y;p.vy=Math.abs(p.vy);}if(p.y>1){p.y=2-p.y;p.vy=-Math.abs(p.vy);}});}
+function drawCyl(ctx,cx,yb,w,hM,frac,Tk,o){o=o||{};const h=hM*frac,x0=cx-w/2,yt=yb-h,rod=o.rod===undefined?40:o.rod;
+ ctx.fillStyle='rgba(255,255,255,.04)';ctx.fillRect(x0,yb-hM,w,hM);ctx.fillStyle=rgba(Tk,.22);ctx.fillRect(x0,yt,w,h);
+ ctx.strokeStyle=COL.dim;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x0,yb-hM-6);ctx.lineTo(x0,yb);ctx.lineTo(x0+w,yb);ctx.lineTo(x0+w,yb-hM-6);ctx.stroke();
+ ctx.fillStyle='#c9d4ee';ctx.fillRect(x0+2,yt-12,w-4,12);if(rod>0){ctx.fillRect(cx-4,yt-12-rod,8,rod);if(o.handle)ctx.fillRect(cx-36,yt-20-rod,72,8);}
+ const c=tcol(Tk);ctx.fillStyle='rgb('+c[0]+','+c[1]+','+c[2]+')';PART.forEach(function(p){ctx.beginPath();ctx.arc(x0+6+p.x*(w-12),yb-6-p.y*Math.max(h-12,0),4,0,6.283);ctx.fill();});
+ if(o.fog>0){ctx.fillStyle='rgba(255,255,255,'+Math.min(.4,o.fog)+')';for(let i=0;i<26;i++){const u=(i*0.618)%1,v=(i*0.382+0.13)%1;ctx.beginPath();ctx.arc(x0+8+u*(w-16),yb-8-v*Math.max(h-16,0),6+(i%3)*2,0,6.283);ctx.fill();}}
+}
+function drawBottle(ctx,x0,popS,fogA){
+ const path=function(){ctx.beginPath();ctx.moveTo(x0-28,150);ctx.lineTo(x0-28,250);ctx.quadraticCurveTo(x0-28,290,x0-85,340);ctx.lineTo(x0-85,560);ctx.quadraticCurveTo(x0-85,580,x0-65,580);ctx.lineTo(x0+65,580);ctx.quadraticCurveTo(x0+85,580,x0+85,560);ctx.lineTo(x0+85,340);ctx.quadraticCurveTo(x0+28,290,x0+28,250);ctx.lineTo(x0+28,150);ctx.closePath();};
+ ctx.save();path();ctx.fillStyle='rgba(120,200,160,.12)';ctx.fill();ctx.clip();ctx.fillStyle='rgba(255,170,60,.42)';ctx.fillRect(x0-90,410,180,180);
+ ctx.fillStyle='rgba(255,255,255,.55)';for(let i=0;i<9;i++){ctx.beginPath();ctx.arc(x0-60+(i*37)%120,430+(i*53)%130,3,0,6.283);ctx.fill();}ctx.restore();
+ path();ctx.strokeStyle='#7fd6a0';ctx.lineWidth=3;ctx.stroke();
+ const off=popS>0?Math.min(1,popS*3):0;ctx.fillStyle='#d9534f';ctx.fillRect(x0-34+off*40,128-off*90,68,20);
+ if(fogA>0){for(let i=0;i<14;i++){ctx.fillStyle='rgba(255,255,255,'+(0.5*fogA)+')';ctx.beginPath();ctx.arc(x0-30+(i*23)%64+popS*(i%3)*10,135-((i*17)%50)*popS-6,10+(i%4)*3,0,6.283);ctx.fill();}}
+}
+function ledger(ctx,x,y,w,v,sc,title,eq){
+ txt(ctx,title,x,y,COL.text,17,700);const rows=[['Q 열 (흡수 +)',v.Q,COL.c],['ΔU 내부 에너지 변화',v.dU,COL.a],['W 기체가 한 일',v.W,COL.b]],cx=x+w/2,half=w/2-8;
+ ctx.strokeStyle=COL.grid;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx,y+14);ctx.lineTo(cx,y+14+rows.length*62);ctx.stroke();
+ rows.forEach(function(r,i){const yy=y+32+i*62;txt(ctx,r[0],x,yy,COL.dim,14,600);const L=Math.max(-1,Math.min(1,r[1]/sc))*half;ctx.fillStyle=r[2];ctx.fillRect(Math.min(cx,cx+L),yy+8,Math.abs(L),20);txt(ctx,fj(r[1]),cx+(r[1]>=0?half:-half),yy+46,COL.text,14,700,r[1]>=0?'right':'left');});
+ if(eq)txt(ctx,'Q = ΔU + W :  '+fj(v.Q)+' = '+fj(v.dU)+' + '+fj(v.W),x,y+32+rows.length*62+12,COL.ok,14,700);
+}
+function pvChart(ctx,bx,by,bw,bh,o){
+ const l=bx+50,r=bx+bw-14,t=by+30,b=by+bh-34;
+ const xs=[o.x1].concat(o.curves.map(function(k){return k.x2;})),xmin=Math.min.apply(null,xs)*0.85,xmax=Math.max.apply(null,xs)*1.1;
+ const yy=[o.y1];o.curves.forEach(function(k){yy.push(o.y1*Math.pow(o.x1/k.x2,k.n));});const ymax=Math.max.apply(null,yy)*1.15;
+ const X=function(v){return l+(v-xmin)/(xmax-xmin)*(r-l);},Y=function(v){return b-v/ymax*(b-t);};
+ ctx.save();ctx.fillStyle='rgba(255,255,255,.04)';ctx.fillRect(bx,by,bw,bh);ctx.strokeStyle=COL.grid;ctx.lineWidth=1;ctx.strokeRect(bx,by,bw,bh);
+ for(let i=0;i<=4;i++){const xv=xmin+(xmax-xmin)*i/4,yv=ymax*i/4;ctx.beginPath();ctx.moveTo(X(xv),t);ctx.lineTo(X(xv),b);ctx.stroke();ctx.beginPath();ctx.moveTo(l,Y(yv));ctx.lineTo(r,Y(yv));ctx.stroke();txt(ctx,xv.toFixed(o.xd||0),X(xv),b+16,COL.dim,11,600,'center');txt(ctx,yv.toFixed(1),l-6,Y(yv)+4,COL.dim,11,600,'right');}
+ txt(ctx,o.xl,r,b+30,COL.dim,12,600,'right');txt(ctx,o.yl,bx+6,by+17,COL.text,12,700);txt(ctx,o.hint||'',bx+bw-6,by+17,COL.dim,11,600,'right');
+ const pts=function(n,xa,xb){const a=[];for(let i=0;i<=80;i++){const x=xa+(xb-xa)*i/80;a.push([x,o.y1*Math.pow(o.x1/x,n)]);}return a;};
+ if(!o.noIso){ctx.setLineDash([6,5]);ctx.strokeStyle=COL.dim;ctx.lineWidth=1.5;ctx.beginPath();pts(1,xmin,xmax).forEach(function(p,i){i?ctx.lineTo(X(p[0]),Y(p[1])):ctx.moveTo(X(p[0]),Y(p[1]));});ctx.stroke();ctx.setLineDash([]);}
+ o.curves.forEach(function(k){const p=pts(k.n,o.x1,k.x2);ctx.fillStyle=k.fill;ctx.beginPath();ctx.moveTo(X(o.x1),Y(0));p.forEach(function(q){ctx.lineTo(X(q[0]),Y(q[1]));});ctx.lineTo(X(k.x2),Y(0));ctx.closePath();ctx.fill();ctx.strokeStyle=k.col;ctx.lineWidth=2.5;ctx.beginPath();p.forEach(function(q,i){i?ctx.lineTo(X(q[0]),Y(q[1])):ctx.moveTo(X(q[0]),Y(q[1]));});ctx.stroke();});
+ ctx.fillStyle=COL.ok;ctx.beginPath();ctx.arc(X(o.x1),Y(o.y1),6,0,6.283);ctx.fill();txt(ctx,'시작',X(o.x1)+9,Y(o.y1)-9,COL.ok,12,700);
+ (o.cur||[]).forEach(function(m){ctx.fillStyle=m.col||COL.bad;ctx.beginPath();ctx.arc(X(m.x),Y(m.y),6,0,6.283);ctx.fill();});
+ ctx.restore();
+}
+const S={t:0,dt:0,phase:'ready',s:0,sig:'',pred:null,ui:null};
+function mk(tag,t,fn){const e=document.createElement(tag);e.textContent=t;if(fn)e.onclick=fn;e.style.cssText='margin:3px 6px 3px 0;padding:6px 10px;border-radius:8px;border:1px solid #4a5f95;background:#16264a;color:#e3ecff;cursor:pointer;font-weight:600;font-size:13px';return e;}
+function setMsg(s){if(S.ui&&S.ui.msg)S.ui.msg.textContent=s;}
+function endOf(api){const P=api.P;if(api.scenario.id==='bottle'){const m=bModel(P.pb_i,P.tb_i,P.leak_b);return{m:m,a:PH.st(m.mol,m.T1,m.P1,m.V1,m.rEnd,m.n)};}const m=pModel(P.lf_p,P.t0_p,P.leak_p);return{m:m,a:PH.st(m.mol,m.T1,m.P1,m.V1,m.rEnd,m.n)};}
+function finish(api){const e=endOf(api),dT=e.a.T-e.m.T1,act=dT>1?'up':dT<-1?'down':'same',nm={up:'올라갔어요',same:'거의 그대로예요',down:'내려갔어요'};let s='결과: 온도가 '+nm[act]+' ('+dT.toFixed(1)+' K). ';if(S.pred)s+=(S.pred===act?'✅ 예측이 맞았어요! ':'🤔 예측과 달랐어요. ')+'왜 그런지 Q, ΔU, W 장부로 설명해 보세요.';else s+='열 교환 정도를 바꿔 다시 해 보세요.';setMsg(s);}
+function buildUI(api){const c=api.custom;if(!c)return;c.innerHTML='';const id=api.scenario.id;S.ui=null;
+ if(id==='cmp'){const d=document.createElement('div');d.style.cssText='font-size:13px;color:#9db0d8';d.textContent='▶/⏸ 로 두 피스톤을 같이 움직여 보세요. 같은 부피 변화인데 무엇이 다른가요?';c.appendChild(d);return;}
+ const q=document.createElement('div');q.style.cssText='font-size:14px;font-weight:700;margin-bottom:4px';q.textContent=id==='bottle'?'① 먼저 예측: 병뚜껑을 여는 순간 병 입구 기체의 온도는?':'① 먼저 예측: 펌프를 빠르게 누르면 속 공기의 온도는?';c.appendChild(q);
+ const pb={},names=[['up','⬆ 올라간다'],['same','➡ 그대로'],['down','⬇ 내려간다']];
+ names.forEach(function(n){const b=mk('button',n[1],function(){S.pred=n[0];Object.keys(pb).forEach(function(k){pb[k].style.background=k===n[0]?'#2b4a8a':'#16264a';});});pb[n[0]]=b;c.appendChild(b);});
+ c.appendChild(document.createElement('br'));
+ c.appendChild(mk('button',id==='bottle'?'② 🍾 뚜껑 열기':'② ⬇ 펌프 누르기',function(){if(S.phase==='ready'){S.phase='open';S.s=0;api.setPlaying&&api.setPlaying(true);setMsg('');}}));
+ c.appendChild(mk('button','↺ 다시',function(){api.reset?SIM.reset(api):0;}));
+ const msg=document.createElement('div');msg.style.cssText='margin-top:6px;font-size:13px;color:#5eead4;min-height:36px';c.appendChild(msg);S.ui={msg:msg,pb:pb};
+}
+function dBottle(api){
+ const P=api.P,m=bModel(P.pb_i,P.tb_i,P.leak_b),r=1+S.s*(m.rEnd-1),a=PH.st(m.mol,m.T1,m.P1,m.V1,r,m.n),f=PH.st(m.mol,m.T1,m.P1,m.V1,m.rEnd,m.n);
+ const fs=fogS(m,f.T),fogOn=fs>1,fogA=fogOn?Math.min(1,S.s*1.3):0;stepParts(S.dt,a.T);S.dt=0;
+ const sc=Math.max(Math.abs(f.W),Math.abs(f.dU),Math.abs(f.Q),1e-6),ctx=begin(api);
+ drawBottle(ctx,140,S.phase==='ready'?0:S.s,fogA);
+ txt(ctx,'바깥 1 atm',140,40,COL.dim,15,600,'center');txt(ctx,'병 안 '+P.pb_i.toFixed(1)+' atm · '+P.tb_i.toFixed(0)+' °C',140,605,COL.dim,14,600,'center');
+ const fr=r/Math.max(1,m.rEnd),hM=330,yb=520,yt=yb-hM*fr;drawCyl(ctx,370,yb,130,hM,fr,a.T,{rod:0,fog:fogOn?fogA*.5:0});
+ for(let i=0;i<3;i++)arrow(ctx,330+i*40,yt-56,330+i*40,yt-20,'#8aa0d0',3);txt(ctx,'바깥 공기 1 atm이 누른다',370,yt-66,COL.dim,13,600,'center');
+ txt(ctx,'T = '+(a.T-K0).toFixed(1)+' °C',370,yb+28,'#fff',16,700,'center');txt(ctx,'↑ 병 속 기체 덩어리를 실린더로 모델링',370,yb+52,COL.dim,12,600,'center');
+ ledger(ctx,520,30,450,a,sc,'에너지 장부 (병 속 기체 기준)',true);
+ txt(ctx,'막대 길이 = 최종 값 기준 · 분자 속도 ∝ √T (화면용)',520,285,COL.dim,12,600);
+ pvChart(ctx,520,305,460,300,{x1:m.V1*1e6,y1:m.P1/ATM,curves:[{n:m.n,x2:m.V1*1e6*m.rEnd,col:COL.b,fill:'rgba(255,180,84,.25)'}],cur:[{x:a.V*1e6,y:a.P/ATM}],xl:'부피 (mL)',yl:'압력 (atm)',hint:'색칠한 넓이 = 기체가 한 일 W · 점선 = 등온선'});
+ ctx.restore();
+ api.setReadout([['압력 P',(a.P/ATM).toFixed(2)+' atm'],['부피 V',(a.V*1e6).toFixed(1)+' mL'],['온도 T (이상 모델)',(a.T-K0).toFixed(1)+' °C'],['열 Q',fj(a.Q)],['내부 에너지 변화 ΔU',fj(a.dU)],['기체가 한 일 W',fj(a.W)],['최종 응결 판정',fogOn?'김 생김 (과포화비 '+(fs>99?'>99':fs.toFixed(1))+')':'김 없음']]);
+ api.setNote('공기 γ=1.4(이원자 분자 가정), 병 속 빈 공간 20 mL는 예시값. 기체 덩어리가 대기압(1 atm)까지 팽창한다고 가정한 이상 모델이라 실제 냉각 폭은 이보다 작을 수 있어요(확실하지 않음 → 적외선 온도계로 직접 재 보기). 처음엔 수증기로 포화라고 가정(예시), 포화수증기압은 Magnus 근사(−45~60 °C 유효, 밖은 외삽).');
+ api.setStatus&&api.setStatus(S.phase==='ready'?'예측을 고른 뒤 ② 뚜껑 열기':S.phase==='open'?'팽창 중…':'팽창 끝');
+}
+function dPump(api){
+ const P=api.P,m=pModel(P.lf_p,P.t0_p,P.leak_p),r=1+S.s*(m.rEnd-1),a=PH.st(m.mol,m.T1,m.P1,m.V1,r,m.n),f=PH.st(m.mol,m.T1,m.P1,m.V1,m.rEnd,m.n);
+ stepParts(S.dt,a.T);S.dt=0;const sc=Math.max(Math.abs(f.W),Math.abs(f.dU),Math.abs(f.Q),1e-6),ctx=begin(api);
+ const hM=330,yb=540;drawCyl(ctx,130,yb,120,hM,r,a.T,{rod:60,handle:true});
+ const ty=yb-hM*r-12-60-20;arrow(ctx,130,ty-50,130,ty-8,COL.b,5);txt(ctx,'누르는 힘 F',130,ty-58,COL.b,14,700,'center');
+ txt(ctx,'밸브 닫힘 (단순화)',130,yb+24,COL.dim,13,600,'center');txt(ctx,'T = '+(a.T-K0).toFixed(1)+' °C',130,yb+48,'#fff',16,700,'center');
+ txt(ctx,'공기 기둥 '+(30*r).toFixed(1)+' cm (처음 30)',230,90,COL.dim,15,600);
+ txt(ctx,'손이 한 일 = −W = '+(a.W<0?'+':'−')+Math.abs(a.W).toFixed(2)+' J',230,125,COL.b,15,700);
+ txt(ctx,'압축이면 W<0 (바깥이 일을 해 줌)',230,160,COL.dim,13,600);
+ ledger(ctx,520,30,450,a,sc,'에너지 장부 (펌프 속 공기 기준)',true);
+ txt(ctx,'막대 길이 = 최종 값 기준 · 분자 속도 ∝ √T (화면용)',520,285,COL.dim,12,600);
+ pvChart(ctx,520,305,460,300,{x1:m.V1*1e6,y1:1,curves:[{n:m.n,x2:m.V1*1e6*m.rEnd,col:COL.b,fill:'rgba(255,180,84,.25)'}],cur:[{x:a.V*1e6,y:a.P/ATM}],xl:'부피 (cm³)',yl:'압력 (atm)',hint:'색칠한 넓이 = 받은 일 |W| · 점선 = 등온선'});
+ ctx.restore();
+ api.setReadout([['압력 P',(a.P/ATM).toFixed(2)+' atm'],['부피 V',(a.V*1e6).toFixed(1)+' cm³'],['온도 T',(a.T-K0).toFixed(1)+' °C'],['열 Q',fj(a.Q)],['내부 에너지 변화 ΔU',fj(a.dU)],['기체가 한 일 W',fj(a.W)]]);
+ api.setNote('공기 γ=1.4 가정, 펌프 단면적 4 cm²·길이 30 cm는 예시. 밸브는 닫혀 있고 마찰은 없다고 단순화했어요. 실제 펌프는 압축이 느리고 금속 통으로 열이 빠져 이 값보다 덜 뜨거워져요(확실하지 않음). 열 교환 슬라이더는 n=1+(γ−1)(1−k)로 단열(0)과 등온(1) 사이를 잇는 근사 모델입니다.');
+ api.setStatus&&api.setStatus(S.phase==='ready'?'예측을 고른 뒤 ② 펌프 누르기':S.phase==='open'?'압축 중…':'압축 끝');
+}
+function dCmp(api){
+ const P=api.P,m=cModel(P.rc,P.tc0,P.pc0),tt=(S.t%6)/6,s=tt<.5?tt*2:2-tt*2,rs=1+s*(m.rEnd-1);
+ const A=PH.st(m.mol,m.T1,m.P1,m.V1,rs,1),B=PH.st(m.mol,m.T1,m.P1,m.V1,rs,GAM),FA=PH.st(m.mol,m.T1,m.P1,m.V1,m.rEnd,1),FB=PH.st(m.mol,m.T1,m.P1,m.V1,m.rEnd,GAM);
+ stepParts(S.dt,(A.T+B.T)/2);S.dt=0;const sc=Math.max(Math.abs(FA.W),Math.abs(FB.W),Math.abs(FA.dU),Math.abs(FB.dU),Math.abs(FA.Q),1e-6),ctx=begin(api),fr=rs/Math.max(1,m.rEnd);
+ txt(ctx,'등온 (T 일정)',120,34,COL.a,17,700,'center');txt(ctx,'단열 (Q = 0)',370,34,COL.b,17,700,'center');
+ drawCyl(ctx,120,300,100,200,fr,A.T,{rod:30});drawCyl(ctx,370,300,100,200,fr,B.T,{rod:30});
+ txt(ctx,(A.T-K0).toFixed(1)+' °C',120,324,'#fff',15,700,'center');txt(ctx,(B.T-K0).toFixed(1)+' °C',370,324,'#fff',15,700,'center');
+ ledger(ctx,10,350,240,A,sc,'등온 장부',false);ledger(ctx,260,350,240,B,sc,'단열 장부',false);
+ txt(ctx,'같은 부피 변화 V₂/V₁ = '+P.rc.toFixed(1),520,40,COL.text,17,700);
+ txt(ctx,'|W| 등온 / 단열 = '+(Math.abs(FB.W)>1e-9?(Math.abs(FA.W)/Math.abs(FB.W)).toFixed(2):'—'),520,70,COL.ok,15,700);
+ txt(ctx,'등온: ΔU = 0 → Q = W',520,105,COL.a,15,700);txt(ctx,'단열: Q = 0 → ΔU = −W',520,135,COL.b,15,700);
+ pvChart(ctx,520,160,460,440,{x1:m.V1*1e3,y1:m.P1/ATM,noIso:true,xd:1,curves:[{n:1,x2:m.V1*1e3*m.rEnd,col:COL.a,fill:'rgba(127,214,255,.22)'},{n:GAM,x2:m.V1*1e3*m.rEnd,col:COL.b,fill:'rgba(255,180,84,.22)'}],cur:[{x:A.V*1e3,y:A.P/ATM,col:COL.a},{x:B.V*1e3,y:B.P/ATM,col:COL.b}],xl:'부피 (L)',yl:'압력 (atm)',hint:'파랑 = 등온 · 주황 = 단열 · 넓이 = 일 W'});
+ ctx.restore();
+ api.setReadout([['부피비 V₂/V₁',P.rc.toFixed(1)],['등온 최종 T',(FA.T-K0).toFixed(1)+' °C'],['단열 최종 T',(FB.T-K0).toFixed(1)+' °C'],['등온 W',fj(FA.W)],['단열 W',fj(FB.W)],['단열 ΔU',fj(FB.dU)],['등온 Q',fj(FA.Q)]]);
+ api.setNote('공기 γ=1.4 가정, 처음 부피 1 L는 예시. 두 과정 모두 준정적(천천히 평형을 유지하며 진행)인 이상 모델이에요. 장부 막대는 두 과정의 최종 값 중 최댓값 기준으로 같은 눈금입니다.');
+ api.setStatus&&api.setStatus('피스톤이 처음↔끝을 6초 주기로 왕복');
+}
+const DRAW={bottle:dBottle,pump:dPump,cmp:dCmp};
+const SIM={
+ enter(api){S.phase='ready';S.s=0;S.pred=null;S.t=0;S.sig='';buildUI(api);api.setPlaying&&api.setPlaying(true);},
+ reset(api){S.phase='ready';S.s=0;S.pred=null;S.t=0;buildUI(api);api.refresh&&api.refresh();},
+ update(api){const P=api.P,id=api.scenario.id,g=id==='bottle'?[P.pb_i,P.tb_i,P.leak_b]:id==='pump'?[P.lf_p,P.t0_p,P.leak_p]:[P.rc,P.tc0,P.pc0],sg=id+g.join('|');if(sg!==S.sig){S.sig=sg;if(id!=='cmp'){S.phase='ready';S.s=0;setMsg('');}}(DRAW[id]||dBottle)(api);},
+ frame(api,dt){const pl=typeof api.playing==='function'?api.playing():api.playing;if(pl===false)return;dt=Math.min(dt,1/30);S.dt=dt;S.t+=dt;const id=api.scenario.id;
+  if(id!=='cmp'&&S.phase==='open'){S.s=Math.min(1,S.s+dt/2.8);if(S.s>=1){S.phase='done';finish(api);}}(DRAW[id]||dBottle)(api);},
+ tests(){
+  const T=[],rel=function(a,b){return Math.abs(a-b)/Math.max(Math.abs(b),1e-12);};
+  const mol=0.01,T1=300,P1=1e5;
+  const numW=function(r,n){const N=20000;let s=0;for(let i=0;i<N;i++){const v0=1+(r-1)*i/N,v1=1+(r-1)*(i+1)/N;s+=0.5*(Math.pow(v0,-n)+Math.pow(v1,-n))*(v1-v0);}return mol*R_GAS*T1*s;};
+  {const r=2.3,n=GAM,Pf=PH.P2(P1,r,n),Tf=PH.T2(T1,r,n);T.push(['단열: PV/T 일정 (이상기체 상태방정식과 일치)',rel(Pf*r/P1,Tf/T1)<1e-12,'P₂V₂/(P₁V₁) = T₂/T₁']);T.push(['단열: P V^γ = 일정',rel(Pf*Math.pow(r,GAM)/P1,1)<1e-12,'']);}
+  [[0.4,0],[2.5,0],[0.4,1],[2.5,1],[2,0.5],[0.6,0.3]].forEach(function(c){const r=c[0],n=PH.nIdx(c[1]);T.push(['일 W = ∫P dV 수치적분 대조 (r='+r+', 열교환 '+c[1]+')',rel(PH.W(mol,T1,r,n),numW(r,n))<1e-6,'사다리꼴 20000 구간, 상대오차 < 1e-6']);});
+  {const n=GAM,r=2,W=PH.W(mol,T1,r,n),dU=PH.dU(mol,T1,r,n);T.push(['단열: Q = ΔU + W = 0 (ΔU = −W)',Math.abs(W+dU)<1e-9*Math.abs(W),'']);}
+  {const n=1,r=2,W=PH.W(mol,T1,r,n),dU=PH.dU(mol,T1,r,n);T.push(['등온: ΔU = 0, Q = W = nRT ln r',Math.abs(dU)<1e-12&&rel(W,mol*R_GAS*T1*Math.log(2))<1e-12,'']);}
+  {const a=PH.W(mol,T1,2,PH.nIdx(1-1e-6)),b=PH.W(mol,T1,2,1);T.push(['열교환 → 1 극한에서 W 연속 (n→1)',rel(a,b)<1e-4,'']);}
+  {const e=PH.T2(300,2,PH.nIdx(0.2))<PH.T2(300,2,PH.nIdx(0.8)),c=PH.T2(300,0.5,PH.nIdx(0.2))>PH.T2(300,0.5,PH.nIdx(0.8));T.push(['열교환이 클수록: 팽창 시 덜 식고, 압축 시 덜 뜨거워짐',e&&c,'단조성']);}
+  {const T0=278.15,x=T0*Math.pow(0.4,(GAM-1)/GAM),m=bModel(2.5,5,0),f=PH.st(m.mol,m.T1,m.P1,m.V1,m.rEnd,m.n);T.push(['병뚜껑(2.5→1 atm, 5 °C): T₂ = T₁(P₂/P₁)^((γ−1)/γ) 해석해 대조',rel(f.T,x)<1e-9,'T₂ ≈ '+(x-K0).toFixed(1)+' °C']);}
+  {const m0=bModel(2.5,5,0),m1=bModel(2.5,5,1);T.push(['응결 판정: 단열이면 과포화(김), 등온이면 아님',fogS(m0,PH.st(m0.mol,m0.T1,m0.P1,m0.V1,m0.rEnd,m0.n).T)>1&&fogS(m1,m1.T1)<1,'']);}
+  {const e=PH.st(1,300,1e5,1e-3,2,GAM),c=PH.st(1,300,1e5,1e-3,0.5,GAM);T.push(['부호: 팽창 W>0, ΔU<0 / 압축 W<0, ΔU>0',e.W>0&&e.dU<0&&c.W<0&&c.dU>0,'교과서: W>0 이면 기체가 일을 함']);}
+  {let ok=true;[1.5,4].forEach(function(pb){[0,30].forEach(function(tb){[0,1].forEach(function(k){const m=bModel(pb,tb,k),f=PH.st(m.mol,m.T1,m.P1,m.V1,m.rEnd,m.n);[f.T,f.P,f.W,f.dU,f.Q,fogS(m,f.T)].forEach(function(v){if(!isFinite(v))ok=false;});});});});
+   [12,28].forEach(function(L){[10,35].forEach(function(t){[0,1].forEach(function(k){const m=pModel(L,t,k),f=PH.st(m.mol,m.T1,m.P1,m.V1,m.rEnd,m.n);[f.T,f.P,f.W,f.dU,f.Q].forEach(function(v){if(!isFinite(v))ok=false;});});});});
+   [0.4,1,2.5].forEach(function(r){const m=cModel(r,20,1);[1,GAM].forEach(function(n){const f=PH.st(m.mol,m.T1,m.P1,m.V1,r,n);[f.T,f.P,f.W,f.dU,f.Q].forEach(function(v){if(!isFinite(v))ok=false;});});});
+   T.push(['슬라이더 양 끝값에서 NaN/Infinity 없음',ok,'']);}
+  return T;
+ }
+};
+
+</script>
+<script>
+"use strict";
+/* ============================ 공용 UI 프레임워크 (템플릿) ============================ */
+(function () {
+  const C = WS_CONFIG;
+  const $ = (id) => document.getElementById(id);
+  const P = {};
+  const ui = { tab: C.tabs[0].id, scenarioId: null, playing: false };
+  const lastScenarioOfTab = {};
+
+  function addDefaults(params) { (params || []).forEach(p => { if (!(p.key in P)) P[p.key] = p.value; }); }
+  C.scenarios.forEach(s => { addDefaults(s.params); addDefaults(s.choices); });
+  if (C.common_params) addDefaults(C.common_params.params);
+
+  function current() { return C.scenarios.find(s => s.id === ui.scenarioId); }
+  function scenariosOfTab(tab) { return C.scenarios.filter(s => s.tab === tab); }
+  function fmtVal(v, unit) {
+    if (!unit) return String(v);
+    return /^[°%′″]/.test(unit) ? v + unit : v + " " + unit;
+  }
+
+  function showError(where, e) {
+    const box = $("simError");
+    box.hidden = false;
+    box.textContent = "시뮬레이션 오류 (" + where + "): " + (e && e.message ? e.message : e);
+    console.error(e);
+  }
+  const SIMOBJ = (typeof SIM !== "undefined") ? SIM : null;
+  function call(hook, ...args) {
+    if (!SIMOBJ || typeof SIMOBJ[hook] !== "function") return undefined;
+    try { return SIMOBJ[hook](api, ...args); } catch (e) { showError(hook, e); return undefined; }
+  }
+
+  /* ---------- 렌더러 ---------- */
+  const wrap = $("sceneWrap");
+  const api = {
+    config: C, P,
+    get scenario() { return current(); },
+    get tab() { return ui.tab; },
+    get playing() { return ui.playing; },
+    setPlaying(b) { ui.playing = !!b; updatePlayButton(); },
+    boxHalf: (C.scene && C.scene.box_half) || 16,
+    sceneEl: wrap,
+    THREE: window.THREE || null,
+    scene: null, camera: null, renderer: null, controls: null,
+    canvas: null, ctx: null, width: 0, height: 0,
+    custom: $("customPanel"),
+    chart: {
+      canvas: $("chartCanvas"),
+      ctx: $("chartCanvas").getContext("2d"),
+      setHint(html) { $("chartHint").innerHTML = html; },
+    },
+    setReadout(rows) {
+      const tbl = $("readout");
+      tbl.innerHTML = "";
+      (rows || []).forEach(r => {
+        const tr = document.createElement("tr");
+        const a = document.createElement("td"); a.textContent = r[0];
+        const b = document.createElement("td"); b.textContent = r[1];
+        tr.append(a, b); tbl.appendChild(tr);
+      });
+    },
+    setNote(text) { $("readoutNote").textContent = text || ""; },
+    setStatus(text) { const el = $("wsStatus"); if (el) el.textContent = text || ""; },
+    setParam(key, v) {
+      P[key] = v;
+      const el = $("p_" + key); if (el) el.value = v;
+      const vEl = $("p_" + key + "_val"); if (vEl) vEl.textContent = fmtVal(v, vEl.dataset.unit);
+    },
+    refresh() { call("update"); },
+  };
+
+  function initRenderer() {
+    const sc = C.scene || {};
+    if (C.renderer === "three") {
+      if (!window.THREE) { showError("init", "Three.js를 불러오지 못했습니다 (인터넷 연결 확인)"); return false; }
+      const T = window.THREE;
+      api.scene = new T.Scene();
+      api.camera = new T.PerspectiveCamera(45, wrap.clientWidth / wrap.clientHeight, 0.1, 500);
+      const cp = sc.camera || [26, 20, 30];
+      api.camera.position.set(cp[0], cp[1], cp[2]);
+      api.renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
+      api.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      wrap.insertBefore(api.renderer.domElement, wrap.firstChild);
+      api.controls = new T.OrbitControls(api.camera, api.renderer.domElement);
+      api.controls.enableDamping = true;
+      api.controls.dampingFactor = 0.08;
+      api.controls.target.set(0, 0, 0);
+      api.scene.add(new T.AmbientLight(0xffffff, 0.55));
+      const dl = new T.DirectionalLight(0xffffff, 0.9);
+      dl.position.set(20, 30, 15);
+      api.scene.add(dl);
+      if (sc.grid !== false) api.scene.add(new T.GridHelper(api.boxHalf * 2, 16, 0x3a5a8a, 0x1f3352));
+      if (sc.axes !== false) api.scene.add(new T.AxesHelper(api.boxHalf * 0.6));
+    } else {
+      api.canvas = document.createElement("canvas");
+      wrap.insertBefore(api.canvas, wrap.firstChild);
+      api.ctx = api.canvas.getContext("2d");
+    }
+    window.addEventListener("resize", onResize);
+    onResize();
+    return true;
+  }
+
+  function onResize() {
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    api.width = w; api.height = h;
+    if (api.renderer) {
+      api.camera.aspect = w / h;
+      api.camera.updateProjectionMatrix();
+      api.renderer.setSize(w, h);
+    } else if (api.canvas) {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      api.canvas.width = Math.round(w * dpr);
+      api.canvas.height = Math.round(h * dpr);
+      api.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (ui.scenarioId) call("update");
+    }
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    if (api.controls) api.controls.update();
+    call("frame", 1 / 60);
+    if (api.renderer) api.renderer.render(api.scene, api.camera);
+  }
+
+  /* ---------- UI ---------- */
+  function renderTabs() {
+    const box = $("tabs");
+    box.innerHTML = "";
+    box.hidden = C.tabs.length < 2;
+    C.tabs.forEach(t => {
+      const b = document.createElement("button");
+      b.textContent = t.label;
+      b.className = t.id === ui.tab ? "active" : "";
+      b.addEventListener("click", () => switchTab(t.id));
+      box.appendChild(b);
+    });
+  }
+
+  function renderPicker() {
+    const box = $("scenarioPicker");
+    const list = scenariosOfTab(ui.tab);
+    box.innerHTML = "";
+    box.hidden = list.length < 2;
+    list.forEach(s => {
+      const b = document.createElement("button");
+      b.textContent = s.name;
+      b.className = s.id === ui.scenarioId ? "active" : "";
+      b.addEventListener("click", () => selectScenario(s.id));
+      box.appendChild(b);
+    });
+  }
+
+  function sliderEl(p) {
+    const div = document.createElement("div");
+    div.className = "param";
+    const label = document.createElement("label");
+    label.textContent = p.label + " ";
+    const val = document.createElement("span");
+    val.className = "val"; val.id = "p_" + p.key + "_val"; val.dataset.unit = p.unit || "";
+    val.textContent = fmtVal(P[p.key], p.unit);
+    label.appendChild(val);
+    const inp = document.createElement("input");
+    inp.type = "range"; inp.id = "p_" + p.key;
+    inp.min = p.min; inp.max = p.max; inp.step = p.step; inp.value = P[p.key];
+    inp.addEventListener("input", () => {
+      const v = parseFloat(inp.value);
+      P[p.key] = v;
+      val.textContent = fmtVal(v, p.unit);
+      call("update");
+    });
+    div.append(label, inp);
+    return div;
+  }
+
+  function choiceEl(c) {
+    const row = document.createElement("div");
+    row.className = "row"; row.style.marginBottom = "8px";
+    if (c.label) { const l = document.createElement("b"); l.style.fontSize = "0.9em"; l.textContent = c.label; row.appendChild(l); }
+    c.options.forEach(o => {
+      const b = document.createElement("button");
+      b.textContent = o.label;
+      b.className = P[c.key] === o.value ? "primary" : "";
+      b.addEventListener("click", () => {
+        P[c.key] = o.value;
+        row.querySelectorAll("button").forEach(x => x.className = "");
+        b.className = "primary";
+        call("update");
+      });
+      row.appendChild(b);
+    });
+    return row;
+  }
+
+  function renderControls() {
+    const s = current();
+    const body = $("scenarioBody");
+    body.innerHTML = "";
+    if (s.desc || s.section) {
+      const p = document.createElement("p");
+      p.className = "hint"; p.style.marginBottom = "10px";
+      if (s.section) { const b = document.createElement("b"); b.textContent = s.section; p.appendChild(b); if (s.desc) p.appendChild(document.createTextNode(" — ")); }
+      if (s.desc) p.appendChild(document.createTextNode(s.desc));
+      body.appendChild(p);
+    }
+    (s.choices || []).forEach(c => body.appendChild(choiceEl(c)));
+    (s.params || []).forEach(p => body.appendChild(sliderEl(p)));
+    if (s.animated) {
+      const st = document.createElement("div");
+      st.className = "hint"; st.id = "wsStatus";
+      st.textContent = s.status_hint || "";
+      body.appendChild(st);
+      const row = document.createElement("div");
+      row.className = "controls-row";
+      const play = document.createElement("button");
+      play.id = "playBtn"; play.className = "primary";
+      play.addEventListener("click", () => { ui.playing = !ui.playing; updatePlayButton(); });
+      const reset = document.createElement("button");
+      reset.textContent = "↺ 리셋";
+      reset.addEventListener("click", () => { ui.playing = false; updatePlayButton(); call("reset"); call("update"); });
+      row.append(play, reset);
+      body.appendChild(row);
+      updatePlayButton();
+    }
+    const cp = C.common_params;
+    if (cp && s.use_common !== false) {
+      const hr = document.createElement("hr");
+      hr.style.cssText = "margin:10px 0;border:none;border-top:1px solid var(--border)";
+      body.appendChild(hr);
+      if (cp.title) { const b = document.createElement("b"); b.style.fontSize = "0.9em"; b.textContent = cp.title; body.appendChild(b); }
+      cp.params.forEach(p => body.appendChild(sliderEl(p)));
+    }
+  }
+
+  function updatePlayButton() {
+    const b = $("playBtn");
+    if (b) b.textContent = ui.playing ? "⏸ 일시정지" : "▶ 재생";
+  }
+
+  function renderFormula() {
+    const s = current();
+    const body = $("formulaBody");
+    body.innerHTML = (s.formula || []).map(f =>
+      (f.eq_html ? `<div class="eq">${f.eq_html}</div>` : "") + (f.text_html || "")
+    ).join("");
+  }
+
+  function renderMisconception() {
+    const s = current();
+    const panel = $("misconceptionPanel");
+    panel.innerHTML = "";
+    panel.hidden = !s.misconception;
+    if (!s.misconception) return;
+    const box = document.createElement("div");
+    box.className = "misconception";
+    const b = document.createElement("b");
+    b.textContent = s.misconception_title || "💡 흔한 오개념";
+    box.append(b, document.createElement("br"), document.createTextNode(s.misconception));
+    panel.appendChild(box);
+  }
+
+  function enterScenario() {
+    ui.playing = false;
+    const s = current();
+    $("graphPanel").hidden = !s.chart;
+    $("chartHint").innerHTML = "";
+    api.custom.innerHTML = "";
+    api.setReadout([]); api.setNote("");
+    renderPicker(); renderControls(); renderFormula(); renderMisconception();
+    call("enter");
+    call("update");
+  }
+
+  function selectScenario(id) {
+    ui.scenarioId = id;
+    lastScenarioOfTab[ui.tab] = id;
+    enterScenario();
+  }
+
+  function switchTab(tab) {
+    ui.tab = tab;
+    renderTabs();
+    selectScenario(lastScenarioOfTab[tab] || scenariosOfTab(tab)[0].id);
+  }
+
+  function renderLegend() {
+    const box = $("legend");
+    (C.legend || []).forEach(l => {
+      const span = document.createElement("span");
+      const sw = document.createElement("i");
+      sw.className = "swatch" + (l.shape === "bar" ? " bar" : "");
+      sw.style.background = l.color;
+      span.append(sw, document.createTextNode(l.label));
+      box.appendChild(span);
+    });
+  }
+
+  function runSelfTests() {
+    if (!SIMOBJ || typeof SIMOBJ.tests !== "function") { console.log("물리 검증 항목 없음"); return; }
+    let results = [];
+    try { results = SIMOBJ.tests() || []; } catch (e) { showError("tests", e); return; }
+    console.log("=== " + C.title + " 물리 검증 ===");
+    let pass = 0;
+    for (const [name, ok, detail] of results) {
+      console.log(`[${ok ? "PASS" : "FAIL"}] ${name}${detail ? " — " + detail : ""}`);
+      if (ok) pass++;
+    }
+    console.log(pass === results.length ? "모든 검증 통과" : "일부 검증 실패 — 콘솔 확인 필요");
+    window.__wsSelfTest = { pass, total: results.length };
+  }
+
+  /* ---------- 시작 ---------- */
+  $("readoutTitle").textContent = C.readout_title || "측정값";
+  $("hoverHint").textContent = (C.scene && C.scene.hint != null) ? C.scene.hint
+    : (C.renderer === "three" ? "마우스 드래그: 회전 · 휠: 확대/축소" : "");
+  $("projectorBtn").addEventListener("click", () => document.body.classList.toggle("projector"));
+  renderLegend();
+  if (!SIMOBJ) showError("load", "sim_js에 SIM 객체가 정의되지 않았습니다");
+  if (initRenderer()) {
+    call("init");
+    renderTabs();
+    switchTab(ui.tab);
+    animate();
+  }
+  runSelfTests();
+})();
+</script>
+
+</body>
+</html>
+<!--claude-meta
+category: 열과 에너지
+slug: adiabatic-bottle-pump
+icon: 🍾
+title: 열역학 제1법칙 — 병뚜껑·자전거 펌프의 단열 과정
+desc: 병뚜껑을 열 때(단열 팽창)와 자전거 펌프를 누를 때(단열 압축)를 Q·ΔU·W 장부와 P-V 그래프로 확인 (Q=ΔU+W, 물리학)
+-->

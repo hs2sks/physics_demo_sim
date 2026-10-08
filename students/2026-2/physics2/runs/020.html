@@ -1,0 +1,934 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>h1 { color: #1f6fd6; }</style></head><body><!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3515 이준호 - 물리학Ⅰ 취약문항 클리닉 시뮬레이션</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter & Noto Sans KR -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border-radius: 0.75rem;
+        }
+        .tab-btn.active {
+            background-color: #3b82f6;
+            color: #ffffff;
+            box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.39);
+        }
+        /* Custom scrollbar for sleek dark look */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-slate-900/90 border-b border-slate-800 sticky top-0 z-50 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-600 text-white p-2.5 rounded-xl shadow-lg shadow-blue-500/30">
+                    <i class="fa-solid fa-atom text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                        취약 문항 클리닉 시뮬레이터
+                        <span class="text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full">물리학Ⅱ 수행평가</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">학번: <span class="text-slate-200 font-medium">3515</span> | 이름: <span class="text-slate-200 font-medium">이준호</span></p>
+                </div>
+            </div>
+
+            <!-- Tab Switcher -->
+            <div class="flex bg-slate-800/80 p-1 rounded-xl border border-slate-700">
+                <button id="tab1-btn" onclick="switchTab(1)" class="tab-btn active px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 flex items-center gap-2">
+                    <i class="fa-solid fa-water"></i>
+                    <span>문항 1: 파동의 굴절 & 전반사</span>
+                </button>
+                <button id="tab2-btn" onclick="switchTab(2)" class="tab-btn px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold text-slate-400 hover:text-slate-200 transition-all duration-200 flex items-center gap-2">
+                    <i class="fa-solid fa-magnet"></i>
+                    <span>문항 2: 직선 전류의 합성 자기장</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+
+        <!-- SECTION 1: Wave Refraction & Total Internal Reflection -->
+        <section id="section-1" class="space-y-6">
+            <!-- Alert / Concept Callout -->
+            <div class="bg-blue-950/40 border border-blue-800/60 rounded-xl p-4 flex items-start gap-3">
+                <i class="fa-solid fa-lightbulb text-amber-400 text-lg mt-0.5 flex-shrink-0"></i>
+                <div class="text-xs sm:text-sm text-slate-300">
+                    <strong class="text-blue-300 font-semibold block mb-1">💡 준호의 핵심 피드백 & 오답 방지 노하우</strong>
+                    "굴절각과 입사각은 수평 경계면이 아니라 **'수직 법선'**을 기준으로 측정해야 합니다! 법선 기준각($\theta$)을 확인하면 스넬의 법칙($n_A \sin\theta_A = n_B \sin\theta_B$)과 전반사 임계각($\sin\theta_c = n_B/n_A$)을 절대 헷갈리지 않습니다."
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Left Control Panel -->
+                <div class="lg:col-span-4 space-y-5 bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col justify-between">
+                    <div class="space-y-5">
+                        <div class="border-b border-slate-800 pb-3 flex justify-between items-center">
+                            <h2 class="font-bold text-slate-100 flex items-center gap-2 text-base">
+                                <i class="fa-solid fa-sliders text-blue-400"></i> 매질 및 파동 변수 설정
+                            </h2>
+                            <button onclick="resetSection1()" class="text-xs text-slate-400 hover:text-slate-200 transition">
+                                <i class="fa-solid fa-rotate-left mr-1"></i>초기화
+                            </button>
+                        </div>
+
+                        <!-- Slider: Medium A Refractive Index -->
+                        <div class="space-y-1.5">
+                            <div class="flex justify-between text-xs font-medium">
+                                <span class="text-sky-300">매질 A 굴절률 ($n_A$)</span>
+                                <span id="val-nA" class="text-slate-200 font-bold">1.50</span>
+                            </div>
+                            <input type="range" id="slider-nA" min="1.00" max="2.50" step="0.05" value="1.50" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500" oninput="updateRefraction()">
+                            <div class="flex justify-between text-[10px] text-slate-500">
+                                <span>공기(1.0)</span>
+                                <span>물(1.33)</span>
+                                <span>유리(1.5)</span>
+                                <span>다이아몬드(2.42)</span>
+                            </div>
+                        </div>
+
+                        <!-- Slider: Medium B Refractive Index -->
+                        <div class="space-y-1.5">
+                            <div class="flex justify-between text-xs font-medium">
+                                <span class="text-emerald-300">매질 B 굴절률 ($n_B$)</span>
+                                <span id="val-nB" class="text-slate-200 font-bold">1.00</span>
+                            </div>
+                            <input type="range" id="slider-nB" min="1.00" max="2.50" step="0.05" value="1.00" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500" oninput="updateRefraction()">
+                            <div class="flex justify-between text-[10px] text-slate-500">
+                                <span>공기(1.0)</span>
+                                <span>물(1.33)</span>
+                                <span>유리(1.5)</span>
+                                <span>다이아몬드(2.42)</span>
+                            </div>
+                        </div>
+
+                        <!-- Slider: Incident Angle (Measured from Normal) -->
+                        <div class="space-y-1.5 pt-2 border-t border-slate-800">
+                            <div class="flex justify-between text-xs font-medium">
+                                <span class="text-amber-300">입사각 $\theta_A$ (법선 기준)</span>
+                                <span id="val-thetaA" class="text-amber-400 font-bold">45.0°</span>
+                            </div>
+                            <input type="range" id="slider-thetaA" min="0" max="85" step="0.5" value="45.0" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500" oninput="updateRefraction()">
+                        </div>
+
+                        <!-- Checkbox Toggle: Show Boundary Angle Mistake Helper -->
+                        <div class="bg-slate-800/60 p-3 rounded-xl border border-slate-700/80 space-y-2">
+                            <label class="flex items-center gap-2 text-xs font-medium text-slate-200 cursor-pointer">
+                                <input type="checkbox" id="check-show-boundary-angle" class="rounded bg-slate-700 border-slate-600 text-blue-500 focus:ring-blue-500 w-4 h-4" onchange="updateRefraction()" checked>
+                                <span>경계면 기준각(학생 오답 원인) 함께 표시</span>
+                            </label>
+                            <p class="text-[11px] text-slate-400 pl-6 leading-tight">
+                                체크 시 법선 기준각($\theta_A$)과 내가 실수했던 경계면 기준각($90^\circ - \theta_A$)을 비교 표시합니다.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Real-time Numerical Physics Output Card -->
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
+                        <div class="text-slate-400 font-semibold text-[11px] uppercase tracking-wider mb-1 flex items-center justify-between">
+                            <span>계산 결과 데이터</span>
+                            <span id="badge-status" class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">굴절 발생</span>
+                        </div>
+                        <div class="flex justify-between py-1 border-b border-slate-800/60">
+                            <span class="text-slate-400">임계각 ($\theta_c$):</span>
+                            <span id="res-critical" class="font-mono text-cyan-300 font-bold">41.81°</span>
+                        </div>
+                        <div class="flex justify-between py-1 border-b border-slate-800/60">
+                            <span class="text-slate-400">굴절각 ($\theta_B$):</span>
+                            <span id="res-refracted" class="font-mono text-emerald-400 font-bold">없음 (전반사)</span>
+                        </div>
+                        <div class="flex justify-between py-1 border-b border-slate-800/60">
+                            <span class="text-slate-400">파장 및 속력 비 ($v_A/v_B = \lambda_A/\lambda_B$):</span>
+                            <span id="res-ratio" class="font-mono text-indigo-300 font-bold">0.67</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Canvas & Visualizer -->
+                <div class="lg:col-span-8 bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between shadow-xl min-h-[480px]">
+                    <div class="flex justify-between items-center mb-2 px-2">
+                        <span class="text-xs font-bold text-slate-300 flex items-center gap-2">
+                            <i class="fa-solid fa-eye text-blue-400"></i> 광선 시뮬레이션 및 파동 전달
+                        </span>
+                        <div class="flex gap-4 text-[11px]">
+                            <span class="flex items-center gap-1.5 text-sky-300"><span class="w-2.5 h-2.5 rounded-full bg-sky-400 inline-block"></span>매질 A ($n_A$)</span>
+                            <span class="flex items-center gap-1.5 text-emerald-300"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span>매질 B ($n_B$)</span>
+                        </div>
+                    </div>
+
+                    <!-- Canvas Container -->
+                    <div class="relative flex-1 w-full min-h-[380px] bg-slate-950 rounded-xl overflow-hidden border border-slate-800">
+                        <canvas id="canvas1"></canvas>
+                        <!-- Dynamic Overlay Alert for Total Reflection -->
+                        <div id="tir-overlay" class="absolute top-4 right-4 bg-amber-500/20 border border-amber-500/40 backdrop-blur-md text-amber-300 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-2 hidden animate-pulse">
+                            <i class="fa-solid fa-bolt text-amber-400"></i> 전반사(Total Internal Reflection) 조건 만족!
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: Magnetic Field from Straight Currents -->
+        <section id="section-2" class="space-y-6 hidden">
+            <!-- Alert / Concept Callout -->
+            <div class="bg-indigo-950/40 border border-indigo-800/60 rounded-xl p-4 flex items-start gap-3">
+                <i class="fa-solid fa-compass text-indigo-400 text-lg mt-0.5 flex-shrink-0"></i>
+                <div class="text-xs sm:text-sm text-slate-300">
+                    <strong class="text-indigo-300 font-semibold block mb-1">💡 준호의 핵심 피드백 & 오답 방지 노하우</strong>
+                    "직선 도선 자기장은 크기($B = k \frac{I}{r}$)뿐만 아니라 **앙페르 오른손 법칙에 따른 방향 부호($+y, -y$)**를 함께 고려해 벡터합을 계산해야 합니다! 두 도선 사이에 자기장이 0이 되는 지점을 확인해 보세요."
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Left Control Panel -->
+                <div class="lg:col-span-4 space-y-5 bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col justify-between">
+                    <div class="space-y-5">
+                        <div class="border-b border-slate-800 pb-3 flex justify-between items-center">
+                            <h2 class="font-bold text-slate-100 flex items-center gap-2 text-base">
+                                <i class="fa-solid fa-sliders text-indigo-400"></i> 도선 전류 변수 설정
+                            </h2>
+                            <button onclick="resetSection2()" class="text-xs text-slate-400 hover:text-slate-200 transition">
+                                <i class="fa-solid fa-rotate-left mr-1"></i>초기화
+                            </button>
+                        </div>
+
+                        <!-- Wire A Settings -->
+                        <div class="bg-slate-800/40 p-3.5 rounded-xl border border-slate-700/60 space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs font-bold text-sky-400 flex items-center gap-1.5">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-sky-400"></span> 도선 A (위치 $x = -200$)
+                                </span>
+                                <button id="btn-dirA" onclick="toggleDir('A')" class="px-2.5 py-1 rounded bg-slate-700 hover:bg-slate-600 text-xs font-bold text-slate-200 border border-slate-600 transition flex items-center gap-1">
+                                    <span id="symbol-dirA" class="text-cyan-400">⊙</span>
+                                    <span id="text-dirA">나오는 방향 (+z)</span>
+                                </button>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-slate-400">전류 세기 ($I_A$)</span>
+                                    <span id="val-IA" class="text-sky-300 font-bold">4.0 A</span>
+                                </div>
+                                <input type="range" id="slider-IA" min="0" max="10" step="0.5" value="4.0" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sky-400" oninput="updateMagneticField()">
+                            </div>
+                        </div>
+
+                        <!-- Wire B Settings -->
+                        <div class="bg-slate-800/40 p-3.5 rounded-xl border border-slate-700/60 space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs font-bold text-rose-400 flex items-center gap-1.5">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span> 도선 B (위치 $x = +200$)
+                                </span>
+                                <button id="btn-dirB" onclick="toggleDir('B')" class="px-2.5 py-1 rounded bg-slate-700 hover:bg-slate-600 text-xs font-bold text-slate-200 border border-slate-600 transition flex items-center gap-1">
+                                    <span id="symbol-dirB" class="text-rose-400">⊗</span>
+                                    <span id="text-dirB">들어가는 방향 (-z)</span>
+                                </button>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-slate-400">전류 세기 ($I_B$)</span>
+                                    <span id="val-IB" class="text-rose-300 font-bold">4.0 A</span>
+                                </div>
+                                <input type="range" id="slider-IB" min="0" max="10" step="0.5" value="4.0" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-rose-400" oninput="updateMagneticField()">
+                            </div>
+                        </div>
+
+                        <!-- Test Point P Slider -->
+                        <div class="space-y-1.5 pt-2 border-t border-slate-800">
+                            <div class="flex justify-between text-xs font-medium">
+                                <span class="text-amber-300">관찰점 P 위치 ($x$)</span>
+                                <span id="val-posX" class="text-amber-400 font-bold">x = 0</span>
+                            </div>
+                            <input type="range" id="slider-posX" min="-400" max="400" step="10" value="0" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500" oninput="updateMagneticField()">
+                        </div>
+                    </div>
+
+                    <!-- Real-time Numerical Physics Output Card -->
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
+                        <div class="text-slate-400 font-semibold text-[11px] uppercase tracking-wider mb-1 flex items-center justify-between">
+                            <span>관찰점 P 계산 결과</span>
+                            <span id="badge-zero-point" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">자기장 = 0 지점 찾기</span>
+                        </div>
+                        <div class="flex justify-between py-1 border-b border-slate-800/60">
+                            <span class="text-sky-300">도선 A 자기장 ($B_A$):</span>
+                            <span id="res-BA" class="font-mono text-sky-400 font-bold">+0.020 T</span>
+                        </div>
+                        <div class="flex justify-between py-1 border-b border-slate-800/60">
+                            <span class="text-rose-300">도선 B 자기장 ($B_B$):</span>
+                            <span id="res-BB" class="font-mono text-rose-400 font-bold">-0.020 T</span>
+                        </div>
+                        <div class="flex justify-between py-1 border-b border-slate-800/60">
+                            <span class="text-amber-300 font-bold">합성 자기장 ($B_{total}$):</span>
+                            <span id="res-Btotal" class="font-mono text-amber-300 font-bold">0.000 T</span>
+                        </div>
+                        <div class="flex justify-between py-1">
+                            <span class="text-slate-400">자기장이 0인 x 위치:</span>
+                            <span id="res-zeroPos" class="font-mono text-emerald-400 font-bold">x = 0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Canvas & Visualizer -->
+                <div class="lg:col-span-8 bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between shadow-xl min-h-[480px]">
+                    <div class="flex justify-between items-center mb-2 px-2">
+                        <span class="text-xs font-bold text-slate-300 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-indigo-400"></i> $x$축 위치별 합성 자기장 분포 및 벡터 시각화
+                        </span>
+                        <div class="flex gap-4 text-[11px]">
+                            <span class="flex items-center gap-1.5 text-sky-300"><span class="w-2.5 h-2.5 rounded-full bg-sky-400 inline-block"></span>$B_A$ 벡터</span>
+                            <span class="flex items-center gap-1.5 text-rose-300"><span class="w-2.5 h-2.5 rounded-full bg-rose-400 inline-block"></span>$B_B$ 벡터</span>
+                            <span class="flex items-center gap-1.5 text-amber-300"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span>$B_{total}$ 벡터</span>
+                        </div>
+                    </div>
+
+                    <!-- Canvas Container -->
+                    <div class="relative flex-1 w-full min-h-[380px] bg-slate-950 rounded-xl overflow-hidden border border-slate-800">
+                        <canvas id="canvas2"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        let currentTab = 1;
+
+        // State for Section 1 (Refraction)
+        let state1 = {
+            nA: 1.50,
+            nB: 1.00,
+            thetaADeg: 45.0,
+            showBoundaryAngle: true
+        };
+
+        // State for Section 2 (Magnetic Field)
+        let state2 = {
+            dirA: 1,  // +1: Out of page (⊙), -1: Into page (⊗)
+            dirB: -1, // -1: Into page (⊗)
+            IA: 4.0,
+            IB: 4.0,
+            posX: 0,
+            xA: -200,
+            xB: 200
+        };
+
+        // Canvas & Context references
+        let canvas1, ctx1;
+        let canvas2, ctx2;
+
+        window.onload = function() {
+            canvas1 = document.getElementById('canvas1');
+            ctx1 = canvas1.getContext('2d');
+            
+            canvas2 = document.getElementById('canvas2');
+            ctx2 = canvas2.getContext('2d');
+
+            window.addEventListener('resize', handleResize);
+            handleResize();
+
+            updateRefraction();
+            updateMagneticField();
+        };
+
+        function handleResize() {
+            if (canvas1) {
+                const rect1 = canvas1.parentElement.getBoundingClientRect();
+                canvas1.width = rect1.width * window.devicePixelRatio;
+                canvas1.height = rect1.height * window.devicePixelRatio;
+                ctx1.scale(window.devicePixelRatio, window.devicePixelRatio);
+                drawRefraction();
+            }
+
+            if (canvas2) {
+                const rect2 = canvas2.parentElement.getBoundingClientRect();
+                canvas2.width = rect2.width * window.devicePixelRatio;
+                canvas2.height = rect2.height * window.devicePixelRatio;
+                ctx2.scale(window.devicePixelRatio, window.devicePixelRatio);
+                drawMagneticField();
+            }
+        }
+
+        function switchTab(tabNum) {
+            currentTab = tabNum;
+            document.getElementById('tab1-btn').classList.toggle('active', tabNum === 1);
+            document.getElementById('tab2-btn').classList.toggle('active', tabNum === 2);
+            
+            document.getElementById('section-1').classList.toggle('hidden', tabNum !== 1);
+            document.getElementById('section-2').classList.toggle('hidden', tabNum !== 2);
+
+            setTimeout(handleResize, 50);
+        }
+
+        /* =========================================================================
+           SECTION 1: WAVE REFRACTION & TOTAL INTERNAL REFLECTION LOGIC
+           ========================================================================= */
+
+        function updateRefraction() {
+            state1.nA = parseFloat(document.getElementById('slider-nA').value);
+            state1.nB = parseFloat(document.getElementById('slider-nB').value);
+            state1.thetaADeg = parseFloat(document.getElementById('slider-thetaA').value);
+            state1.showBoundaryAngle = document.getElementById('check-show-boundary-angle').checked;
+
+            document.getElementById('val-nA').innerText = state1.nA.toFixed(2);
+            document.getElementById('val-nB').innerText = state1.nB.toFixed(2);
+            document.getElementById('val-thetaA').innerText = state1.thetaADeg.toFixed(1) + '°';
+
+            // Calculations
+            const thetaARad = state1.thetaADeg * Math.PI / 180;
+            let criticalAngleDeg = null;
+            let isTotalInternalReflection = false;
+            let thetaBDeg = null;
+
+            if (state1.nA > state1.nB) {
+                const sinCritical = state1.nB / state1.nA;
+                criticalAngleDeg = Math.asin(sinCritical) * 180 / Math.PI;
+                if (state1.thetaADeg > criticalAngleDeg) {
+                    isTotalInternalReflection = true;
+                }
+            }
+
+            if (!isTotalInternalReflection) {
+                const sinThetaB = (state1.nA / state1.nB) * Math.sin(thetaARad);
+                if (sinThetaB <= 1.0) {
+                    thetaBDeg = Math.asin(sinThetaB) * 180 / Math.PI;
+                } else {
+                    isTotalInternalReflection = true;
+                }
+            }
+
+            // Update UI Numerical Output
+            const resCriticalEl = document.getElementById('res-critical');
+            if (criticalAngleDeg !== null) {
+                resCriticalEl.innerText = criticalAngleDeg.toFixed(1) + '°';
+            } else {
+                resCriticalEl.innerText = '없음 (nA ≤ nB)';
+            }
+
+            const resRefractedEl = document.getElementById('res-refracted');
+            const overlayEl = document.getElementById('tir-overlay');
+            const badgeStatus = document.getElementById('badge-status');
+
+            if (isTotalInternalReflection) {
+                resRefractedEl.innerText = '전반사 (굴절파 소멸)';
+                resRefractedEl.className = 'font-mono text-amber-400 font-bold';
+                overlayEl.classList.remove('hidden');
+                badgeStatus.innerText = '⚡ 전반사 발생';
+                badgeStatus.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+            } else {
+                resRefractedEl.innerText = thetaBDeg.toFixed(1) + '°';
+                resRefractedEl.className = 'font-mono text-emerald-400 font-bold';
+                overlayEl.classList.add('hidden');
+                badgeStatus.innerText = '굴절 발생';
+                badgeStatus.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30';
+            }
+
+            const speedWavelengthRatio = state1.nB / state1.nA;
+            document.getElementById('res-ratio').innerText = speedWavelengthRatio.toFixed(2);
+
+            drawRefraction();
+        }
+
+        function drawRefraction() {
+            if (!canvas1 || !ctx1) return;
+
+            const w = canvas1.width / window.devicePixelRatio;
+            const h = canvas1.height / window.devicePixelRatio;
+
+            ctx1.clearRect(0, 0, w, h);
+
+            const centerY = h / 2;
+            const centerX = w / 2;
+
+            // Draw Background Mediums
+            // Top: Medium A
+            ctx1.fillStyle = 'rgba(14, 165, 233, 0.12)';
+            ctx1.fillRect(0, 0, w, centerY);
+            
+            // Bottom: Medium B
+            ctx1.fillStyle = 'rgba(16, 185, 129, 0.12)';
+            ctx1.fillRect(0, centerY, w, h - centerY);
+
+            // Medium Labels
+            ctx1.font = 'bold 12px "Noto Sans KR", sans-serif';
+            ctx1.fillStyle = '#38bdf8';
+            ctx1.fillText(`매질 A (nA = ${state1.nA.toFixed(2)})`, 20, 30);
+            
+            ctx1.fillStyle = '#34d399';
+            ctx1.fillText(`매질 B (nB = ${state1.nB.toFixed(2)})`, 20, centerY + 30);
+
+            // Boundary Line (경계면)
+            ctx1.strokeStyle = '#64748b';
+            ctx1.lineWidth = 2;
+            ctx1.beginPath();
+            ctx1.moveTo(0, centerY);
+            ctx1.lineTo(w, centerY);
+            ctx1.stroke();
+
+            // Normal Line (수직 법선) - Dashed
+            ctx1.strokeStyle = '#94a3b8';
+            ctx1.lineWidth = 1.5;
+            ctx1.setLineDash([5, 5]);
+            ctx1.beginPath();
+            ctx1.moveTo(centerX, 20);
+            ctx1.lineTo(centerX, h - 20);
+            ctx1.stroke();
+            ctx1.setLineDash([]); // Reset line dash
+
+            // Label "법선"
+            ctx1.fillStyle = '#94a3b8';
+            ctx1.font = '11px sans-serif';
+            ctx1.fillText('수직 법선', centerX + 8, 35);
+
+            // Physics angles setup
+            const thetaARad = state1.thetaADeg * Math.PI / 180;
+            const rayLength = Math.min(w, h) * 0.38;
+
+            // Incident Ray Source Point (Top Left region moving to centerX, centerY)
+            const srcX = centerX - rayLength * Math.sin(thetaARad);
+            const srcY = centerY - rayLength * Math.cos(thetaARad);
+
+            // Draw Incident Ray (입사광선)
+            ctx1.strokeStyle = '#f59e0b'; // Amber yellow
+            ctx1.lineWidth = 3;
+            ctx1.shadowBlur = 10;
+            ctx1.shadowColor = '#f59e0b';
+            ctx1.beginPath();
+            ctx1.moveTo(srcX, srcY);
+            ctx1.lineTo(centerX, centerY);
+            ctx1.stroke();
+            ctx1.shadowBlur = 0; // Reset shadow blur
+
+            // Draw arrow on incident ray
+            drawArrowHead(ctx1, (srcX + centerX)/2, (srcY + centerY)/2, Math.atan2(centerY - srcY, centerX - srcX), '#f59e0b');
+
+            // Draw Normal Angle Arc (법선 기준 입사각 θ_A)
+            drawAngleArc(ctx1, centerX, centerY, 40, -Math.PI/2 - thetaARad, -Math.PI/2, '#f59e0b', `θ_A = ${state1.thetaADeg.toFixed(1)}°`);
+
+            // Check for mistake helper angle (경계면 기준각)
+            if (state1.showBoundaryAngle) {
+                const boundaryAngleDeg = (90 - state1.thetaADeg).toFixed(1);
+                drawAngleArc(ctx1, centerX, centerY, 65, -Math.PI, -Math.PI/2 - thetaARad, '#ef4444', `경계면각 = ${boundaryAngleDeg}°`, true);
+            }
+
+            // Check Total Internal Reflection logic
+            let isTIR = false;
+            let thetaBRad = 0;
+
+            if (state1.nA > state1.nB) {
+                const sinCritical = state1.nB / state1.nA;
+                const criticalRad = Math.asin(sinCritical);
+                if (thetaARad > criticalRad) {
+                    isTIR = true;
+                }
+            }
+
+            if (!isTIR) {
+                const sinThetaB = (state1.nA / state1.nB) * Math.sin(thetaARad);
+                if (sinThetaB <= 1.0) {
+                    thetaBRad = Math.asin(sinThetaB);
+                } else {
+                    isTIR = true;
+                }
+            }
+
+            // Reflected Ray (반사광선) - Always exists, 100% intensity on TIR
+            const refX = centerX + rayLength * Math.sin(thetaARad);
+            const refY = centerY - rayLength * Math.cos(thetaARad);
+
+            ctx1.strokeStyle = isTIR ? '#f59e0b' : 'rgba(245, 158, 11, 0.4)';
+            ctx1.lineWidth = isTIR ? 3.5 : 1.5;
+            ctx1.beginPath();
+            ctx1.moveTo(centerX, centerY);
+            ctx1.lineTo(refX, refY);
+            ctx1.stroke();
+
+            drawArrowHead(ctx1, (centerX + refX)/2, (centerY + refY)/2, Math.atan2(refY - centerY, refX - centerX), isTIR ? '#f59e0b' : 'rgba(245, 158, 11, 0.5)');
+
+            if (isTIR) {
+                // Label TIR on reflected ray
+                ctx1.fillStyle = '#f59e0b';
+                ctx1.font = 'bold 12px sans-serif';
+                ctx1.fillText('100% 전반사 광선', refX - 40, refY - 10);
+            }
+
+            // Refracted Ray (굴절광선) - Only if NOT TIR
+            if (!isTIR) {
+                const refrX = centerX + rayLength * Math.sin(thetaBRad);
+                const refrY = centerY + rayLength * Math.cos(thetaBRad);
+
+                ctx1.strokeStyle = '#10b981'; // Emerald Green
+                ctx1.lineWidth = 3;
+                ctx1.beginPath();
+                ctx1.moveTo(centerX, centerY);
+                ctx1.lineTo(refrX, refrY);
+                ctx1.stroke();
+
+                drawArrowHead(ctx1, (centerX + refrX)/2, (centerY + refrY)/2, Math.atan2(refrY - centerY, refrX - centerX), '#10b981');
+
+                // Draw Refracted Angle Arc (법선 기준 굴절각 θ_B)
+                const thetaBDeg = (thetaBRad * 180 / Math.PI).toFixed(1);
+                drawAngleArc(ctx1, centerX, centerY, 45, Math.PI/2 - thetaBRad, Math.PI/2, '#10b981', `θ_B = ${thetaBDeg}°`);
+            }
+        }
+
+        /* =========================================================================
+           SECTION 2: SYNTHETIC MAGNETIC FIELD LOGIC
+           ========================================================================= */
+
+        function toggleDir(wire) {
+            if (wire === 'A') {
+                state2.dirA *= -1;
+                const btn = document.getElementById('text-dirA');
+                const symbol = document.getElementById('symbol-dirA');
+                if (state2.dirA === 1) {
+                    btn.innerText = '나오는 방향 (+z)';
+                    symbol.innerText = '⊙';
+                } else {
+                    btn.innerText = '들어가는 방향 (-z)';
+                    symbol.innerText = '⊗';
+                }
+            } else {
+                state2.dirB *= -1;
+                const btn = document.getElementById('text-dirB');
+                const symbol = document.getElementById('symbol-dirB');
+                if (state2.dirB === 1) {
+                    btn.innerText = '나오는 방향 (+z)';
+                    symbol.innerText = '⊙';
+                } else {
+                    btn.innerText = '들어가는 방향 (-z)';
+                    symbol.innerText = '⊗';
+                }
+            }
+            updateMagneticField();
+        }
+
+        function updateMagneticField() {
+            state2.IA = parseFloat(document.getElementById('slider-IA').value);
+            state2.IB = parseFloat(document.getElementById('slider-IB').value);
+            state2.posX = parseFloat(document.getElementById('slider-posX').value);
+
+            document.getElementById('val-IA').innerText = state2.IA.toFixed(1) + ' A';
+            document.getElementById('val-IB').innerText = state2.IB.toFixed(1) + ' A';
+            document.getElementById('val-posX').innerText = `x = ${state2.posX}`;
+
+            // Magnetic field B = dir * (k * I) / r
+            // Right-hand rule on x-axis:
+            // For wire at x_wire with current dir (+1 out, -1 in):
+            // At point x > x_wire (r > 0): dir=+1 gives +y field, dir=-1 gives -y field
+            // At point x < x_wire (r < 0): dir=+1 gives -y field, dir=-1 gives +y field
+            
+            const k = 100; // Scaling constant for visualization
+
+            function calcB(wireX, I, dir, x) {
+                const dist = x - wireX;
+                if (Math.abs(dist) < 5) return 0; // singularity near wire
+                return dir * (k * I) / dist;
+            }
+
+            const BA = calcB(state2.xA, state2.IA, state2.dirA, state2.posX);
+            const BB = calcB(state2.xB, state2.IB, state2.dirB, state2.posX);
+            const Btotal = BA + BB;
+
+            // UI Text update
+            document.getElementById('res-BA').innerText = (BA >= 0 ? '+' : '') + (BA/1000).toFixed(3) + ' T';
+            document.getElementById('res-BB').innerText = (BB >= 0 ? '+' : '') + (BB/1000).toFixed(3) + ' T';
+            document.getElementById('res-Btotal').innerText = (Btotal >= 0 ? '+' : '') + (Btotal/1000).toFixed(3) + ' T';
+
+            // Find theoretical zero magnetic field point
+            // dirA * IA / (x - xA) + dirB * IB / (x - xB) = 0
+            // dirA * IA * (x - xB) + dirB * IB * (x - xA) = 0
+            // x * (dirA * IA + dirB * IB) = dirA * IA * xB + dirB * IB * xA
+            let zeroXText = '없음';
+            const denom = state2.dirA * state2.IA + state2.dirB * state2.IB;
+            if (Math.abs(denom) > 0.001) {
+                const x0 = (state2.dirA * state2.IA * state2.xB + state2.dirB * state2.IB * state2.xA) / denom;
+                // Zero point must not be exactly at wires
+                if (Math.abs(x0 - state2.xA) > 5 && Math.abs(x0 - state2.xB) > 5) {
+                    zeroXText = `x = ${Math.round(x0)}`;
+                }
+            }
+            document.getElementById('res-zeroPos').innerText = zeroXText;
+
+            drawMagneticField();
+        }
+
+        function drawMagneticField() {
+            if (!canvas2 || !ctx2) return;
+
+            const w = canvas2.width / window.devicePixelRatio;
+            const h = canvas2.height / window.devicePixelRatio;
+
+            ctx2.clearRect(0, 0, w, h);
+
+            const centerY = h * 0.52;
+            const scaleX = w / 1000; // Map -500 to +500 onto width
+
+            function toCanvasX(physX) {
+                return w / 2 + physX * scaleX;
+            }
+
+            // Draw X-Axis Line
+            ctx2.strokeStyle = '#475569';
+            ctx2.lineWidth = 2;
+            ctx2.beginPath();
+            ctx2.moveTo(40, centerY);
+            ctx2.lineTo(w - 40, centerY);
+            ctx2.stroke();
+
+            // X-axis Ticks & Labels
+            ctx2.fillStyle = '#94a3b8';
+            ctx2.font = '10px monospace';
+            ctx2.textAlign = 'center';
+
+            for (let px = -400; px <= 400; px += 100) {
+                const cx = toCanvasX(px);
+                ctx2.beginPath();
+                ctx2.moveTo(cx, centerY - 4);
+                ctx2.lineTo(cx, centerY + 4);
+                ctx2.stroke();
+                ctx2.fillText(px.toString(), cx, centerY + 18);
+            }
+
+            // Draw Magnetic Field Curve B(x) in background
+            ctx2.strokeStyle = 'rgba(245, 158, 11, 0.25)';
+            ctx2.lineWidth = 2;
+            ctx2.beginPath();
+
+            let firstPoint = true;
+            for (let px = -450; px <= 450; px += 4) {
+                const distA = px - state2.xA;
+                const distB = px - state2.xB;
+                if (Math.abs(distA) < 12 || Math.abs(distB) < 12) {
+                    firstPoint = true;
+                    continue;
+                }
+                const BA = state2.dirA * (100 * state2.IA) / distA;
+                const BB = state2.dirB * (100 * state2.IB) / distB;
+                const Btot = BA + BB;
+
+                const cx = toCanvasX(px);
+                const cy = centerY - Btot * 1.2;
+
+                if (firstPoint) {
+                    ctx2.moveTo(cx, Math.max(20, Math.min(h - 20, cy)));
+                    firstPoint = false;
+                } else {
+                    ctx2.lineTo(cx, Math.max(20, Math.min(h - 20, cy)));
+                }
+            }
+            ctx2.stroke();
+
+            // Draw Wires (도선 A, 도선 B)
+            function drawWire(physX, name, currentVal, dir, colorHex) {
+                const cx = toCanvasX(physX);
+
+                // Glow ring
+                ctx2.fillStyle = colorHex + '22';
+                ctx2.beginPath();
+                ctx2.arc(cx, centerY, 22, 0, Math.PI * 2);
+                ctx2.fill();
+
+                // Outer wire border
+                ctx2.strokeStyle = colorHex;
+                ctx2.lineWidth = 3;
+                ctx2.fillStyle = '#0f172a';
+                ctx2.beginPath();
+                ctx2.arc(cx, centerY, 14, 0, Math.PI * 2);
+                ctx2.fill();
+                ctx2.stroke();
+
+                // Direction Symbol (⊙ or ⊗)
+                ctx2.fillStyle = colorHex;
+                ctx2.font = 'bold 14px sans-serif';
+                ctx2.textAlign = 'center';
+                ctx2.textBaseline = 'middle';
+                ctx2.fillText(dir === 1 ? '⊙' : '⊗', cx, centerY);
+
+                // Wire Label
+                ctx2.font = 'bold 11px sans-serif';
+                ctx2.fillText(`${name} (${currentVal}A)`, cx, centerY - 30);
+            }
+
+            drawWire(state2.xA, '도선 A', state2.IA, state2.dirA, '#38bdf8');
+            drawWire(state2.xB, '도선 B', state2.IB, state2.dirB, '#f43f5e');
+
+            // Draw Zero-Field Point Highlight if exists
+            const denom = state2.dirA * state2.IA + state2.dirB * state2.IB;
+            if (Math.abs(denom) > 0.001) {
+                const x0 = (state2.dirA * state2.IA * state2.xB + state2.dirB * state2.IB * state2.xA) / denom;
+                if (Math.abs(x0 - state2.xA) > 10 && Math.abs(x0 - state2.xB) > 10 && Math.abs(x0) <= 450) {
+                    const zcx = toCanvasX(x0);
+                    ctx2.strokeStyle = '#10b981';
+                    ctx2.lineWidth = 2;
+                    ctx2.setLineDash([3, 3]);
+                    ctx2.beginPath();
+                    ctx2.arc(zcx, centerY, 12, 0, Math.PI * 2);
+                    ctx2.stroke();
+                    ctx2.setLineDash([]);
+
+                    ctx2.fillStyle = '#10b981';
+                    ctx2.font = 'bold 10px sans-serif';
+                    ctx2.fillText('B = 0 지점', zcx, centerY + 32);
+                }
+            }
+
+            // Draw Observation Test Point P & Vectors
+            const pcx = toCanvasX(state2.posX);
+
+            // Point P Vertical Guide Line
+            ctx2.strokeStyle = '#f59e0b';
+            ctx2.lineWidth = 1;
+            ctx2.setLineDash([4, 4]);
+            ctx2.beginPath();
+            ctx2.moveTo(pcx, 30);
+            ctx2.lineTo(pcx, h - 30);
+            ctx2.stroke();
+            ctx2.setLineDash([]);
+
+            // Marker Point P
+            ctx2.fillStyle = '#f59e0b';
+            ctx2.beginPath();
+            ctx2.arc(pcx, centerY, 5, 0, Math.PI * 2);
+            ctx2.fill();
+            ctx2.fillText('관찰점 P', pcx, centerY + 45);
+
+            // Calculate B vectors at point P
+            const distA = state2.posX - state2.xA;
+            const distB = state2.posX - state2.xB;
+
+            let BA = 0, BB = 0;
+            if (Math.abs(distA) >= 5) BA = state2.dirA * (100 * state2.IA) / distA;
+            if (Math.abs(distB) >= 5) BB = state2.dirB * (100 * state2.IB) / distB;
+            const Btot = BA + BB;
+
+            // Draw Vector Arrows at Point P
+            const arrowScale = 1.2;
+
+            // BA Vector (Blue, shifted left slightly)
+            if (Math.abs(BA) > 0.5) {
+                drawVectorArrow(ctx2, pcx - 6, centerY, pcx - 6, centerY - BA * arrowScale, '#38bdf8', 2.5);
+            }
+
+            // BB Vector (Red, shifted right slightly)
+            if (Math.abs(BB) > 0.5) {
+                drawVectorArrow(ctx2, pcx + 6, centerY, pcx + 6, centerY - BB * arrowScale, '#f43f5e', 2.5);
+            }
+
+            // Btotal Vector (Gold/Amber, Center)
+            if (Math.abs(Btot) > 0.5) {
+                drawVectorArrow(ctx2, pcx, centerY, pcx, centerY - Btot * arrowScale, '#f59e0b', 4);
+            } else {
+                ctx2.fillStyle = '#10b981';
+                ctx2.font = 'bold 12px sans-serif';
+                ctx2.fillText('★ B_total = 0 ★', pcx, centerY - 20);
+            }
+        }
+
+        /* =========================================================================
+           HELPER DRAWING UTILITIES
+           ========================================================================= */
+
+        function drawArrowHead(ctx, x, y, angle, colorHex) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            ctx.fillStyle = colorHex;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(-10, -5);
+            ctx.lineTo(-10, 5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawVectorArrow(ctx, fromX, fromY, toX, toY, colorHex, width) {
+            ctx.strokeStyle = colorHex;
+            ctx.lineWidth = width;
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+
+            const angle = Math.atan2(toY - fromY, toX - fromX);
+            drawArrowHead(ctx, toX, toY, angle, colorHex);
+        }
+
+        function drawAngleArc(ctx, cx, cy, radius, startAngle, endAngle, colorHex, labelText, isDashed = false) {
+            ctx.save();
+            ctx.strokeStyle = colorHex;
+            ctx.lineWidth = 1.8;
+            if (isDashed) ctx.setLineDash([3, 3]);
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, startAngle, endAngle);
+            ctx.stroke();
+
+            // Label position
+            const midAngle = (startAngle + endAngle) / 2;
+            const labelX = cx + (radius + 22) * Math.cos(midAngle);
+            const labelY = cy + (radius + 22) * Math.sin(midAngle);
+
+            ctx.fillStyle = colorHex;
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(labelText, labelX, labelY);
+            ctx.restore();
+        }
+
+        function resetSection1() {
+            document.getElementById('slider-nA').value = 1.50;
+            document.getElementById('slider-nB').value = 1.00;
+            document.getElementById('slider-thetaA').value = 45.0;
+            document.getElementById('check-show-boundary-angle').checked = true;
+            updateRefraction();
+        }
+
+        function resetSection2() {
+            state2.dirA = 1;
+            state2.dirB = -1;
+            document.getElementById('text-dirA').innerText = '나오는 방향 (+z)';
+            document.getElementById('symbol-dirA').innerText = '⊙';
+            document.getElementById('text-dirB').innerText = '들어가는 방향 (-z)';
+            document.getElementById('symbol-dirB').innerText = '⊗';
+            document.getElementById('slider-IA').value = 4.0;
+            document.getElementById('slider-IB').value = 4.0;
+            document.getElementById('slider-posX').value = 0;
+            updateMagneticField();
+        }
+    </script>
+</body>
+</html><script>// 여기에 JS 작성
+console.log("hello");</script></body></html>

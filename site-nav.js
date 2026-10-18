@@ -1,4 +1,4 @@
-// 하단 고정 공통 바: 홈·허브 페이지 끝에 <script src="(상대경로)/site-nav.js"></script> 한 줄을 넣으면 붙는다.
+// 상단 고정 공통 바: 홈·허브 페이지 끝에 <script src="(상대경로)/site-nav.js"></script> 한 줄을 넣으면 붙는다.
 // 메뉴를 바꾸려면 아래 ITEMS만 고친다.
 (function () {
   var root = new URL('.', document.currentScript.src).pathname;
@@ -16,7 +16,7 @@
   ];
   var css = document.createElement('style');
   css.textContent =
-    '#site-nav{position:fixed;bottom:0;left:0;right:0;z-index:50;height:52px;padding-bottom:env(safe-area-inset-bottom);box-sizing:content-box;background:var(--nav-bg,rgba(255,255,255,.96));border-top:1px solid var(--border,#d7dee8);font-family:"Segoe UI","Malgun Gothic",sans-serif;font-size:15px;line-height:1.2}' +
+    '#site-nav{position:fixed;top:0;left:0;right:0;z-index:50;height:48px;background:var(--nav-bg,rgba(255,255,255,.96));border-bottom:1px solid var(--border,#d7dee8);font-family:"Segoe UI","Malgun Gothic",sans-serif;font-size:15px;line-height:1.2}' +
     '#site-nav .in{max-width:1040px;height:100%;margin:0 auto;padding:0 12px;display:flex;align-items:center;gap:4px}' +
     '#site-nav .logo{display:flex;align-items:center;padding:4px 8px 4px 2px;flex:none}#site-nav .logo img{height:26px;width:auto;display:block}' +
     '#site-nav .menu{display:flex;gap:2px;overflow-x:auto;flex:1;scrollbar-width:none;height:100%;align-items:center}' +
@@ -42,5 +42,5 @@
     f.innerHTML = '© 2026 CrazyRay · 직접 만든 자료는 <a href="' + root + 'legal.html">CC BY-NC-SA 4.0</a> · 외부 자료(기출·교과서·영상)의 권리는 각 권리자에게 있습니다 · <a href="' + root + 'sources.html">출처 목록</a> · <a href="' + root + 'legal.html#takedown">삭제·정정 요청</a>';
     document.body.appendChild(f);
   }
-  document.body.style.paddingBottom = (parseFloat(getComputedStyle(document.body).paddingBottom) + 52) + 'px';
+  document.body.style.paddingTop = (parseFloat(getComputedStyle(document.body).paddingTop) + 48) + 'px';
 })();

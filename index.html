@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>물리 수업 아카이브 — physics_demo_sim</title>
+<title>CrazyRay · 물리 수업 아카이브</title>
 <meta name="description" content="물리 수업 자료, 모션그래픽, 제시문 기반 면접 자료, 인터랙티브 시뮬레이션, 학생 작품을 한곳에서 복습하는 물리 수업 아카이브">
 <meta property="og:type" content="website">
 <meta property="og:title" content="물리 수업 아카이브">
 <meta property="og:description" content="수업 자료 · 인터랙티브 시뮬레이션 · 학생 작품을 한곳에서">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🔬%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <style>
   :root {
     --bg: #f4f6fa; --panel: #ffffff; --ink: #1c2733; --sub: #5a6b7d;
@@ -68,13 +68,21 @@
 .assignment-buttons a.secondary { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.4); }
 </style>
 
-<link rel="stylesheet" href="site.css?v=2">
+<link rel="stylesheet" href="site.css?v=3">
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <h1>🔬 물리 수업 아카이브</h1>
-    <p>수업 자료 · 인터랙티브 시뮬레이션 · 학생 작품을 한곳에서<br>복습하고, 실험하고, 서로의 작품을 둘러보세요.</p>
+  <header class="hero" id="hero">
+    <canvas id="rays" aria-hidden="true"></canvas>
+    <div class="brand">
+      <img src="logo.svg" alt="CrazyRay 로고">
+      <div>
+        <h1><span class="c">C</span>razy<span class="r">R</span>ay</h1>
+        <p class="tag">물리 수업 아카이브</p>
+      </div>
+    </div>
+    <p class="lead">수업 자료 · 인터랙티브 시뮬레이션 · 학생 작품을 한곳에서.<br>복습하고, 실험하고, 서로의 작품을 둘러보세요.</p>
+    <div class="stats" id="stats" hidden></div>
   </header>
   <div class="assignment-banner">
     <div>
@@ -214,9 +222,10 @@
     </details>
   </section>
 
-  <footer>
+  <footer data-legal>
     <p>모든 시뮬레이션은 설치 없이 브라우저에서 실행됩니다 · 스마트폰 대응</p>
     <p class="backup" style="margin-top:10px">사이트가 열리지 않을 때(백업 주소): <a href="https://physics-demo-sim.vercel.app/">physics-demo-sim.vercel.app</a></p>
+    <p class="fine">© 2026 CrazyRay · 직접 만든 자료는 <a href="legal.html">CC BY-NC-SA 4.0</a> · 외부 자료(기출·교과서·영상)의 권리는 각 권리자에게 있습니다 · <a href="sources.html">출처 목록</a> · <a href="legal.html#takedown">삭제·정정 요청</a></p>
     <p class="fine"><a href="https://github.com/hs2sks/physics_demo_sim">소스</a>·<a href="https://board.crazyray.uk/admin">관리자</a></p>
   </footer>
 </div>
@@ -251,6 +260,84 @@
     });
   })();
 </script>
-<script src="site-nav.js?v=2"></script>
+<script>
+  // 히어로: 빛살이 위 매질(공기)에서 아래 매질(유리)로 들어가며 굴절한다(스넬의 법칙, n1=1 → n2=1.5).
+  // 움직임 줄이기 설정이면 한 장면만 그리고 멈춘다. 화면 밖·탭 숨김일 때는 멈춘다.
+  (function () {
+    var cv = document.getElementById('rays'), hero = document.getElementById('hero');
+    if (!cv || !cv.getContext) return;
+    var g = cv.getContext('2d'), W = 0, H = 0, dpr = 1, T = [], visible = true, raf = 0;
+    var still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var N2 = 1.5;
+    function size() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = hero.clientWidth; H = hero.clientHeight;
+      cv.width = W * dpr; cv.height = H * dpr; g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    function spawn(i) {
+      var th = (Math.random() * 50 + 10) * Math.PI / 180;    // 입사각(법선 기준)
+      return { x: Math.random() * W * .45, y: H * .12 + Math.random() * H * .3, th: th, t: Math.random(), i: i, hue: Math.random() < .5 ? 0 : 1 };
+    }
+    function pos(r, s) {                                     // s: 진행 거리
+      var yi = H * .58, x0 = r.x, y0 = r.y;
+      var d1 = (yi - y0) / Math.cos(r.th);
+      if (s <= d1) return [x0 + s * Math.sin(r.th), y0 + s * Math.cos(r.th), 0];
+      var th2 = Math.asin(Math.sin(r.th) / N2), s2 = s - d1;
+      return [x0 + d1 * Math.sin(r.th) + s2 * Math.sin(th2), yi + s2 * Math.cos(th2), 1];
+    }
+    function frame(ts) {
+      g.clearRect(0, 0, W, H);
+      var yi = H * .58;
+      g.fillStyle = 'rgba(90,162,255,.07)'; g.fillRect(0, yi, W, H - yi);
+      g.strokeStyle = 'rgba(160,190,230,.25)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, yi); g.lineTo(W, yi); g.stroke();
+      for (var k = 0; k < T.length; k++) {
+        var r = T[k], base = still ? 380 + k * 40 : (ts * .06 + r.t * 900 + k * 70) % 1100;
+        var col = r.hue ? '255,194,51' : '120,180,255';
+        for (var j = 0; j < 44; j++) {                        // 꼬리
+          var p = pos(r, Math.max(0, base - j * 6));
+          g.fillStyle = 'rgba(' + col + ',' + (0.6 * (1 - j / 44)).toFixed(3) + ')';
+          g.beginPath(); g.arc(p[0], p[1], 3 * (1 - j / 60), 0, 6.283); g.fill();
+        }
+      }
+    }
+    function loop(ts) { frame(ts); if (visible && !document.hidden) raf = requestAnimationFrame(loop); else raf = 0; }
+    function start() { if (!raf && !still) raf = requestAnimationFrame(loop); }
+    function init() { size(); T = []; for (var i = 0; i < 12; i++) T.push(spawn(i)); frame(0); start(); }
+    init();
+    window.addEventListener('resize', function () { size(); frame(0); });
+    document.addEventListener('visibilitychange', start);
+    if ('IntersectionObserver' in window) new IntersectionObserver(function (e) { visible = e[0].isIntersecting; if (visible) start(); }).observe(hero);
+  })();
+</script>
+<script>
+  // 통계 줄: 각 목록의 index.json에서 개수를 읽어 숫자가 올라가게 보여준다. 실패하면 줄 자체를 숨긴다.
+  (function () {
+    var box = document.getElementById('stats');
+    var SRC = [['lectures/index.html', 'lectures/index.json', '수업 자료'], ['motion-graphic/index.html', 'motion-graphic/index.json', '모션그래픽'], ['interview/index.html', 'interview/index.json', '면접 세트']];
+    var still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    Promise.all(SRC.map(function (s) { return fetch(s[1]).then(function (r) { return r.json(); }).then(function (a) { return a.length; }).catch(function () { return 0; }); })).then(function (n) {
+      var html = '';
+      SRC.forEach(function (s, i) { if (n[i]) html += '<a href="' + s[0] + '"><b data-n="' + n[i] + '">' + (still ? n[i] : 0) + '</b><span>' + s[2] + '</span></a>'; });
+      if (!html) return;
+      box.innerHTML = html; box.hidden = false;
+      if (still) return;
+      var t0 = performance.now();
+      (function tick(t) {
+        var k = Math.min(1, (t - t0) / 900), e = 1 - Math.pow(1 - k, 3);
+        box.querySelectorAll('b').forEach(function (b) { b.textContent = Math.round(b.dataset.n * e); });
+        if (k < 1) requestAnimationFrame(tick);
+      })(t0);
+    });
+  })();
+</script>
+<script>
+  // 카드·섹션이 스크롤에 따라 부드럽게 나타난다(JS가 없거나 움직임 줄이기면 처음부터 보임).
+  (function () {
+    if (!('IntersectionObserver' in window) || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }); }, { rootMargin: '0px 0px -40px 0px' });
+    document.querySelectorAll('.wrap section, .assignment-banner').forEach(function (el) { el.classList.add('js-reveal'); io.observe(el); });
+  })();
+</script>
+<script src="site-nav.js?v=3"></script>
 </body>
 </html>

@@ -18,6 +18,7 @@
   css.textContent =
     '#site-nav{position:fixed;top:0;left:0;right:0;z-index:50;height:48px;background:var(--nav-bg,rgba(255,255,255,.96));border-bottom:1px solid var(--border,#d7dee8);font-family:"Segoe UI","Malgun Gothic",sans-serif;font-size:15px;line-height:1.2}' +
     '#site-nav .in{max-width:1040px;height:100%;margin:0 auto;padding:0 12px;display:flex;align-items:center;gap:4px}' +
+    '#site-nav .logo{display:flex;align-items:center;padding:4px 8px 4px 2px;flex:none}#site-nav .logo img{height:26px;width:auto;display:block}' +
     '#site-nav .menu{display:flex;gap:2px;overflow-x:auto;flex:1;scrollbar-width:none;height:100%;align-items:center}' +
     '#site-nav .menu::-webkit-scrollbar{display:none}' +
     '#site-nav a{white-space:nowrap;text-decoration:none;color:var(--sub,#5a6b7d);padding:7px 12px;border-radius:8px}' +
@@ -31,9 +32,15 @@
   var nav = document.createElement('nav');
   nav.id = 'site-nav';
   nav.setAttribute('aria-label', '사이트 메뉴');
-  nav.innerHTML = '<div class="in"><div class="menu">' + ITEMS.map(function (i) {
+  nav.innerHTML = '<div class="in"><a class="logo" href="' + root + 'index.html" aria-label="CrazyRay 홈"><img src="' + root + 'logo.svg" alt="CrazyRay"></a><div class="menu">' + ITEMS.map(function (i) {
     return '<a href="' + root + i.href + '"' + (i.on ? ' class="on" aria-current="page"' : '') + '>' + i.label + '</a>';
   }).join('') + '</div><a class="cta" href="https://board.crazyray.uk/">과제 제출</a></div>';
   document.body.insertBefore(nav, document.body.firstChild);
+  if (!document.querySelector('.site-foot') && !document.querySelector('footer[data-legal]')) {
+    var f = document.createElement('div');
+    f.className = 'site-foot';
+    f.innerHTML = '© 2026 CrazyRay · 직접 만든 자료는 <a href="' + root + 'legal.html">CC BY-NC-SA 4.0</a> · 외부 자료(기출·교과서·영상)의 권리는 각 권리자에게 있습니다 · <a href="' + root + 'sources.html">출처 목록</a> · <a href="' + root + 'legal.html#takedown">삭제·정정 요청</a>';
+    document.body.appendChild(f);
+  }
   document.body.style.paddingTop = (parseFloat(getComputedStyle(document.body).paddingTop) + 48) + 'px';
 })();

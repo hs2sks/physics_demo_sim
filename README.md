@@ -37,7 +37,7 @@ mechanics/                     역학
 ├── kepler-laws/                🪐 케플러 법칙 → 뉴턴 만유인력  ✔ 완료
 ├── circular-motion-vector/     🔄 등속원운동 벡터 워크벤치  ✔ 완료
 └── equilibrium/               ⚖️ 역학적 평형(병진·회전)  ✔ 완료
-electromagnetism/              전자기            시뮬레이션 3개
+electromagnetism/              전자기            시뮬레이션 4개
 optics/                        광학              시뮬레이션 3개
 modern-physics/                현대물리
 └── photoelectric-effect/      💡 광전효과        ✔ 완료

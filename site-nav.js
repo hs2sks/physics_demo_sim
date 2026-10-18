@@ -35,12 +35,13 @@
   nav.innerHTML = '<div class="in"><a class="logo" href="' + root + 'index.html" aria-label="CrazyRay 홈"><img src="' + root + 'logo.svg" alt="CrazyRay"></a><div class="menu">' + ITEMS.map(function (i) {
     return '<a href="' + root + i.href + '"' + (i.on ? ' class="on" aria-current="page"' : '') + '>' + i.label + '</a>';
   }).join('') + '</div><a class="cta" href="https://board.crazyray.uk/">과제 제출</a></div>';
-  document.body.insertBefore(nav, document.body.firstChild);
+  var hero = document.getElementById('hero');   // 홈은 히어로 안에 메뉴를 넣어 한 줄로 고정한다
+  if (hero) hero.appendChild(nav); else document.body.insertBefore(nav, document.body.firstChild);
   if (!document.querySelector('.site-foot') && !document.querySelector('footer[data-legal]')) {
     var f = document.createElement('div');
     f.className = 'site-foot';
     f.innerHTML = '© 2026 CrazyRay · 직접 만든 자료는 <a href="' + root + 'legal.html">CC BY-NC-SA 4.0</a> · 외부 자료(기출·교과서·영상)의 권리는 각 권리자에게 있습니다 · <a href="' + root + 'sources.html">출처 목록</a> · <a href="' + root + 'legal.html#takedown">삭제·정정 요청</a>';
     document.body.appendChild(f);
   }
-  document.body.style.paddingTop = (parseFloat(getComputedStyle(document.body).paddingTop) + 48) + 'px';
+  if (!hero) document.body.style.paddingTop = (parseFloat(getComputedStyle(document.body).paddingTop) + 48) + 'px';
 })();

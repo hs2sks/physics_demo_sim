@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>쿨롱의 비틀림 저울 (장치 렌더링)</title>
+<style>
+  :root { --bg:#0e0c0a; --panel:rgba(20,17,14,.82); --ink:#efe6d6; --sub:#b9ab93; --accent:#d9a441; --border:#3b3328; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { height:100%; background:var(--bg); color:var(--ink); font-family:"Segoe UI","Malgun Gothic",sans-serif; overflow:hidden; }
+  #stage { position:fixed; inset:0; }
+  #stage canvas { display:block; width:100%; height:100%; touch-action:none; }
+  .ui { position:fixed; left:12px; top:12px; width:min(310px, calc(100vw - 24px)); background:var(--panel); border:1px solid var(--border);
+        border-radius:10px; padding:12px 14px; backdrop-filter:blur(6px); font-size:14px; }
+  .ui h1 { font-size:1.02em; margin-bottom:8px; color:var(--accent); }
+  .ui label { display:block; margin-top:9px; color:var(--sub); font-size:.88em; }
+  .ui label b { color:var(--ink); font-weight:600; float:right; }
+  .ui input[type=range] { width:100%; accent-color:var(--accent); }
+  .row { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+  .row button { flex:1 1 auto; padding:6px 8px; border-radius:7px; border:1px solid var(--border); background:#2a241c; color:var(--ink); cursor:pointer; font-size:.86em; }
+  .row button:hover { border-color:var(--accent); }
+  .hint { margin-top:10px; font-size:.78em; color:var(--sub); line-height:1.45; }
+  a.home { position:fixed; left:12px; bottom:12px; text-decoration:none; color:var(--ink); background:var(--panel); border:1px solid var(--border);
+           padding:7px 12px; border-radius:8px; font-size:.9em; }
+  #msg { position:fixed; inset:0; display:none; align-items:center; justify-content:center; text-align:center; padding:24px; color:var(--sub); }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "../../vendor/three-0.186.1/build/three.module.js",
+  "three/addons/": "../../vendor/three-0.186.1/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="stage"></div>
+<div id="msg">이 브라우저에서는 3D(WebGL)를 쓸 수 없습니다.</div>
+
+<div class="ui">
+  <h1>쿨롱 비틀림 저울 · 장치 (1785)</h1>
+  <label>마이크로미터 (위쪽 눈금판) <b id="vMic">0°</b></label>
+  <input id="mic" type="range" min="0" max="720" step="1" value="0">
+  <label>바늘 편향각 θ <b id="vTh">0°</b></label>
+  <input id="th" type="range" min="0" max="180" step="0.5" value="0">
+  <div class="row">
+    <button data-view="all">전체</button>
+    <button data-view="top">마이크로미터</button>
+    <button data-view="needle">바늘·구</button>
+    <button data-view="ring">눈금 띠</button>
+  </div>
+  <p class="hint">드래그: 회전 · 휠/핀치: 확대 · 우클릭 드래그: 이동.<br>1단계: 장치 외관 확인용입니다(물리 계산은 아직 없음).</p>
+</div>
+<a class="home" href="../../index.html">🏠 홈</a>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+/* 길이 단위: cm. 쿨롱의 원전: 지름·높이 약 12인치(≈32cm) 유리 원통, 24인치 유리관, 은 도선 */
+const R = 16.25, H = 32.5, GT = 0.4;      // 원통 반지름·높이·유리 두께
+const NEEDLE_Y = 16, NEEDLE_L = 10.5;     // 바늘 높이, 중심~구 거리
+const TUBE_H = 61, WIRE_TOP = H + TUBE_H + 1.5;
+
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
+} catch (e) { document.getElementById('msg').style.display = 'flex'; throw e; }
+const stage = document.getElementById('stage');
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new RoomEnvironment();     // 실험실 느낌의 방 + 유리 테두리에 하이라이트를 만드는 세로 조명판 2개
+const boxMat = new THREE.MeshBasicMaterial({ color:new THREE.Color(14, 13.5, 12.5) });
+for (const x of [-4.2, 4.2]) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.35, 7, 2.4), boxMat); b.position.set(x, 3.2, 1.5); envScene.add(b); }
+scene.environment = pmrem.fromScene(envScene, 0.03).texture;
+scene.environmentIntensity = 0.7;
+scene.background = scene.environment; scene.backgroundBlurriness = 0.55; scene.backgroundIntensity = 0.45;
+
+const camera = new THREE.PerspectiveCamera(32, 1, 1, 1000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.maxPolarAngle = Math.PI * 0.495; controls.minDistance = 8; controls.maxDistance = 320;
+
+/* ---------- 절차적 텍스처 ---------- */
+function rng(seed){ let s = seed>>>0; return () => (s = (s*1664525 + 1013904223)>>>0) / 4294967296; }
+function noise2(w, h, seed, scale){           // 값 노이즈
+  const r = rng(seed), gw = Math.ceil(w/scale)+2, gh = Math.ceil(h/scale)+2, g = new Float32Array(gw*gh);
+  for (let i=0;i<g.length;i++) g[i] = r();
+  return (x, y) => {
+    const gx = x/scale, gy = y/scale, ix = Math.floor(gx), iy = Math.floor(gy), fx = gx-ix, fy = gy-iy;
+    const sx = fx*fx*(3-2*fx), sy = fy*fy*(3-2*fy);
+    const a = g[iy*gw+ix], b = g[iy*gw+ix+1], c = g[(iy+1)*gw+ix], d = g[(iy+1)*gw+ix+1];
+    return a+(b-a)*sx + (c-a)*sy + (a-b-c+d)*sx*sy;
+  };
+}
+function canvasTex(w, h, draw, opt={}) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = opt.linear ? THREE.NoColorSpace : THREE.SRGBColorSpace;
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  if (opt.repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(...opt.repeat); }
+  return t;
+}
+function woodTexture(seed) {
+  return canvasTex(1024, 1024, (g, w, h) => {
+    const n1 = noise2(w, h, seed, 180), n2 = noise2(w, h, seed+7, 24), n3 = noise2(w, h, seed+13, 5);
+    const img = g.createImageData(w, h);
+    for (let y=0;y<h;y++) for (let x=0;x<w;x++) {
+      const warp = n1(x*0.12, y)*90 + n2(x*0.3, y)*6;
+      const ring = Math.sin((y*0.9 + warp)*0.16);                 // 나뭇결(가로 줄무늬)
+      const t = 0.5 + 0.5*ring, fine = n3(x*0.1, y)*0.5;
+      const k = 0.3*t + 0.45*fine + 0.25*n2(x*0.5, y*0.3);
+      const i = (y*w+x)*4;
+      img.data[i]   = 78 + 52*k;  img.data[i+1] = 54 + 38*k;  img.data[i+2] = 36 + 26*k; img.data[i+3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+  }, { repeat:[1.3, 1] });
+}
+function noiseRough(seed, base, amp, scaleA=3, repeat=[3,3]) {   // 거칠기 맵(금속 가공 자국)
+  return canvasTex(512, 512, (g, w, h) => {
+    const n = noise2(w, h, seed, scaleA), m = noise2(w, h, seed+3, 40);
+    const img = g.createImageData(w, h);
+    for (let y=0;y<h;y++) for (let x=0;x<w;x++) {
+      const v = Math.max(0, Math.min(255, (base + amp*(n(x*0.12, y)-0.5) + amp*0.6*(m(x,y)-0.5))*255));
+      const i = (y*w+x)*4; img.data[i]=img.data[i+1]=img.data[i+2]=v; img.data[i+3]=255;
+    }
+    g.putImageData(img,0,0);
+  }, { linear:true, repeat });
+}
+function paperTexture() {
+  return canvasTex(512, 512, (g, w, h) => {
+    const n = noise2(w, h, 91, 2), m = noise2(w, h, 17, 60);
+    const img = g.createImageData(w, h);
+    for (let y=0;y<h;y++) for (let x=0;x<w;x++) {
+      const k = 0.5*n(x,y) + 0.5*m(x,y), i=(y*w+x)*4;
+      img.data[i]=226+22*k; img.data[i+1]=214+22*k; img.data[i+2]=184+22*k; img.data[i+3]=255;
+    }
+    g.putImageData(img,0,0);
+  });
+}
+
+/* ---------- 재질 ---------- */
+const wood  = new THREE.MeshPhysicalMaterial({ map:woodTexture(5), roughness:0.55, clearcoat:0.35, clearcoatRoughness:0.35 });
+const brass = new THREE.MeshStandardMaterial({ color:0xc29a45, metalness:1, roughness:0.32, roughnessMap:noiseRough(3, 0.9, 0.5) });
+const brassDark = new THREE.MeshStandardMaterial({ color:0x8c6a2a, metalness:1, roughness:0.45, roughnessMap:noiseRough(8, 0.9, 0.5) });
+const silver = new THREE.MeshStandardMaterial({ color:0xd8d8dc, metalness:1, roughness:0.18 });
+const glassMat = new THREE.MeshPhysicalMaterial({ color:0xeef6f2, metalness:0, roughness:0.03, transmission:1, ior:1.5, thickness:0.5,
+  attenuationColor:0xcfe8dc, attenuationDistance:40, specularIntensity:1, envMapIntensity:1.4, side:THREE.DoubleSide });
+const shellac = new THREE.MeshPhysicalMaterial({ color:0xc4761c, roughness:0.2, ior:1.5, clearcoat:1, clearcoatRoughness:0.1 });
+const pith = new THREE.MeshStandardMaterial({ color:0xf1ead8, roughness:0.95, roughnessMap:noiseRough(11, 0.95, 0.2, 2, [2,2]) });
+const paperMat = new THREE.MeshStandardMaterial({ map:paperTexture(), roughness:0.9, side:THREE.DoubleSide });
+const ivory = new THREE.MeshPhysicalMaterial({ color:0xe9dfc6, roughness:0.4, clearcoat:0.4 });
+
+const add = (parent, geo, mat, {cast=true, recv=true}={}) => { const m = new THREE.Mesh(geo, mat); m.castShadow = cast; m.receiveShadow = recv; parent.add(m); return m; };
+
+/* ---------- 탁자와 바닥 ---------- */
+const table = new THREE.Group(); scene.add(table);
+add(table, new RoundedBoxGeometry(150, 6, 95, 4, 1.2), wood).position.set(0, -3, 0);
+for (const sx of [-1,1]) for (const sz of [-1,1]) {
+  const leg = add(table, new RoundedBoxGeometry(7, 80, 7, 3, 0.8), wood); leg.position.set(sx*66, -46, sz*38);
+}
+const floor = add(scene, new THREE.CircleGeometry(600, 64), new THREE.MeshStandardMaterial({ color:0x1a1612, roughness:0.9 }), { cast:false });
+floor.rotation.x = -Math.PI/2; floor.position.y = -86;
+/* 탁자 위 얇은 초록 천(실험대 매트) */
+const mat = add(scene, new THREE.CylinderGeometry(33, 33, 0.25, 96), new THREE.MeshStandardMaterial({ color:0x2c3b2c, roughness:1 }), { cast:false });
+mat.position.y = 0.125;
+
+/* ---------- 유리 원통(두께 있는 벽 + 둥근 테두리) ---------- */
+const apparatus = new THREE.Group(); apparatus.position.y = 0.25; scene.add(apparatus);
+function latheTube(rIn, rOut, h, rim=0.12, seg=96) {
+  const p = [new THREE.Vector2(rIn, 0.0), new THREE.Vector2(rOut, 0.0)];
+  p.push(new THREE.Vector2(rOut, h-rim));
+  for (let i=1;i<=6;i++){ const a = (i/6)*Math.PI; p.push(new THREE.Vector2((rOut+rIn)/2 + Math.cos(a)*(rOut-rIn)/2, h-rim + Math.sin(a)*rim)); }
+  p.push(new THREE.Vector2(rIn, h-rim)); p.push(new THREE.Vector2(rIn, 0));
+  return new THREE.LatheGeometry(p, seg);
+}
+const vessel = add(apparatus, latheTube(R-GT, R, H), glassMat, { cast:false });
+/* 바닥 유리(두꺼운 원판) */
+add(apparatus, new THREE.CylinderGeometry(R, R, 0.5, 96), glassMat, { cast:false }).position.y = 0.25;
+
+/* 덮개 유리: 중앙 구멍(유리관) + 탐침 구멍 */
+const PROBE_R = NEEDLE_L;
+const plateShape = new THREE.Shape(); plateShape.absarc(0, 0, R+1.1, 0, Math.PI*2, false);
+const h1 = new THREE.Path(); h1.absarc(0, 0, 1.55, 0, Math.PI*2, true); plateShape.holes.push(h1);
+const h2 = new THREE.Path(); h2.absarc(PROBE_R, 0, 0.55, 0, Math.PI*2, true); plateShape.holes.push(h2);
+const plateGeo = new THREE.ExtrudeGeometry(plateShape, { depth:0.7, bevelEnabled:true, bevelSize:0.12, bevelThickness:0.1, bevelSegments:3, curveSegments:64 });
+plateGeo.rotateX(-Math.PI/2);
+const plate = add(apparatus, plateGeo, glassMat, { cast:false }); plate.position.y = H;
+/* 중앙 유리관(24인치) */
+const tube = add(apparatus, latheTube(1.2, 1.5, TUBE_H, 0.08, 48), glassMat, { cast:false }); tube.position.y = H + 0.6;
+
+/* ---------- 눈금 띠(원통 바깥, 바늘 높이) ---------- */
+function ringTexture() {
+  const W = 8192, Hh = 256;
+  return canvasTex(W, Hh, (g, w, h) => {
+    g.fillStyle = '#e4d6b0'; g.fillRect(0,0,w,h);
+    const n = noise2(w, h, 33, 3); const img = g.getImageData(0,0,w,h);
+    for (let i=0;i<img.data.length;i+=4){ const k=(n((i/4)%w, ((i/4)/w)|0)-0.5)*20; img.data[i]+=k; img.data[i+1]+=k; img.data[i+2]+=k; }
+    g.putImageData(img,0,0);
+    g.fillStyle = '#2a1a0a'; g.strokeStyle = '#2a1a0a'; g.textAlign = 'center';
+    g.lineWidth = 2; g.beginPath(); g.moveTo(0,h*0.52); g.lineTo(w,h*0.52); g.stroke();
+    for (let d=0; d<360; d++) {
+      const x = (d/360)*w, big = d%10===0, mid = d%5===0;
+      g.lineWidth = big ? 4 : 2;
+      g.beginPath(); g.moveTo(x, h*0.52); g.lineTo(x, h*(big?0.18:mid?0.28:0.36)); g.stroke();
+      if (d%10===0) { g.font = '600 38px serif'; g.fillText(String(d), x, h*0.14); }
+    }
+  });
+}
+const ringTex = ringTexture();
+const ringGeo = new THREE.CylinderGeometry(R+0.08, R+0.08, 3.4, 256, 1, true);
+const ringMat = new THREE.MeshStandardMaterial({ map:ringTex, roughness:0.85, side:THREE.FrontSide });
+const ring = add(apparatus, ringGeo, ringMat, { cast:false }); ring.position.y = NEEDLE_Y;
+ring.rotation.y = Math.PI/2;      // 0°를 +x(탐침 쪽)에 맞춤
+
+/* ---------- 마이크로미터(맨 위) ---------- */
+const top = new THREE.Group(); top.position.y = H + TUBE_H + 0.6; apparatus.add(top);
+add(top, new THREE.CylinderGeometry(2.05, 2.25, 2.2, 64), brass).position.y = 0.6;          // 고정 칼라
+const collarRim = add(top, new THREE.TorusGeometry(2.1, 0.12, 12, 64), brassDark); collarRim.rotation.x = Math.PI/2; collarRim.position.y = 1.7;
+const dial = new THREE.Group(); dial.position.y = 2.2; top.add(dial);                       // 회전부
+add(dial, new THREE.CylinderGeometry(5.2, 5.2, 1.0, 96), brass).position.y = 0.5;
+const knurl = add(dial, new THREE.CylinderGeometry(5.28, 5.28, 0.7, 120), brassDark); knurl.position.y = 0.5;
+function dialTexture() {
+  return canvasTex(1024, 1024, (g, w, h) => {
+    const cx = w/2, cy = h/2; g.fillStyle = '#b8924a'; g.fillRect(0,0,w,h);
+    const n = noise2(w,h,4,2); const img = g.getImageData(0,0,w,h);
+    for (let i=0;i<img.data.length;i+=4){ const k=(n((i/4)%w, ((i/4)/w)|0)-0.5)*28; img.data[i]+=k; img.data[i+1]+=k; img.data[i+2]+=k*0.7; }
+    g.putImageData(img,0,0);
+    g.save(); g.beginPath(); g.arc(cx,cy,w*0.485,0,Math.PI*2); g.clip();
+    g.strokeStyle = '#241608'; g.fillStyle = '#241608'; g.textAlign='center'; g.textBaseline='middle';
+    for (let d=0; d<360; d+=2) {
+      const a = (d-90)*Math.PI/180, big = d%10===0, r1 = w*0.47, r2 = r1 - w*(big?0.055:d%10===5?0.04:0.026);
+      g.lineWidth = big?3.5:1.8; g.beginPath(); g.moveTo(cx+Math.cos(a)*r1, cy+Math.sin(a)*r1); g.lineTo(cx+Math.cos(a)*r2, cy+Math.sin(a)*r2); g.stroke();
+      if (d%30===0) { g.font='600 40px serif'; g.fillText(String(d), cx+Math.cos(a)*(w*0.375), cy+Math.sin(a)*(w*0.375)); }
+    }
+    g.restore();
+    g.lineWidth=3; g.beginPath(); g.arc(cx,cy,w*0.27,0,Math.PI*2); g.stroke();
+  });
+}
+const dialFace = add(dial, new THREE.CircleGeometry(5.2, 96), new THREE.MeshStandardMaterial({ map:dialTexture(), metalness:0.85, roughness:0.4, roughnessMap:noiseRough(21,0.5,0.4,3,[1,1]) }), { cast:false });
+dialFace.rotation.x = -Math.PI/2; dialFace.position.y = 1.005;
+add(dial, new THREE.CylinderGeometry(0.7, 0.9, 1.4, 32), brass).position.y = 1.7;               // 중앙 손잡이
+const knobTop = add(dial, new THREE.SphereGeometry(0.9, 32, 16), ivory); knobTop.position.y = 2.5;
+/* 고정 지시침(원판 위로 뻗은 작은 황동 판) */
+const ptr = new THREE.Group(); top.add(ptr);
+const ptrBar = add(ptr, new RoundedBoxGeometry(1.0, 0.35, 0.45, 2, 0.1), brass); ptrBar.position.set(0, 3.7, 6.4);
+const ptrTip = add(ptr, new THREE.ConeGeometry(0.28, 0.9, 4), brass); ptrTip.position.set(0, 3.7, 5.6); ptrTip.rotation.x = -Math.PI/2; ptrTip.rotation.y = Math.PI/4;
+const ptrPost = add(ptr, new THREE.CylinderGeometry(0.25, 0.25, 3.4, 16), brass); ptrPost.position.set(0, 1.9, 6.6);
+/* 도선 걸이(원판 아래) */
+const clipTop = add(dial, new THREE.CylinderGeometry(0.55, 0.35, 1.0, 24), brassDark); clipTop.position.y = -0.5;
+
+/* ---------- 은 도선 ---------- */
+const wireGroup = new THREE.Group(); apparatus.add(wireGroup);
+let wireMesh = null;
+function buildWire(twistRad) {
+  if (wireMesh) { wireGroup.remove(wireMesh); wireMesh.geometry.dispose(); }
+  const y0 = NEEDLE_Y + 1.2, y1 = H + TUBE_H + 0.6 + 2.2 - 1.0, N = 160, pts = [];
+  const turns = twistRad / (Math.PI*2);
+  for (let i=0;i<=N;i++) {
+    const t = i/N, y = y0 + (y1-y0)*t, phi = twistRad*t, e = 0.045*Math.min(1, Math.abs(turns)*1.6);
+    pts.push(new THREE.Vector3(Math.cos(phi)*e, y, Math.sin(phi)*e));
+  }
+  wireMesh = add(wireGroup, new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 300, 0.028, 8, false), silver, { cast:false });
+}
+
+/* ---------- 바늘 ---------- */
+const needle = new THREE.Group(); needle.position.y = NEEDLE_Y; apparatus.add(needle);
+const rod = add(needle, new THREE.CylinderGeometry(0.11, 0.11, NEEDLE_L*2, 20), shellac); rod.rotation.z = Math.PI/2;
+const ball = add(needle, new THREE.SphereGeometry(0.45, 40, 24), pith); ball.position.x = NEEDLE_L;
+const disc = add(needle, new THREE.CylinderGeometry(1.0, 1.0, 0.03, 40), paperMat); disc.position.x = -NEEDLE_L; disc.rotation.z = Math.PI/2;
+const clamp = add(needle, new THREE.CylinderGeometry(0.28, 0.28, 0.5, 24), brassDark); clamp.position.y = 0.2;
+const hook = add(needle, new THREE.TorusGeometry(0.12, 0.03, 8, 20), silver); hook.position.y = 0.5;
+
+/* ---------- 고정 탐침(유리관 구멍으로 내려오는 막대 + 구) ---------- */
+const probe = new THREE.Group(); probe.position.set(PROBE_R, 0, 0); apparatus.add(probe);
+const pRod = add(probe, new THREE.CylinderGeometry(0.14, 0.14, H-NEEDLE_Y+9, 20), shellac); pRod.position.y = NEEDLE_Y + (H-NEEDLE_Y+9)/2;
+const pBall = add(probe, new THREE.SphereGeometry(0.45, 40, 24), pith); pBall.position.y = NEEDLE_Y;
+const pKnob = add(probe, new THREE.SphereGeometry(0.95, 32, 20), ivory); pKnob.position.y = H + 9.6;
+add(probe, new THREE.CylinderGeometry(0.5, 0.5, 0.35, 24), brassDark).position.y = H + 0.95;   // 구멍 위 칼라
+
+/* ---------- 조명 ---------- */
+const key = new THREE.DirectionalLight(0xfff0d8, 3.4);
+key.position.set(70, 150, 90); key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0004; key.shadow.normalBias = 0.05;
+Object.assign(key.shadow.camera, { left:-95, right:95, top:95, bottom:-95, near:10, far:420 });
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x9db8ff, 1.2); rim.position.set(-110, 80, -70); scene.add(rim);
+scene.add(new THREE.HemisphereLight(0xfff4e0, 0x2a2118, 0.35));
+
+/* ---------- 상태 갱신 ---------- */
+const mic = document.getElementById('mic'), th = document.getElementById('th');
+function update() {
+  const m = +mic.value, t = +th.value;
+  document.getElementById('vMic').textContent = m + '°';
+  document.getElementById('vTh').textContent = t + '°';
+  dial.rotation.y = -m * Math.PI/180;
+  needle.rotation.y = t * Math.PI/180;
+  buildWire((-m - -t) * Math.PI/180);      // 도선 위·아래 끝의 각도 차 = 비틀림
+}
+mic.oninput = th.oninput = update; update();
+
+/* ---------- 시점 프리셋 ---------- */
+const VIEWS = {
+  all:    { pos:[125, 88, 200], at:[0, 44, 0] },
+  top:    { pos:[16, 100, 24], at:[0, 94, 0] },
+  needle: { pos:[16, 26, 30],  at:[8, 16, 0] },
+  ring:   { pos:[-6, 22, 44],  at:[0, 16, 10] },
+};
+let anim = null;
+function goView(name, instant) {
+  const v = VIEWS[name], p1 = new THREE.Vector3(...v.pos), a1 = new THREE.Vector3(...v.at);
+  if (instant) { camera.position.copy(p1); controls.target.copy(a1); return; }
+  anim = { t:0, p0:camera.position.clone(), a0:controls.target.clone(), p1, a1 };
+}
+document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => goView(b.dataset.view));
+goView(new URLSearchParams(location.search).get('view') || 'all', true);
+for (const k of ['mic','th']) { const q = new URLSearchParams(location.search).get(k); if (q!==null) { document.getElementById(k).value = q; } }
+update();
+
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h); camera.aspect = w/h; camera.updateProjectionMatrix();
+  /* 좁은 화면에서는 장치가 잘리지 않게 거리 보정 */
+  if (w < h) camera.fov = 32 * Math.min(1.8, h/w*0.9); else camera.fov = 32;
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+let last = performance.now();
+renderer.setAnimationLoop((now) => {
+  const dt = Math.min(0.05, (now-last)/1000); last = now;
+  if (anim) {
+    anim.t = Math.min(1, anim.t + dt/1.1); const e = anim.t<.5 ? 2*anim.t*anim.t : 1-Math.pow(-2*anim.t+2,2)/2;
+    camera.position.lerpVectors(anim.p0, anim.p1, e); controls.target.lerpVectors(anim.a0, anim.a1, e);
+    if (anim.t>=1) anim = null;
+  }
+  controls.update(); renderer.render(scene, camera);
+  window.__frames = (window.__frames||0)+1;
+});
+window.__ready = true;
+</script>
+</body>
+</html>

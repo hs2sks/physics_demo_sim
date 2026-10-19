@@ -431,6 +431,7 @@ S.onFrame(dt => {
   S.setPose(s.theta, s.alpha); S.setProbe(s.probeIn); S.setCharges(s.qn, s.qp);
   trackOscillation(); updateTags(); paintLive();
 });
+$('lite').checked = S.lite; $('lite').onchange = e => { S.setLite(e.target.checked); toast(e.target.checked ? '저사양 모드: 그림자·유리 효과를 껐습니다.' : '고화질 모드로 바꿨습니다.'); };
 $('speed').onchange = e => speed = +e.target.value;
 $('reset').onclick = () => { rows = []; oscRows = []; newestRow = -1; saveForReport(); maxStep = 0; $('data').classList.remove('open'); goStep(0); };
 

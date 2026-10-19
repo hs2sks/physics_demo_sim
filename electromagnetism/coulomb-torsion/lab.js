@@ -48,6 +48,7 @@ const STEPS = [
   { name:'거리 줄이기', view:'all', tags:['mic', 'ring'], enter: enterDistance, render: renderDistance },
   { name:'결과 분석', view:'all', tags:[], enter: enterAnalysis, render: renderAnalysis },
   { name:'전하량의 영향', view:'needle', tags:['probe', 'needle'], enter: enterQ, render: renderQ },
+  { name:'오차 토론', view:'all', tags:[], enter: enterErr, render: renderErr },
 ];
 
 const stepsEl = $('steps'), bodyEl = $('stepBody');
@@ -141,7 +142,7 @@ function trackOscillation() {
       const n = osc.cross.length, T = 2 * (osc.cross[n - 1] - osc.cross[0]) / (n - 1);
       oscRows = oscRows.filter(r => r.amp !== osc.amp); oscRows.push({ amp:osc.amp, T }); oscRows.sort((a, b) => a.amp - b.amp);
       const done = oscRows.length;
-      osc = null; renderOsc();
+      osc = null; renderOsc(); saveForReport();
       if (done === 1) say(`주기를 얻었습니다. 이제 <b>다른 진폭</b>으로도 해 보세요.`);
       else if (done >= 2) say(`진폭이 달라도 주기는 <b>거의 같습니다</b>. 비틀림의 토크가 각에 비례한다는 뜻이지요. 주기 T와 바늘의 관성 I로 도선의 뻣뻣함을 구할 수 있습니다.
         <span class="eq">T = 2π√(I/κ) &nbsp;→&nbsp; κ = 4π²I / T²</span>
@@ -166,14 +167,18 @@ function renderCharge() {
     <button class="btn primary" id="b4">④ 지금 θ 기록하기</button>
     <p>바늘이 멈추면 눈금 띠에서 θ를 읽습니다. 처음 두 구가 닿았을 때의 각 θ₀ = ${f1(P.deg(P.THETA0))}°(구의 크기 때문)를 기준으로 비틀림각을 계산합니다.</p>
     ${nextBtn('3단계: 마이크로미터로 거리 줄이기', 3)}`;
-  $('b1').onclick = () => {
-    if (!s.probeIn) return;
-    P.chargeProbe(s, 1.0e-9); chargeStage = Math.max(chargeStage, 1);
+  $('b1').onclick = async () => {
+    if (!s.probeIn || S.busy) return;
+    say(`덮개의 출입구로 <b>전기를 띤 봉랍 막대</b>를 넣어 탐침구에 가만히 대 봅니다.`);
+    await S.playWand('rod', () => { P.chargeProbe(s, 1.0e-9); return 0; });
+    chargeStage = Math.max(chargeStage, 1);
     say(`탐침구가 전기를 띠었습니다. 하지만 바늘 쪽 구는 아직 전기가 없어 <b>밀어낼 상대가 없습니다</b>. 다음으로 이 구를 바늘 쪽 구에 대어 전하를 나눠 주세요.`);
   };
   $('b2').onclick = () => {
+    if (S.busy) return;
     if (s.qp < 0.05e-9) { toast('먼저 ①로 탐침구를 대전시키세요.'); return; }
     if (!P.shareCharge(s)) { toast('바늘이 탐침구에 닿아 있을 때만 전하를 나눌 수 있습니다.'); return; }
+    S.flashBalls();
     chargeStage = 2; say(`두 구가 같은 전하를 나눠 가졌습니다. 보십시오, 바늘이 <b>밀려납니다</b>. 흔들림이 가라앉으면 눈금 띠에서 각을 읽으세요.`);
   };
   $('b3').onclick = () => { settleNow(); };
@@ -266,7 +271,8 @@ function renderQ() {
     <div class="row"><button class="btn" id="b3">바로 안정</button><button class="btn primary" id="b4">θ 기록 (현재 ${qTag === 'q' ? '전하 q' : '전하 q/2'})</button></div>
     <button class="btn" id="half">탐침구 전하를 절반으로 (같은 구와 접촉)</button>
     <div id="qOut"></div>
-    <p>① 지금 전하로 θ가 ${Q_TARGET}° 근처(±1.5°)가 되게 α를 맞추고 기록 → ② 전하를 절반으로 줄이고 다시 θ를 ${Q_TARGET}°로 맞춰 기록.</p>`;
+    <p>① 지금 전하로 θ가 ${Q_TARGET}° 근처(±1.5°)가 되게 α를 맞추고 기록 → ② 전하를 절반으로 줄이고 다시 θ를 ${Q_TARGET}°로 맞춰 기록.</p>
+    ${nextBtn('7단계: 오차 토론', 6)}`;
   const inp = $('alpha');
   inp.oninput = () => { s.alpha = P.rad(+inp.value); paintAlpha(); };
   $('b3').onclick = settleNow;
@@ -274,8 +280,11 @@ function renderQ() {
     if (Math.abs(P.readAngle(s.theta) - Q_TARGET) > 1.5) { toast(`θ가 ${Q_TARGET}°(±1.5°)에서 벗어났습니다. α를 조절하세요.`); return; }
     if (recordRow()) renderQResult();
   };
-  $('half').onclick = () => {
-    P.halveProbeCharge(s); qTag = 'q/2'; renderQ();
+  $('half').onclick = async () => {
+    if (S.busy) return;
+    say(`출입구로 <b>전기가 없는 똑같은 골심구</b>를 넣어 탐침구에 닿게 합니다.`);
+    await S.playWand('ball', () => { const q0 = s.qp; P.halveProbeCharge(s); qTag = 'q/2'; return (q0 / 2) / 0.6e-9; });
+    renderQ();
     say(`탐침구의 전하가 <b>절반</b>이 되었습니다. 같은 거리(θ ≈ ${Q_TARGET}°)에서 필요한 비틀림각이 어떻게 달라지는지 보세요. 마이크로미터를 줄여야 할 겁니다.`);
   };
   paintAlpha(); renderQResult(true);
@@ -294,12 +303,78 @@ function renderQResult(silent) {
     이것이 훗날 <b>쿨롱의 법칙</b>이라 불리게 됩니다. 두 전하가 같은 부호이면 밀어내고(반발), 다른 부호이면 끌어당깁니다(인력). 수고 많으셨습니다!`);
 }
 
+/* ---------- 6. 오차 토론 ---------- */
+const SCEN = [
+  { id:'actual', label:'위 실험과 같은 조건', opt:{} },
+  { id:'noleak', label:'전하 누설이 없다면', opt:{ leak:false } },
+  { id:'notan',  label:'접선 성분 cos(θ/2)를 무시하면', opt:{ tangent:false } },
+  { id:'fine',   label:'눈금을 정밀하게 읽었다면', opt:{ round:false } },
+  { id:'ideal',  label:'세 가지 모두 이상적', opt:{ leak:false, tangent:false, round:false } },
+];
+let errWait = 10, errPick = 'ideal', overlay = null, errRes = {};
+function errAlphas() {
+  const q = rows.filter(r => r.tag === 'q'); const a = q.map(r => r.alpha);
+  return a.length >= 3 ? a : [0, 50, 120, 250, 450, 800];
+}
+function runScenarios() {
+  const al = errAlphas(); errRes = {};
+  for (const sc of SCEN) errRes[sc.id] = P.replay(al, { ...sc.opt, wait:errWait });
+  overlay = errRes[errPick]; saveForReport();
+}
+function errSpeech() {
+  const base = errRes.actual.fit.b, eff = ['noleak', 'notan', 'fine'].map(id => ({ id, d: errRes[id].fit.b - base, label: SCEN.find(x => x.id === id).label }));
+  eff.sort((a, b) => Math.abs(b.d) - Math.abs(a.d));
+  return `<b>측정이 완벽하지 않은 이유</b>를 하나씩 꺼 보며 따져 봅시다. 같은 α로 실험을 다시 돌렸을 때 기울기는 <b>${base.toFixed(2)}</b>이고, 모든 요인을 이상적으로 만들면 <b>${errRes.ideal.fit.b.toFixed(2)}</b>로 −2에 닿습니다.<br><br>
+    기울기를 가장 많이 바꾸는 것은 「${eff[0].label}」(${eff[0].d >= 0 ? '+' : ''}${eff[0].d.toFixed(3)})입니다. ${eff.some(e => e.d > 0) && eff.some(e => e.d < 0) ? '요인마다 효과의 <b>방향이 다르다</b>는 점도 눈여겨보세요.' : '세 요인이 기울기를 같은 방향으로 밀고 있는지 확인해 보세요.'}<br><br>
+    참고로 쿨롱의 결과를 두고 후대 역사학자들 사이에도 논쟁이 있습니다. 좋은 실험은 오차를 숨기지 않고 <b>따져 보는 데</b> 있습니다.`;
+}
+function enterErr() {
+  osc = null; runScenarios(); openData(innerWidth > 900); say(errSpeech());
+}
+function renderErr() {
+  const b0 = errRes.actual.fit.b;
+  const mine = fitQ();
+  const body = SCEN.map(sc => {
+    const f = errRes[sc.id].fit;
+    return `<tr><td><label><input type="radio" name="scn" value="${sc.id}" ${sc.id === errPick ? 'checked' : ''}> ${sc.label}</label></td><td>${f.b.toFixed(3)}</td><td>${(f.b + 2 >= 0 ? '+' : '') + (f.b + 2).toFixed(3)}</td></tr>`;
+  }).join('');
+  bodyEl.innerHTML = `<h2>왜 정확히 −2가 안 나올까?</h2>
+    <p>${rows.some(r => r.tag === 'q') && errAlphas().length >= 3 ? '내가 측정한 α 값들로' : '표준 α 값(0~800°)으로'} 실험을 다시 돌려, 오차 요인을 하나씩 꺼 봅니다.</p>
+    <table style="font-size:.8em"><tr><th style="text-align:left">조건</th><th>기울기</th><th>−2와의 차</th></tr>${body}</table>
+    ${mine ? `<div class="note">내가 측정한 기울기: <b>${mine.fit.b.toFixed(3)}</b></div>` : ''}
+    <label class="sl">측정 한 번에 걸리는 시간 <b id="vWait">${errWait} s</b></label>
+    <input id="errWait" type="range" min="2" max="120" step="1" value="${errWait}">
+    <p>시간이 길수록 전하가 더 새어 나갑니다(누설이 켜진 조건에서만 영향). 오른쪽 그래프의 속 빈 초록 점이 선택한 조건의 결과입니다.</p>
+    <details><summary style="cursor:pointer;color:var(--accent);font-size:.88em">모델이 다루지 못한 요인 · 토론 질문</summary>
+      <p><b>모델에 없는 것</b><br>• 유한한 크기의 도체 구: 가까워지면 표면 전하가 치우쳐 점전하 가정이 깨짐<br>• 공기의 습도·바늘 진동의 잔류·눈금 시차<br>• 구의 전하가 정확히 같지 않을 가능성</p>
+      <p><b>생각해 볼 질문</b><br>1. 어떤 요인이 기울기를 가장 크게 바꾸는가? 그 이유는?<br>2. 측정을 빨리 끝내면 결과가 어떻게 달라지는가? (슬라이더)<br>3. 구가 가까울수록(θ가 작을수록) 상대 오차가 커지는 요인은?<br>4. 쿨롱이 36°→18°→8.5°의 점 3개만으로 역제곱을 주장한 것은 충분한가?</p>
+    </details>
+    <div class="row"><button class="btn" data-go="4">◀ 5단계로(분석)</button></div>
+    <a class="btn primary" href="report.html" style="text-decoration:none;text-align:center">📝 측정값을 들고 보고서 쓰러 가기</a>`;
+  bodyEl.querySelectorAll('input[name=scn]').forEach(r => r.onchange = () => { errPick = r.value; overlay = errRes[errPick]; refreshData(); });
+  $('errWait').oninput = e => { errWait = +e.target.value; $('vWait').textContent = errWait + ' s'; runScenarios(); renderErr(); refreshData(); };
+}
+
+/* ---------- 보고서 연동: 측정값을 이 브라우저에만 저장(report.html이 읽음) ---------- */
+function saveForReport() {
+  try {
+    const q = fitQ();
+    const scen = {}; for (const sc of SCEN) if (errRes[sc.id]) scen[sc.id] = errRes[sc.id].fit.b;
+    localStorage.setItem('coulomb-lab-v1', JSON.stringify({
+      saved: Date.now(), rows, oscRows,
+      I: P.I_NEEDLE, L: P.L, theta0: P.deg(P.THETA0),
+      fit: q ? { b: q.fit.b, r2: q.fit.r2 } : null, scen
+    }));
+  } catch {}
+}
+
 /* ---------- 데이터 창(표 + 그래프) ---------- */
 const dataEl = $('data'), dataBtn = $('dataBtn');
 function openData(v) { dataEl.classList.toggle('open', v); dataBtn.classList.toggle('hide', v || !rows.length); }
 dataBtn.onclick = () => openData(true); $('closeData').onclick = () => openData(false);
 function refreshData() {
-  if (!rows.length) { $('dataBody').innerHTML = '<p class="note">아직 기록이 없습니다.</p>'; dataBtn.classList.add('hide'); return; }
+  saveForReport();
+  if (!rows.length && !(step === 6 && overlay)) { $('dataBody').innerHTML = '<p class="note">아직 기록이 없습니다.</p>'; dataBtn.classList.add('hide'); return; }
   const body = rows.map((r, i) => `<tr class="${i === newestRow ? 'new' : ''}"><td>${i + 1}${r.tag === 'q/2' ? ' <small>(q/2)</small>' : ''}</td><td>${r.alpha}</td><td>${f1(r.theta)}</td><td>${f1(r.Theta)}</td><td>${r.r.toFixed(2)}</td><td>${f0(r.Tr2)}</td></tr>`).join('');
   $('dataBody').innerHTML = `<table><tr><th>#</th><th>α(°)</th><th>θ(°)</th><th>Θ(°)</th><th>r(cm)</th><th>Θ·r²</th></tr>${body}</table>
     <div class="note">Θ = α + (θ − θ₀), θ₀ = ${f1(P.deg(P.THETA0))}° · r = 2L·sin(θ/2), L = 10.5 cm · 눈금은 0.5° 단위로 읽음</div>
@@ -323,11 +398,18 @@ function drawPlot() {
   const F = fitQ();
   if (F) {
     const mx = F.q.reduce((a, r) => a + Math.log(r.r), 0) / F.q.length, my = F.q.reduce((a, r) => a + Math.log(r.Theta), 0) / F.q.length;
-    if (showRef && step >= 4) { g.setLineDash([8, 6]); g.strokeStyle = '#7fc98a'; g.lineWidth = 2; g.beginPath(); g.moveTo(X(Math.exp(x0)), Y(Math.exp(my - 2 * (x0 - mx)))); g.lineTo(X(Math.exp(x1)), Y(Math.exp(my - 2 * (x1 - mx)))); g.stroke(); g.setLineDash([]); }
-    if (step >= 4) { g.strokeStyle = '#d9a441'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(X(Math.exp(x0)), Y(Math.exp(F.fit.a + F.fit.b * x0))); g.lineTo(X(Math.exp(x1)), Y(Math.exp(F.fit.a + F.fit.b * x1))); g.stroke(); }
+    if (showRef && step === 4) { g.setLineDash([8, 6]); g.strokeStyle = '#7fc98a'; g.lineWidth = 2; g.beginPath(); g.moveTo(X(Math.exp(x0)), Y(Math.exp(my - 2 * (x0 - mx)))); g.lineTo(X(Math.exp(x1)), Y(Math.exp(my - 2 * (x1 - mx)))); g.stroke(); g.setLineDash([]); }
+    if (step === 4 || step === 6) { g.strokeStyle = '#d9a441'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(X(Math.exp(x0)), Y(Math.exp(F.fit.a + F.fit.b * x0))); g.lineTo(X(Math.exp(x1)), Y(Math.exp(F.fit.a + F.fit.b * x1))); g.stroke(); }
+  }
+  if (step === 6 && overlay) {
+    const o = overlay.rows.filter(r => r.Theta > 0);
+    g.strokeStyle = '#7fc98a'; g.lineWidth = 2; g.setLineDash([]); g.beginPath();
+    g.moveTo(X(Math.exp(x0)), Y(Math.exp(overlay.fit.a + overlay.fit.b * x0))); g.lineTo(X(Math.exp(x1)), Y(Math.exp(overlay.fit.a + overlay.fit.b * x1))); g.stroke();
+    for (const r of o) { g.beginPath(); g.arc(X(r.r), Y(r.Theta), 11, 0, 7); g.stroke(); }
+    g.textAlign = 'right'; g.fillStyle = '#7fc98a'; g.fillText(`초록: 선택한 조건 기울기 ${overlay.fit.b.toFixed(3)}`, W - m.r - 10, m.t + 30);
   }
   for (const r of all) { g.fillStyle = r.tag === 'q' ? '#f1e6c9' : '#6bb7e8'; g.beginPath(); g.arc(X(r.r), Y(r.Theta), 7, 0, 7); g.fill(); }
-  if (F && step >= 4) { g.textAlign = 'right'; g.fillStyle = '#d9a441'; g.fillText(`실선: 기울기 ${F.fit.b.toFixed(2)}`, W - m.r - 10, m.t + 30); if (showRef) { g.fillStyle = '#7fc98a'; g.fillText('점선: 기울기 −2', W - m.r - 10, m.t + 58); } }
+  if (F && step >= 4 && step < 6) { g.textAlign = 'right'; g.fillStyle = '#d9a441'; g.fillText(`실선: 기울기 ${F.fit.b.toFixed(2)}`, W - m.r - 10, m.t + 30); if (showRef) { g.fillStyle = '#7fc98a'; g.fillText('점선: 기울기 −2', W - m.r - 10, m.t + 58); } }
 }
 $('copyCsv').onclick = async () => {
   const csv = ['번호,전하,alpha_deg,theta_deg,Theta_deg,r_cm,Theta_r2', ...rows.map((r, i) => [i + 1, r.tag, r.alpha, r.theta, r.Theta.toFixed(1), r.r.toFixed(2), r.Tr2.toFixed(0)].join(','))].join('\n');
@@ -350,7 +432,7 @@ S.onFrame(dt => {
   trackOscillation(); updateTags(); paintLive();
 });
 $('speed').onchange = e => speed = +e.target.value;
-$('reset').onclick = () => { rows = []; oscRows = []; newestRow = -1; maxStep = 0; $('data').classList.remove('open'); goStep(0); };
+$('reset').onclick = () => { rows = []; oscRows = []; newestRow = -1; saveForReport(); maxStep = 0; $('data').classList.remove('open'); goStep(0); };
 
 /* ---------- 시험용 훅 ---------- */
 window.__lab = { get s() { return s; }, P, goStep, track: trackOscillation, rows: () => rows, recordRow, settleNow, ensureCharged };

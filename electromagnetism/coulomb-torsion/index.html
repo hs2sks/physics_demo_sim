@@ -93,6 +93,7 @@
     <span>시간 배속 <select id="speed"><option value="1">×1</option><option value="3" selected>×3</option><option value="6">×6</option></select></span>
     <span><button class="chip" id="reset">처음부터</button></span>
   </div>
+  <a class="btn primary" href="report.html" style="text-decoration:none;text-align:center">📝 이 실험으로 보고서 쓰기</a>
   <p class="disc">※ 쿨롱의 말투와 설명은 수업용 재구성이고, 화면의 수치는 모델이 계산한 값입니다(1785년 원전 값이 아닙니다).<br>초상: Louis Hierle, 1894 (위키미디어 커먼즈, 퍼블릭 도메인)</p>
 </div>
 <button id="dataBtn" class="panel hide">📊 데이터</button>
@@ -248,6 +249,8 @@ const PROBE_R = NEEDLE_L;
 const plateShape = new THREE.Shape(); plateShape.absarc(0, 0, R+1.1, 0, Math.PI*2, false);
 const h1 = new THREE.Path(); h1.absarc(0, 0, 1.55, 0, Math.PI*2, true); plateShape.holes.push(h1);
 const h2 = new THREE.Path(); h2.absarc(PROBE_R, 0, 0.55, 0, Math.PI*2, true); plateShape.holes.push(h2);
+const PORT_X = PROBE_R + 2.0;      // 대전체·중성구를 넣는 출입구
+const h3 = new THREE.Path(); h3.absarc(PORT_X, 0, 0.75, 0, Math.PI*2, true); plateShape.holes.push(h3);
 const plateGeo = new THREE.ExtrudeGeometry(plateShape, { depth:0.7, bevelEnabled:true, bevelSize:0.12, bevelThickness:0.1, bevelSegments:3, curveSegments:64 });
 plateGeo.rotateX(-Math.PI/2);
 const plate = add(apparatus, plateGeo, glassMat, { cast:false }); plate.position.y = H;
@@ -363,6 +366,41 @@ function makeGlow(parent) {
   sp.scale.setScalar(3.6); parent.add(sp); return sp;
 }
 const glowN = makeGlow(ball), glowP = makeGlow(pBall);
+const glowT = { n:0, p:0 };           // 목표 밝기(실제 표시는 부드럽게 따라감)
+
+/* ---------- 출입구 마개, 대전체(봉랍 막대), 중성 골심구 ---------- */
+const plug = new THREE.Group(); apparatus.add(plug);
+add(plug, new THREE.CylinderGeometry(0.72, 0.6, 0.9, 32), brassDark).position.set(PORT_X, H + 0.6, 0);
+add(plug, new THREE.SphereGeometry(0.5, 20, 12), brass).position.set(PORT_X, H + 1.3, 0);
+
+const waxMat = new THREE.MeshPhysicalMaterial({ color:0x9d1d1d, roughness:0.28, clearcoat:0.8, clearcoatRoughness:0.2 });
+const TOUCH = new THREE.Vector3(PROBE_R + 0.95, NEEDLE_Y, 0);                 // 대전체 끝이 탐침구에 닿는 점
+const AXIS = new THREE.Vector3(PORT_X - TOUCH.x, H + 0.35 - NEEDLE_Y, 0).normalize();   // 출입구를 지나는 방향
+const TILT = -Math.atan2(AXIS.x, AXIS.y);
+function makeWand(kind) {
+  const g = new THREE.Group(); g.visible = false; apparatus.add(g);
+  const rodMat = kind === 'rod' ? waxMat : shellac, r = kind === 'rod' ? 0.3 : 0.12;
+  const stick = add(g, new THREE.CylinderGeometry(r, r, 62, 20), rodMat); stick.position.y = 31;
+  add(g, new THREE.CylinderGeometry(0.9, 0.7, 6, 24), ivory).position.y = 64;            // 손잡이
+  if (kind === 'rod') add(g, new THREE.SphereGeometry(0.5, 28, 16), brass);              // 끝의 놋쇠 구
+  else add(g, new THREE.SphereGeometry(0.45, 32, 20), pith);                              // 중성 골심구
+  g.rotation.z = TILT; return g;
+}
+const wandRod = makeWand('rod'), wandBall = makeWand('ball');
+const glowW = makeGlow(wandBall);
+const spark = new THREE.Sprite(new THREE.SpriteMaterial({ map:glowTex, blending:THREE.AdditiveBlending, depthWrite:false, transparent:true, opacity:0, color:0xfff2cc }));
+scene.add(spark);
+function setWand(g, off) { g.position.copy(TOUCH).addScaledVector(AXIS, off); }
+
+/* 시간 기반 트윈(시뮬레이션 배속과 무관) */
+const tweens = [];
+const ease = t => t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2)/2;
+const tween = (dur, fn) => new Promise(res => tweens.push({ t:0, dur, fn, res }));
+function flashAt(v) {
+  spark.position.copy(v);
+  return tween(0.55, e => { spark.material.opacity = 1 - e; spark.scale.setScalar(2 + 6*e); }).then(() => { spark.material.opacity = 0; });
+}
+let busy = false;
 
 /* ---------- 시점 프리셋 ---------- */
 const VIEWS = {
@@ -410,8 +448,23 @@ window.SCENE = {
     if (Math.abs(twist - lastTwist) > 0.003) { lastTwist = twist; buildWire(twist); }
   },
   setProbe(v) { probe.visible = v; },
-  setCharges(qn, qp) {
-    glowN.material.opacity = Math.min(1, qn / 0.6e-9); glowP.material.opacity = Math.min(1, qp / 0.6e-9);
+  setCharges(qn, qp) { glowT.n = Math.min(1, qn / 0.6e-9); glowT.p = Math.min(1, qp / 0.6e-9); },
+  get busy() { return busy; },
+  /** 두 구가 닿은 자리에서 번쩍임(전하가 나뉘는 순간) */
+  flashBalls() { const a = ball.getWorldPosition(new THREE.Vector3()), b = pBall.getWorldPosition(new THREE.Vector3()); return flashAt(a.add(b).multiplyScalar(0.5)); },
+  /** 막대(rod: 대전체, ball: 중성 골심구)를 출입구로 넣어 탐침구에 닿게 했다가 뺀다. 닿는 순간 onContact가 불리고, 숫자를 돌려주면 그 밝기로 중성구가 빛난다. */
+  async playWand(kind, onContact) {
+    if (busy) return; busy = true;
+    const g = kind === 'rod' ? wandRod : wandBall, FAR = 34;
+    glowW.material.opacity = 0; plug.visible = false; g.visible = true; setWand(g, FAR);
+    await tween(1.0, e => setWand(g, FAR * (1 - e)));
+    const contact = pBall.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0.475, 0, 0));
+    flashAt(contact);
+    const bright = onContact ? onContact() : 0;
+    if (kind === 'ball') glowW.material.opacity = Math.min(1, bright || 0);
+    await tween(0.9, () => {});
+    await tween(1.0, e => setWand(g, FAR * e));
+    g.visible = false; plug.visible = true; busy = false;
   },
   goView,
   project(name) {
@@ -431,6 +484,12 @@ renderer.setAnimationLoop((now) => {
     camera.position.lerpVectors(anim.p0, anim.p1, e); controls.target.lerpVectors(anim.a0, anim.a1, e);
     if (anim.t>=1) anim = null;
   }
+  for (let i = tweens.length - 1; i >= 0; i--) {
+    const w = tweens[i]; w.t = Math.min(w.dur, w.t + dt); w.fn(ease(w.t / w.dur));
+    if (w.t >= w.dur) { tweens.splice(i, 1); w.res(); }
+  }
+  const k = Math.min(1, dt * 4);
+  glowN.material.opacity += (glowT.n - glowN.material.opacity) * k; glowP.material.opacity += (glowT.p - glowP.material.opacity) * k;
   for (const cb of frameCbs) cb(dt);
   controls.update(); renderer.render(scene, camera);
   window.__frames = (window.__frames||0)+1;

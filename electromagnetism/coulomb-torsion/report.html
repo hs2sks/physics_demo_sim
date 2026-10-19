@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>쿨롱 비틀림 저울 가상 실험 보고서</title>
+<style>
+  :root { --bg:#f4efe4; --paper:#fffdf8; --ink:#2b1d0d; --sub:#6d5e47; --accent:#9a5f10; --line:#d8ccb4; --field:#fff8e6; --ok:#2f7d3b; --bad:#b4442a; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#14110d; --paper:#1d1812; --ink:#efe6d6; --sub:#b9ab93; --accent:#d9a441; --line:#3b3328; --field:#2a241c; --ok:#7fc98a; --bad:#e8896b; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:"Segoe UI","Malgun Gothic",sans-serif; font-size:15px; line-height:1.6; }
+  .bar { position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:8px 16px; background:var(--paper); border-bottom:1px solid var(--line); }
+  .bar a, .bar button { font:inherit; font-size:.88em; padding:6px 12px; border-radius:8px; border:1px solid var(--line); background:var(--field); color:var(--ink); text-decoration:none; cursor:pointer; }
+  .bar a:hover, .bar button:hover { border-color:var(--accent); }
+  .bar .primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .bar .sp { flex:1; }
+  #status { font-size:.82em; color:var(--sub); }
+  main { max-width:860px; margin:0 auto; padding:16px 16px 80px; }
+  .paper { background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:20px 22px; margin-bottom:16px; }
+  h1 { font-size:1.5em; margin:6px 0 4px; }
+  h2 { font-size:1.15em; margin:0 0 8px; color:var(--accent); }
+  h3 { font-size:1em; margin:14px 0 6px; }
+  p, li { margin:6px 0; }
+  .sub, small { color:var(--sub); }
+  .eq { display:block; margin:6px 0; padding:6px 12px; background:var(--field); border-left:3px solid var(--accent); font-family:Consolas,"Courier New",monospace; font-size:.95em; }
+  .note { padding:8px 12px; border-radius:8px; background:var(--field); font-size:.88em; color:var(--sub); }
+  .warn { border-left:3px solid var(--bad); }
+  table { border-collapse:collapse; width:100%; margin:8px 0; font-size:.9em; }
+  th, td { border:1px solid var(--line); padding:4px 6px; text-align:center; vertical-align:middle; }
+  th { background:var(--field); font-weight:600; }
+  td.l { text-align:left; }
+  input[type=text], input[type=number], textarea { font:inherit; color:var(--ink); background:var(--field); border:1px solid var(--line); border-radius:6px; padding:4px 6px; width:100%; }
+  td input { text-align:center; min-width:56px; }
+  textarea { min-height:68px; resize:vertical; }
+  textarea.tall { min-height:130px; }
+  input:focus, textarea:focus { outline:2px solid var(--accent); outline-offset:0; }
+  .tablewrap { overflow-x:auto; }
+  .q { margin:12px 0; }
+  .q b { display:block; margin-bottom:4px; }
+  .id { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; }
+  .id label { font-size:.82em; color:var(--sub); display:block; }
+  .ok { color:var(--ok); font-weight:700; } .bad { color:var(--bad); font-weight:700; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:8px 0; }
+  .row button { font:inherit; font-size:.88em; padding:6px 12px; border-radius:8px; border:1px solid var(--line); background:var(--field); color:var(--ink); cursor:pointer; }
+  .row button:hover { border-color:var(--accent); }
+  .row .go { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .row label { font-size:.9em; }
+  .chk label { display:block; margin:4px 0; }
+  .calc { width:5.5em; }
+  @media (max-width:640px) { .id { grid-template-columns:1fr 1fr; } .paper { padding:14px 12px; } }
+  @media print {
+    :root { --bg:#fff; --paper:#fff; --ink:#000; --sub:#444; --line:#999; --field:#fff; --accent:#000; }
+    .bar, .noprint { display:none !important; }
+    body { font-size:11pt; } main { max-width:none; padding:0; }
+    .paper { border:none; border-radius:0; padding:0 0 10px; break-inside:auto; }
+    textarea { border:1px solid #bbb; resize:none; overflow:visible; }
+    h2 { break-after:avoid; } table, .q { break-inside:avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="bar">
+  <a href="index.html">⚖️ 가상 실험실</a>
+  <a href="../index.html">전자기 허브</a>
+  <a href="../../index.html">🏠 홈</a>
+  <span class="sp"></span>
+  <span id="status">자동 저장됨</span>
+  <button id="load" class="primary" title="가상 실험실에서 기록한 값을 표에 채웁니다">📥 실험실 값 불러오기</button>
+  <button id="print">🖨 인쇄 / PDF 저장</button>
+</div>
+
+<main>
+<section class="paper">
+  <h1>쿨롱 비틀림 저울 가상 실험 보고서</h1>
+  <p class="sub">쿨롱 법칙 · <a href="index.html">쿨롱의 비틀림 저울 가상 실험실</a>에서 측정한 값으로 작성합니다.</p>
+  <div class="note noprint">
+    <b>쓰는 방법</b> ① 가상 실험실을 1→7단계 순서로 진행하며 측정합니다. ② 이 페이지에서 <b>[📥 실험실 값 불러오기]</b>를 누르면 측정한 α·θ·주기가 표에 들어옵니다(Θ·r·F 같은 <b>계산 칸은 직접 계산</b>해 적고, [계산 확인]으로 맞는지 봅니다). ③ 풀이와 서술은 직접 씁니다. ④ 끝나면 <b>[인쇄 / PDF 저장]</b>으로 제출 파일을 만듭니다.<br>
+    입력한 내용은 <b>이 기기의 브라우저에만</b> 저장되며 서버로 보내지지 않습니다. 공용 컴퓨터라면 마친 뒤 맨 아래 [모두 지우기]를 누르세요. 한글 파일(docx) 양식은 <a href="coulomb-torsion-report.docx" download>여기서 내려받을 수 있습니다</a>.
+  </div>
+  <h2 style="margin-top:14px">실험 개요</h2>
+  <div class="id">
+    <div><label>학번</label><input type="text" data-k="id_no" autocomplete="off"></div>
+    <div><label>이름</label><input type="text" data-k="id_name" autocomplete="off"></div>
+    <div><label>모둠</label><input type="text" data-k="id_group" autocomplete="off"></div>
+    <div><label>실험일</label><input type="text" data-k="id_date" placeholder="2026-10-19" autocomplete="off"></div>
+  </div>
+  <h3>실험 목표</h3>
+  <ul>
+    <li>비틀림 저울이 아주 작은 전기력을 각도로 바꿔 측정하는 원리를 설명할 수 있다.</li>
+    <li>두 전하 사이의 거리를 바꿔 가며 측정하여 전기력이 거리의 제곱에 반비례함을 확인할 수 있다.</li>
+    <li>전하량을 절반으로 줄여 전기력이 전하량에 비례함을 확인할 수 있다.</li>
+    <li>측정값으로 <b>전기력의 실제 크기(N)</b>를 계산하고, 오차의 원인을 논의할 수 있다.</li>
+  </ul>
+  <p class="note warn">실험실의 [처음부터] 버튼은 모든 기록을 지웁니다. 측정이 끝날 때마다 📊 데이터 창의 [표 복사]로 백업해 두세요.</p>
+</section>
+
+<section class="paper">
+  <h2>1. 사전 학습: 장치 살펴보기 (단계 1)</h2>
+  <p>가상 실험실에서 화면을 드래그해 장치를 돌려 보고, 시점 버튼(전체·위쪽·바늘·눈금·위에서)으로 각 부품을 확인한 뒤 역할을 적어 보자.</p>
+  <table>
+    <tr><th style="width:30%">부품</th><th>이 부품이 하는 역할</th></tr>
+    <tr><td class="l">마이크로미터</td><td><textarea data-k="part_mic" style="min-height:44px"></textarea></td></tr>
+    <tr><td class="l">은 도선</td><td><textarea data-k="part_wire" style="min-height:44px"></textarea></td></tr>
+    <tr><td class="l">유리 원통</td><td><textarea data-k="part_glass" style="min-height:44px"></textarea></td></tr>
+    <tr><td class="l">바늘 쪽 구</td><td><textarea data-k="part_ball" style="min-height:44px"></textarea></td></tr>
+    <tr><td class="l">종이 원판 (바늘 반대쪽)</td><td><textarea data-k="part_paper" style="min-height:44px"></textarea></td></tr>
+    <tr><td class="l">고정된 탐침구</td><td><textarea data-k="part_probe" style="min-height:44px"></textarea></td></tr>
+    <tr><td class="l">눈금 띠 (0~360°)</td><td><textarea data-k="part_ring" style="min-height:44px"></textarea></td></tr>
+  </table>
+  <h3>이 실험에서 쓰는 기호</h3>
+  <table>
+    <tr><th>기호</th><th>뜻</th><th>읽는 곳</th></tr>
+    <tr><td>α</td><td class="l">마이크로미터로 도선 윗끝을 돌린 각</td><td>마이크로미터</td></tr>
+    <tr><td>θ</td><td class="l">두 구 사이의 각</td><td>눈금 띠</td></tr>
+    <tr><td>θ₀</td><td class="l">두 구가 닿아 있을 때의 각 = 4.9° (구의 크기 때문)</td><td>고정값</td></tr>
+    <tr><td>Θ</td><td class="l">도선이 실제로 비틀린 총 비틀림각</td><td>계산</td></tr>
+    <tr><td>r</td><td class="l">두 구 중심 사이 거리</td><td>계산</td></tr>
+    <tr><td>L</td><td class="l">바늘 중심에서 구 중심까지 거리 = 10.5 cm</td><td>고정값</td></tr>
+  </table>
+  <span class="eq">Θ = α + (θ − θ₀)</span>
+  <span class="eq">r = 2L · sin(θ/2)</span>
+  <div class="q"><b>Q1. 총 비틀림각 Θ는 마이크로미터 각 α와 같은가? 도선의 윗끝과 아랫끝이 각각 어느 방향으로 도는지 생각하여 설명하시오.</b><textarea data-k="q1"></textarea></div>
+  <div class="q"><b>Q2. 유리 원통을 씌우지 않고 실험하면 어떤 문제가 생길지 예상하시오.</b><textarea data-k="q2"></textarea></div>
+</section>
+
+<section class="paper">
+  <h2>2. 실험 1: 도선은 얼마나 뻣뻣한가 (단계 2)</h2>
+  <p>전기력을 각도로 읽으려면, 먼저 도선의 복원 토크가 비틀린 각에 비례하는지 확인해야 한다. 비례한다면 진폭이 달라도 진동 주기는 같아야 한다.</p>
+  <span class="eq">τ = κ · φ &nbsp;(복원 토크는 비틀린 각에 비례)</span>
+  <span class="eq">T = 2π √(I / κ) &nbsp;→&nbsp; κ = 4π² I / T²</span>
+  <p><b>실험 방법</b> ① <b>2. 비틀림 법칙</b> 단계로 이동한다(탐침구는 빠져 있어 전기력이 없다). ② [10° 돌려 놓기]를 누르고 바늘이 영점을 7회 지나 주기가 표시될 때까지 기다린다. ③ [30°], [60°]로 반복한다. ④ 화면에 표시된 I와 κ를 옮겨 적는다.</p>
+  <table>
+    <tr><th>진폭 (°)</th><th>주기 T (s)</th></tr>
+    <tr><td>10</td><td><input type="number" step="any" data-k="t10"></td></tr>
+    <tr><td>30</td><td><input type="number" step="any" data-k="t30"></td></tr>
+    <tr><td>60</td><td><input type="number" step="any" data-k="t60"></td></tr>
+    <tr><td>평균</td><td><input type="number" step="any" data-k="tavg"></td></tr>
+  </table>
+  <div class="row">
+    <label>바늘의 관성모멘트 I = <input type="text" data-k="I" style="width:9em"> kg·m²</label>
+    <label>도선의 비틀림 상수 κ = <input type="text" data-k="kappa" style="width:9em"> N·m/rad</label>
+  </div>
+  <p class="sub" id="kapChk"></p>
+  <div class="q"><b>Q3. 진폭이 달라져도 주기가 거의 같다는 사실은 무엇을 뜻하는가? 이 결과가 뒤의 실험에서 왜 꼭 필요한지 설명하시오.</b><textarea data-k="q3"></textarea></div>
+</section>
+
+<section class="paper">
+  <h2>3. 실험 2: 거리에 따른 전기력 (단계 3~4)</h2>
+  <p>두 구에 같은 부호의 전하를 주고, 마이크로미터로 거리를 줄여 가며 평형 상태의 각을 측정한다. 평형에서는 도선의 복원 토크와 전기력의 토크가 같으므로 Θ가 전기력에 비례한다.</p>
+  <p><b>A. 대전과 첫 측정 (단계 3)</b> ① 탐침구에 대전체 대기 → ② 탐침구를 바늘의 구에 닿게 하기(전하 나눔, 바늘이 밀려남) → ③ 바로 안정 → ④ θ 기록 (α = 0°인 첫 점)</p>
+  <div class="q"><b>Q4. ②에서 두 구가 전하를 똑같이 나눠 갖는 이유는 무엇인가? 두 구 사이에 작용하는 힘은 인력인가, 척력인가?</b><textarea data-k="q4"></textarea></div>
+  <p><b>B. 거리 줄이기 (단계 4)</b> 슬라이더 또는 칩 버튼으로 α를 아래 표의 값으로 맞추고 [바로 안정] → [θ 기록]. 아래 표를 채우고, Θ·r·Θ·r²은 직접 계산해 📊 데이터 창의 값과 비교한다.</p>
+  <p class="note warn">바늘이 흔들리는 동안에는 기록되지 않는다. 시간을 오래 끌면 전하가 공기 중으로 새어 나가 θ가 줄어든다. 측정은 빠르게 진행한다.</p>
+  <div class="tablewrap"><table id="t2">
+    <tr><th>#</th><th>α (°)</th><th>θ (°)</th><th>θ − θ₀ (°)</th><th>Θ (°)</th><th>r (cm)</th><th>Θ·r²</th><th class="noprint">확인</th></tr>
+  </table></div>
+  <div class="row noprint"><button id="chk2" class="go">계산 확인</button><small>입력한 θ로 계산한 값과 비교해 ±2% 안이면 ✔ 로 표시합니다.</small></div>
+  <details class="note"><summary>계산 예시 (α = 120°, θ = 16.5°일 때)</summary>
+    Θ = 120 + (16.5 − 4.9) = 131.6°<br>r = 2 × 10.5 × sin(8.25°) = 3.01 cm
+  </details>
+  <div class="q"><b>Q5. 거리 r이 줄어들 때 총 비틀림각 Θ는 어떻게 변하는가? r이 절반 정도로 줄었을 때 Θ는 대략 몇 배가 되었는지 표에서 찾아 쓰시오.</b><textarea data-k="q5"></textarea></div>
+</section>
+
+<section class="paper">
+  <h2>4. 분석: 거리 법칙 찾기 (단계 5)</h2>
+  <p>전기력이 F ∝ 1/rⁿ 꼴이라면 양변에 로그를 취했을 때 직선이 되고, 그 기울기가 −n이다.</p>
+  <span class="eq">Θ ∝ 1 / rⁿ &nbsp;→&nbsp; log Θ = −n · log r + C</span>
+  <p><b>분석 방법</b> ① 실험 2의 표에서 r과 Θ로 로그–로그 그래프를 그린다(가로축 log r, 세로축 log Θ, 또는 로그 눈금 용지·스프레드시트). ② 점들을 가장 잘 지나는 직선을 긋고 기울기를 구한다. ③ <b>5. 결과 분석</b> 단계의 화면 그래프(실선: 내 데이터, 점선: 기울기 −2)와 비교한다.</p>
+  <h3>그래프 그리기 칸</h3>
+  <div class="note noprint">손으로 그린 그래프는 사진·스프레드시트 그림을 별도 제출하거나, 아래 [내 데이터로 그래프 그리기]로 확인용 그래프를 볼 수 있습니다.</div>
+  <div class="row noprint"><button id="plot" class="go">내 데이터로 그래프 그리기</button></div>
+  <canvas id="cv" width="640" height="360" style="width:100%;max-width:640px;border:1px solid var(--line);border-radius:8px;display:none"></canvas>
+  <table>
+    <tr><th>항목</th><th>값</th></tr>
+    <tr><td class="l">내가 구한 기울기</td><td><input type="number" step="any" data-k="slope_my"></td></tr>
+    <tr><td class="l">화면에 표시된 기울기</td><td><input type="number" step="any" data-k="slope_scr"></td></tr>
+    <tr><td class="l">결정계수 R²</td><td><input type="number" step="any" data-k="r2"></td></tr>
+    <tr><td class="l">Θ·r²의 최댓값 / 최솟값</td><td><input type="text" data-k="tr2mm"></td></tr>
+  </table>
+  <div class="q"><b>Q6. 기울기로부터 전기력과 거리 사이의 관계를 식으로 쓰시오. 기울기가 정확히 −2가 아니라면 그 차이는 몇 %인가?</b><textarea data-k="q6"></textarea></div>
+  <div class="q"><b>Q7. 표의 Θ·r² 값이 거의 일정하다는 것은 무엇을 뜻하는가?</b><textarea data-k="q7"></textarea></div>
+  <div class="q"><b>Q8. 마이크로미터 각 α만으로 그래프를 그리면 어떤 문제가 생기는가? (힌트: 첫 번째 측정점)</b><textarea data-k="q8"></textarea></div>
+</section>
+
+<section class="paper">
+  <h2>5. 실험 3: 전하량의 영향 (단계 6)</h2>
+  <p>같은 거리(θ ≈ 18°)에서 탐침구의 전하만 절반으로 줄여, 필요한 비틀림각이 어떻게 변하는지 비교한다.</p>
+  <p><b>실험 방법</b> ① <b>6. 전하량의 영향</b> 단계로 이동. ② α를 조절해 θ가 <b>18° ± 1.5°</b>가 되게 맞춘 뒤 [바로 안정] → [θ 기록] (전하 q). ③ [탐침구 전하를 절반으로]를 누른다(전하가 없는 같은 크기의 구를 접촉). ④ α를 다시 조절해 θ를 18° 근처로 맞추고 기록한다(전하 q/2).</p>
+  <table id="t3">
+    <tr><th>탐침구 전하</th><th>α (°)</th><th>θ (°)</th><th>Θ (°)</th></tr>
+    <tr><td>q</td><td><input type="number" step="any" data-k="e3_q_a"></td><td><input type="number" step="any" data-k="e3_q_t"></td><td><input type="number" step="any" data-k="e3_q_T"></td></tr>
+    <tr><td>q/2</td><td><input type="number" step="any" data-k="e3_h_a"></td><td><input type="number" step="any" data-k="e3_h_t"></td><td><input type="number" step="any" data-k="e3_h_T"></td></tr>
+  </table>
+  <div class="row"><label>비 Θ(q/2) / Θ(q) = <input type="number" step="any" data-k="e3_ratio" style="width:7em"></label><span id="ratioChk" class="sub"></span></div>
+  <div class="q"><b>Q9. 크기가 같은 중성 구를 닿게 하면 왜 전하가 정확히 절반이 되는가?</b><textarea data-k="q9"></textarea></div>
+  <div class="q"><b>Q10. 두 번째 측정에서 α를 늘려야 했는가, 줄여야 했는가? 그 이유와 위의 비를 근거로 전기력과 전하량의 관계를 쓰시오.</b><textarea data-k="q10"></textarea></div>
+  <div class="q"><b>Q11. 실험 2와 실험 3의 결과를 합쳐 쿨롱 법칙을 식으로 완성하시오.</b>
+    <div class="row"><span>F = k ×</span> (<input type="text" data-k="q11a" style="width:6em"> × <input type="text" data-k="q11b" style="width:6em">) / <input type="text" data-k="q11c" style="width:6em"></div>
+    <textarea data-k="q11" placeholder="추가 설명"></textarea></div>
+</section>
+
+<section class="paper">
+  <h2>6. 심화: 전기력의 실제 크기 계산</h2>
+  <p>실험 1에서 구한 κ와 실험 2의 Θ를 쓰면 전기력을 뉴턴(N) 단위로 구할 수 있다. 평형에서 도선의 복원 토크 = 전기력의 토크이다. 구는 원호를 따라 움직이므로 전기력 중 원호 방향(접선) 성분 F·cos(θ/2)만 바늘을 돌린다.</p>
+  <span class="eq">κ · Θ(rad) = F · L · cos(θ/2)</span>
+  <span class="eq">F = κ · Θ(rad) / [ L · cos(θ/2) ]</span>
+  <p>Θ는 반드시 라디안으로 바꾼다: Θ(rad) = Θ(°) × π / 180. L = 0.105 m, r은 m 단위로 바꾼다.</p>
+  <details class="note"><summary>계산 예시 (κ = 1.0×10⁻⁷ N·m/rad, α = 120°, θ = 16.5°, Θ = 131.6°)</summary>
+    Θ(rad) = 131.6 × π / 180 = 2.297 rad<br>토크 = 1.0×10⁻⁷ × 2.297 = 2.30×10⁻⁷ N·m<br>F = 2.30×10⁻⁷ / (0.105 × cos 8.25°) = 2.21×10⁻⁶ N
+  </details>
+  <h3>내 데이터로 계산하기 (실험 2에서 3개 점 선택)</h3>
+  <div class="tablewrap"><table id="t6">
+    <tr><th>#</th><th>Θ (rad)</th><th>θ/2 (°)</th><th>F (N)</th><th>r (m)</th><th>F·r² (N·m²)</th></tr>
+    <tr><td>1</td><td><input type="text" data-k="f1_a"></td><td><input type="text" data-k="f1_b"></td><td><input type="text" data-k="f1_c"></td><td><input type="text" data-k="f1_d"></td><td><input type="text" data-k="f1_e"></td></tr>
+    <tr><td>2</td><td><input type="text" data-k="f2_a"></td><td><input type="text" data-k="f2_b"></td><td><input type="text" data-k="f2_c"></td><td><input type="text" data-k="f2_d"></td><td><input type="text" data-k="f2_e"></td></tr>
+    <tr><td>3</td><td><input type="text" data-k="f3_a"></td><td><input type="text" data-k="f3_b"></td><td><input type="text" data-k="f3_c"></td><td><input type="text" data-k="f3_d"></td><td><input type="text" data-k="f3_e"></td></tr>
+  </table></div>
+  <div class="q"><b>Q12. 쿨롱 법칙 F = kq²/r² (k = 9.0×10⁹ N·m²/C²)을 이용해 각 구의 전하량 q를 추정하시오. 이 시뮬레이션에서 처음 탐침구에 준 전하는 1.0 nC이고, 바늘 구와 나눈 뒤에는 각각 몇 nC이어야 하는가? 추정값과 비교하시오.</b><textarea data-k="q12" class="tall"></textarea></div>
+  <div class="q"><b>Q13. 계산한 전기력은 지구에서 질량 약 0.2 mg인 물체에 작용하는 중력과 비슷한 크기이다. 이처럼 작은 힘을 측정할 수 있게 해 주는 이 장치의 핵심 아이디어는 무엇인가?</b><textarea data-k="q13"></textarea></div>
+</section>
+
+<section class="paper">
+  <h2>7. 오차 토론 (단계 7)</h2>
+  <p><b>7. 오차 토론</b> 단계로 이동하면, 내가 측정한 α 값으로 실험을 다시 돌려 오차 요인을 하나씩 끈 결과를 보여 준다. 표를 채우고 토론하자.</p>
+  <table id="t7">
+    <tr><th>조건</th><th>기울기</th><th>−2와의 차</th></tr>
+    <tr><td class="l">위 실험과 같은 조건</td><td><input type="number" step="any" data-k="s_actual"></td><td class="d"></td></tr>
+    <tr><td class="l">전하 누설이 없다면</td><td><input type="number" step="any" data-k="s_noleak"></td><td class="d"></td></tr>
+    <tr><td class="l">접선 성분 cos(θ/2)를 무시하면</td><td><input type="number" step="any" data-k="s_notan"></td><td class="d"></td></tr>
+    <tr><td class="l">눈금을 정밀하게 읽었다면</td><td><input type="number" step="any" data-k="s_fine"></td><td class="d"></td></tr>
+    <tr><td class="l">세 가지 모두 이상적</td><td><input type="number" step="any" data-k="s_ideal"></td><td class="d"></td></tr>
+  </table>
+  <p class="sub">‘−2와의 차’는 기울기를 입력하면 자동으로 계산됩니다.</p>
+  <div class="q"><b>Q14. 기울기를 가장 크게 바꾸는 요인은 무엇인가? 그 요인이 왜 결과를 −2에서 벗어나게 하는지 설명하시오.</b><textarea data-k="q14"></textarea></div>
+  <div class="q"><b>Q15. ‘측정 한 번에 걸리는 시간’ 슬라이더를 2 s와 120 s로 바꿔 보시오. 기울기는 어떻게 달라지며, 실제 실험에서는 어떻게 하면 이 오차를 줄일 수 있는가?</b><textarea data-k="q15"></textarea></div>
+  <div class="q"><b>Q16. 쿨롱은 1785년에 θ가 약 36°, 18°, 8.5°인 단 3개의 측정점으로 역제곱 법칙을 주장했다. 이 근거가 충분하다고 생각하는가? 자신의 의견과 이유를 쓰시오.</b><textarea data-k="q16"></textarea></div>
+</section>
+
+<section class="paper">
+  <h2>8. 결론</h2>
+  <p>이번 실험으로 알게 된 전기력의 성질을 측정값을 근거로 3~4문장으로 정리하시오. (거리 관계, 전하량 관계, 측정한 힘의 크기, 오차 포함)</p>
+  <textarea data-k="conclusion" class="tall"></textarea>
+</section>
+
+<section class="paper">
+  <h2>9. 자기 평가</h2>
+  <div class="chk">
+    <label><input type="checkbox" data-k="sc1"> 비틀림 저울이 작은 힘을 각도로 바꾸는 원리를 설명할 수 있다.</label>
+    <label><input type="checkbox" data-k="sc2"> 총 비틀림각 Θ와 마이크로미터 각 α의 차이를 설명할 수 있다.</label>
+    <label><input type="checkbox" data-k="sc3"> 로그–로그 그래프의 기울기로 거리 법칙의 지수를 구할 수 있다.</label>
+    <label><input type="checkbox" data-k="sc4"> 전기력이 전하량에 비례함을 측정값으로 보일 수 있다.</label>
+    <label><input type="checkbox" data-k="sc5"> κ와 Θ로 전기력의 크기를 N 단위로 계산할 수 있다.</label>
+    <label><input type="checkbox" data-k="sc6"> 오차 요인을 들고 결과에 미치는 영향을 설명할 수 있다.</label>
+  </div>
+  <h3>느낀 점 / 더 알고 싶은 점</h3>
+  <textarea data-k="reflect"></textarea>
+  <p class="sub">※ 가상 실험의 수치는 시뮬레이션 모델이 계산한 값이며, 쿨롱의 1785년 원전 값과 같지 않다.</p>
+</section>
+
+<div class="row noprint">
+  <button id="print2" class="go">🖨 인쇄 / PDF 저장</button>
+  <button id="wipe">모두 지우기</button>
+</div>
+</main>
+
+<script>
+(() => {
+  const KEY = 'coulomb-report-v1', LAB = 'coulomb-lab-v1';
+  const L = 10.5, TH0 = 4.9, ALPHAS = [0, 50, 120, 250, 450, 800];
+  const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+  const status = $('#status');
+  let data = {};
+  try { data = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch {}
+
+  // 실험 2 표 행 만들기
+  const t2 = $('#t2');
+  ALPHAS.forEach((a, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i + 1}</td><td>${a}</td>
+      <td><input type="number" step="any" data-k="e2_${i}_th"></td>
+      <td><input type="number" step="any" class="calc" data-k="e2_${i}_d"></td>
+      <td><input type="number" step="any" class="calc" data-k="e2_${i}_T"></td>
+      <td><input type="number" step="any" class="calc" data-k="e2_${i}_r"></td>
+      <td><input type="number" step="any" class="calc" data-k="e2_${i}_Tr"></td>
+      <td class="noprint" data-chk="${i}"></td>`;
+    t2.appendChild(tr);
+  });
+
+  const fields = () => $$('[data-k]');
+  function restore() {
+    for (const el of fields()) {
+      const v = data[el.dataset.k]; if (v === undefined) continue;
+      if (el.type === 'checkbox') el.checked = !!v; else el.value = v;
+    }
+    diffs();
+  }
+  let timer = 0;
+  function save() {
+    for (const el of fields()) data[el.dataset.k] = el.type === 'checkbox' ? el.checked : el.value;
+    try { localStorage.setItem(KEY, JSON.stringify(data)); status.textContent = '자동 저장됨 ' + new Date().toLocaleTimeString('ko-KR', { hour12: false }); }
+    catch { status.textContent = '⚠ 저장 불가(시크릿 창?) — 인쇄/PDF로 보관하세요'; }
+  }
+  document.addEventListener('input', () => { diffs(); clearTimeout(timer); timer = setTimeout(save, 400); });
+  document.addEventListener('change', () => { diffs(); save(); });
+
+  function set(k, v) { const el = document.querySelector(`[data-k="${k}"]`); if (el && v !== undefined && v !== null && v !== '') el.value = v; }
+  const fmt = x => (Math.abs(x) >= 1e4 || (x !== 0 && Math.abs(x) < 1e-2)) ? x.toExponential(2) : String(+x.toFixed(3));
+
+  function diffs() {
+    $$('#t7 tr').forEach(tr => {
+      const i = tr.querySelector('input'); const d = tr.querySelector('td.d'); if (!i || !d) return;
+      d.textContent = i.value === '' ? '' : ((+i.value + 2 >= 0 ? '+' : '') + (+i.value + 2).toFixed(3));
+    });
+    const a = +$('[data-k=e3_q_T]').value, b = +$('[data-k=e3_h_T]').value, r = +$('[data-k=e3_ratio]').value;
+    const rc = $('#ratioChk');
+    rc.textContent = (a && b && !r) ? `(표 값으로 계산하면 ${(b / a).toFixed(2)})` : '';
+    const I = parseFloat($('[data-k=I]').value), T = parseFloat($('[data-k=tavg]').value);
+    $('#kapChk').textContent = (I > 0 && T > 0) ? `참고: κ = 4π²I/T² = ${(4 * Math.PI ** 2 * I / T ** 2).toExponential(2)} N·m/rad (평균 T로 직접 계산한 값)` : '';
+  }
+
+  // 실험실 값 불러오기
+  $('#load').onclick = () => {
+    let d = null;
+    try { d = JSON.parse(localStorage.getItem(LAB) || 'null'); } catch {}
+    if (!d || (!d.rows?.length && !d.oscRows?.length)) { alert('가상 실험실에서 기록한 값이 없습니다.\n실험실(같은 브라우저)에서 먼저 측정한 뒤 다시 눌러 주세요.'); return; }
+    const miss = [];
+    for (const amp of [10, 30, 60]) { const o = d.oscRows.find(r => r.amp === amp); if (o) set('t' + amp, o.T.toFixed(2)); }
+    if (d.oscRows.length) {
+      set('tavg', (d.oscRows.reduce((a, r) => a + r.T, 0) / d.oscRows.length).toFixed(2));
+      set('I', d.I.toExponential(2)); set('kappa', (4 * Math.PI ** 2 * d.I / (d.oscRows.reduce((a, r) => a + r.T, 0) / d.oscRows.length) ** 2).toExponential(2));
+    } else miss.push('실험 1(주기)');
+    const q = d.rows.filter(r => r.tag === 'q');
+    let n = 0;
+    ALPHAS.forEach((a, i) => { const r = [...q].reverse().find(x => x.alpha === a); if (r) { set(`e2_${i}_th`, r.theta); n++; } });
+    if (n < ALPHAS.length) miss.push(`실험 2(표 α와 같은 점 ${n}/${ALPHAS.length}개)`);
+    if (d.fit) { set('slope_scr', d.fit.b.toFixed(2)); set('r2', d.fit.r2.toFixed(3)); }
+    const A = [...q].reverse().find(r => Math.abs(r.theta - 18) <= 1.5), B = [...d.rows].reverse().find(r => r.tag === 'q/2' && Math.abs(r.theta - 18) <= 1.5);
+    if (A) { set('e3_q_a', A.alpha); set('e3_q_t', A.theta); }
+    if (B) { set('e3_h_a', B.alpha); set('e3_h_t', B.theta); }
+    if (!A || !B) miss.push('실험 3');
+    const names = { actual: 'actual', noleak: 'noleak', notan: 'notan', fine: 'fine', ideal: 'ideal' };
+    let sc = 0; for (const k in names) if (d.scen && d.scen[k] !== undefined) { set('s_' + k, d.scen[k].toFixed(3)); sc++; }
+    if (!sc) miss.push('오차 토론(7단계)');
+    diffs(); save();
+    alert('실험실 값을 불러왔습니다.\n(주기 T, θ, 기울기, 오차 토론 기울기)\n\nΘ·r·Θr² 같은 계산 칸은 직접 계산해 적고 [계산 확인]을 눌러 보세요.' + (miss.length ? '\n\n아직 없는 항목: ' + miss.join(', ') : ''));
+  };
+
+  // 실험 2 계산 확인
+  $('#chk2').onclick = () => {
+    ALPHAS.forEach((a, i) => {
+      const cell = document.querySelector(`[data-chk="${i}"]`), th = parseFloat(document.querySelector(`[data-k=e2_${i}_th]`).value);
+      if (isNaN(th)) { cell.textContent = ''; return; }
+      const exp = { d: th - TH0, T: a + th - TH0, r: 2 * L * Math.sin(th * Math.PI / 360) };
+      exp.Tr = exp.T * exp.r ** 2;
+      const bad = [];
+      for (const [k, name] of [['d', 'θ−θ₀'], ['T', 'Θ'], ['r', 'r'], ['Tr', 'Θ·r²']]) {
+        const v = parseFloat(document.querySelector(`[data-k=e2_${i}_${k}]`).value);
+        if (isNaN(v)) { bad.push(name + ' 비었음'); continue; }
+        if (Math.abs(v - exp[k]) > Math.max(0.02 * Math.abs(exp[k]), 0.06)) bad.push(name);
+      }
+      cell.innerHTML = bad.length ? `<span class="bad" title="다시 확인: ${bad.join(', ')}">✘ ${bad.join(', ')}</span>` : '<span class="ok">✔</span>';
+    });
+  };
+
+  // 확인용 로그–로그 그래프
+  $('#plot').onclick = () => {
+    const pts = ALPHAS.map((a, i) => {
+      const th = parseFloat(document.querySelector(`[data-k=e2_${i}_th]`).value);
+      if (isNaN(th) || th <= TH0) return null;
+      return { r: 2 * L * Math.sin(th * Math.PI / 360), T: a + th - TH0 };
+    }).filter(p => p && p.T > 0);
+    if (pts.length < 3) { alert('θ를 3개 이상 입력하거나 [실험실 값 불러오기]를 먼저 눌러 주세요.'); return; }
+    const cv = $('#cv'); cv.style.display = 'block';
+    const g = cv.getContext('2d'), W = cv.width, H = cv.height, m = { l: 62, r: 20, t: 20, b: 46 };
+    const cs = getComputedStyle(document.body), ink = cs.color, line = cs.getPropertyValue('--line').trim() || '#999';
+    g.clearRect(0, 0, W, H); g.fillStyle = 'rgba(0,0,0,0)'; g.font = '13px sans-serif';
+    const xs = pts.map(p => Math.log10(p.r)), ys = pts.map(p => Math.log10(p.T));
+    const x0 = Math.min(...xs) - .08, x1 = Math.max(...xs) + .08, y0 = Math.min(...ys) - .15, y1 = Math.max(...ys) + .15;
+    const X = v => m.l + (v - x0) / (x1 - x0) * (W - m.l - m.r), Y = v => H - m.b - (v - y0) / (y1 - y0) * (H - m.t - m.b);
+    g.strokeStyle = line; g.strokeRect(m.l, m.t, W - m.l - m.r, H - m.t - m.b);
+    g.fillStyle = ink; g.textAlign = 'center'; g.fillText('log r (r: cm)', W / 2, H - 10);
+    g.save(); g.translate(16, H / 2); g.rotate(-Math.PI / 2); g.fillText('log Θ (Θ: °)', 0, 0); g.restore();
+    g.textAlign = 'right'; for (let i = 0; i <= 4; i++) { const v = y0 + (y1 - y0) * i / 4; g.fillText(v.toFixed(2), m.l - 6, Y(v) + 4); }
+    g.textAlign = 'center'; for (let i = 0; i <= 4; i++) { const v = x0 + (x1 - x0) * i / 4; g.fillText(v.toFixed(2), X(v), H - m.b + 16); }
+    const n = xs.length, mx = xs.reduce((a, b) => a + b) / n, my = ys.reduce((a, b) => a + b) / n;
+    let sxx = 0, sxy = 0; xs.forEach((x, i) => { sxx += (x - mx) ** 2; sxy += (x - mx) * (ys[i] - my); });
+    const b = sxy / sxx, a = my - b * mx;
+    g.setLineDash([7, 5]); g.strokeStyle = '#4c9a5a'; g.beginPath(); g.moveTo(X(x0), Y(my - 2 * (x0 - mx))); g.lineTo(X(x1), Y(my - 2 * (x1 - mx))); g.stroke();
+    g.setLineDash([]); g.strokeStyle = '#c28a1f'; g.lineWidth = 2; g.beginPath(); g.moveTo(X(x0), Y(a + b * x0)); g.lineTo(X(x1), Y(a + b * x1)); g.stroke();
+    g.fillStyle = ink; xs.forEach((x, i) => { g.beginPath(); g.arc(X(x), Y(ys[i]), 5, 0, 7); g.fill(); });
+    g.textAlign = 'right'; g.fillStyle = '#c28a1f'; g.fillText(`실선(내 데이터) 기울기 ${b.toFixed(2)}`, W - m.r - 8, m.t + 18);
+    g.fillStyle = '#4c9a5a'; g.fillText('점선: 기울기 −2', W - m.r - 8, m.t + 36);
+  };
+
+  const doPrint = () => { save(); window.print(); };
+  $('#print').onclick = doPrint; $('#print2').onclick = doPrint;
+  $('#wipe').onclick = () => {
+    if (!confirm('이 기기에 저장된 보고서 내용(이름·학번 포함)을 모두 지웁니다.\n실험실의 측정 기록은 그대로 둡니다. 계속할까요?')) return;
+    try { localStorage.removeItem(KEY); } catch {}
+    location.reload();
+  };
+  restore();
+})();
+</script>
+</body>
+</html>

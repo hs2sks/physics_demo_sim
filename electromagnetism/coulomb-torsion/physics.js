@@ -11,6 +11,9 @@ export const C_DAMP = 2 * ZETA * Math.sqrt(KAPPA * I_NEEDLE);
 export const TAU_LEAK = 600;                // 전하 누설 시간상수(s)
 export const THETA0 = 2 * Math.asin(BALL_R / L);   // 두 구가 닿을 때 중심 사이 각 (≈4.9°)
 export const THETA_MAX = Math.PI;
+/** 모델 요인 스위치(오차 토론에서 하나씩 꺼 본다) */
+export const flags = { tangent:true, leak:true };
+const proj = th => flags.tangent ? Math.cos(th / 2) : 1;
 
 export const deg = r => r * 180 / Math.PI;
 export const rad = d => d * Math.PI / 180;
@@ -28,14 +31,14 @@ export function createState() {
 function torque(s, th, om) {
   const twist = th - THETA0 + s.alpha;              // 도선 위·아래 끝의 각도 차
   let tau = -KAPPA * twist - C_DAMP * om;
-  if (s.probeIn) tau += coulombForce(s.qn, s.qp, th) * L * Math.cos(th / 2);
+  if (s.probeIn) tau += coulombForce(s.qn, s.qp, th) * L * proj(th);
   return tau;
 }
 
 /** 시간 dt(s)만큼 진행. 반암시적 오일러, 내부 간격 ≤ 2ms. 탐침과 닿으면 θ0에서 막힘. */
 export function step(s, dt) {
   const n = Math.max(1, Math.ceil(dt / 0.002)), h = dt / n;
-  const leak = Math.exp(-h / TAU_LEAK);
+  const leak = flags.leak ? Math.exp(-h / TAU_LEAK) : 1;
   for (let i = 0; i < n; i++) {
     s.omega += torque(s, s.theta, s.omega) / I_NEEDLE * h;
     s.theta += s.omega * h;
@@ -47,7 +50,7 @@ export function step(s, dt) {
 
 /** 정적 평형각(이분법). 전하가 없거나 반발이 약하면 탐침에 닿은 θ0. */
 export function equilibrium(s) {
-  const g = th => -KAPPA * (th - THETA0 + s.alpha) + (s.probeIn ? coulombForce(s.qn, s.qp, th) * L * Math.cos(th / 2) : 0);
+  const g = th => -KAPPA * (th - THETA0 + s.alpha) + (s.probeIn ? coulombForce(s.qn, s.qp, th) * L * proj(th) : 0);
   if (!s.probeIn) return THETA0 - s.alpha;
   if (g(THETA0) <= 0) return THETA0;
   let a = THETA0, b = THETA_MAX;
@@ -59,7 +62,7 @@ export function equilibrium(s) {
 /** "바로 안정": 정적 평형으로 보내고, 측정에 걸리는 시간(sec)만큼 전하만 누설시킨다. */
 export function settle(s, waitSec = 10) {
   s.theta = equilibrium(s); s.omega = 0;
-  const leak = Math.exp(-waitSec / TAU_LEAK);
+  const leak = flags.leak ? Math.exp(-waitSec / TAU_LEAK) : 1;
   s.qn *= leak; s.qp *= leak; s.t += waitSec;
   s.theta = equilibrium(s);
 }
@@ -100,9 +103,21 @@ export function linfit(xs, ys) {
 }
 
 /** 한 번의 측정을 기록 형태로 만든다 (눈금을 읽은 값 기준) */
-export function makeRow(s, tag) {
-  const alphaRead = Math.round(deg(s.alpha)), thetaRead = readAngle(s.theta);
+export function makeRow(s, tag, round = true) {
+  const alphaRead = round ? Math.round(deg(s.alpha)) : deg(s.alpha), thetaRead = round ? readAngle(s.theta) : deg(s.theta);
   const Theta = alphaRead + thetaRead - deg(THETA0);                 // 총 비틀림각(°)
   const r = chord(rad(thetaRead)) * 100;                              // 거리(cm)
   return { tag, alpha: alphaRead, theta: thetaRead, Theta, r, Tr2: Theta * r * r };
+}
+
+/** 같은 α 순서로 실험을 다시 돌려 본다(오차 요인을 끄고 켜 보는 용도). 앱의 흐름과 같게 대전→접촉→8초 후 시작. */
+export function replay(alphasDeg, opt = {}) {
+  const o = { leak:true, tangent:true, round:true, wait:10, ...opt };
+  const save = { ...flags }; flags.leak = o.leak; flags.tangent = o.tangent;
+  const st = createState(); chargeProbe(st, 1.0e-9); shareCharge(st); settle(st, 8);
+  const rows = [];
+  for (const a of alphasDeg) { st.alpha = rad(a); settle(st, o.wait); rows.push(makeRow(st, 'q', o.round)); }
+  Object.assign(flags, save);
+  const q = rows.filter(r => r.Theta > 0);
+  return { rows, fit:linfit(q.map(r => Math.log(r.r)), q.map(r => Math.log(r.Theta))) };
 }

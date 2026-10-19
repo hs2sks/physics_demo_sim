@@ -1,0 +1,1016 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>벡터 — 크기에 방향을 더한 숫자 (2차시)</title>
+<!-- vectors-two-lessons · 벡터의 정의·합·차·분해·곱을 시뮬레이션으로 익히고, 왜 벡터를 배우는지 파인만의 논리로 짚는 2차시 수업 덱. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap">
+<style>
+:root{
+  --bg:#dfe5f0; --slide:#f5f7fc; --panel:#ffffff; --ink:#14203a; --muted:#54617b; --line:#c9d2e4;
+  --blue:#1f5fd1; --onblue:#ffffff; --amber:#b45f00; --green:#0c7a58; --red:#b8321f;
+  --blue-soft:#dce8fb; --amber-soft:#fbe8cf;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+    --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+    --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+  --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+  --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;overflow:hidden}
+#viewport{position:relative;width:100%;height:100%;overflow:hidden}
+#deck{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center center;background:var(--slide);box-shadow:0 12px 70px rgba(0,0,0,.28);overflow:hidden}
+.slide{position:absolute;inset:0;display:none;flex-direction:column;padding:84px 88px 52px;gap:24px;background:var(--slide);font-size:32px;line-height:1.4}
+.slide.active{display:flex}
+.hd{display:flex;align-items:baseline;justify-content:space-between;gap:24px;flex:none}
+.hd h2{font-size:58px;line-height:1.15;margin:0;font-weight:800;letter-spacing:-.01em}
+.hd .src{font-size:26px;color:var(--muted);white-space:nowrap}
+.body{flex:1;min-height:0;display:grid;gap:36px}
+.mg-box{position:relative;aspect-ratio:16/9;border-radius:16px;overflow:hidden;background:#06142a;align-self:start}
+.mg-box.mg-full{height:100%;max-width:100%;justify-self:center}
+.mg-box iframe{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none}
+.mg-re{position:absolute;right:14px;bottom:14px;font:inherit;font-size:24px;padding:8px 18px;border-radius:10px;border:1px solid rgba(255,255,255,.4);background:rgba(0,0,0,.55);color:#fff;cursor:pointer;opacity:.75}
+.mg-re:hover,.mg-re:focus-visible{opacity:1}
+.side{display:flex;flex-direction:column;gap:18px;min-height:0}
+canvas{display:block;border-radius:16px;background:#0a1330}
+.box{background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:20px 26px}
+.box h3{margin:0 0 8px;font-size:30px}
+.sm{font-size:26px;color:var(--muted)}
+.lead{font-size:40px;line-height:1.35}
+.k{color:var(--amber);font-weight:700}.p{color:var(--blue);font-weight:700}.ok{color:var(--green);font-weight:700}.bad{color:var(--red);font-weight:700}
+/* math */
+.m{font-family:'STIX Two Text','Times New Roman',serif;font-style:italic;font-size:1.1em;white-space:nowrap}
+.m .u,.u{font-style:normal}
+.m sub,.m sup{font-size:.68em;line-height:0;font-style:normal}
+.fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.15;margin:0 .12em;font-size:.95em}
+.fr>span:first-child{padding:0 .2em .06em;border-bottom:.07em solid currentColor}
+.fr>span:last-child{padding-top:.06em}
+.sq{white-space:nowrap}.sq .rad{border-top:.07em solid currentColor;padding:0 .15em;margin-left:-.04em}
+.eq{font-size:44px;text-align:center;padding:6px 0}
+/* controls */
+.ctl{display:flex;flex-direction:column;gap:4px}
+.ctl .row{display:flex;justify-content:space-between;align-items:baseline;font-size:27px;gap:12px}
+.ctl .val{font-weight:700;font-variant-numeric:tabular-nums}
+.rangew{position:relative}
+input[type=range]{width:100%;height:44px;-webkit-appearance:none;appearance:none;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:38px;height:38px;border-radius:50%;background:var(--blue);margin-top:-13px;border:4px solid var(--panel);box-shadow:0 1px 6px rgba(0,0,0,.35)}
+input[type=range]::-moz-range-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;background:var(--blue);border:4px solid var(--panel)}
+input[type=range]:focus-visible{outline:3px solid var(--blue);outline-offset:4px;border-radius:8px}
+.marks{position:relative;height:60px;font-size:22px;color:var(--muted)}
+.marks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.btns{display:flex;gap:12px;flex-wrap:wrap}
+.btn,.chip{font:inherit;font-size:27px;font-weight:700;padding:10px 24px;border-radius:12px;border:2px solid var(--blue);background:var(--panel);color:var(--blue);cursor:pointer;line-height:1.25}
+.btn.pri{background:var(--blue);color:var(--onblue)}
+.chip{padding:8px 18px;font-size:26px;border-color:var(--line);color:var(--ink);font-weight:500}
+.chip.on{border-color:var(--blue);background:var(--blue-soft);font-weight:700}
+.btn:focus-visible,.chip:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.chips{display:flex;gap:10px;flex-wrap:wrap}
+/* step reveal */
+.st{display:grid;grid-template-columns:46px 1fr;gap:14px;padding:8px 14px;border-radius:14px;opacity:0;transform:translateY(10px);transition:opacity .35s,transform .35s;border:2px solid transparent}
+.st.on{opacity:.55;transform:none}
+.st.cur{opacity:1;background:var(--panel);border-color:var(--blue)}
+.st .n{width:42px;height:42px;border-radius:50%;background:var(--blue);color:var(--onblue);display:grid;place-items:center;font-weight:800;font-size:24px;margin-top:2px}
+.st .tl{display:flex;flex-wrap:wrap;gap:2px 14px;align-items:baseline}
+.st .t{font-size:23px;color:var(--muted);line-height:1.3}
+.st b{font-size:27px}
+.st .eq{font-size:35px;line-height:1.1;text-align:left;padding:2px 0}
+/* cover */
+.cover{flex-direction:row;align-items:center;gap:56px}
+.cover.active{display:flex}
+.cv-l{flex:1;display:flex;flex-direction:column;gap:28px}
+.cv-l h1{font-size:200px;line-height:1;margin:0;font-weight:800;letter-spacing:-.04em}
+.cv-tag{font-size:30px;color:var(--muted)}
+.q{border-left:8px solid var(--blue);border-radius:6px;padding:8px 0 8px 28px;font-size:36px;line-height:1.45}
+/* table */
+table.t{border-collapse:collapse;width:100%;font-size:27px}
+table.t th,table.t td{padding:10px 14px;border-bottom:2px solid var(--line);text-align:right;white-space:nowrap}
+table.t th:first-child,table.t td:first-child,table.t th:last-child,table.t td:last-child{text-align:left}
+table.t th{font-size:24px;color:var(--muted);font-weight:500}
+table.t tbody tr{cursor:pointer}
+table.t tbody tr.on{background:var(--blue-soft);font-weight:700}
+/* HUD / notes */
+#hud{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:10px;align-items:center;background:rgba(10,19,48,.86);color:#e9effd;padding:8px 14px;border-radius:14px;font-size:18px;opacity:0;transition:opacity .3s;z-index:20}
+#hud.show{opacity:1}
+#hud button{font:inherit;font-size:18px;color:#e9effd;background:transparent;border:1.5px solid rgba(233,239,253,.5);border-radius:8px;padding:4px 12px;cursor:pointer}
+#notes{position:absolute;left:0;right:0;bottom:0;background:rgba(10,19,48,.94);color:#eaf0ff;padding:26px 88px 34px;font-size:30px;line-height:1.5;display:none;z-index:15}
+#notes.on{display:block}
+#notes b{color:#ffb454}
+
+.ko{font-family:'Noto Sans KR',sans-serif;font-style:normal;font-size:.8em}
+#bar{position:absolute;top:14px;left:88px;right:88px;height:54px;display:flex;justify-content:space-between;align-items:center;z-index:12}
+#bar .bl{font-size:26px;font-weight:800}
+#bar .br{display:flex;gap:10px}
+.tb{font:inherit;font-size:24px;font-weight:700;padding:7px 18px;border-radius:12px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;line-height:1.2}
+.tb:hover{border-color:var(--blue)}.tb.on{border-color:var(--blue);background:var(--blue-soft)}
+.tb:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+#help{position:absolute;inset:0;background:rgba(6,11,30,.82);display:none;align-items:center;justify-content:center;z-index:30}
+#help.on{display:flex}
+.hp{background:var(--panel);color:var(--ink);border-radius:22px;padding:36px 52px 40px;width:1320px;max-height:960px;overflow:auto;font-size:27px;line-height:1.5;border:2px solid var(--line)}
+.hp h3{font-size:40px;margin:0 0 14px}.hp h4{font-size:29px;margin:18px 0 6px;color:var(--blue)}
+.hp .g{display:grid;grid-template-columns:230px 1fr;gap:6px 22px}
+.hp kbd{font:inherit;font-size:24px;font-weight:700;background:var(--blue-soft);border:2px solid var(--line);border-radius:8px;padding:1px 10px;margin-right:4px}
+#ask{position:absolute;inset:0;background:rgba(6,11,30,.6);display:none;align-items:center;justify-content:center;z-index:25;cursor:pointer}
+#ask.on{display:flex}
+#ask .ak{background:var(--panel);color:var(--ink);border-radius:24px;border-left:16px solid var(--blue);padding:44px 72px 40px 60px;width:1500px;box-shadow:0 20px 80px rgba(0,0,0,.45)}
+#ask .ah{font-size:30px;color:var(--blue);font-weight:800;margin-bottom:18px}
+#ask .aq{font-size:54px;line-height:1.4;font-weight:700;margin:10px 0;letter-spacing:-.01em}
+#ask .aq span{color:var(--blue);margin-right:14px}
+#ask .af{font-size:24px;color:var(--muted);margin-top:22px}
+#notes .nh{font-size:24px;color:#9db0d8;margin-bottom:6px}
+#notes .nq{margin:4px 0 10px;font-size:29px}
+#notes .ni{margin:6px 0;font-size:27px;line-height:1.45}
+#notes .nx{color:#ff9d9d;font-weight:700}#notes .nv{color:#5eead4;font-weight:700}
+@media (prefers-reduced-motion: reduce){.st{transition:none}}
+#simError{position:absolute;left:88px;right:88px;top:76px;z-index:40;background:rgba(184,50,31,.95);color:#fff;font-size:22px;line-height:1.4;padding:10px 18px;border-radius:12px;white-space:pre-wrap;display:none}
+#simError.on{display:block}
+/* ---- 반응형(reflow): 폭 1100px 미만(폰·태블릿)에서는 1920 스케일 대신 세로로 흐르는 레이아웃 ---- */
+html.rf #deck{left:0;top:0;transform-origin:top left;box-shadow:none}
+html.rf .slide{padding:104px 22px 100px;gap:18px;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;font-size:30px}
+html.rf .body{display:flex !important;flex-direction:column;gap:22px;flex:none;min-height:auto}
+html.rf .side{min-height:auto}
+html.rf .hd{flex-direction:column;align-items:flex-start;gap:6px}
+html.rf .hd h2{font-size:44px}
+html.rf .hd .src{font-size:23px;white-space:normal}
+html.rf canvas{width:100% !important;height:auto !important;max-width:100%}
+html.rf .mg-box.mg-full{height:auto;width:100%}
+html.rf img,html.rf svg,html.rf video{max-width:100%;height:auto}
+html.rf .cover{flex-direction:column;align-items:stretch;gap:26px}
+html.rf .cv-l h1{font-size:112px}
+html.rf .cv-tag{font-size:26px}
+html.rf .q{font-size:30px}
+html.rf .lead{font-size:34px}
+html.rf .eq{font-size:36px;overflow-x:auto}
+html.rf table.t{display:block;overflow-x:auto;font-size:24px}
+html.rf .btn,html.rf .chip{min-height:52px}
+html.rf #bar{left:14px;right:14px;top:12px;height:auto;flex-wrap:wrap;gap:8px}
+html.rf #bar .bl{display:none}
+html.rf #bar .br{flex-wrap:wrap;justify-content:flex-end;width:100%}
+html.rf .tb{font-size:20px;padding:8px 12px}
+html.rf .hp{width:92%;max-height:88%;padding:24px 22px 28px;font-size:23px}
+html.rf .hp h3{font-size:32px}
+html.rf .hp .g{grid-template-columns:1fr;gap:2px 0}
+html.rf #ask .ak{width:92%;padding:26px 24px 24px 28px;border-left-width:10px}
+html.rf #ask .aq{font-size:34px}
+html.rf #notes{padding:18px 20px 26px;font-size:23px;max-height:62%;overflow:auto}
+html.rf #notes .nq{font-size:25px}
+html.rf #notes .ni{font-size:23px}
+html.rf #simError{left:14px;right:14px;top:96px}
+html.rf #hud{padding:8px 16px;width:max-content;max-width:96%}
+html.rf #hud #h-pg{white-space:nowrap;font-size:22px}
+html.rf .st:not(.on){display:none}
+html.rf #hud button{font-size:22px;padding:6px 16px;min-height:44px}
+/* ---- extra_css ---- */
+
+</style>
+</head>
+<body>
+<div id="viewport">
+<div id="deck">
+
+<!-- cover -->
+<section class="slide cover" id="cover">
+  <div class="cv-l"><div class="cv-tag">역학과 에너지 · Ⅰ. 시공간과 운동 · 1차시</div>
+    <h1>벡터</h1>
+    <p class="lead" style="margin:0">크기에 방향을 더한 숫자. 힘·속도·가속도를 화살표로 읽는 법.</p>
+    <div class="q">“5 m 걸었다”와 “북쪽으로 5 m 걸었다”는 어떻게 다를까?</div>
+    <div class="sm">1차시 정의·합·차·분해 / 2차시 알짜힘·빗면·운동·곱</div></div>
+  <canvas id='cover-cv'></canvas>
+</section>
+
+<!-- hook -->
+<section class="slide" id="hook">
+  <header class="hd"><h2>10 N + 10 N = ? — 두 힘을 합치면</h2><span class="src">도입 · 직접 해 보기</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id='hook-cv'></canvas><div class='side' style='gap:14px'><div class='box'><h3>두 사람의 줄다리기 각도</h3><div class='ctl'><div class='row'><span>두 줄 사이의 각 θ</span><span class='val' id='hook-thv'></span></div><input type='range' id='hook-th' min='0' max='180' step='5' value='0'></div><div class='btns' style='margin-top:6px'><button class='btn pre' data-th='0'>0°</button><button class='btn pre' data-th='90'>90°</button><button class='btn pre' data-th='120'>120°</button><button class='btn pre' data-th='180'>180°</button></div></div><div class='box'><h3>합력</h3><div id='hook-info' style='font-size:26px;line-height:1.55'></div></div></div>
+</div>
+</section>
+
+<!-- sort -->
+<section class="slide" id="sort">
+  <header class="hd"><h2>스칼라일까, 벡터일까? 분류해 보기</h2><span class="src">교과서 12쪽 · 스칼라와 벡터</span></header>
+<div class='box'><h3>① 카드를 누르고 ② 아래 칸을 누르면 들어갑니다. 놓은 카드를 누르면 되돌아옵니다.</h3><div class='chips' id='so-pool'></div></div>
+<div style='display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:14px'>
+<div class='box' id='so-s' style='min-height:210px;cursor:pointer'><h3><span class='ok'>스칼라</span> — 크기만 있다</h3><div class='chips' id='so-sl'></div></div>
+<div class='box' id='so-v' style='min-height:210px;cursor:pointer'><h3><span class='k'>벡터</span> — 크기와 방향이 있다</h3><div class='chips' id='so-vl'></div></div></div>
+<div class='btns' style='margin-top:12px'><button class='btn pri' id='so-ck'>채점</button><button class='btn' id='so-rs'>처음부터</button></div>
+<div id='so-res' style='font-size:27px;margin-top:10px;line-height:1.5'></div>
+</section>
+
+<!-- disp -->
+<section class="slide" id="disp">
+  <header class="hd"><h2>이동 거리와 변위 — 지나온 길 vs 자리바뀜</h2><span class="src">교과서 12쪽 · 변위</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id='disp-cv'></canvas><div class='side' style='gap:14px'><div class='box'><h3>조작</h3><p class='sm' style='margin:0 0 8px'>경유점 Q와 도착점 P의 하얀 원을 끌어 보세요.</p><div class='btns'><button class='btn pri' id='disp-back'>출발점으로 돌아오기</button></div></div><div class='box'><h3>측정값 (1칸 = 1 m)</h3><div id='disp-info' style='font-size:26px;line-height:1.55'></div></div></div>
+</div>
+</section>
+
+<!-- why1 -->
+<section class="slide" id="why1">
+  <header class="hd"><h2>왜 벡터를 배울까? ① 좌표축을 바꿔도 물리는 그대로</h2><span class="src">파인만 물리학 강의 1권 11장 (교과서 밖 심화)</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id='why1-cv'></canvas><div class='side' style='gap:14px'><div class='box'><h3>조작</h3><p class='sm' style='margin:0 0 6px'>화살표 끝(하얀 원)을 끌어 바꾸고, 슬라이더로 좌표축(분홍)을 돌려 보세요.</p><div class='ctl'><div class='row'><span>축을 돌린 각 φ</span><span class='val' id='why1-phv'></span></div><input type='range' id='why1-ph' min='0' max='90' step='5' value='30'></div></div><div class='box'><h3>같은 화살표, 두 가지 숫자</h3><div id='why1-info' style='font-size:26px;line-height:1.55'></div></div></div>
+</div>
+</section>
+
+<!-- why2 -->
+<section class="slide" id="why2">
+  <header class="hd"><h2>왜 벡터를 배울까? ② 법칙을 한 줄로: F = ma</h2><span class="src">파인만 물리학 강의 1권 11장 (교과서 밖 심화)</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id='why2-cv'></canvas><div class='side' style='gap:14px'><div class='box'><h3>조작 (m = 2 kg 고정)</h3><p class='sm' style='margin:0 0 6px'>힘 끝을 끌고, 슬라이더로 축을 돌려 보세요.</p><div class='ctl'><div class='row'><span>축을 돌린 각 φ</span><span class='val' id='why2-phv'></span></div><input type='range' id='why2-ph' min='0' max='90' step='5' value='30'></div></div><div class='box'><h3>축이 달라도 식은 같은 모양</h3><div id='why2-info' style='font-size:26px;line-height:1.55'></div></div></div>
+</div>
+</section>
+
+<!-- def -->
+<section class="slide" id="def" data-steps="5">
+  <header class="hd"><h2>벡터란? 크기 + 방향, 화살표로 그린다</h2><span class="src">교과서 12쪽 · 벡터의 표현</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id='def-cv'></canvas>
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>벡터 = 크기 + 방향</b></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">위치 이동(변위), 속도, 가속도, 힘처럼 “얼마나, 어느 쪽으로”를 함께 말해야 하는 양.</div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>화살표로 그린다</b></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">화살표의 <b>길이</b>가 크기, <b>화살표가 향한 쪽</b>이 방향. 시작점은 꼬리, 끝은 머리(끝점).</div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>평행이동해도 같은 벡터</b></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">크기와 방향이 같으면 어디에 그려도 같은 벡터. (화면의 점선 화살표)</div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>쓰는 법</b></div><div class="eq"><span class="m">|A| = A</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">굵은 글씨 <b>A</b> (손글씨는 위에 화살표). 크기는 |<b>A</b>| 또는 A.</div></div></div>
+<div class="st" data-i="5"><div class="n">5</div><div><div class="tl"><b>성분으로 말하기</b></div><div class="eq"><span class="m">|A| = <span class="sq">√<span class="rad">A<sub>x</sub><sup>2</sup> + A<sub>y</sub><sup>2</sup></span></span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">x, y 방향으로 얼마씩 가는지 (A<sub>x</sub>, A<sub>y</sub>). 크기는 피타고라스 정리로.</div></div></div></div>
+</div>
+</section>
+
+<!-- add -->
+<section class="slide" id="add">
+  <header class="hd"><h2>벡터의 합: 화살표를 이어 붙인다</h2><span class="src">교과서 12~13쪽 · 벡터의 합성</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id='add-cv'></canvas><div class='side' style='gap:14px'><div class='box'><h3>방법 고르기</h3><div class='chips' id='add-chips'><span class='chip on' data-m='0'>꼬리-머리 이어 붙이기</span><span class='chip' data-m='1'>평행사변형</span></div><p class='sm' style='margin:8px 0 0'>하얀 원을 끌어 A, B를 바꿔 보세요.</p></div><div class='box'><h3>합 A + B</h3><div id='add-info' style='font-size:26px;line-height:1.55'></div></div></div>
+</div>
+</section>
+
+<!-- addf -->
+<section class="slide" id="addf">
+  <header class="hd"><h2>합의 크기는 두 벡터 사이의 각에 달려 있다</h2><span class="src">교과서 13쪽 · 합벡터의 크기</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id='addf-cv'></canvas><div class='side' style='gap:14px'><div class='box'><h3>|A| = 4, |B| = 3</h3><div class='ctl'><div class='row'><span>A와 B 사이의 각 θ</span><span class='val' id='addf-thv'></span></div><input type='range' id='addf-th' min='0' max='180' step='5' value='60'></div><div class='btns' style='margin-top:6px'><button class='btn pre' data-th='0'>0°</button><button class='btn pre' data-th='90'>90°</button><button class='btn pre' data-th='180'>180°</button></div></div><div class='box'><h3>|A + B|</h3><div id='addf-info' style='font-size:26px;line-height:1.55'></div></div></div>
+</div>
+</section>
+
+<!-- sub -->
+<section class="slide" id="sub">
+  <header class="hd"><h2>벡터의 차: A − B = A + (−B)</h2><span class="src">교과서 13쪽 · 벡터의 차 · 속도의 변화</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id='sub-cv'></canvas><div class='side' style='gap:14px'><div class='box'><h3>읽는 법</h3><p class='sm' style='margin:0'>하얀 원을 끌어 A, B를 바꿔 보세요. 분홍 화살표 = <b>B의 머리에서 A의 머리로</b> 향한 화살표.</p></div><div class='box'><h3>차 A − B</h3><div id='sub-info' style='font-size:26px;line-height:1.55'></div></div></div>
+</div>
+</section>
+
+<!-- decomp -->
+<section class="slide" id="decomp">
+  <header class="hd"><h2>벡터의 분해: 한 벡터를 직각인 두 방향으로</h2><span class="src">교과서 13쪽 · 벡터의 분해</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id='decomp-cv'></canvas><div class='side' style='gap:14px'><div class='box'><h3>축을 고르는 것도 우리 자유</h3><div class='ctl'><div class='row'><span>축이 기울어진 각 φ (빗면 축)</span><span class='val' id='decomp-phv'></span></div><input type='range' id='decomp-ph' min='0' max='60' step='5' value='0'></div><p class='sm' style='margin:6px 0 0'>하얀 원을 끌어 A를 바꿔 보세요.</p></div><div class='box'><h3>성분</h3><div id='decomp-info' style='font-size:26px;line-height:1.55'></div></div></div>
+</div>
+</section>
+
+<!-- comp -->
+<section class="slide" id="comp">
+  <header class="hd"><h2>여러 벡터는 성분으로 더한다</h2><span class="src">교과서 13쪽 · 알짜힘 구하기 준비</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id='comp-cv'></canvas><div class='side' style='gap:14px'><div class='box'><h3>세 힘을 한 점에서 당기면</h3><p class='sm' style='margin:0'>세 힘 A, B, C의 하얀 원을 끌어 보세요. 초록 화살표가 합력.</p></div><div class='box'><h3>성분 표 (1칸 = 1 N)</h3><div id='comp-info' style='font-size:26px;line-height:1.55'></div></div></div>
+</div>
+</section>
+
+<!-- exit1 -->
+<section class="slide" id="exit1">
+  <header class="hd"><h2>1차시 정리 — 오늘 알아낸 것</h2><span class="src">퇴실 확인</span></header>
+<div style='display:grid;grid-template-columns:1fr 1fr;gap:20px'>
+<div class='box'><h3>한 줄 정리</h3><ul style='font-size:28px;line-height:1.6;margin:0;padding-left:26px'>
+<li><b>벡터</b> = 크기 + 방향 (화살표). 스칼라 = 크기만.</li>
+<li>합: 꼬리-머리로 이어 붙인다. 크기는 <b>각도</b>에 따라 |A−B| ~ A+B.</li>
+<li>차: A − B = A + (−B), “B의 머리 → A의 머리”.</li>
+<li>분해: A cosθ, A sinθ. 축은 내가 고른다.</li>
+<li>여러 벡터는 <b>성분끼리</b> 더한다.</li></ul></div>
+<div class='box'><h3>왜 배웠나 (파인만 11장)</h3><p style='font-size:28px;line-height:1.55;margin:0'>자연은 우리가 어떤 좌표축을 잡는지 모른다. 그래서 <b>축을 돌려도 같은 모양</b>이어야 하고, 그걸 한 줄로 담는 도구가 벡터다. <span class='k'>F = ma</span> 한 줄이 x, y, z 세 식을 대신한다.</p></div></div>
+<div class='box' style='margin-top:18px'><h3>퇴실 질문 (눌러서 답 확인)</h3>
+<details style='font-size:27px;margin:6px 0'><summary>① 3 N과 4 N의 힘이 직각이면 합력의 크기는?</summary><b class='ok'>5 N</b> — 직각삼각형 (3,4,5)</details>
+<details style='font-size:27px;margin:6px 0'><summary>② 같은 크기의 두 힘의 합력이 0이 되려면?</summary><b class='ok'>정반대 방향 (180°)</b></details>
+<details style='font-size:27px;margin:6px 0'><summary>③ 속력이 일정한데 속도가 변하는 예는?</summary><b class='ok'>원운동</b> — 방향이 계속 바뀐다 (2차시)</details></div>
+<p class='sm' style='margin-top:10px'>다음 시간: 알짜힘 → 빗면 위 물체 → 여러 가지 운동 → 벡터의 곱(스칼라곱·벡터곱 맛보기)</p>
+</section>
+
+<!-- recap2 -->
+<section class="slide" id="recap2">
+  <header class="hd"><h2>2차시 열기: 지난 시간 확인</h2><span class="src">복습 · 눌러서 답 확인</span></header>
+<div class='box'><h3>세 가지만 기억나면 오늘 수업이 쉬워진다</h3>
+<details style='font-size:29px;margin:10px 0'><summary>① 벡터와 스칼라의 차이는?</summary><b class='ok'>벡터는 크기와 방향, 스칼라는 크기만.</b> 속도·힘·가속도·변위는 벡터.</details>
+<details style='font-size:29px;margin:10px 0'><summary>② 두 벡터를 더하는 방법은?</summary><b class='ok'>꼬리-머리로 이어 붙이기</b> 또는 <b class='ok'>성분끼리 더하기</b>.</details>
+<details style='font-size:29px;margin:10px 0'><summary>③ 벡터를 분해하면?</summary>축 방향 성분 A cosθ, 수직 성분 A sinθ. <b class='ok'>축은 문제에 맞게 고른다.</b></details></div>
+<div class='box' style='margin-top:18px;border-color:var(--blue)'><h3>오늘의 도전</h3><p style='font-size:30px;line-height:1.55;margin:0'>벡터를 써서 <b>힘이 여럿일 때의 운동</b>(알짜힘), <b>비스듬한 면 위 물체</b>, <b>포물선·원운동</b>을 한 방법으로 풀어 보고, 마지막에 벡터끼리 <b>곱하는 법</b>까지 맛보기.</p></div>
+</section>
+
+<!-- net -->
+<section class="slide" id="net">
+  <header class="hd"><h2>알짜힘: 힘이 여러 개일 때 물체는 합력으로 움직인다</h2><span class="src">교과서 12~13쪽 · 알짜힘과 힘의 평형</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id='net-cv'></canvas><div class='side' style='gap:14px'><div class='box'><h3>조작</h3><div class='ctl'><div class='row'><span>물체의 질량 m (kg)</span><span class='val' id='net-mv'></span></div><input type='range' id='net-m' min='1' max='5' step='1' value='2'></div><div class='btns' style='margin-top:6px'><button class='btn pri' id='net-eq'>평형 만들기 (F₃ 자동)</button></div><p class='sm' style='margin:6px 0 0'>F₁, F₂, F₃의 하얀 원을 끌어 보세요.</p></div><div class='box'><h3>운동 상태 (1칸 = 1 N)</h3><div id='net-info' style='font-size:26px;line-height:1.55'></div></div></div>
+</div>
+</section>
+
+<!-- incl -->
+<section class="slide" id="incl">
+  <header class="hd"><h2>빗면 위 물체에 작용하는 힘</h2><span class="src">교과서 14~15쪽 · 빗면에서의 힘</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id='incl-cv'></canvas><div class='side' style='gap:14px'><div class='box'><h3>조작</h3><div class='ctl'><div class='row'><span>빗면 각도 θ</span><span class='val' id='incl-thv'></span></div><input type='range' id='incl-th' min='5' max='75' step='5' value='30'></div><div class='ctl'><div class='row'><span>마찰 계수 μ</span><span class='val' id='incl-muv'></span></div><input type='range' id='incl-mu' min='0' max='0.8' step='0.05' value='0.2'></div><div class='chips' id='incl-ch' style='margin-top:6px'><span class='chip on' data-k='dec'>중력 분해 보기</span><span class='chip' data-k='ax'>빗면 축 보기</span></div></div><div class='box'><h3>힘의 장부</h3><div id='incl-info' style='font-size:26px;line-height:1.55'></div></div></div>
+</div>
+</section>
+
+<!-- inclq -->
+<section class="slide" id="inclq">
+  <header class="hd"><h2>빗면의 가속도: 각도, 질량, 마찰은 어떻게 영향을 줄까?</h2><span class="src">교과서 15쪽 · 빗면에서의 가속도</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id='inclq-cv'></canvas><div class='side' style='gap:14px'><div class='box'><h3>먼저 예상 → 슬라이더로 확인</h3><div class='ctl'><div class='row'><span>빗면 각도 θ</span><span class='val' id='inclq-thv'></span></div><input type='range' id='inclq-th' min='0' max='90' step='5' value='30'></div><div class='ctl'><div class='row'><span>질량 m (kg)</span><span class='val' id='inclq-mv'></span></div><input type='range' id='inclq-m' min='1' max='10' step='1' value='2'></div><div class='ctl'><div class='row'><span>마찰 계수 μ</span><span class='val' id='inclq-muv'></span></div><input type='range' id='inclq-mu' min='0' max='0.8' step='0.05' value='0'></div></div><div class='box'><h3>가속도 a</h3><div id='inclq-info' style='font-size:26px;line-height:1.55'></div></div></div>
+</div>
+</section>
+
+<!-- proj -->
+<section class="slide" id="proj">
+  <header class="hd"><h2>포물선 운동: 가로와 세로를 따로 보면 쉽다</h2><span class="src">교과서 · 여러 가지 물체의 운동 (벡터 성분 활용)</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id='proj-cv'></canvas><div class='side' style='gap:14px'><div class='box'><h3>발사 조건</h3><div class='ctl'><div class='row'><span>처음 속력 v₀ (m/s)</span><span class='val' id='proj-vv'></span></div><input type='range' id='proj-v' min='8' max='24' step='1' value='18'></div><div class='ctl'><div class='row'><span>발사각 α</span><span class='val' id='proj-angv'></span></div><input type='range' id='proj-ang' min='10' max='80' step='5' value='50'></div><div class='btns' style='margin-top:6px'><button class='btn pri' id='proj-go'>↺ 다시 발사</button></div></div><div class='box'><h3>성분별 운동</h3><div id='proj-info' style='font-size:26px;line-height:1.55'></div></div></div>
+</div>
+</section>
+
+<!-- circ -->
+<section class="slide" id="circ">
+  <header class="hd"><h2>등속 원운동: 속력은 일정, 속도는 계속 변한다</h2><span class="src">파인만 1권 11장 · 교과서 밖 심화 (원운동 가속도)</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id='circ-cv'></canvas><div class='side' style='gap:14px'><div class='box'><h3>조작</h3><div class='ctl'><div class='row'><span>두 순간 사이의 각 Δθ</span><span class='val' id='circ-dthv'></span></div><input type='range' id='circ-dth' min='10' max='120' step='5' value='60'></div><p class='sm' style='margin:6px 0 0'>더 자세히: <a href='/mechanics/circular-motion-vector/' target='_blank' style='color:var(--blue)'>등속 원운동 벡터 워크벤치</a></p></div><div class='box'><h3>Δv와 가속도</h3><div id='circ-info' style='font-size:26px;line-height:1.55'></div></div></div>
+</div>
+</section>
+
+<!-- dotp -->
+<section class="slide" id="dotp">
+  <header class="hd"><h2>벡터의 곱 ① 스칼라곱(내적): 결과는 숫자 하나</h2><span class="src">할리데이 일반물리학 3장 · 교과서 밖 심화 (일의 정의로 이어짐)</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id='dotp-cv'></canvas><div class='side' style='gap:14px'><div class='box'><h3>예: 힘 A(N)이 물체를 B(m)만큼 옮길 때</h3><p class='sm' style='margin:0'>일 W = A · B = AB cosθ. 하얀 원을 끌어 A, B를 바꿔 보세요.</p></div><div class='box'><h3>A · B</h3><div id='dotp-info' style='font-size:26px;line-height:1.55'></div></div></div>
+</div>
+</section>
+
+<!-- crossp -->
+<section class="slide" id="crossp">
+  <header class="hd"><h2>벡터의 곱 ② 벡터곱(외적): 결과는 새로운 방향</h2><span class="src">할리데이 일반물리학 3장 · 교과서 밖 심화 (돌림힘으로 이어짐)</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id='crossp-cv'></canvas><div class='side' style='gap:14px'><div class='box'><h3>예: 렌치(위치 A)에 힘 B를 줄 때 돌림힘</h3><p class='sm' style='margin:0'>τ = A × B. 하얀 원을 끌어 A, B를 바꿔 보세요.</p></div><div class='box'><h3>A × B</h3><div id='crossp-info' style='font-size:26px;line-height:1.55'></div></div></div>
+</div>
+</section>
+
+<!-- race -->
+<section class="slide" id="race">
+  <header class="hd"><h2>빗면 경주: 각도는 달라도 바닥에서의 속력은 같다?</h2><span class="src">교과서 15쪽 · 여러 가지 물체의 운동 (힘과 에너지 두 관점)</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id='race-cv'></canvas><div class='side' style='gap:14px'><div class='box'><h3>높이 h = 5 m, 마찰 없음</h3><div class='btns'><button class='btn pri' id='race-go'>▶ 출발</button><button class='btn' id='race-rs'>↺ 처음으로</button></div></div><div class='box'><h3>결과</h3><div id='race-info' style='font-size:26px;line-height:1.55'></div></div></div>
+</div>
+</section>
+
+<!-- bridge -->
+<section class="slide" id="bridge">
+  <header class="hd"><h2>벡터는 어디에 다시 나올까?</h2><span class="src">앞으로의 단원 · 더 읽기: 할리데이 3장 · 파인만 1권 11장</span></header>
+<table class='t' style='font-size:28px;width:100%'>
+<tr><th style='width:26%'>앞으로 만날 것</th><th>벡터가 하는 일</th></tr>
+<tr><td>힘의 평형 · 뉴턴 법칙</td><td>알짜힘 ΣF = ma — 방향별로 성분 방정식 하나씩</td></tr>
+<tr><td>운동량 보존 · 충돌</td><td>운동량은 벡터라서 x, y 방향 각각 보존</td></tr>
+<tr><td>일과 에너지</td><td><b class='ok'>스칼라곱</b> W = F · d — 방향과 상관없는 에너지로 정리</td></tr>
+<tr><td>돌림힘 · 각운동량 (대학)</td><td><b class='ok'>벡터곱</b> τ = r × F</td></tr>
+<tr><td>전기장 · 자기장 (고2~대학)</td><td>여러 전하의 장을 벡터 합으로 중첩</td></tr></table>
+<div style='display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:18px'>
+<div class='box'><h3>고등학교와 대학 일반물리의 간극</h3><p style='font-size:27px;line-height:1.5;margin:0'>고등학교: 한 줄 위(1차원)와 비스듬한 면(분해 한 번).<br>대학: 3차원 벡터식 <b>F = ma</b> 한 줄, 좌표를 마음대로 바꾸고, 곱셈에도 두 종류.</p></div>
+<div class='box'><h3>더 읽고 싶다면 <span class='sm'>(교과서 밖)</span></h3><p style='font-size:27px;line-height:1.5;margin:0'>할리데이 일반물리학 3장 「벡터」<br>파인만 물리학 강의 1권 11장 「Vectors」<br><span class='sm'>수업 중에는 책 내용을 요약·재구성해서 사용했습니다.</span></p></div></div>
+</section>
+
+<!-- exit2 -->
+<section class="slide" id="exit2">
+  <header class="hd"><h2>2차시 정리 — 오늘 알아낸 것</h2><span class="src">퇴실 확인</span></header>
+<div style='display:grid;grid-template-columns:1fr 1fr;gap:20px'>
+<div class='box'><h3>한 줄 정리</h3><ul style='font-size:28px;line-height:1.6;margin:0;padding-left:26px'>
+<li><b>알짜힘</b> = 모든 힘의 벡터 합. 0이면 평형, 아니면 ΣF / m 방향으로 가속.</li>
+<li>빗면: mg를 <b>빗면 방향 mg sinθ, 수직 mg cosθ</b>로 분해. N = mg cosθ, a = g sinθ (마찰 없음).</li>
+<li>포물선: 가로는 등속, 세로는 가속도 g — <b>성분별로 따로</b>.</li>
+<li>원운동: 속력 일정이어도 속도는 변해 가속도 v²/r (중심 쪽).</li>
+<li>곱: <b>스칼라곱</b>(숫자, 일), <b>벡터곱</b>(새 방향, 돌림힘).</li></ul></div>
+<div class='box'><h3>오늘의 핵심</h3><p style='font-size:30px;line-height:1.55;margin:0'>벡터는 “계산 도구”이면서 <b>현상을 보는 눈</b>이다. 빗면은 분해, 알짜힘은 합, 원운동은 차, 일은 곱 — 지난 시간부터 배운 연산이 하나씩 쓰였다.</p></div></div>
+<div class='box' style='margin-top:18px'><h3>퇴실 질문</h3>
+<details style='font-size:27px;margin:6px 0'><summary>① 30° 빗면에서 질량 2 kg 물체가 마찰 없이 내려올 때 a는? (g = 9.8)</summary><b class='ok'>a = g sin30° = 4.9 m/s²</b> (질량 무관)</details>
+<details style='font-size:27px;margin:6px 0'><summary>② 원운동하는 물체의 가속도 방향은?</summary><b class='ok'>원의 중심 쪽</b></details>
+<details style='font-size:27px;margin:6px 0'><summary>③ 힘 A와 변위 B가 수직이면 일은?</summary><b class='ok'>0</b> (A · B = AB cos90° = 0)</details></div>
+</section>
+
+<div id="notes"></div>
+<div id="bar"><div class="bl">🧭 벡터 — 크기에 방향을 더한 숫자 (2차시) <span class="sm">· 역학과 에너지 Ⅰ. 시공간과 운동 · 벡터의 합성·분해 · 알짜힘 · 빗면 · 여러 가지 운동</span></div><div class="br"><button class="tb" id="b-help">❓ 조작법</button><button class="tb" id="b-ask">💬 발문 띄우기</button><button class="tb" id="b-notes">📝 오개념 교정 노트</button><button class="tb" id="b-theme">🌙 다크 전환</button></div></div>
+<div id="ask" role="dialog" aria-label="발문"></div>
+<div id="help" role="dialog" aria-label="조작법 설명"><div class="hp">
+<h3>조작법</h3>
+<h4>키보드</h4>
+<div class="g"><div><kbd>→</kbd><kbd>Space</kbd></div><div>다음 (단계가 있는 슬라이드는 단계부터 진행)</div>
+<div><kbd>←</kbd></div><div>이전 (단계도 거꾸로)</div>
+<div><kbd>Home</kbd><kbd>End</kbd></div><div>처음 / 마지막 슬라이드</div>
+<div><kbd>F</kbd></div><div>전체 화면</div>
+<div><kbd>Q</kbd></div><div>이 슬라이드의 <b>발문(학생용 질문)</b>을 화면 위에 크게 띄우기 / 닫기 (아무 곳이나 클릭해도 닫힘)</div>
+<div><kbd>N</kbd></div><div>오개념 교정 노트 열기/닫기 (교사용)</div>
+<div><kbd>T</kbd></div><div>다크 / 라이트 전환</div>
+<div><kbd>?</kbd><kbd>Esc</kbd></div><div>조작법 열기 / 닫기</div></div>
+<h4>화면 조작</h4>
+<div class="g"><div>끌기</div><div>하얀 원으로 표시된 화살표 끝을 끌어 벡터를 바꾼다</div>
+<div>→ / Space</div><div>다음 단계·슬라이드</div>
+<div>Q</div><div>학생 발문</div>
+<div>N</div><div>교사 노트</div>
+<div>슬라이더 키보드</div><div>슬라이더를 클릭해 초점이 있는 동안에는 ← → 가 값 조절에 쓰입니다. 마우스로 놓으면 자동 해제</div></div>
+<h4>수업 진행 팁</h4>
+<div>① 학생에게 결과를 <b>먼저 예측</b>하게 하고 → ② 슬라이더로 확인하고 → ③ 식으로 정리하면 오개념이 잘 교정됩니다.</div>
+<div class="btns" style="margin-top:22px"><button class="btn pri" id="help-x">닫기 (Esc)</button></div>
+</div></div>
+<div id="simError"></div>
+</div>
+<div id="hud"><button id="h-prev" aria-label="이전">◀</button><span id="h-pg">1 / 1</span><button id="h-next" aria-label="다음">▶</button><button id="h-fs" aria-label="전체화면">⛶</button></div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   공통 유틸 / 그리기 도우미 (템플릿 제공)
+   ===================================================================== */
+const DECK = {"title":"벡터 — 크기에 방향을 더한 숫자 (2차시)","notes":{"cover":{"q":"오늘 질문: 숫자 하나로 충분한 양과 부족한 양의 차이. 화면의 |A+B|가 |A|+|B|와 늘 같은지 물어 보며 시작.","m":[["“5 m 갔다 → 위치가 5 m 변했다”","방향 없이는 어디에 있는지 모른다. 같은 5 m도 방향에 따라 도착점이 다르다."]]},"hook":{"q":"슬라이더를 움직이기 전에 90°에서의 값을 먼저 예측하게 한다 (14.1 N). 크기만으로는 합이 정해지지 않고 방향이 필요하다는 것이 오늘의 출발점.","m":[["힘의 합은 크기를 더하면 된다","방향이 같을 때만 크기를 더한다. 일반적으로는 화살표를 이어 붙여 합친다."],["합력이 0이면 아무 힘도 안 쓴 것","각자는 10 N씩 쓰고 있다. 합이 0일 뿐이다."]]},"sort":{"q":"채점 뒤 헷갈린 짝(속력/속도, 거리/변위)을 짚는다. 운동량은 벡터로, 에너지는 스칼라로 분류됨을 확인하되 이유는 2차시 스칼라곱에서.","m":[["속력과 속도는 같은 말","속력은 크기만(스칼라), 속도는 크기+방향(벡터). 원운동은 속력이 일정해도 속도는 변한다."],["온도가 올라간다/내려간다 → 방향이 있다","“올라간다/내려간다”는 증감의 부호이지 공간 방향이 아니다. 온도는 스칼라."]]},"disp":{"q":"경유점 Q를 일직선 위로 옮기면 두 값이 같아지는 것을 보게 한다. “변위는 처음과 나중 위치만 정한다 — 경로는 상관없다.”","m":[["변위의 크기는 이동 거리와 항상 같다","직선으로만 한 방향으로 갈 때만 같다. 돌아오거나 휘어 가면 변위 크기가 더 작다."],["변위가 0이면 움직이지 않았다","출발점으로 돌아와도 많이 움직였다. 변위만 0이다."]]},"why1":{"q":"파인만 11장의 핵심 논리: 자연은 우리가 어떤 축을 잡는지 모른다 → 법칙은 축을 돌려도 같은 모양이어야 한다 → 그 조건을 만족하는 양이 벡터. 식 11.5(x′, y′ 변환)는 보여만 주고 유도는 하지 않는다.","m":[["축이 바뀌면 힘도 바뀐다","성분의 숫자가 바뀔 뿐, 힘 자체(크기·방향)는 그대로이다."],["벡터의 크기도 축에 따라 달라진다","크기 √(x²+y²)는 어떤 축에서도 같다 (표의 두 열 비교)."]]},"why2":{"q":"“벡터식 한 줄 = 성분식 여럿”이고, 축을 바꿔도 같은 꼴 → 법칙이 우리가 고른 좌표에 의존하지 않는다는 뜻. 고교 문제 풀이의 x축/y축 따로 쓰는 식도 같은 내용임을 연결.","m":[["F = ma는 x방향에서만 성립한다","모든 방향·모든 축에서 성립한다. 성분마다 따로 쓴 것일 뿐이다."]]},"def":{"q":"→ 키로 한 줄씩. 3단계에서 학생이 먼저 “같은가?”를 말하게 한다. 위치벡터(시작점이 원점)와 일반 벡터(자유 벡터)의 차이는 필요하면 언급.","m":[["벡터는 시작점이 달라지면 다른 벡터","크기와 방향이 같으면 같은 벡터. (단, 힘의 작용점이 중요한 문제는 따로 다룬다.)"],["벡터의 크기는 음수가 될 수 있다","크기는 항상 0 이상. 음수는 성분이나 방향 표시에서 나온다."]]},"add":{"q":"두 방법(꼬리-머리, 평행사변형)이 같은 화살표를 준다는 것을 토글로 확인. 교환법칙은 여기서 그림으로 보여 주고 증명은 하지 않는다.","m":[["A + B의 크기 = A의 크기 + B의 크기","같은 방향일 때만. 일반적으로는 삼각형의 변 길이처럼 |A+B| ≤ |A|+|B|."],["합벡터는 항상 A, B보다 크다","반대 방향이면 합이 더 작아진다 (0이 될 수도)."]]},"addf":{"q":"3-4-5 직각삼각형은 피타고라스 정리의 장면. 일반 각의 코사인 법칙은 교과서 밖이므로 곡선으로 직관만 준다.","m":[["두 힘의 사이각이 커질수록 합력은 항상 커진다","반대로 각이 클수록 합력은 작아진다 (0°에서 최대, 180°에서 최소)."]]},"sub":{"q":"차는 합의 응용: 반대 방향 벡터를 더한다. “속도의 변화는 처음과 나중 속도 벡터의 차”가 이후 가속도 정의로 이어진다는 것을 짚는다.","m":[["A − B의 크기 = A의 크기 − B의 크기","일반적으로 틀리다. 성분끼리 빼서 새 화살표를 만든 뒤 크기를 구한다."],["속력이 같으면 속도의 변화는 0","방향이 바뀌면 속도 벡터가 달라진다. 5 m/s → 반대 방향 5 m/s이면 변화 10 m/s."]]},"decomp":{"q":"축 φ를 빗면 각도로 보고, 2차시 빗면 슬라이드로 곧바로 연결된다는 복선. A cosθ / A sinθ의 θ는 “성분을 구하려는 축과 벡터가 이루는 각”임을 강조.","m":[["A cosθ는 항상 수평 성분, A sinθ는 항상 수직 성분","θ를 어느 축에서 재느냐에 따라 달라진다. 축과 이루는 각이 θ이면 그 축 성분은 A cosθ."],["분해하면 힘이 두 개로 늘어난다","원래 힘 하나를 두 성분으로 “대신 표현”한 것이다. 실제 힘을 둘 더 가한 것이 아니다."]]},"comp":{"q":"성분으로 더하는 방법이 “여러 개일 때의 합” 표준 전략. 합력이 0이면 평형이라는 정의(2차시 알짜힘)로 연결.","m":[["합력의 크기 = 성분 크기의 합","x 성분 합, y 성분 합을 구한 뒤 피타고라스 정리로 크기를 구한다."]]},"exit1":{"q":"퇴실 질문 ①~③을 손들기/미니보드로 확인. ③은 2차시 원운동 슬라이드의 복선.","m":[["벡터 = 화살표 그림일 뿐","그림은 표현이고, 핵심은 성분으로 계산할 수 있는 양이라는 점."]]},"recap2":{"q":"3분 이내 복습. 틀리는 부분은 해당 슬라이드(add, decomp, comp)로 돌아가 한 번 더 시연.","m":[["벡터를 더하면 크기를 더한다","방향이 같을 때만. 성분끼리 더한다."]]},"net":{"q":"알짜힘(합력) = 모든 힘의 벡터 합. 평형이면 ΣF=0. 1차시 comp 슬라이드에서 구한 합력에 질량을 나눈 것이 가속도. 평형 ≠ 정지: 등속도 가능.","m":[["알짜힘이 0이면 물체는 정지","등속 직선 운동도 가능하다 (관성)."],["힘이 큰 쪽으로만 움직인다","모든 힘의 벡터 합 방향으로 가속된다."]]},"incl":{"q":"교과서 13쪽 예: 10 N, 30° → 빗면 방향 5 N. 여기서는 2 kg(19.6 N) → mg sinθ=9.8 N, mg cosθ=17.0 N. 90°이면 자유낙하 a=g, 0°이면 a=0 — 극한에서 식이 상식과 맞는지 확인하는 습관.","m":[["수직항력 N = mg 이다","빗면에서는 N = mg cosθ. 평면(θ=0)일 때만 mg."],["빗면을 내려가는 힘이 따로 존재한다","mg의 분해 성분일 뿐이다. 중력 하나를 두 축으로 나눈 것."],["마찰력은 항상 μN","미끄러지기 전에는 정지 마찰력이 mg sinθ와 같고, μN은 최댓값."]]},"inclq":{"q":"마찰이 없을 때 a = g sinθ (질량 무관), θ=90°에서 g. 마찰이 있으면 tanθ = μ에서 a=0 → 이 각이 “마찰각”. 질량 무관의 이유를 “중력도 질량에 비례, 관성도 질량에 비례”로 설명.","m":[["무거운 물체가 빗면을 더 빨리 내려온다","마찰이 없거나 μ가 같다면 질량은 가속도와 무관하다 (공기 저항 무시)."],["각도가 커지면 a는 선형으로 커진다","sinθ를 따라 커진다 (곡선)."]]},"proj":{"q":"핵심은 “성분끼리 독립”. 가로 그림자는 등속, 세로 그림자는 가속도 g인 연직 운동. 고교 범위에서는 정성적으로 확인하고 공식은 필수 암기가 아니다.","m":[["최고점에서 속도가 0","vᵧ만 0이다. 가로 속도 vₓ는 남아 있어 속력은 vₓ이다."],["공기 저항 없이도 앞으로 가는 힘이 필요하다","수평 방향 알짜힘 0이면 등속도 (관성)."]]},"circ":{"q":"가속도 = 속도 벡터의 변화율. 속력이 아니라 속도(벡터)를 보아야 한다는 가장 좋은 사례. 이 슬라이드는 교과서 밖 심화이며, a = v²/r의 유도는 Δθ→0 극한으로 직관만 준다 (파인만 11-6의 아이디어).","m":[["속력이 일정하면 가속도는 0","속도의 방향이 바뀌면 가속도가 있다."],["원운동에서 가속도는 접선 방향","원의 중심 방향이다 (Δv가 가리키는 쪽)."]]},"dotp":{"q":"일의 정의 W = F·d를 벡터 곱으로 보는 첫 만남. 이후 일·에너지 단원에서 다시 쓴다는 복선. 교과서 밖 내용이므로 “맛보기”로.","m":[["A · B는 벡터이다","결과가 숫자 하나(스칼라)이다. 그래서 에너지는 스칼라이다."],["수직일 때도 힘이 일을 한다","수직이면 A · B = 0이라 그 힘은 일을 하지 않는다 (예: 구심력)."]]},"crossp":{"q":"벡터곱은 이후 돌림힘·각운동량·자기력에서 다시 나온다. 이번에는 “크기=평행사변형 넓이, 방향은 수직, 순서가 중요”만 보여 준다. 오른손 법칙은 시범만.","m":[["A × B = B × A","교환되지 않는다. 순서를 바꾸면 방향이 반대 (반교환)."],["벡터곱도 스칼라곱처럼 숫자","벡터곱은 방향이 있는 벡터이다."]]},"race":{"q":"빗면에서 힘(벡터 분해)으로 풀면 각도마다 계산이 달라지지만 에너지(스칼라)로 보면 높이만 남는다. 벡터를 배운 이유(현상을 보는 눈)와 에너지 단원으로의 다리. 시계 t가 끝나도 정지하지 않게 화면은 마지막 프레임을 유지(‘처음으로’ 버튼으로 초기화).","m":[["가파른 빗면에서 더 빨라진다","도착 시간은 짧지만 바닥에서의 속력은 같다 (마찰 없음)."],["경사가 완만하면 일을 덜 한다","마찰이 없다면 일 = mgh로 같다. 힘이 작은 대신 거리가 길다."]]},"bridge":{"q":"이 표는 학생이 “지금 힘든 이유”를 아는 지도. 스칼라곱은 일 정의, 벡터곱은 대학에서 필수라는 점을 말해 준다.","m":[["고교 과정에서는 벡터를 안 쓴다","분해·합성을 이미 벡터로 쓰고 있다 — 이름만 몰랐다."]]},"exit2":{"q":"퇴실 질문은 미니보드로. 가장 헷갈린 개념을 모아 다음 수업 시작 3분에 다룬다.","m":[["질량이 크면 빗면에서 더 빨리 내려간다","마찰이 없다면 질량과 무관."]]}},"ask":{"cover":["“5 m 걸었다”만으로 내가 어디 있는지 알 수 있을까?"],"hook":["두 사람이 같은 10 N으로 당길 때 합력은 항상 20 N일까? 0°, 90°, 180°에서 각각 예상해 보자.","합력이 0이 되는 각도는? 그때 두 사람은 힘을 쓰고 있지 않은 걸까?"],"sort":["“그 방향으로 알려 주지 않으면 말이 안 되는” 양과 “숫자만 말해도 되는” 양을 가르는 기준은?","일과 에너지는 힘과 변위로 만드는데 왜 스칼라일까?"],"disp":["한 바퀴를 돌아 제자리로 오면 이동 거리와 변위는 각각 얼마일까?","이동 거리와 변위의 크기가 같아지는 경우는 언제일까?"],"why1":["축을 돌리면 (x, y)는 바뀌는데 화살표는 왜 그대로일까?","철수는 동서·남북 축을, 영희는 교실 벽에 맞춘 축을 쓴다면 같은 힘을 어떻게 비교할까?"],"why2":["성분 숫자는 전부 달라졌는데 어떻게 “F = ma”는 계속 맞을까?","만약 방정식이 축마다 다른 모양이라면 물리 법칙이라고 부를 수 있을까?"],"def":["길이가 같은 두 화살표가 같은 벡터이려면 무엇이 같아야 할까?","화살표를 평행이동하면 벡터가 바뀔까?"],"add":["A를 먼저 그리든 B를 먼저 그리든 합의 화살표는 같을까? 평행사변형으로 확인해 보자.","|A + B|가 |A| + |B|와 같아지려면 두 화살표는 어떤 관계여야 할까?"],"addf":["θ가 0°, 90°, 180°일 때 |A+B|를 먼저 예상해 보자. 곡선과 맞는가?","90°일 때 5가 나오는 이유를 그림으로 설명해 보자."],"sub":["공이 오른쪽으로 5 m/s로 오다가 왼쪽으로 5 m/s로 튕겨 나갔다. 속도의 변화 크기는 0일까, 10 m/s일까?","A − B를 “B에서 A로 가는 화살표”로 읽으면 왜 맞을까?"],"decomp":["슬라이더로 축을 기울이면 A는 그대로인데 성분만 바뀐다. 문제를 풀 때 어떤 축이 편할까?","θ가 0°, 90°일 때 A∥와 A⊥는 각각 얼마일까?"],"comp":["세 힘의 합이 0이 되게 만들어 보자. 그때 성분 표는 어떻게 보이는가?","화살표를 일일이 이어 붙이는 것과 성분으로 더하는 것 중 힘이 세 개 이상일 때 더 편한 방법은?"],"exit1":["오늘 배운 벡터로 설명할 수 있게 된 일상 장면 하나를 말해 보자."],"recap2":["지난 시간에 배운 것 중 오늘 쓸 것 같은 도구는 어떤 것일까?"],"net":["F₃를 어떻게 놓으면 물체가 정지(또는 등속)할까? 성분 표로 확인해 보자.","질량을 2배로 하면 같은 알짜힘에서 가속도는 어떻게 될까?"],"incl":["빗면 각도를 키우면 mg sinθ와 N은 각각 어떻게 변할까?","θ = 90°일 때 이 식에 넣으면 어떤 상황이 되는가?","마찰 계수가 얼마일 때 미끄러지지 않는가?"],"inclq":["빗면에서 질량이 2배인 물체의 가속도는 몇 배일까? 슬라이더로 확인하기 전에 예상해 보자.","마찰이 있을 때 가속도가 0이 되는 각도는 어디일까? (분홍 곡선이 0과 만나는 점)"],"proj":["공이 올라가는 동안 가로 속도 vₓ는 변할까? 세로 속도 vᵧ는?","발사각이 30°와 60°일 때 도달 거리를 비교해 보자."],"circ":["속력이 변하지 않는데 왜 가속도가 있다고 할까?","Δθ를 10°까지 줄이면 |Δv|/Δt는 v²/r에 가까워질까? 슬라이더로 확인해 보자."],"dotp":["A와 B가 수직일 때 A · B는? 그때 힘이 한 일은?","같은 크기의 힘으로도 A · B가 달라지는 이유는 무엇일까?"],"crossp":["A와 B가 평행일 때 A × B는? 렌치를 당기는 방향이 손잡이와 평행하면 돌릴 수 있을까?","A × B와 B × A는 같은 벡터일까?"],"race":["20°, 35°, 60° 빗면에서 같은 높이에서 출발하면 누가 먼저 도착할까? 바닥에서의 속력은?","같은 높이에서 속력이 같다는 사실은 힘으로 푼 결과와 에너지로 푼 결과 중 어느 쪽에서 더 쉽게 보일까?"],"bridge":["오늘 배운 것 중 “이건 에너지 단원에서 다시 쓰겠다”고 생각되는 도구는?"],"exit2":["오늘 배운 것 중 가장 헷갈린 개념 하나를 적어 보자."]}};
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const TAU = Math.PI * 2, DPR = 2;
+const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const C = { bg: '#0a1330', grid: 'rgba(160,190,255,.22)', text: '#e3ecff', dim: '#9db0d8', KE: '#ffb454', PE: '#7fb2ff', E: '#ffffff', ok: '#5eead4', bad: '#ff9d9d' };
+const font = (px, w = 500, it = false) => `${it ? 'italic ' : ''}${w} ${px}px 'Noto Sans KR',sans-serif`;
+const mathFont = px => `italic 400 ${px}px 'STIX Two Text','Times New Roman',serif`;
+function setupCanvas(cv, W, H) { cv.width = W * DPR; cv.height = H * DPR; cv.style.width = W + 'px'; cv.style.height = H + 'px'; const c = cv.getContext('2d'); c.setTransform(DPR, 0, 0, DPR, 0, 0); return c; }
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function makeStars(W, H, n, seed) { const r = mulberry(seed); return Array.from({ length: n }, () => [r() * W, r() * H, .25 + r() * .55, r() < .12 ? 3 : 2]); }
+function drawStars(ctx, stars) { stars.forEach(([x, y, a, s]) => { ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(x, y, s, s); }); }
+function arrow(ctx, x0, y0, x1, y1, color, lw = 4, head = 15) {
+  const a = Math.atan2(y1 - y0, x1 - x0); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - Math.cos(a) * head * .6, y1 - Math.sin(a) * head * .6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - head * Math.cos(a - .45), y1 - head * Math.sin(a - .45)); ctx.lineTo(x1 - head * Math.cos(a + .45), y1 - head * Math.sin(a + .45)); ctx.closePath(); ctx.fill();
+}
+function mathRun(ctx, x, y, parts) { let cx = x; parts.forEach(q => { ctx.font = q.f; ctx.fillStyle = q.c; ctx.fillText(q.t, cx, y + (q.dy || 0)); cx += ctx.measureText(q.t).width; }); return cx; }
+function bindRange(id, cb) { const el = $('#' + id); el.addEventListener('input', () => cb(parseFloat(el.value))); el.addEventListener('change', () => el.blur()); return el; }
+const fmt = (x, d = 2) => (x < 0 ? '−' : '') + Math.abs(x).toFixed(d);
+
+/* 오류 표시: 슬라이드 코드 예외를 화면 상단과 window.__wsErrors에 남긴다 (헤드리스 검사용) */
+window.__wsErrors = [];
+function reportError(where, e) {
+  const msg = `${where}: ${e && e.message ? e.message : e}`;
+  if (!window.__wsErrors.includes(msg)) { window.__wsErrors.push(msg); console.error('[슬라이드 오류] ' + msg); }
+  const box = document.getElementById('simError'); box.textContent = window.__wsErrors.slice(-3).join('\n'); box.classList.add('on');
+}
+function safe(where, fn, ...args) { try { return fn && fn(...args); } catch (e) { reportError(where, e); } }
+
+/* =====================================================================
+   shared_js (주제별 물리 계산부·공용 시뮬레이터)
+   ===================================================================== */
+
+/* ===== 벡터 수업 덱 공용 코드 (DOM 없음) ===== */
+const VC={A:'#ffb454',B:'#7fb2ff',S:'#5eead4',D:'#ff8fb0',W:'#e3ecff',G:'#9db0d8',F:'#ffd24a',N:'#c4a5ff'};
+const D2R=Math.PI/180, GR=9.8;
+const V={
+ pol:(r,d)=>[r*Math.cos(d*D2R),r*Math.sin(d*D2R)],
+ add:(a,b)=>[a[0]+b[0],a[1]+b[1]],
+ sub:(a,b)=>[a[0]-b[0],a[1]-b[1]],
+ mul:(k,a)=>[k*a[0],k*a[1]],
+ len:a=>Math.hypot(a[0],a[1]),
+ dot:(a,b)=>a[0]*b[0]+a[1]*b[1],
+ cr:(a,b)=>a[0]*b[1]-a[1]*b[0],
+ ang:a=>Math.atan2(a[1],a[0])/D2R,
+ /* 좌표축을 deg만큼 돌린 새 축에서의 성분 (Feynman 식 11.5) */
+ rot:(a,deg)=>{const c=Math.cos(deg*D2R),s=Math.sin(deg*D2R);return [a[0]*c+a[1]*s,a[1]*c-a[0]*s];}
+};
+const sg=(x,d)=>{const k=d==null?1:d,t=Math.abs(x).toFixed(k);return (Math.abs(x)<Math.pow(10,-k)/2?'':x<0?'−':'+')+t;};
+const ab=(x,d)=>Math.abs(x).toFixed(d==null?1:d);
+const TT=(id,t)=>{const e=document.getElementById(id);if(e&&e.textContent!==t)e.textContent=t;};
+const HH=(id,h)=>{const e=document.getElementById(id);if(e&&e.innerHTML!==h)e.innerHTML=h;};
+function plane(ctx,cx,cy,s){return{ctx:ctx,cx:cx,cy:cy,s:s,X:x=>cx+x*s,Y:y=>cy-y*s};}
+function pgrid(P,xr,yr,o){o=o||{};const c=P.ctx,st=o.step||1;c.save();c.lineWidth=1;c.strokeStyle='rgba(160,190,255,.13)';
+ for(let x=Math.ceil(xr[0]/st)*st;x<=xr[1]+1e-9;x+=st){c.beginPath();c.moveTo(P.X(x),P.Y(yr[0]));c.lineTo(P.X(x),P.Y(yr[1]));c.stroke();}
+ for(let y=Math.ceil(yr[0]/st)*st;y<=yr[1]+1e-9;y+=st){c.beginPath();c.moveTo(P.X(xr[0]),P.Y(y));c.lineTo(P.X(xr[1]),P.Y(y));c.stroke();}
+ if(o.axes!==false){const col='rgba(227,236,255,.55)';arrow(c,P.X(xr[0]),P.Y(0),P.X(xr[1]),P.Y(0),col,2.5,12);arrow(c,P.X(0),P.Y(yr[0]),P.X(0),P.Y(yr[1]),col,2.5,12);
+  c.fillStyle='rgba(227,236,255,.8)';c.font='600 24px sans-serif';c.textAlign='left';c.fillText('x',P.X(xr[1])-18,P.Y(0)+30);c.fillText('y',P.X(0)+12,P.Y(yr[1])+22);}
+ c.restore();}
+function pv(P,o,v,col,lw,label,off){const c=P.ctx;if(Math.hypot(v[0],v[1])<1e-9)return;arrow(c,P.X(o[0]),P.Y(o[1]),P.X(o[0]+v[0]),P.Y(o[1]+v[1]),col,lw||5,16);
+ if(label){c.fillStyle=col;c.font='700 28px sans-serif';c.textAlign='center';c.fillText(label,P.X(o[0]+v[0]/2)+(off?off[0]:0),P.Y(o[1]+v[1]/2)+(off?off[1]:0));}}
+function pdash(P,a,b,col,lw){const c=P.ctx;c.save();c.setLineDash([9,8]);c.strokeStyle=col;c.lineWidth=lw||2.5;c.beginPath();c.moveTo(P.X(a[0]),P.Y(a[1]));c.lineTo(P.X(b[0]),P.Y(b[1]));c.stroke();c.restore();}
+function parc(P,o,r,a0,a1,col,lw){const c=P.ctx;c.save();c.strokeStyle=col;c.lineWidth=lw||3;c.beginPath();c.arc(P.X(o[0]),P.Y(o[1]),r,-a0*D2R,-a1*D2R,a1>a0);c.stroke();c.restore();}
+function ptxt(c,t,x,y,col,px,al,w){c.fillStyle=col;c.font=(w||600)+' '+(px||24)+'px sans-serif';c.textAlign=al||'left';c.fillText(t,x,y);}
+function pdot(P,p,r,col){const c=P.ctx;c.fillStyle=col;c.beginPath();c.arc(P.X(p[0]),P.Y(p[1]),r,0,TAU);c.fill();}
+/* 빗면: 각도 th(도), 질량 m(kg), 마찰계수 mu → 힘과 가속도 */
+function inclineForces(th,m,mu){const w=m*GR,par=w*Math.sin(th*D2R),per=w*Math.cos(th*D2R),N=per,fmax=mu*N,net=Math.max(0,par-fmax),f=par>fmax?fmax:par;
+ return{w:w,par:par,per:per,N:N,f:f,net:net,a:net/m,moving:par>fmax+1e-9};}
+function TESTS(){
+ const R=[],near=(a,b,t)=>Math.abs(a-b)<(t||1e-9);
+ const a=V.pol(4,20),b=V.pol(3,110),c=V.pol(2,250);
+ R.push(['합의 교환법칙',V.len(V.sub(V.add(a,b),V.add(b,a)))<1e-12,'a+b=b+a']);
+ R.push(['합의 결합법칙',V.len(V.sub(V.add(a,V.add(b,c)),V.add(V.add(a,b),c)))<1e-12,'(a+b)+c=a+(b+c)']);
+ const A=4,B=3;let ok=true;[0,35,70,90,120,180].forEach(th=>{const s=V.add([A,0],V.pol(B,th));ok=ok&&near(V.len(s),Math.sqrt(A*A+B*B+2*A*B*Math.cos(th*D2R)),1e-9);});
+ R.push(['합의 크기: 코사인 법칙 = 성분 계산',ok,'θ=0,35,70,90,120,180']);
+ R.push(['특수각 합: 0°→A+B, 90°→√(A²+B²), 180°→|A−B|',near(V.len(V.add([4,0],V.pol(3,0))),7)&&near(V.len(V.add([4,0],V.pol(3,90))),5,1e-9)&&near(V.len(V.add([4,0],V.pol(3,180))),1,1e-9),'4와 3']);
+ R.push(['같은 10 N 두 힘: 0°→20, 90°→14.14, 120°→10, 180°→0',near(V.len(V.add([10,0],V.pol(10,0))),20)&&near(V.len(V.add([10,0],V.pol(10,90))),14.1421356,1e-6)&&near(V.len(V.add([10,0],V.pol(10,120))),10,1e-9)&&near(V.len(V.add([10,0],V.pol(10,180))),0,1e-9),'']);
+ const d=V.sub(a,b);R.push(['차 = a + (−b), 그리고 b + d = a',V.len(V.sub(V.add(b,d),a))<1e-12&&V.len(V.sub(d,V.add(a,V.mul(-1,b))))<1e-12,'']);
+ const x=V.pol(5,37);R.push(['분해 후 합성 = 원래 벡터',V.len(V.sub(V.add([5*Math.cos(37*D2R),0],[0,5*Math.sin(37*D2R)]),x))<1e-12&&near(Math.hypot(5*Math.cos(37*D2R),5*Math.sin(37*D2R)),5),'A²=Ax²+Ay²']);
+ const r1=V.rot(a,37),r2=V.rot(b,37);
+ R.push(['축을 돌려도 길이 불변 (Feynman 11-3)',near(V.len(r1),V.len(a),1e-12)&&near(V.len(r2),V.len(b),1e-12),'|a′|=|a|']);
+ R.push(['축을 돌려도 스칼라곱 불변 (Feynman 11-7)',near(V.dot(r1,r2),V.dot(a,b),1e-12),'a′·b′=a·b']);
+ const m=2,acc=[1.3,0.7],F=V.mul(m,acc);R.push(['축을 돌려도 F=ma 성립 (Feynman 식 11.7~11.9)',V.len(V.sub(V.mul(m,V.rot(acc,53)),V.rot(F,53)))<1e-12,'m·a′=F′']);
+ const P=V.add([6,0],V.add(V.pol(4,90),V.pol(2,180)));R.push(['성분 덧셈: (6,0°)+(4,90°)+(2,180°)=(4,4)',near(P[0],4,1e-9)&&near(P[1],4,1e-9),'|S|=5.66']);
+ const eq3=V.add(V.pol(10,0),V.add(V.pol(10,120),V.pol(10,240)));R.push(['10 N 세 힘을 120°씩: 합 0 (평형)',V.len(eq3)<1e-9,'']);
+ const f1=inclineForces(30,10/GR,0);R.push(['교과서 13쪽: 10 N·30° 마찰 없음 → 알짜힘 5 N',near(f1.net,5,1e-9)&&near(f1.per,10*Math.cos(30*D2R),1e-9),'수직 성분 8.66 N']);
+ const f2=inclineForces(30,10/GR,0.3);R.push(['빗면: (mg sinθ)²+(mg cosθ)²=(mg)², N=mg cosθ',near(f2.par*f2.par+f2.per*f2.per,f2.w*f2.w,1e-9)&&near(f2.N,f2.per,1e-12),'']);
+ R.push(['빗면 90°: 가속도 = g (자유 낙하)',near(inclineForces(90,3,0.4).a,GR,1e-9),'교과서 15쪽']);
+ let okE=true;[20,30,45,60,70].forEach(th=>{const h=5,s=h/Math.sin(th*D2R),aa=GR*Math.sin(th*D2R),v2=2*aa*s;okE=okE&&near(v2,2*GR*h,1e-9);});
+ R.push(['빗면 끝 속력: 힘(v²=2as) = 에너지(mgh=½mv²)',okE,'h=5 m, 20~70°']);
+ const v=5,rr=10,om=v/rr,dth=0.001,dv=2*v*Math.sin(dth/2),dt=dth/om;R.push(['등속 원운동: |Δv|/Δt → v²/r (Δθ→0)',near(dv/dt,v*v/rr,1e-4),'Feynman 11-6']);
+ R.push(['|Δv| = 2v sin(Δθ/2)',near(V.len(V.sub(V.pol(5,90),V.pol(5,30))),2*5*Math.sin(30*D2R),1e-9),'Δθ=60°']);
+ const p=[3,0],q=V.pol(4,30);R.push(['스칼라곱 = AB cosθ = AxBx+AyBy',near(V.dot(p,q),12*Math.cos(30*D2R),1e-12),'']);
+ R.push(['벡터곱 z성분 = AB sinθ = 평행사변형 넓이',near(V.cr(p,q),12*Math.sin(30*D2R),1e-12)&&near(V.cr(q,p),-V.cr(p,q),1e-12),'A×B=−B×A']);
+ const w=V.rot([1,0],0);R.push(['스칼라곱: 직각이면 0, 반대면 −AB',near(V.dot([3,0],[0,4]),0)&&near(V.dot([3,0],[-4,0]),-12),'']);
+ return R;}
+
+/* 드래그 가능한 벡터 작업대. o: id,W,H,cx,cy,s,xr,yr,vecs,drag,snap,tips(st),base(st,k),draw(P,st,ctx),info(st),setup(st,mark),tick(st,dt) */
+function VB(o){
+ const id=o.id,W=o.W||1040,H=o.H||680,xr=o.xr||[-8,8],yr=o.yr||[-5,5];
+ const cv=$('#'+id+'-cv'),ctx=setupCanvas(cv,W,H),P=plane(ctx,o.cx,o.cy,o.s);
+ const st={u:Object.assign({},o.init||{}),t:0,step:0};
+ Object.keys(o.vecs||{}).forEach(k=>{st[k]=o.vecs[k].slice();});
+ let dirty=true,drag=null;
+ const mark=()=>{dirty=true;};
+ const tipOf=k=>o.tips?o.tips(st)[k]:st[k];
+ const pt=e=>{const r=cv.getBoundingClientRect();return [(e.clientX-r.left)*W/r.width,(e.clientY-r.top)*H/r.height];};
+ cv.style.touchAction='none';
+ cv.addEventListener('pointerdown',e=>{const p=pt(e);let best=null,bd=56;(o.drag||[]).forEach(k=>{const t=tipOf(k),d=Math.hypot(P.X(t[0])-p[0],P.Y(t[1])-p[1]);if(d<bd){bd=d;best=k;}});
+  if(best){drag=best;try{cv.setPointerCapture(e.pointerId);}catch(_){}}});
+ cv.addEventListener('pointermove',e=>{const p=pt(e);
+  if(!drag){let on=false;(o.drag||[]).forEach(k=>{const t=tipOf(k);if(Math.hypot(P.X(t[0])-p[0],P.Y(t[1])-p[1])<40)on=true;});cv.style.cursor=on?'grab':'default';return;}
+  const sn=o.snap||0.5;let w=[(p[0]-o.cx)/o.s,(o.cy-p[1])/o.s];
+  w=[Math.max(xr[0]+.5,Math.min(xr[1]-.5,Math.round(w[0]/sn)*sn)),Math.max(yr[0]+.5,Math.min(yr[1]-.5,Math.round(w[1]/sn)*sn))];
+  const b=o.base?o.base(st,drag):[0,0];st[drag]=[w[0]-b[0],w[1]-b[1]];if(o.onDrag)o.onDrag(st,drag);mark();});
+ const up=()=>{drag=null;};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+ function render(){ctx.clearRect(0,0,W,H);ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  if(o.grid!==false)pgrid(P,xr,yr,{step:o.gstep||1,axes:o.axes});
+  o.draw(P,st,ctx);
+  (o.drag||[]).forEach(k=>{const t=tipOf(k);ctx.save();ctx.strokeStyle='rgba(255,255,255,.85)';ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(P.X(t[0]),P.Y(t[1]),13,0,TAU);ctx.stroke();ctx.restore();});
+  if(o.info)HH(id+'-info',o.info(st));dirty=false;}
+ if(o.setup)o.setup(st,mark,render);
+ return{start(){dirty=true;},stop(){},frame(dt){if(o.tick){st.t+=dt;if(o.tick(st,dt)!==false)dirty=true;}if(dirty)render();},onStep(s){st.step=s;dirty=true;}};
+}
+
+
+/* =====================================================================
+   슬라이드별 모듈: { start(), stop(), frame(dt), onStep(step) }
+   ===================================================================== */
+const REG = {};
+/* ---- cover ---- */
+REG["cover"] = safe("cover.init", function () {
+
+const cv=$('#cover-cv'),W=900,H=620,c=setupCanvas(cv,W,H);let t=0;
+function draw(){c.clearRect(0,0,W,H);const P=plane(c,150,420,70);
+ const A=V.pol(4,28+10*Math.sin(t*.8)),B=V.pol(3.4,118+14*Math.cos(t*.6)),S2=V.add(A,B);
+ pdash(P,A,S2,VC.G,2.5);pdash(P,B,S2,VC.G,2.5);
+ pv(P,[0,0],A,VC.A,7,'A',[0,-16]);pv(P,[0,0],B,VC.B,7,'B',[-18,0]);pv(P,[0,0],S2,VC.S,9,'A + B',[40,0]);
+ pdot(P,[0,0],9,'#fff');
+ ptxt(c,'|A + B| = '+V.len(S2).toFixed(2),60,70,VC.S,34,'left',700);
+ ptxt(c,'|A| + |B| = '+(V.len(A)+V.len(B)).toFixed(2),60,112,VC.G,28,'left',600);}
+return{start(){},stop(){},frame(dt){t+=dt;draw();}};
+});
+
+/* ---- hook ---- */
+REG["hook"] = safe("hook.init", function () {
+
+return VB({id:'hook',cx:300,cy:340,s:60,xr:[-4,12],yr:[-5,5],init:{th:0},drag:[],axes:false,
+ draw(P,st,c){const th=st.u.th,F1=V.pol(5,th/2),F2=V.pol(5,-th/2),S2=V.add(F1,F2);
+  pdash(P,F1,S2,VC.G,2);pdash(P,F2,S2,VC.G,2);
+  pv(P,[0,0],F1,VC.A,6,'10 N',[-4,-18]);pv(P,[0,0],F2,VC.B,6,'10 N',[-4,34]);
+  pv(P,[0,0],S2,VC.S,9);pdot(P,[0,0],11,'#fff');
+  ptxt(c,'단순히 더하면 20 N',P.X(0),P.Y(-3.9)-14,VC.G,24,'left',600);pv(P,[0,-3.9],[10,0],'rgba(157,176,216,.55)',3);
+  ptxt(c,'실제 합력',P.X(0),P.Y(-2.9)-14,VC.S,24,'left',700);pv(P,[0,-2.9],[S2[0],0],VC.S,6);},
+ info(st){const th=st.u.th,F=20*Math.cos(th*D2R/2);return '합력의 크기 = 20cos(θ/2) = <b class="ok">'+F.toFixed(1)+' N</b><br><span class="sm">두 힘의 크기를 단순히 더한 20 N과 '+(Math.abs(F-20)<.05?'같다 (같은 방향일 때만)':'다르다')+'</span>';},
+ setup(st,mark){bindRange('hook-th',v=>{st.u.th=v;TT('hook-thv',v+'°');mark();});TT('hook-thv','0°');
+  $$('#hook .pre').forEach(b=>b.addEventListener('click',()=>{const v=+b.dataset.th;$('#hook-th').value=v;st.u.th=v;TT('hook-thv',v+'°');mark();}));}});
+});
+
+/* ---- sort ---- */
+REG["sort"] = safe("sort.init", function () {
+
+const items=[['질량',0],['속력',0],['속도',1],['이동 거리',0],['변위',1],['시간',0],['힘',1],['온도',0],['가속도',1],['에너지',0],['일',0],['운동량',1]];
+const pool=$('#so-pool'),zs=$('#so-sl'),zv=$('#so-vl'),res=$('#so-res');let sel=null;const pos=items.map(()=>'p');
+function build(){pool.innerHTML='';zs.innerHTML='';zv.innerHTML='';items.forEach((it,i)=>{const e=document.createElement('span');e.className='chip'+(sel===i?' on':'');e.textContent=it[0];
+ e.addEventListener('click',ev=>{ev.stopPropagation();if(pos[i]==='p'){sel=(sel===i?null:i);}else{pos[i]='p';sel=null;}build();});
+ (pos[i]==='p'?pool:pos[i]==='s'?zs:zv).appendChild(e);});}
+function put(z){if(sel==null)return;pos[sel]=z;sel=null;res.innerHTML='';build();}
+$('#so-s').addEventListener('click',()=>put('s'));$('#so-v').addEventListener('click',()=>put('v'));
+$('#so-rs').addEventListener('click',()=>{pos.fill('p');sel=null;res.innerHTML='';build();});
+$('#so-ck').addEventListener('click',()=>{let ok=0,left=0,bad=[];items.forEach((it,i)=>{if(pos[i]==='p'){left++;return;}const right=(it[1]?'v':'s')===pos[i];if(right)ok++;else bad.push(it[0]);});
+ res.innerHTML=(left?'<span class="sm">아직 '+left+'장이 남았어요. </span>':'')+'맞은 카드 <b class="ok">'+ok+'</b>장'+(bad.length?' · 다시 생각해 볼 카드: <b class="bad">'+bad.join(', ')+'</b>':'')+
+  '<br><span class="sm">헷갈리기 쉬운 짝: 속력(스칼라)/속도(벡터), 이동 거리(스칼라)/변위(벡터). 일·에너지는 힘과 변위로 만들지만 결과는 크기만 있는 스칼라 — 2차시에 스칼라곱으로 만납니다.</span>';});
+build();
+return{start(){},stop(){}};
+});
+
+/* ---- disp ---- */
+REG["disp"] = safe("disp.init", function () {
+
+const O=[-5,-2];
+return VB({id:'disp',cx:520,cy:340,s:60,vecs:{Q:[-1,3],P:[4,1]},drag:['Q','P'],
+ draw(P,st,c){const Q=st.Q,Pt=st.P;
+  c.save();c.strokeStyle='rgba(255,180,84,.85)';c.lineWidth=5;c.setLineDash([12,9]);c.beginPath();c.moveTo(P.X(O[0]),P.Y(O[1]));c.lineTo(P.X(Q[0]),P.Y(Q[1]));c.lineTo(P.X(Pt[0]),P.Y(Pt[1]));c.stroke();c.restore();
+  pv(P,O,V.sub(Pt,O),VC.S,8);pdot(P,O,10,'#fff');pdot(P,Q,7,VC.A);
+  ptxt(c,'출발 O',P.X(O[0])-10,P.Y(O[1])+36,'#fff',24,'right');ptxt(c,'Q',P.X(Q[0])+16,P.Y(Q[1])-14,VC.A,24);ptxt(c,'P',P.X(Pt[0])+18,P.Y(Pt[1])-16,'#fff',26,'left',700);
+  ptxt(c,'주황 점선: 지나온 길  ·  초록 화살표: 변위',40,50,VC.G,24);},
+ info(st){const d=V.sub(st.P,O),s=V.len(V.sub(st.Q,O))+V.len(V.sub(st.P,st.Q)),dl=V.len(d);
+  return '이동 거리 s = <b class="k">'+s.toFixed(1)+' m</b> <span class="sm">(길이를 더함)</span><br>변위의 크기 = <b class="ok">'+dl.toFixed(1)+' m</b><br>변위 = ('+sg(d[0],1).replace('+','')+', '+sg(d[1],1).replace('+','')+') m'+(dl>0.05?'<br>방향: x축에서 '+V.ang(d).toFixed(0)+'°':'<br><b class="bad">변위 0 — 제자리</b>')+
+   '<br><span class="sm">이동 거리 ≥ 변위의 크기 (같으면 곧은 길)</span>';},
+ setup(st,mark){$('#disp-back').addEventListener('click',()=>{st.P=O.slice();mark();});}});
+});
+
+/* ---- why1 ---- */
+REG["why1"] = safe("why1.init", function () {
+
+return VB({id:'why1',cx:520,cy:340,s:60,vecs:{A:[4,3]},drag:['A'],init:{ph:30},
+ draw(P,st,c){const ph=st.u.ph,A=st.A,e1=V.pol(1,ph),e2=V.pol(1,ph+90),a1=V.dot(A,e1),a2=V.dot(A,e2);
+  arrow(c,P.X(-7*e1[0]),P.Y(-7*e1[1]),P.X(7.4*e1[0]),P.Y(7.4*e1[1]),'rgba(255,143,176,.8)',3,13);
+  arrow(c,P.X(-4.6*e2[0]),P.Y(-4.6*e2[1]),P.X(4.8*e2[0]),P.Y(4.8*e2[1]),'rgba(255,143,176,.8)',3,13);
+  ptxt(c,'x′',P.X(7.2*e1[0])+8,P.Y(7.2*e1[1])-10,'#ff8fb0',26,'left',700);ptxt(c,'y′',P.X(4.6*e2[0])+10,P.Y(4.6*e2[1])+4,'#ff8fb0',26,'left',700);
+  pdash(P,A,V.mul(a1,e1),VC.D,2.5);pdash(P,A,V.mul(a2,e2),VC.D,2.5);
+  pv(P,[0,0],V.mul(a1,e1),'rgba(255,143,176,.9)',4);pv(P,[0,0],V.mul(a2,e2),'rgba(255,143,176,.9)',4);
+  pv(P,[0,0],[A[0],0],'rgba(227,236,255,.45)',3);
+  pv(P,[0,0],A,VC.A,8,'A',[-4,-18]);pdot(P,[0,0],8,'#fff');},
+ info(st){const A=st.A,r=V.rot(A,st.u.ph),L1=V.len(A),L2=V.len(r);
+  return '<table class="t" style="font-size:25px"><tr><th></th><th>x · y</th><th class="p">x′ · y′</th></tr><tr><td>성분</td><td>'+sg(A[0],1).replace('+','')+' · '+sg(A[1],1).replace('+','')+'</td><td>'+sg(r[0],2).replace('+','')+' · '+sg(r[1],2).replace('+','')+'</td></tr>'+
+  '<tr><td>크기 √(x²+y²)</td><td>'+L1.toFixed(2)+'</td><td>'+L2.toFixed(2)+'</td></tr></table><div class="sm" style="margin-top:8px">성분 숫자는 축에 따라 바뀌지만 <b class="ok">크기와 방향(화살표)</b>은 그대로입니다.</div>'+
+  '<div class="eq" style="font-size:27px;padding:8px 0 0">x′ = x cosφ + y sinφ<br>y′ = y cosφ − x sinφ</div>';},
+ setup(st,mark){bindRange('why1-ph',v=>{st.u.ph=v;TT('why1-phv',v+'°');mark();});TT('why1-phv','30°');}});
+});
+
+/* ---- why2 ---- */
+REG["why2"] = safe("why2.init", function () {
+
+const M=2;
+return VB({id:'why2',cx:520,cy:340,s:60,vecs:{F:[4,2]},drag:['F'],init:{ph:30},
+ draw(P,st,c){const ph=st.u.ph,F=st.F,a=V.mul(1/M,F),e1=V.pol(1,ph),e2=V.pol(1,ph+90);
+  arrow(c,P.X(-7*e1[0]),P.Y(-7*e1[1]),P.X(7.4*e1[0]),P.Y(7.4*e1[1]),'rgba(255,143,176,.8)',3,13);
+  arrow(c,P.X(-4.6*e2[0]),P.Y(-4.6*e2[1]),P.X(4.8*e2[0]),P.Y(4.8*e2[1]),'rgba(255,143,176,.8)',3,13);
+  ptxt(c,'x′',P.X(7.2*e1[0])+8,P.Y(7.2*e1[1])-10,'#ff8fb0',26,'left',700);ptxt(c,'y′',P.X(4.6*e2[0])+10,P.Y(4.6*e2[1])+4,'#ff8fb0',26,'left',700);
+  pv(P,[0,0],F,VC.A,8,'F (N)',[-6,-18]);pv(P,[0,0],a,VC.B,6,'a (m/s²)',[0,28]);
+  c.save();c.fillStyle='#ffd24a';c.fillRect(P.X(0)-16,P.Y(0)-16,32,32);c.restore();},
+ info(st){const F=st.F,a=V.mul(1/M,F),F2=V.rot(F,st.u.ph),a2=V.rot(a,st.u.ph),f=x=>x.toFixed(2).replace('-','−');
+  return '<table class="t" style="font-size:25px"><tr><th></th><th>원래 축</th><th class="p">돌린 축</th></tr>'+
+  '<tr><td>F 성분</td><td>'+f(F[0])+' · '+f(F[1])+'</td><td>'+f(F2[0])+' · '+f(F2[1])+'</td></tr>'+
+  '<tr><td>a 성분</td><td>'+f(a[0])+' · '+f(a[1])+'</td><td>'+f(a2[0])+' · '+f(a2[1])+'</td></tr>'+
+  '<tr><td>m·a 성분</td><td>'+f(M*a[0])+' · '+f(M*a[1])+'</td><td>'+f(M*a2[0])+' · '+f(M*a2[1])+'</td></tr></table>'+
+  '<div class="sm" style="margin-top:8px">어느 축에서나 <b class="ok">F = ma</b> (각 성분끼리 성립). 한 줄 <b>F</b> = m<b>a</b>가 성분 방정식 둘(셋)을 대신한다.</div>';},
+ setup(st,mark){bindRange('why2-ph',v=>{st.u.ph=v;TT('why2-phv',v+'°');mark();});TT('why2-phv','30°');}});
+});
+
+/* ---- def ---- */
+REG["def"] = safe("def.init", function () {
+
+return VB({id:'def',cx:380,cy:430,s:60,xr:[-6,11],yr:[-7,4],vecs:{A:[3,2]},drag:['A'],
+ draw(P,st,c){const A=st.A;pv(P,[0,0],A,VC.A,8,'A',[-8,-18]);pdot(P,[0,0],8,'#fff');
+  ptxt(c,'꼬리',P.X(0)-14,P.Y(0)+34,VC.G,22,'right');ptxt(c,'머리',P.X(A[0])+16,P.Y(A[1])-10,VC.G,22);
+  if(st.step>=3){const B=[5,-3];arrow(c,P.X(B[0]),P.Y(B[1]),P.X(B[0]+A[0]),P.Y(B[1]+A[1]),'rgba(255,180,84,.55)',6,16);ptxt(c,'같은 벡터 A',P.X(B[0]+A[0]/2)+22,P.Y(B[1]+A[1]/2)+34,'rgba(255,180,84,.8)',24,'left');}
+  if(st.step>=5){pv(P,[0,0],[A[0],0],VC.D,5);pv(P,[A[0],0],[0,A[1]],VC.D,5);pdash(P,A,[A[0],0],VC.D,2);ptxt(c,'Aₓ = '+A[0].toFixed(1),P.X(A[0]/2),P.Y(0)+36,VC.D,26,'center',700);ptxt(c,'Aᵧ = '+A[1].toFixed(1),P.X(A[0])+14,P.Y(A[1]/2),VC.D,26,'left',700);}
+  ptxt(c,'크기 |A| = '+V.len(A).toFixed(2),40,50,VC.A,30,'left',700);ptxt(c,'방향: x축에서 '+V.ang(A).toFixed(0)+'°',40,92,VC.G,26,'left',600);}});
+});
+
+/* ---- add ---- */
+REG["add"] = safe("add.init", function () {
+
+return VB({id:'add',cx:300,cy:430,s:60,xr:[-4,12],yr:[-7,4],vecs:{A:[3,2],B:[4,-1]},drag:['A','B'],init:{m:0},
+ tips(st){return {A:st.A,B:st.u.m===0?V.add(st.A,st.B):st.B};},
+ base(st,k){return (k==='B'&&st.u.m===0)?st.A:[0,0];},
+ draw(P,st,c){const A=st.A,B=st.B,S2=V.add(A,B);
+  if(st.u.m===0){pv(P,[0,0],A,VC.A,7,'A',[-4,-16]);pv(P,A,B,VC.B,7,'B',[10,-16]);}
+  else{pdash(P,A,S2,VC.G,2.5);pdash(P,B,S2,VC.G,2.5);pv(P,[0,0],A,VC.A,7,'A',[-4,-16]);pv(P,[0,0],B,VC.B,7,'B',[10,26]);}
+  pv(P,[0,0],S2,VC.S,9,'A + B',[-26,26]);pdot(P,[0,0],8,'#fff');},
+ info(st){const S2=V.add(st.A,st.B),a=V.len(st.A),b=V.len(st.B),s=V.len(S2);
+  return '|A| = '+a.toFixed(2)+', |B| = '+b.toFixed(2)+'<br>|A + B| = <b class="ok">'+s.toFixed(2)+'</b><br>|A| + |B| = <b class="k">'+(a+b).toFixed(2)+'</b><br><span class="sm">'+(Math.abs(s-(a+b))<.01?'같은 방향이라 크기도 더해진다':'일반적으로 |A+B| ≤ |A|+|B|')+'</span><br><span class="sm">A + B = B + A (순서를 바꿔도 같은 화살표)</span>';},
+ setup(st,mark){$$('#add-chips .chip').forEach(ch=>ch.addEventListener('click',()=>{st.u.m=+ch.dataset.m;$$('#add-chips .chip').forEach(x=>x.classList.toggle('on',x===ch));mark();}));}});
+});
+
+/* ---- addf ---- */
+REG["addf"] = safe("addf.init", function () {
+
+const GA=4,GB=3;
+return VB({id:'addf',cx:230,cy:400,s:50,xr:[-4,8],yr:[-6,6],drag:[],init:{th:60},axes:false,grid:false,
+ draw(P,st,c){const th=st.u.th,A=[GA,0],B=V.pol(GB,th),S2=V.add(A,B);
+  pv(P,[0,0],A,VC.A,6,'A',[0,34]);pv(P,A,B,VC.B,6,'B',[16,-4]);pv(P,[0,0],S2,VC.S,8,'A+B',[-22,-14]);pdot(P,[0,0],7,'#fff');
+  parc(P,A,34,0,th,VC.G,2);
+  const gx=520,gy=60,gw=470,gh=480,X=t=>gx+t/180*gw,Y=v=>gy+gh-v/8*gh;
+  c.save();c.strokeStyle='rgba(160,190,255,.2)';c.lineWidth=1;for(let k=0;k<=8;k++){c.beginPath();c.moveTo(gx,Y(k));c.lineTo(gx+gw,Y(k));c.stroke();}
+  c.strokeStyle='#9db0d8';c.lineWidth=2;c.beginPath();c.moveTo(gx,gy);c.lineTo(gx,gy+gh);c.lineTo(gx+gw,gy+gh);c.stroke();c.restore();
+  [0,2,4,6,8].forEach(k=>ptxt(c,''+k,gx-10,Y(k)+7,VC.G,20,'right'));[0,45,90,135,180].forEach(k=>ptxt(c,k+'°',X(k),gy+gh+28,VC.G,20,'center'));
+  ptxt(c,'θ (각)',gx+gw,gy+gh+58,VC.W,22,'right',700);ptxt(c,'|A+B|',gx+8,gy-16,VC.W,22,'left',700);
+  c.save();c.strokeStyle=VC.S;c.lineWidth=4;c.beginPath();for(let t=0;t<=180;t+=2){const v=V.len(V.add([GA,0],V.pol(GB,t)));if(t===0)c.moveTo(X(t),Y(v));else c.lineTo(X(t),Y(v));}c.stroke();
+  c.setLineDash([8,8]);c.strokeStyle='rgba(255,180,84,.8)';c.lineWidth=2;c.beginPath();c.moveTo(gx,Y(7));c.lineTo(gx+gw,Y(7));c.stroke();c.setLineDash([]);
+  [[0,7],[90,5],[180,1]].forEach(p=>{c.fillStyle='#fff';c.beginPath();c.arc(X(p[0]),Y(p[1]),6,0,TAU);c.fill();ptxt(c,''+p[1],X(p[0])+(p[0]===180?-14:14),Y(p[1])-12,'#fff',22,p[0]===180?'right':'left',700);});
+  const v=V.len(S2);c.fillStyle=VC.S;c.beginPath();c.arc(X(th),Y(v),11,0,TAU);c.fill();c.restore();
+  ptxt(c,'|A|+|B| = 7',gx+gw-6,Y(7)-10,VC.A,22,'right');ptxt(c,'||A|−|B|| = 1',gx+gw-6,Y(1)-12,VC.G,22,'right');},
+ info(st){const v=V.len(V.add([GA,0],V.pol(GB,st.u.th)));return 'θ = '+st.u.th+'° → |A + B| = <b class="ok">'+v.toFixed(2)+'</b><br><span class="sm">크기는 최대 7 (같은 방향), 최소 1 (반대 방향). 90°이면 √(4²+3²) = 5.</span>';},
+ setup(st,mark){bindRange('addf-th',v=>{st.u.th=v;TT('addf-thv',v+'°');mark();});TT('addf-thv','60°');
+  $$('#addf .pre').forEach(b=>b.addEventListener('click',()=>{const v=+b.dataset.th;$('#addf-th').value=v;st.u.th=v;TT('addf-thv',v+'°');mark();}));}});
+});
+
+/* ---- sub ---- */
+REG["sub"] = safe("sub.init", function () {
+
+return VB({id:'sub',cx:300,cy:430,s:60,xr:[-4,12],yr:[-7,4],vecs:{A:[5,2],B:[2,-2]},drag:['A','B'],
+ draw(P,st,c){const A=st.A,B=st.B,D=V.sub(A,B);
+  pv(P,[0,0],A,VC.A,6,'A',[-4,-16]);pv(P,[0,0],B,VC.B,6,'B',[-4,28]);
+  pv(P,A,V.mul(-1,B),'rgba(127,178,255,.55)',5);ptxt(c,'−B',P.X(A[0]-B[0]/2)+18,P.Y(A[1]-B[1]/2)-10,'rgba(127,178,255,.9)',24,'left',700);
+  pdash(P,B,A,VC.D,2.5);pv(P,B,D,VC.D,8,'A − B',[26,20]);
+  pv(P,[0,0],D,'rgba(255,143,176,.45)',5);pdot(P,[0,0],8,'#fff');},
+ info(st){const D=V.sub(st.A,st.B);return 'A − B = A + (−B)<br>성분: ('+sg(st.A[0],1).replace('+','')+') − ('+sg(st.B[0],1).replace('+','')+') = <b class="p">'+sg(D[0],1).replace('+','')+'</b>, y: <b class="p">'+sg(D[1],1).replace('+','')+'</b><br>|A − B| = <b class="ok">'+V.len(D).toFixed(2)+'</b><br><span class="sm">B + (A − B) = A 를 만족하는 화살표</span><br><span class="sm">활용: 속도 변화 Δv = v<sub>나중</sub> − v<sub>처음</sub></span>';}});
+});
+
+/* ---- decomp ---- */
+REG["decomp"] = safe("decomp.init", function () {
+
+return VB({id:'decomp',cx:300,cy:430,s:60,xr:[-4,12],yr:[-7,4],vecs:{A:[6,3]},drag:['A'],init:{ph:0},
+ draw(P,st,c){const A=st.A,ph=st.u.ph,e1=V.pol(1,ph),e2=V.pol(1,ph+90),a1=V.dot(A,e1),a2=V.dot(A,e2),C1=V.mul(a1,e1),C2=V.mul(a2,e2);
+  arrow(c,P.X(-2*e1[0]),P.Y(-2*e1[1]),P.X(9.6*e1[0]),P.Y(9.6*e1[1]),'rgba(227,236,255,.45)',2.5,11);
+  arrow(c,P.X(-1.2*e2[0]),P.Y(-1.2*e2[1]),P.X(5*e2[0]),P.Y(5*e2[1]),'rgba(227,236,255,.45)',2.5,11);
+  pdash(P,A,C1,VC.G,2.5);pdash(P,A,C2,VC.G,2.5);
+  pv(P,[0,0],C1,VC.D,6,'A∥',[0,32]);pv(P,[0,0],C2,VC.S,6,'A⊥',[-34,0]);pv(P,[0,0],A,VC.A,8,'A',[-6,-16]);pdot(P,[0,0],8,'#fff');
+  const th=V.ang(A)-ph;parc(P,[0,0],46,ph,V.ang(A),VC.A,2.5);ptxt(c,'θ',P.X(0)+62*Math.cos((ph+th/2)*D2R),P.Y(0)-62*Math.sin((ph+th/2)*D2R)+8,VC.A,24,'center',700);
+  ptxt(c,'새 축',P.X(9.6*e1[0])-6,P.Y(9.6*e1[1])-14,VC.G,22,'right');},
+ info(st){const A=st.A,ph=st.u.ph,e1=V.pol(1,ph),e2=V.pol(1,ph+90),a1=V.dot(A,e1),a2=V.dot(A,e2),th=V.ang(A)-ph,L1=V.len(A);
+  return '|A| = '+L1.toFixed(2)+', θ = '+th.toFixed(0)+'°<br>축 방향 성분 A∥ = <b class="p">'+a1.toFixed(2)+'</b> <span class="sm">(= A cosθ = '+(L1*Math.cos(th*D2R)).toFixed(2)+')</span><br>축에 수직 A⊥ = <b class="ok">'+a2.toFixed(2)+'</b> <span class="sm">(= A sinθ)</span><br><span class="sm">A∥² + A⊥² = '+(a1*a1+a2*a2).toFixed(2)+' = |A|² = '+(L1*L1).toFixed(2)+'</span>';}});
+});
+
+/* ---- comp ---- */
+REG["comp"] = safe("comp.init", function () {
+
+return VB({id:'comp',cx:520,cy:340,s:60,vecs:{A:[3,1],B:[-1,3],C:[-2,-2]},drag:['A','B','C'],
+ draw(P,st,c){const S2=V.add(st.A,V.add(st.B,st.C));
+  pv(P,[0,0],st.A,VC.A,6,'A',[-6,-14]);pv(P,[0,0],st.B,VC.B,6,'B',[-6,-14]);pv(P,[0,0],st.C,VC.N,6,'C',[-6,-14]);
+  pdash(P,V.add(st.A,st.B),V.add(V.add(st.A,st.B),st.C),VC.G,2);pdash(P,st.A,V.add(st.A,st.B),VC.G,2);
+  pv(P,[0,0],S2,VC.S,9,'합력 F',[26,20]);pdot(P,[0,0],10,'#fff');},
+ info(st){const S2=V.add(st.A,V.add(st.B,st.C)),f=x=>(x<0?'−':'')+Math.abs(x).toFixed(1);
+  const r=(n,v,cl)=>'<tr><td class="'+cl+'">'+n+'</td><td>'+f(v[0])+'</td><td>'+f(v[1])+'</td></tr>';
+  return '<table class="t" style="font-size:26px"><tr><th></th><th>x 성분</th><th>y 성분</th></tr>'+r('A',st.A,'k')+r('B',st.B,'p')+r('C',st.C,'')+
+   '<tr style="font-weight:700"><td class="ok">합력</td><td>'+f(S2[0])+'</td><td>'+f(S2[1])+'</td></tr></table>크기 = <b class="ok">'+V.len(S2).toFixed(2)+' N</b>'+(V.len(S2)<.05?'<br><b class="ok">합력 0 → 힘의 평형!</b>':'')+'<br><span class="sm">x는 x끼리, y는 y끼리 더한다</span>';}});
+});
+
+/* ---- net ---- */
+REG["net"] = safe("net.init", function () {
+
+return VB({id:'net',cx:420,cy:340,s:60,xr:[-7,9],yr:[-5,5],vecs:{F1:[3,1],F2:[1,3],F3:[-2,-2]},drag:['F1','F2','F3'],init:{m:2},
+ draw(P,st,c){const m=st.u.m,S2=V.add(st.F1,V.add(st.F2,st.F3)),a=V.mul(1/m,S2);
+  c.save();c.fillStyle='#ffd24a';c.fillRect(P.X(0)-22,P.Y(0)-22,44,44);c.restore();ptxt(c,m+' kg',P.X(0),P.Y(0)+8,'#222',20,'center',700);
+  pv(P,[0,0],st.F1,VC.A,6,'F₁',[-6,-14]);pv(P,[0,0],st.F2,VC.B,6,'F₂',[-6,-14]);pv(P,[0,0],st.F3,VC.N,6,'F₃',[-6,-14]);
+  if(V.len(S2)>.05){pv(P,[0,0],S2,VC.S,10);ptxt(c,'알짜힘 ΣF',P.X(S2[0])+16,P.Y(S2[1])-14,VC.S,26,'left',700);}
+  else ptxt(c,'알짜힘 = 0 : 힘의 평형',P.X(0),P.Y(0)-60,VC.S,30,'center',700);},
+ info(st){const m=st.u.m,S2=V.add(st.F1,V.add(st.F2,st.F3)),a=V.mul(1/m,S2),f=x=>(x<0?'−':'')+Math.abs(x).toFixed(1);
+  if(V.len(S2)<.05)return '알짜힘 ΣF = <b class="ok">0</b><br>가속도 a = <b class="ok">0</b><br><span class="sm">정지해 있거나 등속도로 움직인다 (관성)</span>';
+  return 'ΣF = ('+f(S2[0])+', '+f(S2[1])+') N<br>|ΣF| = <b class="ok">'+V.len(S2).toFixed(2)+' N</b>, 방향 '+V.ang(S2).toFixed(0)+'°<br>a = ΣF / m = <b class="p">'+V.len(a).toFixed(2)+' m/s²</b> (ΣF와 같은 방향)<br><span class="sm">물체는 알짜힘 방향으로 가속된다</span>';},
+ setup(st,mark){bindRange('net-m',v=>{st.u.m=v;TT('net-mv',v+' kg');mark();});TT('net-mv','2 kg');
+  $('#net-eq').addEventListener('click',()=>{st.F3=V.mul(-1,V.add(st.F1,st.F2));st.F3=[Math.max(-6.5,Math.min(8.5,Math.round(st.F3[0]*2)/2)),Math.max(-4.5,Math.min(4.5,Math.round(st.F3[1]*2)/2))];mark();});}});
+});
+
+/* ---- incl ---- */
+REG["incl"] = safe("incl.init", function () {
+
+const K=9,M=2;
+return VB({id:'incl',W:1040,H:680,cx:60,cy:620,s:1,xr:[0,1040],yr:[0,680],grid:false,axes:false,init:{th:30,mu:.2,dec:true,ax:false},drag:[],
+ tick(st,dt){const f=inclineForces(st.u.th,M,st.u.mu);if(!f.moving){st.d=null;return false;}const T=2.4;st.d=(st.d==null?0:st.d)+dt;if(st.d>T)st.d=0;return true;},
+ draw(P,st,c){const th=st.u.th,mu=st.u.mu,f=inclineForces(th,M,mu),r=th*D2R,Lr=840,u=[Math.cos(r),Math.sin(r)],n=[-Math.sin(r),Math.cos(r)];
+  c.save();c.fillStyle='#17233e';c.strokeStyle='#5d77b3';c.lineWidth=3;c.beginPath();c.moveTo(P.X(0),P.Y(0));c.lineTo(P.X(Lr*u[0]),P.Y(0));c.lineTo(P.X(Lr*u[0]),P.Y(Lr*u[1]));c.closePath();c.fill();c.stroke();c.restore();
+  ptxt(c,'θ = '+th+'°',P.X(120),P.Y(0)-14,VC.W,26,'left',700);parc(P,[0,0],100,0,th,VC.W,2.5);
+  let dd=470;if(f.moving&&st.d!=null){dd=470-0.5*f.a*40*st.d*st.d*1.4;dd=Math.max(150,dd);}
+  const cp=[dd*u[0]+50*n[0],dd*u[1]+50*n[1]],Bx=(x,y)=>[cp[0]+x*u[0]+y*n[0],cp[1]+x*u[1]+y*n[1]];
+  c.save();c.fillStyle='#ffd24a';c.beginPath();const q=[Bx(-50,-50),Bx(50,-50),Bx(50,50),Bx(-50,50)];c.moveTo(P.X(q[0][0]),P.Y(q[0][1]));q.slice(1).forEach(p=>c.lineTo(P.X(p[0]),P.Y(p[1])));c.closePath();c.fill();c.restore();
+  const W=[0,-K*f.w],Nv=V.mul(K*f.N,n),Fr=V.mul(K*f.f,u);
+  if(st.u.dec){const down=V.mul(-K*f.par,u),pn=V.mul(-K*f.per,n);pv(P,cp,down,VC.F,5);pv(P,cp,pn,VC.F,5);pdash(P,V.add(cp,W),V.add(cp,down),VC.G,2);pdash(P,V.add(cp,W),V.add(cp,pn),VC.G,2);
+   ptxt(c,'mg sinθ',P.X(cp[0]+down[0])-6,P.Y(cp[1]+down[1])+34,VC.F,24,'right',700);ptxt(c,'mg cosθ',P.X(cp[0]+pn[0])+14,P.Y(cp[1]+pn[1])+8,VC.F,24,'left',700);}
+  pv(P,cp,W,VC.A,7,'mg',[-30,10]);pv(P,cp,Nv,VC.B,7,'N',[-28,-6]);
+  if(f.f>0.01)pv(P,cp,Fr,VC.D,7,'f',[14,28]);
+  if(f.net>0.01){const s0=V.add(cp,V.mul(75,n));pv(P,s0,V.mul(-K*f.net,u),VC.S,8);ptxt(c,'알짜힘',P.X(s0[0])-K*f.net*u[0]-8,P.Y(s0[1])+K*f.net*u[1]-18,VC.S,24,'right',700);}
+  if(st.u.ax){arrow(c,P.X(cp[0]-90*u[0]),P.Y(cp[1]-90*u[1]),P.X(cp[0]+260*u[0]),P.Y(cp[1]+260*u[1]),'rgba(227,236,255,.4)',2.5,11);arrow(c,P.X(cp[0]),P.Y(cp[1]),P.X(cp[0]+170*n[0]),P.Y(cp[1]+170*n[1]),'rgba(227,236,255,.4)',2.5,11);}},
+ info(st){const f=inclineForces(st.u.th,M,st.u.mu),t=x=>x.toFixed(1);
+  return '물체 2 kg → mg = '+t(f.w)+' N<br>빗면 방향: mg sinθ = <b class="k">'+t(f.par)+' N</b> (아래로)<br>빗면에 수직: mg cosθ = <b class="p">'+t(f.per)+' N</b><br>수직항력 N = <b class="p">'+t(f.N)+' N</b> (= mg cosθ)<br>마찰력 f = <b class="bad">'+t(f.f)+' N</b>'+(f.f<.05?'':f.moving?' <span class="sm">(운동 마찰)</span>':' <span class="sm">(정지 마찰, mg sinθ와 같다)</span>')+'<br>알짜힘(빗면 방향) = <b class="ok">'+t(f.net)+' N</b>, a = <b class="ok">'+t(f.a)+' m/s²</b>'+(f.moving?'':'<br><b>정지 — 미끄러지지 않는다</b>')+'<br><span class="sm">tanθ ≥ μ 이면 미끄러짐 (여기서 θc = '+(Math.atan(st.u.mu)/D2R).toFixed(0)+'°)</span>';},
+ setup(st,mark){bindRange('incl-th',v=>{st.u.th=v;TT('incl-thv',v+'°');mark();});bindRange('incl-mu',v=>{st.u.mu=v;TT('incl-muv',v.toFixed(2));mark();});TT('incl-thv','30°');TT('incl-muv','0.20');
+  $$('#incl-ch .chip').forEach(ch=>ch.addEventListener('click',()=>{const k=ch.dataset.k;st.u[k]=!st.u[k];ch.classList.toggle('on',st.u[k]);mark();}));}});
+});
+
+/* ---- inclq ---- */
+REG["inclq"] = safe("inclq.init", function () {
+
+return VB({id:'inclq',cx:0,cy:0,s:1,xr:[0,1],yr:[0,1],grid:false,axes:false,init:{th:30,m:2,mu:0},drag:[],
+ draw(P,st,c){const gx=110,gy=50,gw=880,gh=520,X=t=>gx+t/90*gw,Y=a=>gy+gh-a/10*gh,th=st.u.th,mu=st.u.mu;
+  c.save();c.strokeStyle='rgba(160,190,255,.2)';c.lineWidth=1;for(let k=0;k<=10;k+=2){c.beginPath();c.moveTo(gx,Y(k));c.lineTo(gx+gw,Y(k));c.stroke();}
+  c.strokeStyle='#9db0d8';c.lineWidth=2;c.beginPath();c.moveTo(gx,gy);c.lineTo(gx,gy+gh);c.lineTo(gx+gw,gy+gh);c.stroke();c.restore();
+  [0,2,4,6,8,10].forEach(k=>ptxt(c,''+k,gx-12,Y(k)+7,VC.G,20,'right'));[0,15,30,45,60,75,90].forEach(k=>ptxt(c,k+'°',X(k),gy+gh+30,VC.G,20,'center'));
+  ptxt(c,'빗면 각도 θ',gx+gw,gy+gh+62,VC.W,24,'right',700);ptxt(c,'a (m/s²)',gx+6,gy-16,VC.W,24,'left',700);
+  c.save();c.lineWidth=5;c.strokeStyle=VC.S;c.beginPath();for(let t=0;t<=90;t++){const a=GR*Math.sin(t*D2R);if(t===0)c.moveTo(X(t),Y(a));else c.lineTo(X(t),Y(a));}c.stroke();
+  if(mu>0){c.strokeStyle=VC.D;c.setLineDash([10,7]);c.beginPath();for(let t=0;t<=90;t++){const a=Math.max(0,GR*(Math.sin(t*D2R)-mu*Math.cos(t*D2R)));if(t===0)c.moveTo(X(t),Y(a));else c.lineTo(X(t),Y(a));}c.stroke();c.setLineDash([]);}
+  c.restore();
+  const f=inclineForces(th,st.u.m,mu);c.fillStyle='#fff';c.beginPath();c.arc(X(th),Y(f.a),11,0,TAU);c.fill();
+  ptxt(c,'마찰 없음: a = g sinθ',X(50),Y(GR*Math.sin(50*D2R))-20,VC.S,24,'left',700);
+  if(mu>0)ptxt(c,'마찰 있음: a = g(sinθ − μcosθ)',X(6),Y(7.2),VC.D,24,'left',700);},
+ info(st){const f=inclineForces(st.u.th,st.u.m,st.u.mu);return 'θ = '+st.u.th+'°, m = '+st.u.m+' kg, μ = '+st.u.mu.toFixed(2)+'<br>a = <b class="ok">'+f.a.toFixed(2)+' m/s²</b><br><span class="sm">질량 m을 바꿔도 점이 움직이지 않는다: 힘(mg sinθ)도, 관성(m)도 m에 비례해서 약분된다. 마찰력 μmg cosθ도 m에 비례하므로 마찰이 있어도 마찬가지.</span>';},
+ setup(st,mark){bindRange('inclq-th',v=>{st.u.th=v;TT('inclq-thv',v+'°');mark();});bindRange('inclq-m',v=>{st.u.m=v;TT('inclq-mv',v+' kg');mark();});bindRange('inclq-mu',v=>{st.u.mu=v;TT('inclq-muv',v.toFixed(2));mark();});
+  TT('inclq-thv','30°');TT('inclq-mv','2 kg');TT('inclq-muv','0.00');}});
+});
+
+/* ---- proj ---- */
+REG["proj"] = safe("proj.init", function () {
+
+const S0=13,GX=70,GY=600;
+return VB({id:'proj',cx:GX,cy:GY,s:S0,xr:[0,1],yr:[0,1],grid:false,axes:false,init:{v:18,ang:50},drag:[],
+ tick(st){const v=st.u.v,a=st.u.ang*D2R,T=2*v*Math.sin(a)/GR;if(st.t>T+1.4)st.t=0;return true;},
+ draw(P,st,c){const v=st.u.v,a=st.u.ang*D2R,vx=v*Math.cos(a),vy0=v*Math.sin(a),T=2*vy0/GR,t=Math.min(st.t,T),x=vx*t,y=vy0*t-.5*GR*t*t,vy=vy0-GR*t;
+  c.save();c.strokeStyle='#5d77b3';c.lineWidth=3;c.beginPath();c.moveTo(P.X(-0.5),P.Y(0));c.lineTo(1010,P.Y(0));c.stroke();c.restore();
+  c.save();c.strokeStyle='rgba(255,180,84,.6)';c.lineWidth=3;c.setLineDash([8,8]);c.beginPath();for(let k=0;k<=60;k++){const tt=T*k/60,px=vx*tt,py=vy0*tt-.5*GR*tt*tt;if(k===0)c.moveTo(P.X(px),P.Y(py));else c.lineTo(P.X(px),P.Y(py));}c.stroke();c.restore();
+  pdash(P,[x,y],[x,0],'rgba(157,176,216,.5)',1.5);pdash(P,[x,y],[0,y],'rgba(157,176,216,.5)',1.5);
+  pdot(P,[x,0],9,VC.B);pdot(P,[0,y],9,VC.D);ptxt(c,'가로 그림자(등속)',P.X(x),P.Y(0)+34,VC.B,22,'center',600);ptxt(c,'세로 그림자',P.X(0)+14,P.Y(y)+7,VC.D,22,'left',600);
+  const K=7;pv(P,[x,y],[K*vx,0],VC.B,5);pv(P,[x,y],[0,K*vy],VC.D,5);pv(P,[x,y],[K*vx,K*vy],VC.S,6);pdot(P,[x,y],12,'#ffd24a');
+  ptxt(c,'v = '+Math.hypot(vx,vy).toFixed(1)+' m/s',40,48,VC.S,28,'left',700);ptxt(c,'vₓ = '+vx.toFixed(1)+' (일정)   vᵧ = '+vy.toFixed(1).replace('-','−'),40,88,VC.G,26,'left',600);},
+ info(st){const v=st.u.v,a=st.u.ang*D2R,T=2*v*Math.sin(a)/GR,R=v*v*Math.sin(2*a)/GR,H=Math.pow(v*Math.sin(a),2)/(2*GR);
+  return '가로: 등속 vₓ = v₀cosα = <b class="p">'+(v*Math.cos(a)).toFixed(1)+'</b><br>세로: 가속도 −g, vᵧ = v₀sinα − gt<br>체공 시간 T = '+T.toFixed(2)+' s<br>최고점 H = '+H.toFixed(1)+' m, 도달 거리 R = '+R.toFixed(1)+' m<br><span class="sm">α = 45°에서 R이 최대 (공기 저항 무시). α와 90°−α는 같은 R.</span>';},
+ setup(st,mark){bindRange('proj-v',x=>{st.u.v=x;TT('proj-vv',x+' m/s');st.t=0;mark();});bindRange('proj-ang',x=>{st.u.ang=x;TT('proj-angv',x+'°');st.t=0;mark();});TT('proj-vv','18 m/s');TT('proj-angv','50°');
+  $('#proj-go').addEventListener('click',()=>{st.t=0;mark();});}});
+});
+
+/* ---- circ ---- */
+REG["circ"] = safe("circ.init", function () {
+
+const R0=4,V0=4,W0=V0/R0;
+return VB({id:'circ',cx:0,cy:0,s:1,xr:[0,1],yr:[0,1],grid:false,axes:false,init:{dth:60},drag:[],
+ tick(st){return true;},
+ draw(P,st,c){const dth=st.u.dth,t0=(st.t*W0/D2R)%360,P1=plane(c,260,330,50),P2=plane(c,770,360,38);
+  const p1=V.pol(R0,t0),p2=V.pol(R0,t0+dth),v1=V.pol(V0,t0+90),v2=V.pol(V0,t0+dth+90),dv=V.sub(v2,v1);
+  c.save();c.strokeStyle='rgba(157,176,216,.5)';c.lineWidth=2;c.beginPath();c.arc(P1.X(0),P1.Y(0),R0*50,0,TAU);c.stroke();c.restore();
+  pdot(P1,[0,0],6,VC.G);pdash(P1,[0,0],p1,'rgba(157,176,216,.35)',1.5);pdash(P1,[0,0],p2,'rgba(157,176,216,.35)',1.5);
+  pdot(P1,p1,10,VC.A);pdot(P1,p2,10,VC.B);
+  const k1=.5;pv(P1,p1,V.mul(k1,v1),VC.A,5);pv(P1,p2,V.mul(k1,v2),VC.B,5);
+  ptxt(c,'속도 벡터의 변화',P2.X(0)-110,P2.Y(0)-250,VC.W,24,'left',700);
+  pv(P2,[0,0],v1,VC.A,5,'v₁',[0,-12]);pv(P2,[0,0],v2,VC.B,5,'v₂',[0,-12]);pv(P2,v1,dv,VC.D,7,'Δv',[0,26]);
+  const dl=V.len(dv);ptxt(c,'|v₁| = |v₂| = '+V0+' m/s (속력 일정)',P2.X(-4.2),P2.Y(-4.6),VC.G,22,'left');
+  ptxt(c,'가운데 방향 ↔ 원의 중심 쪽',P2.X(-4.2),P2.Y(-4.6)+30,VC.D,22,'left');
+  ptxt(c,'Δv = 2v sin(Δθ/2) = '+dl.toFixed(2)+' m/s',40,50,VC.D,28,'left',700);},
+ info(st){const dth=st.u.dth,dt=dth*D2R/W0,dv=2*V0*Math.sin(dth*D2R/2),a=dv/dt;
+  return 'Δt = Δθ/ω = '+dt.toFixed(2)+' s<br>|Δv| = 2v sin(Δθ/2) = <b class="k">'+dv.toFixed(2)+' m/s</b><br>평균 가속도 |Δv|/Δt = <b class="p">'+a.toFixed(2)+' m/s²</b><br>v²/r = '+(V0*V0/R0).toFixed(2)+' m/s² <span class="sm">(Δθ → 0일 때 같아진다)</span><br><span class="sm">Δv는 원의 중심 쪽 → 가속도의 방향도 중심 쪽 (구심 가속도). 구심력도 중심 쪽.</span>';},
+ setup(st,mark){bindRange('circ-dth',v=>{st.u.dth=v;TT('circ-dthv',v+'°');mark();});TT('circ-dthv','60°');}});
+});
+
+/* ---- dotp ---- */
+REG["dotp"] = safe("dotp.init", function () {
+
+return VB({id:'dotp',cx:300,cy:430,s:60,xr:[-4,12],yr:[-7,4],vecs:{A:[5,1],B:[3,3]},drag:['A','B'],
+ draw(P,st,c){const A=st.A,B=st.B,la=V.len(A),d=V.dot(A,B),foot=la>0?V.mul(d/(la*la),A):[0,0];
+  pdash(P,B,foot,VC.G,2.5);pv(P,[0,0],foot,d>=0?VC.S:VC.D,10);
+  pv(P,[0,0],A,VC.A,6,'A',[-4,-16]);pv(P,[0,0],B,VC.B,6,'B',[-4,-16]);pdot(P,[0,0],8,'#fff');
+  const aa=V.ang(A),bb=V.ang(B);if(la>0&&V.len(B)>0)parc(P,[0,0],44,aa,bb,'#fff',2);
+  ptxt(c,'B의 A 방향 성분 = B cosθ',40,50,d>=0?VC.S:VC.D,26,'left',700);},
+ info(st){const A=st.A,B=st.B,la=V.len(A),lb=V.len(B),d=V.dot(A,B),th=la*lb>0?Math.acos(Math.max(-1,Math.min(1,d/(la*lb))))/D2R:0,f=x=>(x<0?'−':'')+Math.abs(x).toFixed(1);
+  return 'θ = <b>'+th.toFixed(0)+'°</b><br>A·B = AB cosθ = <b class="ok">'+f(d)+'</b><br>성분으로: AₓBₓ + AᵧBᵧ = ('+f(A[0])+')('+f(B[0])+') + ('+f(A[1])+')('+f(B[1])+')<br><span class="sm">'+(Math.abs(d)<.05?'직각이면 0 — 힘이 일을 하지 않는다':d>0?'+ : 거의 같은 방향 → 일을 해 준다':'− : 반대쪽 → 일을 빼앗는다')+'</span><br><span class="sm">결과는 숫자(스칼라)이므로 방향이 없다.</span>';}});
+});
+
+/* ---- crossp ---- */
+REG["crossp"] = safe("crossp.init", function () {
+
+return VB({id:'crossp',cx:300,cy:430,s:60,xr:[-4,12],yr:[-7,4],vecs:{A:[4,0],B:[2,3]},drag:['A','B'],
+ draw(P,st,c){const A=st.A,B=st.B,z=V.cr(A,B);
+  c.save();c.fillStyle=z>=0?'rgba(94,234,212,.2)':'rgba(255,143,176,.2)';c.beginPath();[[0,0],A,V.add(A,B),B].forEach((p,i)=>{if(i===0)c.moveTo(P.X(p[0]),P.Y(p[1]));else c.lineTo(P.X(p[0]),P.Y(p[1]));});c.closePath();c.fill();c.restore();
+  pdash(P,A,V.add(A,B),VC.G,2);pdash(P,B,V.add(A,B),VC.G,2);
+  pv(P,[0,0],A,VC.A,6,'A',[-4,-16]);pv(P,[0,0],B,VC.B,6,'B',[-4,-16]);pdot(P,[0,0],8,'#fff');
+  ptxt(c,'평행사변형 넓이 = |A × B|',40,50,z>=0?VC.S:VC.D,26,'left',700);
+  ptxt(c,z>=0?'A→B 반시계 : 화면 밖으로 (+z)':'A→B 시계 : 화면 안으로 (−z)',40,90,z>=0?VC.S:VC.D,24,'left',600);},
+ info(st){const A=st.A,B=st.B,z=V.cr(A,B),la=V.len(A),lb=V.len(B),s=la*lb>0?Math.abs(z)/(la*lb):0,f=x=>(x<0?'−':'')+Math.abs(x).toFixed(1);
+  return '|A × B| = AB sinθ = <b class="ok">'+Math.abs(z).toFixed(1)+'</b> (θ = '+(Math.asin(Math.min(1,s))/D2R).toFixed(0)+'° 또는 보각)<br>z 성분 = AₓBᵧ − AᵧBₓ = <b class="p">'+f(z)+'</b><br>B × A = <b class="bad">'+f(-z)+'</b> <span class="sm">(순서를 바꾸면 부호가 반대)</span><br><span class="sm">방향은 A와 B 둘 다에 수직 (오른손 법칙). 평행(θ=0, 180°)이면 0.</span>';}});
+});
+
+/* ---- race ---- */
+REG["race"] = safe("race.init", function () {
+
+const H5=5,ANG=[20,35,60],COL=[VC.A,VC.B,VC.S];
+return VB({id:'race',cx:80,cy:390,s:50,xr:[0,1],yr:[0,1],grid:false,axes:false,drag:[],init:{run:false},
+ tick(st){if(!st.u.run){st.t=0;return false;}return true;},
+ draw(P,st,c){const t=st.t,GRd=P.Y(0);
+  c.save();c.strokeStyle='#5d77b3';c.lineWidth=3;c.beginPath();c.moveTo(P.X(-1),GRd);c.lineTo(1030,GRd);c.stroke();c.restore();
+  ptxt(c,'높이 5 m',P.X(0)-10,P.Y(2.5),VC.G,22,'right');c.save();c.strokeStyle='rgba(157,176,216,.4)';c.setLineDash([6,6]);c.beginPath();c.moveTo(P.X(0),P.Y(5));c.lineTo(P.X(0),GRd);c.stroke();c.restore();
+  ANG.forEach((a,i)=>{const r=a*D2R,Lr=H5/Math.sin(r),bx=H5/Math.tan(r);
+   c.save();c.strokeStyle=COL[i];c.lineWidth=3;c.globalAlpha=.6;c.beginPath();c.moveTo(P.X(0),P.Y(H5));c.lineTo(P.X(bx),GRd);c.stroke();c.restore();
+   ptxt(c,a+'°',P.X(bx)+8,GRd-8,COL[i],22,'left',700);
+   const T=Math.sqrt(2*H5/GR)/Math.sin(r),s=Math.min(.5*GR*Math.sin(r)*t*t,Lr),pos=[s*Math.cos(r),H5-s*Math.sin(r)];
+   pdot(P,pos,13,COL[i]);
+   const done=t>=T,v=Math.min(GR*Math.sin(r)*t,GR*Math.sin(r)*T);
+   ptxt(c,a+'°  도착 '+(done?T.toFixed(2)+' s':'…')+'   바닥 속력 '+(done?v.toFixed(2)+' m/s':'…'),40,P.Y(0)+70+i*40,COL[i],26,'left',700);});
+  ptxt(c,'시간 t = '+t.toFixed(2)+' s',40,P.Y(0)+205,VC.W,26,'left',700);},
+ info(st){return '힘으로: a = g sinθ, 거리 L = h/sinθ<br>→ v² = 2aL = 2gh<br>에너지로: mgh = ½mv² → v = √(2gh) = <b class="ok">'+Math.sqrt(2*GR*H5).toFixed(2)+' m/s</b><br><span class="sm">두 관점이 같은 답. 도착 시간은 다르지만 (가파를수록 먼저) 바닥 속력은 모두 같다.</span><br><span class="sm">에너지 방법에는 각도·길이가 나오지 않는다 — 다음 단원으로!</span>';},
+ setup(st,mark){$('#race-go').addEventListener('click',()=>{st.t=0;st.u.run=true;mark();});$('#race-rs').addEventListener('click',()=>{st.t=0;st.u.run=false;mark();});}});
+});
+
+/* =====================================================================
+   슬라이드 관리자
+   ===================================================================== */
+const slides = $$('.slide'), deck = $('#deck'); let cur = -1, step = 0, activeFrame = null, activeId = '', hudTimer = 0;
+const NOTES = DECK.notes, ASK = DECK.ask, CIRC = ['①', '②', '③', '④', '⑤'];
+function renderNotes(i) {
+  const n = NOTES[slides[i].id]; if (!n) { $('#notes').innerHTML = ''; return; }
+  $('#notes').innerHTML = `<div class="nh">📝 오개념 교정 노트 · 슬라이드 ${i + 1} / ${slides.length}<span style="float:right">발문을 화면에 띄우기: Q 키</span></div>` + (n.q ? `<div class="nq">💬 발문: ${n.q}</div>` : '') +
+    (n.m || []).map(([a, b]) => `<div class="ni"><span class="nx">❌ 오개념</span> ${a}<br><span class="nv">✅ 교정</span> ${b}</div>`).join('');
+}
+function renderAsk(i) {
+  const q = ASK[slides[i].id] || [];
+  $('#ask').innerHTML = `<div class="ak"><div class="ah">💬 생각해 보기 · ${i + 1} / ${slides.length}</div>` + (q.length ? q.map((t, k) => `<div class="aq">${q.length > 1 ? `<span>${CIRC[k] || (k + 1) + '.'}</span>` : ''}${t}</div>`).join('') : '<div class="aq" style="color:var(--muted)">이 슬라이드에는 발문이 없습니다.</div>') + '<div class="af">Q 키 · Esc · 화면 클릭으로 닫기</div></div>';
+}
+function toggleAsk(force) { const on = $('#ask').classList.toggle('on', force); $('#b-ask').classList.toggle('on', on); }
+const maxStep = i => +(slides[i].dataset.steps || 0);
+function fit() {
+  const vp = $('#viewport'), vw = vp.clientWidth, vh = vp.clientHeight, rf = vw < 1100;
+  document.documentElement.classList.toggle('rf', rf);
+  if (rf) { const W = vw < 640 ? 640 : vw, s = vw / W; deck.style.width = W + 'px'; deck.style.height = (vh / s) + 'px'; deck.style.transform = `scale(${s})`; return; }
+  deck.style.width = ''; deck.style.height = '';
+  const s = Math.min(vw / 1920, vh / 1080); deck.style.transform = `translate(-50%,-50%) scale(${s})`;
+}
+function fitSteps() { // 단계 목록이 영역을 넘으면 자동 축소 (실제 렌더링 높이 기준)
+  if (cur < 0) return; const side = $('.side.steps', slides[cur]); if (!side) return;
+  side.style.transform = ''; side.style.width = '';
+  if (side.clientHeight > 0 && side.scrollHeight > side.clientHeight + 1) { const k = side.clientHeight / side.scrollHeight; side.style.transformOrigin = 'top left'; side.style.transform = `scale(${k})`; side.style.width = (100 / k) + '%'; }
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitSteps);
+function applyStep() {
+  $$('.st', slides[cur]).forEach(el => { el.classList.toggle('on', +el.dataset.i <= step); el.classList.toggle('cur', +el.dataset.i === step); });
+  const id = slides[cur].id, r = REG[id]; r && r.onStep && safe(id + '.onStep', () => r.onStep(step));
+}
+const mgSet = (sl, on) => $$('iframe.mg-embed', sl).forEach(f => { f.src = on ? f.dataset.src : 'about:blank'; });
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.mg-re'); if (b) { const f = $('iframe', b.parentElement); f && f.contentWindow && f.contentWindow.postMessage({ mg: 'cmd', cmd: 'restart' }, '*'); b.blur(); } });
+function show(i, st = 0) {
+  i = Math.max(0, Math.min(slides.length - 1, i));
+  if (cur >= 0) { const oid = slides[cur].id, o = REG[oid]; o && o.stop && safe(oid + '.stop', () => o.stop()); slides[cur].classList.remove('active'); mgSet(slides[cur], false); }
+  cur = i; step = Math.min(st, maxStep(i)); slides[i].classList.add('active'); mgSet(slides[i], true);
+  const id = slides[i].id, r = REG[id]; activeFrame = r && r.frame ? (dt => r.frame(dt)) : null; activeId = id;
+  fitSteps(); r && r.start && safe(id + '.start', () => r.start());
+  $('#h-pg').textContent = `${i + 1} / ${slides.length}`; renderNotes(i); renderAsk(i); toggleAsk(false); applyStep();
+}
+const next = () => { if (step < maxStep(cur)) { step++; applyStep(); } else if (cur < slides.length - 1) show(cur + 1); };
+const prev = () => { if (step > 0) { step--; applyStep(); } else if (cur > 0) show(cur - 1, maxStep(cur - 1)); };
+function isDark() { const r = document.documentElement; return r.dataset.theme === 'dark' || (!r.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches); }
+function themeBtn() { $('#b-theme').textContent = isDark() ? '☀ 라이트 전환' : '🌙 다크 전환'; }
+function toggleTheme() { document.documentElement.dataset.theme = isDark() ? 'light' : 'dark'; themeBtn(); }
+function toggleNotes() { const on = $('#notes').classList.toggle('on'); $('#b-notes').classList.toggle('on', on); }
+function toggleHelp(force) { const on = $('#help').classList.toggle('on', force); $('#b-help').classList.toggle('on', on); }
+function fullscreen() { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) { } }
+function poke() { $('#hud').classList.add('show'); clearTimeout(hudTimer); hudTimer = setTimeout(() => $('#hud').classList.remove('show'), 2600); }
+document.addEventListener('keydown', e => {
+  const t = e.target; if (t && t.tagName === 'INPUT' && t.type === 'range' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); next(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+  else if (e.key === 'Home') show(0); else if (e.key === 'End') show(slides.length - 1);
+  else if (e.key === 'f' || e.key === 'F') fullscreen(); else if (e.key === 'n' || e.key === 'N') toggleNotes(); else if (e.key === 't' || e.key === 'T') toggleTheme(); else if (e.key === 'q' || e.key === 'Q') toggleAsk(); else if (e.key === '?' || e.key === 'h' || e.key === 'H') toggleHelp(); else if (e.key === 'Escape') { toggleHelp(false); toggleAsk(false); if ($('#notes').classList.contains('on')) toggleNotes(); }
+});
+$('#h-prev').onclick = prev; $('#h-next').onclick = next; $('#h-fs').onclick = fullscreen; $('#b-help').onclick = () => toggleHelp(); $('#b-ask').onclick = () => toggleAsk(); $('#ask').onclick = () => toggleAsk(false); $('#help-x').onclick = () => toggleHelp(false); $('#help').onclick = e => { if (e.target.id === 'help') toggleHelp(false); }; $('#b-notes').onclick = toggleNotes; $('#b-theme').onclick = toggleTheme;
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
+['mousemove', 'touchstart', 'pointerdown'].forEach(ev => document.addEventListener(ev, poke, { passive: true }));
+window.addEventListener('resize', () => { fit(); fitSteps(); }); fit();
+/* 터치: 좌우로 쓸어 넘기기 (슬라이더·캔버스·버튼 위에서 시작한 건 제외) */
+(function () {
+  let x0 = 0, y0 = 0, ok = false;
+  document.addEventListener('touchstart', e => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; ok = !(e.target.closest && e.target.closest('input,canvas,button,table,.eq,#help,#notes')); }, { passive: true });
+  document.addEventListener('touchend', e => { if (!ok) return; const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; if (Math.abs(dx) > 70 && Math.abs(dx) > 2 * Math.abs(dy)) { dx < 0 ? next() : prev(); } }, { passive: true });
+})();
+let lastT = performance.now();
+(function loop(now) {
+  const dt = Math.min(.05, (now - lastT) / 1000); lastT = now;
+  if (activeFrame) { try { activeFrame(dt); } catch (e) { reportError(activeId + '.frame', e); activeFrame = null; } }
+  requestAnimationFrame(loop);
+})(lastT);
+
+/* 물리 검증: shared_js에 TESTS() → [[이름, 통과여부, 설명], ...] 가 있으면 콘솔에 출력 */
+(function runSelfTests() {
+  if (typeof TESTS !== 'function') { console.log('물리 검증 항목 없음'); return; }
+  let results = [];
+  try { results = TESTS() || []; } catch (e) { reportError('TESTS', e); return; }
+  console.log('=== ' + DECK.title + ' 물리 검증 ==='); let pass = 0;
+  for (const [name, ok, detail] of results) { console.log(`[${ok ? 'PASS' : 'FAIL'}] ${name}${detail ? ' — ' + detail : ''}`); if (ok) pass++; }
+  console.log(pass === results.length ? '모든 검증 통과' : '일부 검증 실패 — 콘솔 확인 필요');
+  window.__wsSelfTest = { pass, total: results.length };
+})();
+
+window.__deck = { show, next, get cur() { return cur; }, get step() { return step; }, count: slides.length, maxStep };
+let startAt = 0; try { const h = parseInt(location.hash.slice(1), 10); if (h >= 1 && h <= slides.length) startAt = h - 1; } catch (e) { }
+themeBtn(); show(startAt); poke();
+</script>
+</body>
+</html>

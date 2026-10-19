@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>물리학 모션그래픽 #11 — 이상 기체 방정식 복습</title>
+<!-- ideal-gas-law-review · 보일·샤를·게이뤼삭·아보가드로 법칙이 PV=nRT 하나로 합쳐지는 과정을 입자·실린더·그래프로 복습 (LINE, 약 71초) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Nanum+Pen+Script&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<style>
+:root{
+  --page:#e7e3d8; --ink:#23261f; --barbg:#d8d3c6;
+  --board:#1f3d31; --chalk:#f3f0e6; --yellow:#f4cf5a; --pink:#f29aac; --blue:#8cc3e8; --wood:#6b4a2f;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#111513;--ink:#e6e6de;--barbg:#1c211e}}
+:root[data-theme="dark"]{--page:#111513;--ink:#e6e6de;--barbg:#1c211e}
+html{height:100%} body{height:100%;margin:0}
+body{background:var(--page);color:var(--ink);font-family:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;display:flex;flex-direction:column;overflow:hidden}
+#wrap{flex:1;position:relative;overflow:hidden}
+#stage{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center center;overflow:hidden;color:var(--chalk);
+  background:
+    radial-gradient(ellipse 900px 500px at 25% 20%,rgba(255,255,255,.07),transparent 70%),
+    radial-gradient(ellipse 700px 400px at 75% 70%,rgba(255,255,255,.05),transparent 70%),
+    radial-gradient(ellipse 1400px 700px at 50% 110%,rgba(0,0,0,.35),transparent 70%),
+    var(--board);
+  box-shadow:inset 0 0 0 22px var(--wood), inset 0 0 0 26px #4d341f, inset 0 0 120px rgba(0,0,0,.45);
+}
+#tray{position:absolute;left:22px;right:22px;bottom:22px;height:18px;background:linear-gradient(#7a5738,#50361f)}
+.stick{position:absolute;bottom:40px;height:12px;border-radius:6px}
+.dsp{font-family:"Black Han Sans","Malgun Gothic",sans-serif;font-weight:400}
+.pen{font-family:"Nanum Pen Script",cursive}
+.ch{text-shadow:0 0 1px currentColor,0 0 10px rgba(255,255,255,.12)}
+.sc{position:absolute;inset:0;display:none}
+.row{position:absolute;left:0;right:0;text-align:center;white-space:nowrap;will-change:transform,opacity}
+.abs{position:absolute;will-change:transform,opacity}
+.y{color:var(--yellow)} .p{color:var(--pink)} .b{color:var(--blue)}
+.card{position:absolute;border:4px solid rgba(243,240,230,.85);border-radius:22px 12px 26px 14px;background:var(--board)}
+.fig{position:absolute;transform-origin:50% 100%}
+.fig svg{display:block;overflow:visible}
+
+/* control bar */
+#bar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--barbg);font-size:15px;flex-wrap:wrap}
+#bar button{font:inherit;padding:7px 14px;border-radius:8px;border:1px solid rgba(127,127,127,.5);background:var(--page);color:var(--ink);cursor:pointer}
+#bar button:focus-visible,#seek:focus-visible{outline:3px solid #3b82f6;outline-offset:2px}
+#seek{flex:1;min-width:140px}
+#time{font-variant-numeric:tabular-nums;min-width:92px}
+.hint{opacity:.7}
+body.rec #bar,body.embed #bar{display:none}
+@media (max-width:640px){.hint{display:none}}
+#mgError{position:absolute;left:40px;right:40px;top:40px;z-index:50;background:rgba(184,50,31,.95);color:#fff;font:22px/1.4 sans-serif;padding:10px 18px;border-radius:12px;white-space:pre-wrap;display:none}
+#mgError.on{display:block}
+body.nodecor #tray, body.nodecor .stick{display:none}
+/* ---- theme ---- */
+:root{--board:#1f3d31;--chalk:#f3f0e6;--yellow:#f4cf5a;--pink:#f29aac;--blue:#8cc3e8;--wood:#6b4a2f}
+/* ---- MotionKit 스타일 프리셋 (내장) ---- */
+/* ==== MotionKit 스타일 프리셋 (템플릿 내장) ==== */
+.mk-u{display:inline-block;will-change:transform,opacity}
+.mk-bg{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden}
+.mk-grain{position:absolute;left:0;top:0;width:1920px;height:1080px;pointer-events:none;background-image:var(--mk-noise);opacity:.13;mix-blend-mode:multiply}
+/* 글꼴 */
+.f-sans{font-family:'Noto Sans KR','Black Han Sans',sans-serif;font-weight:900;letter-spacing:-.04em}
+.f-thin{font-family:'Noto Sans KR',sans-serif;font-weight:300;letter-spacing:.02em}
+.f-plex{font-family:'IBM Plex Sans KR',sans-serif;font-weight:300}
+.f-mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+.f-paper{font-family:'Do Hyeon','Black Han Sans',sans-serif}
+.f-serif{font-family:'Nanum Myeongjo',serif}
+/* 1. SWISS — 그리드·원색·굵은 산세리프 */
+.mk-swiss{background:#f2efe8;color:#111;background-image:repeating-linear-gradient(90deg,rgba(0,0,0,.06) 0 1px,transparent 1px 160px)}
+.mk-swiss .accent{background:#e8321e}
+/* 2. LINE — 블루프린트 선화 */
+.mk-line{background:radial-gradient(ellipse at 50% 40%,#13305a,#060e1d 75%);color:#d8ecff}
+.mk-line .grid{position:absolute;inset:0;background-image:linear-gradient(rgba(140,200,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(140,200,255,.08) 1px,transparent 1px);background-size:60px 60px}
+.mk-line svg *{fill:none;stroke:#8fd0ff;stroke-width:3;stroke-linecap:round}
+/* 3. PAPER — 종이 컷아웃 */
+.mk-paper{background:radial-gradient(circle at 30% 20%,#f6eedf,#e6d8bf);color:#3b2f22}
+.mk-paper .card{position:absolute;border-radius:18px;box-shadow:0 10px 0 rgba(0,0,0,.08),0 22px 40px rgba(60,40,10,.18)}
+/* 4. RISO — 형광 잉크 겹침 */
+.mk-riso{background:#f4f0e6;color:#1a1a1a}
+.mk-riso .ink-p{color:#ff48b0;fill:#ff48b0;mix-blend-mode:multiply}
+.mk-riso .ink-b{color:#0078bf;fill:#0078bf;mix-blend-mode:multiply}
+.mk-riso .ink-y{color:#ffe800;fill:#ffe800;mix-blend-mode:multiply}
+/* 5. COSMIC — 입자·글로우·세리프 */
+.mk-cosmic{background:radial-gradient(circle at 50% 60%,#22124a,#04030c 70%);color:#f5f0ff}
+.mk-cosmic .glow{text-shadow:0 0 24px rgba(190,160,255,.7)}
+/* 6. CHALK — 블록용 칠판(.mk-blk 한정). 템플릿 기본 칠판 테마(.mk-bg 없는 장면)와는 별개 */
+.mk-chalk{background:radial-gradient(ellipse 900px 500px at 25% 20%,rgba(255,255,255,.07),transparent 70%),radial-gradient(ellipse 1400px 700px at 50% 110%,rgba(0,0,0,.35),transparent 70%),#1f3d31;color:#f3f0e6;box-shadow:inset 0 0 0 22px #6b4a2f,inset 0 0 0 26px #4d341f,inset 0 0 120px rgba(0,0,0,.45)}
+/* ==== 블록 색 스타일: assemble.py --style 이 루트에 mk-<스타일> mk-blk 를 붙인다. 블록은 var(--토큰,LINE값)만 쓰므로 여기서 토큰 값만 바꾼다 ==== */
+.mk-blk svg *{fill:none;stroke:var(--ax);stroke-width:3;stroke-linecap:round}
+.mk-blk .grid{display:none}
+.mk-blk.mk-cosmic{--mk-ink:#f5f0ff;--ax:#b9a6ff;--c1:#ffd98a;--c2:#ff8fc8;--red:#ff6b8a;--grn:#7df0c0;--vio:#d6a8ff;--blu:#8ab4ff;--onc:#120a2a}
+.mk-blk.mk-cosmic .grid{display:block;background-image:radial-gradient(2px 2px at 8% 18%,rgba(255,255,255,.7),transparent),radial-gradient(1.5px 1.5px at 21% 74%,rgba(255,255,255,.55),transparent),radial-gradient(2px 2px at 34% 36%,rgba(220,200,255,.6),transparent),radial-gradient(1.5px 1.5px at 47% 90%,rgba(255,255,255,.5),transparent),radial-gradient(2px 2px at 59% 12%,rgba(255,255,255,.65),transparent),radial-gradient(1.5px 1.5px at 72% 58%,rgba(220,200,255,.55),transparent),radial-gradient(2px 2px at 83% 28%,rgba(255,255,255,.7),transparent),radial-gradient(1.5px 1.5px at 93% 82%,rgba(255,255,255,.5),transparent),radial-gradient(1.5px 1.5px at 15% 48%,rgba(255,255,255,.4),transparent),radial-gradient(1.5px 1.5px at 66% 40%,rgba(255,255,255,.4),transparent)}
+.mk-blk.mk-cosmic .f-plex{font-family:'Nanum Myeongjo',serif;font-weight:400}
+.mk-blk.mk-cosmic .f-plex,.mk-blk.mk-cosmic .f-mono{text-shadow:0 0 18px rgba(190,160,255,.45)}
+.mk-blk.mk-chalk{--mk-ink:#f3f0e6;--ax:#f3f0e6;--c1:#f4cf5a;--c2:#f7a8b8;--red:#ff9a86;--grn:#9fe3a8;--vio:#c9b5f0;--blu:#8cc3e8;--onc:#1f3d31;text-shadow:0 0 1px currentColor}
+.mk-blk.mk-chalk .f-plex{font-family:'Gowun Dodum','Malgun Gothic',sans-serif;font-weight:400}
+.mk-blk.mk-swiss{--mk-ink:#111;--ax:#111;--c1:#a35f00;--c2:#c2185b;--red:#d92b12;--grn:#0b7a43;--vio:#6d28d9;--blu:#1d4ed8;--onc:#fff}
+.mk-blk.mk-swiss .f-plex{font-weight:600}
+/* ==== /MotionKit CSS ==== */
+
+/* ---- extra_css ---- */
+
+</style>
+</head>
+<body class="nodecor">
+<div id="wrap">
+ <div id="stage">
+  <div id="tray"></div>
+  <div class="stick" style="left:300px;width:90px;background:#f3f0e6"></div>
+  <div class="stick" style="left:420px;width:60px;background:#f4cf5a"></div>
+  <div class="stick" style="left:1500px;width:70px;background:#f29aac"></div>
+
+  <!-- s0: 도입: 기체의 압력은 왜 변할까? 네 변수 소개 -->
+  <div class="sc" id="s0">
+<div class='mk-bg mk-line'><div class='grid'></div><canvas id='s0c' width='1920' height='1080' style='position:absolute;left:0;top:0'></canvas><canvas id='s0p' width='1920' height='1080' style='position:absolute;left:0;top:0;opacity:.5'></canvas><div class='abs f-plex' id='s0tag' style='left:110px;top:80px;font-size:34px;color:#8fd0ff;opacity:0'>물리학 · 이상 기체 방정식 복습</div><div class='abs f-plex' id='s0a' style='left:110px;top:250px;font-size:150px;line-height:1;font-weight:700;white-space:nowrap;color:#d8ecff'>기체의 압력은</div><div class='abs f-plex' id='s0b' style='left:110px;top:430px;font-size:150px;line-height:1;font-weight:700;white-space:nowrap;color:#ff7aa8'>왜 변할까?</div><div class='abs f-plex' id='s0c1' style='left:110px;top:760px;font-size:38px;color:#ff7aa8;border:3px solid #ff7aa8;border-radius:44px;padding:4px 26px;opacity:0;white-space:nowrap;'>P 압력</div><div class='abs f-plex' id='s0c2' style='left:420px;top:760px;font-size:38px;color:#ffd24a;border:3px solid #ffd24a;border-radius:44px;padding:4px 26px;opacity:0;white-space:nowrap;'>V 부피</div><div class='abs f-plex' id='s0c3' style='left:730px;top:760px;font-size:38px;color:#ff8a5a;border:3px solid #ff8a5a;border-radius:44px;padding:4px 26px;opacity:0;white-space:nowrap;'>T 온도</div><div class='abs f-plex' id='s0c4' style='left:1040px;top:760px;font-size:38px;color:#7be0a0;border:3px solid #7be0a0;border-radius:44px;padding:4px 26px;opacity:0;white-space:nowrap;'>n 몰수</div><div class='abs f-plex' id='s0s' style='left:110px;top:880px;font-size:42px;color:#8fd0ff;opacity:0'>오늘 배운 네 가지 법칙은 이 네 변수 사이의 관계였다</div></div>
+  </div>
+
+  <!-- s1: 보일: T·n 일정, V 2→1→2 L, P=2/V, PV=2 -->
+  <div class="sc" id="s1">
+<div class='mk-bg mk-line'><div class='grid'></div><canvas id='s1c' width='1920' height='1080' style='position:absolute;left:0;top:0'></canvas><div class='abs f-plex' id='s1tt' style='left:110px;top:70px;font-size:80px;font-weight:700;white-space:nowrap;color:#d8ecff'>보일 법칙</div><div class='abs f-mono' id='s1nm' style='left:110px;top:30px;font-size:34px;color:#8fd0ff;opacity:0'>STEP 1 / 4</div><div class='abs f-plex' id='s1k1' style='left:110px;top:190px;font-size:38px;color:#ff8a5a;border:3px solid #ff8a5a;border-radius:44px;padding:4px 26px;opacity:0;white-space:nowrap;'>T = 300 K 일정</div><div class='abs f-plex' id='s1k2' style='left:520px;top:190px;font-size:38px;color:#7be0a0;border:3px solid #7be0a0;border-radius:44px;padding:4px 26px;opacity:0;white-space:nowrap;'>n 일정</div><div class='abs f-mono' id='s1rp' style='left:740px;top:320px;width:370px;font-size:56px;color:#ff7aa8;opacity:0;white-space:nowrap'></div><div class='abs f-mono' id='s1rv' style='left:740px;top:430px;width:370px;font-size:56px;color:#ffd24a;opacity:0;white-space:nowrap'></div><div class='abs f-mono' id='s1rx' style='left:740px;top:540px;width:370px;font-size:56px;color:#d8ecff;opacity:0;white-space:nowrap'></div><div class='abs f-plex' id='s1nt' style='left:740px;top:670px;width:400px;font-size:38px;line-height:1.35;color:#d8ecff;opacity:0'></div><div class='abs f-mono' id='s1ay' style='left:1120px;top:262px;font-size:46px;color:#ff7aa8;opacity:0'>P</div><div class='abs f-mono' id='s1ax' style='left:1700px;top:770px;font-size:46px;color:#ffd24a;opacity:0'>V</div><div class='abs f-mono' id='s1f' style='left:1180px;top:850px;font-size:80px;white-space:nowrap;opacity:0;color:#d8ecff'><span style='color:#ff7aa8'>P</span> × <span style='color:#ffd24a'>V</span> = 일정</div></div>
+  </div>
+
+  <!-- s2: 샤를: P·n 일정, T 300→600→300 K, V=T/150 -->
+  <div class="sc" id="s2">
+<div class='mk-bg mk-line'><div class='grid'></div><canvas id='s2c' width='1920' height='1080' style='position:absolute;left:0;top:0'></canvas><div class='abs f-plex' id='s2tt' style='left:110px;top:70px;font-size:80px;font-weight:700;white-space:nowrap;color:#d8ecff'>샤를 법칙</div><div class='abs f-mono' id='s2nm' style='left:110px;top:30px;font-size:34px;color:#8fd0ff;opacity:0'>STEP 2 / 4</div><div class='abs f-plex' id='s2k1' style='left:110px;top:190px;font-size:38px;color:#ff7aa8;border:3px solid #ff7aa8;border-radius:44px;padding:4px 26px;opacity:0;white-space:nowrap;'>P = 1 atm 일정</div><div class='abs f-plex' id='s2k2' style='left:560px;top:190px;font-size:38px;color:#7be0a0;border:3px solid #7be0a0;border-radius:44px;padding:4px 26px;opacity:0;white-space:nowrap;'>n 일정</div><div class='abs f-mono' id='s2rt' style='left:740px;top:320px;width:370px;font-size:56px;color:#ff8a5a;opacity:0;white-space:nowrap'></div><div class='abs f-mono' id='s2rv' style='left:740px;top:430px;width:370px;font-size:56px;color:#ffd24a;opacity:0;white-space:nowrap'></div><div class='abs f-mono' id='s2rx' style='left:740px;top:540px;width:420px;font-size:36px;color:#d8ecff;opacity:0;white-space:nowrap'></div><div class='abs f-plex' id='s2nt' style='left:740px;top:650px;width:400px;font-size:38px;line-height:1.35;color:#d8ecff;opacity:0'></div><div class='abs f-plex' id='s2kv' style='left:740px;top:790px;width:370px;font-size:32px;line-height:1.35;color:#8fd0ff;opacity:0'></div><div class='abs f-mono' id='s2ay' style='left:1120px;top:262px;font-size:46px;color:#ffd24a;opacity:0'>V</div><div class='abs f-mono' id='s2ax' style='left:1700px;top:770px;font-size:46px;color:#ff8a5a;opacity:0'>T</div><div class='abs f-mono' id='s2o' style='left:1130px;top:772px;font-size:32px;color:#8fd0ff;opacity:0'>0 K</div><div class='abs f-mono' id='s2f' style='left:1180px;top:850px;font-size:80px;white-space:nowrap;opacity:0;color:#d8ecff'><span style='color:#ffd24a'>V</span> ÷ <span style='color:#ff8a5a'>T</span> = 일정</div></div>
+  </div>
+
+  <!-- s3: 게이뤼삭: V·n 일정, T 300→600→300 K, P=T/300 -->
+  <div class="sc" id="s3">
+<div class='mk-bg mk-line'><div class='grid'></div><canvas id='s3c' width='1920' height='1080' style='position:absolute;left:0;top:0'></canvas><div class='abs f-plex' id='s3tt' style='left:110px;top:70px;font-size:80px;font-weight:700;white-space:nowrap;color:#d8ecff'>게이뤼삭 법칙</div><div class='abs f-mono' id='s3nm' style='left:110px;top:30px;font-size:34px;color:#8fd0ff;opacity:0'>STEP 3 / 4</div><div class='abs f-plex' id='s3k1' style='left:110px;top:190px;font-size:38px;color:#ffd24a;border:3px solid #ffd24a;border-radius:44px;padding:4px 26px;opacity:0;white-space:nowrap;'>V = 2 L 일정 (피스톤 고정)</div><div class='abs f-plex' id='s3k2' style='left:700px;top:190px;font-size:38px;color:#7be0a0;border:3px solid #7be0a0;border-radius:44px;padding:4px 26px;opacity:0;white-space:nowrap;'>n 일정</div><div class='abs f-mono' id='s3rp' style='left:740px;top:300px;width:370px;font-size:56px;color:#ff7aa8;opacity:0;white-space:nowrap'></div><div class='abs f-mono' id='s3rt' style='left:740px;top:640px;width:370px;font-size:56px;color:#ff8a5a;opacity:0;white-space:nowrap'></div><div class='abs f-mono' id='s3rx' style='left:740px;top:730px;width:420px;font-size:34px;color:#d8ecff;opacity:0;white-space:nowrap'></div><div class='abs f-plex' id='s3nt' style='left:740px;top:810px;width:420px;font-size:36px;line-height:1.35;color:#d8ecff;opacity:0'></div><div class='abs f-mono' id='s3ay' style='left:1120px;top:262px;font-size:46px;color:#ff7aa8;opacity:0'>P</div><div class='abs f-mono' id='s3ax' style='left:1700px;top:770px;font-size:46px;color:#ff8a5a;opacity:0'>T</div><div class='abs f-mono' id='s3f' style='left:1180px;top:850px;font-size:80px;white-space:nowrap;opacity:0;color:#d8ecff'><span style='color:#ff7aa8'>P</span> ÷ <span style='color:#ff8a5a'>T</span> = 일정</div></div>
+  </div>
+
+  <!-- s4: 아보가드로: P·T 일정, n 1→2→3 mol, V=24.6n -->
+  <div class="sc" id="s4">
+<div class='mk-bg mk-line'><div class='grid'></div><canvas id='s4c' width='1920' height='1080' style='position:absolute;left:0;top:0'></canvas><div class='abs f-plex' id='s4tt' style='left:110px;top:70px;font-size:80px;font-weight:700;white-space:nowrap;color:#d8ecff'>아보가드로 법칙</div><div class='abs f-mono' id='s4nm' style='left:110px;top:30px;font-size:34px;color:#8fd0ff;opacity:0'>STEP 4 / 4</div><div class='abs f-plex' id='s4k1' style='left:110px;top:190px;font-size:38px;color:#ff7aa8;border:3px solid #ff7aa8;border-radius:44px;padding:4px 26px;opacity:0;white-space:nowrap;'>P = 1 atm 일정</div><div class='abs f-plex' id='s4k2' style='left:560px;top:190px;font-size:38px;color:#ff8a5a;border:3px solid #ff8a5a;border-radius:44px;padding:4px 26px;opacity:0;white-space:nowrap;'>T = 300 K 일정</div><div class='abs f-mono' id='s4rn' style='left:740px;top:320px;width:370px;font-size:56px;color:#7be0a0;opacity:0;white-space:nowrap'></div><div class='abs f-mono' id='s4rv' style='left:740px;top:430px;width:370px;font-size:56px;color:#ffd24a;opacity:0;white-space:nowrap'></div><div class='abs f-mono' id='s4rx' style='left:740px;top:540px;width:420px;font-size:36px;color:#d8ecff;opacity:0;white-space:nowrap'></div><div class='abs f-plex' id='s4nt' style='left:740px;top:670px;width:400px;font-size:38px;line-height:1.35;color:#d8ecff;opacity:0'></div><div class='abs f-mono' id='s4ay' style='left:1120px;top:262px;font-size:46px;color:#ffd24a;opacity:0'>V</div><div class='abs f-mono' id='s4ax' style='left:1700px;top:770px;font-size:46px;color:#7be0a0;opacity:0'>n</div><div class='abs f-mono' id='s4f' style='left:1180px;top:850px;font-size:80px;white-space:nowrap;opacity:0;color:#d8ecff'><span style='color:#ffd24a'>V</span> ÷ <span style='color:#7be0a0'>n</span> = 일정</div></div>
+  </div>
+
+  <!-- s5: 합체: 네 법칙 → PV/nT=R → PV=nRT -->
+  <div class="sc" id="s5">
+<div class='mk-bg mk-line'><div class='grid'></div><canvas id='s5c' width='1920' height='1080' style='position:absolute;left:0;top:0'></canvas><div class='abs f-plex' id='s5tt' style='left:110px;top:70px;font-size:80px;font-weight:700;white-space:nowrap;color:#d8ecff'>네 법칙, 하나로</div><div class='abs f-plex' id='s5l0' style='left:140px;top:214px;font-size:44px;color:#8fd0ff;opacity:0;white-space:nowrap'>보일</div><div class='abs f-mono' id='s5r0' style='left:560px;top:200px;font-size:66px;opacity:0;white-space:nowrap'><span style='color:#ff7aa8'>P</span> ∝ 1 / <span style='color:#ffd24a'>V</span></div><div class='abs f-plex' id='s5c0' style='left:1000px;top:218px;font-size:36px;color:#8fd0ff;opacity:0;white-space:nowrap'>(T, n 일정)</div><div class='abs f-plex' id='s5l1' style='left:140px;top:314px;font-size:44px;color:#8fd0ff;opacity:0;white-space:nowrap'>샤를</div><div class='abs f-mono' id='s5r1' style='left:560px;top:300px;font-size:66px;opacity:0;white-space:nowrap'><span style='color:#ffd24a'>V</span> ∝ <span style='color:#ff8a5a'>T</span></div><div class='abs f-plex' id='s5c1' style='left:1000px;top:318px;font-size:36px;color:#8fd0ff;opacity:0;white-space:nowrap'>(P, n 일정)</div><div class='abs f-plex' id='s5l2' style='left:140px;top:414px;font-size:44px;color:#8fd0ff;opacity:0;white-space:nowrap'>게이뤼삭</div><div class='abs f-mono' id='s5r2' style='left:560px;top:400px;font-size:66px;opacity:0;white-space:nowrap'><span style='color:#ff7aa8'>P</span> ∝ <span style='color:#ff8a5a'>T</span></div><div class='abs f-plex' id='s5c2' style='left:1000px;top:418px;font-size:36px;color:#8fd0ff;opacity:0;white-space:nowrap'>(V, n 일정)</div><div class='abs f-plex' id='s5l3' style='left:140px;top:514px;font-size:44px;color:#8fd0ff;opacity:0;white-space:nowrap'>아보가드로</div><div class='abs f-mono' id='s5r3' style='left:560px;top:500px;font-size:66px;opacity:0;white-space:nowrap'><span style='color:#ffd24a'>V</span> ∝ <span style='color:#7be0a0'>n</span></div><div class='abs f-plex' id='s5c3' style='left:1000px;top:518px;font-size:36px;color:#8fd0ff;opacity:0;white-space:nowrap'>(P, T 일정)</div><div class='abs f-mono' id='s5e1' style='left:140px;top:700px;font-size:104px;white-space:nowrap;opacity:0'><span style='color:#ff7aa8'>P</span><span style='color:#ffd24a'>V</span> ∝ <span style='color:#7be0a0'>n</span><span style='color:#ff8a5a'>T</span></div><div class='abs f-mono' id='s5e2' style='left:140px;top:700px;font-size:104px;white-space:nowrap;opacity:0'><span style='color:#ff7aa8'>P</span><span style='color:#ffd24a'>V</span> ÷ (<span style='color:#7be0a0'>n</span><span style='color:#ff8a5a'>T</span>) = <span style='color:#d8ecff'>R</span></div><div class='abs f-mono' id='s5e3' style='left:140px;top:300px;font-size:230px;white-space:nowrap;opacity:0;line-height:1'><span style='color:#ff7aa8'>P</span><span style='color:#ffd24a'>V</span> = <span style='color:#7be0a0'>n</span><span style='color:#d8ecff'>R</span><span style='color:#ff8a5a'>T</span></div><div class='abs f-plex' id='s5r1t' style='left:140px;top:610px;font-size:50px;color:#d8ecff;opacity:0;white-space:nowrap'>R = 0.082 atm·L/(mol·K) — 모든 기체에서 같은 상수</div><div class='abs f-plex' id='s5r2t' style='left:140px;top:710px;font-size:40px;color:#8fd0ff;opacity:0;white-space:nowrap'>P는 atm, V는 L, n은 mol, T는 켈빈(K)으로 넣는다</div><div class='abs' id='s5ul' style='left:140px;top:560px;width:1130px;height:8px;background:#8fd0ff;opacity:0;transform-origin:left center'></div></div>
+  </div>
+
+  <!-- s6: 확인 02 공기통 200기압 10 L → 1기압 2000 L, 다음 차시 예고 -->
+  <div class="sc" id="s6">
+<div class='mk-bg mk-line'><div class='grid'></div><canvas id='s6c' width='1920' height='1080' style='position:absolute;left:0;top:0'></canvas><div class='abs f-plex' id='s6tt' style='left:110px;top:70px;font-size:80px;font-weight:700;white-space:nowrap;color:#d8ecff'>써 보자: 공기통 속 공기</div><div class='abs f-plex' id='s6q' style='left:110px;top:210px;width:1500px;font-size:46px;line-height:1.4;color:#d8ecff;opacity:0'>10 L 공기통에 200 기압으로 채운 공기를 1 기압으로 풀면 몇 L 일까? (온도 일정)</div><div class='abs f-mono' id='s6e' style='left:110px;top:400px;font-size:84px;white-space:nowrap;opacity:0'><span style='color:#ff7aa8'>200</span> × <span style='color:#ffd24a'>10</span> = <span style='color:#ff7aa8'>1</span> × <span style='color:#ffd24a'>V₂</span></div><div class='abs f-mono' id='s6v' style='left:110px;top:540px;font-size:170px;white-space:nowrap;opacity:0;color:#ffd24a'>V₂ = <span id='s6n'>0</span> L</div><div class='abs f-plex' id='s6f' style='left:110px;top:800px;font-size:60px;white-space:nowrap;opacity:0;color:#d8ecff'>네 법칙 = 한 식 <span style='color:#8fd0ff'>→</span> PV = nRT</div><div class='abs f-plex' id='s6x' style='left:110px;top:905px;font-size:42px;white-space:nowrap;opacity:0;color:#8fd0ff'>다음 시간 · 열과 일은 내부 에너지를 어떻게 바꿀까? — 열역학 제1법칙</div></div>
+  </div>
+
+  <div id="mgError"></div>
+ </div>
+</div>
+
+<div id="bar">
+ <button id="play" aria-label="재생">▶ 재생</button>
+ <button id="restart">처음부터</button>
+ <input id="seek" type="range" min="0" step="0.01" value="0" aria-label="재생 위치">
+ <span id="time">0.0 / 0.0초</span>
+ <button id="mute">🔊 음악 켬</button>
+ <button id="fs">전체 화면</button>
+ <button id="rec">녹화 모드</button>
+ <span class="hint">Space 재생 · ← → 2초 이동 · R 처음부터 · M 음악 · F 전체화면 · H 녹화 모드</span>
+</div>
+
+
+<script>
+/* ===== 문구·설정 (content.config) ===== */
+const CONFIG = {};
+const MUSIC = {"on": true, "volume": 0.5, "bpm": 112, "melody_at": 15, "kick_at": 21, "hat_at": 28};
+
+/* ===== 공용 도우미 (템플릿 제공) ===== */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const cl = (x,a=0,b=1) => x<a?a:x>b?b:x;
+const P = (t,s,d) => cl((t-s)/d);                 // t가 s에서 d초 동안 0→1
+const eo = x => 1-Math.pow(1-x,3);                 // ease-out
+const eio = x => x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2; // ease-in-out
+const eb = x => {const c1=1.9,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)}; // 살짝 튀어 오르기
+const S = (el,o,tr) => {el.style.opacity=o; el.style.transform=tr||"none";};
+const colors=["y","p","b"], HEX={"y": "#f4cf5a", "p": "#f29aac", "b": "#8cc3e8", "c": "#f3f0e6"};
+/* 자주 쓰는 동작 */
+const typeText = (el,text,t,start,cps=18) => { el.textContent = text.slice(0, cl(Math.floor((t-start)*cps),0,text.length)); };
+const fadeUp = (el,t,start,dur=.6,dist=40) => { const a=eo(P(t,start,dur)); S(el,a,`translateY(${(1-a)*dist}px)`); };
+const popIn = (el,t,start,dur=.6) => { const a=P(t,start,dur); S(el,P(t,start,.1),`scale(${.4+.6*eb(a)})`); };
+const drawPath = (pathEl,t,start,dur=.8) => { pathEl.style.strokeDashoffset = 1-eio(P(t,start,dur)); }; // path에 pathLength="1" stroke-dasharray="1"
+
+/* 분필 사람 그림: person(색, 'down'|'point'|'wave'|'talk', 'smile'|'worry') → SVG 문자열 */
+function person(col,pose,mood){
+  const arms={down:"M60 92 L32 142 M60 92 L88 142",point:"M60 92 L32 142 M60 92 L114 56",wave:"M60 92 L30 142 M60 92 L98 34",talk:"M60 92 L32 142 M60 92 L110 100"}[pose]||"M60 92 L32 142 M60 92 L88 142";
+  const mouth=mood==="worry"?"M50 54 Q60 46 70 54":"M50 48 Q60 57 70 48";
+  return `<svg viewBox="0 0 120 220" width="100%" height="100%" fill="none" stroke="${col}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><circle cx="60" cy="36" r="26"/><circle cx="50" cy="33" r="2.6" fill="${col}"/><circle cx="70" cy="33" r="2.6" fill="${col}"/><path d="${mouth}"/><path d="M60 62 L60 150 M60 150 L36 214 M60 150 L84 214 ${arms}"/></svg>`;
+}
+
+window.__mgErrors = [];
+function reportError(where, e){
+  const msg = `${where}: ${e && e.message ? e.message : e}`;
+  if (!window.__mgErrors.includes(msg)) { window.__mgErrors.push(msg); console.error('[장면 오류] ' + msg); }
+  const box = $("#mgError"); box.textContent = window.__mgErrors.slice(-3).join("\n"); box.classList.add("on");
+}
+
+/* ===== MotionKit (내장) ===== */
+/* ==== MotionKit v1 (템플릿 내장) — 모든 함수는 t(장면 경과 초)의 순수 함수 ==== */
+window.MK=window.MK||(()=>{
+const c=(x,a=0,b=1)=>x<a?a:x>b?b:x;
+const p=(t,s,d)=>c((t-s)/d);
+const lerp=(a,b,k)=>a+(b-a)*k;
+const h=i=>{const s=Math.sin(i*127.1+311.7)*43758.5453;return s-Math.floor(s);};
+const n1=x=>{const i=Math.floor(x),f=x-i,u=f*f*(3-2*f);return lerp(h(i),h(i+1),u)*2-1;};
+const E={
+ lin:x=>x,
+ out:x=>1-Math.pow(1-x,3),
+ inOut:x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2,
+ expo:x=>x>=1?1:1-Math.pow(2,-10*x),
+ antic:x=>{const k=1.70158;return (k+1)*x*x*x-k*x*x;},
+ back:x=>{const k=1.70158,y=x-1;return 1+(k+1)*y*y*y+k*y*y;},
+ elastic:x=>x<=0?0:x>=1?1:Math.pow(2,-10*x)*Math.sin((x*10-.75)*2.0944)+1,
+ bounce:x=>{const n=7.5625,d=2.75;if(x<1/d)return n*x*x;if(x<2/d)return n*(x-=1.5/d)*x+.75;if(x<2.5/d)return n*(x-=2.25/d)*x+.9375;return n*(x-=2.625/d)*x+.984375;},
+ snap:x=>x<.2?-0.08*Math.sin(x/.2*Math.PI/2):1-Math.exp(-7*(x-.2))*Math.cos(9*(x-.2))*1.08
+};
+const ez=e=>typeof e==='function'?e:(E[e]||E.out);
+const spring=(x,damp=6,freq=1.6)=>x<=0?0:1-Math.exp(-damp*x)*Math.cos(6.2832*freq*x);
+const split=(el,mode='char',text)=>{const s=text!=null?text:el.textContent;el.innerHTML='';el._u=[];
+ (mode==='word'?s.split(/(\s+)/):Array.from(s)).forEach(ch=>{if(!ch)return;if(/^\s+$/.test(ch)){el.appendChild(document.createTextNode(ch));return;}
+ const sp=document.createElement('span');sp.className='mk-u';sp.textContent=ch;el.appendChild(sp);el._u.push(sp);});return el._u;};
+const kinetic=(el,t,start,o={})=>{const u=el._u||split(el,o.mode);const {type='rise',gap=.045,dur=.7,dist=80,order='lr'}=o;const n=u.length;
+ u.forEach((sp,i)=>{const j=order==='rl'?n-1-i:order==='center'?Math.abs(i-(n-1)/2):order==='random'?h(i+7)*n:i;
+  const k=p(t,start+j*gap,dur);let op=c(k*3),tr='',e;
+  switch(type){
+   case 'drop':e=E.bounce(k);tr=`translateY(${(e-1)*dist*2}px)`;op=k>0?1:0;break;
+   case 'flip':e=E.back(k);tr=`perspective(600px) rotateX(${(1-e)*-90}deg)`;break;
+   case 'pop':e=E.elastic(k);tr=`scale(${e})`;op=k>0?1:0;break;
+   case 'scatter':{e=E.expo(k);const a=h(i)*2-1,b=h(i+50)*2-1;tr=`translate(${(1-e)*a*dist*4}px,${(1-e)*b*dist*3}px) rotate(${(1-e)*a*180}deg)`;break;}
+   case 'blur':e=E.out(k);sp.style.filter=`blur(${(1-e)*14}px)`;tr=`scale(${1.3-.3*e})`;break;
+   case 'wave':e=E.out(k);tr=`translateY(${(1-e)*dist+Math.sin(t*4-i*.5)*8*e}px)`;break;
+   default:e=E.back(k);tr=`translateY(${(1-e)*dist}px)`;
+  }
+  sp.style.opacity=op;sp.style.transform=tr;});};
+const kineticOut=(el,t,start,o={})=>{const u=el._u||split(el,o.mode);const {gap=.03,dur=.45,dist=60}=o;
+ u.forEach((sp,i)=>{const k=E.antic(p(t,start+i*gap,dur));if(k<=0&&t<start)return;sp.style.opacity=1-c(k);sp.style.transform=`translateY(${-k*dist}px)`;});};
+const stagger=(els,t,start,o,fn)=>{const {gap=.08,dur=.6,ease='back'}=o||{};const f=ez(ease);Array.from(els).forEach((el,i)=>fn(el,f(p(t,start+i*gap,dur)),i));};
+const reveal=(el,t,start,dur,o={})=>{const {shape='circle',x=50,y=50,ease='inOut',dir='left'}=o;const k=ez(ease)(p(t,start,dur));let cp;
+ if(shape==='wipe'){const r=(1-k)*100;cp=dir==='right'?`inset(0 0 0 ${r}%)`:dir==='up'?`inset(${r}% 0 0 0)`:dir==='down'?`inset(0 0 ${r}% 0)`:`inset(0 ${r}% 0 0)`;}
+ else if(shape==='diag'){const a=k*200;cp=`polygon(0 0,${a}% 0,${a-100}% 100%,0 100%)`;}
+ else if(shape==='iris'){const r=(1-k)*50;cp=`inset(${r}% ${r}% ${r}% ${r}% round ${r}%)`;}
+ else cp=`circle(${k*150}% at ${x}% ${y}%)`;
+ el.style.clipPath=cp;el.style.webkitClipPath=cp;};
+const camera=(el,t,keys,ease='inOut')=>{let a=keys[0],b=keys[keys.length-1];
+ if(t<=a.t)b=a;else if(t>=b.t)a=b;else for(let i=0;i<keys.length-1;i++)if(t>=keys[i].t&&t<=keys[i+1].t){a=keys[i];b=keys[i+1];break;}
+ const k=a===b?0:ez(ease)((t-a.t)/(b.t-a.t));const g=(q,d)=>lerp(a[q]??d,b[q]??d,k);
+ el.style.transformOrigin='960px 540px';el.style.transform=`translate(${g('x',0)}px,${g('y',0)}px) scale(${g('s',1)}) rotate(${g('r',0)}deg)`;};
+const ngon=(sides,N=72,r=200,cx=0,cy=0,rot=-90)=>{const P=[];for(let i=0;i<N;i++){const s=i/N;
+ if(!sides){const a=(rot+360*s)*Math.PI/180;P.push([cx+r*Math.cos(a),cy+r*Math.sin(a)]);continue;}
+ const f=s*sides,j=Math.floor(f),u=f-j,A=(rot+360*j/sides)*Math.PI/180,B=(rot+360*(j+1)/sides)*Math.PI/180;
+ P.push([cx+r*lerp(Math.cos(A),Math.cos(B),u),cy+r*lerp(Math.sin(A),Math.sin(B),u)]);}return P;};
+const morph=(el,A,B,k)=>el.setAttribute('points',A.map((a,i)=>`${lerp(a[0],B[i][0],k).toFixed(1)},${lerp(a[1],B[i][1],k).toFixed(1)}`).join(' '));
+const ball=(el,t,start,o={})=>{const {h:H=400,decay=.55,fall=.55,sq=.35}=o;const g=2*H/(fall*fall);let tt=t-start,y=H,v=0;
+ if(tt>0){if(tt<fall){y=H-.5*g*tt*tt;v=-g*tt;}else{tt-=fall;let hk=H*decay,vk=Math.sqrt(2*g*hk),T=2*vk/g,n=0;
+  while(tt>T&&hk>1&&n++<30){tt-=T;hk*=decay;vk=Math.sqrt(2*g*hk);T=2*vk/g;}
+  if(hk<=1||n>=30){y=0;v=0;}else{y=vk*tt-.5*g*tt*tt;v=vk-g*tt;}}}
+ const sp=Math.abs(v)/Math.sqrt(2*g*H);let sx=1,sy=1;
+ if(y<H*.04&&sp>.05){sx=1+sq*sp;sy=1-sq*sp;}else{sy=1+.25*sp;sx=1-.15*sp;}
+ el.style.transformOrigin='50% 100%';el.style.transform=`translateY(${-y}px) scale(${sx},${sy})`;return y;};
+const boil=(el,t,amt=1.5,fps=8,base='')=>{const f=Math.floor(t*fps);el.style.transform=`${base} translate(${(h(f)*2-1)*amt}px,${(h(f+9)*2-1)*amt}px) rotate(${(h(f+3)*2-1)*amt*.3}deg)`;};
+const misreg=(el,t,amt=4,fps=10)=>{const f=Math.floor(t*fps);el.style.transform=`translate(${(h(f+1)*2-1)*amt}px,${(h(f+2)*2-1)*amt}px)`;};
+const grain=(el,t,fps=12)=>{const f=Math.floor(t*fps);el.style.backgroundPosition=`${Math.floor(h(f)*256)}px ${Math.floor(h(f+5)*256)}px`;};
+const count=(el,t,start,dur,from,to,dec=0,ease='out')=>{el.textContent=lerp(from,to,ez(ease)(p(t,start,dur))).toFixed(dec);};
+const scramble=(el,text,t,start,dur,chars='01▲■●◆ABCDEFGHJKLMNPRSTUVWXYZ')=>{const k=p(t,start,dur),n=text.length,done=Math.floor(k*n),f=Math.floor(t*20);let s='';
+ for(let i=0;i<n;i++){if(i<done||text[i]===' ')s+=text[i];else if(k>0&&i<done+6)s+=chars[Math.floor(h(i+f*13)*chars.length)];}el.textContent=s;};
+const drawAll=(root,t,start,o={})=>{const {dur=1.2,gap=.15,ease='inOut'}=o;root.querySelectorAll('path,line,polyline,circle,rect').forEach((el,i)=>{
+ el.setAttribute('pathLength','1');el.style.strokeDasharray='1';el.style.strokeDashoffset=1-ez(ease)(p(t,start+i*gap,dur));});};
+const particles=(cv,t,o={})=>{const ctx=cv.getContext('2d');const {n=160,mode='drift',color='255,255,255',size=2.2,speed=.08,glow=0,cx=960,cy=540,alpha=1}=o;
+ ctx.clearRect(0,0,cv.width,cv.height);ctx.save();if(glow){ctx.shadowBlur=glow;ctx.shadowColor=`rgba(${color},1)`;}
+ for(let i=0;i<n;i++){let x,y;const a=h(i+3),b=h(i+91),z=.3+.7*h(i+17);
+  if(mode==='orbit'){const R=80+a*620,w=(.15+.6/(1+R/200))*(b<.5?1:-1),ang=b*6.2832+t*w;x=cx+R*Math.cos(ang);y=cy+R*Math.sin(ang)*.42;}
+  else if(mode==='rise'){x=a*cv.width+n1(i+t*.5)*30;y=((b*cv.height-t*speed*600*z)%cv.height+cv.height)%cv.height;}
+  else{x=a*cv.width+n1(i*1.7+t*speed*3)*120;y=b*cv.height+n1(i*2.3+50+t*speed*3)*120;}
+  ctx.globalAlpha=alpha*z*(.55+.45*Math.sin(t*2+i));ctx.fillStyle=`rgb(${color})`;ctx.beginPath();ctx.arc(x,y,size*z,0,6.2832);ctx.fill();}
+ ctx.restore();};
+/* 3D 무대(Three.js, content.three:true 필요): host 안에 투명 캔버스를 한 번 만들고 {T,scene,cam,look,place,draw}를 돌려준다. 장면 구성은 S.init 가드 안에서 한 번만, 카메라·객체 상태는 매 프레임 t의 함수로 정한다 */
+const stage3d=(host,o={})=>{if(host._s3)return host._s3;const T=window.THREE;if(!T)throw new Error('Three.js가 없습니다 (content.three:true, 인터넷 연결 확인)');
+ const cv=document.createElement('canvas');cv.style.cssText='position:absolute;left:0;top:0;width:1920px;height:1080px';host.appendChild(cv);
+ const r=new T.WebGLRenderer({canvas:cv,alpha:true,antialias:true,preserveDrawingBuffer:true});r.setSize(1920,1080,false);r.setClearColor(0,0);
+ const scene=new T.Scene(),cam=new T.PerspectiveCamera(o.fov||35,16/9,.1,200);
+ const S={T,scene,cam,r,
+  look(az,el,dist,tg){const a=az*Math.PI/180,e=el*Math.PI/180;cam.position.set(tg.x+dist*Math.cos(e)*Math.sin(a),tg.y+dist*Math.sin(e),tg.z+dist*Math.cos(e)*Math.cos(a));cam.lookAt(tg);cam.updateMatrixWorld();},
+  xy(x,y,z){const v=new T.Vector3(x,y,z).project(cam);return [(v.x+1)*960,(1-v.y)*540];},
+  place(el,x,y,z,q={}){const {w=240,h=60,dx=0,dy=0}=q,s=S.xy(x,y,z);el.style.width=w+'px';el.style.left=(s[0]-w/2+dx)+'px';el.style.top=(s[1]-h/2+dy)+'px';},
+  draw(){r.render(scene,cam);}};
+ return host._s3=S;};
+/* 준비: 웹폰트·그레인 텍스처 (한 번만) */
+(()=>{try{if(!document.getElementById('mk-fonts')){const l=document.createElement('link');l.id='mk-fonts';l.rel='stylesheet';
+ l.href='https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;900&family=IBM+Plex+Sans+KR:wght@300;600&family=Do+Hyeon&family=Nanum+Myeongjo:wght@400;800&display=swap';document.head.appendChild(l);}
+ const cv=document.createElement('canvas');cv.width=cv.height=256;const g=cv.getContext('2d'),im=g.createImageData(256,256);
+ for(let i=0;i<im.data.length;i+=4){const v=Math.floor(h(i*.25+1)*255);im.data[i]=im.data[i+1]=im.data[i+2]=v;im.data[i+3]=255;}
+ g.putImageData(im,0,0);document.documentElement.style.setProperty('--mk-noise',`url(${cv.toDataURL()})`);}catch(e){}})();
+return {c,p,lerp,h,n1,E,ez,spring,split,kinetic,kineticOut,stagger,reveal,camera,ngon,morph,ball,boil,misreg,grain,count,scramble,drawAll,particles,stage3d};
+})();
+/* ==== /MotionKit ==== */
+
+
+/* ===== setup_js (장면 요소 준비: 한 번 실행, 여기서 선언한 const/function은 장면 코드에서 쓸 수 있다) ===== */
+const COL={P:'#ff7aa8',V:'#ffd24a',T:'#ff8a5a',n:'#7be0a0',ax:'#8fd0ff',ink:'#d8ecff'};
+const tri=x=>{x=((x%2)+2)%2;return x<1?x:2-x;};
+const keyv=(t,K)=>{if(t<=K[0][0])return K[0][1];for(let i=1;i<K.length;i++){if(t<K[i][0]){const a=K[i-1],b=K[i];return a[1]+(b[1]-a[1])*MK.E.inOut(MK.p(t,a[0],b[0]-a[0]));}}return K[K.length-1][1];};
+const phase=(t,fn)=>{let s=0;const dt=.05;for(let a=0;a<t;a+=dt){const d=Math.min(dt,t-a);s+=fn(a+d/2)*d;}return s;};
+const PT=Array.from({length:48},(_,i)=>({u:MK.h(i*4+1),v:MK.h(i*4+2),a:MK.h(i*4+3)*6.2832,s:.5+.9*MK.h(i*4+4)}));
+const CX0=140,CW=500,CYB=860,CCH=560,GX=1180,GW=500,GY=310,GH=450;
+function cvs(id){const c=document.getElementById(id),x=c.getContext('2d');x.setTransform(1,0,0,1,0,0);x.clearRect(0,0,1920,1080);return x;}
+function gasDraw(c,x0,y0,w,h,n,ph,col,fade){for(let i=0;i<n;i++){const p=PT[i%48],a=fade?fade(i):1;if(a<=0)continue;
+  const u=tri(p.u+Math.cos(p.a)*p.s*ph*.6),v=tri(p.v+Math.sin(p.a)*p.s*ph*.84);
+  c.globalAlpha=a;c.fillStyle=col;c.shadowColor=col;c.shadowBlur=14;c.beginPath();c.arc(x0+14+u*(w-28),y0+14+v*(h-28),9,0,6.2832);c.fill();}
+  c.globalAlpha=1;c.shadowBlur=0;}
+function cyl(c,hGas,o){const x0=CX0,w=CW,yB=CYB,CH=CCH,yP=yB-hGas;
+  c.fillStyle='rgba(143,208,255,.07)';c.fillRect(x0,yP,w,hGas);
+  c.strokeStyle=COL.ax;c.lineWidth=6;c.lineCap='round';c.lineJoin='round';c.beginPath();c.moveTo(x0,yB-CH);c.lineTo(x0,yB);c.lineTo(x0+w,yB);c.lineTo(x0+w,yB-CH);c.stroke();
+  if(o.wall){c.strokeStyle='rgba(255,122,168,'+o.wall+')';c.lineWidth=14;c.beginPath();c.moveTo(x0,yB-CH+30);c.lineTo(x0,yB);c.lineTo(x0+w,yB);c.lineTo(x0+w,yB-CH+30);c.stroke();}
+  c.fillStyle='rgba(143,208,255,.4)';c.strokeStyle=COL.ax;c.lineWidth=4;c.fillRect(x0+3,yP-26,w-6,26);c.strokeRect(x0+3,yP-26,w-6,26);
+  if(o.weight){c.fillStyle='rgba(143,208,255,.22)';c.fillRect(x0+w/2-110,yP-26-64,220,64);c.strokeRect(x0+w/2-110,yP-26-64,220,64);}
+  else if(!o.lock){c.lineWidth=8;c.beginPath();c.moveTo(x0+w/2,yP-26);c.lineTo(x0+w/2,yB-CH-60);c.stroke();c.beginPath();c.moveTo(x0+w/2-60,yB-CH-60);c.lineTo(x0+w/2+60,yB-CH-60);c.stroke();}
+  if(o.lock){c.fillStyle='#ff6b5a';c.fillRect(x0-18,yP-30,22,34);c.fillRect(x0+w-4,yP-30,22,34);}
+  if(o.arrows){const L=o.arrows;c.strokeStyle=COL.P;c.fillStyle=COL.P;c.lineWidth=6;[.25,.5,.75].forEach(f=>{const ax=x0+w*f,y1=yP+16,y0=y1+L;c.beginPath();c.moveTo(ax,y0);c.lineTo(ax,y1+8);c.stroke();c.beginPath();c.moveTo(ax,y1-4);c.lineTo(ax-12,y1+16);c.lineTo(ax+12,y1+16);c.closePath();c.fill();});}
+  if(o.heat){const h=o.heat,k=Math.abs(h);if(k>.04){if(h>0){[.25,.5,.75].forEach((f,i)=>{const bx=x0+w*f,bh=22+70*k*(.8+.2*Math.sin(i*2+MK.n1(i)*6));const g=c.createLinearGradient(0,yB+10,0,yB+10+bh);g.addColorStop(0,'#ffd24a');g.addColorStop(1,'rgba(255,90,60,0)');c.fillStyle=g;c.beginPath();c.moveTo(bx-26,yB+10);c.quadraticCurveTo(bx-4,yB+bh*.5,bx,yB+10+bh);c.quadraticCurveTo(bx+4,yB+bh*.5,bx+26,yB+10);c.closePath();c.fill();});}
+   else{c.strokeStyle='rgba(143,208,255,'+(.4+.6*k)+')';c.lineWidth=4;[.25,.5,.75].forEach(f=>{const bx=x0+w*f,by=yB+60,r=26*k+8;for(let a=0;a<3;a++){const th=a*1.0472;c.beginPath();c.moveTo(bx-Math.cos(th)*r,by-Math.sin(th)*r);c.lineTo(bx+Math.cos(th)*r,by+Math.sin(th)*r);c.stroke();}});}}}
+}
+function graph(c,xm,ym,curve,x0,xs,dotX,dotY,col,o){o=o||{};const X=v=>GX+v/xm*GW,Y=v=>GY+GH-v/ym*GH;
+  c.save();c.strokeStyle='rgba(143,208,255,.12)';c.lineWidth=1;for(let i=1;i<=4;i++){c.beginPath();c.moveTo(GX,GY+GH-GH*i/4);c.lineTo(GX+GW,GY+GH-GH*i/4);c.stroke();c.beginPath();c.moveTo(GX+GW*i/4,GY);c.lineTo(GX+GW*i/4,GY+GH);c.stroke();}
+  c.strokeStyle=COL.ax;c.fillStyle=COL.ax;c.lineWidth=4;c.beginPath();c.moveTo(GX,GY-20);c.lineTo(GX,GY+GH);c.lineTo(GX+GW+24,GY+GH);c.stroke();
+  c.beginPath();c.moveTo(GX,GY-34);c.lineTo(GX-10,GY-16);c.lineTo(GX+10,GY-16);c.closePath();c.fill();c.beginPath();c.moveTo(GX+GW+38,GY+GH);c.lineTo(GX+GW+20,GY+GH-10);c.lineTo(GX+GW+20,GY+GH+10);c.closePath();c.fill();
+  const N=70,pts=[];for(let i=0;i<=N;i++){const x=x0+(xs-x0)*i/N;pts.push([X(x),Y(curve(x))]);}
+  c.setLineDash(o.dash?[10,10]:[]);c.strokeStyle='rgba(143,208,255,.3)';c.lineWidth=5;c.beginPath();pts.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.stroke();c.setLineDash([]);
+  const prog=o.prog==null?1:o.prog,m=Math.round(N*prog);c.strokeStyle=col;c.lineWidth=7;c.shadowColor=col;c.shadowBlur=12;c.beginPath();for(let i=0;i<=m;i++){i?c.lineTo(pts[i][0],pts[i][1]):c.moveTo(pts[i][0],pts[i][1]);}c.stroke();c.shadowBlur=0;
+  if(o.dot!==false){const dx=X(dotX),dy=Y(dotY);c.setLineDash([8,8]);c.strokeStyle='rgba(216,236,255,.35)';c.lineWidth=2;c.beginPath();c.moveTo(dx,dy);c.lineTo(dx,GY+GH);c.moveTo(dx,dy);c.lineTo(GX,dy);c.stroke();c.setLineDash([]);
+   c.fillStyle='#fff';c.shadowColor=col;c.shadowBlur=20;c.beginPath();c.arc(dx,dy,13,0,6.2832);c.fill();c.shadowBlur=0;c.strokeStyle=col;c.lineWidth=5;c.stroke();}
+  c.restore();}
+const setT=(id,txt,op,col)=>{const e=document.getElementById(id);e.textContent=txt;if(op!=null)e.style.opacity=op;if(col)e.style.color=col;};
+const clampv=(x)=>Math.max(-1,Math.min(1,x));
+
+/* ===== 장면 ===== */
+const SC=[
+ {id:"s0",d:8,up(t){
+
+const pc=$('#s0p');MK.particles(pc,t,{mode:'drift',n:70,color:'143,208,255',size:5,glow:true});
+$('#s0tag').style.opacity=MK.p(t,.1,.5);
+MK.kinetic($('#s0a'),t,.4,{type:'rise',gap:.05,dur:.8,dist:90});
+MK.kinetic($('#s0b'),t,1.0,{type:'blur',gap:.06,dur:.9});
+const ch=['s0c1','s0c2','s0c3','s0c4'].map(id=>$('#'+id));
+MK.stagger(ch,t,3.6,{gap:.35,dur:.55,ease:MK.E.back},(el,e)=>{el.style.opacity=MK.c(e*3);el.style.transform='translateY('+(1-e)*40+'px) scale('+(.7+.3*e)+')';});
+$('#s0s').style.opacity=MK.p(t,5.6,.6);
+
+ }},
+ {id:"s1",d:11,up(t){
+
+const K=[[0,2],[2.2,2],[5,1],[7,1],[9.4,2],[11,2]];const V=keyv(t,K),P=2/V;
+MK.kinetic($('#s1tt'),t,.15,{type:'rise',gap:.05,dur:.7,dist:70});$('#s1nm').style.opacity=MK.p(t,.1,.4);
+const ph=phase(t,()=>1);
+const c=cvs('s1c');const hG=V/2.4*490;
+cyl(c,hG,{arrows:26+34*P});gasDraw(c,CX0,CYB-hG,CW,hG,16,ph,COL.V);
+const gp=MK.p(t,.6,1.2);
+graph(c,2.5,3.0,x=>2/x,.7,2.4,V,P,COL.P,{prog:gp,dot:t>1.6});
+const vis=MK.p(t,1.2,.5);
+['s1k1','s1k2'].forEach((id,i)=>$('#'+id).style.opacity=MK.p(t,.5+i*.2,.4));
+setT('s1rp','P = '+P.toFixed(1)+' atm',vis);setT('s1rv','V = '+V.toFixed(1)+' L',vis);setT('s1rx','P × V = '+(P*V).toFixed(1),MK.p(t,1.6,.5));
+$('#s1ay').style.opacity=gp;$('#s1ax').style.opacity=gp;
+$('#s1f').style.opacity=MK.p(t,2.0,.6);
+const ph1=t<2.2?'피스톤을 눌러 보자':t<7?'부피 ½ → 벽에 부딪히는 횟수 ↑ → 압력 2배':'부피를 늘리면 압력은 다시 ½';
+setT('s1nt',ph1,MK.p(t,1.4,.5));
+
+ }},
+ {id:"s2",d:11,up(t){
+
+const K=[[0,300],[2.3,300],[6.2,600],[8.0,600],[10.2,300],[11,300]];const T=keyv(t,K),V=T/150;
+MK.kinetic($('#s2tt'),t,.15,{type:'flip',gap:.05,dur:.7,dist:70});$('#s2nm').style.opacity=MK.p(t,.1,.4);
+const ph=phase(t,u=>Math.sqrt(keyv(u,K)/300));
+const hd=(keyv(t+.12,K)-keyv(t-.12,K))/.24;
+const c=cvs('s2c');const hG=V/4.4*490;
+cyl(c,hG,{weight:true,heat:clampv(hd/90)});gasDraw(c,CX0,CYB-hG,CW,hG,16,ph,COL.T);
+const gp=MK.p(t,.6,1.4);
+graph(c,700,5,x=>x/150,0,700,T,V,COL.V,{prog:gp,dot:t>1.8,dash:true});
+const vis=MK.p(t,1.2,.5);
+['s2k1','s2k2'].forEach((id,i)=>$('#'+id).style.opacity=MK.p(t,.5+i*.2,.4));
+setT('s2rt','T = '+Math.round(T)+' K',vis);setT('s2rv','V = '+V.toFixed(1)+' L',vis);setT('s2rx','V ÷ T = 0.0067 L/K',MK.p(t,1.8,.5));
+$('#s2ay').style.opacity=gp;$('#s2ax').style.opacity=gp;$('#s2o').style.opacity=MK.p(t,1.6,.5);
+$('#s2f').style.opacity=MK.p(t,2.0,.6);
+const ph2=t<2.3?'압력은 그대로, 온도를 올려 보자':t<8?'입자가 빨라짐 → 같은 압력을 지키려면 부피 ↑':'식으면 부피가 줄어든다';
+setT('s2nt',ph2,MK.p(t,1.4,.5));
+setT('s2kv','온도는 켈빈(K) = ℃ + 273 · 0 K 에서 V → 0',MK.p(t,6.6,.6));
+
+ }},
+ {id:"s3",d:10,up(t){
+
+const K=[[0,300],[2.2,300],[5.6,600],[7.4,600],[9.6,300],[10,300]];const T=keyv(t,K),P=T/300;
+MK.kinetic($('#s3tt'),t,.15,{type:'drop',gap:.05,dur:.7,dist:70});$('#s3nm').style.opacity=MK.p(t,.1,.4);
+const ph=phase(t,u=>Math.sqrt(keyv(u,K)/300));
+const hd=(keyv(t+.12,K)-keyv(t-.12,K))/.24;
+const c=cvs('s3c');const hG=420;
+cyl(c,hG,{lock:true,heat:clampv(hd/90),wall:.15+.45*(P-.5)*(1+.4*Math.sin(t*14))});gasDraw(c,CX0,CYB-hG,CW,hG,16,ph,COL.T);
+const gp=MK.p(t,.6,1.2);
+graph(c,700,2.6,x=>x/300,0,700,T,P,COL.P,{prog:gp,dot:t>1.6,dash:true});
+// 압력계
+const cx=910,cy=520,r=120;c.save();c.lineWidth=8;c.strokeStyle='rgba(143,208,255,.5)';c.beginPath();c.arc(cx,cy,r,Math.PI,2*Math.PI);c.stroke();
+for(let i=0;i<=4;i++){const a=Math.PI+Math.PI*i/4;c.lineWidth=4;c.beginPath();c.moveTo(cx+Math.cos(a)*(r-6),cy+Math.sin(a)*(r-6));c.lineTo(cx+Math.cos(a)*(r+14),cy+Math.sin(a)*(r+14));c.stroke();}
+const na=Math.PI+Math.PI*Math.min(1,P/2.4);c.strokeStyle=COL.P;c.lineWidth=9;c.shadowColor=COL.P;c.shadowBlur=14;c.beginPath();c.moveTo(cx,cy);c.lineTo(cx+Math.cos(na)*(r-14),cy+Math.sin(na)*(r-14));c.stroke();c.shadowBlur=0;c.fillStyle='#fff';c.beginPath();c.arc(cx,cy,12,0,6.2832);c.fill();c.restore();
+const vis=MK.p(t,1.2,.5);
+['s3k1','s3k2'].forEach((id,i)=>$('#'+id).style.opacity=MK.p(t,.5+i*.2,.4));
+setT('s3rp','P = '+P.toFixed(1)+' atm',vis);setT('s3rt','T = '+Math.round(T)+' K',vis);setT('s3rx','P ÷ T = 0.0033 atm/K',MK.p(t,1.8,.5));
+$('#s3ay').style.opacity=gp;$('#s3ax').style.opacity=gp;
+$('#s3f').style.opacity=MK.p(t,2.0,.6);
+const ph3=t<2.2?'부피를 고정하고 온도를 올려 보자':t<7.4?'입자가 빨라짐 → 벽을 더 세게·자주 침 → 압력 ↑':'식으면 압력이 줄어든다';
+setT('s3nt',ph3,MK.p(t,1.4,.5));
+
+ }},
+ {id:"s4",d:9,up(t){
+
+const K=[[0,1],[1.8,1],[3.2,2],[4.8,2],[6.2,3],[9,3]];const n=keyv(t,K),V=24.6*n;
+MK.kinetic($('#s4tt'),t,.15,{type:'pop',gap:.05,dur:.7,dist:70});$('#s4nm').style.opacity=MK.p(t,.1,.4);
+const ph=phase(t,()=>1);
+const c=cvs('s4c');const hG=V/78*490;
+cyl(c,hG,{weight:true});gasDraw(c,CX0,CYB-hG,CW,hG,24,ph,COL.n,i=>MK.c(n*8-i));
+const gp=MK.p(t,.6,1.0);
+graph(c,3.4,84,x=>24.6*x,0,3.4,n,V,COL.V,{prog:gp,dot:t>1.4});
+const vis=MK.p(t,1.0,.5);
+['s4k1','s4k2'].forEach((id,i)=>$('#'+id).style.opacity=MK.p(t,.5+i*.2,.4));
+setT('s4rn','n = '+n.toFixed(1)+' mol',vis);setT('s4rv','V = '+V.toFixed(1)+' L',vis);setT('s4rx','V ÷ n = 24.6 L/mol',MK.p(t,1.6,.5));
+$('#s4ay').style.opacity=gp;$('#s4ax').style.opacity=gp;
+$('#s4f').style.opacity=MK.p(t,1.8,.6);
+const ph4=t<1.8?'입자를 더 넣어 보자 (P, T는 그대로)':t<6.2?'입자 수 2배 → 같은 압력을 지키려면 부피도 2배':'분자 수가 늘면 부피도 늘어난다';
+setT('s4nt',ph4,MK.p(t,1.2,.5));
+
+ }},
+ {id:"s5",d:13,up(t){
+
+$('#s5tt').style.opacity=MK.p(t,.1,.4);MK.kinetic($('#s5tt'),t,.15,{type:'wave',gap:.04,dur:.7,dist:50});
+for(let i=0;i<4;i++){const s0=.8+i*.9;
+ const l=$('#s5l'+i),r=$('#s5r'+i),c=$('#s5c'+i),a=MK.p(t,s0,.5),f=1-MK.p(t,5.4,.7)*.7,g=1-MK.p(t,9.2,.8);
+ l.style.opacity=a*f*g;r.style.opacity=a*f*g;c.style.opacity=MK.p(t,s0+.3,.5)*f*g;
+ r.style.transform='translateX('+(1-MK.E.out(a))*-60+'px)';}
+const e1=$('#s5e1'),e2=$('#s5e2'),e3=$('#s5e3');
+e1.style.opacity=MK.p(t,5.4,.6)*(1-MK.p(t,7.4,.5))*(1-MK.p(t,9.2,.8));
+e2.style.opacity=MK.p(t,7.2,.6)*(1-MK.p(t,9.2,.7));
+const q=MK.p(t,9.2,.9),eb=MK.E.back(q);
+e3.style.opacity=MK.c(q*2);e3.style.transform='scale('+(.8+.2*eb)+')';e3.style.transformOrigin='left center';
+const ul=$('#s5ul');ul.style.opacity=MK.c(MK.p(t,9.9,.4)*3);ul.style.transform='scaleX('+MK.E.inOut(MK.p(t,9.9,.9))+')';
+$('#s5r1t').style.opacity=MK.p(t,10.8,.6);$('#s5r2t').style.opacity=MK.p(t,11.6,.6);
+$('#s5e3').style.filter=t>9.8&&t<10.5?'drop-shadow(0 0 '+(30*Math.sin((t-9.8)/.7*3.14))+'px rgba(143,208,255,.9))':'none';
+
+ }},
+ {id:"s6",d:9,up(t){
+
+MK.kinetic($('#s6tt'),t,.15,{type:'rise',gap:.045,dur:.7,dist:70});
+$('#s6q').style.opacity=MK.p(t,.7,.6);
+const a=MK.p(t,2.0,.6);$('#s6e').style.opacity=a;$('#s6e').style.transform='translateY('+(1-MK.E.out(a))*40+'px)';
+$('#s6v').style.opacity=MK.p(t,3.6,.4);MK.count($('#s6n'),t,3.8,1.6,0,2000,0);
+$('#s6f').style.opacity=MK.p(t,6.0,.6);$('#s6x').style.opacity=MK.p(t,7.0,.6);
+
+ }}
+];
+let acc=0; SC.forEach(s=>{s.el=$("#"+s.id);s.s=acc;acc+=s.d;});
+const TOTAL=acc;
+
+/* ===== 배경음악: 코드로 합성한 단순 멜로디 (외부 음원 없음) ===== */
+const BPM=MUSIC.bpm||112, SD=60/BPM/2;
+const CH=[[48,52,55],[43,47,50],[45,48,52],[41,45,48]];   // C G Am F
+const MEL=[76,0,79,0,76,74,72,0, 74,0,71,0,74,76,74,0, 72,0,76,0,81,0,79,76, 77,0,76,74,72,0,0,0];
+const ARP=[0,1,2,1,0,1,2,1];
+const mf=m=>440*Math.pow(2,(m-69)/12);
+let actx=null,master=null,noiseBuf=null,muted=!MUSIC.on,nextStep=0,baseA=0,baseT=0;
+function initAudio(){
+  if(!actx){
+    try{actx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return;}
+    master=actx.createGain();master.gain.value=0;master.connect(actx.destination);
+    noiseBuf=actx.createBuffer(1,actx.sampleRate*.1,actx.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  }
+  if(actx.state!=="running")actx.resume().then(syncAudio);
+  syncAudio();
+}
+function syncAudio(){if(actx){baseA=actx.currentTime;baseT=T;nextStep=Math.ceil(T/SD-1e-6);}}
+function tone(f,t,dur,type,g){const o=actx.createOscillator(),v=actx.createGain();o.type=type;o.frequency.value=f;
+  v.gain.setValueAtTime(0.0001,t);v.gain.linearRampToValueAtTime(g,t+.012);v.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(v).connect(master);o.start(t);o.stop(t+dur+.05);}
+function kick(t){const o=actx.createOscillator(),v=actx.createGain();o.frequency.setValueAtTime(140,t);o.frequency.exponentialRampToValueAtTime(45,t+.14);
+  v.gain.setValueAtTime(.55,t);v.gain.exponentialRampToValueAtTime(.001,t+.25);o.connect(v).connect(master);o.start(t);o.stop(t+.3);}
+function hat(t){const s=actx.createBufferSource(),h=actx.createBiquadFilter(),v=actx.createGain();s.buffer=noiseBuf;h.type="highpass";h.frequency.value=7000;
+  v.gain.setValueAtTime(.07,t);v.gain.exponentialRampToValueAtTime(.001,t+.05);s.connect(h).connect(v).connect(master);s.start(t);s.stop(t+.08);}
+function playStep(n,at,tl){
+  const bar=Math.floor(n/8)%4, st=n%8, ch=CH[bar];
+  const nt=ch[ARP[st]]+24+(st>=4&&ARP[st]===0?12:0);
+  tone(mf(nt),at,.22,"triangle",.07);
+  if(st===0||st===3||st===6)tone(mf(ch[0]),at,.32,"sine",.22);
+  if(tl>=MUSIC.melody_at){const m=MEL[n%32];if(m)tone(mf(m),at,.42,"sine",.13),tone(mf(m+12),at,.2,"sine",.025);}
+  if(tl>=MUSIC.kick_at&&(st===0||st===4))kick(at);
+  if(tl>=MUSIC.hat_at&&st%2===1)hat(at);
+}
+function audioTick(){
+  if(!actx||actx.state!=="running")return;
+  const vol=(muted?0:MUSIC.volume)*(1-P(T,TOTAL-3,3))*(playing?1:0);
+  master.gain.setTargetAtTime(vol,actx.currentTime,.05);
+  if(!playing||muted)return;
+  const now=actx.currentTime;
+  while(nextStep*SD<T+.2){const st=nextStep*SD;if(st>=T-.03&&st<TOTAL-.5)playStep(nextStep,now+Math.max(0,st-T),st);nextStep++;}
+}
+
+/* ===== 재생 엔진 ===== */
+let T=0,playing=false,last=null,cur=null;
+function render(t){
+  let sc=SC[SC.length-1]; for(const s of SC){if(t<s.s+s.d){sc=s;break;}}
+  if(cur!==sc){SC.forEach(s=>s.el.style.display="none");sc.el.style.display="block";cur=sc;}
+  const lt=t-sc.s, isLast=sc===SC[SC.length-1];
+  sc.el.style.opacity=P(lt,0,.25)*(isLast?1:1-P(lt,sc.d-.35,.35));
+  try { sc.up(lt); } catch (e) { reportError(sc.id, e); }
+  $("#seek").value=t; $("#time").textContent=`${t.toFixed(1)} / ${TOTAL.toFixed(1)}초`;
+}
+function frame(ts){
+  if(playing){
+    if(actx&&actx.state==="running"){T=baseT+(actx.currentTime-baseA);}
+    else{if(last!==null)T+=(ts-last)/1000;last=ts;}
+    if(T>=TOTAL){T=TOTAL;setPlay(false);}
+  } else last=null;
+  audioTick(); render(T); requestAnimationFrame(frame);
+}
+function setPlay(p){playing=p;last=null;syncAudio();$("#play").textContent=p?"❚❚ 일시정지":"▶ 재생";$("#play").setAttribute("aria-label",p?"일시정지":"재생");}
+$("#seek").max=TOTAL;
+$("#mute").textContent=muted?"🔇 음악 끔":"🔊 음악 켬";
+$("#play").onclick=()=>{initAudio();if(T>=TOTAL)T=0;setPlay(!playing);};
+$("#restart").onclick=()=>{initAudio();T=0;setPlay(true);};
+$("#seek").oninput=e=>{T=+e.target.value;syncAudio();};
+$("#mute").onclick=()=>{initAudio();muted=!muted;$("#mute").textContent=muted?"🔇 음악 끔":"🔊 음악 켬";syncAudio();};
+function toggleFS(){try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}catch(e){}}
+function toggleRec(){document.body.classList.toggle("rec");fit();}
+$("#fs").onclick=toggleFS; $("#rec").onclick=toggleRec;
+addEventListener("keydown",e=>{
+  if(e.target.tagName==="BUTTON"&&e.code==="Space")return;
+  initAudio();
+  if(e.code==="Space"){e.preventDefault();$("#play").click();}
+  else if(e.key==="f"||e.key==="F")toggleFS();
+  else if(e.key==="h"||e.key==="H")toggleRec();
+  else if(e.key==="m"||e.key==="M")$("#mute").click();
+  else if(e.key==="r"||e.key==="R"){T=0;setPlay(true);}
+  else if(e.key==="ArrowRight"){T=Math.min(TOTAL,T+2);syncAudio();}
+  else if(e.key==="ArrowLeft"){T=Math.max(0,T-2);syncAudio();}
+});
+function fit(){const w=$("#wrap"),s=Math.min(w.clientWidth/1920,w.clientHeight/1080);$("#stage").style.transform=`translate(-50%,-50%) scale(${s})`;}
+addEventListener("resize",fit); fit();
+/* 임베드 모드(?embed): 슬라이드 iframe용 — 컨트롤 바 숨김, 음악 끔, ?autoplay면 바로 재생. 부모는 postMessage({mg:"cmd",cmd:"restart|play|pause"})로 제어 */
+if(/[?&]embed\b/.test(location.search)){
+  document.body.classList.add("embed"); muted=true; fit();
+  if(/[?&]autoplay\b/.test(location.search)){T=0;setPlay(true);}
+  addEventListener("message",e=>{const d=e.data;if(e.source!==parent||!d||d.mg!=="cmd")return;
+    if(d.cmd==="restart"){T=0;setPlay(true);}else if(d.cmd==="play"){if(T>=TOTAL)T=0;setPlay(true);}else if(d.cmd==="pause")setPlay(false);});
+}
+window.__mg = { TOTAL, SC, render: t => { T = t; render(t); }, get T(){ return T; } };
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

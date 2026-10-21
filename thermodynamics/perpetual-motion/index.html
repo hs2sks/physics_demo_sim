@@ -294,7 +294,10 @@ function panel(c, title, items) {
   for (const it of items) {
     if (!it) continue;
     if (it.bar !== undefined) {
-      txt(c, it.label, x + 12, y, { size: 12, color: '#55657a' });
+      c.font = `700 12px ${FONT}`; const vw = c.measureText(String(it.value)).width;
+      let ls = 12; c.font = `${ls}px ${FONT}`;
+      while (ls > 9 && c.measureText(it.label).width > w - 24 - vw - 8) { ls -= 0.5; c.font = `${ls}px ${FONT}`; }
+      txt(c, it.label, x + 12, y, { size: ls, color: '#55657a' });
       txt(c, it.value, x + w - 12, y, { size: 12, align: 'right', bold: true, color: it.color });
       c.fillStyle = '#e4e9ef'; rrect(c, x + 12, y + 5, w - 24, 8, 4); c.fill();
       const f = clamp(it.bar, 0, 1); if (f > 0.002) { c.fillStyle = it.color; rrect(c, x + 12, y + 5, (w - 24) * f, 8, 4); c.fill(); }
@@ -485,7 +488,7 @@ const honnecourt = wheelCase({
     contra: `<h4>[모순] 열역학 제1법칙(에너지 보존) 위반</h4>
       <p><b>① 개수의 함정:</b> 오른쪽은 팔이 길지만 추가 <b>적고</b>, 왼쪽은 팔이 짧지만 추가 <b>많다</b>. 정지한 위치에서 양쪽 토크의 합을 계산하면 정확히 0이다(그림의 점선이 각 추의 지레 팔).</p>
       <p><b>② 제자리로 돌아온다:</b> 바퀴가 한 바퀴 돌면 모든 망치가 처음 높이로 돌아온다. 중력이 한 일은 <span class="eq">∮τ dθ = −ΔU = 0</span>이다. 내려가며 얻은 에너지는 올라가며 모두 되돌려준다.</p>
-      <p><b>③ 손실까지:</b> 망치가 꼭대기에서 젖혀지며 부딪칠 때, 그리고 축의 마찰 때문에 역학적 에너지는 열로 빠져나간다. 보충이 없으니 결국 멈춘다.</p>`,
+      <p><b>③ 손실까지:</b> 축의 마찰(실제 장치에서는 망치가 젖혀지며 부딪칠 때의 충돌 손실도)로 역학적 에너지는 열로 빠져나간다. 보충이 없으니 결국 멈춘다. (이 시뮬레이션은 마찰만 넣었다.)</p>`,
     story: '📜 <b>오르피레우스(베슬러)의 바퀴</b>: 1712년부터 "스스로 도는 바퀴"를 공개 시연했고, 1717년 헤센-카셀 백작 앞 밀폐실 시험을 통과했다고 주장했다. 내부 구조는 끝까지 공개하지 않았다. 훗날 하녀가 "옆방에서 사람이 몰래 돌렸다"고 증언했다.',
     q: '망치를 9개, 11개로 늘리면 오른쪽과 왼쪽의 추 개수는 어떻게 될까? 개수가 아무리 많아도 한 바퀴 동안 중력이 한 일이 0인 까닭을 위치에너지로 설명해 보자.',
   },
@@ -618,11 +621,11 @@ const magnet = {
     x.lineCap = 'butt';
     line(x, r[1][0], r[1][1], r[2][0], r[2][1], '#c9b49f', 2, [4, 4]);
     x.fillStyle = '#1f2d3d'; x.beginPath(); x.ellipse(r[1][0], r[1][1] + 2, 11, 4, 0, 0, TAU); x.fill();
-    txt(x, '구멍', r[1][0] - 22, r[1][1] + 22, { size: 12, color: '#55657a', align: 'right' });
+    txt(x, '구멍', r[1][0] + 16, r[1][1] + 24, { size: 12, color: '#55657a' });
     // 아랫 경사로 시작점의 막힘판 (떨어진 공은 구멍으로 되돌아 올라갈 수 없다)
     line(x, r[2][0] - 10, r[2][1] - 6, r[2][0] + 10, r[2][1] - 6, this.hit > 0 ? '#c0392b' : '#4a3828', 4);
     txt(x, '막힘판', r[2][0] - 16, r[2][1] - 2, { size: 11, color: '#7a5a3a', align: 'right' });
-    txt(x, '윗 경사로 (자석이 끌어올림)', 150, 255, { size: 12, color: '#7a5a3a' });
+    txt(x, '윗 경사로', 36, 290, { size: 12, color: '#7a5a3a' }); txt(x, '(자석이 끌어올림)', 36, 305, { size: 11, color: '#7a5a3a' });
     txt(x, '아랫 경사로 (출발점으로 복귀)', 230, 395, { size: 12, color: '#7a5a3a' });
     // 공
     const p = this.posAt(this.pos);
@@ -676,7 +679,7 @@ const magnet = {
     title: '자석 경사로',
     structure: '기둥 꼭대기에 <b>천연 자석</b>이 있다. 쇠공이 윗 경사로를 따라 자석에 끌려 올라가다가, 꼭대기 직전의 <b>구멍</b>으로 떨어진다. 그 뒤 아랫 경사로를 굴러 다시 출발점으로 돌아온다. (아랫 경사로 시작점은 막혀 있어서, 떨어진 공이 구멍으로 되돌아 올라가지는 못한다.)',
     idea: '자석이 공을 끌어 올리고, 중력이 공을 떨어뜨린다. 두 힘이 번갈아 일하니 공은 영원히 돌고, 그 사이에 바퀴도 돌릴 수 있을 것이다.',
-    observe: ['처음에는 자석이 공을 끌어당겨 <b>스스로 올라가는 것처럼</b> 보인다.', '<b>자석 세기</b>를 바꿔 보자. 강하면 공이 구멍 위에 붙어 떨어지지 않고, 약하면 구멍으로 떨어진 뒤 다시 꼭대기까지 올라오지 못한다.', '아래 그래프: 공은 초록 점선(전체 에너지)보다 높은 언덕을 넘지 못한다.'],
+    observe: ['처음에는 자석이 공을 끌어당겨 <b>스스로 올라가는 것처럼</b> 보인다.', '<b>자석 세기</b>를 바꿔 보자. 아주 약하면 공이 언덕을 못 넘고 되굴러 내려오고, 중간이면 구멍으로 떨어져 출발점으로 돌아와 멈춘다. 자석이 아주 세고 마찰도 크면 공이 구멍 위 골짜기에 붙잡혀 떨어지지 못한다. 어느 경우에도 처음에 우리가 올려 준 에너지 이상은 돌려받지 못한다.', '아래 그래프: 공은 초록 점선(전체 에너지)보다 높은 언덕을 넘지 못한다.'],
     contra: `<h4>[모순] 열역학 제1법칙(에너지 보존) 위반</h4>
       <p>중력과 자석의 힘은 모두 <b>보존력</b>이다. 위치에너지가 위치만으로 정해지므로, 닫힌 경로를 한 바퀴 돌면 두 힘이 한 일의 합은 0이다: <span class="eq">∮ F · ds = 0</span>.</p>
       <p>위치에너지 그래프를 '언덕과 골짜기'로 보면 쉽다. 자석 근처는 깊은 골짜기다. 공을 떨어뜨리려면 그 골짜기를 다시 빠져나와야 한다. <b>공을 끌어올릴 만큼 센 자석은 공을 놓아주지도 않는다.</b></p>
@@ -755,10 +758,10 @@ const fludd = {
     x.fillStyle = 'rgba(141,110,79,.25)'; x.fillRect(0, -13, len, 26); x.strokeStyle = '#8d6e4f'; x.lineWidth = 2; x.strokeRect(0, -13, len, 26);
     for (let s = (this.aS * 8) % 22; s < len; s += 22) line(x, s, -13, s + 11, 13, '#6d4c41', 2.5);
     x.restore();
-    txt(x, '나선 펌프', 18, 215, { size: 12, bold: true, color: '#6d4c41' });
+    txt(x, '나선 펌프', 4, 190, { size: 12, bold: true, color: '#6d4c41' });
     // 동력 연결 표시 (물레방아 → 펌프)
     line(x, wx, wy, 70, 230, 'rgba(74,88,104,.45)', 2, [6, 5]);
-    txt(x, '물레방아 힘으로 펌프를 돌림', 120, 290, { size: 11, color: '#55657a' });
+    label(x, '← 펌프 구동', 208, 262, '#55657a', 'rgba(255,255,255,.9)', 11);
     if (this.V <= 0.001) label(x, '물이 바닥남 — 모두 멈춤', 260, 30, '#c0392b', 'rgba(255,235,233,.95)', 15);
     const tot = this.V + this.Emill + this.Eloss;
     panel(x, '에너지 장부 (처음 물 = 1)', [
@@ -862,13 +865,13 @@ const buoy = {
     }
     // 힘 화살표
     const bx = 420, by = 210;
-    txt(x, '사슬에 걸리는 힘 (공 1개 부력 = 1)', 345, 60, { size: 12, bold: true });
-    arrow(x, bx - 40, by, bx - 40, by - f.nIn * 26, '#27ae60', 6, 14);
-    txt(x, `부력 합 ${fmt(f.nIn, 2)}`, bx - 40, by + 20, { size: 12, bold: true, align: 'center', color: '#1e8449' });
+    txt(x, '사슬에 걸리는 힘 (공 1개 부력 = 1)', 418, 60, { size: 11, bold: true, align: 'center' });
+    arrow(x, bx - 48, by, bx - 48, by - f.nIn * 26, '#27ae60', 6, 14);
+    txt(x, `부력 합 ${fmt(f.nIn, 2)}`, bx - 48, by + 20, { size: 12, bold: true, align: 'center', color: '#1e8449' });
     if (!this.params.naive) {
-      arrow(x, bx + 30, by - 104, bx + 30, by - 104 + f.seal * 26, '#c0392b', 6, 14);
-      txt(x, `바닥 수압 ${fmt(f.seal, 2)}`, bx + 30, by + 20, { size: 12, bold: true, align: 'center', color: '#c0392b' });
-    } else txt(x, '수압 무시!', bx + 30, by + 20, { size: 12, bold: true, align: 'center', color: '#c0392b' });
+      arrow(x, bx + 40, by - 104, bx + 40, by - 104 + f.seal * 26, '#c0392b', 6, 14);
+      txt(x, `바닥 수압 ${fmt(f.seal, 2)}`, bx + 48, by + 20, { size: 12, bold: true, align: 'center', color: '#c0392b' });
+    } else txt(x, '수압 무시!', bx + 40, by + 20, { size: 12, bold: true, align: 'center', color: '#c0392b' });
     label(x, `알짜 힘 ${fmt(f.net, 2)}`, 405, 260, Math.abs(f.net) < 0.6 ? '#27ae60' : '#c0392b', 'rgba(240,244,248,.95)', 13);
     txt(x, '(공이 드나들 때 잠깐씩 출렁)', 405, 282, { size: 11, align: 'center', color: '#66768a' });
     if (this.params.naive) label(x, '⚠ 상상 속에서만 가속', 405, 330, '#c0392b', 'rgba(255,235,233,.95)', 14);
@@ -935,7 +938,7 @@ const ship = {
     return [
       { type: 'check', key: 'single', label: '단일 열원 (바다 하나만 사용)' },
       { type: 'range', key: 'th', label: '바다(고열원) 온도', min: 0, max: 35, step: 1, fmt: v => v + ' °C' },
-      { type: 'range', key: 'tc', label: '저열원 온도', min: -100, max: 35, step: 1, fmt: v => v + ' °C' },
+      { type: 'range', key: 'tc', label: '저열원 온도', min: -100, max: 35, step: 1, fmt: v => v + ' °C', on: () => { if (this.params.single) { this.params.single = false; const cb = document.querySelector('#controls input[type=checkbox]'); if (cb) cb.checked = false; } } },
       { type: 'range', key: 'eff', label: '얻으려는 효율 W/Q₁', min: 0, max: 100, step: 1, fmt: v => v + '%' },
     ];
   },
@@ -1221,7 +1224,7 @@ const ratchet = {
     txt(x, '보라: 멈춤쇠 + 용수철', R.x0, R.y1 + 18, { size: 11, color: '#6c3483' });
     // 실패와 추
     const sx = 250; circle(x, sx, cy, 13, '#b08d6e', '#6d4c41', 2);
-    const wy = 380 - (((this.vis * 3) % 140) + 140) % 140;
+    const wy = 380 - clamp(this.vis * 3, 0, 140); // 추는 바닥(0)과 맨 위(실이 다 감긴 곳) 사이에서만 움직인다
     line(x, sx + 13, cy, sx + 13, wy - 12, '#6d4c41', 1.5);
     x.fillStyle = P.L > 0 ? '#34495e' : '#bdc3c7'; rrect(x, sx + 1, wy - 12, 24, 22, 3); x.fill();
     txt(x, `추 ${P.L.toFixed(2)}`, sx + 30, wy + 4, { size: 11, color: '#55657a' });
@@ -1248,8 +1251,9 @@ const ratchet = {
     plot(g, F, h.map(p => p[0]), h.map(p => p[1]), '#1f2d3d', 2);
     const r = this.rates(); const net = r.f - r.b;
     const last = h[h.length - 1];
-    plot(g, F, [t0, t1], [last[1] - net * (last[0] - t0), last[1] + net * (t1 - last[0])], '#e67e22', 1.5, [6, 4]);
-    legend(g, [['실제 회전 (무작위)', '#1f2d3d'], ['평균 기울기 (이론)', '#e67e22']], 420, 15);
+    const first = h.find(p => p[0] >= t0) || h[0];
+    plot(g, F, [first[0], t1], [first[1], first[1] + net * (t1 - first[0])], '#e67e22', 1.5, [6, 4]);
+    legend(g, [['실제 회전 (무작위)', '#1f2d3d'], ['평균 기울기 (이론, 구간 시작점 기준)', '#e67e22']], 420, 15);
   },
   html: {
     meta: '마리안 스몰루호프스키 · 1912 / 리처드 파인만 『파인만 물리학 강의』 · 1962',
@@ -1261,7 +1265,7 @@ const ratchet = {
       <p>멈춤쇠와 용수철도 분자로 이루어져 있어 <b>같은 온도로 함께 떨린다</b>. 톱니 하나를 앞으로 넘기려면 날개 쪽 열요동이 용수철 에너지 ε(와 추의 몫 L)를 모아야 한다. 반대로 멈춤쇠 쪽 열요동이 ε만큼 모이면 멈춤쇠가 저절로 들려 톱니가 뒤로 미끄러진다.</p>
       <p style="text-align:center"><span class="eq">정방향 ∝ e<sup>−(ε+L)/kT₁</sup></span> &nbsp; <span class="eq">역방향 ∝ e<sup>−ε/kT₂</sup></span></p>
       <p>T₁ = T₂이고 부하가 0이면 두 확률이 <b>정확히 같아</b> 평균 회전은 0이다. 일을 하려면 <b>온도 차(T₁ &gt; T₂)</b>가 필요하고, 그 효율은 카르노 효율을 넘지 못한다. 이는 맥스웰의 도깨비와 같은 원리다.</p>`,
-    story: '🧬 세포 속 <b>분자 모터</b>(키네신, ATP 합성효소 등)는 브라운 래칫과 비슷하게 열요동을 이용한다. 하지만 ATP를 분해하는 화학 에너지나 이온 농도 차를 <b>소비</b>해야만 한쪽 방향으로 움직인다. 광학 집게 실험으로도 외부 에너지 없이 열요동만으로는 한쪽 방향 운동을 만들 수 없음이 확인되었다.',
+    story: '🧬 세포 속 <b>분자 모터</b>(키네신, ATP 합성효소 등)는 브라운 래칫과 비슷하게 열요동을 이용한다. 하지만 ATP를 분해하는 화학 에너지나 이온 농도 차를 <b>소비</b>해야만 한쪽 방향으로 움직인다.',
     q: 'T₁ < T₂로 하면 바퀴는 어느 쪽으로 돌까? 그때 장치는 어떤 기계(열기관? 냉장고?)처럼 작동하는지 생각해 보자.',
   },
 };

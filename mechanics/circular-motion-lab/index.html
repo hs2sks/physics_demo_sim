@@ -1,0 +1,1908 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>등속원운동 실험, 어떻게 설계하나</title>
+<style>
+  :root {
+    --bg: #f4f6fa; --panel: #ffffff; --ink: #1c2733; --sub: #5a6b7d;
+    --accent: #1f6fd6; --accent2: #d64545; --ok: #1e8f4e;
+    --border: #d7dee8; --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+  body {
+    font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+    background: var(--bg); color: var(--ink);
+    padding: 12px; font-size: 15px;
+  }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  header h1 { font-size: 1.25em; }
+  header .spacer { flex: 1; }
+  a.home { text-decoration:none; color:var(--sub); border:1px solid var(--border); padding:6px 12px; border-radius:8px; font-size:0.9em; white-space:nowrap; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .tabs button { flex: 0 0 auto; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 1em; }
+  .tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .layout { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .sim-col { flex: 2 1 480px; display: flex; flex-direction: column; gap: 12px; }
+  .side-col { flex: 1 1 320px; display: flex; flex-direction: column; gap: 12px; }
+
+  #sceneWrap { position: relative; width: 100%; aspect-ratio: 16/10; border-radius: 8px; overflow: hidden; background: radial-gradient(circle at 50% 30%, #16233a, #060a12 75%); }
+  #sceneWrap canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #hoverHint { position:absolute; left:8px; bottom:8px; color:#9fb3d9; font-size:0.78em; background:rgba(6,10,18,0.55); padding:4px 8px; border-radius:6px; pointer-events:none; }
+  #hoverHint:empty { display: none; }
+  #simError { position:absolute; left:8px; right:8px; top:8px; color:#fff; background:rgba(214,69,69,0.92); padding:6px 10px; border-radius:6px; font-size:0.82em; white-space:pre-wrap; }
+
+  .scenario-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .scenario-picker button { flex: 1 1 30%; min-width: 120px; padding: 8px 6px; font-size: 0.86em; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  .scenario-picker button.active { background: #eaf1fd; border-color: var(--accent); color: var(--accent); font-weight: 700; }
+
+  .param { margin-bottom: 10px; }
+  .param label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 4px; font-size: 0.92em; }
+  .param label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .param input[type=range] { width: 100%; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .hint { color: var(--sub); font-size: 0.83em; margin-top: 2px; line-height: 1.5; }
+
+  button { font-size: 1em; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.warn { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .controls-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.82em; color: var(--sub); margin-top: 8px; }
+  .legend:empty { display: none; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .swatch { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .swatch.bar { border-radius: 2px; }
+
+  table.readout { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+  table.readout td { padding: 4px 2px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  table.readout td:first-child { color: var(--sub); }
+  table.readout td:last-child { text-align: right; font-weight: 700; }
+
+  details { margin-top: 6px; }
+  summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+  .formula-body { padding: 8px 2px; line-height: 1.8; font-size: 0.92em; }
+  .formula-body .eq { font-size: 1.08em; text-align: center; margin: 6px 0; font-family: Georgia, serif; }
+  .note { border-left: 3px solid var(--accent); background: #eef4fd; padding: 8px 10px; border-radius: 6px; font-size: 0.86em; margin-top: 8px; line-height: 1.6; }
+  .note:empty { display: none; }
+  .misconception { border-left: 3px solid var(--accent2); background: #fdeeee; padding: 8px 10px; border-radius: 6px; font-size: 0.86em; margin-top: 8px; line-height: 1.6; }
+
+  canvas.chart { width: 100%; background: #fff; border: 1px solid var(--border); border-radius: 6px; }
+
+  body.projector { font-size: 19px; }
+  body.projector button { padding: 12px 18px; }
+  body.projector .scenario-picker button { font-size: 1em; padding: 12px 8px; }
+
+  @media (max-width: 720px) {
+    body { font-size: 16px; padding: 8px; }
+    .layout { flex-direction: column; }
+    .sim-col, .side-col { flex: 1 1 100%; }
+    button { padding: 11px 14px; }
+    input[type=range] { height: 26px; }
+  }
+/* ---- 레시피 입력 extra_css ---- */
+.lb-proc{border:1px solid var(--border);border-radius:8px;padding:6px 10px;margin-bottom:8px;background:#f8fafc}.lb-proc summary{cursor:pointer;font-weight:700}.lb-proc ol{margin:6px 0 2px 18px;padding:0;font-size:13px;line-height:1.5}.lb-note{font-size:13px;color:var(--sub);margin-bottom:8px}.rp-f{margin:10px 0}.rp-h{display:block;font-weight:700;margin-bottom:2px}.rp-hint{font-size:12px;color:var(--sub);margin-bottom:4px;line-height:1.45}.rp-f textarea,.rp-f input{width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:8px;padding:8px;font:inherit;color:var(--ink);background:#fff}.qz-head{font-weight:700;margin:4px 0 10px;color:var(--ink)}.qz-card{border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;background:#f8fafc}.qz-q{font-weight:600;margin-bottom:8px;color:var(--ink);line-height:1.5}.qz-opt{display:block;width:100%;text-align:left;margin:4px 0;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--ink);cursor:pointer;font:inherit}.qz-opt:hover:not(:disabled){background:#eaf2ff}.qz-opt.ok{border-color:var(--ok);background:#e3f5ea}.qz-opt.bad{border-color:var(--accent2);background:#fde8e8}.qz-opt:disabled{cursor:default}.qz-ex{margin-top:8px;padding:8px 10px;border-radius:8px;background:#fff6dd;color:var(--ink);line-height:1.5}.qz-reset{padding:8px 14px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--ink);cursor:pointer;font:inherit}.lb-bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}.lb-btn{padding:8px 12px;border:1px solid var(--ok);border-radius:8px;background:#e8f6ee;color:var(--ink);cursor:pointer;font:inherit;font-weight:600}.lb-btn.alt{border-color:var(--accent);background:#eaf2ff}.lb-btn.warn{border-color:var(--accent2);background:#fde8e8}.lb-btn:disabled{opacity:.45;cursor:not-allowed}.lb-warn{color:var(--accent2);margin:6px 0;font-weight:600}.lb-stat{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}.lb-badge{padding:4px 10px;border-radius:999px;border:1px solid var(--border);color:var(--sub);font-size:13px}.lb-badge.on{border-color:var(--ok);color:var(--ok);font-weight:700}.lb-tbl{width:100%;border-collapse:collapse;font-size:13px;color:var(--ink)}.lb-tbl th,.lb-tbl td{border:1px solid var(--border);padding:5px 7px;text-align:right}.lb-tbl.wide th,.lb-tbl.wide td{text-align:left;vertical-align:top;line-height:1.45}.lb-tbl td.k{font-weight:700;color:var(--accent);white-space:nowrap}.lb-tbl th{background:#eef2f8}
+</style>
+</head>
+<body>
+
+<header>
+  <a class="home" href="../../index.html">🏠 홈</a>
+  <h1>🌀 등속원운동 실험, 어떻게 설계하나</h1>
+  <span class="spacer"></span>
+  <button id="projectorBtn" title="프로젝터용 큰 글씨 모드">🖥 큰 글씨 모드</button>
+</header>
+
+<div class="tabs" id="tabs"></div>
+
+<div class="layout">
+
+  <div class="sim-col">
+    <div class="panel">
+      <div id="sceneWrap">
+        <div id="hoverHint"></div>
+        <div id="simError" hidden></div>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="panel" id="graphPanel" hidden>
+      <canvas id="chartCanvas" class="chart" width="440" height="220"></canvas>
+      <div class="hint" id="chartHint"></div>
+    </div>
+  </div>
+
+  <div class="side-col">
+
+    <div class="panel" id="scenarioPanel">
+      <div class="scenario-picker" id="scenarioPicker"></div>
+      <div id="scenarioBody"></div>
+      <div id="customPanel"></div>
+    </div>
+
+    <div class="panel" id="readoutPanel">
+      <b id="readoutTitle"></b>
+      <table class="readout" id="readout"></table>
+      <div class="note" id="readoutNote"></div>
+    </div>
+
+    <div class="panel">
+      <details id="formulaDetails">
+        <summary>📐 관련 공식 보기</summary>
+        <div class="formula-body" id="formulaBody"></div>
+      </details>
+    </div>
+
+    <div class="panel" id="misconceptionPanel"></div>
+
+  </div>
+</div>
+
+
+<script>
+const WS_CONFIG = {
+ "title": "등속원운동 실험, 어떻게 설계하나",
+ "renderer": "canvas2d",
+ "scene": {
+  "aspect": "16/10",
+  "hint": ""
+ },
+ "legend": [
+  {
+   "label": "속도 v",
+   "color": "#5eead4"
+  },
+  {
+   "label": "구심력·가속도",
+   "color": "#ff5d73"
+  },
+  {
+   "label": "장력 T=Mg",
+   "color": "#ffb454"
+  },
+  {
+   "label": "마개 무게",
+   "color": "#b48cff"
+  }
+ ],
+ "tabs": [
+  {
+   "id": "theory",
+   "label": "① 이론"
+  },
+  {
+   "id": "design",
+   "label": "② 설계"
+  },
+  {
+   "id": "collect",
+   "label": "③ 수집·수합"
+  },
+  {
+   "id": "convert",
+   "label": "④ 변환"
+  },
+  {
+   "id": "critique",
+   "label": "⑤ 비판·확장"
+  },
+  {
+   "id": "report",
+   "label": "⑥ 보고서"
+  }
+ ],
+ "scenarios": [
+  {
+   "id": "kin",
+   "tab": "theory",
+   "name": "속도·가속도·힘의 방향",
+   "section": "① 이론",
+   "desc": "같은 속력으로 원을 도는 물체의 속도(접선), 가속도·알짜힘(중심 방향)을 본다. '줄 끊기'를 고르면 줄이 끊어진 뒤 어디로 가는지 확인된다. r, T, m을 바꾸면 값이 어떻게 달라지는지 실험 전에 예측하자.",
+   "misconception_title": "오개념: 원운동하는 물체에는 바깥으로 향하는 원심력이 작용해서 줄을 끊으면 바깥으로 날아간다",
+   "misconception": "줄이 끊어지면 마개는 순간 속도의 방향, 즉 접선 방향으로 날아간다. 관성계에서 마개에 작용하는 실제 힘은 중심 방향 장력 하나뿐이고, 그 알짜힘이 구심력이다. '원심력'은 회전하는 사람의 관점에서 쓰는 관성력이며, 이 실험의 측정값(장력)을 설명하는 데는 필요 없다.",
+   "formula": [
+    {
+     "eq_html": "v = 2πr / T = ωr",
+     "text_html": "속력은 일정하지만 방향이 계속 바뀐다 (접선 방향)"
+    },
+    {
+     "eq_html": "a = v²/r = ω²r = 4π²r/T²",
+     "text_html": "가속도는 중심 방향, 크기는 일정"
+    },
+    {
+     "eq_html": "F = m a = 4π² m r / T²",
+     "text_html": "구심력: 알짜힘의 방향이 중심이라는 뜻 (새로운 종류의 힘이 아님)"
+    }
+   ],
+   "params": [
+    {
+     "key": "rk",
+     "label": "반지름 r",
+     "min": 0.2,
+     "max": 1.0,
+     "step": 0.05,
+     "value": 0.5,
+     "unit": "m"
+    },
+    {
+     "key": "Tk",
+     "label": "주기 T",
+     "min": 2,
+     "max": 8,
+     "step": 0.5,
+     "value": 3,
+     "unit": "s"
+    },
+    {
+     "key": "mk",
+     "label": "질량 m",
+     "min": 0.1,
+     "max": 2,
+     "step": 0.1,
+     "value": 0.5,
+     "unit": "kg"
+    },
+    {
+     "key": "spkk",
+     "label": "재생 배속",
+     "min": 0.2,
+     "max": 2,
+     "step": 0.1,
+     "value": 1
+    }
+   ],
+   "choices": [
+    {
+     "key": "cut",
+     "label": "줄 상태",
+     "value": "hold",
+     "options": [
+      {
+       "value": "hold",
+       "label": "줄 유지"
+      },
+      {
+       "value": "cut",
+       "label": "줄 끊기"
+      }
+     ]
+    }
+   ],
+   "animated": true,
+   "status_hint": "▶ 재생 / ⏸ 멈춤: 줄 끊기를 고르면 접선으로 날아간다"
+  },
+  {
+   "id": "derive",
+   "tab": "theory",
+   "name": "왜 a = v²/r 인가: Δv 도출",
+   "section": "① 이론",
+   "desc": "속력이 일정해도 속도가 바뀌는 양 Δv를 기하학으로 구한다. 위치 삼각형과 속도 삼각형이 닮음이라는 것이 핵심이다. Δθ를 줄이면 |Δv|/Δt가 v²/r로 수렴한다.",
+   "misconception_title": "오개념: 속력이 일정하면 가속도는 0이다",
+   "misconception": "가속도는 속도(벡터)의 변화율이다. 속력이 같아도 방향이 바뀌면 Δv ≠ 0 이다. 위의 그림에서 Δv는 두 속도 벡터의 끝점을 이은 화살표이고, Δθ가 작아질수록 중심을 가리킨다.",
+   "formula": [
+    {
+     "eq_html": "|Δv| = 2v sin(Δθ/2) ≈ vΔθ",
+     "text_html": "속도 삼각형 (이등변삼각형)"
+    },
+    {
+     "eq_html": "Δθ = ωΔt = vΔt/r",
+     "text_html": "위치 삼각형: 호의 길이 = vΔt"
+    },
+    {
+     "eq_html": "a = |Δv|/Δt = v·ω = v²/r",
+     "text_html": "Δt → 0 극한"
+    }
+   ],
+   "params": [
+    {
+     "key": "dth",
+     "label": "Δθ",
+     "min": 5,
+     "max": 150,
+     "step": 5,
+     "value": 90,
+     "unit": "°"
+    }
+   ]
+  },
+  {
+   "id": "rig",
+   "tab": "design",
+   "name": "직접 못 재는 힘 → 걸이추로 대체",
+   "section": "② 설계",
+   "desc": "구심력은 줄이 마개를 당기는 힘이라 용수철저울을 달아 회전시키면 줄이 늘어나고 저울이 흔들려 정확히 읽기 어렵다. 유리관을 방향 바꾸는 도르래로 쓰고 줄 끝에 추를 매달면 장력 T = Mg 로 일정하고 무게는 저울 없이 알 수 있다.",
+   "misconception_title": "오개념: 구심력은 정확히 걸이추의 무게 Mg 이다",
+   "misconception": "장력 T는 Mg 이지만 줄이 수평에서 θ만큼 처져 있어 구심력은 그 수평 성분 Mg cosθ 이다. 수직 성분 T sinθ 는 마개의 무게 mg 를 받친다. 반경도 L이 아니라 r = L cosθ 이다. 다행히 두 보정이 같은 cosθ 라서 F/r = Mg/L 로 서로 상쇄되어, Mg와 L을 구심력·반경 대신 써도 비례 관계는 그대로이다.",
+   "formula": [
+    {
+     "eq_html": "T = M g",
+     "text_html": "유리관이 마찰 없이 방향만 바꾼다고 보면 장력 = 추의 무게"
+    },
+    {
+     "eq_html": "T sinθ = m g,  T cosθ = F_c",
+     "text_html": "마개: 수직으로 평형, 수평 성분이 구심력"
+    },
+    {
+     "eq_html": "F_c / r = M g / L",
+     "text_html": "cosθ 상쇄: 비례 실험에서는 Mg와 L로 충분 → T = 2π√(mL/Mg)"
+    }
+   ],
+   "params": [
+    {
+     "key": "nw",
+     "label": "걸이추 개수 (1개 = 5 g)",
+     "min": 4,
+     "max": 40,
+     "step": 1,
+     "value": 12,
+     "unit": "개"
+    },
+    {
+     "key": "mg",
+     "label": "마개 질량 m",
+     "min": 10,
+     "max": 60,
+     "step": 5,
+     "value": 20,
+     "unit": "g"
+    },
+    {
+     "key": "Lcm",
+     "label": "줄 길이 L (마개 중심~유리관 끝)",
+     "min": 30,
+     "max": 100,
+     "step": 5,
+     "value": 70,
+     "unit": "cm"
+    },
+    {
+     "key": "spk",
+     "label": "재생 배속 (화면 느리게)",
+     "min": 0.05,
+     "max": 1,
+     "step": 0.05,
+     "value": 0.2
+    }
+   ],
+   "choices": [
+    {
+     "key": "forces",
+     "label": "힘 삼각형",
+     "value": "on",
+     "options": [
+      {
+       "value": "on",
+       "label": "표시"
+      },
+      {
+       "value": "off",
+       "label": "숨김"
+      }
+     ]
+    }
+   ],
+   "animated": true,
+   "status_hint": "▶ 재생: 마개가 도는 원뿔 모양 궤도"
+  },
+  {
+   "id": "plan",
+   "tab": "design",
+   "name": "변인 지도: 무엇을 바꾸고 무엇을 고정하나",
+   "section": "② 설계",
+   "desc": "한 번에 하나만 바꾸는 이유는 '원인을 단정'할 수 있어서이다. 구심력 F, 반경 r, 질량 m 중 알고 싶은 관계를 고르면 독립·종속·통제 변인과 측정 조건이 자동으로 계획된다. 점 수와 범위 배율을 바꿔 지수 q의 불확도를 비교한다.",
+   "misconception_title": "오개념: 변인을 한꺼번에 바꿔도 그래프 하나로 모든 관계를 알 수 있다",
+   "misconception": "F, r, m을 동시에 바꾸면 주기 변화가 누구 때문인지 구별할 수 없다. 한 변인만 바꾼 계열을 세 개 만들고, 나머지는 같은 값으로 고정한다. 또 범위가 좁거나 점이 적으면 같은 측정 오차로도 지수(관계의 형태)를 확정할 수 없다.",
+   "formula": [
+    {
+     "eq_html": "T = 2π√(m L / M g)",
+     "text_html": "F↑ → T↓ (T ∝ F<sup>-1/2<\/sup>),  L↑ 또는 m↑ → T↑ (T ∝ L<sup>1/2<\/sup>, m<sup>1/2<\/sup>)"
+    },
+    {
+     "eq_html": "σ_q ≈ δ(ln T) / √Σ(Δln x)²",
+     "text_html": "범위가 넓고 점이 많을수록 지수의 불확도가 작다"
+    }
+   ],
+   "params": [
+    {
+     "key": "nw",
+     "label": "걸이추 개수 (1개 = 5 g)",
+     "min": 4,
+     "max": 40,
+     "step": 1,
+     "value": 12,
+     "unit": "개"
+    },
+    {
+     "key": "mg",
+     "label": "마개 질량 m",
+     "min": 10,
+     "max": 60,
+     "step": 5,
+     "value": 20,
+     "unit": "g"
+    },
+    {
+     "key": "Lcm",
+     "label": "줄 길이 L (마개 중심~유리관 끝)",
+     "min": 30,
+     "max": 100,
+     "step": 5,
+     "value": 70,
+     "unit": "cm"
+    },
+    {
+     "key": "npt",
+     "label": "측정 점 수",
+     "min": 3,
+     "max": 9,
+     "step": 1,
+     "value": 5,
+     "unit": "개"
+    }
+   ],
+   "choices": [
+    {
+     "key": "goal",
+     "label": "알고 싶은 관계",
+     "value": "F",
+     "options": [
+      {
+       "value": "F",
+       "label": "구심력 F (추 개수)"
+      },
+      {
+       "value": "r",
+       "label": "반경 r (줄 길이)"
+      },
+      {
+       "value": "m",
+       "label": "질량 m (마개)"
+      }
+     ]
+    },
+    {
+     "key": "span",
+     "label": "범위 배율 (최대/최소)",
+     "value": "3",
+     "options": [
+      {
+       "value": "1.5",
+       "label": "1.5배 (좁게)"
+      },
+      {
+       "value": "3",
+       "label": "3배"
+      },
+      {
+       "value": "6",
+       "label": "6배 (넓게)"
+      }
+     ]
+    }
+   ],
+   "chart": true
+  },
+  {
+   "id": "lab",
+   "tab": "collect",
+   "name": "가상 실험대: 수집과 기록",
+   "section": "③ 수집·수합",
+   "desc": "조건을 정하고 n회전 시간을 재어 기록한다. 같은 조건은 여러 번 재어 평균(표준편차)을 내고, 계열 A·B·C(추 개수·줄 길이·마개 질량)를 3점 이상씩 모은다. 기록이 모자라면 ④탭은 예시 데이터를 쓴다. 이 실험대의 유리관 마찰 2 %는 숨은 계통오차로 들어 있다.",
+   "misconception_title": "오개념: 한 번 정확히 재면 충분하다 / 많이 돌릴수록 더 정확하다",
+   "misconception": "한 번의 측정에는 우연오차가 섞여 있다. 같은 조건을 반복하면 평균이 안정되고 흩어짐(표준편차)으로 신뢰도를 알 수 있다. 또 회전 수를 늘릴수록 반응 오차는 줄지만 속도 변동이 누적되어 어느 지점부터는 오히려 나빠진다(다음 시나리오).",
+   "formula": [
+    {
+     "eq_html": "T = t_n / n",
+     "text_html": "n회전 시간을 회전 수로 나눈 평균 주기"
+    },
+    {
+     "eq_html": "T̄ = (T₁+…+T_k)/k,  s = √[Σ(T−T̄)²/(k−1)]",
+     "text_html": "같은 조건의 반복 평균과 표준편차"
+    },
+    {
+     "eq_html": "계열: 하나만 변화",
+     "text_html": "A: 추 개수 · B: 줄 길이 · C: 마개 질량 (나머지 고정)"
+    }
+   ],
+   "params": [
+    {
+     "key": "nw",
+     "label": "걸이추 개수 (1개 = 5 g)",
+     "min": 4,
+     "max": 40,
+     "step": 1,
+     "value": 12,
+     "unit": "개"
+    },
+    {
+     "key": "mg",
+     "label": "마개 질량 m",
+     "min": 10,
+     "max": 60,
+     "step": 5,
+     "value": 20,
+     "unit": "g"
+    },
+    {
+     "key": "Lcm",
+     "label": "줄 길이 L (마개 중심~유리관 끝)",
+     "min": 30,
+     "max": 100,
+     "step": 5,
+     "value": 70,
+     "unit": "cm"
+    },
+    {
+     "key": "spk",
+     "label": "재생 배속 (화면 느리게)",
+     "min": 0.05,
+     "max": 1,
+     "step": 0.05,
+     "value": 0.2
+    }
+   ],
+   "choices": [
+    {
+     "key": "nrev",
+     "label": "측정할 회전 수 n",
+     "value": "10",
+     "options": [
+      {
+       "value": "1",
+       "label": "1회전"
+      },
+      {
+       "value": "5",
+       "label": "5회전"
+      },
+      {
+       "value": "10",
+       "label": "10회전"
+      },
+      {
+       "value": "20",
+       "label": "20회전"
+      }
+     ]
+    }
+   ],
+   "animated": true,
+   "status_hint": "▶ 재생: 아래 버튼으로 측정·기록"
+  },
+  {
+   "id": "timing",
+   "tab": "collect",
+   "name": "왜 10회전을 재나: 측정 불확도 설계",
+   "section": "③ 수집·수합",
+   "desc": "스톱워치의 반응 오차(시작·끝)는 재는 시간과 무관한 약 0.12 s이다. 회전 수를 늘리면 주기에 미치는 비율이 줄어든다. 하지만 오래 돌릴수록 속도·반경이 흔들리는 누적 오차가 커진다. 두 효과가 만나는 최적점을 찾는다.",
+   "misconception_title": "오개념: 회전 수를 많이 잴수록 항상 정확하다",
+   "misconception": "반응 오차는 σ/(nT)로 n에 반비례해 줄지만, 누적 변동은 κn으로 n에 비례해 늘어난다. 합성 오차는 중간에서 최소이다. 실험노트가 10회전(교사 연수 교재는 20회전)을 권하는 것은 이 바닥 부근을 쓰는 것이다.",
+   "formula": [
+    {
+     "eq_html": "δT/T = √[(σ/nT)² + (κn)²]",
+     "text_html": "반응 오차 항 + 누적 변동 항"
+    },
+    {
+     "eq_html": "n* = √(σ / (T κ))",
+     "text_html": "합성 오차가 최소가 되는 회전 수 (d(δT/T)/dn = 0)"
+    }
+   ],
+   "params": [
+    {
+     "key": "Tt",
+     "label": "주기 T",
+     "min": 0.4,
+     "max": 2,
+     "step": 0.1,
+     "value": 1,
+     "unit": "s"
+    },
+    {
+     "key": "sig",
+     "label": "스톱워치 반응 오차 σ",
+     "min": 0.05,
+     "max": 0.3,
+     "step": 0.01,
+     "value": 0.12,
+     "unit": "s"
+    }
+   ],
+   "choices": [
+    {
+     "key": "nrev",
+     "label": "측정할 회전 수 n",
+     "value": "10",
+     "options": [
+      {
+       "value": "1",
+       "label": "1회전"
+      },
+      {
+       "value": "5",
+       "label": "5회전"
+      },
+      {
+       "value": "10",
+       "label": "10회전"
+      },
+      {
+       "value": "20",
+       "label": "20회전"
+      }
+     ]
+    }
+   ],
+   "chart": true
+  },
+  {
+   "id": "lin",
+   "tab": "convert",
+   "name": "선형화: 어느 축에 그려야 직선인가",
+   "section": "④ 변환",
+   "desc": "세 계열의 데이터를 가로축 T, T², 1/T²로 바꿔 그린다. 직선도(R²)와 로그–로그 지수 p를 비교해 어떤 변환이 직선인지 찾고, 기울기에서 상수를 읽는다. 기록이 3점 이상 모인 계열은 내 데이터, 모자라면 예시 데이터를 쓴다.",
+   "misconception_title": "오개념: 그래프가 곡선이면 실험이 잘못된 것이다",
+   "misconception": "F ∝ 1/T² 는 곡선이 맞다. 곡선은 틀린 실험이 아니라 관계의 형태이다. 변수를 바꿔(1/T², T²) 직선으로 펴야 기울기를 읽고 원점 통과 여부를 확인할 수 있다. 관계를 모를 때는 로그–로그 기울기가 거듭제곱 지수를 직접 알려 준다.",
+   "formula": [
+    {
+     "eq_html": "F = (4π² m L) · (1/T²)",
+     "text_html": "계열 A: y = F, x = 1/T² → 기울기 4π² m L"
+    },
+    {
+     "eq_html": "L = [Mg / (4π² m)] · T²",
+     "text_html": "계열 B: y = L, x = T² → 기울기 Mg/(4π²m)"
+    },
+    {
+     "eq_html": "m = [Mg / (4π² L)] · T²",
+     "text_html": "계열 C: y = m, x = T² → 기울기 Mg/(4π²L)"
+    }
+   ],
+   "choices": [
+    {
+     "key": "ser",
+     "label": "계열",
+     "value": "F",
+     "options": [
+      {
+       "value": "F",
+       "label": "A: 추 개수(구심력 F)"
+      },
+      {
+       "value": "r",
+       "label": "B: 줄 길이(반경 r)"
+      },
+      {
+       "value": "m",
+       "label": "C: 마개 질량 m"
+      }
+     ]
+    },
+    {
+     "key": "axis",
+     "label": "가로축 변환",
+     "value": "inv",
+     "options": [
+      {
+       "value": "T",
+       "label": "T"
+      },
+      {
+       "value": "T2",
+       "label": "T²"
+      },
+      {
+       "value": "inv",
+       "label": "1/T²"
+      }
+     ]
+    }
+   ],
+   "chart": true
+  },
+  {
+   "id": "collapse",
+   "tab": "convert",
+   "name": "세 계열을 한 직선으로: F = 4π² (m r / T²)",
+   "section": "④ 변환",
+   "desc": "세 실험(F, r, m 변화)의 모든 점을 y = F, x = m r/T² 로 한 그래프에 모은다. 이론대로면 모두 기울기 4π²인 직선 하나에 겹친다. 보정 방식(노트·정확 보정·혼합)을 바꿔 가며 일관성의 중요성을 본다.",
+   "misconception_title": "오개념: 점이 직선 위에 있으면 기울기 값도 정확하다",
+   "misconception": "직선성(R²)은 우연오차와 비례 관계만 말해 준다. 모든 점이 같은 비율로 치우치는 계통오차(마찰, 잘못된 r 보정)는 직선을 깨지 않고 기울기만 이동시킨다. 그래서 얻은 기울기를 이론값(4π²)과 반드시 비교하고 어긋남의 원인을 따진다.",
+   "formula": [
+    {
+     "eq_html": "F = k · (m r / T²),  k = 4π² ≈ 39.48",
+     "text_html": "세 계열 통합 → 구심력의 비례 관계와 비례상수"
+    },
+    {
+     "eq_html": "F/r = Mg/L  ⇒ F = Mg,  r = L 로 간주 가능",
+     "text_html": "cosθ 상쇄 덕분에 노트 방식 일관성 유지"
+    }
+   ],
+   "choices": [
+    {
+     "key": "fr",
+     "label": "F와 r의 계산 방식",
+     "value": "naive",
+     "options": [
+      {
+       "value": "naive",
+       "label": "노트 방식: F=Mg, r=L"
+      },
+      {
+       "value": "true",
+       "label": "보정 방식: F=Mg cosθ, r=L cosθ"
+      },
+      {
+       "value": "mix",
+       "label": "혼합: F=Mg, r=L cosθ"
+      }
+     ]
+    }
+   ],
+   "chart": true
+  },
+  {
+   "id": "mc",
+   "tab": "critique",
+   "name": "우연오차와 계통오차: 평균의 한계",
+   "section": "⑤ 비판·확장",
+   "desc": "같은 가상 실험을 300번 반복해 k = F T²/(4π² m r)의 분포를 본다. 평균 횟수를 늘리면 분포의 폭(우연오차)만 줄고, 마찰이나 잘못된 보정 때문에 생기는 치우침(계통오차)은 그대로 남는다.",
+   "misconception_title": "오개념: 여러 번 평균하면 모든 오차가 사라진다",
+   "misconception": "평균은 부호가 무작위인 우연오차만 줄인다(폭 ∝ 1/√N). 항상 같은 방향으로 어긋나는 계통오차는 평균해도 남는다. 그러므로 계통오차는 장치와 방법을 고쳐서(마찰 줄이기, 일관된 보정) 없애고, 우연오차는 반복으로 줄인다.",
+   "formula": [
+    {
+     "eq_html": "σ_k / k ≈ 2 δT / (T √N)",
+     "text_html": "N번 평균의 우연오차 (k ∝ T² 이므로 상대오차 2배)"
+    },
+    {
+     "eq_html": "k_측정 / k = 1/(1−ε)",
+     "text_html": "마찰 ε: 장력이 (1−ε)로 줄어 주기가 늘어남"
+    },
+    {
+     "eq_html": "k_측정 / k = 1/cosθ",
+     "text_html": "F = Mg 인데 r = L cosθ 로 일관성 없이 쓸 때"
+    }
+   ],
+   "params": [
+    {
+     "key": "nw",
+     "label": "걸이추 개수 (1개 = 5 g)",
+     "min": 4,
+     "max": 40,
+     "step": 1,
+     "value": 12,
+     "unit": "개"
+    },
+    {
+     "key": "mg",
+     "label": "마개 질량 m",
+     "min": 10,
+     "max": 60,
+     "step": 5,
+     "value": 20,
+     "unit": "g"
+    },
+    {
+     "key": "Lcm",
+     "label": "줄 길이 L (마개 중심~유리관 끝)",
+     "min": 30,
+     "max": 100,
+     "step": 5,
+     "value": 70,
+     "unit": "cm"
+    },
+    {
+     "key": "epsp",
+     "label": "유리관 마찰 ε",
+     "min": 0,
+     "max": 10,
+     "step": 1,
+     "value": 0,
+     "unit": "%"
+    },
+    {
+     "key": "Nrep",
+     "label": "같은 조건 평균 횟수 N",
+     "min": 1,
+     "max": 25,
+     "step": 1,
+     "value": 1,
+     "unit": "회"
+    }
+   ],
+   "choices": [
+    {
+     "key": "nrev",
+     "label": "측정할 회전 수 n",
+     "value": "10",
+     "options": [
+      {
+       "value": "1",
+       "label": "1회전"
+      },
+      {
+       "value": "5",
+       "label": "5회전"
+      },
+      {
+       "value": "10",
+       "label": "10회전"
+      },
+      {
+       "value": "20",
+       "label": "20회전"
+      }
+     ]
+    },
+    {
+     "key": "meth",
+     "label": "r 계산",
+     "value": "ok",
+     "options": [
+      {
+       "value": "ok",
+       "label": "노트 방식 r=L"
+      },
+      {
+       "value": "mix",
+       "label": "혼합 r=L cosθ"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "transfer",
+   "tab": "critique",
+   "name": "다른 실험에 적용하기",
+   "section": "⑤ 비판·확장",
+   "desc": "이번 실험에서 쓴 사슬(이론 예측 → 대체량 → 변인 통제 → 수집 → 변환 → 비교)은 다른 실험의 설계 틀이기도 하다. 사례를 골라 같은 질문에 어떻게 답하는지 비교한다.",
+   "misconception_title": "오개념: 실험 설계는 장치부터 정하고 나서 변인을 생각하면 된다",
+   "misconception": "설계는 이론이 예측하는 관계에서 시작해 어떤 양을 바꾸고 어떤 양을 재야 할지 거꾸로 정한다. 장치는 그 관계를 가장 정확하게 드러내도록 고른다(걸이추, 유리관, 클립은 모두 'F를 알고, r을 고정하고, T를 재기 위해' 있는 것이다).",
+   "formula": [
+    {
+     "eq_html": "예측 → 대체 → 통제 → 수집 → 변환 → 비교",
+     "text_html": "실험 설계 사슬"
+    }
+   ],
+   "choices": [
+    {
+     "key": "case",
+     "label": "사례",
+     "value": "pend",
+     "options": [
+      {
+       "value": "pend",
+       "label": "단진자로 g 측정"
+      },
+      {
+       "value": "spring",
+       "label": "용수철 상수 k 측정"
+      },
+      {
+       "value": "disk",
+       "label": "회전판의 정지마찰계수 μ"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "rep",
+   "tab": "report",
+   "name": "실험 보고서 작성",
+   "section": "⑥ 보고서",
+   "desc": "③에서 직접 모은 데이터로 측정 표, R² 비교, 기울기, 그래프가 자동으로 채워지는 보고서 양식이다. 목표·예측·변인·방법과 해석 5문항은 직접 쓰고, 인쇄용 HTML로 열거나 내려받아 제출한다.",
+   "misconception_title": "오개념: 결과를 표와 그래프로 보여 주면 보고서가 끝난다",
+   "misconception": "보고서의 핵심은 해석이다. 수치(R², 기울기 차이)를 근거로 왜 그런 변환을 썼는지, 이론과 다른 값이 우연오차인지 계통오차인지, 설계를 어떻게 고치겠는지를 문장으로 설명해야 한다. 자동 계산값은 근거 자료일 뿐 해석을 대신하지 않는다.",
+   "formula": [
+    {
+     "eq_html": "k = F T² / (m r) ≈ 4π² = 39.48",
+     "text_html": "세 계열 통합 상수와 이론값 비교"
+    },
+    {
+     "eq_html": "차이(%) = (측정 − 이론)/이론 × 100",
+     "text_html": "우연오차는 흩어짐, 계통오차는 같은 방향의 치우침"
+    }
+   ]
+  },
+  {
+   "id": "quiz",
+   "tab": "critique",
+   "name": "설계 점검 퀴즈",
+   "section": "⑤ 비판·확장",
+   "desc": "앞 탭에서 직접 확인한 내용을 점검하는 6문항이다.",
+   "misconception_title": "오개념: 정답만 맞히면 설계를 이해한 것이다",
+   "misconception": "각 문항의 해설은 '왜 그런 설계인가'를 다시 설명한다. 틀린 문항은 해당 탭으로 돌아가 조작해 확인한다.",
+   "formula": [
+    {
+     "eq_html": "T = 2π√(mL/Mg)",
+     "text_html": "주기-질량-추-길이의 기본 관계"
+    },
+    {
+     "eq_html": "F = 4π² m r / T²",
+     "text_html": "구심력 공식"
+    }
+   ]
+  }
+ ],
+ "common_params": null,
+ "readout_title": "측정값"
+};
+</script>
+<script>
+/* ============================ 시뮬레이션 코드 (레시피 입력 sim_js) ============================ */
+/* ===== 등속원운동 실험 설계 실험실 — 물리(DOM 없음, SI) ===== */
+const TAU = 2 * Math.PI, G = 9.8, DEG = Math.PI / 180, FOUR_PI2 = 4 * Math.PI * Math.PI;
+const NOISE = { sig: 0.12, kap: 0.0015 };   // 스톱워치 반응 오차(시작+끝 합) 0.12 s, 회전 중 속도 변동(회전당 0.15 %) — 예시값
+const LAB_EPS = 0.02;                        // 실험대의 유리관 마찰: 장치 쪽 장력이 2 % 줄어드는 가상 설정
+
+/* 정상 원뿔진자: 줄 장력 T_s = M g (1−ε), 마개는 수평면에서 원운동, 줄은 수평에서 θ만큼 처진다
+   수직: T_s sinθ = m g,  수평: T_s cosθ = m ω² r,  r = L cosθ  →  ω² = T_s/(m L) */
+const PH = {
+  sol(M, m, L, eps = 0) {
+    const Ts = M * G * (1 - eps), s = m * G / Ts;
+    if (!(s < 0.95) || !(L > 0)) return null;
+    const th = Math.asin(s), c = Math.cos(th), w = Math.sqrt(Ts / (m * L));
+    return { th, c, Ts, r: L * c, Fc: Ts * c, w, T: TAU / w, v: w * L * c, a: w * w * L * c };
+  },
+  relU(n, T, sig = NOISE.sig, kap = NOISE.kap) { return Math.sqrt((sig / (n * T)) ** 2 + (kap * n) ** 2); },
+  nOpt(T, sig = NOISE.sig, kap = NOISE.kap) { return Math.sqrt(sig / (T * kap)); },
+};
+
+/* 시드 난수 (표를 다시 그려도 값이 바뀌지 않게) */
+function rng(seed) { let a = Math.imul((seed >>> 0) ^ 0x9E3779B9, 2654435761) >>> 0; a ^= a >>> 15; a = Math.imul(a, 2246822519) >>> 0; a ^= a >>> 13; const next = () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; for (let i = 0; i < 4; i++) next(); return next; }
+function gauss(r) { let u = 0; while (u === 0) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * r()); }
+function stopwatch(sol, n, r) { return Math.round((n * sol.T * (1 + NOISE.kap * n * gauss(r)) + NOISE.sig * gauss(r)) * 100) / 100; }
+
+/* 기록표 */
+const LAB = { rows: [], cnt: 0, last: null };
+const keyOf = (M, m, L) => M.toFixed(4) + '|' + m.toFixed(4) + '|' + L.toFixed(3);
+function addRun(M, m, L, n, eps = LAB_EPS) {
+  const s = PH.sol(M, m, L, eps); if (!s) return null;
+  const t = stopwatch(s, n, rng(7001 + 7919 * (LAB.cnt++)));
+  const row = { M, m, L, n, t, T: t / n, th: s.th };
+  LAB.rows.push(row); LAB.last = row; return row;
+}
+function aggregate(rows) {
+  const mp = new Map();
+  rows.forEach(r => { const k = keyOf(r.M, r.m, r.L); let g = mp.get(k); if (!g) { g = { M: r.M, m: r.m, L: r.L, n: r.n, th: r.th, Ts: [] }; mp.set(k, g); } g.Ts.push(r.T); });
+  return [...mp.values()].map(g => { const k = g.Ts.length, mean = g.Ts.reduce((a, b) => a + b, 0) / k, sd = k > 1 ? Math.sqrt(g.Ts.reduce((a, b) => a + (b - mean) ** 2, 0) / (k - 1)) : NaN; return { M: g.M, m: g.m, L: g.L, n: g.n, th: g.th, k, T: mean, sd }; });
+}
+/* 예시 데이터: 가상 학생이 계열 3개를 조건당 3번씩 10회전으로 잰 결과 */
+const REF = { nw: 12, mg: 20, Lcm: 70 };
+function exampleRows() {
+  const out = [], M0 = REF.nw * 0.005, m0 = REF.mg / 1000, L0 = REF.Lcm / 100; let c = 0;
+  const run = (M, m, L) => { const s = PH.sol(M, m, L, LAB_EPS); for (let i = 0; i < 3; i++) { const t = stopwatch(s, 10, rng(424242 + 101 * (c++))); out.push({ M, m, L, n: 10, t, T: t / 10, th: s.th }); } };
+  [7, 10, 12, 16, 20, 26, 32].forEach(n => run(n * 0.005, m0, L0));
+  [0.3, 0.5, 0.9, 1.0].forEach(L => run(M0, m0, L));
+  [0.010, 0.030, 0.040].forEach(m => run(M0, m, L0));
+  return out;
+}
+const EXAMPLE = aggregate(exampleRows());
+
+/* 계열 뽑기: kind F(추 변화) / r(줄 길이 변화) / m(마개 질량 변화) — 나머지 두 변인이 같은 조건들 */
+const SER = {
+  F: { key: c => c.m.toFixed(4) + '|' + c.L.toFixed(3), val: c => c.M * G, name: '구심력 F = M g (N)', short: 'F', exp: -2, who: '추 개수' },
+  r: { key: c => c.M.toFixed(4) + '|' + c.m.toFixed(4), val: c => c.L, name: '줄 길이 L ≈ 반경 r (m)', short: 'r', exp: 2, who: '줄 길이' },
+  m: { key: c => c.M.toFixed(4) + '|' + c.L.toFixed(3), val: c => c.m, name: '마개 질량 m (kg)', short: 'm', exp: 2, who: '마개 질량' },
+};
+function pickSeries(conds, kind) {
+  const S0 = SER[kind], mp = new Map();
+  conds.forEach(c => { const k = S0.key(c); (mp.get(k) || mp.set(k, []).get(k)).push(c); });
+  let best = null, bestN = 0;
+  mp.forEach(arr => { const n = new Set(arr.map(c => S0.val(c).toFixed(6))).size; if (n > bestN) { best = arr; bestN = n; } });
+  if (!best || bestN < 3) return null;
+  const pts = best.map(c => ({ c, y: S0.val(c), T: c.T })).sort((a, b) => a.y - b.y);
+  return { pts, n: bestN };
+}
+function seriesData(kind) {
+  const mine = pickSeries(aggregate(LAB.rows), kind);
+  return mine ? { ...mine, mine: true } : { ...pickSeries(EXAMPLE, kind), mine: false };
+}
+const XT = {
+  T: { f: T => T, name: 'T', un: 's' }, T2: { f: T => T * T, name: 'T²', un: 's²' }, inv: { f: T => 1 / (T * T), name: '1/T²', un: 's⁻²' },
+};
+function linfit(xs, ys) {
+  const n = xs.length, sx = xs.reduce((a, b) => a + b, 0), sy = ys.reduce((a, b) => a + b, 0);
+  const sxx = xs.reduce((a, b) => a + b * b, 0), sxy = xs.reduce((a, x, i) => a + x * ys[i], 0), syy = ys.reduce((a, b) => a + b * b, 0);
+  const b = (n * sxy - sx * sy) / (n * sxx - sx * sx), a = (sy - b * sx) / n;
+  const r = (n * sxy - sx * sy) / Math.sqrt((n * sxx - sx * sx) * (n * syy - sy * sy));
+  return { a, b, r2: r * r };
+}
+const loglog = (xs, ys) => linfit(xs.map(Math.log), ys.map(Math.log)).b;
+
+/* 세 계열 합치기: x = m·r/T², y = F — 방법별 (노트: F=Mg, r=L / 보정: F=Mg cosθ, r=L cosθ / 혼합: F=Mg, r=L cosθ) */
+function collapsePts(conds, meth) {
+  return conds.map(c => {
+    const cs = Math.cos(c.th), F = c.M * G * (meth === 'true' ? cs : 1), r = c.L * (meth === 'naive' ? 1 : cs);
+    return { c, x: c.m * r / (c.T * c.T), y: F };
+  });
+}
+function collapseConds() { const mine = aggregate(LAB.rows); return mine.length >= 8 ? { conds: mine, mine: true } : { conds: EXAMPLE, mine: false }; }
+
+/* 몬테카를로: 같은 조건을 Nrep번 재서 평균한 주기로 k = F T² /(4π² m r)를 구하는 가상 실험 300번 */
+function mcK(M, m, L, n, Nrep, eps, meth, seed = 99) {
+  const s = PH.sol(M, m, L, eps); if (!s) return null;
+  const r = rng(seed), out = [], rr = meth === 'mix' ? L * s.c : L;
+  for (let i = 0; i < 300; i++) {
+    let T = 0; for (let j = 0; j < Nrep; j++) T += stopwatch(s, n, r) / n; T /= Nrep;
+    out.push(M * G * T * T / (FOUR_PI2 * m * rr));
+  }
+  const mean = out.reduce((a, b) => a + b, 0) / out.length, sd = Math.sqrt(out.reduce((a, b) => a + (b - mean) ** 2, 0) / (out.length - 1));
+  return { vals: out, mean, sd, s };
+}
+
+/* ===== 그리기 도우미 (가상 좌표 1000×625) ===== */
+const COL = { bg: '#0f1a33', text: '#e3ecff', dim: '#9db0d8', ok: '#5eead4', bad: '#ff5d73', a: '#7fd6ff', b: '#ffb454', c: '#b48cff', grid: 'rgba(160,190,255,.18)', panel: 'rgba(160,190,255,.10)', line: 'rgba(160,190,255,.35)' };
+const W0 = 1000, H0 = 625;
+function begin(api) { const { ctx, width: w, height: h } = api; ctx.fillStyle = COL.bg; ctx.fillRect(0, 0, w, h); const k = Math.min(w / W0, h / H0); ctx.save(); ctx.translate((w - W0 * k) / 2, (h - H0 * k) / 2); ctx.scale(k, k); return ctx; }
+function txt(ctx, s, x, y, col, px, wt, al) { ctx.font = `${wt || 600} ${px || 18}px sans-serif`; ctx.fillStyle = col || COL.text; ctx.textAlign = al || 'left'; ctx.fillText(s, x, y); ctx.textAlign = 'left'; }
+function arrow(ctx, x0, y0, x1, y1, col, lw = 3) {
+  const len = Math.hypot(x1 - x0, y1 - y0); if (len < 3) return; const a = Math.atan2(y1 - y0, x1 - x0), hd = Math.min(13, len * .5);
+  ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - Math.cos(a) * hd * .7, y1 - Math.sin(a) * hd * .7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - hd * Math.cos(a - .45), y1 - hd * Math.sin(a - .45)); ctx.lineTo(x1 - hd * Math.cos(a + .45), y1 - hd * Math.sin(a + .45)); ctx.closePath(); ctx.fill();
+}
+function disc(ctx, x, y, r, col) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); }
+function rrect(ctx, x, y, w, h, r, fill, stroke) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1.5; ctx.stroke(); } }
+const f1 = x => (+x).toFixed(1), f2 = x => (+x).toFixed(2), f3 = x => (+x).toFixed(3), pc = x => (100 * x).toFixed(1) + ' %';
+function nice(lo, hi, n = 5) { const span = (hi - lo) || 1, raw = span / n, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p, st = (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p, a = Math.floor(lo / st + 1e-9) * st, b = Math.ceil(hi / st - 1e-9) * st, t = []; for (let v = a; v <= b + st / 1e6; v += st) t.push(+v.toPrecision(6)); return { min: a, max: b, t }; }
+function plot(api, o) { const ch = api.chart; if (ch) plotCv(ch.canvas, ch.ctx, o); }
+function plotCv(cv, c2, o) {
+  const cw = cv.width, chh = cv.height, sc = cw / (cv.clientWidth || cw), LT = !!o.light, CB = LT ? '#ffffff' : COL.bg, CD = LT ? '#444' : COL.dim, CG = LT ? '#ddd' : COL.grid;
+  c2.save(); c2.setTransform(1, 0, 0, 1, 0, 0); c2.fillStyle = CB; c2.fillRect(0, 0, cw, chh);
+  const l = 56 * sc, r = cw - 16 * sc, t = 32 * sc, b = chh - 36 * sc, X = v => l + (v - o.xmin) / (o.xmax - o.xmin) * (r - l), Y = v => b - (v - o.ymin) / (o.ymax - o.ymin) * (b - t);
+  c2.font = `${12 * sc}px sans-serif`; c2.fillStyle = CD; c2.strokeStyle = CG; c2.lineWidth = sc;
+  (o.bands || []).forEach(bd => { c2.fillStyle = bd.col; c2.fillRect(X(bd.x0), t, X(bd.x1) - X(bd.x0), b - t); });
+  c2.fillStyle = CD;
+  (o.xt || []).forEach(v => { c2.beginPath(); c2.moveTo(X(v), t); c2.lineTo(X(v), b); c2.stroke(); c2.fillText(String(v), X(v) - 8 * sc, b + 16 * sc); });
+  (o.yt || []).forEach(v => { c2.beginPath(); c2.moveTo(l, Y(v)); c2.lineTo(r, Y(v)); c2.stroke(); c2.fillText(String(v), 6 * sc, Y(v) + 4 * sc); });
+  c2.fillText(o.xl || '', r - 150 * sc, b + 30 * sc); c2.fillText(o.yl || '', 6 * sc, 16 * sc);
+  (o.curves || []).forEach(cv2 => { c2.strokeStyle = cv2.col || (LT ? '#1f6fd6' : COL.a); c2.lineWidth = 2.5 * sc; c2.setLineDash(cv2.dash ? [6 * sc, 5 * sc] : []); c2.beginPath(); let st = true; for (let i = 0; i <= 160; i++) { const x = o.xmin + (o.xmax - o.xmin) * i / 160, y = cv2.fn(x); if (!Number.isFinite(y)) { st = true; continue; } const py = Y(Math.min(Math.max(y, o.ymin), o.ymax)); st ? c2.moveTo(X(x), py) : c2.lineTo(X(x), py); st = false; } c2.stroke(); c2.setLineDash([]); });
+  (o.marks || []).forEach(m => { c2.fillStyle = m.col || COL.ok; c2.beginPath(); c2.arc(X(m.x), Y(Math.min(Math.max(m.y, o.ymin), o.ymax)), (m.rad || 6) * sc, 0, TAU); c2.fill(); if (m.lab) { c2.fillStyle = CD; c2.fillText(m.lab, X(m.x) + 9 * sc, Y(m.y) - 8 * sc); } });
+  c2.restore();
+}
+
+/* ===== 장치 그림 (옆에서 본 모습) — 직접 그린 도식, 실험노트 그림을 쓰지 않음 ===== */
+const RIG = { cx: 370, y0: 120, K: 300 };    // 1 m = 300 px
+function drawRig(api, o = {}) {
+  const P = api.P, ctx = begin(api), M = P.nw * 0.005, m = P.mg / 1000, L = P.Lcm / 100, s = PH.sol(M, m, L, o.eps || 0);
+  const { cx, y0, K } = RIG;
+  txt(ctx, o.title || '장치 (옆에서 본 모습)', 24, 34, COL.dim, 16, 600);
+  if (!s) {
+    txt(ctx, '줄이 수평으로 설 수 없는 조건', 500, 280, COL.bad, 28, 700, 'center');
+    txt(ctx, `마개 ${P.mg} g ≥ 추 ${f1(M * 1000)} g 에 가까워 sinθ = m/M ≥ 0.95`, 500, 322, COL.text, 18, 600, 'center');
+    txt(ctx, '추를 늘리거나 마개를 가볍게 하세요', 500, 352, COL.dim, 17, 600, 'center'); ctx.restore();
+    api.setReadout([['상태', '불가능 (m/M ≥ 0.95)']]); api.setNote('마개가 추보다 무거우면 장력의 수직 성분 T sinθ = m g 를 만들 수 없다.'); return null;
+  }
+  const Rp = s.r * K, yo = y0 + L * Math.sin(s.th) * K, ry = Math.max(10, Rp * 0.28), phi = S.phi;
+  /* 궤도 */
+  ctx.strokeStyle = COL.line; ctx.lineWidth = 1.5; ctx.setLineDash([5, 6]); ctx.beginPath(); ctx.ellipse(cx, yo, Rp, ry, 0, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+  ctx.strokeStyle = COL.grid; ctx.beginPath(); ctx.moveTo(cx, y0 - 30); ctx.lineTo(cx, yo + ry + 90); ctx.stroke();
+  /* 손 + 유리관 */
+  rrect(ctx, cx - 17, y0 - 62, 34, 52, 9, '#c89b7b'); txt(ctx, '손', cx + 24, y0 - 34, COL.dim, 14);
+  rrect(ctx, cx - 6, y0 - 12, 12, 0.15 * K + 12, 3, '#cfe3ff');
+  const yb = y0 + 0.15 * K;
+  /* 걸이추 */
+  const nb = Math.min(P.nw, 40), hh = 6 + nb * 2.4, ytop = Math.max(yb + 52, yo + ry + 46);
+  ctx.strokeStyle = COL.text; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx, y0); ctx.lineTo(cx, ytop); ctx.stroke();
+  rrect(ctx, cx - 4, yb + 10, 8, 10, 2, COL.bad); txt(ctx, '클립(반경 고정 표지)', cx + 14, yb + 24, COL.bad, 13);
+  rrect(ctx, cx - 22, ytop, 44, hh, 5, 'rgba(255,180,84,.85)', COL.b); txt(ctx, `${P.nw}개 × 5 g`, cx + 30, ytop + 16, COL.b, 14); txt(ctx, `M = ${f1(M * 1000)} g`, cx + 30, ytop + 34, COL.b, 14);
+  /* 줄 + 마개 */
+  const sx = cx + Rp * Math.cos(phi), sy = yo + ry * Math.sin(phi), depth = Math.sin(phi), sr = (8 + P.mg / 7) * (1 + .12 * depth);
+  ctx.strokeStyle = COL.text; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx, y0); ctx.lineTo(sx, sy); ctx.stroke();
+  disc(ctx, sx, sy, sr, depth >= 0 ? '#ff8f7a' : '#c2594a');
+  /* 각도·반경 표시 */
+  const ex = cx + Rp, ey = yo;
+  ctx.strokeStyle = COL.ok; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, y0, 46, 0, s.th); ctx.stroke(); txt(ctx, 'θ', cx + 52, y0 + 22 + s.th * 6, COL.ok, 17);
+  ctx.strokeStyle = COL.dim; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(cx, y0); ctx.lineTo(ex, y0); ctx.stroke(); ctx.setLineDash([]);
+  arrow(ctx, cx, ey, ex, ey, COL.a, 2); arrow(ctx, ex, ey, cx, ey, COL.a, 2); txt(ctx, `r = L cosθ = ${f1(s.r * 100)} cm`, cx + Rp / 2, ey + 22, COL.a, 15, 600, 'center');
+  txt(ctx, `L = ${P.Lcm} cm (마개 중심 ~ 유리관 위쪽 끝)`, 24, 598, COL.dim, 15);
+  /* 힘 삼각형 */
+  if (o.forces) {
+    const sc = 80, ox = 930, oy = 215, W = m * G * sc, T = s.Ts * sc, Fh = s.Fc * sc;
+    rrect(ctx, 730, 70, 250, 220, 10, COL.panel, COL.line); txt(ctx, '마개에 작용하는 힘 (마개가 오른쪽 끝일 때)', 740, 92, COL.dim, 13);
+    arrow(ctx, ox, oy, ox, oy + W, COL.c, 3); txt(ctx, 'mg', ox + 8, oy + W / 2 + 5, COL.c, 15);
+    arrow(ctx, ox, oy + W, ox - Fh, oy + W - s.Ts * Math.sin(s.th) * sc, COL.b, 3); txt(ctx, 'T = Mg', ox - Fh / 2 + 4, oy + W + 22, COL.b, 15);
+    arrow(ctx, ox, oy, ox - Fh, oy, COL.bad, 4); txt(ctx, 'F_c = T cosθ', ox - Fh - 2, oy - 10, COL.bad, 15);
+    txt(ctx, '1 N = 80 px · 세 힘의 합이 구심력', 740, 275, COL.dim, 13);
+  }
+  /* 스톱워치 */
+  if (o.watch) {
+    rrect(ctx, 730, 70, 250, 120, 10, COL.panel, COL.line); txt(ctx, `스톱워치 (${o.watch.n}회전)`, 745, 96, COL.dim, 14);
+    const l = LAB.last; txt(ctx, l ? l.t.toFixed(2) + ' s' : '— —', 855, 150, l ? COL.ok : COL.dim, 38, 700, 'center');
+    txt(ctx, l ? `T = t/${l.n} = ${f3(l.T)} s` : '아래 버튼으로 측정', 855, 178, COL.text, 15, 600, 'center');
+  }
+  txt(ctx, `재생 ${f2(P.spk)}배속 (화면 느리게 · 실제 주기 ${f2(s.T)} s)`, 24, 576, COL.dim, 14);
+  ctx.restore();
+  return s;
+}
+
+/* ===== ① 이론 ===== */
+function drawKin(api) {
+  const P = api.P, ctx = begin(api), R = P.rk, w = TAU / P.Tk, v = w * R, a = w * w * R, F = P.mk * a, cx = 330, cy = 320, K = 250;
+  const cut = P.cut === 'cut' && S.cutp;
+  txt(ctx, '위에서 본 모습 (반시계 방향 회전)', 24, 34, COL.dim, 16);
+  ctx.strokeStyle = COL.line; ctx.lineWidth = 1.5; ctx.setLineDash([5, 6]); ctx.beginPath(); ctx.arc(cx, cy, R * K, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+  disc(ctx, cx, cy, 5, COL.dim); txt(ctx, 'O', cx + 8, cy + 20, COL.dim, 14);
+  let x, y, ux, uy;                                  // 위치(px), 속도 방향(화면 좌표)
+  if (cut) { x = S.cutp.x; y = S.cutp.y; ux = S.cutp.ux; uy = S.cutp.uy; }
+  else { x = cx + K * R * Math.cos(S.phi); y = cy - K * R * Math.sin(S.phi); ux = -Math.sin(S.phi); uy = -Math.cos(S.phi); }
+  if (!cut) { ctx.strokeStyle = COL.grid; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x, y); ctx.stroke(); }
+  if (!cut) { const rx = (cx - x) / (R * K), ry = (cy - y) / (R * K); arrow(ctx, x, y, x + rx * a * 20, y + ry * a * 20, COL.bad, 4); txt(ctx, 'a (= F/m)', x + rx * a * 10 - ry * 26 - 18, y + ry * a * 10 + rx * 26 + 5, COL.bad, 15); }
+  if (!(cut && S.cutp.off)) { arrow(ctx, x, y, x + ux * v * 70, y + uy * v * 70, COL.ok, 4); txt(ctx, 'v', x + ux * v * 70 + 8 * (ux < 0 ? -2 : 1), y + uy * v * 70 + (uy < 0 ? -8 : 16), COL.ok, 16); disc(ctx, x, y, 11, '#ff8f7a'); }
+  if (cut) txt(ctx, S.cutp.off ? '마개가 화면 밖으로 날아갔다 — "줄 유지"로 되돌리면 다시 회전' : '줄이 끊어진 뒤: 알짜힘 0 → 속도 그대로 직선(접선) 운동', 24, 585, COL.ok, 17, 700);
+  else txt(ctx, `배율: v 1 m/s = 70 px,  a 1 m/s² = 20 px  (r = ${f2(R)} m,  T = ${f1(P.Tk)} s)`, 24, 585, COL.dim, 14);
+  rrect(ctx, 650, 70, 330, 250, 10, COL.panel, COL.line);
+  [['속력 v = 2πr/T', `${f2(v)} m/s`], ['각속도 ω = 2π/T', `${f2(w)} rad/s`], ['진동수 f = 1/T', `${f2(1 / P.Tk)} Hz`], ['가속도 a = v²/r', `${f2(a)} m/s²`], ['= ω²r = 4π²r/T²', `${f2(w * w * R)} m/s²`], ['구심력 F = m a', `${f2(F)} N`]].forEach((r, i) => { txt(ctx, r[0], 668, 108 + i * 38, COL.dim, 16); txt(ctx, r[1], 960, 108 + i * 38, COL.text, 18, 700, 'right'); });
+  txt(ctx, '크기(속력)는 일정, 방향은 계속 변함', 668, 350, COL.ok, 15); txt(ctx, '→ 속도가 변하므로 가속도가 있다', 668, 374, COL.ok, 15); txt(ctx, '→ 가속도의 방향 = 알짜힘의 방향 = 중심', 668, 398, COL.bad, 15);
+  ctx.restore();
+  api.setReadout([['v', f2(v) + ' m/s'], ['ω', f2(w) + ' rad/s'], ['a = v²/r', f2(a) + ' m/s²'], ['F = m a', f2(F) + ' N']]);
+  api.setNote('▶ 재생 중 "줄 끊기"를 고르면 마개가 원의 접선으로 날아간다. 배율을 고정해 두었으므로 r, T를 바꿔 화살표 길이가 어떻게 달라지는지 비교한다.');
+}
+function drawDerive(api) {
+  const P = api.P, ctx = begin(api), dth = P.dth * DEG, h = dth / 2, R = 170, cx = 250, cy = 340, V = 150, ox = 720, oy = 340;
+  txt(ctx, '위치 (v = 1, r = 1 로 규격화)', 24, 34, COL.dim, 16); txt(ctx, '속도 벡터를 한 점에서 그리면', 520, 34, COL.dim, 16);
+  ctx.strokeStyle = COL.line; ctx.lineWidth = 1.5; ctx.setLineDash([5, 6]); ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.stroke(); ctx.beginPath(); ctx.arc(ox, oy, V, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+  const f1p = Math.PI / 2 - h, f2p = Math.PI / 2 + h, pos = f => [cx + R * Math.cos(f), cy - R * Math.sin(f)], vel = f => [-Math.sin(f), -Math.cos(f)];
+  const p1 = pos(f1p), p2 = pos(f2p), v1 = vel(f1p), v2 = vel(f2p);
+  ctx.strokeStyle = COL.dim; ctx.lineWidth = 1.5; [p1, p2].forEach(p => { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(p[0], p[1]); ctx.stroke(); });
+  ctx.strokeStyle = COL.a; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(cx, cy, R, -f2p, -f1p); ctx.stroke(); txt(ctx, 'Δθ', cx - 6, cy - 60, COL.a, 16);
+  disc(ctx, p1[0], p1[1], 7, '#ff8f7a'); disc(ctx, p2[0], p2[1], 7, '#ff8f7a'); txt(ctx, 't', p1[0] + 10, p1[1] + 20, COL.dim, 14); txt(ctx, 't+Δt', p2[0] - 52, p2[1] + 20, COL.dim, 14);
+  arrow(ctx, p1[0], p1[1], p1[0] + v1[0] * 60, p1[1] + v1[1] * 60, COL.ok, 3); arrow(ctx, p2[0], p2[1], p2[0] + v2[0] * 60, p2[1] + v2[1] * 60, COL.ok, 3);
+  const t1 = [ox + v1[0] * V, oy + v1[1] * V], t2 = [ox + v2[0] * V, oy + v2[1] * V];
+  arrow(ctx, ox, oy, t1[0], t1[1], COL.ok, 3); arrow(ctx, ox, oy, t2[0], t2[1], COL.ok, 3); txt(ctx, 'v(t)', t1[0] + 8, t1[1] - 6, COL.ok, 15); txt(ctx, 'v(t+Δt)', t2[0] - 70, t2[1] - 6, COL.ok, 15);
+  arrow(ctx, t1[0], t1[1], t2[0], t2[1], COL.bad, 4); txt(ctx, 'Δv', (t1[0] + t2[0]) / 2 - 12, (t1[1] + t2[1]) / 2 + 26, COL.bad, 18, 700);
+  const dv = 2 * Math.sin(h), dt = dth, ratio = dv / dt;
+  txt(ctx, '두 이등변삼각형이 닮음 →  |Δv|/v = (현의 길이)/r', 24, 560, COL.text, 17); txt(ctx, 'Δθ → 0 이면 현 ≈ 호 = vΔt  →  |Δv|/Δt = v²/r,  방향은 중심 쪽', 24, 590, COL.text, 17);
+  ctx.restore();
+  api.setReadout([['Δθ', f2(dth) + ' rad (' + P.dth + '°)'], ['|Δv| = 2v sin(Δθ/2)', f3(dv)], ['Δt = Δθ/ω', f3(dt) + ' s'], ['|Δv|/Δt', f3(ratio)], ['v²/r (참값)', '1.000'], ['비 (|Δv|/Δt)/(v²/r)', f3(ratio)]]);
+  api.setNote('Δθ를 줄이면 비가 1로 다가가고 Δv의 방향이 중심을 가리킨다. 90°에서도 약 10 % 어긋남 — "Δt → 0" 극한이 필요한 이유이다.');
+}
+
+/* ===== ② 설계 ===== */
+function rigReadout(api, s, M) {
+  if (!s) return;
+  api.setReadout([['걸이추 M', f1(M * 1000) + ' g'], ['줄 기울기 θ (sinθ = m/M)', f1(s.th / DEG) + '°'], ['장력 T = Mg', f3(s.Ts) + ' N'], ['구심력 F_c = Mg cosθ', f3(s.Fc) + ' N'], ['반경 r = L cosθ', f1(s.r * 100) + ' cm'], ['주기 T', f3(s.T) + ' s'], ['F_c ÷ (Mg)', f3(s.c)]]);
+}
+function drawRigB(api) { const s = drawRig(api, { forces: P_on(api, 'forces'), title: '장치: 유리관 + 줄 + 마개 + 걸이추' }); rigReadout(api, s, api.P.nw * 0.005); if (s) api.setNote('걸이추의 무게가 줄을 팽팽하게(T = Mg) 만든다. 마개가 나는 평면은 수평이 아니라 줄이 θ만큼 처지는 원뿔 모양이고, 구심력은 장력의 수평 성분이다. 궤도 크기 비율은 실제 비례(1 m = 300 px).'); }
+const P_on = (api, k) => api.P[k] !== 'off';
+const PLAN = {
+  F: { lab: '추 개수 n(×5 g)', get: P => P.nw, lo: 4, hi: 40, unit: '개', mk: (P, x) => [x * 0.005, P.mg / 1000, P.Lcm / 100], fixed: P => `통제: 마개 ${P.mg} g, 줄 길이 ${P.Lcm} cm`, ind: '걸이추 개수 (→ 구심력 F = Mg)', q: -0.5, rd: x => Math.round(x) },
+  r: { lab: '줄 길이 L (cm)', get: P => P.Lcm, lo: 30, hi: 100, unit: 'cm', mk: (P, x) => [P.nw * 0.005, P.mg / 1000, x / 100], fixed: P => `통제: 추 ${P.nw}개(${f1(P.nw * 5)} g), 마개 ${P.mg} g`, ind: '줄 길이 L (→ 반경 r)', q: 0.5, rd: x => Math.round(x) },
+  m: { lab: '마개 질량 m (g)', get: P => P.mg, lo: 10, hi: 60, unit: 'g', mk: (P, x) => [P.nw * 0.005, x / 1000, P.Lcm / 100], fixed: P => `통제: 추 ${P.nw}개(${f1(P.nw * 5)} g), 줄 길이 ${P.Lcm} cm`, ind: '마개 질량 m', q: 0.5, rd: x => Math.round(x) },
+};
+function planPts(P) {
+  const d = PLAN[P.goal], span = Number(P.span), c = d.get(P), pts = [];
+  for (let i = 0; i < P.npt; i++) {
+    const raw = c * Math.pow(span, P.npt > 1 ? i / (P.npt - 1) - 0.5 : 0), x = Math.min(d.hi, Math.max(d.lo, d.rd(raw))), [M, m, L] = d.mk(P, x), s = PH.sol(M, m, L);
+    pts.push({ x, s, T: s ? s.T : NaN, ok: !!s && s.T >= 0.5 && s.T <= 2.0 });
+  }
+  return pts;
+}
+function planSigma(P, pts) {
+  const v = pts.filter(p => p.s); if (v.length < 2) return NaN;
+  const lx = v.map(p => Math.log(p.x)), mu = lx.reduce((a, b) => a + b, 0) / lx.length, sxx = lx.reduce((a, b) => a + (b - mu) ** 2, 0), Tm = v.reduce((a, p) => a + p.T, 0) / v.length;
+  return PH.relU(10, Tm) / Math.sqrt(sxx);
+}
+function drawPlan(api) {
+  const P = api.P, ctx = begin(api), d = PLAN[P.goal], pts = planPts(P), sg = planSigma(P, pts), z = Math.abs(0.5) / sg;
+  txt(ctx, '변인 지도: 한 번에 하나만 바꾼다', 24, 34, COL.dim, 16);
+  [['독립변인 (내가 바꾸는 것)', d.ind, COL.b], ['종속변인 (재서 반응을 보는 것)', '주기 T  (= 10회전 시간 ÷ 10)', COL.a], ['통제변인 (일부러 고정)', d.fixed(P).replace('통제: ', ''), COL.ok]].forEach((b, i) => { rrect(ctx, 24 + i * 316, 52, 304, 92, 10, COL.panel, b[2]); txt(ctx, b[0], 38 + i * 316, 78, b[2], 15, 700); txt(ctx, b[1], 38 + i * 316, 112, COL.text, 15); });
+  txt(ctx, '계획한 측정 조건', 24, 178, COL.dim, 16); txt(ctx, d.lab, 40, 206, COL.dim, 14); txt(ctx, '예측 T (s)', 250, 206, COL.dim, 14); txt(ctx, '판정', 380, 206, COL.dim, 14);
+  pts.forEach((p, i) => { const y = 240 + i * 36; txt(ctx, `${i + 1}. ${p.x} ${d.unit}`, 40, y, COL.text, 17); txt(ctx, p.s ? f2(p.T) : '—', 250, y, COL.text, 17); txt(ctx, !p.s ? '줄이 서지 못함' : p.T < 0.5 ? '너무 빨라 측정 곤란' : p.T > 2 ? '너무 느려 마개가 처짐' : '측정 가능', 380, y, p.ok ? COL.ok : COL.bad, 17, 700); });
+  txt(ctx, 'T = 2π√(mL/Mg) 로 미리 예측한 값 · 판정 기준: 0.5 s ≤ T ≤ 2 s (실험노트의 주의: 실이 짧으면 주기가 짧아 측정하기 힘들다)', 24, 598, COL.dim, 13);
+  ctx.restore();
+  if (api.chart) {
+    const xs = []; for (let x = d.lo; x <= d.hi; x += (d.hi - d.lo) / 120) xs.push(x);
+    plot(api, { xmin: d.lo, xmax: d.hi, ymin: 0, ymax: 2.5, xt: d.lo === 4 ? [4, 10, 20, 30, 40] : d.hi === 100 ? [30, 50, 70, 100] : [10, 20, 30, 40, 50, 60], yt: [0.5, 1, 1.5, 2, 2.5], xl: d.lab, yl: 'T (s)',
+      curves: [{ fn: x => { const [M, m, L] = d.mk(P, x), s = PH.sol(M, m, L); return s ? s.T : NaN; }, col: COL.a }, { fn: () => 0.5, col: COL.grid, dash: 1 }, { fn: () => 2, col: COL.grid, dash: 1 }],
+      marks: pts.filter(p => p.s).map(p => ({ x: p.x, y: p.T, col: p.ok ? COL.ok : COL.bad })) });
+  }
+  api.setReadout([['점 수 / 배율', `${P.npt}개 / ${P.span}배`], ['측정 가능한 점', pts.filter(p => p.ok).length + ' / ' + pts.length], ['지수 q의 불확도 σ_q', isFinite(sg) ? '±' + f3(sg) : '—'], ['q = ' + (d.q > 0 ? '+' : '−') + '1/2 와 1을 구별', isFinite(z) ? f1(z) + ' σ' : '—']]);
+  api.setNote('같은 오차라도 x를 넓게, 여러 점에서 재면 기울기(지수)가 훨씬 또렷해진다. 점 수와 범위 배율을 바꿔 σ_q가 어떻게 달라지는지 보자. 불확도는 10회전 측정(오차 약 2 %)을 가정한 근사이다.');
+}
+
+/* ===== ③ 수집 ===== */
+function drawLab(api) {
+  const s = drawRig(api, { eps: LAB_EPS, watch: { n: Number(api.P.nrev) }, title: '가상 실험대 (유리관 마찰 2 % 포함)' });
+  if (s) api.setReadout([['θ = asin(m/M)', f1(s.th / DEG) + '°'], ['예측 T (이상적)', f3(PH.sol(api.P.nw * 0.005, api.P.mg / 1000, api.P.Lcm / 100).T) + ' s'], ['n회전 상대오차(이론)', pc(PH.relU(Number(api.P.nrev), s.T))], ['기록한 측정', LAB.rows.length + '회'], ['기록한 조건', aggregate(LAB.rows).length + '가지']]);
+  api.setNote('추 개수·줄 길이·마개 질량·회전 수를 정하고 측정 → 기록. 같은 조건은 여러 번 재어 평균(+표준편차)을 낸다. 계열 자동 기록은 현재 값을 기준으로 한 변인만 바꾼다.');
+}
+function el(tag, cls, t) { const n = document.createElement(tag); if (cls) n.className = cls; if (t !== undefined) n.textContent = t; return n; }
+function renderLab(api) {
+  const root = api.custom; if (!root) return; const P = api.P, M = P.nw * 0.005, m = P.mg / 1000, L = P.Lcm / 100, n = Number(P.nrev), ok = !!PH.sol(M, m, L, LAB_EPS);
+  root.innerHTML = '';
+  const pr = el('details', 'lb-proc'); pr.appendChild(el('summary', '', '실제 실험 절차 (실험노트 순서)'));
+  const ol = el('ol'); ['마개 질량 m을 저울로 재고, 걸이추 5 g짜리를 5개씩 묶어 질량을 잰다 (슬라이더: 마개 질량, 추 개수).', '줄을 유리관에 통과시켜 한쪽엔 마개, 다른쪽엔 추를 달고, 유리관 끝 2 cm 아래에 클립을 끼운다 (반경 고정 표지).', '마개 중심~유리관 끝 L = 70 cm로 맞추고, 유리관을 머리 위로 들어 마개를 수평에 가깝게 돌린 뒤, 클립 간격이 2 cm로 유지되면 10회전 시간을 잰다 (측정 1회 → 기록).', '계열 A: L = 70 cm로 고정하고 추를 5개씩 늘리며 같은 측정을 한다.', '계열 B: 추를 10개(50 g)로 고정하고 L = 30, 50, 70, 90, 100 cm로 바꾼다 (줄이 짧으면 주기가 짧아 측정이 어렵다).', '계열 C: L, 추를 고정하고 마개 질량을 바꾼다 (실험에서는 마개 1개 → 2개, 여기서는 10~50 g).', '조건마다 3회 이상 재어 평균을 낸다 → ⑥ 보고서 탭에서 해석한다.'].forEach(t => ol.appendChild(el('li', '', t))); pr.appendChild(ol); root.appendChild(pr);
+  const bar = el('div', 'lb-bar'), act = (label, fn, cls) => { const b = el('button', 'lb-btn' + (cls ? ' ' + cls : ''), label); b.onclick = () => { fn(); renderLab(api); api.refresh(); }; if (!ok && fn !== clear) b.disabled = true; bar.appendChild(b); };
+  const clear = () => { LAB.rows = []; LAB.last = null; };
+  act('측정 1회 → 기록', () => addRun(M, m, L, n)); act('같은 조건 5회 기록', () => { for (let i = 0; i < 5; i++) addRun(M, m, L, n); });
+  root.appendChild(bar);
+  const bar2 = el('div', 'lb-bar'); const act2 = (label, fn) => { const b = el('button', 'lb-btn alt', label); b.onclick = () => { fn(); renderLab(api); api.refresh(); }; if (!ok) b.disabled = true; bar2.appendChild(b); };
+  act2('계열 A: 추 개수 바꾸기', () => [0.5, 0.75, 1, 1.5, 2.2].forEach(k => { const nn = Math.min(40, Math.max(4, Math.round(P.nw * k))); for (let i = 0; i < 3; i++) addRun(nn * 0.005, m, L, n); }));
+  act2('계열 B: 줄 길이 바꾸기', () => [30, 45, 60, 80, 100].forEach(l => { for (let i = 0; i < 3; i++) addRun(M, m, l / 100, n); }));
+  act2('계열 C: 마개 질량 바꾸기', () => [10, 20, 30, 40, 50].forEach(g => { if (PH.sol(M, g / 1000, L, LAB_EPS)) for (let i = 0; i < 3; i++) addRun(M, g / 1000, L, n); }));
+  const bc = el('button', 'lb-btn warn', '표 지우기'); bc.onclick = () => { clear(); renderLab(api); api.refresh(); }; bar2.appendChild(bc); root.appendChild(bar2);
+  if (!ok) root.appendChild(el('div', 'lb-warn', '이 조건에서는 줄이 서지 못한다: 추를 늘리거나 마개를 줄이세요.'));
+  const conds = aggregate(LAB.rows), badge = (k, nm) => { const sd = pickSeries(conds, k); return el('span', 'lb-badge' + (sd ? ' on' : ''), (sd ? '✓ ' : '· ') + nm + (sd ? ` (${sd.n}점)` : '')); };
+  const st = el('div', 'lb-stat'); st.appendChild(badge('F', '계열 A')); st.appendChild(badge('r', '계열 B')); st.appendChild(badge('m', '계열 C')); root.appendChild(st);
+  const tb = el('table', 'lb-tbl'), hd = el('tr'); ['추 M(g)', '마개 m(g)', 'L(cm)', 'n', '횟수', 'T̄(s)', 's(s)'].forEach(h => hd.appendChild(el('th', '', h))); tb.appendChild(hd);
+  conds.slice(-14).forEach(c => { const tr = el('tr'); [f1(c.M * 1000), f1(c.m * 1000), f1(c.L * 100), c.n, c.k, f3(c.T), isNaN(c.sd) ? '—' : f3(c.sd)].forEach(v => tr.appendChild(el('td', '', String(v)))); tb.appendChild(tr); });
+  if (!conds.length) { const tr = el('tr'), td = el('td', '', '아직 기록이 없습니다. 계열 ④의 그래프는 기록이 모자라면 예시 데이터를 쓴다.'); td.colSpan = 7; tr.appendChild(td); tb.appendChild(tr); }
+  root.appendChild(tb);
+}
+function drawTiming(api) {
+  const P = api.P, ctx = begin(api), T = P.Tt, sg = P.sig, n = Number(P.nrev), u = PH.relU(n, T, sg), no = PH.nOpt(T, sg);
+  txt(ctx, '스톱워치로 n회전을 재면', 24, 34, COL.dim, 16);
+  const x0 = 60, wid = 880, tot = n * T, sc = Math.min(wid / (tot + 1), 60);
+  rrect(ctx, x0, 90, tot * sc, 40, 6, 'rgba(127,214,255,.25)', COL.a); txt(ctx, `${n} T = ${f2(tot)} s`, x0 + tot * sc / 2, 117, COL.text, 18, 700, 'center');
+  [[x0, '시작 버튼'], [x0 + tot * sc, '정지 버튼']].forEach(([x, l]) => { ctx.fillStyle = 'rgba(255,93,115,.35)'; ctx.fillRect(x - sg * sc, 76, 2 * sg * sc, 68); txt(ctx, l, x, 164, COL.bad, 14, 600, 'center'); txt(ctx, `±${f2(sg)} s`, x, 184, COL.bad, 13, 600, 'center'); });
+  txt(ctx, `반응 오차는 시작·끝에서 한 번씩만 생기고 재는 시간이 길수록 그 비율(σ/nT)은 작아진다 → 현재 ${pc(sg / (n * T))}`, 24, 240, COL.a, 16);
+  txt(ctx, `그러나 오래 돌릴수록 속도·반경이 흔들려 평균 주기가 어긋난다(회전당 ${pc(NOISE.kap)} 누적) → 현재 ${pc(NOISE.kap * n)}`, 24, 280, COL.b, 16);
+  txt(ctx, `합성 상대오차 √(a² + b²) = ${pc(u)}   |   최적 회전 수 n* = √(σ/(T·κ)) ≈ ${f1(no)}`, 24, 340, COL.text, 19, 700);
+  txt(ctx, '실험노트가 10회전(교사 연수 교재는 20회전)을 재도록 한 이유가 이 곡선의 바닥 부근이다.', 24, 380, COL.ok, 16);
+  txt(ctx, '주기 T가 짧으면(빠르면) n* 이 커지고, 길면 작아진다. κ=0.15 %/회전은 예시값이다.', 24, 410, COL.dim, 14);
+  ctx.restore();
+  if (api.chart) {
+    plot(api, { xmin: 0, xmax: 30, ymin: 0, ymax: 0.15, xt: [0, 5, 10, 15, 20, 25, 30], yt: [0, 0.03, 0.06, 0.09, 0.12, 0.15], xl: '측정한 회전 수 n', yl: '주기 상대오차',
+      curves: [{ fn: x => x < 1 ? NaN : sg / (x * T), col: COL.a, dash: 1 }, { fn: x => NOISE.kap * x, col: COL.b, dash: 1 }, { fn: x => x < 1 ? NaN : PH.relU(x, T, sg), col: COL.text }],
+      marks: [{ x: n, y: u, col: COL.bad, lab: 'n=' + n }, { x: no, y: PH.relU(no, T, sg), col: COL.ok, lab: '최적' }] });
+  }
+  api.setReadout([['재는 시간 nT', f2(tot) + ' s'], ['반응 오차 σ/(nT)', pc(sg / (n * T))], ['회전 누적 오차 κn', pc(NOISE.kap * n)], ['합성 상대오차', pc(u)], ['최적 n*', f1(no) + '회']]);
+  api.setNote('파랑 점선: 반응 오차 / 주황 점선: 누적 변동 / 흰 실선: 합성. n=1, 5, 10, 20을 바꿔 보고 값이 바닥 근처에서 가장 작은지 확인한다.');
+}
+
+/* ===== ④ 변환 ===== */
+function drawLin(api) {
+  const P = api.P, ctx = begin(api), kind = P.ser, d = seriesData(kind), S0 = SER[kind], xs0 = Object.keys(XT), pts = d.pts;
+  const y = pts.map(p => p.y), fits = {}; xs0.forEach(k => { fits[k] = linfit(pts.map(p => XT[k].f(p.T)), y); });
+  const sel = P.axis, ft = fits[sel], good = kind === 'F' ? 'inv' : 'T2', p = loglog(pts.map(q => q.T), y), c0 = pts[0].c;
+  const expSlope = sel !== good ? NaN : kind === 'F' ? FOUR_PI2 * c0.m * c0.L : kind === 'r' ? c0.M * G / (FOUR_PI2 * c0.m) : c0.M * G / (FOUR_PI2 * c0.L);
+  txt(ctx, `계열 ${kind === 'F' ? 'A' : kind === 'r' ? 'B' : 'C'}: ${S0.who}만 바꾼 데이터 (${d.mine ? '내가 기록한 값' : '예시 데이터(가상 학생)'})`, 24, 34, d.mine ? COL.ok : COL.b, 16, 700);
+  const hdr = [S0.short === 'F' ? 'M(g)' : S0.short === 'r' ? 'L(cm)' : 'm(g)', 'T̄(s)', 'T²(s²)', '1/T²(s⁻²)'];
+  hdr.forEach((h, i) => txt(ctx, h, 40 + i * 110, 74, COL.dim, 14, 700));
+  pts.slice(0, 11).forEach((q, i) => { const yy = 104 + i * 30; [S0.short === 'F' ? f1(q.c.M * 1000) : S0.short === 'r' ? f1(q.c.L * 100) : f1(q.c.m * 1000), f3(q.T), f3(q.T * q.T), f2(1 / (q.T * q.T))].forEach((v, j) => txt(ctx, v, 40 + j * 110, yy, COL.text, 15)); });
+  txt(ctx, `통제: ${kind === 'F' ? `마개 ${f1(c0.m * 1000)} g, L = ${f1(c0.L * 100)} cm` : kind === 'r' ? `M = ${f1(c0.M * 1000)} g, 마개 ${f1(c0.m * 1000)} g` : `M = ${f1(c0.M * 1000)} g, L = ${f1(c0.L * 100)} cm`}`, 40, 460, COL.ok, 15);
+  txt(ctx, `예상: ${kind === 'F' ? 'F ∝ 1/T²  (F = 4π² m L · 1/T²)' : kind === 'r' ? 'L ∝ T²   (L = Mg/(4π²m) · T²)' : 'm ∝ T²   (m = Mg/(4π²L) · T²)'}`, 40, 492, COL.text, 16, 700);
+  txt(ctx, '곡선은 거듭제곱을 알려 줄 뿐, 상수는 직선 기울기에서 읽는다.', 40, 530, COL.dim, 14);
+  ctx.restore();
+  if (api.chart) {
+    const xv = pts.map(q => XT[sel].f(q.T)), xb = nice(0, Math.max(...xv) * 1.05), yb = nice(Math.min(0, ft.a), Math.max(...y) * 1.08);
+    plot(api, { xmin: xb.min, xmax: xb.max, ymin: yb.min, ymax: yb.max, xt: xb.t, yt: yb.t, xl: `x = ${XT[sel].name} (${XT[sel].un})`, yl: S0.name, curves: [{ fn: x => ft.a + ft.b * x, col: COL.a, dash: 1 }], marks: pts.map(q => ({ x: XT[sel].f(q.T), y: q.y, col: COL.ok })) });
+  }
+  const mark = k => (k === sel ? '▶ ' : '') + XT[k].name;
+  api.setReadout([...xs0.map(k => [`R² (${mark(k)})`, f3(fits[k].r2)]), ['로그–로그 지수 p (y ∝ T^p)', f2(p) + '  (기대 ' + (S0.exp > 0 ? '+' : '') + S0.exp + ')'], ['선택 축 기울기', f3(ft.b)], ['이론 기울기', isNaN(expSlope) ? '— (이 축은 직선이 아님)' : f3(expSlope)], ['절편 (원점 통과?)', f3(ft.a)]]);
+  api.setNote('같은 점이라도 축을 바꾸면 직선도(R²)가 달라진다. 지수 p를 먼저 로그–로그로 어림하면 어떤 변환이 직선인지 알 수 있다. 이론 기울기는 마찰·θ를 무시한 값이라 2 % 안팎 어긋남은 계통오차 때문이다.');
+}
+function drawCollapse(api) {
+  const P = api.P, ctx = begin(api), { conds, mine } = collapseConds(), pts = collapsePts(conds, P.fr), x = pts.map(q => q.x), y = pts.map(q => q.y);
+  const k0 = x.reduce((a, b, i) => a + b * y[i], 0) / x.reduce((a, b) => a + b * b, 0), fit = linfit(x, y);
+  const cls = c => { for (const kd of ['F', 'r', 'm']) { const sd = pickSeries(conds, kd); if (sd && sd.pts.some(q => q.c === c)) return kd; } return 'x'; };
+  const col = { F: COL.a, r: COL.b, m: COL.c, x: COL.dim };
+  txt(ctx, `세 계열을 한 그래프에: y = F,  x = m r / T²   (${mine ? '내 데이터' : '예시 데이터'}, 조건 ${conds.length}개)`, 24, 34, mine ? COL.ok : COL.b, 16, 700);
+  txt(ctx, '이론: F = 4π² · (m r / T²)  →  기울기 = 4π² = ' + f2(FOUR_PI2), 24, 70, COL.text, 17, 700);
+  const lbl = { F: ['계열 A', COL.a], r: ['계열 B', COL.b], m: ['계열 C', COL.c] };
+  ['F', 'r', 'm'].forEach((kd, i) => {
+    const q = pts.filter(t => cls(t.c) === kd), kk = q.map(t => t.y / (FOUR_PI2 * t.x)); const yy = 140 + i * 70;
+    txt(ctx, lbl[kd][0], 40, yy + 5, lbl[kd][1], 16, 700);
+    ctx.strokeStyle = COL.line; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(150, yy); ctx.lineTo(700, yy); ctx.stroke();
+    const X = v => 150 + (v - 0.85) / 0.4 * 550; ctx.strokeStyle = COL.ok; ctx.beginPath(); ctx.moveTo(X(1), yy - 22); ctx.lineTo(X(1), yy + 22); ctx.stroke();
+    kk.forEach(v => disc(ctx, X(Math.min(1.25, Math.max(0.85, v))), yy, 6, lbl[kd][1]));
+    if (kk.length) txt(ctx, `평균 ${f3(kk.reduce((a, b) => a + b, 0) / kk.length)}`, 720, yy + 5, COL.text, 15);
+  });
+  [0.9, 1.0, 1.1, 1.2].forEach(v => txt(ctx, f1(v), 150 + (v - 0.85) / 0.4 * 550, 340, COL.dim, 13, 600, 'center')); txt(ctx, '← 각 점의 F/(4π² m r/T²) : 이론이면 1.0 →', 160, 366, COL.dim, 14);
+  const msg = { naive: '노트 방식: F = Mg, r = L (cosθ가 서로 상쇄)', true: '보정 방식: F = Mg cosθ, r = L cosθ', mix: '혼합: F = Mg 인데 r = L cosθ (일관성 없음)' }[P.fr];
+  txt(ctx, msg, 40, 420, COL.text, 17, 700);
+  txt(ctx, P.fr === 'mix' ? '→ 한쪽만 보정하면 추가 가벼울수록(θ 클수록) 점이 위로 벗어난다.' : P.fr === 'true' ? '→ 같은 θ 안에서는 일관되지만 L을 고정하고 M을 바꾸면 실제 r이 변한다(통제가 깨짐).' : '→ 실제로 r은 L cosθ로 변해도 비 F/r = Mg/L 이라 L, Mg로 충분하다.', 40, 452, COL.dim, 14);
+  txt(ctx, `원점 통과 기울기 = ${f2(k0)}  (${pc(k0 / FOUR_PI2 - 1)}),   절편 있는 직선 R² = ${f3(fit.r2)}`, 40, 500, COL.ok, 16, 700);
+  txt(ctx, '직선성(R²)이 높아도 기울기가 틀릴 수 있다: 계통오차는 점을 함께 옮길 뿐 직선을 깨지 않는다.', 40, 535, COL.b, 14);
+  txt(ctx, '계열 B·C는 F(=Mg)를 고정하고 r, m만 바꿨으므로 m r/T²가 같다 → 점이 한곳에 모이면 r, m 의존성이 맞다는 증거.', 40, 565, COL.dim, 14);
+  ctx.restore();
+  if (api.chart) {
+    const xb = nice(0, Math.max(...x) * 1.05), yb = nice(0, Math.max(...y) * 1.08);
+    plot(api, { xmin: xb.min, xmax: xb.max, ymin: yb.min, ymax: yb.max, xt: xb.t, yt: yb.t, xl: 'm r / T²  (kg·m/s²)', yl: 'F (N)', curves: [{ fn: v => FOUR_PI2 * v, col: COL.ok, dash: 1 }, { fn: v => k0 * v, col: COL.text }], marks: pts.map(q => ({ x: q.x, y: q.y, col: col[cls(q.c)], rad: 5 })) });
+  }
+  api.setReadout([['기울기 k (원점 통과)', f2(k0)], ['이론 4π²', f2(FOUR_PI2)], ['k / 4π² − 1', pc(k0 / FOUR_PI2 - 1)], ['R²', f3(fit.r2)]]);
+  api.setNote('초록 점선은 이론 4π², 흰 선은 내 기울기. 보정 방식 버튼을 바꿔 가며 상쇄(cosθ)와 일관성이 왜 중요한지 본다. 유리관 마찰(2 %)은 계통오차로 기울기를 약 +2 % 이동시킨다.');
+}
+
+/* ===== ⑤ 비판 ===== */
+function drawMC(api) {
+  const P = api.P, ctx = begin(api), M = P.nw * 0.005, m = P.mg / 1000, L = P.Lcm / 100, n = Number(P.nrev), eps = P.epsp / 100, mc = mcK(M, m, L, n, P.Nrep, eps, P.meth);
+  txt(ctx, `같은 조건을 ${P.Nrep}번 재어 평균한 주기로 k = F T²/(4π² m r) 를 구하는 가상 실험 300번`, 24, 34, COL.dim, 16);
+  if (!mc) { txt(ctx, '줄이 서지 못하는 조건', 500, 300, COL.bad, 26, 700, 'center'); ctx.restore(); api.setReadout([['상태', '불가능']]); return; }
+  const lo = 0.8, hi = 1.3, nb = 25, bins = new Array(nb).fill(0); mc.vals.forEach(v => { const i = Math.floor((v - lo) / (hi - lo) * nb); if (i >= 0 && i < nb) bins[i]++; });
+  const bx = 70, bw = 860, by = 480, bh = 330, X = v => bx + (v - lo) / (hi - lo) * bw, mx = Math.max(...bins, 1);
+  ctx.strokeStyle = COL.grid; ctx.lineWidth = 1; [0.8, 0.9, 1.0, 1.1, 1.2, 1.3].forEach(v => { ctx.beginPath(); ctx.moveTo(X(v), by); ctx.lineTo(X(v), by - bh); ctx.stroke(); txt(ctx, f1(v), X(v), by + 22, COL.dim, 14, 600, 'center'); });
+  bins.forEach((c, i) => { const h = c / mx * (bh - 20); ctx.fillStyle = 'rgba(127,214,255,.6)'; ctx.fillRect(bx + i * bw / nb + 2, by - h, bw / nb - 4, h); });
+  ctx.strokeStyle = COL.ok; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(X(1), by); ctx.lineTo(X(1), by - bh); ctx.stroke(); txt(ctx, '참값 (k = 1)', X(1) + 6, by - bh + 16, COL.ok, 15);
+  ctx.strokeStyle = COL.bad; ctx.beginPath(); ctx.moveTo(X(mc.mean), by); ctx.lineTo(X(mc.mean), by - bh + 30); ctx.stroke(); txt(ctx, '300번의 평균', X(mc.mean) + 6, by - bh + 46, COL.bad, 15);
+  txt(ctx, 'k_측정 / (이론 4π²)', 500, by + 50, COL.dim, 15, 600, 'center');
+  txt(ctx, `계통오차(치우침) ${pc(mc.mean - 1)}    우연오차(퍼짐) ±${pc(mc.sd)}`, 24, 570, COL.text, 18, 700);
+  txt(ctx, '평균 횟수를 늘리면 퍼짐만 줄고, 치우침(마찰·잘못된 r)은 그대로이다.', 24, 598, COL.b, 15);
+  ctx.restore();
+  api.setReadout([['치우침 (평균 − 1)', pc(mc.mean - 1)], ['퍼짐 (표준편차)', pc(mc.sd)], ['이론 퍼짐 ≈ 2·δT/T', pc(2 * PH.relU(n, mc.s.T) / Math.sqrt(P.Nrep))], ['주기 T', f3(mc.s.T) + ' s']]);
+  api.setNote('마찰 ε는 장력을 (1−ε)로 줄여 주기를 늘린다 → k가 1/(1−ε)로 치우친다. "r에만 cosθ를 곱하는" 혼합 방식은 k를 1/cosθ로 치우치게 한다. 어느 쪽이든 평균을 아무리 많이 내도 사라지지 않는다.');
+}
+const CASES = {
+  pend: { name: '단진자로 중력가속도 g 측정', rows: [
+    ['T = 2π√(L/g)  (진폭이 작을 때)', '직접 못 재는 g → 길이 L(줄자)와 시간 t(스톱워치)로 간접 측정', '독립 L · 종속 T · 통제 진폭(≤10°), 추 재질(질량 영향이 없음을 한 조건으로 확인)', '20왕복 시간 ÷ 20, 조건당 3회 평균, 최저점 통과 때 스톱워치', 'T–L은 곡선 → T² vs L 직선, 기울기 = 4π²/g', 'g = 4π²/기울기와 9.8 비교, L을 추 중심까지 쟀는지(계통), 진폭이 크면 T가 길어짐']] },
+  spring: { name: '용수철 진동으로 용수철 상수 k 측정', rows: [
+    ['T = 2π√(m/k)', 'k를 정적 늘어남 mg/Δx로도 구하지만, 동적 방법은 m과 T만 있으면 된다', '독립 m · 종속 T · 통제 진폭, 같은 용수철, 수직 진동 (마찰·바닥 접촉 없게)', '20회 진동 시간 ÷ 20, 조건당 3회, 시작은 평형점 통과 때', 'T² vs m 직선, 기울기 = 4π²/k', '절편이 0이 아닌 이유 = 용수철 자체 질량 (m + m_s/3), 정적 방법과 k 비교']] },
+  disk: { name: '회전판 위 물체의 정지마찰계수 μ', rows: [
+    ['미끄러지기 직전 μ N = m ω² r → μ = ω² r / g (질량과 무관)', 'μ를 직접 못 재므로 한계 각속도 ω_c(회전수)와 반경 r로 간접 측정', '독립 r(놓는 위치) · 종속 ω_c · 통제 접촉면, 가속 방식(아주 천천히), 물체 질량은 바꿔 같은 ω_c인지 시험', '미끄러지는 순간의 20회전 시간 ÷ 20, 한계 근처는 흩어지므로 5회 이상 평균', 'ω_c² vs 1/r 직선, 기울기 = μ g', '가속이 빠르면 μ 과대, 정지마찰 vs 운동마찰, 판 수평 확인']] },
+};
+const STEPS = ['① 이론 예측', '② 대체량 정하기', '③ 변인 통제', '④ 수집 (반복·회전 수)', '⑤ 변환 (직선으로)', '⑥ 비교·오차'];
+const CIRC = ['F = 4π² m r / T²', '구심력 F → 걸이추 Mg, 반경 r → 줄 길이 L, 주기 → 10회전 시간', '독립 하나(M, L, m 중), 나머지 둘 고정 (클립으로 반경 고정)', '10회전 시간 ÷ 10, 조건당 3회 평균, 점 5개 이상·범위 3배 이상', 'F vs 1/T², L vs T², m vs T² 직선, 기울기 4π²…', 'k = 4π² 와 비교, cosθ 상쇄, 마찰(계통)·반응(우연)'];
+function drawTransfer(api) {
+  const ctx = begin(api); txt(ctx, '실험 설계 사슬: 이 틀은 다른 실험에도 그대로 쓰인다', 24, 34, COL.dim, 16);
+  STEPS.forEach((s, i) => { const x = 24 + i * 160; rrect(ctx, x, 70, 144, 70, 10, COL.panel, [COL.a, COL.b, COL.ok, COL.c, COL.a, COL.bad][i]); txt(ctx, s, x + 72, 112, COL.text, 14, 700, 'center'); if (i < 5) arrow(ctx, x + 146, 105, x + 158, 105, COL.dim, 2); });
+  txt(ctx, '아래 표에서 등속원운동 실험과 선택한 사례를 단계별로 나란히 비교한다.', 24, 190, COL.dim, 15);
+  ctx.restore(); api.setReadout([['선택한 사례', CASES[api.P.case].name]]); api.setNote('표의 각 칸이 서로 같은 질문에 답한다: 무엇을 예측하나 → 무엇을 대신 잴까 → 무엇을 고정할까 → 어떻게 모을까 → 어떻게 직선으로 펼칠까 → 무엇과 비교하고 무엇을 의심할까.');
+}
+function renderTransfer(api) {
+  const root = api.custom; if (!root) return; root.innerHTML = ''; const cs = CASES[api.P.case], tb = el('table', 'lb-tbl wide'), h = el('tr');
+  ['단계', '등속원운동 (구심력)', cs.name].forEach(t => h.appendChild(el('th', '', t))); tb.appendChild(h);
+  STEPS.forEach((s, i) => { const tr = el('tr'); tr.appendChild(el('td', 'k', s)); tr.appendChild(el('td', '', CIRC[i])); tr.appendChild(el('td', '', cs.rows[0][i])); tb.appendChild(tr); }); root.appendChild(tb);
+}
+const QUIZ = [
+  { q: '같은 주기 T로 반경 r을 2배로 하면 필요한 구심력은?', o: ['그대로', '2배', '4배', '1/2배'], a: 1, ex: 'F = 4π² m r/T² 이므로 T, m이 같으면 F ∝ r.' },
+  { q: '추(걸이추)와 줄 길이를 고정하고 마개 질량을 4배로 하면 주기는?', o: ['1/2', '그대로', '2배', '4배'], a: 2, ex: 'T = 2π√(mL/Mg) → T ∝ √m. m이 4배이면 T는 2배.' },
+  { q: '1회전 시간을 10번 재는 것보다 10회전 시간을 한 번 재는 것이 유리한 이유는?', o: ['스톱워치가 정확해져서', '반응 오차가 시작·끝에서만 생겨 주기에 미치는 비율이 1/10이 되어서', '구심력이 커져서', '마찰이 사라져서'], a: 1, ex: '시작·끝 반응 오차 σ는 재는 시간 nT와 무관하므로 σ/(nT)가 작아진다.' },
+  { q: 'F–T 데이터가 곡선이다. 직선으로 펴려면 가로축을 무엇으로 잡나?', o: ['T', 'T²', '1/T²', '√T'], a: 2, ex: 'F ∝ 1/T² 이므로 F를 1/T²에 대해 그리면 원점을 지나는 직선.' },
+  { q: '같은 조건을 20번 재어 평균해도 줄어들지 않는 오차는?', o: ['스톱워치 반응 오차', '회전 속도의 들쭉날쭉', '유리관 마찰에 의한 장력 감소', '읽기 오차'], a: 2, ex: '마찰은 항상 같은 방향으로 치우치는 계통오차. 평균은 우연오차만 줄인다.' },
+  { q: '단진자로 g를 구하려 한다. 직선이 되는 그래프는?', o: ['T vs L', 'T² vs L', 'L vs 1/T', 'T vs √g'], a: 1, ex: 'T² = (4π²/g) L → 기울기에서 g를 구한다.' },
+];
+const QZ = { ans: {} };
+function renderQuiz(root) {
+  root.innerHTML = ''; const score = QUIZ.filter((q, i) => QZ.ans[i] === q.a).length;
+  root.appendChild(el('div', 'qz-head', `설계 점검 퀴즈 — 점수 ${score} / ${QUIZ.length}`));
+  QUIZ.forEach((q, qi) => { const card = el('div', 'qz-card'), done = QZ.ans[qi] !== undefined; card.appendChild(el('div', 'qz-q', `${qi + 1}. ${q.q}`));
+    q.o.forEach((t, oi) => { const b = el('button', 'qz-opt', t); if (done) { b.disabled = true; if (oi === q.a) b.classList.add('ok'); else if (oi === QZ.ans[qi]) b.classList.add('bad'); } b.onclick = () => { QZ.ans[qi] = oi; renderQuiz(root); }; card.appendChild(b); });
+    if (done) card.appendChild(el('div', 'qz-ex', (QZ.ans[qi] === q.a ? '정답! ' : '오답. ') + q.ex)); root.appendChild(card); });
+  const rb = el('button', 'qz-reset', '다시 풀기'); rb.onclick = () => { QZ.ans = {}; renderQuiz(root); }; root.appendChild(rb);
+}
+function drawQuiz(api) {
+  const ctx = begin(api); txt(ctx, '복습: 이번 실험의 설계 사슬', 24, 34, COL.dim, 16);
+  STEPS.forEach((st, i) => { const y = 64 + i * 88; rrect(ctx, 24, y, 190, 70, 10, COL.panel, [COL.a, COL.b, COL.ok, COL.c, COL.a, COL.bad][i]); txt(ctx, st, 119, y + 42, COL.text, 15, 700, 'center'); txt(ctx, CIRC[i], 230, y + 42, COL.text, 15, 600); });
+  ctx.restore(); api.setReadout([['정답', QUIZ.filter((q, i) => QZ.ans[i] === q.a).length + ' / ' + QUIZ.length]]); api.setNote('각 문항의 해설은 앞 탭에서 직접 조작해 확인한 내용이다. 틀린 문항은 해당 탭으로 돌아가 다시 조작해 본다.');
+}
+
+/* ===== SIM ===== */
+const S = { phi: 0, cutp: null };
+const makeCut = (P, phi) => ({ x: 330 + 250 * P.rk * Math.cos(phi), y: 320 - 250 * P.rk * Math.sin(phi), ux: -Math.sin(phi), uy: -Math.cos(phi), v: TAU / P.Tk * P.rk });
+const DRAW = { kin: drawKin, derive: drawDerive, rig: drawRigB, plan: drawPlan, lab: drawLab, timing: drawTiming, lin: drawLin, collapse: drawCollapse, mc: drawMC, transfer: drawTransfer, quiz: drawQuiz, rep: drawRep };
+const ANIM = { kin: 1, rig: 1, lab: 1 };
+function panels(api) { const id = api.scenario.id; if (id === 'lab') renderLab(api); else if (id === 'transfer') renderTransfer(api); else if (id === 'quiz') renderQuiz(api.custom); else if (id === 'rep') renderRep(api); }
+const SIM = {
+  enter(api) { S.phi = 0; S.cutp = api.scenario.id === 'kin' && api.P.cut === 'cut' ? makeCut(api.P, 0) : null; api.setPlaying && api.setPlaying(!!ANIM[api.scenario.id]); panels(api); },
+  reset(api) { S.phi = 0; S.cutp = api.scenario.id === 'kin' && api.P.cut === 'cut' ? makeCut(api.P, 0) : null; api.refresh(); },
+  update(api) {
+    const id = api.scenario.id, P = api.P;
+    if (id === 'kin') { if (P.cut === 'cut' && !S.cutp) S.cutp = makeCut(P, S.phi); else if (P.cut !== 'cut') S.cutp = null; }
+    if (id === 'lab' || id === 'transfer') panels(api);
+    (DRAW[id] || drawKin)(api);
+  },
+  frame(api, dt) {
+    const id = api.scenario.id, P = api.P, playing = typeof api.playing === 'function' ? api.playing() : api.playing; if (playing === false) return;
+    dt = Math.min(dt, 1 / 30);
+    if (id === 'kin') { const w = TAU / P.Tk; if (S.cutp) { if (!S.cutp.off) { S.cutp.x += S.cutp.ux * S.cutp.v * 250 * dt * P.spkk; S.cutp.y += S.cutp.uy * S.cutp.v * 250 * dt * P.spkk; if (S.cutp.x < -40 || S.cutp.x > 1040 || S.cutp.y < -40 || S.cutp.y > 665) S.cutp.off = true; } } else S.phi += w * dt * P.spkk; }
+    else if (id === 'rig' || id === 'lab') { const s = PH.sol(P.nw * 0.005, P.mg / 1000, P.Lcm / 100, id === 'lab' ? LAB_EPS : 0); if (s) S.phi += s.w * dt * P.spk; }
+    (DRAW[id] || drawKin)(api);
+  },
+  tests() { return runTests(); },
+};
+
+/* ===== ⑥ 실험 보고서 ===== */
+const REP = { f: {}, loaded: false };
+const REP_KEY = 'circular-motion-lab-report-v1';
+function repLoad() { if (REP.loaded) return; REP.loaded = true; try { const t = localStorage.getItem(REP_KEY); if (t) REP.f = JSON.parse(t) || {}; } catch (e) { } }
+function repSave() { try { localStorage.setItem(REP_KEY, JSON.stringify(REP.f)); } catch (e) { } }
+const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const RSEC = [
+  { k: 'goal', h: '1. 실험 목표', hint: '무엇과 무엇의 관계를 알아보려는가? (구심력 F, 마개 질량 m, 반경 r, 주기 T)' },
+  { k: 'hyp', h: '2. 이론과 예측(가설)', hint: 'F = 4π² m r / T² 를 이용해 측정 전에 예측을 쓰세요. 예) 걸이추를 2배로 하면 T는 몇 배? 줄을 2배로 하면? 마개 질량을 4배로 하면?' },
+  { k: 'vars', h: '3. 변인 설정', hint: '계열 A·B·C마다 독립변인 / 종속변인 / 통제변인과, 통제를 위해 한 일(클립으로 반경 고정 등)을 쓰세요.' },
+  { k: 'method', h: '4. 실험 방법 (내가 실제로 한 절차)', hint: '장치(걸이추 → 장력 Mg, 유리관, 클립)를 왜 그렇게 구성했는지, 측정 순서와 회전 수(n)를 정한 이유를 포함하세요. 장치·조건 표는 자동으로 들어갑니다.' },
+];
+const RQ = [
+  { k: 'q1', h: '6-1. 세 관계 해석', hint: '계열 A, B, C 그래프에서 F와 T, r과 T, m과 T의 관계(지수 p)를 근거와 함께 쓰세요. 예측과 같은가요?' },
+  { k: 'q2', h: '6-2. 그래프 변환의 이유', hint: '왜 T를 그대로 쓰지 않고 1/T² 또는 T²으로 바꿔 그렸나? 자동 표의 R² 비교와 원점 통과 여부(절편)를 근거로 쓰세요.' },
+  { k: 'q3', h: '6-3. 비례상수 k와 이론값 비교', hint: '세 계열을 합친 기울기 k를 4π² = 39.48과 비교하세요. 차이는 몇 %이고, 그 차이가 우연오차인지 계통오차인지 판단하세요.' },
+  { k: 'q4', h: '6-4. 오차 분석', hint: '우연오차(스톱워치 반응, 회전 속도 변동)와 계통오차(유리관 마찰, θ와 cosθ 처리)를 구분하고, 각각 줄이는 방법을 제안하세요.' },
+  { k: 'q5', h: '6-5. 설계 반성과 적용', hint: '10회전을 재는 이유, 다시 한다면 바꿀 점, 이 설계 틀을 다른 실험(단진자·용수철 등)에 적용하는 방법을 쓰세요.' },
+  { k: 'concl', h: '7. 결론', hint: '목표에 대한 답을 수치와 함께 두세 문장으로 정리하세요.' },
+];
+function repAnalyze(conds) {
+  const out = { ser: {}, col: null };
+  ['F', 'r', 'm'].forEach(kd => {
+    const sd = pickSeries(conds, kd); if (!sd) { out.ser[kd] = null; return; }
+    const pts = sd.pts, y = pts.map(p => p.y), good = kd === 'F' ? 'inv' : 'T2', fits = {};
+    Object.keys(XT).forEach(k => { fits[k] = linfit(pts.map(p => XT[k].f(p.T)), y); });
+    const c0 = pts[0].c, exp = kd === 'F' ? FOUR_PI2 * c0.m * c0.L : kd === 'r' ? c0.M * G / (FOUR_PI2 * c0.m) : c0.M * G / (FOUR_PI2 * c0.L);
+    out.ser[kd] = { n: sd.n, pts, fits, good, slope: fits[good].b, exp, dev: fits[good].b / exp - 1, p: loglog(pts.map(p => p.T), y), icpt: fits[good].a, c0 };
+  });
+  if (conds.length >= 4) { const cp = collapsePts(conds, 'naive'), x = cp.map(q => q.x), y = cp.map(q => q.y); const k0 = x.reduce((a, b, i) => a + b * y[i], 0) / x.reduce((a, b) => a + b * b, 0); out.col = { k0, dev: k0 / FOUR_PI2 - 1, r2: linfit(x, y).r2, n: conds.length, pts: cp }; }
+  return out;
+}
+const SERNAME = { F: ['A', '추 개수(구심력 F)'], r: ['B', '줄 길이(반경 r)'], m: ['C', '마개 질량 m'] };
+function repConds() { return aggregate(LAB.rows); }
+function repProgress() {
+  const an = repAnalyze(repConds()), f = REP.f, items = [];
+  ['F', 'r', 'm'].forEach(k => items.push(['계열 ' + SERNAME[k][0] + ' 데이터 3점 이상', !!an.ser[k]]));
+  [...RSEC, ...RQ].forEach(s => items.push([s.h, (f[s.k] || '').trim().length >= 15]));
+  return { an, items, done: items.filter(i => i[1]).length };
+}
+function reportCharts(an) {
+  const out = [], mk = (cv, o) => { plotCv(cv, cv.getContext('2d'), Object.assign({ light: true }, o)); return cv.toDataURL('image/png'); };
+  ['F', 'r', 'm'].forEach(kd => {
+    const r = an.ser[kd]; if (!r) return; const xs = r.pts.map(p => XT[r.good === 'inv' ? 'inv' : 'T2'].f(p.T)), ys = r.pts.map(p => p.y), ft = r.fits[r.good], xb = nice(0, Math.max(...xs) * 1.05), yb = nice(Math.min(0, ft.a), Math.max(...ys) * 1.08), cv = document.createElement('canvas'); cv.width = 560; cv.height = 340;
+    out.push({ title: `계열 ${SERNAME[kd][0]}: ${SER[kd].name} – ${XT[r.good].name}`, url: mk(cv, { xmin: xb.min, xmax: xb.max, ymin: yb.min, ymax: yb.max, xt: xb.t, yt: yb.t, xl: 'x = ' + XT[r.good].name + ' (' + XT[r.good].un + ')', yl: SER[kd].name, curves: [{ fn: x => ft.a + ft.b * x, col: '#d64545', dash: 1 }], marks: r.pts.map(p => ({ x: XT[r.good].f(p.T), y: p.y, col: '#1f6fd6' })) }) });
+  });
+  if (an.col) { const x = an.col.pts.map(q => q.x), y = an.col.pts.map(q => q.y), xb = nice(0, Math.max(...x) * 1.05), yb = nice(0, Math.max(...y) * 1.08), cv = document.createElement('canvas'); cv.width = 560; cv.height = 340;
+    out.push({ title: '세 계열 통합: F – m r / T²  (이론 기울기 4π²는 점선)', url: mk(cv, { xmin: xb.min, xmax: xb.max, ymin: yb.min, ymax: yb.max, xt: xb.t, yt: yb.t, xl: 'm r / T²  (kg·m/s²)', yl: 'F = M g  (N)', curves: [{ fn: v => FOUR_PI2 * v, col: '#1e8f4e', dash: 1 }, { fn: v => an.col.k0 * v, col: '#d64545' }], marks: an.col.pts.map(q => ({ x: q.x, y: q.y, col: '#1f6fd6', rad: 4 })) }) }); }
+  return out;
+}
+function buildReportHTML(withImages) {
+  const f = REP.f, conds = repConds(), an = repAnalyze(conds), nl = s => esc(s).replace(/\n/g, '<br>'), blank = '<span class="blank">(작성하지 않음)</span>';
+  const ans = k => (f[k] || '').trim() ? nl(f[k]) : blank, now = new Date(), ds = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const uniq = (fn, fmt) => [...new Set(conds.map(fn))].sort((a, b) => a - b).map(fmt).join(', ') || '—';
+  const sec = (h, body) => `<section><h2>${h}</h2>${body}</section>`;
+  let h = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>등속원운동 실험 보고서</title><style>body{font-family:'Noto Sans KR','Malgun Gothic',sans-serif;max-width:820px;margin:24px auto;padding:0 16px;color:#1c2733;line-height:1.6}h1{font-size:24px;border-bottom:3px solid #1f6fd6;padding-bottom:8px}h2{font-size:17px;margin:22px 0 6px;color:#1f6fd6}table{border-collapse:collapse;width:100%;font-size:13px;margin:6px 0}th,td{border:1px solid #bbb;padding:4px 7px;text-align:right}th{background:#eef2f8}td.l,th.l{text-align:left}.ans{border:1px solid #ccd5e0;border-radius:6px;padding:8px 10px;min-height:44px;background:#fafcff}.blank{color:#999}.meta{display:flex;gap:24px;flex-wrap:wrap;font-size:14px}.fig{display:inline-block;width:48%;min-width:300px;vertical-align:top;margin:6px 0}.fig img{width:100%;border:1px solid #ddd}.fig div{font-size:12px;color:#555}.note{font-size:12px;color:#666}section{page-break-inside:avoid}@media print{body{margin:0}}</style></head><body>`;
+  h += `<h1>등속원운동(구심력) 실험 보고서</h1><div class="meta"><div>이름: ${esc((f.name || '').trim()) || '＿＿＿＿＿＿'}</div><div>날짜: ${ds}</div><div>실험 방식: 가상 실험(등속원운동 실험 설계 시뮬레이션)</div></div>`;
+  RSEC.forEach(s => {
+    h += sec(s.h, `<div class="ans">${ans(s.k)}</div>`);
+    if (s.k === 'method') h += sec('4-1. 장치·조건 (자동)', `<table><tr><th class="l">항목</th><th class="l">사용한 값</th></tr><tr><td class="l">걸이추 질량 M</td><td class="l">${uniq(c => c.M, v => (v * 1000).toFixed(1) + ' g')}</td></tr><tr><td class="l">마개 질량 m</td><td class="l">${uniq(c => c.m, v => (v * 1000).toFixed(1) + ' g')}</td></tr><tr><td class="l">줄 길이 L</td><td class="l">${uniq(c => c.L, v => (v * 100).toFixed(1) + ' cm')}</td></tr><tr><td class="l">측정한 회전 수 n</td><td class="l">${uniq(c => c.n, v => v + '회전')}</td></tr><tr><td class="l">측정 횟수 / 조건 수</td><td class="l">${LAB.rows.length}회 / ${conds.length}가지</td></tr></table>`);
+  });
+  let tb = `<table><tr><th>추 M(g)</th><th>마개 m(g)</th><th>L(cm)</th><th>n</th><th>횟수</th><th>T̄(s)</th><th>s(s)</th><th>θ(°)</th></tr>`;
+  conds.forEach(c => { tb += `<tr><td>${(c.M * 1000).toFixed(1)}</td><td>${(c.m * 1000).toFixed(1)}</td><td>${(c.L * 100).toFixed(1)}</td><td>${c.n}</td><td>${c.k}</td><td>${c.T.toFixed(3)}</td><td>${isNaN(c.sd) ? '—' : c.sd.toFixed(3)}</td><td>${(c.th / DEG).toFixed(1)}</td></tr>`; });
+  tb += '</table>'; if (!conds.length) tb = '<div class="ans">' + blank + ' — 가상 실험대에서 측정한 뒤 다시 내려받으세요.</div>';
+  h += sec('5. 결과', `<h3 style="font-size:14px">5-1. 측정 데이터 (T = n회전 시간 ÷ n의 평균)</h3>${tb}`);
+  let an2 = '';
+  ['F', 'r', 'm'].forEach(kd => { const r = an.ser[kd]; an2 += r ? `<tr><td class="l">계열 ${SERNAME[kd][0]} (${SERNAME[kd][1]})</td><td>${r.n}</td><td>${r.fits.T.r2.toFixed(3)}</td><td>${r.fits.T2.r2.toFixed(3)}</td><td>${r.fits.inv.r2.toFixed(3)}</td><td>${r.p.toFixed(2)} (기대 ${SER[kd].exp > 0 ? '+' : ''}${SER[kd].exp})</td><td>${r.slope.toFixed(3)}</td><td>${r.exp.toFixed(3)}</td><td>${(100 * r.dev).toFixed(1)} %</td><td>${r.icpt.toFixed(3)}</td></tr>` : `<tr><td class="l">계열 ${SERNAME[kd][0]} (${SERNAME[kd][1]})</td><td colspan="9" class="l blank">데이터 3점 미만</td></tr>`; });
+  h += sec('5-2. 그래프 분석 (자동 계산)', `<table><tr><th class="l">계열</th><th>점</th><th>R²(T)</th><th>R²(T²)</th><th>R²(1/T²)</th><th>로그–로그 지수 p</th><th>직선 기울기</th><th>이론 기울기</th><th>차이</th><th>절편</th></tr>${an2}</table><div class="note">직선 기울기는 A: F–1/T², B·C: 크기–T² 그래프의 값. 이론 기울기는 A: 4π²mL, B: Mg/(4π²m), C: Mg/(4π²L) (마찰·θ 무시).</div>`
+    + (an.col ? `<p><b>세 계열 통합:</b> 원점 통과 기울기 k = ${an.col.k0.toFixed(2)} (이론 4π² = ${FOUR_PI2.toFixed(2)}, 차이 ${(100 * an.col.dev).toFixed(1)} %, R² = ${an.col.r2.toFixed(3)}, 조건 ${an.col.n}개)</p>` : ''));
+  if (withImages) { try { const ch = reportCharts(an); if (ch.length) h += sec('5-3. 그래프', ch.map(c => `<div class="fig"><img src="${c.url}" alt=""><div>${esc(c.title)}</div></div>`).join('')); } catch (e) { } }
+  h += `<section><h2>6. 해석</h2>` + RQ.filter(s => s.k !== 'concl').map(s => `<h3 style="font-size:14px;margin:12px 0 4px">${s.h}</h3><div class="ans">${ans(s.k)}</div>`).join('') + '</section>';
+  h += sec(RQ[RQ.length - 1].h, `<div class="ans">${ans('concl')}</div>`);
+  h += `<p class="note">※ 이 실험은 시뮬레이션이며 유리관 마찰 2 %, 스톱워치 반응 오차 0.12 s 등 가상 설정이 들어 있습니다(예시값). 보고서는 이 브라우저에서만 작성되며 서버로 전송되지 않습니다.</p></body></html>`;
+  return h;
+}
+function repOpen() { const u = URL.createObjectURL(new Blob([buildReportHTML(true)], { type: 'text/html;charset=utf-8' })); window.open(u, '_blank'); }
+function repDownload() { const u = URL.createObjectURL(new Blob([buildReportHTML(true)], { type: 'text/html;charset=utf-8' })), a = document.createElement('a'); a.href = u; a.download = '등속원운동_실험보고서.html'; document.body.appendChild(a); a.click(); a.remove(); }
+function renderRep(api) {
+  const root = api.custom; if (!root) return; repLoad(); root.innerHTML = '';
+  const intro = el('div', 'lb-note', '③에서 모은 내 데이터로 표·그래프·기울기가 자동으로 채워집니다. 해석 문항은 직접 쓰세요(이 브라우저에만 저장).'); root.appendChild(intro);
+  const bar = el('div', 'lb-bar'), btn = (t, fn, cls) => { const b = el('button', 'lb-btn' + (cls ? ' ' + cls : ''), t); b.onclick = fn; bar.appendChild(b); };
+  btn('보고서 열기(인쇄용)', () => { repOpen(); }); btn('HTML로 내려받기', () => { repDownload(); }, 'alt');
+  btn('입력 지우기', () => { if (confirm('작성한 글을 모두 지울까요?')) { REP.f = {}; repSave(); renderRep(api); api.refresh(); } }, 'warn'); root.appendChild(bar);
+  const field = (k, h, hint, rows) => { const w = el('div', 'rp-f'); w.appendChild(el('label', 'rp-h', h)); w.appendChild(el('div', 'rp-hint', hint)); const t = document.createElement('textarea'); t.rows = rows || 3; t.value = REP.f[k] || ''; t.oninput = () => { REP.f[k] = t.value; repSave(); }; t.onchange = () => api.refresh(); w.appendChild(t); root.appendChild(w); };
+  const nm = el('div', 'rp-f'); nm.appendChild(el('label', 'rp-h', '이름 (선택, 서버로 보내지 않음)')); const ni = document.createElement('input'); ni.type = 'text'; ni.value = REP.f.name || ''; ni.oninput = () => { REP.f.name = ni.value; repSave(); }; nm.appendChild(ni); root.appendChild(nm);
+  RSEC.forEach(s => field(s.k, s.h, s.hint, 3));
+  const pg = repProgress(), tb = el('table', 'lb-tbl'), hd = el('tr'); ['5. 결과 요약(자동)', 'R²(1/T²)', 'R²(T²)', '기울기 차이'].forEach(t => hd.appendChild(el('th', '', t))); tb.appendChild(hd);
+  ['F', 'r', 'm'].forEach(kd => { const r = pg.an.ser[kd], tr = el('tr'); [`계열 ${SERNAME[kd][0]}`, r ? f3(r.fits.inv.r2) : '—', r ? f3(r.fits.T2.r2) : '—', r ? pc(r.dev) : '데이터 없음'].forEach(v => tr.appendChild(el('td', '', v))); tb.appendChild(tr); });
+  { const tr = el('tr'); ['세 계열 k/4π²−1', '', '', pg.an.col ? pc(pg.an.col.dev) : '—'].forEach(v => tr.appendChild(el('td', '', v))); tb.appendChild(tr); } root.appendChild(tb);
+  RQ.forEach(s => field(s.k, s.h, s.hint, s.k === 'concl' ? 3 : 4));
+}
+function drawRep(api) {
+  repLoad(); const ctx = begin(api), pg = repProgress();
+  txt(ctx, '보고서 진행 상황', 24, 34, COL.dim, 16);
+  pg.items.forEach((it, i) => { const col = i % 2, row = Math.floor(i / 2), x = 24 + col * 480, y = 70 + row * 44; rrect(ctx, x, y, 456, 36, 8, it[1] ? 'rgba(94,234,212,.12)' : COL.panel, it[1] ? COL.ok : COL.line); txt(ctx, it[1] ? '✓' : '○', x + 14, y + 25, it[1] ? COL.ok : COL.dim, 18, 700); txt(ctx, it[0], x + 40, y + 24, COL.text, 15); });
+  const steps = ['③ 측정·기록', '④ 변환 확인', '⑥ 해석 쓰기', '내려받기·제출'];
+  steps.forEach((s, i) => { const x = 24 + i * 245; rrect(ctx, x, 520, 220, 50, 10, COL.panel, COL.a); txt(ctx, s, x + 110, 551, COL.text, 15, 700, 'center'); if (i < 3) arrow(ctx, x + 222, 545, x + 243, 545, COL.dim, 2); });
+  txt(ctx, '내 데이터가 없는 계열은 보고서에 쓰지 않는다 — 예시 데이터는 ④탭 연습용이다.', 24, 600, COL.b, 14);
+  ctx.restore(); api.setReadout([['완료 항목', pg.done + ' / ' + pg.items.length], ['기록한 측정', LAB.rows.length + '회'], ['기록한 조건', aggregate(LAB.rows).length + '가지']]);
+  api.setNote('왼쪽 목록이 모두 ✓가 되면 제출용 보고서가 완성된다. 수치 해석은 자동 계산값을 근거로, 이유(왜 그런가)는 직접 문장으로 쓴다.');
+}
+
+/* ===== 물리 검증 (해석해·극한·보존량과 비교) ===== */
+function runTests() {
+  const T = [], near = (a, b, e = 1e-9) => Math.abs(a - b) <= e * Math.max(1e-12, Math.abs(b));
+  const cfg = [[0.06, 0.02, 0.7], [0.03, 0.02, 1.0], [0.2, 0.06, 0.3], [0.1, 0.01, 0.5]];
+  T.push(['구심력 F_c = m ω² r (장력의 수평 성분)', cfg.every(([M, m, L]) => { const s = PH.sol(M, m, L); return near(s.Fc, m * s.w * s.w * s.r); }), '4개 조건']);
+  T.push(['F_c = 4π² m r / T²', cfg.every(([M, m, L]) => { const s = PH.sol(M, m, L); return near(s.Fc, FOUR_PI2 * m * s.r / (s.T * s.T)); }), '']);
+  T.push(['T = 2π√(mL/(Mg))  (cosθ 상쇄)', cfg.every(([M, m, L]) => near(PH.sol(M, m, L).T, TAU * Math.sqrt(m * L / (M * G)))), '']);
+  T.push(['F_c / r = Mg / L  (실험노트: Mg, L을 F, r로 간주 가능)', cfg.every(([M, m, L]) => { const s = PH.sol(M, m, L); return near(s.Fc / s.r, M * G / L); }), '']);
+  T.push(['힘 삼각형 T² = (mg)² + F_c², sinθ = m/M', cfg.every(([M, m, L]) => { const s = PH.sol(M, m, L); return near(s.Ts * s.Ts, (m * G) ** 2 + s.Fc ** 2) && near(Math.sin(s.th), m / M); }), '']);
+  const lim = PH.sol(10, 0.1, 0.7);
+  T.push(['극한 M ≫ m: F_c → Mg, θ → 0', lim.Fc / (10 * G) > 0.9999 && lim.th < 0.011, 'cosθ = ' + lim.c.toFixed(6)]);
+  T.push(['v²/r = ω²r = 4π²r/T²', cfg.every(([M, m, L]) => { const s = PH.sol(M, m, L); return near(s.v * s.v / s.r, s.w * s.w * s.r) && near(s.a, FOUR_PI2 * s.r / (s.T * s.T)); }), '']);
+  T.push(['불가능 영역 (m ≥ 0.95 M)은 null', PH.sol(0.02, 0.02, 0.7) === null && PH.sol(0.02, 0.019, 0.7) === null && PH.sol(0.03, 0.01, 0.7) !== null, '']);
+  const dr = d => 2 * Math.sin(d / 2) / d;
+  T.push(['Δv 도출: |Δv|/Δt ÷ (v²/r) → 1 (Δθ → 0)', Math.abs(dr(0.01) - 1) < 1e-5 && near(dr(Math.PI / 2), 0.9003163, 1e-6), 'Δθ = 90°에서 ' + dr(Math.PI / 2).toFixed(4)]);
+  const ns = [...Array(60)].map((_, i) => i + 1), Tt = 1.0, best = ns.reduce((a, b) => PH.relU(b, Tt) < PH.relU(a, Tt) ? b : a);
+  T.push(['최적 회전 수 n* = √(σ/(Tκ)) 가 수치 최솟값과 ±1 일치', Math.abs(best - PH.nOpt(Tt)) <= 1, `수치 ${best} / 해석 ${PH.nOpt(Tt).toFixed(1)}`]);
+  T.push(['오차 곡선은 n=1에서 반응오차 지배, n=30에서 누적오차 지배', PH.relU(1, 1) > 0.1 && NOISE.kap * 30 > PH.relU(30, 1) * 0.99 * 0.9, '']);
+  T.push(['난수는 시드가 같으면 같은 값', rng(5)() === rng(5)() && rng(5)() !== rng(6)(), '']);
+  const M0 = 0.06, m0 = 0.02, L0 = 0.7, base = PH.sol(M0, m0, L0), u1 = PH.relU(10, base.T);
+  const a = mcK(M0, m0, L0, 10, 1, 0, 'ok'), b = mcK(M0, m0, L0, 10, 16, 0, 'ok');
+  T.push(['몬테카를로: ε=0, k 평균 ≈ 1 (±1.5 %)', Math.abs(a.mean - 1) < 0.015, '평균 ' + a.mean.toFixed(4)]);
+  T.push(['k의 퍼짐 ≈ 2·δT/T (이론 대비 ±25 %)', near(a.sd, 2 * u1, 0.25), `${a.sd.toFixed(4)} vs ${(2 * u1).toFixed(4)}`]);
+  T.push(['평균 횟수 16배 → 퍼짐 1/4 (±25 %)', near(a.sd / b.sd, 4, 0.25), (a.sd / b.sd).toFixed(2)]);
+  const c = mcK(M0, m0, L0, 10, 16, 0.05, 'ok');
+  T.push(['마찰 ε=5 %: k → 1/(1−ε) 치우침이 평균으로 안 사라짐', near(c.mean, 1 / 0.95, 0.01) && c.sd < 0.02, c.mean.toFixed(4)]);
+  const d = mcK(M0, m0, L0, 10, 16, 0, 'mix');
+  T.push(['혼합 방식(F=Mg, r=L cosθ): k → 1/cosθ', near(d.mean, 1 / base.c, 0.01), `${d.mean.toFixed(4)} vs ${(1 / base.c).toFixed(4)}`]);
+  /* 선형화: 잡음 없는 이상 데이터 */
+  const idealA = [0.035, 0.05, 0.07, 0.1, 0.15].map(M => { const s = PH.sol(M, 0.02, 0.7); return { y: M * G, T: s.T }; });
+  const ys = idealA.map(p => p.y), fi = linfit(idealA.map(p => 1 / (p.T * p.T)), ys), ft = linfit(idealA.map(p => p.T), ys);
+  T.push(['계열 A 이상 데이터: F vs 1/T² 정확히 직선 (R²=1), 기울기 4π² m L', fi.r2 > 1 - 1e-12 && near(fi.b, FOUR_PI2 * 0.02 * 0.7, 1e-9) && Math.abs(fi.a) < 1e-9, 'F vs T의 R² = ' + ft.r2.toFixed(3)]);
+  T.push(['F vs T 는 직선이 아님 (R² < 0.99), 로그–로그 지수 −2', ft.r2 < 0.99 && near(loglog(idealA.map(p => p.T), ys), -2, 1e-9), '']);
+  const idealB = [0.3, 0.5, 0.7, 0.9, 1.0].map(L => { const s = PH.sol(0.06, 0.02, L); return { y: L, T: s.T }; });
+  T.push(['계열 B 이상 데이터: L vs T² 직선, 기울기 Mg/(4π² m), 지수 +2', (() => { const f = linfit(idealB.map(p => p.T ** 2), idealB.map(p => p.y)); return f.r2 > 1 - 1e-12 && near(f.b, 0.06 * G / (FOUR_PI2 * 0.02), 1e-9) && near(loglog(idealB.map(p => p.T), idealB.map(p => p.y)), 2, 1e-9); })(), '']);
+  /* 예시 데이터 */
+  const dA = pickSeries(EXAMPLE, 'F'), dB = pickSeries(EXAMPLE, 'r'), dC = pickSeries(EXAMPLE, 'm');
+  T.push(['예시 데이터: 세 계열 모두 3점 이상 (A 7·B 5·C 4)', dA && dB && dC && dA.n === 7 && dB.n === 5 && dC.n === 4, [dA, dB, dC].map(x => x && x.n).join('·')]);
+  const fa = linfit(dA.pts.map(p => 1 / (p.T ** 2)), dA.pts.map(p => p.y));
+  T.push(['예시 A: 기울기가 4π² m L /(1−ε) 와 ±5 % 일치', near(fa.b, FOUR_PI2 * 0.02 * 0.7 / (1 - LAB_EPS), 0.05) && fa.r2 > 0.99, `${fa.b.toFixed(3)} vs ${(FOUR_PI2 * 0.014 / 0.98).toFixed(3)} · R² ${fa.r2.toFixed(4)}`]);
+  const cp = collapsePts(EXAMPLE, 'naive'), k0 = cp.reduce((s, q) => s + q.x * q.y, 0) / cp.reduce((s, q) => s + q.x * q.x, 0);
+  T.push(['예시 전체: 원점 통과 기울기 ≈ 4π² (+2 % 마찰, ±5 %)', near(k0, FOUR_PI2 / (1 - LAB_EPS), 0.05) && Math.abs(k0 / FOUR_PI2 - 1) < 0.06, f2(k0) + ' vs ' + f2(FOUR_PI2)]);
+  const kt = collapsePts(EXAMPLE, 'mix').reduce((s, q) => s + q.y / (FOUR_PI2 * q.x), 0) / cp.length;
+  T.push(['혼합 방식은 단순 방식보다 4π²에서 더 벗어남', Math.abs(kt - 1) > Math.abs(k0 / FOUR_PI2 - 1), kt.toFixed(3)]);
+  /* 기록·측정 */
+  LAB.rows = []; const r1 = addRun(0.06, 0.02, 0.7, 10), r2 = addRun(0.06, 0.02, 0.7, 10), none = addRun(0.02, 0.02, 0.7, 10);
+  T.push(['측정은 이론 주기 ±10 % 이내, 불가능 조건은 기록 거부', Math.abs(r1.T / PH.sol(0.06, 0.02, 0.7, LAB_EPS).T - 1) < 0.1 && none === null && aggregate(LAB.rows).length === 1 && aggregate(LAB.rows)[0].k === 2 && r1.t !== r2.t, '']);
+  LAB.rows = []; LAB.last = null; LAB.cnt = 0;
+  /* 계획: 폭이 넓을수록 지수 불확도 작음 */
+  const mk = (npt, span) => { const P = { goal: 'F', npt, span, nw: 12, mg: 20, Lcm: 70 }; return planSigma(P, planPts(P)); };
+  T.push(['변인 범위가 넓고 점이 많을수록 σ_q 감소', mk(5, 6) < mk(5, 1.5) && mk(8, 3) < mk(3, 3), `${mk(5, 1.5).toFixed(3)} → ${mk(5, 6).toFixed(3)}`]);
+  /* 보고서 */
+  const an = repAnalyze(EXAMPLE);
+  T.push(['보고서 분석: 예시 데이터 세 계열·통합 모두 계산, 올바른 변환의 R² 최고', ['F', 'r', 'm'].every(k => an.ser[k] && an.ser[k].fits[an.ser[k].good].r2 >= Math.max(an.ser[k].fits.T.r2, an.ser[k].fits.T2.r2, an.ser[k].fits.inv.r2) - 1e-12) && an.col && Math.abs(an.col.dev) < 0.06, an.col ? 'k 차이 ' + pc(an.col.dev) : '']);
+  T.push(['보고서 분석: 데이터 없으면 null (예시를 몰래 쓰지 않음)', (() => { const a = repAnalyze([]); return !a.ser.F && !a.ser.r && !a.ser.m && a.col === null; })(), '']);
+  const repBk = [REP.f, REP.loaded]; REP.f = { goal: '<scr' + 'ipt>alert(1)<' + '/scr' + 'ipt> & "x"', name: '<b>t</b>' }; LAB.rows = []; addRun(0.06, 0.02, 0.7, 10);
+  const html = buildReportHTML(false);
+  T.push(['보고서 HTML: 입력 글은 이스케이프(스크립트 주입 없음)', !/<script>alert/.test(html) && html.includes('&lt;script&gt;') && html.includes('&lt;b&gt;t&lt;/b&gt;') && html.includes('<table>'), '']);
+  REP.f = repBk[0]; REP.loaded = repBk[1]; LAB.rows = []; LAB.last = null; LAB.cnt = 0;
+  /* NaN 검사 */
+  let fin = true; for (const nw of [4, 40]) for (const mg of [10, 60]) for (const Lc of [30, 100]) { const s = PH.sol(nw * 0.005, mg / 1000, Lc / 100); if (s) fin = fin && Object.values(s).every(Number.isFinite); }
+  for (const pg of ['F', 'r', 'm']) for (const sp of [1.5, 6]) { const P = { goal: pg, npt: 3, span: sp, nw: 4, mg: 60, Lcm: 30 }; planPts(P).forEach(p => { if (p.s && !Number.isFinite(p.T)) fin = false; }); }
+  T.push(['슬라이더 양 끝값에서 NaN·Infinity 없음', fin, '']);
+  return T;
+}
+
+</script>
+<script>
+"use strict";
+/* ============================ 공용 UI 프레임워크 (템플릿) ============================ */
+(function () {
+  const C = WS_CONFIG;
+  const $ = (id) => document.getElementById(id);
+  const P = {};
+  const ui = { tab: C.tabs[0].id, scenarioId: null, playing: false };
+  const lastScenarioOfTab = {};
+
+  function addDefaults(params) { (params || []).forEach(p => { if (!(p.key in P)) P[p.key] = p.value; }); }
+  C.scenarios.forEach(s => { addDefaults(s.params); addDefaults(s.choices); });
+  if (C.common_params) addDefaults(C.common_params.params);
+
+  function current() { return C.scenarios.find(s => s.id === ui.scenarioId); }
+  function scenariosOfTab(tab) { return C.scenarios.filter(s => s.tab === tab); }
+  function fmtVal(v, unit) {
+    if (!unit) return String(v);
+    return /^[°%′″]/.test(unit) ? v + unit : v + " " + unit;
+  }
+
+  function showError(where, e) {
+    const box = $("simError");
+    box.hidden = false;
+    box.textContent = "시뮬레이션 오류 (" + where + "): " + (e && e.message ? e.message : e);
+    console.error(e);
+  }
+  const SIMOBJ = (typeof SIM !== "undefined") ? SIM : null;
+  function call(hook, ...args) {
+    if (!SIMOBJ || typeof SIMOBJ[hook] !== "function") return undefined;
+    try { return SIMOBJ[hook](api, ...args); } catch (e) { showError(hook, e); return undefined; }
+  }
+
+  /* ---------- 렌더러 ---------- */
+  const wrap = $("sceneWrap");
+  const api = {
+    config: C, P,
+    get scenario() { return current(); },
+    get tab() { return ui.tab; },
+    get playing() { return ui.playing; },
+    setPlaying(b) { ui.playing = !!b; updatePlayButton(); },
+    boxHalf: (C.scene && C.scene.box_half) || 16,
+    sceneEl: wrap,
+    THREE: window.THREE || null,
+    scene: null, camera: null, renderer: null, controls: null,
+    canvas: null, ctx: null, width: 0, height: 0,
+    custom: $("customPanel"),
+    chart: {
+      canvas: $("chartCanvas"),
+      ctx: $("chartCanvas").getContext("2d"),
+      setHint(html) { $("chartHint").innerHTML = html; },
+    },
+    setReadout(rows) {
+      const tbl = $("readout");
+      tbl.innerHTML = "";
+      (rows || []).forEach(r => {
+        const tr = document.createElement("tr");
+        const a = document.createElement("td"); a.textContent = r[0];
+        const b = document.createElement("td"); b.textContent = r[1];
+        tr.append(a, b); tbl.appendChild(tr);
+      });
+    },
+    setNote(text) { $("readoutNote").textContent = text || ""; },
+    setStatus(text) { const el = $("wsStatus"); if (el) el.textContent = text || ""; },
+    setParam(key, v) {
+      P[key] = v;
+      const el = $("p_" + key); if (el) el.value = v;
+      const vEl = $("p_" + key + "_val"); if (vEl) vEl.textContent = fmtVal(v, vEl.dataset.unit);
+    },
+    refresh() { call("update"); },
+  };
+
+  function initRenderer() {
+    const sc = C.scene || {};
+    if (C.renderer === "three") {
+      if (!window.THREE) { showError("init", "Three.js를 불러오지 못했습니다 (인터넷 연결 확인)"); return false; }
+      const T = window.THREE;
+      api.scene = new T.Scene();
+      api.camera = new T.PerspectiveCamera(45, wrap.clientWidth / wrap.clientHeight, 0.1, 500);
+      const cp = sc.camera || [26, 20, 30];
+      api.camera.position.set(cp[0], cp[1], cp[2]);
+      api.renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
+      api.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      wrap.insertBefore(api.renderer.domElement, wrap.firstChild);
+      api.controls = new T.OrbitControls(api.camera, api.renderer.domElement);
+      api.controls.enableDamping = true;
+      api.controls.dampingFactor = 0.08;
+      api.controls.target.set(0, 0, 0);
+      api.scene.add(new T.AmbientLight(0xffffff, 0.55));
+      const dl = new T.DirectionalLight(0xffffff, 0.9);
+      dl.position.set(20, 30, 15);
+      api.scene.add(dl);
+      if (sc.grid !== false) api.scene.add(new T.GridHelper(api.boxHalf * 2, 16, 0x3a5a8a, 0x1f3352));
+      if (sc.axes !== false) api.scene.add(new T.AxesHelper(api.boxHalf * 0.6));
+    } else {
+      api.canvas = document.createElement("canvas");
+      wrap.insertBefore(api.canvas, wrap.firstChild);
+      api.ctx = api.canvas.getContext("2d");
+    }
+    window.addEventListener("resize", onResize);
+    onResize();
+    return true;
+  }
+
+  function onResize() {
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    api.width = w; api.height = h;
+    if (api.renderer) {
+      api.camera.aspect = w / h;
+      api.camera.updateProjectionMatrix();
+      api.renderer.setSize(w, h);
+    } else if (api.canvas) {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      api.canvas.width = Math.round(w * dpr);
+      api.canvas.height = Math.round(h * dpr);
+      api.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (ui.scenarioId) call("update");
+    }
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    if (api.controls) api.controls.update();
+    call("frame", 1 / 60);
+    if (api.renderer) api.renderer.render(api.scene, api.camera);
+  }
+
+  /* ---------- UI ---------- */
+  function renderTabs() {
+    const box = $("tabs");
+    box.innerHTML = "";
+    box.hidden = C.tabs.length < 2;
+    C.tabs.forEach(t => {
+      const b = document.createElement("button");
+      b.textContent = t.label;
+      b.className = t.id === ui.tab ? "active" : "";
+      b.addEventListener("click", () => switchTab(t.id));
+      box.appendChild(b);
+    });
+  }
+
+  function renderPicker() {
+    const box = $("scenarioPicker");
+    const list = scenariosOfTab(ui.tab);
+    box.innerHTML = "";
+    box.hidden = list.length < 2;
+    list.forEach(s => {
+      const b = document.createElement("button");
+      b.textContent = s.name;
+      b.className = s.id === ui.scenarioId ? "active" : "";
+      b.addEventListener("click", () => selectScenario(s.id));
+      box.appendChild(b);
+    });
+  }
+
+  function sliderEl(p) {
+    const div = document.createElement("div");
+    div.className = "param";
+    const label = document.createElement("label");
+    label.textContent = p.label + " ";
+    const val = document.createElement("span");
+    val.className = "val"; val.id = "p_" + p.key + "_val"; val.dataset.unit = p.unit || "";
+    val.textContent = fmtVal(P[p.key], p.unit);
+    label.appendChild(val);
+    const inp = document.createElement("input");
+    inp.type = "range"; inp.id = "p_" + p.key;
+    inp.min = p.min; inp.max = p.max; inp.step = p.step; inp.value = P[p.key];
+    inp.addEventListener("input", () => {
+      const v = parseFloat(inp.value);
+      P[p.key] = v;
+      val.textContent = fmtVal(v, p.unit);
+      call("update");
+    });
+    div.append(label, inp);
+    return div;
+  }
+
+  function choiceEl(c) {
+    const row = document.createElement("div");
+    row.className = "row"; row.style.marginBottom = "8px";
+    if (c.label) { const l = document.createElement("b"); l.style.fontSize = "0.9em"; l.textContent = c.label; row.appendChild(l); }
+    c.options.forEach(o => {
+      const b = document.createElement("button");
+      b.textContent = o.label;
+      b.className = P[c.key] === o.value ? "primary" : "";
+      b.addEventListener("click", () => {
+        P[c.key] = o.value;
+        row.querySelectorAll("button").forEach(x => x.className = "");
+        b.className = "primary";
+        call("update");
+      });
+      row.appendChild(b);
+    });
+    return row;
+  }
+
+  function renderControls() {
+    const s = current();
+    const body = $("scenarioBody");
+    body.innerHTML = "";
+    if (s.desc || s.section) {
+      const p = document.createElement("p");
+      p.className = "hint"; p.style.marginBottom = "10px";
+      if (s.section) { const b = document.createElement("b"); b.textContent = s.section; p.appendChild(b); if (s.desc) p.appendChild(document.createTextNode(" — ")); }
+      if (s.desc) p.appendChild(document.createTextNode(s.desc));
+      body.appendChild(p);
+    }
+    (s.choices || []).forEach(c => body.appendChild(choiceEl(c)));
+    (s.params || []).forEach(p => body.appendChild(sliderEl(p)));
+    if (s.animated) {
+      const st = document.createElement("div");
+      st.className = "hint"; st.id = "wsStatus";
+      st.textContent = s.status_hint || "";
+      body.appendChild(st);
+      const row = document.createElement("div");
+      row.className = "controls-row";
+      const play = document.createElement("button");
+      play.id = "playBtn"; play.className = "primary";
+      play.addEventListener("click", () => { ui.playing = !ui.playing; updatePlayButton(); });
+      const reset = document.createElement("button");
+      reset.textContent = "↺ 리셋";
+      reset.addEventListener("click", () => { ui.playing = false; updatePlayButton(); call("reset"); call("update"); });
+      row.append(play, reset);
+      body.appendChild(row);
+      updatePlayButton();
+    }
+    const cp = C.common_params;
+    if (cp && s.use_common !== false) {
+      const hr = document.createElement("hr");
+      hr.style.cssText = "margin:10px 0;border:none;border-top:1px solid var(--border)";
+      body.appendChild(hr);
+      if (cp.title) { const b = document.createElement("b"); b.style.fontSize = "0.9em"; b.textContent = cp.title; body.appendChild(b); }
+      cp.params.forEach(p => body.appendChild(sliderEl(p)));
+    }
+  }
+
+  function updatePlayButton() {
+    const b = $("playBtn");
+    if (b) b.textContent = ui.playing ? "⏸ 일시정지" : "▶ 재생";
+  }
+
+  function renderFormula() {
+    const s = current();
+    const body = $("formulaBody");
+    body.innerHTML = (s.formula || []).map(f =>
+      (f.eq_html ? `<div class="eq">${f.eq_html}</div>` : "") + (f.text_html || "")
+    ).join("");
+  }
+
+  function renderMisconception() {
+    const s = current();
+    const panel = $("misconceptionPanel");
+    panel.innerHTML = "";
+    panel.hidden = !s.misconception;
+    if (!s.misconception) return;
+    const box = document.createElement("div");
+    box.className = "misconception";
+    const b = document.createElement("b");
+    b.textContent = s.misconception_title || "💡 흔한 오개념";
+    box.append(b, document.createElement("br"), document.createTextNode(s.misconception));
+    panel.appendChild(box);
+  }
+
+  function enterScenario() {
+    ui.playing = false;
+    const s = current();
+    $("graphPanel").hidden = !s.chart;
+    $("chartHint").innerHTML = "";
+    api.custom.innerHTML = "";
+    api.setReadout([]); api.setNote("");
+    renderPicker(); renderControls(); renderFormula(); renderMisconception();
+    call("enter");
+    call("update");
+  }
+
+  function selectScenario(id) {
+    ui.scenarioId = id;
+    lastScenarioOfTab[ui.tab] = id;
+    enterScenario();
+  }
+
+  function switchTab(tab) {
+    ui.tab = tab;
+    renderTabs();
+    selectScenario(lastScenarioOfTab[tab] || scenariosOfTab(tab)[0].id);
+  }
+
+  function renderLegend() {
+    const box = $("legend");
+    (C.legend || []).forEach(l => {
+      const span = document.createElement("span");
+      const sw = document.createElement("i");
+      sw.className = "swatch" + (l.shape === "bar" ? " bar" : "");
+      sw.style.background = l.color;
+      span.append(sw, document.createTextNode(l.label));
+      box.appendChild(span);
+    });
+  }
+
+  function runSelfTests() {
+    if (!SIMOBJ || typeof SIMOBJ.tests !== "function") { console.log("물리 검증 항목 없음"); return; }
+    let results = [];
+    try { results = SIMOBJ.tests() || []; } catch (e) { showError("tests", e); return; }
+    console.log("=== " + C.title + " 물리 검증 ===");
+    let pass = 0;
+    for (const [name, ok, detail] of results) {
+      console.log(`[${ok ? "PASS" : "FAIL"}] ${name}${detail ? " — " + detail : ""}`);
+      if (ok) pass++;
+    }
+    console.log(pass === results.length ? "모든 검증 통과" : "일부 검증 실패 — 콘솔 확인 필요");
+    window.__wsSelfTest = { pass, total: results.length };
+  }
+
+  /* ---------- 시작 ---------- */
+  $("readoutTitle").textContent = C.readout_title || "측정값";
+  $("hoverHint").textContent = (C.scene && C.scene.hint != null) ? C.scene.hint
+    : (C.renderer === "three" ? "마우스 드래그: 회전 · 휠: 확대/축소" : "");
+  $("projectorBtn").addEventListener("click", () => document.body.classList.toggle("projector"));
+  renderLegend();
+  if (!SIMOBJ) showError("load", "sim_js에 SIM 객체가 정의되지 않았습니다");
+  if (initRenderer()) {
+    call("init");
+    renderTabs();
+    switchTab(ui.tab);
+    animate();
+  }
+  runSelfTests();
+})();
+</script>
+
+</body>
+</html>
+<!--claude-meta
+category: 역학
+slug: circular-motion-lab
+icon: 🌀
+title: 등속원운동 실험, 어떻게 설계하나
+desc: 구심력 측정 실험(고무마개+유리관+걸이추)을 따라가며 이론 → 변인 설계 → 데이터 수집 → 변환 → 오차 비판까지 실험 설계의 이유를 배운다
+-->

@@ -1787,11 +1787,12 @@ function svEval(api, key) {
   const elems = pre.els.map(([id, a, b]) => ({ id, a, b, R: v[id] }));
   const res = solveNet({ elems, bp: "bp", g: "g" }, P.emf, 0); return { v, res };
 }
-function svPanel(api) {
+function svPanel0(api) {
   api.custom.innerHTML = `<div class="lab"><canvas id="svc"></canvas><div class="swrow"><button id="svP" class="lbtn ghost">◀ 이전</button><button id="svN" class="lbtn">다음 ▶</button><button id="svR" class="lbtn ghost">처음부터</button><span id="svI" class="mut"></span></div><div id="svT" class="steps"></div></div>`;
   S.sv.step = 0; $("svP").onclick = () => { S.sv.step = Math.max(0, S.sv.step - 1); api.refresh(); };
   $("svN").onclick = () => { S.sv.step++; api.refresh(); }; $("svR").onclick = () => { S.sv.step = 0; api.refresh(); };
 }
+function svPanel(api) { svPanel0(api); wsLink(api); }
 function svUpdate(api) { try { svUpdate0(api); } catch (e) { console.log('SVERR ' + e.stack); throw e; } }
 function svUpdate0(api) {
   const id = api.scenario.id, key = presetOf(api), pre = PRE[key], P = api.P; ensurePanel(api);
@@ -1862,7 +1863,7 @@ function gameSt(id) { return S.gm[id] || (S.gm[id] = { meas: [], guess: {}, atte
 function loadStars() { try { return JSON.parse(localStorage.getItem("spl_bb") || "{}"); } catch (e) { return {}; } }
 function saveStars() { try { const o = {}; Object.keys(S.gm).forEach(k => { if (S.gm[k].stars) o[k] = S.gm[k].stars; }); localStorage.setItem("spl_bb", JSON.stringify(o)); } catch (e) { } }
 
-function bbPanel(api) {
+function bbPanel0(api) {
   const id = api.scenario.id, c = BBC[id], st = gameSt(id), pins = pinList(c);
   const opts = pins.map(p => `<option value="${p}">${pinName(c, p)}</option>`).join("");
   api.custom.innerHTML = `<div class="lab game">
@@ -1953,6 +1954,26 @@ function bbUpdate(api) {
   api.setReadout(rows);
   api.setNote("저항계로 두 핀 사이를 재면 그 사이의 합성 저항이 나와요. 0 Ω이면 한 선, ∞이면 끊김. 한 부품의 두 핀 사이를 재면 그 부품이 나머지 회로와 병렬로 읽힌다는 점에 주의!");
   api.setStatus(st.solved ? "해결 " + "⭐".repeat(st.stars) : "측정 " + st.meas.length + "번");
+}
+function bbPanel(api) { bbPanel0(api); wsLink(api); }
+
+/* 활동지 연동: 활동지 링크 버튼, 활동지에서 온 주소(#s=장면&파라미터=값)로 장면·값 맞추기 */
+function wsLink(api) { api.custom.insertAdjacentHTML("beforeend", '<div style="margin-top:8px"><a class="lbtn ghost" href="worksheet.html" target="_blank" rel="noopener" style="text-decoration:none;display:inline-block">📝 활동지 열기 (인쇄용)</a></div>'); }
+function applyHash(api) {
+  const h = (location.hash || "").replace(/^#/, ""); if (!h) return;
+  const q = {}; h.split("&").forEach(kv => { const i = kv.indexOf("="); if (i > 0) q[decodeURIComponent(kv.slice(0, i))] = decodeURIComponent(kv.slice(i + 1)); });
+  if (!q.s) return;
+  const tabs = document.querySelectorAll("#tabs button"); let found = false;
+  for (let i = 0; i < tabs.length && !found; i++) {
+    tabs[i].click();
+    if (api.scenario && api.scenario.id === q.s) { found = true; break; }
+    const pk = document.querySelectorAll("#scenarioPicker button");
+    for (let j = 0; j < pk.length; j++) { pk[j].click(); if (api.scenario && api.scenario.id === q.s) { found = true; break; } }
+  }
+  if (!found) return;
+  if (q.pre !== undefined) { const row = [...document.querySelectorAll(".row")].find(r => r.firstChild && r.firstChild.textContent === "회로 선택"); const bt = row && row.querySelectorAll("button")[Number(q.pre)]; if (bt) bt.click(); }
+  Object.keys(q).forEach(k => { if (k !== "s" && k !== "pre" && !isNaN(Number(q[k]))) api.setParam(k, Number(q[k])); });
+  api.refresh();
 }
 
 /* 7. 패널(HTML) */
@@ -2087,7 +2108,7 @@ function toggleSwitchIfAny(api) { const id = api.scenario.id; if (EXP[id] || MOD
 
 const SIM = {
   init(api) {
-    const T = api.THREE; S.T = T; S.api = api;
+    const T = api.THREE; S.T = T; S.api = api; setTimeout(() => { try { applyHash(api); } catch (e) { console.log('HASHERR ' + e.message); } }, 0);
     S.bench = new T.Group(); S.life = { root: new T.Group() }; S.flow = { root: new T.Group(), T, playing: true, stands: [], paths: [], part: [], labels: {} };
     S.sv = { root: new T.Group() }; S.bb = { root: new T.Group() }; S.gm = {}; const sv0 = loadStars(); Object.keys(sv0).forEach(k => { gameSt(k).stars = sv0[k]; });
     api.scene.add(S.bench, S.flow.root, S.life.root, S.sv.root, S.bb.root);

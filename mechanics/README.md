@@ -4,4 +4,4 @@
 
 ## 하위 주제
 
-- [중력 (gravity)](./gravity/) — 중력가속도(g) 측정 방법별 개별 시뮬레이션
+- 중력 (gravity) — 중력가속도(g) 측정 방법별 개별 시뮬레이션: [자유낙하](./gravity/free-fall/), [단진자](./gravity/pendulum/), [빗면](./gravity/inclined-plane/)

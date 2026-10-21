@@ -19,6 +19,24 @@
   .tab.on { color: var(--ink); border-color: var(--ink); }
   .tab[data-k="1"].on { color: var(--k1); border-color: var(--k1); }
   .tab[data-k="2"].on { color: var(--k2); border-color: var(--k2); }
+  .tab[data-k="3"].on { color: #8e44ad; border-color: #8e44ad; }
+  /* 판별기 */
+  .jgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 16px; align-items: start; }
+  @media (max-width: 920px) { .jgrid { grid-template-columns: 1fr; } }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 4px; }
+  .presets .btn { font-size: .85rem; padding: 7px 11px; }
+  .jrow { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; margin-top: 8px; border: 1px solid var(--line); background: var(--soft); }
+  .jrow .mark { font-size: 1.3rem; line-height: 1.3; width: 26px; text-align: center; }
+  .jrow.pass { background: #eaf7ef; border-color: #bfe3cd; } .jrow.fail { background: #fdecea; border-color: #f3c0ba; }
+  .jrow h4 { margin: 0; font-size: 1rem; } .jrow p { margin: 2px 0 0; font-size: .88rem; color: #3b4a5c; }
+  .verdict { margin-top: 12px; padding: 14px; border-radius: 12px; font-weight: 700; font-size: 1.1rem; text-align: center; }
+  .verdict small { display: block; font-weight: 400; font-size: .88rem; margin-top: 4px; }
+  .verdict.v-ok { background: #e6f5ec; color: #1b7d46; } .verdict.v-1 { background: #fdecea; color: #c0392b; }
+  .verdict.v-2 { background: #e8f0fd; color: #1f5fbf; }
+  .gauge { position: relative; height: 26px; background: linear-gradient(90deg, #e6f5ec 0 var(--lim, 50%), #fdecea var(--lim, 50%) 100%); border-radius: 8px; border: 1px solid var(--line); margin: 22px 0 28px; }
+  .gauge i { position: absolute; top: -6px; width: 4px; height: 36px; background: var(--ink); border-radius: 2px; }
+  .gauge em { position: absolute; top: 30px; font-style: normal; font-size: .78rem; color: var(--muted); transform: translateX(-50%); white-space: nowrap; }
+  .gauge .lm { background: var(--good); top: -2px; height: 28px; width: 3px; }
   .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
   .chip { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 7px 14px; font: inherit; font-size: .95rem; cursor: pointer; }
   .chip.on { background: var(--ink); color: #fff; border-color: var(--ink); }
@@ -95,6 +113,7 @@
     <button class="tab on" data-k="0">개요 · 분류</button>
     <button class="tab" data-k="1">제1종 영구기관</button>
     <button class="tab" data-k="2">제2종 영구기관</button>
+    <button class="tab" data-k="3">🔬 판별기</button>
   </nav>
 
   <!-- ===================== 개요 ===================== -->
@@ -184,6 +203,27 @@
   </section>
 
   <!-- ===================== 사례 화면 ===================== -->
+  <section id="judge" class="hidden">
+    <div class="jgrid">
+      <div class="card">
+        <h3 style="margin:2px 0 4px">발명가의 주장을 검사해 보자</h3>
+        <p style="margin:0;font-size:.92rem;color:var(--muted)">한 사이클 동안 열기관이 <b>고열원에서 받은 열 Q<sub>H</sub></b>, <b>한 일 W</b>, <b>저열원으로 버린 열 Q<sub>L</sub></b>이 얼마라고 주장하는지 적어 넣으면, 두 법칙으로 가능 여부를 판정한다.</p>
+        <div class="presets" id="presets"></div>
+        <div class="controls" id="jctl"></div>
+      </div>
+      <div class="card" id="jout"></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h4 style="margin:2px 0 6px">판정 방법 (한 사이클, 기관 자체는 제자리 → ΔU = 0, ΔS<sub>기관</sub> = 0)</h4>
+      <ol class="steps">
+        <li><b>제1법칙</b> — 에너지가 맞는가? <span class="eq">Q<sub>H</sub> = W + Q<sub>L</sub></span>. 어긋나면 에너지를 새로 만들거나 없앤 것 → 제1종.</li>
+        <li><b>제2법칙</b> — 우주의 엔트로피가 줄지 않는가? <span class="eq">ΔS<sub>우주</sub> = Q<sub>L</sub>/T<sub>L</sub> − Q<sub>H</sub>/T<sub>H</sub> ≥ 0</span>. 줄어들면 에너지는 맞아도 불가능 → 제2종.</li>
+        <li><b>카르노 한계</b> — 위 부등식을 효율로 쓰면 <span class="eq">e = W/Q<sub>H</sub> ≤ 1 − T<sub>L</sub>/T<sub>H</sub></span>. Q<sub>L</sub> = 0 (열을 전부 일로)이면 e = 1이므로 T<sub>L</sub>이 절대영도가 아닌 한 항상 금지된다.</li>
+      </ol>
+      <p class="note" style="margin:8px 0 0;color:var(--muted);font-size:.85rem">입자 수준에서 열기관을 보고 싶다면 <a href="../carnot-engine/index.html#m2" style="color:var(--k2)">카르노 열기관과 입자 운동</a>의 ②번 탭에서 같은 판정을 움직이는 그림으로 볼 수 있다. 참고: Halliday 『Fundamentals of Physics』 20장, Schroeder 『Thermal Physics』 4.1절.</p>
+    </div>
+  </section>
+
   <section id="caseView" class="hidden">
     <div class="chips" id="chips"></div>
     <div class="case">
@@ -1287,9 +1327,10 @@ function openTab(k) {
   curKind = k;
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', +t.dataset.k === k));
   $('#overview').classList.toggle('hidden', k !== 0);
-  $('#caseView').classList.toggle('hidden', k === 0);
-  $('#caseView').className = k === 0 ? 'hidden' : 'k' + k;
-  if (k === 0) { cur = null; return; }
+  $('#judge').classList.toggle('hidden', k !== 3);
+  $('#caseView').classList.toggle('hidden', k === 0 || k === 3);
+  $('#caseView').className = k === 0 || k === 3 ? 'hidden' : 'k' + k;
+  if (k === 0 || k === 3) { cur = null; if (k === 3) { initJudge(); window.scrollTo({ top: 0, behavior: 'smooth' }); } return; }
   const chips = $('#chips'); chips.innerHTML = '';
   const list = CASES.filter(c => c.kind === k);
   for (const c of list) { const b = document.createElement('button'); b.className = 'chip'; b.dataset.id = c.id; b.textContent = c.chip; b.onclick = () => selectCase(c); chips.appendChild(b); }
@@ -1297,6 +1338,59 @@ function openTab(k) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => openTab(+t.dataset.k)));
+
+/* ---------- 판별기: 제1법칙 · 제2법칙 · 카르노 한계 검사 ---------- */
+const J = { TH: 600, TL: 300, QH: 100, W: 50, QL: 50 };
+const JPRE = [
+  ['✓ 카르노 기관', { TH: 600, TL: 300, QH: 100, W: 50, QL: 50 }],
+  ['✓ 실제 기관 (비가역)', { TH: 600, TL: 300, QH: 100, W: 35, QL: 65 }],
+  ['✗ 카르노 초과', { TH: 600, TL: 300, QH: 100, W: 65, QL: 35 }],
+  ['✗ 바닷물 엔진 (제2종)', { TH: 300, TL: 290, QH: 100, W: 100, QL: 0 }],
+  ['✗ 자석 모터 (제1종)', { TH: 300, TL: 300, QH: 0, W: 40, QL: 0 }],
+  ['✗ 저열원 열까지 뽑아 120 %', { TH: 600, TL: 300, QH: 100, W: 120, QL: -20 }]
+];
+let judgeReady = false;
+function initJudge() {
+  if (!judgeReady) {
+    judgeReady = true;
+    const pr = $('#presets');
+    JPRE.forEach(([n, v]) => { const b = document.createElement('button'); b.className = 'btn'; b.textContent = n; b.onclick = () => { Object.assign(J, v); syncJudge(); }; pr.appendChild(b); });
+    const box = $('#jctl');
+    [['TH', '고열원 T_H', 250, 1500, 5, 'K'], ['TL', '저열원 T_L', 100, 1000, 5, 'K'], ['QH', '받은 열 Q_H', 0, 200, 1, 'kJ'], ['W', '한 일 W', 0, 200, 1, 'kJ'], ['QL', '버린 열 Q_L', -50, 200, 1, 'kJ']].forEach(([k, n, mn, mx, st, u]) => {
+      const w = document.createElement('label'); w.className = 'ctl';
+      w.innerHTML = `<span>${n} <b></b></span><input type="range" data-k="${k}" min="${mn}" max="${mx}" step="${st}" value="${J[k]}">`;
+      w.querySelector('input').addEventListener('input', e => { J[k] = +e.target.value; judge(); });
+      box.appendChild(w); w.dataset.u = u;
+    });
+  }
+  syncJudge();
+}
+function syncJudge() { document.querySelectorAll('#jctl input').forEach(i => { i.value = J[i.dataset.k]; }); judge(); }
+function judge() {
+  document.querySelectorAll('#jctl .ctl').forEach(w => { const i = w.querySelector('input'); w.querySelector('b').textContent = i.value + ' ' + w.dataset.u; });
+  const { TH, TL, QH, W, QL } = J;
+  const bal = QH - W - QL, ok1 = Math.abs(bal) <= 0.5;
+  const dS = QL / TL - QH / TH, ok2 = dS >= -1e-9;
+  const eC = TH > TL ? 1 - TL / TH : 0, e = QH > 0 ? W / QH : (W > 0 ? Infinity : 0);
+  const ok3 = QH > 0 ? e <= eC + 1e-9 : W <= 0;
+  const row = (ok, t, d) => `<div class="jrow ${ok ? 'pass' : 'fail'}"><div class="mark">${ok ? '✅' : '❌'}</div><div><h4>${t}</h4><p>${d}</p></div></div>`;
+  let v, vc;
+  if (!ok1) { v = '제1종 영구기관 (에너지 보존 위반)'; vc = 'v-1'; }
+  else if (!ok2 || !ok3) { v = '제2종 영구기관 (엔트로피 감소)'; vc = 'v-2'; }
+  else { v = '가능한 기관'; vc = 'v-ok'; }
+  const sub = !ok1 ? `받은 에너지 ${QH} kJ보다 나온 에너지(일+버린 열) ${W + QL} kJ가 ${Math.abs(bal)} kJ ${bal < 0 ? '더 많다 — 에너지가 새로 생겼다' : '더 적다 — 에너지가 사라졌다'}.`
+    : !ok2 ? `에너지는 맞지만, 버린 열이 너무 적다(열을 일로 너무 많이 바꿨다). 두 열원을 합친 우주의 엔트로피가 ${(-dS).toFixed(3)} kJ/K 줄어든다.`
+    : (Math.abs(dS) < 1e-6 ? '가역(이상) 기관이다. 모든 실제 기관은 이보다 효율이 낮다.' : `비가역 과정 때문에 우주의 엔트로피가 ${dS.toFixed(3)} kJ/K 늘어난다. 실제 기관이 이렇다.`);
+  const emax = Math.max(1.2, isFinite(e) ? e * 1.05 : 1.2), pct = x => (x / emax * 100).toFixed(1) + '%';
+  $('#jout').innerHTML = `
+    <div class="gauge" style="--lim:${pct(eC)}"><i style="left:calc(${pct(Math.min(isFinite(e) ? e : emax, emax))} - 2px)"></i><i class="lm" style="left:${pct(eC)}"></i>
+      <em style="left:${pct(eC)}">카르노 한계 ${(eC * 100).toFixed(1)} %</em><em style="left:calc(${pct(Math.min(isFinite(e) ? e : emax, emax))})">${isFinite(e) ? '이 기관 ' + (e * 100).toFixed(1) + ' %' : '이 기관 ∞'}</em></div>
+    ${row(ok1, '제1법칙: Q_H = W + Q_L', `${QH} ${QH === W + QL ? '=' : '≠'} ${W} + ${QL} = ${W + QL} (kJ)`)}
+    ${row(ok2, '제2법칙: ΔS우주 = Q_L/T_L − Q_H/T_H ≥ 0', `${QL}/${TL} − ${QH}/${TH} = ${dS.toFixed(3)} kJ/K`)}
+    ${row(ok3, `카르노 한계: e ≤ 1 − T_L/T_H = ${(eC * 100).toFixed(1)} %`, isFinite(e) ? `이 기관 e = W/Q_H = ${(e * 100).toFixed(1)} %` : 'Q_H = 0 인데 일을 한다')}
+    <div class="verdict ${vc}">${ok1 && ok2 ? '✓ ' : '✗ '}${v}<small>${sub}</small></div>`;
+}
+if (location.hash === '#judge') openTab(3);
 
 let last = performance.now();
 function loop(now) {

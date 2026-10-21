@@ -1,242 +1,706 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>열역학 시뮬레이터: 입자 운동과 열효율</title>
-    <style>
-        :root {
-            --hot-color: #e74c3c;
-            --cold-color: #3498db;
-            --work-color: #2ecc71;
-            --bg-color: #f8f9fa;
-        }
-        body {
-            font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
-            background-color: var(--bg-color);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-            margin: 0;
-        }
-        .card {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            max-width: 700px;
-            width: 100%;
-        }
-        h1 { text-align: center; color: #2c3e50; font-size: 1.5rem; margin-bottom: 25px; }
-        
-        .formula-box {
-            background: #f1f3f5;
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-            margin-bottom: 20px;
-            font-size: 1.1rem;
-        }
-
-        .controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-        .control-group {
-            display: flex;
-            flex-direction: column;
-        }
-        label {
-            display: flex;
-            justify-content: space-between;
-            font-weight: bold;
-            margin-bottom: 8px;
-            font-size: 0.9rem;
-        }
-        input[type="range"] { width: 100%; cursor: pointer; }
-
-        .efficiency-display {
-            text-align: center;
-            font-size: 1.3rem;
-            font-weight: 800;
-            color: var(--work-color);
-            margin: 15px 0;
-            padding: 10px;
-            border: 2px solid var(--work-color);
-            border-radius: 8px;
-        }
-
-        canvas {
-            display: block;
-            background: #fff;
-            border: 1px solid #dee2e6;
-            border-radius: 10px;
-            width: 100%;
-            height: auto;
-        }
-
-        .description {
-            margin-top: 20px;
-            font-size: 0.9rem;
-            color: #666;
-            line-height: 1.6;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>카르노 열기관과 입자 운동</title>
+<style>
+  :root {
+    --ink: #1f2d3d; --muted: #66768a; --bg: #f3f5f8; --card: #fff; --line: #e1e7ee; --soft: #f6f8fb;
+    --hot: #e74c3c; --cold: #2f80ed; --work: #27ae60; --bad: #e74c3c;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Pretendard', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; background: var(--bg); color: var(--ink); line-height: 1.6; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 18px 16px 70px; }
+  header h1 { margin: 6px 0 2px; font-size: 1.6rem; }
+  header p { margin: 0 0 14px; color: var(--muted); }
+  .tabs { display: flex; gap: 6px; border-bottom: 2px solid var(--line); margin-bottom: 14px; flex-wrap: wrap; }
+  .tab { padding: 10px 18px; border: none; background: none; font: inherit; font-weight: 700; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+  .tab.on { color: var(--ink); border-color: var(--ink); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; box-shadow: 0 4px 16px rgba(20, 40, 70, .05); }
+  .stage { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 920px) { .stage { grid-template-columns: 1fr; } }
+  .gcol { display: flex; flex-direction: column; gap: 12px; }
+  canvas { width: 100%; height: auto; display: block; border-radius: 10px; }
+  .gcol canvas { border: 1px solid var(--line); }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 12px; align-items: flex-end; }
+  .ctl { display: flex; flex-direction: column; min-width: 160px; flex: 1 1 160px; font-size: .9rem; }
+  .ctl span { display: flex; justify-content: space-between; color: var(--muted); }
+  .ctl b { color: var(--ink); }
+  .ctl input[type=range] { width: 100%; }
+  .btn { border: none; border-radius: 9px; padding: 9px 14px; font: inherit; font-weight: 700; cursor: pointer; background: #e9eef4; color: var(--ink); }
+  .btn.main { background: var(--ink); color: #fff; }
+  .read { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 8px; margin-top: 12px; }
+  .read div { background: var(--soft); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; font-size: .82rem; color: var(--muted); }
+  .read b { display: block; font-size: 1.12rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .read .ok b { color: var(--work); } .read .hot b { color: var(--hot); } .read .cold b { color: var(--cold); }
+  .info { margin-top: 16px; }
+  .info h2 { margin: 2px 0 8px; font-size: 1.3rem; }
+  .info h4 { margin: 14px 0 4px; font-size: 1rem; }
+  .info p, .info li { font-size: .95rem; margin: 4px 0; }
+  .info ul { padding-left: 20px; margin: 4px 0; }
+  .infogrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 0 28px; }
+  .eq { font-family: 'Cambria Math', 'Times New Roman', serif; font-size: 1.05rem; background: var(--soft); border-radius: 6px; padding: 3px 8px; display: inline-block; margin: 3px 0; }
+  table.cmp { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  table.cmp th, table.cmp td { border-bottom: 1px solid var(--line); padding: 7px 8px; text-align: left; vertical-align: top; }
+  table.cmp th { background: var(--soft); }
+  details.q { margin-top: 10px; background: #fffbea; border: 1px solid #f3e3a1; border-radius: 8px; padding: 8px 12px; }
+  details.q summary { cursor: pointer; font-weight: 700; }
+  .ref { margin-top: 14px; font-size: .85rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
+  .note { font-size: .85rem; color: var(--muted); margin-top: 8px; }
+  .hidden { display: none !important; }
+</style>
 </head>
 <body>
 <a href="../../index.html" title="홈으로" style="position:fixed;left:12px;bottom:12px;z-index:99999;background:rgba(255,255,255,.94);color:#1c2733;text-decoration:none;padding:8px 13px;border-radius:9px;font:600 14px/1 'Segoe UI','Malgun Gothic',sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.22);border:1px solid rgba(0,0,0,.12)">🏠 홈</a>
 
-<div class="card">
-    <h1>열기관 입자 운동 & 에너지 흐름 시뮬레이션</h1>
+<div class="wrap">
+  <header>
+    <h1>카르노 열기관과 입자 운동</h1>
+    <p>피스톤 속 기체 입자가 카르노 사이클을 한 바퀴 도는 모습을 P–V·T–S 선도와 함께 보고, 열효율 e = 1 − T<sub>L</sub>/T<sub>H</sub>가 왜 한계인지 확인해 봅시다.</p>
+  </header>
 
-    <div class="formula-box">
-        카르노 열효율(e) = 1 - (T<sub>L</sub> / T<sub>H</sub>)
+  <nav class="tabs" id="tabs">
+    <button class="tab on" data-k="1">① 카르노 사이클</button>
+    <button class="tab" data-k="2">② 입자 운동과 열 흐름</button>
+    <button class="tab" data-k="3">③ 효율의 한계 · 실제 기관</button>
+  </nav>
+
+  <div class="stage">
+    <div class="card">
+      <canvas id="sim"></canvas>
+      <div class="controls" id="controls"></div>
+      <div class="read" id="read"></div>
     </div>
-
-    <div class="controls">
-        <div class="control-group">
-            <label><span>고열원 온도 (T<sub>H</sub>)</span> <span id="th-val" style="color:var(--hot-color)">800 K</span></label>
-            <input type="range" id="th-slider" min="300" max="1200" step="10" value="800">
-        </div>
-        <div class="control-group">
-            <label><span>저열원 온도 (T<sub>L</sub>)</span> <span id="tl-val" style="color:var(--cold-color)">300 K</span></label>
-            <input type="range" id="tl-slider" min="50" max="300" step="10" value="300">
-        </div>
+    <div class="gcol">
+      <canvas id="g1"></canvas>
+      <canvas id="g2"></canvas>
     </div>
+  </div>
 
-    <div class="efficiency-display">
-        현재 열효율: <span id="eff-percent">62.5</span>%
-    </div>
-
-    <canvas id="mainCanvas" width="600" height="500"></canvas>
-
-    <div class="description">
-        • <b>미시적 변화:</b> 온도가 높을수록 원자(입자)들이 더 빠르게 무질서하게 운동합니다.<br>
-        • <b>거시적 변화:</b> 고열원과 저열원의 온도 차이가 커질수록 '한 일(W)'의 비율이 커지며 화살표가 두꺼워집니다. 반면, 효율이 아무리 높아도 저열원으로 버려지는 열(Q<sub>L</sub>)은 0이 될 수 없습니다.
-    </div>
+  <div class="card info" id="info"></div>
 </div>
 
 <script>
-    const canvas = document.getElementById('mainCanvas');
-    const ctx = canvas.getContext('2d');
-    const thSlider = document.getElementById('th-slider');
-    const tlSlider = document.getElementById('tl-slider');
-    const thText = document.getElementById('th-val');
-    const tlText = document.getElementById('tl-val');
-    const effText = document.getElementById('eff-percent');
+'use strict';
+const TAU = Math.PI * 2;
+const SW = 560, SH = 420, GW = 460, GH = 270;
+const DPR = Math.min(window.devicePixelRatio || 1, 2);
+const $ = s => document.querySelector(s);
+function setup(cv, w, h) { cv.width = w * DPR; cv.height = h * DPR; const c = cv.getContext('2d'); c.setTransform(DPR, 0, 0, DPR, 0, 0); return c; }
+const cs = setup($('#sim'), SW, SH), c1 = setup($('#g1'), GW, GH), c2 = setup($('#g2'), GW, GH);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const FONT = "Pretendard, 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif";
+const HOT = '#e74c3c', COLD = '#2f80ed', WORK = '#27ae60';
+const NR = 8.314;                    // n = 1 mol, R = 8.314 J/(mol·K)
+const GAM = 5 / 3;                   // 단원자 이상기체
+const KB = 1.380649e-23, M_HE = 6.646e-27;
 
-    // 입자 클래스 정의
-    class Particle {
-        constructor(xRange, yRange, color) {
-            this.xRange = xRange;
-            this.yRange = yRange;
-            this.x = xRange[0] + Math.random() * (xRange[1] - xRange[0]);
-            this.y = yRange[0] + Math.random() * (yRange[1] - yRange[0]);
-            this.vx = (Math.random() - 0.5);
-            this.vy = (Math.random() - 0.5);
-            this.radius = 3;
-            this.color = color;
-        }
+/* ---------- 그리기 도우미 ---------- */
+function txt(c, s, x, y, o = {}) {
+  c.font = `${o.bold ? '700 ' : ''}${o.size || 13}px ${FONT}`;
+  c.fillStyle = o.color || '#1f2d3d'; c.textAlign = o.align || 'left'; c.textBaseline = o.base || 'alphabetic';
+  c.fillText(s, x, y);
+}
+function rrect(c, x, y, w, h, r) {
+  r = Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2);
+  c.beginPath(); c.moveTo(x + r, y); c.lineTo(x + w - r, y); c.quadraticCurveTo(x + w, y, x + w, y + r);
+  c.lineTo(x + w, y + h - r); c.quadraticCurveTo(x + w, y + h, x + w - r, y + h); c.lineTo(x + r, y + h);
+  c.quadraticCurveTo(x, y + h, x, y + h - r); c.lineTo(x, y + r); c.quadraticCurveTo(x, y, x + r, y); c.closePath();
+}
+function line(c, x1, y1, x2, y2, col, w = 1, dash) {
+  c.strokeStyle = col; c.lineWidth = w; if (dash) c.setLineDash(dash);
+  c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); if (dash) c.setLineDash([]);
+}
+function circle(c, x, y, r, fill, stroke, w = 1) {
+  c.beginPath(); c.arc(x, y, r, 0, TAU);
+  if (fill) { c.fillStyle = fill; c.fill(); } if (stroke) { c.strokeStyle = stroke; c.lineWidth = w; c.stroke(); }
+}
+function arrow(c, x1, y1, x2, y2, col, w = 3, head = 10) {
+  const a = Math.atan2(y2 - y1, x2 - x1), L = Math.hypot(x2 - x1, y2 - y1);
+  if (L < 2) return; head = Math.min(head, L * 0.6);
+  line(c, x1, y1, x2 - Math.cos(a) * head * 0.6, y2 - Math.sin(a) * head * 0.6, col, w);
+  c.fillStyle = col; c.beginPath(); c.moveTo(x2, y2);
+  c.lineTo(x2 - head * Math.cos(a - 0.45), y2 - head * Math.sin(a - 0.45));
+  c.lineTo(x2 - head * Math.cos(a + 0.45), y2 - head * Math.sin(a + 0.45)); c.closePath(); c.fill();
+}
+function label(c, s, x, y, col = '#1f2d3d', bg = 'rgba(255,255,255,.9)', size = 12, align = 'center') {
+  c.font = `700 ${size}px ${FONT}`; const w = c.measureText(s).width + 10;
+  const x0 = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
+  c.fillStyle = bg; rrect(c, x0, y - size + 1, w, size + 7, 5); c.fill();
+  txt(c, s, x0 + 5, y + 2, { size, bold: true, color: col });
+}
+/* 온도 → 색 (파랑 → 보라 → 빨강) */
+function tcol(T, a = 1) {
+  const f = clamp((T - 80) / 1000, 0, 1);
+  return `rgba(${Math.round(47 + 190 * f)},${Math.round(110 - 40 * f)},${Math.round(237 - 160 * f)},${a})`;
+}
+function randn() { let u = 0, v = 0; while (!u) u = Math.random(); v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * v); }
+const SIG = 5;                        // 입자 속도 눈금: 성분 표준편차 = SIG·√T (px/s)
+const PX2MS = Math.sqrt(KB / M_HE) / SIG;   // px/s → m/s (헬륨 원자 기준)
 
-        update(tempFactor) {
-            // 온도가 높을수록 속도 증가 (루트 T에 비례하는 물리적 특성 모사)
-            const speed = Math.sqrt(tempFactor) * 0.2;
-            this.x += this.vx * speed;
-            this.y += this.vy * speed;
+/* 그래프 틀: o = {xmin,xmax,ymin,ymax,title,xlabel,ylabel,xticks,yticks} */
+function frame(c, o) {
+  c.setTransform(DPR, 0, 0, DPR, 0, 0);
+  c.fillStyle = '#fff'; c.fillRect(0, 0, GW, GH);
+  const x0 = 54, y0 = 28, w = GW - 74, h = GH - 68;
+  const X = v => x0 + (v - o.xmin) / (o.xmax - o.xmin) * w;
+  const Y = v => y0 + h - (v - o.ymin) / (o.ymax - o.ymin) * h;
+  c.strokeStyle = '#d5dce4'; c.lineWidth = 1; c.strokeRect(x0, y0, w, h);
+  if (o.ymin < 0 && o.ymax > 0) line(c, x0, Y(0), x0 + w, Y(0), '#b8c2cd', 1, [4, 4]);
+  if (o.title) txt(c, o.title, x0, 18, { size: 13, bold: true });
+  if (o.xlabel) txt(c, o.xlabel, x0 + w, y0 + h + 32, { size: 11, color: '#66768a', align: 'right' });
+  if (o.ylabel) txt(c, o.ylabel, 6, y0 - 4, { size: 11, color: '#66768a' });
+  for (const [v, s] of (o.xticks || [])) { line(c, X(v), y0 + h, X(v), y0 + h + 4, '#9aa6b2'); txt(c, s, X(v), y0 + h + 17, { size: 11, color: '#66768a', align: 'center' }); }
+  for (const [v, s] of (o.yticks || [])) { line(c, x0 - 4, Y(v), x0, Y(v), '#9aa6b2'); txt(c, s, x0 - 7, Y(v) + 4, { size: 11, color: '#66768a', align: 'right' }); }
+  return { X, Y, x0, y0, w, h };
+}
+function plot(c, F, xs, ys, col, w = 2, dash) {
+  c.strokeStyle = col; c.lineWidth = w; if (dash) c.setLineDash(dash); c.beginPath();
+  let st = false;
+  for (let i = 0; i < xs.length; i++) { const px = F.X(xs[i]), py = F.Y(ys[i]); if (!isFinite(py)) continue; if (!st) { c.moveTo(px, py); st = true; } else c.lineTo(px, py); }
+  c.stroke(); if (dash) c.setLineDash([]);
+}
+function nice(min, max, n) {
+  const raw = (max - min) / n, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p;
+  const st = (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * p, out = [];
+  for (let v = Math.ceil(min / st) * st; v <= max + 1e-9; v += st) out.push([v, String(Math.round(v * 1000) / 1000)]);
+  return out;
+}
+const f1 = v => (Math.abs(v) < 0.05 ? 0 : v).toFixed(1);
+const f0 = v => String(Math.round(v));
+const sgn = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2);
 
-            // 벽 충돌 처리
-            if (this.x < this.xRange[0] || this.x > this.xRange[1]) this.vx *= -1;
-            if (this.y < this.yRange[0] || this.y > this.yRange[1]) this.vy *= -1;
-        }
-
-        draw() {
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-            ctx.fillStyle = this.color;
-            ctx.fill();
-            ctx.closePath();
-        }
+/* =====================================================================
+   ① 카르노 사이클 — 피스톤 속 기체 (n = 1 mol, 단원자 이상기체, 준정적)
+   A→B 등온 팽창(T_H, 흡열 Q_H) → B→C 단열 팽창 → C→D 등온 압축(T_L, 방열 Q_L) → D→A 단열 압축
+   ===================================================================== */
+const VA = 10;                         // 상태 A의 부피 (L)
+const M1 = {
+  id: 1,
+  p: { TH: 800, TL: 300, r: 2, speed: 1 },
+  init() { this.N = 70; this.reset(); },
+  geo() {
+    const { TH, TL, r } = this.p, k = 1 / (GAM - 1);
+    const lnr = Math.log(r), lnR = k * Math.log(TH / TL);
+    return { lnr, lnR, VB: VA * r, VC: VA * r * Math.exp(lnR), VD: VA * Math.exp(lnR), Vmax: VA * r * Math.exp(lnR) };
+  },
+  /* 위상 τ(0~4) → 상태 */
+  state(tau) {
+    const { TH, TL } = this.p, g = this.g, ph = Math.min(3, Math.floor(tau)), f = tau - ph;
+    let lnV, T;
+    if (ph === 0) { lnV = f * g.lnr; T = TH; }
+    else if (ph === 1) { lnV = g.lnr + f * g.lnR; T = TH * Math.pow(TL / TH, f); }
+    else if (ph === 2) { lnV = g.lnr + g.lnR - f * g.lnr; T = TL; }
+    else { lnV = g.lnR - f * g.lnR; T = TL * Math.pow(TH / TL, f); }
+    const V = VA * Math.exp(lnV);
+    return { ph, f, V, T, P: NR * T / V, S: NR * (lnV + Math.log(T / TH) / (GAM - 1)) };
+  },
+  reset() {
+    this.g = this.geo();
+    this.tau = 0; this.cyc = 0; this.acc = { QH: 0, QL: 0, W: 0 }; this.last = null;
+    const s = this.state(0); this.Vprev = s.V; this.s = s;
+    // 선도용 경로
+    this.pv = { x: [], y: [] }; this.ts = { x: [], y: [] };
+    for (let i = 0; i <= 400; i++) { const q = this.state(i / 100 * 0.9999 + (i === 400 ? 0.0001 : 0)); this.pv.x.push(q.V); this.pv.y.push(q.P); this.ts.x.push(q.S); this.ts.y.push(q.T); }
+    this.Pmax = Math.max(...this.pv.y); this.Smax = NR * this.g.lnr;
+    // 입자
+    const sg = SIG * Math.sqrt(this.p.TH), H = this.cylH(this.s.V);
+    this.parts = Array.from({ length: this.N }, () => ({ x: Math.random(), y: Math.random() * H, vx: randn() * sg, vy: randn() * sg, vz: randn() * sg }));
+    this.hits = [];
+  },
+  cylH(V) { return 280 * V / this.g.Vmax; },
+  step(dt) {
+    const s0 = this.s;
+    // 열역학 적분은 잘게 나눠서 (사다리꼴 오차 방지)
+    const tot = dt * this.p.speed / 5, n = Math.max(1, Math.ceil(tot / 0.002)), h = tot / n;
+    let sp = s0;
+    for (let i = 0; i < n; i++) {
+      const tn = this.tau + h, s = this.state(Math.min(tn, 4)), dV = s.V - this.Vprev;
+      const dW = (s.P + sp.P) / 2 * dV;          // 기체가 한 일 (kPa·L = J)
+      this.acc.W += dW;
+      if (s.ph === 0) this.acc.QH += dW;
+      if (s.ph === 2) this.acc.QL += -dW;
+      this.Vprev = s.V; sp = s;
+      if (tn >= 4) { this.cyc++; this.last = Object.assign({}, this.acc); this.acc = { QH: 0, QL: 0, W: 0 }; this.tau = tn - 4; this.Vprev = VA; sp = this.state(this.tau); }
+      else this.tau = tn;
     }
-
-    const hotParticles = Array.from({ length: 30 }, () => new Particle([50, 550], [30, 100], '#ff7675'));
-    const coldParticles = Array.from({ length: 30 }, () => new Particle([50, 550], [400, 470], '#74b9ff'));
-
-    function animate() {
-        const Th = parseInt(thSlider.value);
-        const Tl = parseInt(tlSlider.value);
-        const efficiency = 1 - (Tl / Th);
-
-        thText.innerText = `${Th} K`;
-        tlText.innerText = `${Tl} K`;
-        effText.innerText = (efficiency * 100).toFixed(1);
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // 1. 열원 상자 그리기
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = '#dfe6e9';
-        ctx.strokeRect(50, 30, 500, 70); // 고열원
-        ctx.strokeRect(50, 400, 500, 70); // 저열원
-        
-        ctx.fillStyle = '#2c3e50';
-        ctx.font = 'bold 14px sans-serif';
-        ctx.fillText(`고열원 (Th = ${Th}K)`, 60, 25);
-        ctx.fillText(`저열원 (Tl = ${Tl}K)`, 60, 395);
-
-        // 2. 입자 애니메이션
-        hotParticles.forEach(p => { p.update(Th); p.draw(); });
-        coldParticles.forEach(p => { p.update(Tl); p.draw(); });
-
-        // 3. 열기관 및 에너지 흐름 (화살표)
-        const centerX = canvas.width / 2;
-        const qhWidth = 80; // 입력 에너지 기준 두께
-        const wWidth = qhWidth * efficiency; // 효율에 따른 일 두께
-        const qlWidth = qhWidth * (1 - efficiency); // 버려지는 열 두께
-
-        // 열기관 본체
-        ctx.beginPath();
-        ctx.arc(centerX, 250, 50, 0, Math.PI * 2);
-        ctx.fillStyle = '#95a5a6';
-        ctx.fill();
-        ctx.fillStyle = '#fff';
-        ctx.textAlign = 'center';
-        ctx.fillText('열기관', centerX, 255);
-
-        // Q_H 화살표 (고열원 -> 기관)
-        ctx.fillStyle = '#e74c3c';
-        ctx.fillRect(centerX - qhWidth / 2, 100, qhWidth, 100);
-        
-        // W 화살표 (기관 -> 외부)
-        ctx.fillStyle = '#2ecc71';
-        ctx.fillRect(centerX + 50, 250 - wWidth / 2, 100, wWidth);
-        // 화살표 머리
-        ctx.beginPath();
-        ctx.moveTo(centerX + 150, 250 - wWidth / 2 - 10);
-        ctx.lineTo(centerX + 175, 250);
-        ctx.lineTo(centerX + 150, 250 + wWidth / 2 + 10);
-        ctx.fill();
-
-        // Q_L 화살표 (기관 -> 저열원)
-        ctx.fillStyle = '#3498db';
-        ctx.fillRect(centerX - qlWidth / 2, 300, qlWidth, 100);
-        
-        // 텍스트 라벨
-        ctx.fillStyle = '#333';
-        ctx.textAlign = 'center';
-        ctx.fillText(`흡수 열 Q_H`, centerX, 150);
-        ctx.textAlign = 'left';
-        if(wWidth > 5) ctx.fillText(`일 W`, centerX + 60, 250 - wWidth/2 - 5);
-        ctx.textAlign = 'center';
-        if(qlWidth > 5) ctx.fillText(`방출 열 Q_L`, centerX, 350);
-
-        requestAnimationFrame(animate);
+    const s = this.state(this.tau); this.s = s;
+    // 입자: 피스톤이 움직이는 벽으로 반사되고, 속도는 상태 온도 T에 맞춰 천천히 보정
+    const H = this.cylH(s.V), H0 = this.cylH(s0.V), u = (H - H0) / Math.max(dt, 1e-4);
+    const sig = SIG * Math.sqrt(s.T);
+    let ss = 0; for (const p of this.parts) ss += p.vx * p.vx + p.vy * p.vy + p.vz * p.vz;
+    const cur = Math.sqrt(ss / (3 * this.N)), fac = 1 + 0.2 * (sig / cur - 1);
+    for (const p of this.parts) {
+      p.vx *= fac; p.vy *= fac; p.vz *= fac;
+      p.x += p.vx * dt / 220; p.y += p.vy * dt;
+      if (p.x < 0) { p.x = -p.x; p.vx = -p.vx; } if (p.x > 1) { p.x = 2 - p.x; p.vx = -p.vx; }
+      if (p.y < 0) { p.y = -p.y; p.vy = -p.vy; }
+      if (p.y > H) { p.y = 2 * H - p.y; p.vy = 2 * u - p.vy; if (this.hits.length < 12) this.hits.push({ x: p.x, t: 0.25 }); }
+      p.y = clamp(p.y, 0, H);
     }
+    for (const h of this.hits) h.t -= dt; this.hits = this.hits.filter(h => h.t > 0);
+  },
+  draw() {
+    const c = cs, s = this.s, g = this.g, { TH, TL } = this.p;
+    c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    c.fillStyle = '#fff'; c.fillRect(0, 0, SW, SH);
+    const cx0 = 150, cw = 220, yb = 330, H = this.cylH(s.V), yp = yb - H;
+    const ph = s.ph, hotC = ph === 0, coldC = ph === 2;
+    // 열원 블록
+    const blk = (x, col, name, T, active) => {
+      c.fillStyle = col; c.globalAlpha = active ? 1 : 0.35; rrect(c, x, 296, 92, 90, 10); c.fill(); c.globalAlpha = 1;
+      txt(c, name, x + 46, 330, { bold: true, color: '#fff', align: 'center', size: 14 });
+      txt(c, T + ' K', x + 46, 356, { bold: true, color: '#fff', align: 'center', size: 16 });
+    };
+    blk(14, HOT, '고열원', TH, hotC); blk(454, COLD, '저열원', TL, coldC);
+    // 받침판 (단열 / 접촉)
+    c.fillStyle = hotC ? 'rgba(231,76,60,.85)' : coldC ? 'rgba(47,128,237,.85)' : '#c9d1da';
+    rrect(c, cx0 - 10, yb, cw + 20, 18, 4); c.fill();
+    if (!hotC && !coldC) { c.strokeStyle = '#8a96a6'; c.lineWidth = 1; for (let x = cx0 - 4; x < cx0 + cw + 8; x += 10) line(c, x, yb + 18, x + 8, yb, '#8a96a6', 1); txt(c, '단열', cx0 + cw / 2, yb + 34, { size: 12, color: '#66768a', align: 'center', bold: true }); }
+    // 열 흐름 화살표
+    if (hotC) { arrow(c, 106, 350, cx0 - 12, 342, HOT, 6, 16); label(c, 'Q_H 흡수', 100, 292, HOT); }
+    if (coldC) { arrow(c, cx0 + cw + 12, 342, 450, 350, COLD, 6, 16); label(c, 'Q_L 방출', 462, 292, COLD); }
+    // 실린더
+    c.fillStyle = tcol(s.T, .10); c.fillRect(cx0, 50, cw, yb - 50);
+    c.fillStyle = tcol(s.T, .16); c.fillRect(cx0, yp, cw, H);
+    line(c, cx0, 50, cx0, yb, '#55657a', 4); line(c, cx0 + cw, 50, cx0 + cw, yb, '#55657a', 4);
+    // 피스톤
+    c.fillStyle = '#7d8b9a'; c.fillRect(cx0 + 2, yp - 12, cw - 4, 12);
+    line(c, cx0 + cw / 2, yp - 12, cx0 + cw / 2, 46, '#7d8b9a', 6);
+    c.fillStyle = '#55657a'; rrect(c, cx0 + cw / 2 - 40, 34, 80, 14, 4); c.fill();
+    // 입자
+    for (const p of this.parts) {
+      const sp = Math.sqrt(p.vx * p.vx + p.vy * p.vy + p.vz * p.vz) / (SIG * Math.sqrt(s.T) * 1.7);
+      circle(c, cx0 + 6 + p.x * (cw - 12), yb - 4 - p.y * (H - 8) / Math.max(H, 1), 3.4, tcol(s.T * (0.6 + 0.8 * clamp(sp, 0, 1.6) ** 2), .95));
+    }
+    for (const h of this.hits) { c.fillStyle = `rgba(255,255,255,${h.t * 3})`; c.beginPath(); c.arc(cx0 + 6 + h.x * (cw - 12), yp + 2, 6 * (1 + (0.25 - h.t) * 4), 0, TAU); c.fill(); }
+    // 일 화살표
+    const dir = s.ph === 0 || s.ph === 1 ? 1 : -1;
+    if (dir > 0) { arrow(c, cx0 + cw / 2 + 56, yp - 4, cx0 + cw / 2 + 56, yp - 40, WORK, 5, 12); label(c, '기체가 일(W) 함', cx0 + cw / 2 + 56, yp - 48, WORK, 'rgba(255,255,255,.9)', 11); }
+    else { arrow(c, cx0 + cw / 2 + 56, yp - 40, cx0 + cw / 2 + 56, yp - 6, '#8a6d3b', 5, 12); label(c, '기체에 일을 해 줌', cx0 + cw / 2 + 56, yp - 48, '#8a6d3b', 'rgba(255,255,255,.9)', 11); }
+    // 단계 이름
+    const names = ['A→B  등온 팽창 (T 일정, 흡열)', 'B→C  단열 팽창 (열 출입 없음, 온도 ↓)', 'C→D  등온 압축 (T 일정, 방열)', 'D→A  단열 압축 (열 출입 없음, 온도 ↑)'];
+    txt(c, names[ph], SW / 2, 22, { bold: true, size: 14, align: 'center', color: [HOT, '#8e44ad', COLD, '#8e44ad'][ph] });
+    // 단계 진행 막대
+    for (let i = 0; i < 4; i++) {
+      const x = 14 + i * 134, fill = i < ph ? 1 : i === ph ? s.f : 0;
+      c.fillStyle = '#e4e9ef'; rrect(c, x, 404, 128, 8, 4); c.fill();
+      c.fillStyle = [HOT, '#8e44ad', COLD, '#8e44ad'][i]; if (fill > 0.01) { rrect(c, x, 404, 128 * fill, 8, 4); c.fill(); }
+      txt(c, ['A→B', 'B→C', 'C→D', 'D→A'][i], x + 64, 398, { size: 10, color: '#66768a', align: 'center' });
+    }
+    // 에너지 장부 (이번 사이클 누적)
+    const a = this.acc, sc = 1 / Math.max(1, 2.4 * NR * TH * g.lnr);
+    const bx = 400, bw = 24;
+    txt(c, '이번 사이클 누적', 436, 56, { size: 11, bold: true, color: '#55657a', align: 'center' });
+    [['Q_H', a.QH, HOT], ['W', a.W, WORK], ['Q_L', a.QL, COLD]].forEach(([n, v, col], i) => {
+      const x = 398 + i * 50, hh = clamp(Math.abs(v) * sc * 130, 0, 130);
+      c.fillStyle = '#eef2f6'; c.fillRect(x, 76, bw, 130);
+      c.fillStyle = col; c.fillRect(x, 206 - hh, bw, hh);
+      txt(c, n, x + bw / 2, 222, { size: 11, bold: true, color: col, align: 'center' });
+      txt(c, f0(v), x + bw / 2, 70, { size: 10, color: '#3b4a5c', align: 'center' });
+    });
+    txt(c, '(J)', 536, 222, { size: 10, color: '#66768a' });
+  },
+  graphs() {
+    const s = this.s, g = this.g, { TH, TL } = this.p;
+    // P–V
+    const Vm = g.Vmax * 1.06, Pm = this.Pmax * 1.1;
+    const F = frame(c1, { xmin: 0, xmax: Vm, ymin: 0, ymax: Pm, title: 'P–V 선도 (넓이 = 한 일)', xlabel: 'V (L)', ylabel: 'P (kPa)', xticks: nice(0, Vm, 5), yticks: nice(0, Pm, 4) });
+    c1.fillStyle = 'rgba(39,174,96,.18)'; c1.beginPath();
+    this.pv.x.forEach((x, i) => { const px = F.X(x), py = F.Y(this.pv.y[i]); i ? c1.lineTo(px, py) : c1.moveTo(px, py); }); c1.closePath(); c1.fill();
+    const cols = [HOT, '#8e44ad', COLD, '#8e44ad'];
+    for (let q = 0; q < 4; q++) plot(c1, F, this.pv.x.slice(q * 100, q * 100 + 101), this.pv.y.slice(q * 100, q * 100 + 101), cols[q], 2.6);
+    const pts = [['A', VA, NR * TH / VA], ['B', g.VB, NR * TH / g.VB], ['C', g.VC, NR * TL / g.VC], ['D', g.VD, NR * TL / g.VD]];
+    for (const [n, v, p] of pts) { circle(c1, F.X(v), F.Y(p), 3.5, '#1f2d3d'); txt(c1, n, F.X(v) + (n === 'A' || n === 'D' ? -12 : 7), F.Y(p) - 6, { bold: true, size: 13 }); }
+    circle(c1, F.X(s.V), F.Y(s.P), 6, '#fff', '#1f2d3d', 3);
+    txt(c1, `W = ${f0(this.acc.W)} J`, F.x0 + F.w - 6, F.y0 + 16, { bold: true, color: WORK, align: 'right', size: 12 });
+    // T–S
+    const Sm = g.lnr * NR * 1.25, Tm = TH * 1.15;
+    const G = frame(c2, { xmin: -Sm * 0.1, xmax: Sm * 1.1, ymin: 0, ymax: Tm, title: 'T–S 선도 (카르노 사이클 = 직사각형)', xlabel: 'S − S_A (J/K)', ylabel: 'T (K)', xticks: nice(0, Sm, 4), yticks: nice(0, Tm, 4) });
+    const S1 = NR * g.lnr;
+    c2.fillStyle = 'rgba(39,174,96,.22)'; c2.fillRect(G.X(0), G.Y(TH), G.X(S1) - G.X(0), G.Y(TL) - G.Y(TH));
+    c2.fillStyle = 'rgba(47,128,237,.14)'; c2.fillRect(G.X(0), G.Y(TL), G.X(S1) - G.X(0), G.Y(0) - G.Y(TL));
+    txt(c2, 'W = (T_H − T_L)·ΔS', G.X(S1 / 2), (G.Y(TH) + G.Y(TL)) / 2 + 4, { align: 'center', color: '#1b7d46', bold: true, size: 12 });
+    txt(c2, 'Q_L = T_L·ΔS', G.X(S1 / 2), (G.Y(TL) + G.Y(0)) / 2 + 4, { align: 'center', color: '#1f5fbf', bold: true, size: 12 });
+    for (let q = 0; q < 4; q++) plot(c2, G, this.ts.x.slice(q * 100, q * 100 + 101), this.ts.y.slice(q * 100, q * 100 + 101), cols[q], 2.6);
+    txt(c2, `Q_H = T_H·ΔS`, G.X(S1 / 2), G.Y(TH) - 7, { align: 'center', color: HOT, bold: true, size: 12 });
+    circle(c2, G.X(s.S), G.Y(s.T), 6, '#fff', '#1f2d3d', 3);
+    // 읽기
+    const L = this.last, a = this.acc;
+    const dS = NR * g.lnr, QHt = TH * dS, QLt = TL * dS;
+    const eT = 1 - TL / TH;
+    $('#read').innerHTML = `
+      <div class="hot">Q<sub>H</sub> (A→B 흡수)<b>${f0(a.QH)} J</b></div>
+      <div class="cold">Q<sub>L</sub> (C→D 방출)<b>${f0(a.QL)} J</b></div>
+      <div class="ok">W = ∮P dV<b>${f0(a.W)} J</b></div>
+      <div class="ok">e = W/Q<sub>H</sub> (직전 1회)<b>${L ? (L.W / L.QH * 100).toFixed(1) + ' %' : '—'}</b></div>
+      <div>이론 e = 1 − T<sub>L</sub>/T<sub>H</sub><b>${(eT * 100).toFixed(1)} %</b></div>
+      <div>Q<sub>L</sub>/Q<sub>H</sub> ↔ T<sub>L</sub>/T<sub>H</sub><b>${(QLt / QHt).toFixed(3)} = ${(TL / TH).toFixed(3)}</b></div>
+      <div>ΔS<sub>우주</sub> (1회)<b>0 (가역)</b></div>
+      <div>사이클 횟수<b>${this.cyc}</b></div>`;
+  },
+  controls() {
+    return [
+      { type: 'range', label: '고열원 T_H', key: 'TH', min: 450, max: 1200, step: 10, fmt: v => v + ' K', on: () => { this.fixRatio('TH'); this.reset(); } },
+      { type: 'range', label: '저열원 T_L', key: 'TL', min: 150, max: 400, step: 10, fmt: v => v + ' K', on: () => { this.fixRatio('TL'); this.reset(); } },
+      { type: 'range', label: '등온 팽창비 V_B/V_A', key: 'r', min: 1.5, max: 3, step: 0.1, fmt: v => v.toFixed(1), on: () => this.reset() },
+      { type: 'range', label: '재생 속도', key: 'speed', min: 0.2, max: 3, step: 0.1, fmt: v => '×' + v.toFixed(1) },
+      { type: 'button', label: '⏸ 일시정지', main: 1, act(e) { M1.paused = !M1.paused; e.target.textContent = M1.paused ? '▶ 계속' : '⏸ 일시정지'; } },
+      { type: 'button', label: '↺ A에서 다시', act: () => this.reset() }
+    ];
+  },
+  /* 입자 수준 그림이 읽히도록 T_H/T_L ≤ 5 로 제한 (부피 변화가 너무 커지는 것 방지) */
+  fixRatio(changed) {
+    const p = this.p;
+    if (p.TH < p.TL + 50) { if (changed === 'TH') p.TL = p.TH - 50; else p.TH = p.TL + 50; }
+    if (p.TH / p.TL > 5) { if (changed === 'TH') p.TL = Math.ceil(p.TH / 5 / 10) * 10; else p.TH = Math.floor(p.TL * 5 / 10) * 10; }
+    syncSliders();
+  },
+  info: `
+    <h2>① 카르노 사이클 — 기체 입자로 보는 가장 효율적인 열기관</h2>
+    <div class="infogrid"><div>
+      <h4>네 단계</h4>
+      <table class="cmp">
+        <tr><th>단계</th><th>입자 수준</th><th>거시량</th></tr>
+        <tr><td><b>A→B</b> 등온 팽창</td><td>고열원 벽과 충돌하며 에너지를 받아, 피스톤을 밀어도 평균 속력 그대로</td><td>ΔU=0, <span class="eq">Q<sub>H</sub> = W = nRT<sub>H</sub> ln(V<sub>B</sub>/V<sub>A</sub>)</span></td></tr>
+        <tr><td><b>B→C</b> 단열 팽창</td><td>물러나는 피스톤에 부딪힌 입자는 느려져서 돌아온다 → 온도 하강</td><td>Q=0, <span class="eq">TV<sup>γ−1</sup> = 일정</span></td></tr>
+        <tr><td><b>C→D</b> 등온 압축</td><td>다가오는 피스톤이 주는 에너지를 저열원 벽으로 내보낸다</td><td>ΔU=0, <span class="eq">Q<sub>L</sub> = nRT<sub>L</sub> ln(V<sub>C</sub>/V<sub>D</sub>)</span></td></tr>
+        <tr><td><b>D→A</b> 단열 압축</td><td>다가오는 피스톤에 부딪힌 입자는 빨라져서 돌아온다 → 온도 상승</td><td>Q=0</td></tr>
+      </table>
+    </div><div>
+      <h4>효율이 T만으로 정해지는 까닭</h4>
+      <p>두 단열 과정에서 <span class="eq">V<sub>C</sub>/V<sub>B</sub> = V<sub>D</sub>/V<sub>A</sub> = (T<sub>H</sub>/T<sub>L</sub>)<sup>1/(γ−1)</sup></span> 이므로 <span class="eq">V<sub>C</sub>/V<sub>D</sub> = V<sub>B</sub>/V<sub>A</sub></span>. 따라서</p>
+      <p><span class="eq">Q<sub>L</sub>/Q<sub>H</sub> = T<sub>L</sub>/T<sub>H</sub></span> → <span class="eq">e = W/Q<sub>H</sub> = 1 − T<sub>L</sub>/T<sub>H</sub></span></p>
+      <p>T–S 선도에서는 사이클이 직사각형이라 <span class="eq">Q<sub>H</sub> = T<sub>H</sub>ΔS</span>, <span class="eq">Q<sub>L</sub> = T<sub>L</sub>ΔS</span>가 곧바로 보인다. 엔트로피는 기체가 고열원에서 받은 만큼(Q<sub>H</sub>/T<sub>H</sub>) 저열원으로 내보내므로(Q<sub>L</sub>/T<sub>L</sub>) 우주의 엔트로피는 늘지 않는다(<span class="eq">∮dQ/T = 0</span>, 가역).</p>
+      <h4>카르노 정리</h4>
+      <p>같은 두 열원 사이에서 작동하는 어떤 기관도 카르노 기관보다 효율이 높을 수 없고, 가역 기관의 효율은 작업 물질(기체든 액체든)과 무관하게 모두 같다.</p>
+    </div></div>
+    <details class="q"><summary>🤔 생각해 보기</summary>
+      <ul>
+        <li>등온 팽창에서 기체의 내부에너지는 그대로인데 왜 열 Q<sub>H</sub>가 들어와야 할까? (힌트: 첫 번째 법칙 Q = ΔU + W)</li>
+        <li>T<sub>L</sub>을 낮추면 W와 Q<sub>L</sub> 가운데 무엇이 어떻게 변하는가? T–S 직사각형의 어느 부분이 줄어드는지 보자.</li>
+        <li>e = 100 %가 되려면 T<sub>L</sub> = 0 K이어야 한다. 왜 절대영도에 이르는 것은 불가능하다고 할까? (열역학 제3법칙)</li>
+        <li>단열 팽창 중 입자의 속력이 줄어드는 것을 피스톤과의 충돌로 설명해 보자.</li>
+      </ul></details>
+    <p class="note">모델: 입자 70개(그림은 2차원 단면, 속도는 3성분)로 3차원 단원자 이상기체 1 mol의 사이클을 천천히(준정적) 보여 준다. 입자의 평균 속력은 각 단계의 온도에 맞춰 조절하고, 피스톤 충돌은 흰 점으로 표시한다. 선도의 값(Q, W)은 P·dV를 시간에 따라 적분해 얻는다.</p>
+    <div class="ref">교재 참고: Halliday, <i>Fundamentals of Physics</i> 20장 엔트로피와 열역학 제2법칙(20-2 엔진) · Schroeder, <i>An Introduction to Thermal Physics</i> 4.1절 열기관과 카르노 사이클 · Serway, <i>Physics for Scientists and Engineers</i> 22장 열기관·엔트로피·제2법칙</div>`
+};
 
-    animate();
+/* =====================================================================
+   ② 입자 운동과 열 흐름 — 온도 = 평균 운동에너지, 에너지 흐름과 엔트로피 장부
+   ===================================================================== */
+const M2 = {
+  id: 2,
+  p: { TH: 800, TL: 300, x: 80 },
+  QH: 1000,
+  init() {
+    this.N = 150; this.hot = []; this.cold = [];
+    this.boxH = { x: 20, y: 36, w: 520, h: 84 }; this.boxC = { x: 20, y: 300, w: 520, h: 84 };
+    const mk = (b, T) => ({ x: b.x + Math.random() * b.w, y: b.y + Math.random() * b.h, vx: randn() * SIG * Math.sqrt(T), vy: randn() * SIG * Math.sqrt(T), vz: randn() * SIG * Math.sqrt(T) });
+    for (let i = 0; i < this.N; i++) { this.hot.push(mk(this.boxH, this.p.TH)); this.cold.push(mk(this.boxC, this.p.TL)); }
+    this.Tcur = { hot: this.p.TH, cold: this.p.TL };
+    this.flow = 0;
+  },
+  retune() {
+    for (const [arr, key] of [[this.hot, 'TH'], [this.cold, 'TL']]) {
+      const k = Math.sqrt(this.p[key] / this.Tcur[key === 'TH' ? 'hot' : 'cold']);
+      for (const q of arr) { q.vx *= k; q.vy *= k; q.vz *= k; }
+    }
+    this.Tcur = { hot: this.p.TH, cold: this.p.TL };
+  },
+  calc() {
+    const { TH, TL, x } = this.p, eC = 1 - TL / TH, eta = x / 100 * eC, QH = this.QH;
+    const W = eta * QH, QL = QH - W;
+    const dSh = -QH / TH, dSc = QL / TL, tot = dSh + dSc;
+    return { eC, eta, W, QL, dSh, dSc, tot, v1: eta > 1 + 1e-9, v2: eta <= 1 + 1e-9 && tot < -1e-9 };
+  },
+  step(dt) {
+    this.flow += dt;
+    for (const [arr, b] of [[this.hot, this.boxH], [this.cold, this.boxC]]) {
+      for (const q of arr) {
+        q.x += q.vx * dt; q.y += q.vy * dt;
+        if (q.x < b.x) { q.x = 2 * b.x - q.x; q.vx = -q.vx; } if (q.x > b.x + b.w) { q.x = 2 * (b.x + b.w) - q.x; q.vx = -q.vx; }
+        if (q.y < b.y) { q.y = 2 * b.y - q.y; q.vy = -q.vy; } if (q.y > b.y + b.h) { q.y = 2 * (b.y + b.h) - q.y; q.vy = -q.vy; }
+        q.x = clamp(q.x, b.x, b.x + b.w); q.y = clamp(q.y, b.y, b.y + b.h);
+      }
+    }
+  },
+  draw() {
+    const c = cs, { TH, TL } = this.p, k = this.calc();
+    c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    c.fillStyle = '#fff'; c.fillRect(0, 0, SW, SH);
+    const box = (b, arr, T, col, name) => {
+      c.fillStyle = tcol(T, .12); rrect(c, b.x, b.y, b.w, b.h, 8); c.fill();
+      c.strokeStyle = col; c.lineWidth = 2.5; c.stroke();
+      for (const q of arr) circle(c, q.x, q.y, 2.6, tcol(T, .95));
+      const KE = 1.5 * KB * T, vr = Math.sqrt(3 * KB * T / M_HE);
+      txt(c, `${name}  T = ${T} K`, b.x, b.y - 8, { bold: true, size: 14, color: col });
+      txt(c, `⟨E_k⟩ = (3/2)k_BT = ${(KE * 1e21).toFixed(1)}×10⁻²¹ J   ·   v_rms ≈ ${f0(vr)} m/s (He)`, b.x + b.w, b.y - 8, { size: 11, color: '#55657a', align: 'right' });
+    };
+    box(this.boxH, this.hot, TH, HOT, '고열원'); box(this.boxC, this.cold, TL, COLD, '저열원');
+    // 샹키 흐름 (Q_H = 폭 56px 기준)
+    const cx = 170, cy = 210, SC = 56;
+    const wH = SC, wW = SC * clamp(k.eta, 0, 1.2), wL = SC * clamp(1 - k.eta, 0, 1);
+    const bad = k.v1 || k.v2;
+    const off = (this.flow * 60) % 24;
+    c.fillStyle = 'rgba(231,76,60,.55)'; c.fillRect(cx - wH / 2, 120, wH, 62);
+    if (wL > 0.5) { c.fillStyle = 'rgba(47,128,237,.55)'; c.fillRect(cx - wL / 2, 238, wL, 62); }
+    c.fillStyle = 'rgba(39,174,96,.6)'; c.fillRect(cx + 40, cy - wW / 2, 150, wW);
+    c.fillStyle = WORK; c.beginPath(); c.moveTo(cx + 190, cy - wW / 2 - 9); c.lineTo(cx + 218, cy); c.lineTo(cx + 190, cy + wW / 2 + 9); c.fill();
+    // 흐름 줄무늬
+    c.fillStyle = 'rgba(255,255,255,.55)';
+    for (let y = 120 + off; y < 182; y += 24) c.fillRect(cx - wH / 2, y, wH, 3);
+    if (wL > 0.5) for (let y = 238 + off; y < 300; y += 24) c.fillRect(cx - wL / 2, y, wL, 3);
+    for (let x = cx + 40 + off; x < cx + 190; x += 24) c.fillRect(x, cy - wW / 2, 3, wW);
+    circle(c, cx, cy, 40, bad ? '#c0392b' : '#7f8c8d'); txt(c, '열기관', cx, cy + 5, { bold: true, size: 14, color: '#fff', align: 'center' });
+    txt(c, `Q_H = ${f0(this.QH)} J`, cx - wH / 2 - 8, 156, { bold: true, color: HOT, align: 'right', size: 13 });
+    txt(c, `Q_L = ${f0(k.QL)} J`, cx - wL / 2 - 8, 276, { bold: true, color: COLD, align: 'right', size: 13 });
+    txt(c, `W = ${f0(k.W)} J`, cx + 120, cy - wW / 2 - 14, { bold: true, color: '#1b7d46', align: 'center', size: 13 });
+    // 판정 상자
+    const vx0 = 400, vy0 = 150, vw = 150, vh = 120;
+    const col = k.v1 ? '#c0392b' : k.v2 ? '#c0392b' : Math.abs(k.tot) < 1e-6 ? '#1b7d46' : '#b9770e';
+    c.fillStyle = k.v1 || k.v2 ? '#fdecea' : Math.abs(k.tot) < 1e-6 ? '#e6f5ec' : '#fdf3e0';
+    rrect(c, vx0, vy0, vw, vh, 10); c.fill(); c.strokeStyle = col; c.lineWidth = 2; c.stroke();
+    const head = k.v1 ? '✗ 불가능' : k.v2 ? '✗ 불가능' : Math.abs(k.tot) < 1e-6 ? '✓ 이상적(카르노)' : '✓ 가능(실제 기관)';
+    const l1 = k.v1 ? '제1법칙 위반' : k.v2 ? '제2법칙 위반' : Math.abs(k.tot) < 1e-6 ? '가역: ΔS우주 = 0' : '비가역: ΔS우주 > 0';
+    const l2 = k.v1 ? 'W > Q_H (에너지 창조)' : k.v2 ? `ΔS우주 = ${k.tot.toFixed(2)} J/K < 0` : `ΔS우주 = ${k.tot.toFixed(3)} J/K`;
+    txt(c, head, vx0 + vw / 2, vy0 + 28, { bold: true, size: 16, color: col, align: 'center' });
+    txt(c, l1, vx0 + vw / 2, vy0 + 54, { bold: true, size: 12, color: col, align: 'center' });
+    txt(c, l2, vx0 + vw / 2, vy0 + 74, { size: 12, color: '#3b4a5c', align: 'center' });
+    txt(c, `e = ${(k.eta * 100).toFixed(1)} %  (카르노 ${(k.eC * 100).toFixed(1)} %)`, vx0 + vw / 2, vy0 + 100, { size: 11, color: '#55657a', align: 'center' });
+  },
+  graphs() {
+    const { TH, TL } = this.p, k = this.calc();
+    // 속력 분포 (He 원자, 맥스웰–볼츠만)
+    const vmax = 6000, bins = 30, bw = vmax / bins;
+    const hist = (arr) => { const h = new Array(bins).fill(0); for (const q of arr) { const v = Math.sqrt(q.vx * q.vx + q.vy * q.vy + q.vz * q.vz) * PX2MS; const b = Math.floor(v / bw); if (b < bins) h[b]++; } return h.map(n => n / arr.length / bw); };
+    const mb = (v, T) => 4 * Math.PI * Math.pow(M_HE / (TAU * KB * T), 1.5) * v * v * Math.exp(-M_HE * v * v / (2 * KB * T));
+    const hh = hist(this.hot), hc = hist(this.cold);
+    const ymax = Math.max(mb(Math.sqrt(2 * KB * TL / M_HE), TL), mb(Math.sqrt(2 * KB * TH / M_HE), TH)) * 1.25;
+    const F = frame(c1, { xmin: 0, xmax: vmax, ymin: 0, ymax, title: '입자 속력 분포 (헬륨 원자 기준)', xlabel: '속력 v (m/s)', ylabel: '확률밀도', xticks: nice(0, vmax, 6), yticks: [] });
+    for (const [h, col] of [[hc, 'rgba(47,128,237,.45)'], [hh, 'rgba(231,76,60,.45)']]) {
+      c1.fillStyle = col; for (let i = 0; i < bins; i++) { const x = F.X(i * bw), y = F.Y(h[i]); c1.fillRect(x, y, F.X(bw) - F.X(0) - 1, F.Y(0) - y); }
+    }
+    const vs = Array.from({ length: 200 }, (_, i) => i / 199 * vmax);
+    plot(c1, F, vs, vs.map(v => mb(v, TL)), '#1f5fbf', 2.4); plot(c1, F, vs, vs.map(v => mb(v, TH)), '#c0392b', 2.4);
+    for (const [T, col] of [[TL, '#1f5fbf'], [TH, '#c0392b']]) { const vr = Math.sqrt(3 * KB * T / M_HE); line(c1, F.X(vr), F.y0, F.X(vr), F.y0 + F.h, col, 1, [4, 4]); }
+    txt(c1, '막대: 시뮬레이션 입자 150개  선: 맥스웰–볼츠만 분포', F.x0 + F.w, F.y0 + 14, { size: 10, color: '#55657a', align: 'right' });
+    txt(c1, '점선: v_rms', F.x0 + F.w, F.y0 + 28, { size: 10, color: '#55657a', align: 'right' });
+    // 엔트로피 장부
+    const G = frame(c2, { xmin: 0, xmax: 4, ymin: -1, ymax: 1, title: '엔트로피 장부 (한 사이클, J/K)', yticks: [] });
+    const sc = 1 / Math.max(1.2, Math.abs(this.QH / TL), Math.abs(this.QH / TH)) * 0.85;
+    const mx = Math.max(this.QH / TL, 1e-9), norm = v => v / mx * 0.85;
+    const bars = [['고열원', k.dSh, COLD], ['저열원', k.dSc, COLD], ['합계', k.tot, k.tot < -1e-9 ? HOT : '#27ae60']];
+    bars[0][2] = HOT; bars[1][2] = COLD;
+    bars.forEach(([n, v, col], i) => {
+      const x0 = G.X(0.55 + i * 1.15), x1 = G.X(1.35 + i * 1.15), y = G.Y(norm(v)), y0 = G.Y(0);
+      c2.fillStyle = col; c2.fillRect(x0, Math.min(y, y0), x1 - x0, Math.abs(y - y0));
+      txt(c2, (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2), (x0 + x1) / 2, v >= 0 ? y - 5 : y + 14, { bold: true, size: 12, align: 'center', color: '#1f2d3d' });
+      txt(c2, n, (x0 + x1) / 2, G.y0 + G.h + 17, { size: 12, align: 'center', color: '#3b4a5c', bold: true });
+    });
+    line(c2, G.x0, G.Y(0), G.x0 + G.w, G.Y(0), '#8a96a6', 1.5);
+    if (k.tot < -1e-9) { c2.fillStyle = 'rgba(231,76,60,.10)'; c2.fillRect(G.x0, G.Y(0), G.w, G.y0 + G.h - G.Y(0)); txt(c2, '합계 < 0 : 제2법칙 금지 구역', G.x0 + G.w - 8, G.y0 + G.h - 8, { bold: true, color: '#c0392b', align: 'right', size: 12 }); }
+    else txt(c2, '합계 ≥ 0 이어야 한다 (ΔS우주 ≥ 0)', G.x0 + G.w - 8, G.y0 + 16, { color: '#1b7d46', bold: true, size: 12, align: 'right' });
+    $('#read').innerHTML = `
+      <div class="hot">ΔS<sub>고열원</sub> = −Q<sub>H</sub>/T<sub>H</sub><b>${sgn(k.dSh)} J/K</b></div>
+      <div class="cold">ΔS<sub>저열원</sub> = +Q<sub>L</sub>/T<sub>L</sub><b>${sgn(k.dSc)} J/K</b></div>
+      <div class="${k.tot < -1e-9 ? 'hot' : 'ok'}">ΔS<sub>우주</sub><b>${sgn(k.tot)} J/K</b></div>
+      <div>카르노 효율<b>${(k.eC * 100).toFixed(1)} %</b></div>
+      <div>이 기관의 효율<b>${(k.eta * 100).toFixed(1)} %</b></div>
+      <div>무질서 비교 T<sub>H</sub>/T<sub>L</sub><b>${(TH / TL).toFixed(2)}</b></div>`;
+  },
+  controls() {
+    return [
+      { type: 'range', label: '고열원 T_H', key: 'TH', min: 400, max: 1200, step: 10, fmt: v => v + ' K', on: () => { this.fix('TH'); this.retune(); } },
+      { type: 'range', label: '저열원 T_L', key: 'TL', min: 100, max: 390, step: 10, fmt: v => v + ' K', on: () => { this.fix('TL'); this.retune(); } },
+      { type: 'range', label: '효율 ÷ 카르노 효율', key: 'x', min: 0, max: 130, step: 1, fmt: v => v + ' %' },
+      { type: 'button', label: '카르노 기관 (100 %)', act: () => { this.p.x = 100; syncSliders(); } },
+      { type: 'button', label: '"열을 전부 일로" (제2종)', act: () => { this.p.x = 130; syncSliders(); } }
+    ];
+  },
+  fix(changed) { const p = this.p; if (p.TH < p.TL + 50) { if (changed === 'TH') p.TL = p.TH - 50; else p.TH = p.TL + 50; } syncSliders(); },
+  info: `
+    <h2>② 입자 운동과 열 흐름 — 온도는 무엇이고, 열기관은 무엇을 어기면 안 되나</h2>
+    <div class="infogrid"><div>
+      <h4>미시: 온도 = 평균 운동에너지</h4>
+      <p>이상기체 입자 하나의 평균 병진 운동에너지는 <span class="eq">⟨E<sub>k</sub>⟩ = (3/2)k<sub>B</sub>T</span>. 같은 기체에서도 입자마다 속력이 다르며, 분포는 맥스웰–볼츠만 분포를 따른다.</p>
+      <p><span class="eq">f(v) = 4π (m/2πk<sub>B</sub>T)<sup>3/2</sup> v² e<sup>−mv²/2k<sub>B</sub>T</sup></span></p>
+      <p>T가 높으면 분포의 봉우리가 오른쪽으로 옮겨 가며 넓어진다(v<sub>rms</sub> = √(3k<sub>B</sub>T/m)). 막대는 시뮬레이션 입자의 실제 속력, 선은 이론 곡선이다. 입자 수가 150개라 막대가 곡선 둘레에서 흔들린다.</p>
+      <h4>거시: 에너지 흐름</h4>
+      <p>한 사이클에서 열기관이 받은 열 Q<sub>H</sub>는 일 W와 방출 열 Q<sub>L</sub>로 나뉜다(제1법칙, 한 사이클 ΔU=0).</p>
+      <p><span class="eq">Q<sub>H</sub> = W + Q<sub>L</sub></span> , <span class="eq">e = W/Q<sub>H</sub> = 1 − Q<sub>L</sub>/Q<sub>H</sub></span></p>
+    </div><div>
+      <h4>엔트로피로 한계 구하기</h4>
+      <p>기관 자체는 한 사이클 뒤 제자리이므로 ΔS=0. 우주의 엔트로피 변화는 두 열원의 합이다.</p>
+      <p><span class="eq">ΔS<sub>우주</sub> = −Q<sub>H</sub>/T<sub>H</sub> + Q<sub>L</sub>/T<sub>L</sub> ≥ 0</span> → <span class="eq">Q<sub>L</sub>/Q<sub>H</sub> ≥ T<sub>L</sub>/T<sub>H</sub></span> → <span class="eq">e ≤ 1 − T<sub>L</sub>/T<sub>H</sub></span></p>
+      <p>등호는 가역(카르노) 기관일 때만 성립한다. 효율 슬라이드를 100 % 이상으로 올려 보자. ΔS<sub>우주</sub>가 음수가 되는 순간 <b>제2법칙이 금지</b>한다. 이것이 <a href="../perpetual-motion/index.html">제2종 영구기관</a>이 불가능한 이유다.</p>
+      <table class="cmp">
+        <tr><th>효율 슬라이드</th><th>의미</th></tr>
+        <tr><td>0 ~ 100 %</td><td>가능. 100 % 미만이면 비가역 과정이 있어 ΔS우주 &gt; 0 (엔트로피 생성)</td></tr>
+        <tr><td>정확히 100 %</td><td>카르노 기관. 무한히 천천히 작동해야 하므로 출력이 0에 가깝다</td></tr>
+        <tr><td>100 % 초과</td><td>같은 두 열원 사이에서는 불가능 (제2법칙 위반, 극단적이면 W &gt; Q<sub>H</sub>로 제1법칙까지 위반)</td></tr>
+      </table>
+    </div></div>
+    <details class="q"><summary>🤔 생각해 보기</summary>
+      <ul>
+        <li>T<sub>L</sub>을 올리면 저열원 분포는 어떻게 변하고, 카르노 효율과 ΔS<sub>저열원</sub>은 어떻게 변하는가?</li>
+        <li>왜 효율이 낮은 기관일수록 ΔS<sub>우주</sub>가 크게 나올까? 버려진 열 Q<sub>L</sub>의 의미를 입자 수준에서 말해 보자.</li>
+        <li>맥스웰–볼츠만 곡선 아래 넓이는 온도와 상관없이 1이다. 왜 그럴까?</li>
+      </ul></details>
+    <p class="note">입자는 서로 충돌하지 않고 벽에서만 튕기도록 단순화했다(이상기체 모형). 그림은 2차원 단면이지만 속도는 3성분(v<sub>z</sub> 포함)으로 취급해 3차원 분포와 비교한다. 속도 눈금은 헬륨 원자를 가정해 환산했다.</p>
+    <div class="ref">교재 참고: Schroeder 4.1절(엔트로피로 구한 효율의 한계 e ≤ 1 − T<sub>c</sub>/T<sub>h</sub>) · Halliday 20장 20-2 · 기체 분자 운동론은 각 일반물리학 교재의 이상기체 단원</div>`
+};
+
+/* =====================================================================
+   ③ 효율의 한계 · 실제 기관 — 카르노 효율 곡선, 오토 기관 비교, 냉동기·열펌프 성능계수
+   ===================================================================== */
+const M3 = {
+  id: 3,
+  p: { TH: 1500, TL: 300, rc: 9, dT: 25 },
+  init() { },
+  calc() {
+    const { TH, TL, rc } = this.p, g = 1.4;
+    const eC = 1 - TL / TH, eO = 1 - Math.pow(rc, 1 - g), Tcomp = TL * Math.pow(rc, g - 1);
+    return { eC, eO, Tcomp, ok: TH > Tcomp, copR: TL / (TH - TL), copH: TH / (TH - TL), Tneed: TL / (1 - Math.min(eC, .99)) };
+  },
+  step() { },
+  draw() {
+    const c = cs, { TH, TL } = this.p, k = this.calc();
+    c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    c.fillStyle = '#fff'; c.fillRect(0, 0, SW, SH);
+    // 큰 그래프: e_C vs T_H
+    const x0 = 62, y0 = 40, w = SW - 90, h = SH - 100, Tmax = 2500;
+    const X = v => x0 + v / Tmax * w, Y = v => y0 + h - v * h;
+    txt(c, '카르노 효율 e = 1 − T_L/T_H  (T_L은 고정)', x0, 24, { bold: true, size: 14 });
+    c.strokeStyle = '#d5dce4'; c.lineWidth = 1; c.strokeRect(x0, y0, w, h);
+    for (let v = 0; v <= 1.001; v += .2) { line(c, x0, Y(v), x0 + w, Y(v), '#eef1f5'); txt(c, Math.round(v * 100) + '%', x0 - 8, Y(v) + 4, { size: 11, color: '#66768a', align: 'right' }); }
+    for (let v = 0; v <= Tmax; v += 500) { txt(c, v + '', X(v), y0 + h + 18, { size: 11, color: '#66768a', align: 'center' }); }
+    txt(c, 'T_H (K)', x0 + w, y0 + h + 36, { size: 11, color: '#66768a', align: 'right' });
+    c.fillStyle = 'rgba(231,76,60,.06)'; c.fillRect(x0, y0, w, h);
+    c.fillStyle = 'rgba(39,174,96,.12)'; c.beginPath(); c.moveTo(X(TL), Y(0));
+    for (let T = TL; T <= Tmax; T += 20) c.lineTo(X(T), Y(1 - TL / T)); c.lineTo(X(Tmax), Y(0)); c.closePath(); c.fill();
+    c.strokeStyle = WORK; c.lineWidth = 3; c.beginPath();
+    for (let T = TL; T <= Tmax; T += 20) { const px = X(T), py = Y(1 - TL / T); T === TL ? c.moveTo(px, py) : c.lineTo(px, py); } c.stroke();
+    txt(c, '가능한 효율 영역', X(1700), Y(0.25), { color: '#1b7d46', bold: true, size: 13, align: 'center' });
+    txt(c, '제2법칙 금지 영역', X(1100), Y(0.96), { color: '#c0392b', bold: true, size: 13, align: 'center' });
+    // 오토 기관 수평선
+    line(c, x0, Y(k.eO), x0 + w, Y(k.eO), '#e67e22', 2, [6, 5]);
+    txt(c, `오토 기관 (r=${this.p.rc}) e = ${(k.eO * 100).toFixed(1)} %`, x0 + 6, Y(k.eO) - 6, { color: '#c8691a', bold: true, size: 12 });
+    // 현재점
+    line(c, X(TH), Y(0), X(TH), Y(k.eC), '#8a96a6', 1, [4, 4]);
+    circle(c, X(TH), Y(k.eC), 7, '#fff', '#1f2d3d', 3);
+    label(c, `e_C = ${(k.eC * 100).toFixed(1)} %`, clamp(X(TH), 90, SW - 70), Y(k.eC) - 14, WORK);
+  },
+  graphs() {
+    const { TH, TL, rc } = this.p, k = this.calc();
+    // 막대: 카르노 vs 오토
+    const F = frame(c1, { xmin: 0, xmax: 3, ymin: 0, ymax: 1, title: '같은 T_H, T_L: 카르노 vs 오토 사이클', yticks: [[0, '0'], [.25, '25%'], [.5, '50%'], [.75, '75%'], [1, '100%']] });
+    const bars = [['카르노', k.eC, WORK], ['오토', k.ok ? k.eO : 0, '#e67e22']];
+    bars.forEach(([n, v, col], i) => {
+      const xa = F.X(0.35 + i * 1.3), xb = F.X(1.15 + i * 1.3), y = F.Y(v);
+      c1.fillStyle = col; c1.fillRect(xa, y, xb - xa, F.Y(0) - y);
+      txt(c1, (v * 100).toFixed(1) + ' %', (xa + xb) / 2, y - 5, { bold: true, size: 12, align: 'center' });
+      txt(c1, n, (xa + xb) / 2, F.y0 + F.h + 17, { bold: true, size: 12, align: 'center', color: '#3b4a5c' });
+    });
+    if (!k.ok) txt(c1, `T_H < ${f0(k.Tcomp)} K : 압축만으로 이미 T_H 초과 → 오토 사이클 불가`, F.x0 + F.w / 2, F.y0 + 40, { color: '#c0392b', bold: true, size: 12, align: 'center' });
+    else txt(c1, `부족분 ${((k.eC - k.eO) * 100).toFixed(1)} %p`, F.x0 + F.w - 8, F.y0 + 18, { color: '#55657a', size: 12, align: 'right', bold: true });
+    // 냉동기 성능계수: 저온 T_L(냉장고 안), 온도 차 ΔT만큼 높은 곳으로 열을 내보낸다
+    const cm = TL / 5 * 1.05;
+    const G = frame(c2, { xmin: 0, xmax: 60, ymin: 0, ymax: cm, title: '냉동기 이상 성능계수 COP = T_L/ΔT', xlabel: '온도 차 ΔT = T_H − T_L (K)', xticks: nice(0, 60, 6), yticks: nice(0, cm, 4) });
+    const ds = Array.from({ length: 112 }, (_, i) => 5 + i * 0.5);
+    plot(c2, G, ds, ds.map(d => TL / d), COLD, 2.6);
+    const dT = this.p.dT;
+    circle(c2, G.X(dT), G.Y(TL / dT), 6, '#fff', '#1f2d3d', 3);
+    txt(c2, `T_L = ${f0(TL)} K`, G.x0 + G.w - 6, G.y0 + 16, { size: 11, color: '#66768a', align: 'right' });
+    txt(c2, 'ΔT가 작을수록 열을 옮기기 쉽다', G.x0 + G.w - 6, G.y0 + G.h - 8, { size: 11, color: '#55657a', align: 'right' });
+    $('#read').innerHTML = `
+      <div class="ok">카르노 효율 e<sub>C</sub><b>${(k.eC * 100).toFixed(1)} %</b></div>
+      <div>오토 기관 e = 1 − r<sup>1−γ</sup><b>${(k.eO * 100).toFixed(1)} %</b></div>
+      <div>압축 뒤 온도 T<sub>L</sub>r<sup>γ−1</sup><b>${f0(k.Tcomp)} K</b></div>
+      <div>e = 60 %에 필요한 T<sub>H</sub><b>${f0(TL / 0.4)} K</b></div>
+      <div class="cold">냉동기 COP = T<sub>L</sub>/ΔT (ΔT=${this.p.dT} K)<b>${(TL / this.p.dT).toFixed(1)}</b></div>
+      <div class="hot">열펌프 COP = (T<sub>L</sub>+ΔT)/ΔT<b>${((TL + this.p.dT) / this.p.dT).toFixed(1)}</b></div>`;
+  },
+  controls() {
+    return [
+      { type: 'range', label: '고온 T_H (최고 온도)', key: 'TH', min: 350, max: 2500, step: 10, fmt: v => v + ' K', on: () => { if (this.p.TH < this.p.TL + 20) { this.p.TL = this.p.TH - 20; syncSliders(); } } },
+      { type: 'range', label: '저온 T_L', key: 'TL', min: 200, max: 400, step: 5, fmt: v => v + ' K', on: () => { if (this.p.TH < this.p.TL + 20) { this.p.TH = this.p.TL + 20; syncSliders(); } } },
+      { type: 'range', label: '오토 기관 압축비 r', key: 'rc', min: 3, max: 16, step: 1, fmt: v => v },
+      { type: 'range', label: '냉동·난방 온도 차 ΔT', key: 'dT', min: 5, max: 60, step: 1, fmt: v => v + ' K' }
+    ];
+  },
+  info: `
+    <h2>③ 효율의 한계 — 카르노 효율과 실제 기관</h2>
+    <div class="infogrid"><div>
+      <h4>효율을 올리는 방법</h4>
+      <p><span class="eq">e<sub>C</sub> = 1 − T<sub>L</sub>/T<sub>H</sub></span>. T<sub>L</sub>은 주변 온도(대기·강·바다)에 묶여 있으니 효율을 올리려면 T<sub>H</sub>를 높여야 하고, 그 한계는 재료가 견디는 온도다. 곡선은 T<sub>H</sub>가 커질수록 점점 완만해진다(수확 체감).</p>
+      <p>e = 100 %는 T<sub>L</sub> = 0 K 또는 T<sub>H</sub> → ∞ 일 때만 가능하다.</p>
+      <h4>오토 사이클(가솔린 기관)과 비교</h4>
+      <p>단열 압축 → 등적 가열 → 단열 팽창 → 등적 냉각의 이상 사이클이다. 압축비 r, 비열비 γ(공기 1.4)로 <span class="eq">e<sub>Otto</sub> = 1 − r<sup>1−γ</sup></span>. 온도는 식에 없지만, 열이 들어오는 온도가 최고 온도 T<sub>H</sub>보다 낮은 구간에 걸쳐 있으므로(압축 뒤 온도 T<sub>L</sub>r<sup>γ−1</sup> → T<sub>H</sub>) 같은 온도 범위의 카르노 기관보다 항상 낮다.</p>
+      <p>실제 기관은 여기서 다시 마찰, 불완전 연소, 유한한 속도의 열 전달(비가역) 때문에 더 낮아진다.</p>
+    </div><div>
+      <h4>거꾸로 돌리면: 냉동기와 열펌프</h4>
+      <p>카르노 기관을 거꾸로 돌려 일 W를 넣고 저열원에서 Q<sub>L</sub>을 퍼내면 냉동기다.</p>
+      <p><span class="eq">COP<sub>냉동</sub> = Q<sub>L</sub>/W = T<sub>L</sub>/(T<sub>H</sub> − T<sub>L</sub>)</span> , <span class="eq">COP<sub>열펌프</sub> = Q<sub>H</sub>/W = T<sub>H</sub>/(T<sub>H</sub> − T<sub>L</sub>)</span></p>
+      <p>온도 차가 작을수록 성능계수가 크다. 1보다 훨씬 클 수 있는 까닭은 일이 열을 <i>만드는</i> 것이 아니라 <i>옮기는</i> 데 쓰이기 때문이다.</p>
+      <table class="cmp">
+        <tr><th>오개념</th><th>바른 개념</th></tr>
+        <tr><td>"효율 100 %인 열기관은 기술이 모자라 못 만든다."</td><td>마찰을 완전히 없애도 안 된다. 제2법칙 때문에 원리적으로 e &lt; 1이다.</td></tr>
+        <tr><td>"카르노 기관은 가장 실용적인 엔진이다."</td><td>이상적인 상한선일 뿐이다. 등온 과정은 무한히 천천히 해야 해서 출력이 0에 가깝다.</td></tr>
+        <tr><td>"열펌프 COP가 4이면 에너지가 4배로 생긴다."</td><td>공급한 일 1에 대해 바깥에서 3을 퍼 와서 총 4를 실내로 옮긴 것이다. 에너지는 보존된다.</td></tr>
+      </table>
+    </div></div>
+    <details class="q"><summary>🤔 생각해 보기</summary>
+      <ul>
+        <li>T<sub>L</sub> = 300 K에서 e = 60 %가 되려면 T<sub>H</sub>는 몇 K인가? 카르노 효율 곡선과 판독값을 비교해 보자.</li>
+        <li>압축비를 높이면 오토 기관의 효율이 오르는 까닭을 "열이 들어오는 평균 온도"로 설명해 보자. 압축비를 마음대로 올릴 수 없는 이유는?</li>
+        <li>겨울에 난방을 전기 히터와 열펌프로 한다면, 같은 전기료로 얼마나 차이가 날까? 바깥 온도가 내려가면 열펌프 COP는 어떻게 되는가?</li>
+      </ul></details>
+    <p class="note">오토 사이클은 공기를 이상기체(γ = 1.4)로 본 이상 사이클이다. 숫자는 이상 모형의 값이며 실제 자동차 기관의 효율이 아니다.</p>
+    <div class="ref">교재 참고: Serway 22장(오토·디젤 기관, 열펌프와 냉동기) · Halliday 20장 20-3(냉동기와 실제 기관) · Schroeder 4.1~4.2절(열기관, 냉동기)</div>`
+};
+
+/* ---------- 공통: 탭·컨트롤 ---------- */
+const MODES = { 1: M1, 2: M2, 3: M3 };
+let cur = null, paused = false;
+function syncSliders() {
+  document.querySelectorAll('#controls input[type=range]').forEach(inp => {
+    const v = cur.p[inp.dataset.key]; inp.value = v; inp.dispatchEvent(new Event('sync'));
+  });
+}
+function buildControls(m) {
+  const box = $('#controls'); box.innerHTML = '';
+  for (const ct of m.controls()) {
+    if (ct.type === 'range') {
+      const w = document.createElement('label'); w.className = 'ctl';
+      w.innerHTML = `<span>${ct.label} <b></b></span><input type="range" data-key="${ct.key}" min="${ct.min}" max="${ct.max}" step="${ct.step}" value="${m.p[ct.key]}">`;
+      const inp = w.querySelector('input'), b = w.querySelector('b');
+      const show = () => { b.textContent = ct.fmt ? ct.fmt(+inp.value) : inp.value; };
+      inp.addEventListener('input', () => { m.p[ct.key] = +inp.value; show(); if (ct.on) ct.on(); });
+      inp.addEventListener('sync', show);
+      show(); box.appendChild(w);
+    } else if (ct.type === 'button') {
+      const b = document.createElement('button'); b.className = 'btn' + (ct.main ? ' main' : ''); b.textContent = ct.label; b.onclick = ct.act; box.appendChild(b);
+    }
+  }
+}
+function openMode(k) {
+  cur = MODES[k]; cur.paused = false;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', +t.dataset.k === k));
+  cur.init(); buildControls(cur); $('#info').innerHTML = cur.info;
+  try { history.replaceState(null, '', '#m' + k); } catch (e) { }
+}
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => openMode(+t.dataset.k)));
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (cur) { if (!cur.paused) cur.step(dt); cur.draw(); cur.graphs(); }
+  requestAnimationFrame(loop);
+}
+openMode(/^#m([123])$/.test(location.hash) ? +location.hash[2] : 1);
+requestAnimationFrame(loop);
 </script>
-
 </body>
 </html>

@@ -1,0 +1,841 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>실험 오차와 불확도</title>
+<!-- measurement-error · 계통·우연 오차, 표준오차, 오차 전파(몬테카를로 확인), 유효숫자 보고, 최소제곱 직선과 잔차, 결과 일치 판정을 시뮬레이션으로 익히는 대학 교재 수준 수업 덱 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap">
+<style>
+:root{
+  --bg:#dfe5f0; --slide:#f5f7fc; --panel:#ffffff; --ink:#14203a; --muted:#54617b; --line:#c9d2e4;
+  --blue:#1f5fd1; --onblue:#ffffff; --amber:#b45f00; --green:#0c7a58; --red:#b8321f;
+  --blue-soft:#dce8fb; --amber-soft:#fbe8cf;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+    --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+    --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+  --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+  --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;overflow:hidden}
+#viewport{position:relative;width:100%;height:100%;overflow:hidden}
+#deck{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center center;background:var(--slide);box-shadow:0 12px 70px rgba(0,0,0,.28);overflow:hidden}
+.slide{position:absolute;inset:0;display:none;flex-direction:column;padding:84px 88px 52px;gap:24px;background:var(--slide);font-size:32px;line-height:1.4}
+.slide.active{display:flex}
+.hd{display:flex;align-items:baseline;justify-content:space-between;gap:24px;flex:none}
+.hd h2{font-size:58px;line-height:1.15;margin:0;font-weight:800;letter-spacing:-.01em}
+.hd .src{font-size:26px;color:var(--muted);white-space:nowrap}
+.body{flex:1;min-height:0;display:grid;gap:36px}
+.mg-box{position:relative;aspect-ratio:16/9;border-radius:16px;overflow:hidden;background:#06142a;align-self:start}
+.mg-box.mg-full{height:100%;max-width:100%;justify-self:center}
+.mg-box iframe{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none}
+.mg-re{position:absolute;right:14px;bottom:14px;font:inherit;font-size:24px;padding:8px 18px;border-radius:10px;border:1px solid rgba(255,255,255,.4);background:rgba(0,0,0,.55);color:#fff;cursor:pointer;opacity:.75}
+.mg-re:hover,.mg-re:focus-visible{opacity:1}
+.side{display:flex;flex-direction:column;gap:18px;min-height:0}
+canvas{display:block;border-radius:16px;background:#0a1330}
+.box{background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:20px 26px}
+.box h3{margin:0 0 8px;font-size:30px}
+.sm{font-size:26px;color:var(--muted)}
+.lead{font-size:40px;line-height:1.35}
+.k{color:var(--amber);font-weight:700}.p{color:var(--blue);font-weight:700}.ok{color:var(--green);font-weight:700}.bad{color:var(--red);font-weight:700}
+/* math */
+.m{font-family:'STIX Two Text','Times New Roman',serif;font-style:italic;font-size:1.1em;white-space:nowrap}
+.m .u,.u{font-style:normal}
+.m sub,.m sup{font-size:.68em;line-height:0;font-style:normal}
+.fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.15;margin:0 .12em;font-size:.95em}
+.fr>span:first-child{padding:0 .2em .06em;border-bottom:.07em solid currentColor}
+.fr>span:last-child{padding-top:.06em}
+.sq{white-space:nowrap}.sq .rad{border-top:.07em solid currentColor;padding:0 .15em;margin-left:-.04em}
+.eq{font-size:44px;text-align:center;padding:6px 0}
+/* controls */
+.ctl{display:flex;flex-direction:column;gap:4px}
+.ctl .row{display:flex;justify-content:space-between;align-items:baseline;font-size:27px;gap:12px}
+.ctl .val{font-weight:700;font-variant-numeric:tabular-nums}
+.rangew{position:relative}
+input[type=range]{width:100%;height:44px;-webkit-appearance:none;appearance:none;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:38px;height:38px;border-radius:50%;background:var(--blue);margin-top:-13px;border:4px solid var(--panel);box-shadow:0 1px 6px rgba(0,0,0,.35)}
+input[type=range]::-moz-range-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;background:var(--blue);border:4px solid var(--panel)}
+input[type=range]:focus-visible{outline:3px solid var(--blue);outline-offset:4px;border-radius:8px}
+.marks{position:relative;height:60px;font-size:22px;color:var(--muted)}
+.marks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.btns{display:flex;gap:12px;flex-wrap:wrap}
+.btn,.chip{font:inherit;font-size:27px;font-weight:700;padding:10px 24px;border-radius:12px;border:2px solid var(--blue);background:var(--panel);color:var(--blue);cursor:pointer;line-height:1.25}
+.btn.pri{background:var(--blue);color:var(--onblue)}
+.chip{padding:8px 18px;font-size:26px;border-color:var(--line);color:var(--ink);font-weight:500}
+.chip.on{border-color:var(--blue);background:var(--blue-soft);font-weight:700}
+.btn:focus-visible,.chip:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.chips{display:flex;gap:10px;flex-wrap:wrap}
+/* step reveal */
+.st{display:grid;grid-template-columns:46px 1fr;gap:14px;padding:8px 14px;border-radius:14px;opacity:0;transform:translateY(10px);transition:opacity .35s,transform .35s;border:2px solid transparent}
+.st.on{opacity:.55;transform:none}
+.st.cur{opacity:1;background:var(--panel);border-color:var(--blue)}
+.st .n{width:42px;height:42px;border-radius:50%;background:var(--blue);color:var(--onblue);display:grid;place-items:center;font-weight:800;font-size:24px;margin-top:2px}
+.st .tl{display:flex;flex-wrap:wrap;gap:2px 14px;align-items:baseline}
+.st .t{font-size:23px;color:var(--muted);line-height:1.3}
+.st b{font-size:27px}
+.st .eq{font-size:35px;line-height:1.1;text-align:left;padding:2px 0}
+/* cover */
+.cover{flex-direction:row;align-items:center;gap:56px}
+.cover.active{display:flex}
+.cv-l{flex:1;display:flex;flex-direction:column;gap:28px}
+.cv-l h1{font-size:200px;line-height:1;margin:0;font-weight:800;letter-spacing:-.04em}
+.cv-tag{font-size:30px;color:var(--muted)}
+.q{border-left:8px solid var(--blue);border-radius:6px;padding:8px 0 8px 28px;font-size:36px;line-height:1.45}
+/* table */
+table.t{border-collapse:collapse;width:100%;font-size:27px}
+table.t th,table.t td{padding:10px 14px;border-bottom:2px solid var(--line);text-align:right;white-space:nowrap}
+table.t th:first-child,table.t td:first-child,table.t th:last-child,table.t td:last-child{text-align:left}
+table.t th{font-size:24px;color:var(--muted);font-weight:500}
+table.t tbody tr{cursor:pointer}
+table.t tbody tr.on{background:var(--blue-soft);font-weight:700}
+/* HUD / notes */
+#hud{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:10px;align-items:center;background:rgba(10,19,48,.86);color:#e9effd;padding:8px 14px;border-radius:14px;font-size:18px;opacity:0;transition:opacity .3s;z-index:20}
+#hud.show{opacity:1}
+#hud button{font:inherit;font-size:18px;color:#e9effd;background:transparent;border:1.5px solid rgba(233,239,253,.5);border-radius:8px;padding:4px 12px;cursor:pointer}
+#notes{position:absolute;left:0;right:0;bottom:0;background:rgba(10,19,48,.94);color:#eaf0ff;padding:26px 88px 34px;font-size:30px;line-height:1.5;display:none;z-index:15}
+#notes.on{display:block}
+#notes b{color:#ffb454}
+
+.ko{font-family:'Noto Sans KR',sans-serif;font-style:normal;font-size:.8em}
+#bar{position:absolute;top:14px;left:88px;right:88px;height:54px;display:flex;justify-content:space-between;align-items:center;z-index:12}
+#bar .bl{font-size:26px;font-weight:800}
+#bar .br{display:flex;gap:10px}
+.tb{font:inherit;font-size:24px;font-weight:700;padding:7px 18px;border-radius:12px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;line-height:1.2}
+.tb:hover{border-color:var(--blue)}.tb.on{border-color:var(--blue);background:var(--blue-soft)}
+.tb:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+#help{position:absolute;inset:0;background:rgba(6,11,30,.82);display:none;align-items:center;justify-content:center;z-index:30}
+#help.on{display:flex}
+.hp{background:var(--panel);color:var(--ink);border-radius:22px;padding:36px 52px 40px;width:1320px;max-height:960px;overflow:auto;font-size:27px;line-height:1.5;border:2px solid var(--line)}
+.hp h3{font-size:40px;margin:0 0 14px}.hp h4{font-size:29px;margin:18px 0 6px;color:var(--blue)}
+.hp .g{display:grid;grid-template-columns:230px 1fr;gap:6px 22px}
+.hp kbd{font:inherit;font-size:24px;font-weight:700;background:var(--blue-soft);border:2px solid var(--line);border-radius:8px;padding:1px 10px;margin-right:4px}
+#ask{position:absolute;inset:0;background:rgba(6,11,30,.6);display:none;align-items:center;justify-content:center;z-index:25;cursor:pointer}
+#ask.on{display:flex}
+#ask .ak{background:var(--panel);color:var(--ink);border-radius:24px;border-left:16px solid var(--blue);padding:44px 72px 40px 60px;width:1500px;box-shadow:0 20px 80px rgba(0,0,0,.45)}
+#ask .ah{font-size:30px;color:var(--blue);font-weight:800;margin-bottom:18px}
+#ask .aq{font-size:54px;line-height:1.4;font-weight:700;margin:10px 0;letter-spacing:-.01em}
+#ask .aq span{color:var(--blue);margin-right:14px}
+#ask .af{font-size:24px;color:var(--muted);margin-top:22px}
+#notes .nh{font-size:24px;color:#9db0d8;margin-bottom:6px}
+#notes .nq{margin:4px 0 10px;font-size:29px}
+#notes .ni{margin:6px 0;font-size:27px;line-height:1.45}
+#notes .nx{color:#ff9d9d;font-weight:700}#notes .nv{color:#5eead4;font-weight:700}
+@media (prefers-reduced-motion: reduce){.st{transition:none}}
+#simError{position:absolute;left:88px;right:88px;top:76px;z-index:40;background:rgba(184,50,31,.95);color:#fff;font-size:22px;line-height:1.4;padding:10px 18px;border-radius:12px;white-space:pre-wrap;display:none}
+#simError.on{display:block}
+/* ---- 반응형(reflow): 폭 1100px 미만(폰·태블릿)에서는 1920 스케일 대신 세로로 흐르는 레이아웃 ---- */
+html.rf #deck{left:0;top:0;transform-origin:top left;box-shadow:none}
+html.rf .slide{padding:104px 22px 100px;gap:18px;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;font-size:30px}
+html.rf .body{display:flex !important;flex-direction:column;gap:22px;flex:none;min-height:auto}
+html.rf .side{min-height:auto}
+html.rf .hd{flex-direction:column;align-items:flex-start;gap:6px}
+html.rf .hd h2{font-size:44px}
+html.rf .hd .src{font-size:23px;white-space:normal}
+html.rf canvas{width:100% !important;height:auto !important;max-width:100%}
+html.rf .mg-box.mg-full{height:auto;width:100%}
+html.rf img,html.rf svg,html.rf video{max-width:100%;height:auto}
+html.rf .cover{flex-direction:column;align-items:stretch;gap:26px}
+html.rf .cv-l h1{font-size:112px}
+html.rf .cv-tag{font-size:26px}
+html.rf .q{font-size:30px}
+html.rf .lead{font-size:34px}
+html.rf .eq{font-size:36px;overflow-x:auto}
+html.rf table.t{display:block;overflow-x:auto;font-size:24px}
+html.rf .btn,html.rf .chip{min-height:52px}
+html.rf #bar{left:14px;right:14px;top:12px;height:auto;flex-wrap:wrap;gap:8px}
+html.rf #bar .bl{display:none}
+html.rf #bar .br{flex-wrap:wrap;justify-content:flex-end;width:100%}
+html.rf .tb{font-size:20px;padding:8px 12px}
+html.rf .hp{width:92%;max-height:88%;padding:24px 22px 28px;font-size:23px}
+html.rf .hp h3{font-size:32px}
+html.rf .hp .g{grid-template-columns:1fr;gap:2px 0}
+html.rf #ask .ak{width:92%;padding:26px 24px 24px 28px;border-left-width:10px}
+html.rf #ask .aq{font-size:34px}
+html.rf #notes{padding:18px 20px 26px;font-size:23px;max-height:62%;overflow:auto}
+html.rf #notes .nq{font-size:25px}
+html.rf #notes .ni{font-size:23px}
+html.rf #simError{left:14px;right:14px;top:96px}
+html.rf #hud{padding:8px 16px;width:max-content;max-width:96%}
+html.rf #hud #h-pg{white-space:nowrap;font-size:22px}
+html.rf .st:not(.on){display:none}
+html.rf #hud button{font-size:22px;padding:6px 16px;min-height:44px}
+/* ---- extra_css ---- */
+.side .box{padding:14px 18px}.side .box h3{margin:0 0 6px;font-size:25px}.side .box p{margin:4px 0}.side .ctl{margin:3px 0}.side .chips{margin:4px 0}.side{min-width:0}.side .box{min-width:0}.side .eq{font-size:.78em;overflow-x:auto;overflow-y:hidden}.side .sm{font-size:.82em;line-height:1.35}.side .t td{padding:3px 8px}
+</style>
+</head>
+<body>
+<div id="viewport">
+<div id="deck">
+
+<!-- e1 -->
+<section class="slide cover" id="e1">
+  <div class="cv-l"><div class="cv-tag">물리 실험 · 불확도</div>
+    <h1>측정값은 왜 흔들릴까?</h1>
+    <p class="lead" style="margin:0">같은 물체를 같은 방법으로 두 번 재면 두 값이 같을까? 그 차이는 "실수"일까, 피할 수 없는 성질일까?</p>
+    <div class="q">참값을 모르는데 어떻게 "오차"를 말할 수 있을까?</div>
+    <div class="sm">계통·우연 오차 · 평균과 표준오차 · 오차 전파 · 유효숫자 · 직선 맞춤 · 결과 비교</div></div>
+  <canvas id="e1-c"></canvas>
+</section>
+
+<!-- e2 -->
+<section class="slide" id="e2">
+  <header class="hd"><h2>측정은 참값을 모른 채 하는 일 — 오차와 불확도</h2><span class="src">Taylor · Hughes &amp; Hase · GUM</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="e2-c"></canvas><div class="side"><div class="box"><h3>용어</h3><p><b class="k">오차</b> e = x − x<sub>참</sub> : 참값을 모르니 <b>알 수 없다</b>.</p><p><b class="p">불확도</b> u : 참값이 있을 만한 범위의 폭을 <b>추정</b>한 양. 결과는 <b>x ± u</b>로 쓴다.</p></div><div class="box"><h3>눈금의 분해능 Δ</h3><div class="chips" id="e2-chips"><div class="chip" data-v="10">자 1 cm</div><div class="chip on" data-v="1">자 1 mm</div><div class="chip" data-v="0.5">자 0.5 mm</div><div class="chip" data-v="0.01">디지털 0.01 mm</div></div><div class="ctl"><div class="row"><span>물체의 길이(참값)</span><span class="val" id="e2-L-v"></span></div><input type="range" id="e2-L" min="20" max="150" step="0.01" value="73.4"></div><p class="sm" id="e2-out"></p></div></div>
+</div>
+</section>
+
+<!-- e3 -->
+<section class="slide" id="e3">
+  <header class="hd"><h2>계통 오차와 우연 오차 — 정확도와 정밀도</h2><span class="src">Taylor · Hughes &amp; Hase · GUM</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="e3-c"></canvas><div class="side"><div class="box"><h3>과녁 실험</h3><div class="chips" id="e3-pre"><div class="chip on" data-v="0,0.3">정확·정밀</div><div class="chip" data-v="0,1.6">정확·부정밀</div><div class="chip" data-v="3,0.3">부정확·정밀</div><div class="chip" data-v="3,1.6">부정확·부정밀</div></div><div class="ctl"><div class="row"><span>계통 오차 (치우침)</span><span class="val" id="e3-b-v"></span></div><input type="range" id="e3-b" min="0" max="4" step="0.1" value="0"></div><div class="ctl"><div class="row"><span>우연 오차 (산포 σ)</span><span class="val" id="e3-s-v"></span></div><input type="range" id="e3-s" min="0.1" max="2.5" step="0.05" value="0.3"></div><div class="ctl"><div class="row"><span>측정 횟수 n</span><span class="val" id="e3-n-v"></span></div><input type="range" id="e3-n" min="5" max="100" step="1" value="30"></div><div class="btns"><button class="btn pri" id="e3-re">다시 쏘기</button></div></div><div class="box"><table class="t"><tr><th></th><th class="k">계통 오차</th><th class="p">우연 오차</th></tr><tr><td>방향</td><td>한쪽으로 치우침</td><td>위아래 무작위</td></tr><tr><td>반복하면</td><td>안 줄어듦</td><td>평균에서 1/√n</td></tr><tr><td>예</td><td>영점·시차·교정 불량</td><td>눈금 읽기, 잡음</td></tr><tr><td>줄이는 법</td><td>교정·보정·다른 방법과 비교</td><td>반복 측정</td></tr></table></div></div>
+</div>
+</section>
+
+<!-- e4 -->
+<section class="slide" id="e4">
+  <header class="hd"><h2>반복 측정의 평균과 표준오차</h2><span class="src">Taylor · Hughes &amp; Hase · GUM</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="e4-c"></canvas><div class="side"><div class="box"><h3>측정 시뮬레이션 (참값 10.00)</h3><div class="ctl"><div class="row"><span>우연 오차 σ</span><span class="val" id="e4-s-v"></span></div><input type="range" id="e4-s" min="0.05" max="1" step="0.05" value="0.4"></div><div class="ctl"><div class="row"><span>측정 횟수 n</span><span class="val" id="e4-n-v"></span></div><input type="range" id="e4-n" min="2" max="100" step="1" value="10"></div><div class="ctl"><div class="row"><span>계통 오차 b (측정 도구의 치우침)</span><span class="val" id="e4-b-v"></span></div><input type="range" id="e4-b" min="0" max="0.4" step="0.01" value="0"></div><div class="btns"><button class="btn pri" id="e4-re">새로 측정</button></div><p class="sm" id="e4-out"></p></div><div class="box"><h3>정리</h3><p class="sm">평균 x̄ = ∑xᵢ / n</p><p class="sm">표준편차 s = √[ ∑(xᵢ − x̄)² / (n−1) ]</p><p class="sm">표준오차 s/√n  (평균의 불확도)</p><p class="sm">s는 n과 무관, 표준오차는 1/√n로 감소. n이 작으면 포함 비율이 68 %보다 낮다(t 분포).</p></div></div>
+</div>
+</section>
+
+<!-- e5 -->
+<section class="slide" id="e5">
+  <header class="hd"><h2>오차 전파 ① — 단진자로 g를 구한다</h2><span class="src">Taylor · Hughes &amp; Hase · GUM</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="e5-c"></canvas><div class="side"><div class="box"><h3>측정 조건</h3><div class="ctl"><div class="row"><span>길이 L의 불확도 δL</span><span class="val" id="e5-dl-v"></span></div><input type="range" id="e5-dl" min="0.5" max="10" step="0.5" value="2"></div><div class="ctl"><div class="row"><span>시간 t의 불확도 δt (스톱워치 반응)</span><span class="val" id="e5-dt-v"></span></div><input type="range" id="e5-dt" min="0.02" max="0.4" step="0.01" value="0.15"></div><div class="ctl"><div class="row"><span>잰 진동 횟수 N</span><span class="val" id="e5-n-v"></span></div><input type="range" id="e5-n" min="1" max="50" step="1" value="10"></div><p class="sm" id="e5-out"></p></div><div class="box"><h3>유도</h3><p><span class="m">g=<span class="fr"><span>4π<sup>2</sup>L</span><span>T<sup>2</sup></span></span></span></p><p><span class="m">T=<span class="fr"><span>t</span><span>N</span></span></span></p><p>곱·몫·거듭제곱 → 상대 불확도를 제곱합</p><p class="eq"><div class="eq"><span class="m">(<span class="fr"><span>δ g</span><span>g</span></span>)<sup>2</sup>=(<span class="fr"><span>δ L</span><span>L</span></span>)<sup>2</sup>+(2<span class="fr"><span>δ t</span><span>t</span></span>)<sup>2</sup></span></div></p><p class="sm">T가 제곱이라 시간 측정의 상대 불확도가 <b>2배</b> 반영된다.</p></div></div>
+</div>
+</section>
+
+<!-- e6 -->
+<section class="slide" id="e6">
+  <header class="hd"><h2>오차 전파 ② — 공식 한 장과 몬테카를로 확인</h2><span class="src">Taylor · Hughes &amp; Hase · GUM</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="e6-c"></canvas><div class="side"><div class="box"><h3>함수 고르기</h3><div class="chips" id="e6-chips"><div class="chip on" data-v="add">x + y</div><div class="chip" data-v="sub">x − y</div><div class="chip" data-v="mul">x · y</div><div class="chip" data-v="div">x / y</div><div class="chip" data-v="pw">x² · y</div></div><div class="ctl"><div class="row"><span>x</span><span class="val" id="e6-x-v"></span></div><input type="range" id="e6-x" min="2" max="20" step="0.1" value="10"></div><div class="ctl"><div class="row"><span>y</span><span class="val" id="e6-y-v"></span></div><input type="range" id="e6-y" min="1" max="15" step="0.1" value="4"></div><div class="ctl"><div class="row"><span>x의 불확도</span><span class="val" id="e6-ux-v"></span></div><input type="range" id="e6-ux" min="0.01" max="1" step="0.01" value="0.2"></div><div class="ctl"><div class="row"><span>y의 불확도</span><span class="val" id="e6-uy-v"></span></div><input type="range" id="e6-uy" min="0.01" max="1" step="0.01" value="0.2"></div><p class="sm" id="e6-out"></p></div><div class="box"><h3>일반식 (x, y가 서로 독립일 때)</h3><p class="eq"><div class="eq"><span class="m">u<sub>f</sub><sup>2</sup>=(<span class="fr"><span>∂ f</span><span>∂ x</span></span>u<sub>x</sub>)<sup>2</sup>+(<span class="fr"><span>∂ f</span><span>∂ y</span></span>u<sub>y</sub>)<sup>2</sup></span></div></p><p class="sm">더하기·빼기 → 절대 불확도 제곱합, 곱·나누기 → 상대 불확도 제곱합, <span class="m">x<sup>n</sup></span> → 상대 불확도 n배.</p></div></div>
+</div>
+</section>
+
+<!-- e7 -->
+<section class="slide" id="e7">
+  <header class="hd"><h2>유효숫자와 결과 보고 형식</h2><span class="src">Taylor · Hughes &amp; Hase · GUM</span></header>
+<div class="body" style="grid-template-columns:1fr 1fr">
+<div class="box"><h3>보고 형식 교정기</h3><div class="ctl"><div class="row"><span>측정값(평균)</span></div><input id="e7-v" value="9.81234" style="width:100%;font-size:26px;padding:8px;border-radius:8px;border:1px solid #556;background:#0e1830;color:#e8eefc"></div><div class="ctl"><div class="row"><span>불확도</span></div><input id="e7-u" value="0.04567" style="width:100%;font-size:26px;padding:8px;border-radius:8px;border:1px solid #556;background:#0e1830;color:#e8eefc"></div><div class="ctl"><div class="row"><span>단위</span></div><input id="e7-unit" value="m/s²" style="width:100%;font-size:26px;padding:8px;border-radius:8px;border:1px solid #556;background:#0e1830;color:#e8eefc"></div><p class="eq"><b class="ok" id="e7-out"></b></p><p class="sm" id="e7-why"></p></div><div class="side"><div class="box"><h3>규칙</h3><ol><li>불확도는 <b class="k">한 자리</b>(맨 앞자리가 1이면 두 자리)로 반올림한다.</li><li>값은 불확도와 <b class="k">같은 자리</b>까지만 쓴다.</li><li>중간 계산은 한두 자리 더 두고, <b>마지막에만</b> 반올림한다.</li><li>단위와 지수는 한 번만: (9.81 ± 0.05) m/s².</li></ol></div><div class="box"><h3>연습</h3><p class="eq" id="e7-q"></p><div class="ctl"><input id="e7-a" placeholder="예: 9.81 ± 0.05" style="width:100%;font-size:24px;padding:8px;border-radius:8px;border:1px solid #556;background:#0e1830;color:#e8eefc"></div><div class="btns"><button class="btn pri" id="e7-chk">확인</button><button class="btn" id="e7-new">새 문제</button></div><p id="e7-fb"></p></div></div>
+</div>
+</section>
+
+<!-- e8 -->
+<section class="slide" id="e8">
+  <header class="hd"><h2>그래프와 직선 맞춤 — 기울기의 불확도와 잔차</h2><span class="src">Taylor · Hughes &amp; Hase · GUM</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="e8-c"></canvas><div class="side"><div class="box"><h3>y = 1 + 2x 를 측정한다</h3><div class="ctl"><div class="row"><span>우연 오차 σ</span><span class="val" id="e8-s-v"></span></div><input type="range" id="e8-s" min="0.1" max="2" step="0.05" value="0.6"></div><div class="ctl"><div class="row"><span>측정점 수 n</span><span class="val" id="e8-n-v"></span></div><input type="range" id="e8-n" min="4" max="20" step="1" value="8"></div><div class="ctl"><div class="row"><span>영점 오차(계통, y를 일정량 이동)</span><span class="val" id="e8-z-v"></span></div><input type="range" id="e8-z" min="0" max="5" step="0.1" value="0"></div><div class="ctl"><div class="row"><span>곡률(모형 오류) c</span><span class="val" id="e8-q-v"></span></div><input type="range" id="e8-q" min="0" max="0.25" step="0.01" value="0"></div><div class="btns"><button class="btn pri" id="e8-re">다시 측정</button></div><p class="sm" id="e8-out"></p></div><div class="box"><h3>최소제곱 직선</h3><p class="sm">b = (n∑xy − ∑x∑y) / D,  D = n∑x² − (∑x)²</p><p class="sm">s² = ∑(yᵢ − a − bxᵢ)² / (n−2),  σ_b = s·√(n/D)</p></div></div>
+</div>
+</section>
+
+<!-- e9 -->
+<section class="slide" id="e9">
+  <header class="hd"><h2>두 결과가 일치하는가? — 불확도로 판정하기</h2><span class="src">Taylor · Hughes &amp; Hase · GUM</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="e9-c"></canvas><div class="side"><div class="box"><h3>비교하기</h3><div class="ctl"><div class="row"><span>내 측정값</span><span class="val" id="e9-a-v"></span></div><input type="range" id="e9-a" min="9.2" max="10.4" step="0.01" value="9.72"></div><div class="ctl"><div class="row"><span>내 불확도</span><span class="val" id="e9-ua-v"></span></div><input type="range" id="e9-ua" min="0" max="0.6" step="0.01" value="0.08"></div><div class="ctl"><div class="row"><span>비교값(기준·다른 모둠)</span><span class="val" id="e9-b-v"></span></div><input type="range" id="e9-b" min="9.2" max="10.4" step="0.01" value="9.8"></div><div class="ctl"><div class="row"><span>비교값의 불확도</span><span class="val" id="e9-ub-v"></span></div><input type="range" id="e9-ub" min="0" max="0.6" step="0.01" value="0"></div><p class="sm" id="e9-out"></p></div><div class="box"><h3>판정 규칙</h3><p class="eq"><div class="eq"><span class="m">k=<span class="fr"><span>|x<sub>1</sub>-x<sub>2</sub>|</span><span><span class="sq">√<span class="rad">u<sub>1</sub><sup>2</sup>+u<sub>2</sub><sup>2</sup></span></span></span></span></span></div></p><table class="t"><tr><td>k &lt; 1</td><td>일치</td></tr><tr><td>1 ≤ k &lt; 2</td><td>경계</td></tr><tr><td>2 ≤ k &lt; 3</td><td>불일치 가능성 큼</td></tr><tr><td>k ≥ 3</td><td>뚜렷한 불일치 → 계통 오차 점검</td></tr></table></div></div>
+</div>
+</section>
+
+<!-- e10 -->
+<section class="slide" id="e10">
+  <header class="hd"><h2>정리 — 불확도를 담은 실험 보고의 흐름</h2><span class="src">Taylor · Hughes &amp; Hase · GUM</span></header>
+<div class="box"><table class="t"><tr><th>단계</th><th>할 일</th><th>이 덱의 도구</th></tr><tr><td>1 측정 설계</td><td>분해능, 반복 횟수, 계통 오차 후보(영점·교정·시차·반응 시간)를 미리 적는다</td><td>눈금 읽기, 과녁</td></tr><tr><td>2 반복 측정</td><td>평균 <span class="m">x̄</span>, 표준편차 s, 표준오차 <span class="m">s/<span class="sq">√<span class="rad">n</span></span></span></td><td>표준오차 시뮬</td></tr><tr><td>3 불확도 합성</td><td>분해능·반복의 우연 오차를 제곱합으로 합친다. 계통 오차는 보정하거나 따로 적는다</td><td>오차 전파</td></tr><tr><td>4 결과 계산</td><td>공식에 대입해 u<sub>f</sub>를 구하고 지배 항을 찾는다</td><td>전파 ①②</td></tr><tr><td>5 그래프</td><td>오차막대, 최소제곱 직선, 잔차 확인</td><td>직선 맞춤</td></tr><tr><td>6 보고·비교</td><td>x ± u와 단위를 규칙대로 쓰고, k로 일치 여부를 말한다</td><td>보고 형식, 비교</td></tr></table></div><div class="box"><h3>한 줄 요약</h3><p><b class="p">정밀도</b>(우연 오차)는 반복으로, <b class="k">정확도</b>(계통 오차)는 교정과 다른 방법과의 비교로 다룬다. 불확도를 모르는 측정값은 아직 결과가 아니다.</p><p class="sm">더 공부하려면: Taylor 2·3·4·8장(보고, 전파, 통계, 최소제곱), JCGM 100 GUM(불확도 표현 지침).</p></div>
+</section>
+
+<div id="notes"></div>
+<div id="bar"><div class="bl">📏 실험 오차와 불확도 <span class="sm">· 측정값의 흔들림을 다루는 법</span></div><div class="br"><button class="tb" id="b-help">❓ 조작법</button><button class="tb" id="b-ask">💬 발문 띄우기</button><button class="tb" id="b-notes">📝 오개념 교정 노트</button><button class="tb" id="b-theme">🌙 다크 전환</button></div></div>
+<div id="ask" role="dialog" aria-label="발문"></div>
+<div id="help" role="dialog" aria-label="조작법 설명"><div class="hp">
+<h3>조작법</h3>
+<h4>키보드</h4>
+<div class="g"><div><kbd>→</kbd><kbd>Space</kbd></div><div>다음 (단계가 있는 슬라이드는 단계부터 진행)</div>
+<div><kbd>←</kbd></div><div>이전 (단계도 거꾸로)</div>
+<div><kbd>Home</kbd><kbd>End</kbd></div><div>처음 / 마지막 슬라이드</div>
+<div><kbd>F</kbd></div><div>전체 화면</div>
+<div><kbd>Q</kbd></div><div>이 슬라이드의 <b>발문(학생용 질문)</b>을 화면 위에 크게 띄우기 / 닫기 (아무 곳이나 클릭해도 닫힘)</div>
+<div><kbd>N</kbd></div><div>오개념 교정 노트 열기/닫기 (교사용)</div>
+<div><kbd>T</kbd></div><div>다크 / 라이트 전환</div>
+<div><kbd>?</kbd><kbd>Esc</kbd></div><div>조작법 열기 / 닫기</div></div>
+<h4>화면 조작</h4>
+<div class="g"><div>슬라이더</div><div>값을 바꾸면 그림과 수치가 바로 갱신된다</div>
+<div>버튼·칩</div><div>새로 측정하기, 프리셋 선택</div>
+<div>→ / ← </div><div>다음·이전 슬라이드</div>
+<div>Q / N</div><div>학생 발문 / 오개념 노트</div>
+<div>슬라이더 키보드</div><div>슬라이더를 클릭해 초점이 있는 동안에는 ← → 가 값 조절에 쓰입니다. 마우스로 놓으면 자동 해제</div></div>
+<h4>수업 진행 팁</h4>
+<div>① 학생에게 결과를 <b>먼저 예측</b>하게 하고 → ② 슬라이더로 확인하고 → ③ 식으로 정리하면 오개념이 잘 교정됩니다.</div>
+<div class="btns" style="margin-top:22px"><button class="btn pri" id="help-x">닫기 (Esc)</button></div>
+</div></div>
+<div id="simError"></div>
+</div>
+<div id="hud"><button id="h-prev" aria-label="이전">◀</button><span id="h-pg">1 / 1</span><button id="h-next" aria-label="다음">▶</button><button id="h-fs" aria-label="전체화면">⛶</button></div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   공통 유틸 / 그리기 도우미 (템플릿 제공)
+   ===================================================================== */
+const DECK = {"title":"실험 오차와 불확도","notes":{"e1":{"q":"막대가 쌓여 종 모양이 되는 것을 보여 주고, 참값(점선)은 누구도 모른다는 점부터 묻는다.","m":[["측정값이 다르면 실험을 잘못한 것이다","같은 조건이어도 값이 흔들리는 것은 정상이다. 흔들림의 크기를 재서 보고하는 것이 실험이다."]]},"e2":{"q":"참값 슬라이더를 움직여도 읽음값이 계단처럼 변하는 것을 보여 준다. \"읽음값이 같은 구간\"이 곧 Δ이다.","m":[["최소 눈금이 불확도다","읽을 수 있는 한계(±Δ/2)가 균일하게 퍼졌다고 보면 표준불확도는 Δ/√12이다. 분해능 외에 반복 측정의 산포도 따로 있다."],["눈금을 읽은 값이 참값이다","읽음값은 참값을 가장 가까운 눈금으로 둔갑시킨 값이다. 아래 확대 그림의 초록 점과 주황 점의 차이를 보자."]]},"e3":{"q":"프리셋 4개를 차례로 눌러 보게 한다. \"정밀한데 틀린\" 사례(영점이 어긋난 저울)를 학생에게 직접 말하게 한다.","m":[["정밀하면 정확하다","산포가 작아도 평균이 참값에서 멀 수 있다. 정밀도는 우연 오차, 정확도는 계통 오차의 이야기다."],["반복 측정을 많이 하면 모든 오차가 사라진다","우연 오차의 평균만 줄어든다. 계통 오차는 몇 번을 재도 그대로다."],["실수와 오차는 같다","잘못 읽기·단위 착오는 측정을 버려야 하는 실수다. 오차는 올바르게 측정해도 남는 한계다."]]},"e4":{"q":"n=2, 10, 100에서 포함 비율을 읽게 한다. b를 0.2로 올리면 n이 커질수록 포함 비율이 오히려 0에 가까워지는 점이 핵심.","m":[["표준편차와 표준오차는 같다","표준편차 s는 측정 하나의 흔들림, 표준오차 s/√n은 평균의 불확도다."],["n을 늘리면 불확도가 얼마든지 줄어든다","1/√n로 느리게 줄고 계통 오차(분해능·교정)는 그대로다. 4배로 늘려야 절반이 된다."],["표준오차 구간 안에 참값이 반드시 있다","약 68 %만 담는다. 2배 구간이면 약 95 %."]]},"e5":{"q":"N=1과 N=20을 비교하게 한다. 같은 스톱워치로도 \"여러 번 진동을 한 번에 재기\"가 δt/N만큼 이득이다.","m":[["오차는 모두 더한다","독립인 우연 오차는 제곱합의 제곱근으로 합친다(단순 합은 상한)."],["가장 작은 오차가 결과를 결정한다","가장 큰 상대 불확도 항(지배 항)이 결과를 좌우한다. 작은 항을 줄이는 것은 헛수고."],["이 방법은 계통 오차에도 쓴다","제곱합 공식은 서로 독립인 우연 오차에 대한 것이다. 계통 오차는 따로 보정한다."]]},"e6":{"q":"뺄셈에서 같은 값에 가까워지면 상대 불확도가 폭증(상쇄)함을 확인. 공식은 불확도가 작을 때의 선형 근사임을 언급(대학 수준).","m":[["x − y의 불확도는 두 불확도의 차이다","뺄셈에서도 불확도는 합쳐진다. 값이 작아지니 상대 불확도는 더 커진다."],["x와 y가 서로 의존해도 같은 공식이다","독립일 때의 공식이다. 상관이 있으면 공분산 항이 붙는다(예: 같은 눈금자로 잰 두 길이)."]]},"e7":{"q":"문제를 몇 개 풀게 한다. 맨 앞자리가 1이면 두 자리로 쓰는 이유: 한 자리로 줄이면 상대적으로 반올림 영향이 최대 50 %.","m":[["계산기가 준 자리를 다 쓴다","불확도가 0.05인데 값을 9.81234로 쓰면 있지도 않은 정밀도를 주장하는 것이다."],["0을 붙이면 정밀도가 늘어난다","9.8과 9.80은 다르다. 끝의 0은 그 자리까지 믿는다는 뜻이다."]]},"e8":{"q":"점의 수를 늘리면 σ_b가 줄고, 점이 x 범위 끝으로 퍼질수록 σ_b가 작아짐(D가 커짐)을 언급. 대학 수준: y 불확도가 점마다 다르면 가중 최소제곱.","m":[["직선이 점을 지나지 않으면 틀렸다","직선은 점들의 경향을 대표한다. 점은 우연 오차 때문에 직선 둘레에 흩어지는 것이 정상."],["기울기 불확도가 작으면 실험이 옳다","곡률·영점 오차 같은 모형 문제는 σ_b에 드러나지 않을 수 있다. 잔차 그림을 꼭 본다."],["최대·최소 기울기 선으로 구한 값과 최소제곱 σ_b는 같다","대략의 범위만 준다. 최소제곱이 점의 수와 퍼짐을 정량적으로 반영한다."]]},"e9":{"q":"\"기준값과 차이가 0.08이니 오차 0.8 %\"만 쓰던 보고서 문장을 k값으로 고쳐 쓰게 한다. 상대 오차(%)와 k의 차이를 정리한다.","m":[["참값과 차이가 작으면 좋은 실험이다","차이를 불확도와 비교해야 한다. 불확도가 크면 큰 차이도 일치하고, 불확도가 작으면 작은 차이도 불일치다."],["불일치하면 실험이 실패한 것이다","불일치는 계통 오차나 모형의 한계를 찾을 단서다. 불확도를 솔직히 쓴 것이 성공이다."]]},"e10":{"q":"다음 실험 보고서 양식에 \"불확도 계산란\"과 \"계통 오차 점검란\"을 추가한다고 안내.","m":[["불확도를 쓰면 결과가 나빠 보인다","불확도 없는 값은 비교·재현이 불가능하다. 불확도를 쓰는 것이 결과를 신뢰할 수 있게 만든다."]]}},"ask":{"e1":["측정을 여러 번 했더니 값이 조금씩 달랐다. 이 가운데 어느 값이 \"진짜\"일까?"],"e2":["눈금이 1 mm인 자로 재서 73 mm라고 읽었다. 참값이 정확히 73.00 mm라고 말할 수 있을까?","눈금이 더 촘촘한 도구를 쓰면 불확도는 어떻게 되는가? 0이 될 수 있을까?"],"e3":["과녁 중심이 참값이다. 정밀도는 높은데 정확도가 낮은 경우는 어떤 실험 장비 때문일까?","측정 횟수를 100번으로 늘렸다. 평균 위치가 참값에 가까워지는 경우와 아닌 경우는 무엇이 다를까?"],"e4":["표준오차를 절반으로 줄이려면 측정 횟수를 몇 배로 해야 할까?","계통 오차 b를 키우고 n을 100으로 늘려 보자. 아래 그림에서 \"참값을 포함한 비율\"은 어떻게 되는가?"],"e5":["길이 L과 시간 t 중 무엇을 더 정밀하게 재야 g의 불확도가 크게 줄어들까?","N을 1에서 20으로 늘리면 왜 g의 불확도가 줄어드는가? 계통 오차(반응 시간 평균)는 어떻게 될까?"],"e6":["x − y를 고르고 x와 y를 비슷하게(예: 10.0, 9.5) 만들어 보자. 결과의 상대 불확도는 어떻게 되는가?","공식으로 구한 u와 컴퓨터로 3000번 흉내 낸 산포가 거의 같다. 둘이 달라지는 경우가 있을까?"],"e7":["9.81234 ± 0.04567이라고 계산기에 나왔다. 이대로 보고서에 쓰면 무엇이 문제일까?","123.456 ± 0.12는 왜 불확도를 두 자리로 쓸까?"],"e8":["영점 오차를 키우면 기울기와 절편 중 무엇이 변하는가? 실험에서 기울기가 목적이라면 어떤 점이 다행인가?","곡률을 주면 잔차 그림이 어떻게 달라지는가? 기울기 불확도만 봐서는 왜 부족할까?"],"e9":["내 불확도를 0.5로 크게 하면 비교값 9.80과 거의 항상 \"일치\"한다. 이것이 좋은 실험일까?","k가 3이 넘으면 어떤 계통 오차를 의심해 볼 수 있을까?"],"e10":["오늘 한 실험 한 가지에서 계통 오차 후보 세 가지와 그것을 점검하는 방법을 적어 보자."]}};
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const TAU = Math.PI * 2, DPR = 2;
+const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const C = { bg: '#0a1330', grid: 'rgba(160,190,255,.22)', text: '#e3ecff', dim: '#9db0d8', KE: '#ffb454', PE: '#7fb2ff', E: '#ffffff', ok: '#5eead4', bad: '#ff9d9d' };
+const font = (px, w = 500, it = false) => `${it ? 'italic ' : ''}${w} ${px}px 'Noto Sans KR',sans-serif`;
+const mathFont = px => `italic 400 ${px}px 'STIX Two Text','Times New Roman',serif`;
+function setupCanvas(cv, W, H) { cv.width = W * DPR; cv.height = H * DPR; cv.style.width = W + 'px'; cv.style.height = H + 'px'; const c = cv.getContext('2d'); c.setTransform(DPR, 0, 0, DPR, 0, 0); return c; }
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function makeStars(W, H, n, seed) { const r = mulberry(seed); return Array.from({ length: n }, () => [r() * W, r() * H, .25 + r() * .55, r() < .12 ? 3 : 2]); }
+function drawStars(ctx, stars) { stars.forEach(([x, y, a, s]) => { ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(x, y, s, s); }); }
+function arrow(ctx, x0, y0, x1, y1, color, lw = 4, head = 15) {
+  const a = Math.atan2(y1 - y0, x1 - x0); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - Math.cos(a) * head * .6, y1 - Math.sin(a) * head * .6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - head * Math.cos(a - .45), y1 - head * Math.sin(a - .45)); ctx.lineTo(x1 - head * Math.cos(a + .45), y1 - head * Math.sin(a + .45)); ctx.closePath(); ctx.fill();
+}
+function mathRun(ctx, x, y, parts) { let cx = x; parts.forEach(q => { ctx.font = q.f; ctx.fillStyle = q.c; ctx.fillText(q.t, cx, y + (q.dy || 0)); cx += ctx.measureText(q.t).width; }); return cx; }
+function bindRange(id, cb) { const el = $('#' + id); el.addEventListener('input', () => cb(parseFloat(el.value))); el.addEventListener('change', () => el.blur()); return el; }
+const fmt = (x, d = 2) => (x < 0 ? '−' : '') + Math.abs(x).toFixed(d);
+
+/* 오류 표시: 슬라이드 코드 예외를 화면 상단과 window.__wsErrors에 남긴다 (헤드리스 검사용) */
+window.__wsErrors = [];
+function reportError(where, e) {
+  const msg = `${where}: ${e && e.message ? e.message : e}`;
+  if (!window.__wsErrors.includes(msg)) { window.__wsErrors.push(msg); console.error('[슬라이드 오류] ' + msg); }
+  const box = document.getElementById('simError'); box.textContent = window.__wsErrors.slice(-3).join('\n'); box.classList.add('on');
+}
+function safe(where, fn, ...args) { try { return fn && fn(...args); } catch (e) { reportError(where, e); } }
+
+/* =====================================================================
+   shared_js (주제별 물리 계산부·공용 시뮬레이터)
+   ===================================================================== */
+const ER = {
+  col: { ink: '#e8eefc', dim: '#8fa3c7', grid: 'rgba(143,163,199,.22)', a: '#ffb454', b: '#5ac8fa', ok: '#6ee7a1', bad: '#ff6b6b', pur: '#c4a1ff' },
+  rng(seed) { let a = seed >>> 0; return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; },
+  randn(r) { let u = 0; while (!u) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r()); },
+  mean(a) { let s = 0; for (const x of a) s += x; return s / a.length; },
+  sd(a) { const m = ER.mean(a); let s = 0; for (const x of a) s += (x - m) * (x - m); return Math.sqrt(s / (a.length - 1)); },
+  sem(a) { return ER.sd(a) / Math.sqrt(a.length); },
+  linfit(x, y) {
+    const n = x.length; let Sx = 0, Sy = 0, Sxx = 0, Sxy = 0;
+    for (let i = 0; i < n; i++) { Sx += x[i]; Sy += y[i]; Sxx += x[i] * x[i]; Sxy += x[i] * y[i]; }
+    const D = n * Sxx - Sx * Sx, b = (n * Sxy - Sx * Sy) / D, a = (Sy - b * Sx) / n;
+    const res = x.map((xi, i) => y[i] - a - b * xi); let ss = 0; for (const r of res) ss += r * r;
+    const s = n > 2 ? Math.sqrt(ss / (n - 2)) : 0;
+    return { a, b, s, res, sb: s * Math.sqrt(n / D), sa: s * Math.sqrt(Sxx / D), xm: Sx / n, ym: Sy / n, Sxx: Sxx - Sx * Sx / n };
+  },
+  prop(f, xs, us) {
+    const f0 = f(xs); const c = xs.map((x, i) => {
+      const h = Math.max(Math.abs(x) * 1e-6, 1e-9), p = xs.slice(), m = xs.slice(); p[i] += h; m[i] -= h;
+      const d = (f(p) - f(m)) / (2 * h); return Math.pow(d * us[i], 2);
+    });
+    const v = c.reduce((s, q) => s + q, 0); return { f0, u: Math.sqrt(v), share: c.map(q => v > 0 ? q / v : 0), terms: c.map(Math.sqrt) };
+  },
+  report(v, u) {
+    if (!(u > 0) || !isFinite(v)) return null;
+    let d = 0, uu = u;
+    for (let k = 0; k < 2; k++) {
+      const e = Math.floor(Math.log10(uu) + 1e-12), lead = Math.floor(uu / Math.pow(10, e) + 1e-9), ns = lead === 1 ? 2 : 1;
+      d = -e + (ns - 1); uu = Math.round(u * Math.pow(10, d)) / Math.pow(10, d);
+    }
+    const vv = Math.round(v * Math.pow(10, d)) / Math.pow(10, d), f = Math.max(d, 0);
+    return { v: vv.toFixed(f), u: uu.toFixed(f), d };
+  },
+  hist(vals, lo, hi, nb) { const h = new Array(nb).fill(0); for (const v of vals) { let k = Math.floor((v - lo) / (hi - lo) * nb); k = Math.max(0, Math.min(nb - 1, k)); h[k]++; } return h; },
+  npdf(x, m, s) { return Math.exp(-0.5 * Math.pow((x - m) / s, 2)) / (s * Math.sqrt(2 * Math.PI)); },
+  txt(c, s, x, y, o) { o = o || {}; c.font = (o.w || 500) + ' ' + (o.size || 22) + 'px "Pretendard","Malgun Gothic",sans-serif'; c.fillStyle = o.color || ER.col.ink; c.textAlign = o.align || 'left'; c.textBaseline = o.base || 'alphabetic'; c.fillText(s, x, y); },
+  line(c, x1, y1, x2, y2, col, w, dash) { c.strokeStyle = col; c.lineWidth = w || 1; c.setLineDash(dash || []); c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); c.setLineDash([]); },
+  dot(c, x, y, r, fill, stroke) { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); if (fill) { c.fillStyle = fill; c.fill(); } if (stroke) { c.strokeStyle = stroke; c.lineWidth = 2; c.stroke(); } },
+  slider(id, fmtf, cb) {
+    const el = document.getElementById(id), v = document.getElementById(id + '-v');
+    const upd = () => { if (v) v.textContent = fmtf(+el.value); };
+    el.addEventListener('input', () => { upd(); cb(+el.value); }); upd(); return el;
+  },
+  chips(sel, cb) {
+    const cs = document.querySelectorAll(sel);
+    cs.forEach(ch => ch.addEventListener('click', () => { cs.forEach(o => o.classList.remove('on')); ch.classList.add('on'); cb(ch.dataset.v); }));
+  }
+};
+function TESTS() {
+  const a = [1, 2, 3, 4, 5], f = ER.linfit([1, 2, 3, 4], [3, 5, 7, 9]), p = ER.prop(x => 4 * Math.PI * Math.PI * x[0] / (x[1] * x[1]), [1, 2.0], [0.002, 0.01]);
+  const r = ER.rng(7), z = Array.from({ length: 20000 }, () => ER.randn(r));
+  const inside = z.filter(q => Math.abs(q) < 1).length / z.length;
+  const q1 = ER.report(9.81234, 0.04567), q2 = ER.report(123.456, 0.12), q3 = ER.report(1234, 56), q4 = ER.report(5.0, 0.0996);
+  const pq = ER.prop(x => x[0] * x[1], [10, 4], [0.1, 0.1]);
+  const pd = ER.prop(x => x[0] - x[1], [10, 4], [0.3, 0.4]);
+  return [
+    ['평균 = 3', Math.abs(ER.mean(a) - 3) < 1e-12, '[1..5]의 평균'],
+    ['표준편차 (n−1) = √2.5', Math.abs(ER.sd(a) - Math.sqrt(2.5)) < 1e-12, 's = 1.5811'],
+    ['평균의 표준오차 = s/√n', Math.abs(ER.sem(a) - Math.sqrt(2.5) / Math.sqrt(5)) < 1e-12, '0.7071'],
+    ['직선 맞춤 y=2x+1', Math.abs(f.b - 2) < 1e-12 && Math.abs(f.a - 1) < 1e-12 && f.s < 1e-12, '정확한 직선이면 기울기 2, 절편 1, 잔차 0'],
+    ['차의 전파 = 제곱합의 제곱근', Math.abs(pd.u - 0.5) < 1e-6, '√(0.3²+0.4²) = 0.5'],
+    ['곱의 전파 (상대 불확도 제곱합)', Math.abs(pq.u / pq.f0 - Math.sqrt(0.01 * 0.01 + 0.025 * 0.025)) < 1e-6, 'u/f = √((0.1/10)²+(0.1/4)²)'],
+    ['g=4π²L/T² 전파 (해석)', Math.abs(p.u / p.f0 - Math.sqrt(0.002 * 0.002 + 4 * 0.005 * 0.005)) < 1e-6, '(δg/g)² = (δL/L)² + (2δT/T)²'],
+    ['±1σ 안 확률 ≈ 68.3 %', Math.abs(inside - 0.6827) < 0.01, '표준정규 난수 20000개'],
+    ['보고 형식 1', q1.v === '9.81' && q1.u === '0.05', '9.81234 ± 0.04567 → 9.81 ± 0.05'],
+    ['보고 형식 2 (맨 앞자리 1)', q2.v === '123.46' && q2.u === '0.12', '불확도 맨 앞자리가 1이면 두 자리'],
+    ['보고 형식 3 (자리 올림)', q3.v === '1230' && q3.u === '60', '1234 ± 56 → 1230 ± 60'],
+    ['보고 형식 4 (반올림 뒤 자릿수 재결정)', q4.u === '0.10' && q4.v === '5.00', '0.0996 → 0.10']
+  ];
+}
+
+
+/* =====================================================================
+   슬라이드별 모듈: { start(), stop(), frame(dt), onStep(step) }
+   ===================================================================== */
+const REG = {};
+/* ---- e1 ---- */
+REG["e1"] = safe("e1.init", function () {
+const cv = document.getElementById('e1-c'), W = 760, H = 560, c = setupCanvas(cv, W, H);
+const r = ER.rng(11); let drops = [], bins = new Array(21).fill(0), t = 0, running = false;
+function spawn() { drops.push({ x: 0, v: 8.0 + 0.9 * ER.randn(r), y: -10, vy: 0 }); }
+function draw() {
+  c.fillStyle = C.bg; c.fillRect(0, 0, W, H);
+  const x0 = 50, x1 = W - 50, bw = (x1 - x0) / 21, base = H - 70;
+  ER.line(c, x0, base, x1, base, ER.col.dim, 2);
+  for (let i = 0; i < 21; i++) {
+    const h = bins[i] * 14; c.fillStyle = 'rgba(255,180,84,.75)'; c.fillRect(x0 + i * bw + 2, base - h, bw - 4, h);
+    if (i % 4 === 0) ER.txt(c, (5 + i * 0.5).toFixed(0), x0 + i * bw + bw / 2, base + 26, { size: 18, color: ER.col.dim, align: 'center' });
+  }
+  ER.line(c, x0 + (8 - 5) * 2 * bw + bw / 2, 40, x0 + (8 - 5) * 2 * bw + bw / 2, base, ER.col.ok, 2, [8, 6]);
+  ER.txt(c, '참값은 알 수 없다 (점선은 우리가 "정해 둔" 값)', W / 2, 36, { size: 20, color: ER.col.ok, align: 'center' });
+  ER.txt(c, '같은 물체를 같은 방법으로 반복 측정', W / 2, H - 20, { size: 20, color: ER.col.dim, align: 'center' });
+  for (const d of drops) { const px = x0 + ((d.v - 5) / 10.5) * (x1 - x0); ER.dot(c, px, d.y, 7, ER.col.b); }
+}
+function frame(dt) {
+  t += dt; if (t > 0.18) { t = 0; spawn(); }
+  const x0 = 50, x1 = W - 50, bw = (x1 - x0) / 21, base = H - 70;
+  for (const d of drops) {
+    d.vy += 900 * dt; d.y += d.vy * dt;
+    const k = Math.max(0, Math.min(20, Math.floor((d.v - 5) * 2))), top = base - bins[k] * 14 - 7;
+    if (d.y >= top) { d.done = true; bins[k]++; }
+  }
+  drops = drops.filter(d => !d.done);
+  if (bins.some(b => b > 28)) bins = bins.map(b => Math.floor(b / 2));
+  draw();
+}
+return { start() { drops = []; draw(); }, stop() { }, frame };
+
+});
+
+/* ---- e2 ---- */
+REG["e2"] = safe("e2.init", function () {
+const cv = document.getElementById('e2-c'), W = 1040, H = 640, c = setupCanvas(cv, W, H);
+const st = { L: 73.4, d: 1 };
+function draw() {
+  c.fillStyle = C.bg; c.fillRect(0, 0, W, H);
+  const d = st.d, read = Math.round(st.L / d) * d, u = d / Math.sqrt(12), e = read - st.L, dec = d >= 1 ? 0 : d >= 0.5 ? 1 : 2;
+  ER.txt(c, '① 눈금(또는 표시창)을 읽는다', 30, 40, { size: 26, w: 700 });
+  const x0 = 70, sc = (W - 140) / 160;
+  if (d >= 0.5) {
+    c.fillStyle = '#2b3a5c'; c.fillRect(x0 - 30, 70, W - 80, 100);
+    for (let m = 0; m <= 160.0001; m += d) {
+      const x = x0 + m * sc, ten = Math.abs(m / 10 - Math.round(m / 10)) < 1e-6, five = Math.abs(m / 5 - Math.round(m / 5)) < 1e-6;
+      ER.line(c, x, 70, x, 70 + (ten ? 46 : five ? 32 : 22), ER.col.ink, ten ? 2 : 1);
+      if (ten) ER.txt(c, String(Math.round(m / 10)), x, 148, { size: 20, align: 'center', color: ER.col.ink });
+    }
+    ER.txt(c, 'cm', W - 60, 148, { size: 18, color: ER.col.dim });
+  } else {
+    c.fillStyle = '#16233f'; c.fillRect(300, 70, 440, 100); c.strokeStyle = ER.col.dim; c.lineWidth = 3; c.strokeRect(300, 70, 440, 100);
+    ER.txt(c, read.toFixed(2) + ' mm', 520, 138, { size: 56, w: 700, color: ER.col.ok, align: 'center' });
+    ER.txt(c, '디지털 버니어 캘리퍼스 표시창', 520, 62, { size: 18, color: ER.col.dim, align: 'center' });
+  }
+  const tipx = x0 + st.L * sc;
+  if (d >= 0.5) {
+    c.fillStyle = 'rgba(255,180,84,.85)'; c.fillRect(x0, 190, st.L * sc, 34);
+    ER.line(c, tipx, 170, tipx, 240, ER.col.a, 3); ER.txt(c, '물체 끝', tipx, 262, { size: 20, color: ER.col.a, align: 'center' });
+  }
+  // 아래: 확대
+  ER.txt(c, '② 읽음값 둘레를 확대해서 보면', 30, 330, { size: 26, w: 700 });
+  const span = 3 * d, X = v => W / 2 + (v - read) / span * (W / 2 - 90), ay = 470;
+  ER.line(c, 60, ay, W - 60, ay, ER.col.dim, 2);
+  for (let k = -3; k <= 3; k++) { const v = read + k * d, x = X(v); ER.line(c, x, ay - 12, x, ay + 12, ER.col.dim, 2); ER.txt(c, v.toFixed(dec + (d < 0.5 ? 0 : 0)), x, ay + 40, { size: 18, color: ER.col.dim, align: 'center' }); }
+  c.fillStyle = 'rgba(255,180,84,.22)'; c.fillRect(X(read - u), ay - 60, X(read + u) - X(read - u), 120);
+  ER.line(c, X(read - d / 2), ay - 70, X(read - d / 2), ay + 70, ER.col.pur, 2, [6, 6]); ER.line(c, X(read + d / 2), ay - 70, X(read + d / 2), ay + 70, ER.col.pur, 2, [6, 6]);
+  ER.dot(c, X(read), ay, 10, ER.col.a); ER.txt(c, '읽음값', X(read), ay - 80, { size: 20, color: ER.col.a, align: 'center' });
+  ER.dot(c, X(st.L), ay, 8, ER.col.ok); ER.txt(c, '참값 (시뮬레이션이라 알고 있다)', X(st.L), ay + 90, { size: 18, color: ER.col.ok, align: 'center' });
+  ER.txt(c, '± Δ/2 (읽음값으로 둔갑하는 범위)', X(read + d / 2) + 6, ay - 78, { size: 16, color: ER.col.pur });
+  ER.txt(c, '주황 띠 ± u', X(read + u) + 8, ay + 60, { size: 16, color: ER.col.a });
+  ER.txt(c, '읽음값 = ' + read.toFixed(dec) + ' mm', 30, 590, { size: 24, w: 700 });
+  ER.txt(c, '표준불확도 u = Δ/√12 = ' + u.toFixed(Math.max(dec + 1, 2)) + ' mm', 330, 590, { size: 24, w: 700, color: ER.col.a });
+  ER.txt(c, '(이 장면의 오차 e = ' + (e >= 0 ? '+' : '−') + Math.abs(e).toFixed(dec + 1) + ' mm : 실제 실험에서는 알 수 없다)', 30, 622, { size: 18, color: ER.col.dim });
+  document.getElementById('e2-out').innerHTML = '분해능 Δ = ' + d + ' mm<br>한계 a = Δ/2 = ' + (d / 2) + ' mm<br>u = a/√3 = Δ/√12 ≈ <b class="p">' + u.toFixed(3) + ' mm</b>';
+}
+ER.slider('e2-L', v => v.toFixed(2) + ' mm', v => { st.L = v; draw(); });
+ER.chips('#e2-chips .chip', v => { st.d = +v; draw(); });
+return { start() { draw(); }, stop() { }, frame() { } };
+
+});
+
+/* ---- e3 ---- */
+REG["e3"] = safe("e3.init", function () {
+const cv = document.getElementById('e3-c'), W = 1040, H = 640, c = setupCanvas(cv, W, H);
+const st = { b: 0, s: 0.5, n: 30, seed: 3 }; let zx = [], zy = [];
+function reseed() { const r = ER.rng(st.seed * 977 + 5); zx = []; zy = []; for (let i = 0; i < 100; i++) { zx.push(ER.randn(r)); zy.push(ER.randn(r)); } }
+function draw() {
+  c.fillStyle = C.bg; c.fillRect(0, 0, W, H);
+  const cx = 330, cy = 330, R = 5, sc = 52, th = 0.61, bx = st.b * Math.cos(th), by = -st.b * Math.sin(th);
+  for (let k = 5; k >= 1; k--) { c.beginPath(); c.arc(cx, cy, k * sc, 0, 7); c.fillStyle = k % 2 ? 'rgba(143,163,199,.10)' : 'rgba(143,163,199,.20)'; c.fill(); c.strokeStyle = ER.col.grid; c.lineWidth = 1; c.stroke(); }
+  ER.line(c, cx - 5 * sc, cy, cx + 5 * sc, cy, ER.col.grid, 1); ER.line(c, cx, cy - 5 * sc, cx, cy + 5 * sc, ER.col.grid, 1);
+  const xs = [], ys = [];
+  for (let i = 0; i < st.n; i++) { const x = bx + st.s * zx[i], y = by + st.s * zy[i]; xs.push(x); ys.push(y); ER.dot(c, cx + x * sc, cy + y * sc, 7, ER.col.b, 'rgba(0,0,0,.35)'); }
+  const mx = ER.mean(xs), my = ER.mean(ys);
+  const sx = ER.sd(xs), sy = ER.sd(ys), sp = Math.sqrt((sx * sx + sy * sy) / 2), off = Math.hypot(mx, my);
+  c.beginPath(); c.arc(cx + mx * sc, cy + my * sc, sp * sc, 0, 7); c.setLineDash([8, 6]); c.strokeStyle = ER.col.a; c.lineWidth = 2; c.stroke(); c.setLineDash([]);
+  if (off > 0.05) { c.strokeStyle = ER.col.bad; c.lineWidth = 3; ER.line(c, cx, cy, cx + mx * sc, cy + my * sc, ER.col.bad, 3); }
+  ER.dot(c, cx + mx * sc, cy + my * sc, 9, null, ER.col.a); ER.line(c, cx + mx * sc - 12, cy + my * sc, cx + mx * sc + 12, cy + my * sc, ER.col.a, 3); ER.line(c, cx + mx * sc, cy + my * sc - 12, cx + mx * sc, cy + my * sc + 12, ER.col.a, 3);
+  ER.dot(c, cx, cy, 5, ER.col.ok);
+  ER.txt(c, '+ 평균 위치', 620, 120, { size: 22, color: ER.col.a, w: 700 }); ER.txt(c, '● 참값(과녁 중심)', 620, 154, { size: 22, color: ER.col.ok, w: 700 });
+  ER.txt(c, '─ 계통 오차(평균이 참값에서 벗어난 거리)', 620, 188, { size: 22, color: ER.col.bad, w: 700 }); ER.txt(c, '┄ 우연 오차(산포 s)', 620, 222, { size: 22, color: ER.col.a, w: 700 });
+  const acc = off < 0.6, pre = sp < 0.6;
+  ER.txt(c, '평균과 참값의 거리 = ' + off.toFixed(2), 620, 300, { size: 26, w: 700 }); ER.txt(c, '산포(표준편차) s = ' + sp.toFixed(2), 620, 340, { size: 26, w: 700 });
+  ER.txt(c, acc ? '정확도 높음 (계통 오차 작다)' : '정확도 낮음 (계통 오차 크다)', 620, 400, { size: 24, color: acc ? ER.col.ok : ER.col.bad, w: 700 });
+  ER.txt(c, pre ? '정밀도 높음 (우연 오차 작다)' : '정밀도 낮음 (우연 오차 크다)', 620, 440, { size: 24, color: pre ? ER.col.ok : ER.col.bad, w: 700 });
+  ER.txt(c, '평균의 불확도 s/√n = ' + (sp / Math.sqrt(st.n)).toFixed(2), 620, 500, { size: 22, color: ER.col.dim });
+  ER.txt(c, '→ n을 늘려도 거리(계통 오차)는 그대로', 620, 534, { size: 22, color: ER.col.dim });
+}
+const bS = ER.slider('e3-b', v => v.toFixed(1), v => { st.b = v; draw(); }), sS = ER.slider('e3-s', v => v.toFixed(2), v => { st.s = v; draw(); }), nS = ER.slider('e3-n', v => v + '발', v => { st.n = v; draw(); });
+function setP(b, s) { st.b = b; st.s = s; bS.value = b; sS.value = s; bS.dispatchEvent(new Event('input')); sS.dispatchEvent(new Event('input')); }
+document.querySelectorAll('#e3-pre .chip').forEach(ch => ch.addEventListener('click', () => { const [b, s] = ch.dataset.v.split(',').map(Number); setP(b, s); }));
+document.getElementById('e3-re').addEventListener('click', () => { st.seed++; reseed(); draw(); });
+reseed();
+return { start() { draw(); }, stop() { }, frame() { } };
+
+});
+
+/* ---- e4 ---- */
+REG["e4"] = safe("e4.init", function () {
+const cv = document.getElementById('e4-c'), W = 1040, H = 680, c = setupCanvas(cv, W, H);
+const st = { s: 0.4, n: 10, b: 0, seed: 1 }, MU = 10.0, K = 400; let Z = [];
+function reseed() { const r = ER.rng(st.seed * 7919 + 13); Z = []; for (let k = 0; k <= K; k++) { const row = []; for (let i = 0; i < 100; i++) row.push(ER.randn(r)); Z.push(row); } }
+function draw() {
+  c.fillStyle = C.bg; c.fillRect(0, 0, W, H);
+  const lo = 8.5, hi = 11.5, X = v => 60 + (v - lo) / (hi - lo) * (W - 120);
+  const vals = Z[0].slice(0, st.n).map(z => MU + st.b + st.s * z), m = ER.mean(vals), s = ER.sd(vals), se = s / Math.sqrt(st.n);
+  ER.txt(c, '① 한 세트의 측정 (n = ' + st.n + ')', 30, 36, { size: 24, w: 700 });
+  const y0 = 150; ER.line(c, 60, y0 + 60, W - 60, y0 + 60, ER.col.dim, 2);
+  for (let v = 9; v <= 11; v += 0.5) { ER.line(c, X(v), y0 + 60, X(v), y0 + 68, ER.col.dim, 2); ER.txt(c, v.toFixed(1), X(v), y0 + 92, { size: 18, color: ER.col.dim, align: 'center' }); }
+  const cnt = {}; vals.forEach(v => { const k = Math.round(v * 40); cnt[k] = (cnt[k] || 0) + 1; ER.dot(c, X(v), y0 + 52 - (cnt[k] - 1) * 15, 6, ER.col.b); });
+  ER.line(c, X(MU), 70, X(MU), y0 + 62, ER.col.ok, 3, [8, 6]); ER.txt(c, '참값 ' + MU.toFixed(2), X(MU), 62, { size: 20, color: ER.col.ok, align: 'center', w: 700 });
+  c.fillStyle = 'rgba(196,161,255,.18)'; c.fillRect(X(m - s), y0 - 20, X(m + s) - X(m - s), 60); ER.txt(c, '평균 ± s', X(m + s) + 8, y0 + 12, { size: 16, color: ER.col.pur });
+  ER.line(c, X(m - se), y0 + 112, X(m + se), y0 + 112, ER.col.a, 8); ER.dot(c, X(m), y0 + 112, 9, ER.col.a); ER.txt(c, '평균 ± 표준오차 s/√n', X(m), y0 + 146, { size: 20, color: ER.col.a, align: 'center', w: 700 });
+  // 반복 실험
+  ER.txt(c, '② 같은 실험을 ' + K + '번 되풀이해서 모은 평균들', 30, 380, { size: 24, w: 700 });
+  const means = [], ok = []; let cover = 0;
+  for (let k = 1; k <= K; k++) { const v = Z[k].slice(0, st.n).map(z => MU + st.b + st.s * z), mm = ER.mean(v), ss = ER.sd(v) / Math.sqrt(st.n); means.push(mm); if (Math.abs(mm - MU) <= ss) cover++; }
+  const nb = 60, h = ER.hist(means, lo, hi, nb), by = 640, bh = 190, bw = (W - 120) / nb, binw = (hi - lo) / nb;
+  const sg = st.s / Math.sqrt(st.n), expPeak = K * ER.npdf(MU + st.b, MU + st.b, sg) * binw, ym = Math.max(Math.max(...h), expPeak) * 1.1;
+  ER.line(c, 60, by, W - 60, by, ER.col.dim, 2);
+  for (let i = 0; i < nb; i++) { const hh = h[i] / ym * bh; c.fillStyle = 'rgba(255,180,84,.7)'; c.fillRect(60 + i * bw + 1, by - hh, bw - 2, hh); }
+  c.beginPath();
+  for (let i = 0; i <= 300; i++) { const v = lo + (hi - lo) * i / 300, y = by - K * ER.npdf(v, MU + st.b, sg) * binw / ym * bh; i ? c.lineTo(X(v), y) : c.moveTo(X(v), y); }
+  c.strokeStyle = ER.col.b; c.lineWidth = 2.5; c.stroke();
+  ER.line(c, X(MU), 400, X(MU), by, ER.col.ok, 3, [8, 6]);
+  const pct = cover / K * 100;
+  ER.txt(c, '평균 ± 표준오차 구간이 참값을 포함한 비율: ' + pct.toFixed(0) + ' %', 30, 410, { size: 24, w: 700, color: pct > 60 ? ER.col.ok : ER.col.bad });
+  ER.txt(c, '(이상적으로 약 68 %, n이 작으면 더 낮다)', 30, 442, { size: 18, color: ER.col.dim });
+  document.getElementById('e4-out').innerHTML = '평균 x̄ = <b class="p">' + m.toFixed(3) + '</b><br>표준편차 s = <b class="p">' + s.toFixed(3) + '</b><br>표준오차 s/√n = <b class="k">' + se.toFixed(3) + '</b><br>평균들의 산포 = <b class="ok">' + ER.sd(means).toFixed(3) + '</b> (이론 σ/√n = ' + sg.toFixed(3) + ')';
+}
+ER.slider('e4-s', v => v.toFixed(2), v => { st.s = v; draw(); }); ER.slider('e4-n', v => v + '회', v => { st.n = v; draw(); }); ER.slider('e4-b', v => (v >= 0 ? '+' : '') + v.toFixed(2), v => { st.b = v; draw(); });
+document.getElementById('e4-re').addEventListener('click', () => { st.seed++; reseed(); draw(); });
+reseed();
+return { start() { draw(); }, stop() { }, frame() { } };
+
+});
+
+/* ---- e5 ---- */
+REG["e5"] = safe("e5.init", function () {
+const cv = document.getElementById('e5-c'), W = 1040, H = 680, c = setupCanvas(cv, W, H);
+const st = { dL: 2, dt: 0.15, N: 10 }, L0 = 1.000, G0 = 9.80, M = 4000; let Z = [];
+function reseed() { const r = ER.rng(2024); Z = []; for (let i = 0; i < M; i++) Z.push([ER.randn(r), ER.randn(r)]); }
+const f = x => 4 * Math.PI * Math.PI * x[0] * st.N * st.N / (x[1] * x[1]);
+function draw() {
+  c.fillStyle = C.bg; c.fillRect(0, 0, W, H);
+  const T0 = 2 * Math.PI * Math.sqrt(L0 / G0), t0 = st.N * T0, xs = [L0, t0], us = [st.dL / 1000, st.dt];
+  const p = ER.prop(f, xs, us), g = ER.prop(f, xs, us).f0;
+  ER.txt(c, '단진자로 g 구하기:  g = 4π²L / T²,  T = (N번 진동한 시간 t) / N', 30, 40, { size: 24, w: 700 });
+  ER.txt(c, 'L = 1.000 m ± ' + st.dL.toFixed(1) + ' mm      t = ' + t0.toFixed(2) + ' s ± ' + st.dt.toFixed(2) + ' s  (N = ' + st.N + ')', 30, 76, { size: 22, color: ER.col.dim });
+  // 기여도 막대
+  const rl = Math.pow(us[0] / xs[0], 2), rt = Math.pow(2 * us[1] / xs[1], 2), tot = rl + rt;
+  ER.txt(c, '결과 불확도에 대한 기여 (상대 불확도의 제곱)', 30, 130, { size: 22, w: 700 });
+  const bx = 30, bw = W - 60;
+  c.fillStyle = ER.col.b; c.fillRect(bx, 150, bw * rl / tot, 46); c.fillStyle = ER.col.a; c.fillRect(bx + bw * rl / tot, 150, bw * rt / tot, 46);
+  const lt = (rl / tot * 100).toFixed(0) + ' %', tt = (rt / tot * 100).toFixed(0) + ' %';
+  if (rl / tot > 0.08) ER.txt(c, '길이 L  ' + lt, bx + 10, 182, { size: 22, w: 700, color: '#07101f' }); if (rt / tot > 0.08) ER.txt(c, '시간 t  ' + tt, bx + bw - 10, 182, { size: 22, w: 700, color: '#07101f', align: 'right' });
+  ER.txt(c, '(δL/L) = ' + (rl ** 0.5 * 100).toFixed(2) + ' %      2(δt/t) = ' + (rt ** 0.5 * 100).toFixed(2) + ' %      합성 δg/g = ' + (p.u / g * 100).toFixed(2) + ' %', 30, 226, { size: 20, color: ER.col.dim });
+  // 몬테카를로
+  const gs = Z.map(z => f([xs[0] + us[0] * z[0], xs[1] + us[1] * z[1]])), mc = ER.sd(gs);
+  const lo = g - 4 * p.u, hi = g + 4 * p.u, nb = 48, h = ER.hist(gs, lo, hi, nb), by = 620, bh = 290, bwid = (W - 80) / nb, X = v => 40 + (v - lo) / (hi - lo) * (W - 80);
+  const binw = (hi - lo) / nb, ym = Math.max(Math.max(...h), M * ER.npdf(g, g, p.u) * binw) * 1.1;
+  ER.txt(c, '컴퓨터로 측정을 ' + M + '번 흉내 낸 g의 분포', 30, 296, { size: 22, w: 700 });
+  ER.line(c, 40, by, W - 40, by, ER.col.dim, 2);
+  for (let i = 0; i < nb; i++) { const hh = h[i] / ym * bh; c.fillStyle = 'rgba(255,180,84,.7)'; c.fillRect(40 + i * bwid + 1, by - hh, bwid - 2, hh); }
+  c.beginPath(); for (let i = 0; i <= 300; i++) { const v = lo + (hi - lo) * i / 300, y = by - M * ER.npdf(v, g, p.u) * binw / ym * bh; i ? c.lineTo(X(v), y) : c.moveTo(X(v), y); } c.strokeStyle = ER.col.b; c.lineWidth = 2.5; c.stroke();
+  ER.line(c, X(G0), 310, X(G0), by, ER.col.ok, 3, [8, 6]);
+  for (let k = -3; k <= 3; k++) { const v = g + k * p.u; ER.line(c, X(v), by, X(v), by + 8, ER.col.dim, 2); ER.txt(c, v.toFixed(2), X(v), by + 30, { size: 17, color: ER.col.dim, align: 'center' }); }
+  const rep = ER.report(g, p.u);
+  ER.txt(c, 'g = ' + rep.v + ' ± ' + rep.u + ' m/s²', W - 40, 330, { size: 34, w: 700, color: ER.col.a, align: 'right' });
+  ER.txt(c, '공식(전파) δg = ' + p.u.toFixed(3) + '   모의 측정 산포 = ' + mc.toFixed(3), W - 40, 366, { size: 20, color: ER.col.dim, align: 'right' });
+  ER.txt(c, '초록 점선: 참값 9.80', W - 40, 396, { size: 20, color: ER.col.ok, align: 'right' });
+  const dom = rt > rl ? '시간 측정' : '길이 측정';
+  document.getElementById('e5-out').innerHTML = '지배 항: <b class="k">' + dom + '</b><br>δg/g = √[(δL/L)² + (2δt/t)²]<br>= ' + (p.u / g * 100).toFixed(2) + ' %';
+}
+ER.slider('e5-dl', v => v.toFixed(1) + ' mm', v => { st.dL = v; draw(); }); ER.slider('e5-dt', v => v.toFixed(2) + ' s', v => { st.dt = v; draw(); }); ER.slider('e5-n', v => v + '회', v => { st.N = v; draw(); });
+reseed();
+return { start() { draw(); }, stop() { }, frame() { } };
+
+});
+
+/* ---- e6 ---- */
+REG["e6"] = safe("e6.init", function () {
+const cv = document.getElementById('e6-c'), W = 1040, H = 640, c = setupCanvas(cv, W, H);
+const FN = {
+  add: { f: x => x[0] + x[1], name: 'f = x + y', rule: 'u = √(u(x)² + u(y)²)   (절대 불확도 제곱합)' },
+  sub: { f: x => x[0] - x[1], name: 'f = x − y', rule: 'u = √(u(x)² + u(y)²)   (뺄셈도 합친다!)' },
+  mul: { f: x => x[0] * x[1], name: 'f = x · y', rule: 'u/f = √((u(x)/x)² + (u(y)/y)²)   (상대 불확도 제곱합)' },
+  div: { f: x => x[0] / x[1], name: 'f = x / y', rule: 'u/f = √((u(x)/x)² + (u(y)/y)²)' },
+  pw: { f: x => x[0] * x[0] * x[1], name: 'f = x² · y', rule: 'u/f = √((2u(x)/x)² + (u(y)/y)²)   (거듭제곱은 지수배)' }
+};
+const st = { k: 'add', x: 10, y: 4, ux: 0.2, uy: 0.2 }, M = 3000; let Z = [];
+const r = ER.rng(99); for (let i = 0; i < M; i++) Z.push([ER.randn(r), ER.randn(r)]);
+function draw() {
+  c.fillStyle = C.bg; c.fillRect(0, 0, W, H);
+  const F = FN[st.k], xs = [st.x, st.y], us = [st.ux, st.uy], p = ER.prop(F.f, xs, us), gs = Z.map(z => F.f([xs[0] + us[0] * z[0], xs[1] + us[1] * z[1]])), mc = ER.sd(gs);
+  ER.txt(c, F.name + '     x = ' + st.x.toFixed(1) + ' ± ' + st.ux.toFixed(2) + ',  y = ' + st.y.toFixed(1) + ' ± ' + st.uy.toFixed(2), 30, 40, { size: 24, w: 700 });
+  ER.txt(c, F.rule, 30, 78, { size: 21, color: ER.col.a });
+  const lo = p.f0 - 4 * p.u, hi = p.f0 + 4 * p.u, nb = 48, h = ER.hist(gs, lo, hi, nb), by = 560, bh = 340, bw = (W - 80) / nb, binw = (hi - lo) / nb, X = v => 40 + (v - lo) / (hi - lo) * (W - 80);
+  const ym = Math.max(Math.max(...h), M * ER.npdf(p.f0, p.f0, p.u) * binw) * 1.1;
+  ER.line(c, 40, by, W - 40, by, ER.col.dim, 2);
+  for (let i = 0; i < nb; i++) { const hh = h[i] / ym * bh; c.fillStyle = 'rgba(255,180,84,.7)'; c.fillRect(40 + i * bw + 1, by - hh, bw - 2, hh); }
+  c.beginPath(); for (let i = 0; i <= 300; i++) { const v = lo + (hi - lo) * i / 300, y = by - M * ER.npdf(v, p.f0, p.u) * binw / ym * bh; i ? c.lineTo(X(v), y) : c.moveTo(X(v), y); } c.strokeStyle = ER.col.b; c.lineWidth = 2.5; c.stroke();
+  for (let k = -3; k <= 3; k++) { const v = p.f0 + k * p.u; ER.line(c, X(v), by, X(v), by + 8, ER.col.dim, 2); ER.txt(c, v.toFixed(3), X(v), by + 30, { size: 16, color: ER.col.dim, align: 'center' }); }
+  ER.txt(c, 'f = ' + p.f0.toFixed(3) + '     u(공식) = ' + p.u.toFixed(3) + '     u(모의 ' + M + '회) = ' + mc.toFixed(3), 30, 118, { size: 22, w: 700 });
+  ER.txt(c, '상대 불확도 u/|f| = ' + (p.u / Math.abs(p.f0) * 100).toFixed(2) + ' %', 30, 150, { size: 21, color: ER.col.dim });
+  const bx = 640, bwid = 340; ER.txt(c, '기여 몫', bx, 40, { size: 20, color: ER.col.dim });
+  c.fillStyle = ER.col.b; c.fillRect(bx, 52, bwid * p.share[0], 26); c.fillStyle = ER.col.a; c.fillRect(bx + bwid * p.share[0], 52, bwid * p.share[1], 26);
+  ER.txt(c, 'x ' + (p.share[0] * 100).toFixed(0) + '%', bx, 100, { size: 18, color: ER.col.b }); ER.txt(c, 'y ' + (p.share[1] * 100).toFixed(0) + '%', bx + bwid, 100, { size: 18, color: ER.col.a, align: 'right' });
+  const note = st.k === 'sub' && Math.abs(p.f0) < 0.3 * Math.max(Math.abs(st.x), Math.abs(st.y)) ? '⚠ 비슷한 두 값의 뺄셈: 결과가 작아져 상대 불확도가 폭증한다' : '';
+  ER.txt(c, note, 30, 196, { size: 22, color: ER.col.bad, w: 700 });
+  document.getElementById('e6-out').innerHTML = 'u(공식) = <b class="p">' + p.u.toFixed(3) + '</b><br>u(모의) = <b class="k">' + mc.toFixed(3) + '</b><br>상대 ' + (p.u / Math.abs(p.f0) * 100).toFixed(2) + ' %';
+}
+ER.chips('#e6-chips .chip', v => { st.k = v; draw(); });
+ER.slider('e6-x', v => v.toFixed(1), v => { st.x = v; draw(); }); ER.slider('e6-y', v => v.toFixed(1), v => { st.y = v; draw(); });
+ER.slider('e6-ux', v => v.toFixed(2), v => { st.ux = v; draw(); }); ER.slider('e6-uy', v => v.toFixed(2), v => { st.uy = v; draw(); });
+return { start() { draw(); }, stop() { }, frame() { } };
+
+});
+
+/* ---- e7 ---- */
+REG["e7"] = safe("e7.init", function () {
+const vi = document.getElementById('e7-v'), ui = document.getElementById('e7-u'), un = document.getElementById('e7-unit'), out = document.getElementById('e7-out'), why = document.getElementById('e7-why');
+function calc() {
+  const v = parseFloat(vi.value), u = parseFloat(ui.value), unit = un.value.trim();
+  const rep = ER.report(v, u);
+  if (!rep) { out.textContent = '값과 불확도(양수)를 숫자로 입력하세요'; why.innerHTML = ''; return; }
+  out.textContent = rep.v + ' ± ' + rep.u + (unit ? ' ' + unit : '');
+  const digs = rep.u.replace('.', '').replace(/^0+/, ''), two = rep.d >= 0 && digs.length > 1;
+  why.innerHTML = '① 불확도를 <b class="k">' + (two ? '두 자리' : '한 자리') + '</b>로 반올림 → ' + rep.u + '<br>② 값을 불확도와 <b class="k">같은 자리</b>까지 반올림 → ' + rep.v + '<br>③ 단위는 한 번만 쓴다';
+}
+vi.addEventListener('input', calc); ui.addEventListener('input', calc); un.addEventListener('input', calc);
+// 연습 문제
+const qr = ER.rng(Date.now() % 100000); let ans = null;
+const qq = document.getElementById('e7-q'), qa = document.getElementById('e7-a'), qf = document.getElementById('e7-fb');
+function newQ() {
+  const e = Math.floor(qr() * 4) - 2, lead = [1, 2, 3, 4, 6, 7, 9][Math.floor(qr() * 7)], uraw = (lead + qr() * 0.99) * Math.pow(10, e - 1) * 1.0, v = (1 + qr() * 40) * Math.pow(10, Math.max(0, -e) + 0) ;
+  const val = +(v + qr()).toPrecision(7), u = +uraw.toPrecision(4); ans = ER.report(val, u);
+  qq.textContent = val + ' ± ' + u; qa.value = ''; qf.textContent = '';
+}
+document.getElementById('e7-new').addEventListener('click', newQ);
+document.getElementById('e7-chk').addEventListener('click', () => {
+  const t = qa.value.replace(/\s+/g, '').replace('±', '|'); const [a, b] = t.split('|');
+  if (a === ans.v && b === ans.u) qf.innerHTML = '<span class="ok">정답입니다 ✓</span>'; else qf.innerHTML = '<span class="bad">다시 생각해 보세요.</span> 정답: <b>' + ans.v + ' ± ' + ans.u + '</b>';
+});
+calc(); newQ();
+return { start() { }, stop() { }, frame() { } };
+
+});
+
+/* ---- e8 ---- */
+REG["e8"] = safe("e8.init", function () {
+const cv = document.getElementById('e8-c'), W = 1040, H = 700, c = setupCanvas(cv, W, H);
+const st = { s: 0.6, n: 8, z: 0, q: 0, seed: 1 }, A0 = 1.0, B0 = 2.0; let Z = [];
+function reseed() { const r = ER.rng(st.seed * 31 + 7); Z = []; for (let i = 0; i < 30; i++) Z.push(ER.randn(r)); }
+function draw() {
+  c.fillStyle = C.bg; c.fillRect(0, 0, W, H);
+  const n = st.n, xs = [], ys = []; for (let i = 0; i < n; i++) { const x = 1 + i * (9 / (n - 1)); xs.push(x); ys.push(A0 + st.z + B0 * x + st.q * (x - 5.5) * (x - 5.5) + st.s * Z[i]); }
+  const f = ER.linfit(xs, ys);
+  const px0 = 90, px1 = W - 30, py0 = 40, py1 = 440, xmin = 0, xmax = 10, ymin = -2, ymax = 30;
+  const X = v => px0 + (v - xmin) / (xmax - xmin) * (px1 - px0), Y = v => py1 - (v - ymin) / (ymax - ymin) * (py1 - py0);
+  c.strokeStyle = ER.col.grid; c.lineWidth = 1; for (let v = 0; v <= 10; v += 2) { ER.line(c, X(v), py0, X(v), py1, ER.col.grid, 1); ER.txt(c, String(v), X(v), py1 + 24, { size: 17, color: ER.col.dim, align: 'center' }); }
+  for (let v = 0; v <= 30; v += 10) { ER.line(c, px0, Y(v), px1, Y(v), ER.col.grid, 1); ER.txt(c, String(v), px0 - 10, Y(v) + 6, { size: 17, color: ER.col.dim, align: 'right' }); }
+  ER.line(c, px0, py0, px0, py1, ER.col.dim, 2); ER.line(c, px0, py1, px1, py1, ER.col.dim, 2);
+  // 참 직선
+  ER.line(c, X(0), Y(A0 + B0 * 0), X(10), Y(A0 + B0 * 10), ER.col.ok, 2, [8, 6]);
+  // 맞춤선과 최대·최소 기울기
+  ER.line(c, X(0), Y(f.a), X(10), Y(f.a + f.b * 10), ER.col.a, 3);
+  for (const sg of [1, -1]) { const b2 = f.b + sg * f.sb; ER.line(c, X(0), Y(f.ym - b2 * f.xm), X(10), Y(f.ym + b2 * (10 - f.xm)), 'rgba(255,180,84,.55)', 2, [6, 5]); }
+  // 점과 오차막대 (s: 각 점의 불확도로 추정한 잔차 s)
+  const ebar = f.s > 0 ? f.s : st.s;
+  for (let i = 0; i < n; i++) { ER.line(c, X(xs[i]), Y(ys[i] - ebar), X(xs[i]), Y(ys[i] + ebar), ER.col.b, 2); ER.line(c, X(xs[i]) - 6, Y(ys[i] + ebar), X(xs[i]) + 6, Y(ys[i] + ebar), ER.col.b, 2); ER.line(c, X(xs[i]) - 6, Y(ys[i] - ebar), X(xs[i]) + 6, Y(ys[i] - ebar), ER.col.b, 2); ER.dot(c, X(xs[i]), Y(ys[i]), 6, ER.col.b); }
+  ER.txt(c, '─ 맞춤선    ┄ 최대·최소 기울기    ┄ 참 직선(y = 1 + 2x)', px0 + 10, py0 + 22, { size: 18, color: ER.col.dim });
+  // 잔차
+  const ry0 = 520, rh = 90; ER.txt(c, '잔차 (측정값 − 맞춤선)', px0, ry0 - 18, { size: 20, w: 700 });
+  const rm = Math.max(1.5, ...f.res.map(Math.abs)), RY = v => ry0 + rh / 2 - v / rm * (rh / 2 - 6);
+  ER.line(c, px0, RY(0), px1, RY(0), ER.col.dim, 2); ER.line(c, px0, RY(f.s), px1, RY(f.s), ER.col.pur, 1, [6, 6]); ER.line(c, px0, RY(-f.s), px1, RY(-f.s), ER.col.pur, 1, [6, 6]);
+  for (let i = 0; i < n; i++) { ER.line(c, X(xs[i]), RY(0), X(xs[i]), RY(f.res[i]), ER.col.bad, 3); ER.dot(c, X(xs[i]), RY(f.res[i]), 5, ER.col.bad); }
+  const flag = (() => { let run = 0, mx = 0; for (let i = 1; i < n; i++) { if (Math.sign(f.res[i]) === Math.sign(f.res[i - 1])) run++; else run = 0; mx = Math.max(mx, run); } return mx >= Math.max(3, Math.floor(n / 3)); })();
+  ER.txt(c, flag ? '⚠ 잔차에 규칙적인 무늬가 있다 → 직선이 아니거나 계통 오차' : '잔차가 위아래로 무작위 → 직선 모형이 타당', px0, ry0 + rh + 40, { size: 20, color: flag ? ER.col.bad : ER.col.ok, w: 700 });
+  const rb = ER.report(f.b, f.sb), ra = ER.report(f.a, f.sa);
+  document.getElementById('e8-out').innerHTML = '기울기 b = <b class="k">' + (rb ? rb.v + ' ± ' + rb.u : '—') + '</b> (참 2.00)<br>절편 a = <b class="p">' + (ra ? ra.v + ' ± ' + ra.u : '—') + '</b> (참 ' + (A0 + st.z).toFixed(2) + (st.z ? ' = 1 + 영점 오차' : '') + ')<br>잔차 표준편차 s = ' + f.s.toFixed(3) + '<br>|b − 2| / σ_b = ' + (f.sb > 0 ? (Math.abs(f.b - B0) / f.sb).toFixed(1) : '—');
+}
+ER.slider('e8-s', v => v.toFixed(2), v => { st.s = v; draw(); }); ER.slider('e8-n', v => v + '점', v => { st.n = v; draw(); });
+ER.slider('e8-z', v => v.toFixed(1), v => { st.z = v; draw(); }); ER.slider('e8-q', v => v.toFixed(2), v => { st.q = v; draw(); });
+document.getElementById('e8-re').addEventListener('click', () => { st.seed++; reseed(); draw(); });
+reseed();
+return { start() { draw(); }, stop() { }, frame() { } };
+
+});
+
+/* ---- e9 ---- */
+REG["e9"] = safe("e9.init", function () {
+const cv = document.getElementById('e9-c'), W = 1040, H = 520, c = setupCanvas(cv, W, H);
+const st = { a: 9.72, ua: 0.08, b: 9.80, ub: 0.00 };
+function draw() {
+  c.fillStyle = C.bg; c.fillRect(0, 0, W, H);
+  const den = Math.hypot(st.ua, st.ub), T = den > 0 ? Math.abs(st.a - st.b) / den : (st.a === st.b ? 0 : Infinity);
+  const lo = 9.2, hi = 10.4, X = v => 60 + (v - lo) / (hi - lo) * (W - 120), ay = 400;
+  ER.line(c, 60, ay, W - 60, ay, ER.col.dim, 2); for (let v = 9.2; v <= 10.41; v += 0.2) { ER.line(c, X(v), ay, X(v), ay + 8, ER.col.dim, 2); ER.txt(c, v.toFixed(1), X(v), ay + 32, { size: 18, color: ER.col.dim, align: 'center' }); }
+  const bar = (v, u, y, col, name) => {
+    if (u > 0) { c.fillStyle = col; c.globalAlpha = 0.25; c.fillRect(X(v - 2 * u), y - 18, X(v + 2 * u) - X(v - 2 * u), 36); c.globalAlpha = 1; ER.line(c, X(v - u), y, X(v + u), y, col, 10); ER.line(c, X(v - 2 * u), y, X(v + 2 * u), y, col, 3); }
+    ER.dot(c, X(v), y, 11, col); ER.line(c, X(v), y - 30, X(v), ay, col, 1, [5, 6]); ER.txt(c, name, X(v), y - 40, { size: 22, w: 700, color: col, align: 'center' });
+  };
+  bar(st.a, st.ua, 250, ER.col.a, '내 측정 ' + st.a.toFixed(2) + ' ± ' + st.ua.toFixed(2)); bar(st.b, st.ub, 335, ER.col.b, '비교값 ' + st.b.toFixed(2) + (st.ub > 0 ? ' ± ' + st.ub.toFixed(2) : ' (기준값)'));
+  ER.txt(c, '굵은 선 ±1u,  가는 선·옅은 띠 ±2u', 60, 36, { size: 20, color: ER.col.dim });
+  ER.txt(c, '차이 |Δ| = ' + Math.abs(st.a - st.b).toFixed(3) + '     합성 불확도 √(u₁²+u₂²) = ' + den.toFixed(3), 60, 74, { size: 22, w: 700 });
+  const col = T < 1 ? ER.col.ok : T < 2 ? ER.col.a : ER.col.bad, msg = T < 1 ? '불확도 범위 안에서 일치' : T < 2 ? '경계: 일치하지만 재측정하면 좋다' : T < 3 ? '일치하지 않을 가능성이 크다' : '뚜렷한 불일치 → 계통 오차를 찾자';
+  ER.txt(c, 'k = |Δ| / √(u₁²+u₂²) = ' + (isFinite(T) ? T.toFixed(2) : '∞'), 60, 118, { size: 30, w: 700, color: col }); ER.txt(c, '→ ' + msg, 60, 156, { size: 24, w: 700, color: col });
+  const hint = st.ua > 0.25 ? '불확도가 크면 거의 무엇과도 "일치"한다. 일치 ≠ 정확하다.' : '';
+  ER.txt(c, hint, 60, 480, { size: 21, color: ER.col.dim });
+  document.getElementById('e9-out').innerHTML = 'k = <b class="' + (T < 1 ? 'ok' : T < 2 ? 'k' : 'bad') + '">' + (isFinite(T) ? T.toFixed(2) : '∞') + '</b><br>' + msg;
+}
+ER.slider('e9-a', v => v.toFixed(2), v => { st.a = v; draw(); }); ER.slider('e9-ua', v => v.toFixed(2), v => { st.ua = v; draw(); });
+ER.slider('e9-b', v => v.toFixed(2), v => { st.b = v; draw(); }); ER.slider('e9-ub', v => v.toFixed(2), v => { st.ub = v; draw(); });
+return { start() { draw(); }, stop() { }, frame() { } };
+
+});
+
+/* =====================================================================
+   슬라이드 관리자
+   ===================================================================== */
+const slides = $$('.slide'), deck = $('#deck'); let cur = -1, step = 0, activeFrame = null, activeId = '', hudTimer = 0;
+const NOTES = DECK.notes, ASK = DECK.ask, CIRC = ['①', '②', '③', '④', '⑤'];
+function renderNotes(i) {
+  const n = NOTES[slides[i].id]; if (!n) { $('#notes').innerHTML = ''; return; }
+  $('#notes').innerHTML = `<div class="nh">📝 오개념 교정 노트 · 슬라이드 ${i + 1} / ${slides.length}<span style="float:right">발문을 화면에 띄우기: Q 키</span></div>` + (n.q ? `<div class="nq">💬 발문: ${n.q}</div>` : '') +
+    (n.m || []).map(([a, b]) => `<div class="ni"><span class="nx">❌ 오개념</span> ${a}<br><span class="nv">✅ 교정</span> ${b}</div>`).join('');
+}
+function renderAsk(i) {
+  const q = ASK[slides[i].id] || [];
+  $('#ask').innerHTML = `<div class="ak"><div class="ah">💬 생각해 보기 · ${i + 1} / ${slides.length}</div>` + (q.length ? q.map((t, k) => `<div class="aq">${q.length > 1 ? `<span>${CIRC[k] || (k + 1) + '.'}</span>` : ''}${t}</div>`).join('') : '<div class="aq" style="color:var(--muted)">이 슬라이드에는 발문이 없습니다.</div>') + '<div class="af">Q 키 · Esc · 화면 클릭으로 닫기</div></div>';
+}
+function toggleAsk(force) { const on = $('#ask').classList.toggle('on', force); $('#b-ask').classList.toggle('on', on); }
+const maxStep = i => +(slides[i].dataset.steps || 0);
+function fit() {
+  const vp = $('#viewport'), vw = vp.clientWidth, vh = vp.clientHeight, rf = vw < 1100;
+  document.documentElement.classList.toggle('rf', rf);
+  if (rf) { const W = vw < 640 ? 640 : vw, s = vw / W; deck.style.width = W + 'px'; deck.style.height = (vh / s) + 'px'; deck.style.transform = `scale(${s})`; return; }
+  deck.style.width = ''; deck.style.height = '';
+  const s = Math.min(vw / 1920, vh / 1080); deck.style.transform = `translate(-50%,-50%) scale(${s})`;
+}
+function fitSteps() { // 단계 목록이 영역을 넘으면 자동 축소 (실제 렌더링 높이 기준)
+  if (cur < 0) return; const side = $('.side.steps', slides[cur]); if (!side) return;
+  side.style.transform = ''; side.style.width = '';
+  if (side.clientHeight > 0 && side.scrollHeight > side.clientHeight + 1) { const k = side.clientHeight / side.scrollHeight; side.style.transformOrigin = 'top left'; side.style.transform = `scale(${k})`; side.style.width = (100 / k) + '%'; }
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitSteps);
+function applyStep() {
+  $$('.st', slides[cur]).forEach(el => { el.classList.toggle('on', +el.dataset.i <= step); el.classList.toggle('cur', +el.dataset.i === step); });
+  const id = slides[cur].id, r = REG[id]; r && r.onStep && safe(id + '.onStep', () => r.onStep(step));
+}
+const mgSet = (sl, on) => $$('iframe.mg-embed', sl).forEach(f => { f.src = on ? f.dataset.src : 'about:blank'; });
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.mg-re'); if (b) { const f = $('iframe', b.parentElement); f && f.contentWindow && f.contentWindow.postMessage({ mg: 'cmd', cmd: 'restart' }, '*'); b.blur(); } });
+function show(i, st = 0) {
+  i = Math.max(0, Math.min(slides.length - 1, i));
+  if (cur >= 0) { const oid = slides[cur].id, o = REG[oid]; o && o.stop && safe(oid + '.stop', () => o.stop()); slides[cur].classList.remove('active'); mgSet(slides[cur], false); }
+  cur = i; step = Math.min(st, maxStep(i)); slides[i].classList.add('active'); mgSet(slides[i], true);
+  const id = slides[i].id, r = REG[id]; activeFrame = r && r.frame ? (dt => r.frame(dt)) : null; activeId = id;
+  fitSteps(); r && r.start && safe(id + '.start', () => r.start());
+  $('#h-pg').textContent = `${i + 1} / ${slides.length}`; renderNotes(i); renderAsk(i); toggleAsk(false); applyStep();
+}
+const next = () => { if (step < maxStep(cur)) { step++; applyStep(); } else if (cur < slides.length - 1) show(cur + 1); };
+const prev = () => { if (step > 0) { step--; applyStep(); } else if (cur > 0) show(cur - 1, maxStep(cur - 1)); };
+function isDark() { const r = document.documentElement; return r.dataset.theme === 'dark' || (!r.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches); }
+function themeBtn() { $('#b-theme').textContent = isDark() ? '☀ 라이트 전환' : '🌙 다크 전환'; }
+function toggleTheme() { document.documentElement.dataset.theme = isDark() ? 'light' : 'dark'; themeBtn(); }
+function toggleNotes() { const on = $('#notes').classList.toggle('on'); $('#b-notes').classList.toggle('on', on); }
+function toggleHelp(force) { const on = $('#help').classList.toggle('on', force); $('#b-help').classList.toggle('on', on); }
+function fullscreen() { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) { } }
+function poke() { $('#hud').classList.add('show'); clearTimeout(hudTimer); hudTimer = setTimeout(() => $('#hud').classList.remove('show'), 2600); }
+document.addEventListener('keydown', e => {
+  const t = e.target; if (t && t.tagName === 'INPUT' && t.type === 'range' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); next(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+  else if (e.key === 'Home') show(0); else if (e.key === 'End') show(slides.length - 1);
+  else if (e.key === 'f' || e.key === 'F') fullscreen(); else if (e.key === 'n' || e.key === 'N') toggleNotes(); else if (e.key === 't' || e.key === 'T') toggleTheme(); else if (e.key === 'q' || e.key === 'Q') toggleAsk(); else if (e.key === '?' || e.key === 'h' || e.key === 'H') toggleHelp(); else if (e.key === 'Escape') { toggleHelp(false); toggleAsk(false); if ($('#notes').classList.contains('on')) toggleNotes(); }
+});
+$('#h-prev').onclick = prev; $('#h-next').onclick = next; $('#h-fs').onclick = fullscreen; $('#b-help').onclick = () => toggleHelp(); $('#b-ask').onclick = () => toggleAsk(); $('#ask').onclick = () => toggleAsk(false); $('#help-x').onclick = () => toggleHelp(false); $('#help').onclick = e => { if (e.target.id === 'help') toggleHelp(false); }; $('#b-notes').onclick = toggleNotes; $('#b-theme').onclick = toggleTheme;
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
+['mousemove', 'touchstart', 'pointerdown'].forEach(ev => document.addEventListener(ev, poke, { passive: true }));
+window.addEventListener('resize', () => { fit(); fitSteps(); }); fit();
+/* 터치: 좌우로 쓸어 넘기기 (슬라이더·캔버스·버튼 위에서 시작한 건 제외) */
+(function () {
+  let x0 = 0, y0 = 0, ok = false;
+  document.addEventListener('touchstart', e => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; ok = !(e.target.closest && e.target.closest('input,canvas,button,table,.eq,#help,#notes')); }, { passive: true });
+  document.addEventListener('touchend', e => { if (!ok) return; const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; if (Math.abs(dx) > 70 && Math.abs(dx) > 2 * Math.abs(dy)) { dx < 0 ? next() : prev(); } }, { passive: true });
+})();
+let lastT = performance.now();
+(function loop(now) {
+  const dt = Math.min(.05, (now - lastT) / 1000); lastT = now;
+  if (activeFrame) { try { activeFrame(dt); } catch (e) { reportError(activeId + '.frame', e); activeFrame = null; } }
+  requestAnimationFrame(loop);
+})(lastT);
+
+/* 물리 검증: shared_js에 TESTS() → [[이름, 통과여부, 설명], ...] 가 있으면 콘솔에 출력 */
+(function runSelfTests() {
+  if (typeof TESTS !== 'function') { console.log('물리 검증 항목 없음'); return; }
+  let results = [];
+  try { results = TESTS() || []; } catch (e) { reportError('TESTS', e); return; }
+  console.log('=== ' + DECK.title + ' 물리 검증 ==='); let pass = 0;
+  for (const [name, ok, detail] of results) { console.log(`[${ok ? 'PASS' : 'FAIL'}] ${name}${detail ? ' — ' + detail : ''}`); if (ok) pass++; }
+  console.log(pass === results.length ? '모든 검증 통과' : '일부 검증 실패 — 콘솔 확인 필요');
+  window.__wsSelfTest = { pass, total: results.length };
+})();
+
+window.__deck = { show, next, get cur() { return cur; }, get step() { return step; }, count: slides.length, maxStep };
+let startAt = 0; try { const h = parseInt(location.hash.slice(1), 10); if (h >= 1 && h <= slides.length) startAt = h - 1; } catch (e) { }
+themeBtn(); show(startAt); poke();
+</script>
+</body>
+</html>

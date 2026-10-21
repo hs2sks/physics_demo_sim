@@ -1,0 +1,1971 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>저항의 직렬연결과 병렬연결 가상 실험실</title>
+<style>
+  :root {
+    --bg: #f4f6fa; --panel: #ffffff; --ink: #1c2733; --sub: #5a6b7d;
+    --accent: #1f6fd6; --accent2: #d64545; --ok: #1e8f4e;
+    --border: #d7dee8; --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+  body {
+    font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+    background: var(--bg); color: var(--ink);
+    padding: 12px; font-size: 15px;
+  }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  header h1 { font-size: 1.25em; }
+  header .spacer { flex: 1; }
+  a.home { text-decoration:none; color:var(--sub); border:1px solid var(--border); padding:6px 12px; border-radius:8px; font-size:0.9em; white-space:nowrap; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .tabs button { flex: 0 0 auto; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 1em; }
+  .tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .layout { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .sim-col { flex: 2 1 480px; display: flex; flex-direction: column; gap: 12px; }
+  .side-col { flex: 1 1 320px; display: flex; flex-direction: column; gap: 12px; }
+
+  #sceneWrap { position: relative; width: 100%; aspect-ratio: 4/3; border-radius: 8px; overflow: hidden; background: radial-gradient(circle at 50% 30%, #16233a, #060a12 75%); }
+  #sceneWrap canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #hoverHint { position:absolute; left:8px; bottom:8px; color:#9fb3d9; font-size:0.78em; background:rgba(6,10,18,0.55); padding:4px 8px; border-radius:6px; pointer-events:none; }
+  #hoverHint:empty { display: none; }
+  #simError { position:absolute; left:8px; right:8px; top:8px; color:#fff; background:rgba(214,69,69,0.92); padding:6px 10px; border-radius:6px; font-size:0.82em; white-space:pre-wrap; }
+
+  .scenario-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .scenario-picker button { flex: 1 1 30%; min-width: 120px; padding: 8px 6px; font-size: 0.86em; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  .scenario-picker button.active { background: #eaf1fd; border-color: var(--accent); color: var(--accent); font-weight: 700; }
+
+  .param { margin-bottom: 10px; }
+  .param label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 4px; font-size: 0.92em; }
+  .param label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .param input[type=range] { width: 100%; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .hint { color: var(--sub); font-size: 0.83em; margin-top: 2px; line-height: 1.5; }
+
+  button { font-size: 1em; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.warn { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .controls-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.82em; color: var(--sub); margin-top: 8px; }
+  .legend:empty { display: none; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .swatch { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .swatch.bar { border-radius: 2px; }
+
+  table.readout { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+  table.readout td { padding: 4px 2px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  table.readout td:first-child { color: var(--sub); }
+  table.readout td:last-child { text-align: right; font-weight: 700; }
+
+  details { margin-top: 6px; }
+  summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+  .formula-body { padding: 8px 2px; line-height: 1.8; font-size: 0.92em; }
+  .formula-body .eq { font-size: 1.08em; text-align: center; margin: 6px 0; font-family: Georgia, serif; }
+  .note { border-left: 3px solid var(--accent); background: #eef4fd; padding: 8px 10px; border-radius: 6px; font-size: 0.86em; margin-top: 8px; line-height: 1.6; }
+  .note:empty { display: none; }
+  .misconception { border-left: 3px solid var(--accent2); background: #fdeeee; padding: 8px 10px; border-radius: 6px; font-size: 0.86em; margin-top: 8px; line-height: 1.6; }
+
+  canvas.chart { width: 100%; background: #fff; border: 1px solid var(--border); border-radius: 6px; }
+
+  body.projector { font-size: 19px; }
+  body.projector button { padding: 12px 18px; }
+  body.projector .scenario-picker button { font-size: 1em; padding: 12px 8px; }
+
+  @media (max-width: 720px) {
+    body { font-size: 16px; padding: 8px; }
+    .layout { flex-direction: column; }
+    .sim-col, .side-col { flex: 1 1 100%; }
+    button { padding: 11px 14px; }
+    input[type=range] { height: 26px; }
+  }
+/* ---- 레시피 입력 extra_css ---- */
+
+.lab{display:flex;flex-direction:column;gap:10px;font-size:13px;line-height:1.5}
+.lab canvas{width:100%;display:block;background:#0e1623;border:1px solid #2b3a52;border-radius:10px}
+.lbtn{background:#2d6cdf;color:#fff;border:0;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:13px}
+.lbtn.ghost{background:transparent;border:1px solid #5a6b85;color:inherit}.lbtn.sm{padding:4px 10px;margin-left:8px;font-size:12px}
+.lbtn.tg{background:#2b3a52;margin:3px 4px 3px 0}.swrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.warn div{background:rgba(255,107,107,.13);border:1px solid #ff6b6b;border-radius:8px;padding:6px 10px;margin-bottom:4px}
+.mut{opacity:.75}.pbox{border:1px solid #2b3a52;border-radius:10px;padding:8px 10px}.ptitle,.rtitle{font-weight:700;margin-bottom:4px}
+.prow{display:flex;align-items:center;gap:8px;margin:3px 0}.prow span{min-width:92px}.prow i{display:block;height:12px;background:#f4a261;border-radius:6px}.prow b{min-width:64px;text-align:right}
+.prow.tot i{background:#4cc9f0}.prow.tot i.bad{background:#ff4d4d}.prow.lim i{background:transparent;border:1px dashed #ffd166}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}.card{border-radius:10px;padding:8px 10px;border:1px solid #2b3a52}
+.card.am{border-color:#4cc9f0}.card.vm{border-color:#b388ff}.card.sw{border-color:#ffd166}
+.rt,.ct{border-collapse:collapse;width:100%}.rt th,.rt td,.ct th,.ct td{border:1px solid #2b3a52;padding:4px 8px;text-align:left;vertical-align:top}.rt td{text-align:center}.rt th{text-align:center}
+.steps{display:flex;flex-direction:column;gap:8px}.st{border-left:4px solid #ffd166;background:rgba(255,209,102,.07);padding:8px 10px;border-radius:0 8px 8px 0}
+.cmp .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-top:10px}.good,.bad{border-radius:10px;padding:8px 12px}.good{border:1px solid #39b36b}.bad{border:1px solid #ff9f43}
+.cmp ul{margin:4px 0 0 16px;padding:0}.tgs{display:flex;flex-wrap:wrap}
+
+</style>
+</head>
+<body>
+
+<header>
+  <a class="home" href="../../index.html">🏠 홈</a>
+  <h1>🔌 저항의 직렬연결과 병렬연결 가상 실험실</h1>
+  <span class="spacer"></span>
+  <button id="projectorBtn" title="프로젝터용 큰 글씨 모드">🖥 큰 글씨 모드</button>
+</header>
+
+<div class="tabs" id="tabs"></div>
+
+<div class="layout">
+
+  <div class="sim-col">
+    <div class="panel">
+      <div id="sceneWrap">
+        <div id="hoverHint"></div>
+        <div id="simError" hidden></div>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="panel" id="graphPanel" hidden>
+      <canvas id="chartCanvas" class="chart" width="440" height="220"></canvas>
+      <div class="hint" id="chartHint"></div>
+    </div>
+  </div>
+
+  <div class="side-col">
+
+    <div class="panel" id="scenarioPanel">
+      <div class="scenario-picker" id="scenarioPicker"></div>
+      <div id="scenarioBody"></div>
+      <div id="customPanel"></div>
+    </div>
+
+    <div class="panel" id="readoutPanel">
+      <b id="readoutTitle"></b>
+      <table class="readout" id="readout"></table>
+      <div class="note" id="readoutNote"></div>
+    </div>
+
+    <div class="panel">
+      <details id="formulaDetails">
+        <summary>📐 관련 공식 보기</summary>
+        <div class="formula-body" id="formulaBody"></div>
+      </details>
+    </div>
+
+    <div class="panel" id="misconceptionPanel"></div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.140.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.140.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const WS_CONFIG = {
+ "title": "저항의 직렬연결과 병렬연결 가상 실험실",
+ "renderer": "three",
+ "scene": {
+  "box_half": 16,
+  "camera": [
+   0,
+   30,
+   21
+  ],
+  "hint": "드래그: 회전 · 휠: 확대 · 스위치(밸브·문)를 클릭하면 열고 닫혀요",
+  "grid": false,
+  "axes": false
+ },
+ "legend": [
+  {
+   "label": "전류(전하·물·공)",
+   "color": "#ffe66d",
+   "shape": "dot"
+  },
+  {
+   "label": "저항",
+   "color": "#f4a261",
+   "shape": "bar"
+  },
+  {
+   "label": "전류계 A",
+   "color": "#4cc9f0",
+   "shape": "bar"
+  },
+  {
+   "label": "전압계 V",
+   "color": "#b388ff",
+   "shape": "bar"
+  }
+ ],
+ "tabs": [
+  {
+   "id": "exp",
+   "label": "🔬 ① 실험 (77쪽)"
+  },
+  {
+   "id": "model",
+   "label": "🧊 ② 비유 모형"
+  },
+  {
+   "id": "compare",
+   "label": "📊 ③ 모형 vs 실제"
+  },
+  {
+   "id": "life",
+   "label": "🏠 ④ 생활 속 연결 (80~81쪽)"
+  }
+ ],
+ "scenarios": [
+  {
+   "id": "exp-series",
+   "tab": "exp",
+   "name": "① 직렬연결 실험",
+   "section": "교과서 77~78쪽",
+   "desc": "저항 두 개를 한 줄로 이어 전지·스위치·전류계·전압계로 측정합니다. 스위치를 닫고, 측정 대상(저항 A·B·회로 전체)을 바꿔 가며 전류와 전압을 읽어 77쪽 표에 기록하세요. 아래 회로도와 위 실물 배선은 같은 회로입니다. 계기를 일부러 잘못 연결해 무슨 일이 생기는지도 확인해 보세요.",
+   "misconception": "전류는 저항을 지나면서 \"닳아서\" 뒤쪽 저항에는 더 적게 흐른다? → 아니에요. 직렬에서 전류는 어디서나 같습니다(전하가 쌓이거나 사라지지 않음). 저항을 지나며 줄어드는 것은 전류가 아니라 전위(에너지)입니다.",
+   "formula": [
+    {
+     "eq_html": "I = I<sub>1<\/sub> = I<sub>2<\/sub>",
+     "text_html": "직렬: 모든 지점에서 전류가 같다"
+    },
+    {
+     "eq_html": "V = V<sub>1<\/sub> + V<sub>2<\/sub>,  V<sub>1<\/sub>:V<sub>2<\/sub> = R<sub>1<\/sub>:R<sub>2<\/sub>",
+     "text_html": "전압은 저항에 비례해 나뉜다"
+    },
+    {
+     "eq_html": "R = R<sub>1<\/sub> + R<sub>2<\/sub>",
+     "text_html": "합성 저항은 저항의 합"
+    },
+    {
+     "eq_html": "P<sub>1<\/sub>:P<sub>2<\/sub> = R<sub>1<\/sub>:R<sub>2<\/sub>",
+     "text_html": "저항이 큰 쪽이 더 많이 소비"
+    }
+   ],
+   "animated": true,
+   "use_common": true,
+   "choices": [
+    {
+     "key": "target",
+     "label": "측정 대상",
+     "options": [
+      {
+       "value": 0,
+       "label": "저항 A (R₁)"
+      },
+      {
+       "value": 1,
+       "label": "저항 B (R₂)"
+      },
+      {
+       "value": 2,
+       "label": "회로 전체"
+      }
+     ],
+     "value": 0
+    },
+    {
+     "key": "am",
+     "label": "전류계 연결",
+     "options": [
+      {
+       "value": 0,
+       "label": "회로에 직렬 (올바름)"
+      },
+      {
+       "value": 1,
+       "label": "저항에 병렬 (잘못)"
+      }
+     ],
+     "value": 0
+    },
+    {
+     "key": "vm",
+     "label": "전압계 연결",
+     "options": [
+      {
+       "value": 0,
+       "label": "재려는 곳에 병렬 (올바름)"
+      },
+      {
+       "value": 1,
+       "label": "회로에 직렬 (잘못)"
+      }
+     ],
+     "value": 0
+    }
+   ]
+  },
+  {
+   "id": "exp-parallel",
+   "tab": "exp",
+   "name": "② 병렬연결 실험",
+   "section": "교과서 77, 79쪽",
+   "desc": "저항 두 개를 나란히 이어 측정합니다. 직렬 때와 무엇이 같고 달라지는지 비교하세요. 병렬에서 전압계는 어느 저항에 달아도 같은 값을 읽습니다. 전류계를 가지(저항 A, B)와 전체 회선에 각각 달아 I = I₁ + I₂ 도 확인해 보세요.",
+   "misconception": "저항을 병렬로 더 연결하면 저항이 커진다? → 반대예요. 전류가 지나는 길이 늘어나므로 합성 저항은 가장 작은 저항보다도 작아집니다.",
+   "formula": [
+    {
+     "eq_html": "V = V<sub>1<\/sub> = V<sub>2<\/sub>",
+     "text_html": "병렬: 각 저항에 걸리는 전압이 같다"
+    },
+    {
+     "eq_html": "I = I<sub>1<\/sub> + I<sub>2<\/sub>,  I<sub>1<\/sub>:I<sub>2<\/sub> = 1/R<sub>1<\/sub> : 1/R<sub>2<\/sub>",
+     "text_html": "전류는 저항이 작은 쪽에 더 많이 흐른다"
+    },
+    {
+     "eq_html": "1/R = 1/R<sub>1<\/sub> + 1/R<sub>2<\/sub>",
+     "text_html": "합성 저항의 역수는 역수의 합"
+    },
+    {
+     "eq_html": "P<sub>1<\/sub>:P<sub>2<\/sub> = 1/R<sub>1<\/sub> : 1/R<sub>2<\/sub>",
+     "text_html": "저항이 작은 쪽이 더 많이 소비"
+    }
+   ],
+   "animated": true,
+   "use_common": true,
+   "choices": [
+    {
+     "key": "target",
+     "label": "측정 대상",
+     "options": [
+      {
+       "value": 0,
+       "label": "저항 A (R₁)"
+      },
+      {
+       "value": 1,
+       "label": "저항 B (R₂)"
+      },
+      {
+       "value": 2,
+       "label": "회로 전체"
+      }
+     ],
+     "value": 0
+    },
+    {
+     "key": "am",
+     "label": "전류계 연결",
+     "options": [
+      {
+       "value": 0,
+       "label": "회로에 직렬 (올바름)"
+      },
+      {
+       "value": 1,
+       "label": "저항에 병렬 (잘못)"
+      }
+     ],
+     "value": 0
+    },
+    {
+     "key": "vm",
+     "label": "전압계 연결",
+     "options": [
+      {
+       "value": 0,
+       "label": "재려는 곳에 병렬 (올바름)"
+      },
+      {
+       "value": 1,
+       "label": "회로에 직렬 (잘못)"
+      }
+     ],
+     "value": 0
+    }
+   ]
+  },
+  {
+   "id": "exp-meters",
+   "tab": "exp",
+   "name": "③ 전류계·전압계·스위치 (저항 1개)",
+   "section": "교과서 77쪽 활동 길잡이",
+   "desc": "가장 단순한 회로(저항 1개)에서 계기 연결법을 익힙니다. 올바른 연결과 잘못된 연결, 스위치를 열고 닫을 때의 값을 비교하세요. 전지의 내부 저항 r을 키우면 전류가 클수록 전지 단자 전압이 떨어지는 것도 볼 수 있어요.",
+   "misconception": "전압계와 전류계는 어디에 달아도 값만 읽어 주는 장치다? → 계기도 내부 저항을 가진 회로 소자예요. 전류계는 저항이 거의 0이라 병렬로 달면 단락, 전압계는 저항이 매우 커서 직렬로 달면 전류가 막힙니다.",
+   "formula": [
+    {
+     "eq_html": "V = I R",
+     "text_html": "옴의 법칙"
+    },
+    {
+     "eq_html": "V<sub>단자<\/sub> = ε − I r",
+     "text_html": "전지에서 전류가 클수록 단자 전압이 낮아진다"
+    },
+    {
+     "eq_html": "전류계: 직렬, R<sub>A<\/sub> ≈ 0",
+     "text_html": ""
+    },
+    {
+     "eq_html": "전압계: 병렬, R<sub>V<\/sub> ≈ ∞",
+     "text_html": ""
+    }
+   ],
+   "animated": true,
+   "use_common": false,
+   "choices": [
+    {
+     "key": "target",
+     "label": "측정 대상",
+     "options": [
+      {
+       "value": 0,
+       "label": "저항 R₁"
+      },
+      {
+       "value": 2,
+       "label": "회로 전체 (전지 양단)"
+      }
+     ],
+     "value": 0
+    },
+    {
+     "key": "am",
+     "label": "전류계 연결",
+     "options": [
+      {
+       "value": 0,
+       "label": "회로에 직렬 (올바름)"
+      },
+      {
+       "value": 1,
+       "label": "저항에 병렬 (잘못)"
+      }
+     ],
+     "value": 0
+    },
+    {
+     "key": "vm",
+     "label": "전압계 연결",
+     "options": [
+      {
+       "value": 0,
+       "label": "재려는 곳에 병렬 (올바름)"
+      },
+      {
+       "value": 1,
+       "label": "회로에 직렬 (잘못)"
+      }
+     ],
+     "value": 0
+    }
+   ],
+   "params": [
+    {
+     "key": "emf",
+     "label": "전지의 기전력 ε",
+     "min": 1.5,
+     "max": 12,
+     "step": 0.5,
+     "value": 6,
+     "unit": "V"
+    },
+    {
+     "key": "R1",
+     "label": "저항 R₁",
+     "min": 5,
+     "max": 50,
+     "step": 1,
+     "value": 10,
+     "unit": "Ω"
+    },
+    {
+     "key": "r",
+     "label": "전지 내부 저항 r",
+     "min": 0,
+     "max": 5,
+     "step": 0.1,
+     "value": 0,
+     "unit": "Ω"
+    }
+   ]
+  },
+  {
+   "id": "m-water-s",
+   "tab": "model",
+   "name": "④ 물 파이프 모형 — 직렬",
+   "section": "비유 모형 · 직렬",
+   "desc": "펌프(전지)가 물을 밀어 좁은 관 두 개(저항)를 차례로 지나게 하는 모형입니다. 관 길이가 저항값에 비례하고, 세워 둔 투명 관(표준관)의 수위가 각 지점의 압력(전위)입니다. 오른쪽 아래의 단계 ①②③을 따라 R = R₁ + R₂ 를 이끌어 보세요. 밸브(스위치)를 클릭해 열고 닫아 볼 수도 있어요.",
+   "misconception": "물이 좁은 관에서 \"줄어든다\"? → 유량(전류)은 어디서나 같고, 좁은 곳에서는 속도가 빨라질 뿐 입자 수 흐름은 같아요. 줄어드는 것은 압력(전위)입니다.",
+   "formula": [
+    {
+     "eq_html": "ΔP<sub>1<\/sub> = I R<sub>1<\/sub>,  ΔP<sub>2<\/sub> = I R<sub>2<\/sub>",
+     "text_html": "각 관의 압력 강하"
+    },
+    {
+     "eq_html": "ΔP = ΔP<sub>1<\/sub> + ΔP<sub>2<\/sub>  ⇒  R = R<sub>1<\/sub> + R<sub>2<\/sub>",
+     "text_html": "관을 이어 붙이면 길이가 더해진다"
+    }
+   ],
+   "animated": true,
+   "use_common": true
+  },
+  {
+   "id": "m-water-p",
+   "tab": "model",
+   "name": "⑤ 물 파이프 모형 — 병렬",
+   "section": "비유 모형 · 병렬",
+   "desc": "펌프에서 나온 물이 두 관으로 갈라졌다가 다시 만납니다. 관의 굵기(단면적)가 1/R 에 비례해 그려져 있어요. 두 모임점의 수위 차는 같고, 굵은 관(작은 저항)으로 더 많이 흐릅니다. 단계 ①②③으로 1/R = 1/R₁ + 1/R₂ 를 이끌어 보세요.",
+   "misconception": "관을 하나 더 놓았는데 왜 전체 저항이 작아질까? → 이미 있는 길을 막은 것이 아니라 물이 지나는 통로(단면적)를 더한 것이기 때문이에요.",
+   "formula": [
+    {
+     "eq_html": "I<sub>1<\/sub> = V/R<sub>1<\/sub>,  I<sub>2<\/sub> = V/R<sub>2<\/sub>",
+     "text_html": "같은 압력 차에서 갈라지는 유량"
+    },
+    {
+     "eq_html": "I = I<sub>1<\/sub> + I<sub>2<\/sub> = V (1/R<sub>1<\/sub> + 1/R<sub>2<\/sub>)  ⇒  1/R = 1/R<sub>1<\/sub> + 1/R<sub>2<\/sub>",
+     "text_html": "관을 나란히 놓으면 단면적이 더해진다"
+    }
+   ],
+   "animated": true,
+   "use_common": true
+  },
+  {
+   "id": "m-hill-s",
+   "tab": "model",
+   "name": "⑥ 높이 지형 모형 — 직렬",
+   "section": "비유 모형 · 직렬",
+   "desc": "전지는 공을 높이 올려 주는 엘리베이터, 전위는 높이입니다. 못이 박힌 내리막(저항)을 두 개 차례로 내려오며 높이가 줄어요. 높이 차의 합이 엘리베이터가 올린 높이이고, 한 줄로만 가니 공의 통과 수(전류)는 어디서나 같습니다. 방금 배운 전위·전위차와 이어지는 모형이에요.",
+   "misconception": "높이가 줄면 공(전하)도 줄어든다? → 공은 사라지지 않아요. 잃는 것은 위치 에너지이고, 못과 부딪히며 열로 바뀝니다.",
+   "formula": [
+    {
+     "eq_html": "ε = V<sub>r<\/sub> + V<sub>1<\/sub> + V<sub>2<\/sub>",
+     "text_html": "올린 높이 = 내려온 높이의 합"
+    },
+    {
+     "eq_html": "V<sub>1<\/sub>:V<sub>2<\/sub> = R<sub>1<\/sub>:R<sub>2<\/sub>",
+     "text_html": "못이 많은 내리막에서 더 많이 내려간다"
+    },
+    {
+     "eq_html": "R = R<sub>1<\/sub> + R<sub>2<\/sub>",
+     "text_html": ""
+    }
+   ],
+   "animated": true,
+   "use_common": true
+  },
+  {
+   "id": "m-hill-p",
+   "tab": "model",
+   "name": "⑦ 높이 지형 모형 — 병렬",
+   "section": "비유 모형 · 병렬",
+   "desc": "엘리베이터로 올라온 공이 두 길로 갈라져 같은 높이까지 내려옵니다. 두 길의 높이 차(전압)는 같고, 못이 적은 길(작은 R)로 공이 더 많이 지나가요. 통로가 둘이 되었으니 합성 저항이 줄어듭니다.",
+   "misconception": "길이 두 개니까 높이 차도 둘로 나뉜다? → 아니에요. 같은 높이에서 출발해 같은 높이로 내려오므로 높이 차(전압)는 두 길에서 똑같습니다. 나뉘는 것은 공의 수(전류)예요.",
+   "formula": [
+    {
+     "eq_html": "V<sub>1<\/sub> = V<sub>2<\/sub> = V",
+     "text_html": "같은 높이 차"
+    },
+    {
+     "eq_html": "I = I<sub>1<\/sub> + I<sub>2<\/sub>",
+     "text_html": "통과하는 공의 수는 더해진다"
+    },
+    {
+     "eq_html": "1/R = 1/R<sub>1<\/sub> + 1/R<sub>2<\/sub>",
+     "text_html": ""
+    }
+   ],
+   "animated": true,
+   "use_common": true
+  },
+  {
+   "id": "compare",
+   "tab": "compare",
+   "name": "⑧ 모형과 실제 회로 비교",
+   "section": "분석 · 같은 점과 한계",
+   "desc": "두 모형(물 파이프, 높이 지형)이 실제 회로의 무엇에 대응하고 어디서 어긋나는지 정리합니다. 위 장면에서 모형과 직렬/병렬을 골라 확인하고, 아래 표의 대응 관계와 한계를 읽어 보세요.",
+   "misconception": "비유 모형은 실제와 똑같다? → 모형은 \"관계 구조\"만 빌려 온 것이라 어긋나는 점이 반드시 있어요. 한계를 아는 것이 모형을 제대로 쓰는 방법입니다.",
+   "formula": [
+    {
+     "eq_html": "회로: V, I, R  ↔  모형: 압력 차(높이 차), 유량(공의 수), 관·못",
+     "text_html": ""
+    }
+   ],
+   "animated": true,
+   "use_common": true,
+   "choices": [
+    {
+     "key": "cmodel",
+     "label": "비교할 모형",
+     "options": [
+      {
+       "value": 0,
+       "label": "💧 물 파이프"
+      },
+      {
+       "value": 1,
+       "label": "⛰️ 높이 지형"
+      }
+     ],
+     "value": 0
+    },
+    {
+     "key": "ctopo",
+     "label": "연결 방식",
+     "options": [
+      {
+       "value": 0,
+       "label": "직렬"
+      },
+      {
+       "value": 1,
+       "label": "병렬"
+      }
+     ],
+     "value": 0
+    }
+   ]
+  },
+  {
+   "id": "life-tap",
+   "tab": "life",
+   "name": "⑨ 멀티탭 과부하 (병렬 + 직렬 차단기)",
+   "section": "교과서 80~81쪽",
+   "desc": "가정의 전기 기구는 병렬로 연결돼 전압은 220 V로 같고 전류는 더해집니다. 전기주전자·전자레인지·전기밥솥을 정격 220 V, 16 A 멀티탭에 모두 꽂으면 어떻게 될까요? 직렬로 들어 있는 차단기가 하는 일도 확인하세요.",
+   "misconception": "전기 기구를 많이 꽂아도 전압이 같으니 괜찮다? → 전압은 같아도 전류가 더해져 전선에 허용 전류 이상이 흐르면 과열 화재가 날 수 있어요.",
+   "formula": [
+    {
+     "eq_html": "I = I<sub>1<\/sub> + I<sub>2<\/sub> + … = (P<sub>1<\/sub> + P<sub>2<\/sub> + …)/V",
+     "text_html": ""
+    },
+    {
+     "eq_html": "R = V² / P",
+     "text_html": "기구마다 저항이 다르다"
+    }
+   ],
+   "animated": false,
+   "use_common": false,
+   "params": [
+    {
+     "key": "rated",
+     "label": "멀티탭 정격 전류",
+     "min": 10,
+     "max": 16,
+     "step": 1,
+     "value": 16,
+     "unit": "A"
+    }
+   ]
+  },
+  {
+   "id": "life-lights",
+   "tab": "life",
+   "name": "⑩ 장식 전구: 직렬 vs 병렬",
+   "section": "교과서 81쪽",
+   "desc": "직렬 전구 줄은 전체 전압이 전구에 나뉘어 걸리지만 한 개만 끊어져도 모두 꺼집니다. 병렬은 하나가 끊어져도 나머지가 켜지지만 모든 전구에 전원 전압이 그대로 걸립니다. 전구를 클릭해 끊어 보고, 전구 수와 전원 전압을 바꿔 보세요.",
+   "misconception": "전구를 직렬로 연결하면 전구마다 전류가 다르다? → 전류는 같아요. 전구 N개에 전압이 1/N씩 나뉘는 것입니다.",
+   "formula": [
+    {
+     "eq_html": "직렬: V<sub>전구<\/sub> = V/N,  I = V/(N R)",
+     "text_html": ""
+    },
+    {
+     "eq_html": "병렬: V<sub>전구<\/sub> = V,  I = N V/R",
+     "text_html": ""
+    }
+   ],
+   "animated": false,
+   "use_common": false,
+   "choices": [
+    {
+     "key": "bmode",
+     "label": "연결 방식",
+     "options": [
+      {
+       "value": 0,
+       "label": "직렬"
+      },
+      {
+       "value": 1,
+       "label": "병렬"
+      }
+     ],
+     "value": 0
+    }
+   ],
+   "params": [
+    {
+     "key": "nb",
+     "label": "전구 수",
+     "min": 3,
+     "max": 30,
+     "step": 1,
+     "value": 18,
+     "unit": "개"
+    },
+    {
+     "key": "Vs",
+     "label": "전원 전압",
+     "min": 6,
+     "max": 260,
+     "step": 1,
+     "value": 220,
+     "unit": "V"
+    }
+   ]
+  }
+ ],
+ "common_params": {
+  "title": "회로 설정",
+  "params": [
+   {
+    "key": "emf",
+    "label": "전지의 기전력 ε",
+    "min": 1.5,
+    "max": 12,
+    "step": 0.5,
+    "value": 6,
+    "unit": "V"
+   },
+   {
+    "key": "R1",
+    "label": "저항 R₁",
+    "min": 5,
+    "max": 50,
+    "step": 1,
+    "value": 10,
+    "unit": "Ω"
+   },
+   {
+    "key": "R2",
+    "label": "저항 R₂",
+    "min": 5,
+    "max": 50,
+    "step": 1,
+    "value": 20,
+    "unit": "Ω"
+   },
+   {
+    "key": "r",
+    "label": "전지 내부 저항 r",
+    "min": 0,
+    "max": 5,
+    "step": 0.1,
+    "value": 0,
+    "unit": "Ω"
+   }
+  ]
+ },
+ "readout_title": "측정·계산값"
+};
+</script>
+<script>
+/* ============================ 시뮬레이션 코드 (레시피 입력 sim_js) ============================ */
+"use strict";
+/* 0. 공통 상태·도우미 */
+const S = { sw: true, bench: null, flow: null, life: null, sprites: {}, rec: { sig: "", rows: {} }, cfgKey: "", tap: null, bulbs: null, t: 0, hint: {} };
+function clearGroup(g) { while (g.children.length) g.remove(g.children[0]); }
+const R2s = n => n.toFixed(1).replace(/\.0$/, "");
+function makeSprite(T, w, h, sx, sy) {
+  const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+  const tex = new T.CanvasTexture(cv);
+  const sp = new T.Sprite(new T.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+  sp.scale.set(sx, sy, 1); sp.renderOrder = 10; sp.userData = { cv, tex, last: "" }; return sp;
+}
+function setSprite(sp, text, color, bg) {
+  const u = sp.userData, key = text + "|" + color + "|" + bg; if (u.last === key) return; u.last = key;
+  const g = u.cv.getContext("2d"), w = u.cv.width, h = u.cv.height; g.clearRect(0, 0, w, h);
+  g.fillStyle = bg || "rgba(10,16,26,.82)"; const r = h / 2.6; g.beginPath(); g.moveTo(r, 0); g.arcTo(w, 0, w, h, r); g.arcTo(w, h, 0, h, r); g.arcTo(0, h, 0, 0, r); g.arcTo(0, 0, w, 0, r); g.fill();
+  g.fillStyle = color || "#fff"; let fs = Math.floor(h * 0.52); g.font = "bold " + fs + "px sans-serif"; const tw = g.measureText(text).width; if (tw > w - 28) { fs = Math.floor(fs * (w - 28) / tw); g.font = "bold " + fs + "px sans-serif"; } g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(text, w / 2, h / 2 + 2);
+  u.tex.needsUpdate = true;
+}
+function circuitCfg(api, topo, over) {
+  const P = api.P;
+  return Object.assign({ topo, target: Number(P.target) || 0, am: Number(P.am) || 0, vm: Number(P.vm) || 0, sw: S.sw, R1: P.R1, R2: P.R2, emf: P.emf, r: P.r || 0 }, over || {});
+}
+
+/* 1. 회로 해석 — 노달 해석(전지=전압원+내부저항, 계기도 내부저항을 가진 소자) */
+const AM_R = 0.01, VM_R = 1e6, SW_ON = 0.002, SW_OFF = 1e9;
+const TGT_NAME = ["저항 A(R₁)", "저항 B(R₂)", "회로 전체"];
+
+function buildNet(c) {
+  const E = [], uf = {}; let k = 0;
+  const nn = () => "n" + (++k);
+  const find = x => (uf[x] === undefined || uf[x] === x) ? x : (uf[x] = find(uf[x]));
+  const merge = (a, b) => { const ra = find(a), rb = find(b); if (ra === rb) return; if (ra === "g") uf[rb] = ra; else uf[ra] = rb; };
+  const N = {};
+  const RES = {
+    AM: { id: "AM", R: AM_R }, VM: { id: "VM", R: VM_R },
+    SW: { id: "SW", R: c.sw ? SW_ON : SW_OFF },
+    R1: { id: "R1", R: c.R1 }, R2: { id: "R2", R: c.R2 },
+  };
+  const slotOf = t => c.topo === "parallel" ? ["b1", "b2", "s0"][t] : ["s1", "s3", "s0"][t];
+  const slotAM = (!c.noMeter && c.am === 0) ? slotOf(c.target) : null;
+  const slotVM = (!c.noMeter && c.vm === 1) ? slotOf(c.target) : null;
+  const slot = s => { const it = []; if (slotAM === s) it.push(RES.AM); if (slotVM === s) it.push(RES.VM); return it; };
+  function chain(from, to, items) {
+    let cur = from;
+    items.forEach((it, i) => { const nxt = i === items.length - 1 ? to : nn(); E.push({ id: it.id, a: cur, b: nxt, R: it.R }); N[it.id] = { a: cur, b: nxt }; cur = nxt; });
+    if (!items.length) merge(from, to);
+  }
+  if (c.topo === "parallel") {
+    chain("bp", "top", [...slot("s0"), RES.SW]);
+    chain("top", "bot", [...slot("b1"), RES.R1]);
+    chain("top", "bot", [...slot("b2"), RES.R2]);
+    merge("bot", "g");
+  } else {
+    const items = [...slot("s0"), RES.SW, ...slot("s1"), RES.R1];
+    if (c.topo === "series") items.push(RES.R2);
+    items.push(...slot("s3"));
+    chain("bp", "g", items);
+  }
+  if (!c.noMeter) {
+    const across = c.target === 2 ? ["bp", "g"] : (c.target === 1 && N.R2 ? [N.R2.a, N.R2.b] : [N.R1.a, N.R1.b]);
+    if (c.vm === 0) { E.push({ id: "VM", a: across[0], b: across[1], R: VM_R }); }
+    if (c.am === 1) { E.push({ id: "AM", a: across[0], b: across[1], R: AM_R }); }
+  }
+  E.forEach(e => { e.a = find(e.a); e.b = find(e.b); });
+  return { elems: E, bp: find("bp"), g: find("g") };
+}
+
+function solveNet(net, emf, rInt) {
+  const names = [];
+  const idx = n => { if (n === net.g) return -1; let i = names.indexOf(n); if (i < 0) { names.push(n); i = names.length - 1; } return i; };
+  net.elems.forEach(e => { e.ia = idx(e.a); e.ib = idx(e.b); });
+  const bp = idx(net.bp), n = names.length;
+  const A = Array.from({ length: n }, () => new Array(n + 1).fill(0));
+  const stamp = (i, j, g) => { if (i >= 0) A[i][i] += g; if (j >= 0) A[j][j] += g; if (i >= 0 && j >= 0) { A[i][j] -= g; A[j][i] -= g; } };
+  net.elems.forEach(e => stamp(e.ia, e.ib, 1 / e.R));
+  const rr = Math.max(rInt, 0.002);
+  if (bp >= 0) { A[bp][bp] += 1 / rr; A[bp][n] += emf / rr; }
+  for (let i = 0; i < n; i++) A[i][i] += 1e-12;
+  for (let i = 0; i < n; i++) {
+    let p = i; for (let r = i + 1; r < n; r++) if (Math.abs(A[r][i]) > Math.abs(A[p][i])) p = r;
+    [A[i], A[p]] = [A[p], A[i]];
+    for (let r = i + 1; r < n; r++) { const f = A[r][i] / A[i][i]; if (f) for (let c2 = i; c2 <= n; c2++) A[r][c2] -= f * A[i][c2]; }
+  }
+  const x = new Array(n).fill(0);
+  for (let i = n - 1; i >= 0; i--) { let s = A[i][n]; for (let j = i + 1; j < n; j++) s -= A[i][j] * x[j]; x[i] = s / A[i][i]; }
+  const Vn = nm => nm === net.g ? 0 : x[names.indexOf(nm)];
+  const out = { by: {}, Vterm: Vn(net.bp), Ibat: (emf - Vn(net.bp)) / rr, rr };
+  net.elems.forEach(e => { const V = Vn(e.a) - Vn(e.b); out.by[e.id] = { V, I: V / e.R, P: V * V / e.R }; });
+  return out;
+}
+
+function evalCircuit(c) {
+  const net = buildNet(c);
+  const res = solveNet(net, c.emf, c.r);
+  return res;
+}
+
+/* 2. 배치 계획 — 실물 배선과 회로도가 같은 좌표를 쓴다 (단위: 1 = 회로도 한 칸) */
+function mkPath(pts) {
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  return { pts, cum, len: cum[cum.length - 1] };
+}
+function ptAt(p, s) {
+  s = Math.max(0, Math.min(p.len, s));
+  let i = 1; while (i < p.pts.length - 1 && p.cum[i] < s) i++;
+  const a = p.pts[i - 1], b = p.pts[i], L = p.cum[i] - p.cum[i - 1] || 1, t = (s - p.cum[i - 1]) / L;
+  return { x: a[0] + (b[0] - a[0]) * t, y: a[1] + (b[1] - a[1]) * t, dx: (b[0] - a[0]) / L, dy: (b[1] - a[1]) / L };
+}
+function sOf(p, x, y) {
+  let best = 1e9, bs = 0;
+  for (let i = 1; i < p.pts.length; i++) {
+    const a = p.pts[i - 1], b = p.pts[i], vx = b[0] - a[0], vy = b[1] - a[1], L2 = vx * vx + vy * vy;
+    const t = Math.max(0, Math.min(1, ((x - a[0]) * vx + (y - a[1]) * vy) / L2));
+    const d = Math.hypot(a[0] + vx * t - x, a[1] + vy * t - y);
+    if (d < best) { best = d; bs = p.cum[i - 1] + t * Math.sqrt(L2); }
+  }
+  return bs;
+}
+function subPath(p, s0, s1) {
+  const o = [], A = ptAt(p, s0); o.push([A.x, A.y]);
+  for (let i = 1; i < p.pts.length - 1; i++) if (p.cum[i] > s0 + 1e-6 && p.cum[i] < s1 - 1e-6) o.push(p.pts[i]);
+  const B = ptAt(p, s1); o.push([B.x, B.y]); return o;
+}
+
+const SLOT_POS = { // [x, y, 두 번째 계기가 밀리는 방향]
+  s0: [1, 3.4, 0, -1.1], s1: [5.2, 1.5, 1.1, 0], s3: [7.0, 6.5, -1.1, 0], b1: [8, 2.5, 0, 1.1], b2: [11, 2.5, 0, 1.1],
+};
+
+function buildPlan(c) {
+  const parts = [], wires = [], juncs = [], paths = [];
+  const par = c.topo === "parallel";
+  const rx = c.topo === "single" ? [8.5] : [7.8, 10.6];
+  function addPath(pts, items, ref) {
+    const p = mkPath(pts); p.ref = ref; p.items = items.map(it => Object.assign({}, it, { s: sOf(p, it.x, it.y) })).sort((a, b) => a.s - b.s);
+    let cur = 0;
+    p.items.forEach(it => { const s0 = it.s - it.span / 2; if (s0 - cur > 1e-6) wires.push(subPath(p, cur, s0)); cur = it.s + it.span / 2; });
+    if (p.len - cur > 1e-6) wires.push(subPath(p, cur, p.len));
+    p.items.forEach(it => {
+      const A = ptAt(p, it.s - it.span / 2), B = ptAt(p, it.s + it.span / 2), M = ptAt(p, it.s);
+      parts.push({ id: it.id, kind: it.kind, x: M.x, y: M.y, dx: M.dx, dy: M.dy, span: it.span, a: [A.x, A.y], b: [B.x, B.y] });
+    });
+    paths.push(p);
+  }
+  const slotAM = (!c.noMeter && c.am === 0) ? (par ? ["b1", "b2", "s0"] : ["s1", "s3", "s0"])[c.target] : null;
+  const slotVM = (!c.noMeter && c.vm === 1) ? (par ? ["b1", "b2", "s0"] : ["s1", "s3", "s0"])[c.target] : null;
+  function slotItems(s) {
+    const o = [], P = SLOT_POS[s];
+    if (slotAM === s) o.push({ id: "AM", kind: "am", x: P[0], y: P[1], span: 1 });
+    if (slotVM === s) { const k = slotAM === s ? 1 : 0; o.push({ id: "VM", kind: "vm", x: P[0] + P[2] * k, y: P[1] + P[3] * k, span: 1 }); }
+    return o;
+  }
+  parts.push({ id: "BAT", kind: "bat", x: 1, y: 5.4, dx: 0, dy: 1, span: 1, a: [1, 4.9], b: [1, 5.9] });
+  if (!par) {
+    const items = [...slotItems("s0"), { id: "SW", kind: "sw", x: 3, y: 1.5, span: 1.4 }, ...slotItems("s1"), { id: "R1", kind: "res", x: rx[0], y: 1.5, span: 1.6 }];
+    if (c.topo === "series") items.push({ id: "R2", kind: "res", x: rx[1], y: 1.5, span: 1.6 });
+    items.push(...slotItems("s3"));
+    addPath([[1, 4.9], [1, 1.5], [12.5, 1.5], [12.5, 6.5], [1, 6.5], [1, 5.9]], items, "SW");
+  } else {
+    addPath([[1, 4.9], [1, 1.5], [8, 1.5]], [...slotItems("s0"), { id: "SW", kind: "sw", x: 3, y: 1.5, span: 1.4 }], "SW");
+    addPath([[8, 1.5], [8, 6.5]], [...slotItems("b1"), { id: "R1", kind: "res", x: 8, y: 5.1, span: 1.6 }], "R1");
+    addPath([[8, 1.5], [11, 1.5], [11, 6.5], [8, 6.5]], [...slotItems("b2"), { id: "R2", kind: "res", x: 11, y: 5.1, span: 1.6 }], "R2");
+    addPath([[8, 6.5], [1, 6.5], [1, 5.9]], [], "SW");
+    juncs.push([8, 1.5], [8, 6.5]);
+  }
+  if (!c.noMeter) {
+    const tgt = c.target, mk = (id, kind, x, y, dx, dy) => { const h = 0.5; parts.push({ id, kind, x, y, dx, dy, span: 1, a: [x - dx * h, y - dy * h], b: [x + dx * h, y + dy * h] }); return parts[parts.length - 1]; };
+    const useAcross = id => (id === "VM" && c.vm === 0) || (id === "AM" && c.am === 1);
+    ["AM", "VM"].forEach(id => {
+      if (!useAcross(id)) return;
+      if (tgt === 2) { // 전지 양단
+        const y = id === "AM" ? 3.9 : 5.1, m = mk(id, id === "AM" ? "am" : "vm", 3.3, y, 1, 0);
+        wires.push([m.a, [2.2, y], [2.2, 4.6], [1, 4.6]], [m.b, [4.4, y], [4.4, 6.0], [1, 6.0]]);
+        juncs.push([1, 4.6], [1, 6.0]);
+      } else if (!par) { // 직렬: 저항 바로 아래에 병렬로
+        const xe = rx[tgt] ?? rx[0], y = id === "AM" ? 3.4 : 4.8, m = mk(id, id === "AM" ? "am" : "vm", xe, y, 1, 0);
+        wires.push([[xe - 0.8, 1.5], [xe - 0.8, y], m.a], [[xe + 0.8, 1.5], [xe + 0.8, y], m.b]);
+        juncs.push([xe - 0.8, 1.5], [xe + 0.8, 1.5]);
+      } else { // 병렬: 가지 저항 옆에
+        const bx = tgt === 1 ? 11 : 8, px = id === "VM" ? (tgt === 1 ? 9.5 : 6.8) : (tgt === 1 ? 12.5 : 9.5);
+        const m = mk(id, id === "AM" ? "am" : "vm", px, 5.1, 0, 1);
+        wires.push([[bx, 4.3], [px, 4.3], m.a], [[bx, 5.9], [px, 5.9], m.b]);
+        juncs.push([bx, 4.3], [bx, 5.9]);
+      }
+    });
+  }
+  return { parts, wires, juncs, paths, par };
+}
+
+/* 3. 회로도 그리기 (2D 캔버스) */
+const fmtA = i => Math.abs(i) >= 3 ? "과전류!" : Math.abs(i).toFixed(3) + " A";
+const fmtV = v => Math.abs(v).toFixed(2) + " V";
+const COL = { wire: "#cfd8e3", part: "#ffd166", res: "#f4a261", am: "#4cc9f0", vm: "#b388ff", dot: "#ffe66d", text: "#e8eef6", sub: "#9fb0c3", warn: "#ff6b6b" };
+
+function drawSchematic(cv, plan, res, c, tsec) {
+  const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = Math.round(W * 0.58);
+  if (cv.width !== W * dpr || cv.height !== H * dpr) { cv.width = W * dpr; cv.height = H * dpr; cv.style.height = H + "px"; }
+  const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  const s = Math.min(W / 14, H / 7.6), ox = (W - 14 * s) / 2 + 0.2 * s, oy = 0.3 * s;
+  const X = x => ox + x * s, Y = y => oy + y * s;
+  g.lineCap = "round"; g.lineJoin = "round";
+  // 도선
+  g.strokeStyle = COL.wire; g.lineWidth = 2.2;
+  plan.wires.forEach(w => { g.beginPath(); w.forEach((p, i) => i ? g.lineTo(X(p[0]), Y(p[1])) : g.moveTo(X(p[0]), Y(p[1]))); g.stroke(); });
+  g.fillStyle = COL.wire; plan.juncs.forEach(p => { g.beginPath(); g.arc(X(p[0]), Y(p[1]), 3.4, 0, 7); g.fill(); });
+  // 전하(전류 방향) 점
+  plan.paths.forEach(p => {
+    const r = res.by[p.ref]; if (!r) return;
+    const I = r.I, sp = Math.sign(I) * 1.8 * Math.tanh(Math.abs(I) * 3);
+    if (Math.abs(I) < 1e-3) return;
+    const gap = 0.55, n = Math.floor(p.len / gap), off = ((tsec * sp) % gap + gap) % gap;
+    g.fillStyle = COL.dot;
+    for (let i = 0; i < n; i++) {
+      const ss = (i * gap + off) % p.len;
+      if (p.items.some(it => ss > it.s - it.span / 2 - 0.05 && ss < it.s + it.span / 2 + 0.05)) continue;
+      const q = ptAt(p, ss); g.beginPath(); g.arc(X(q.x), Y(q.y), 2.6, 0, 7); g.fill();
+    }
+  });
+  // 부품
+  plan.parts.forEach(pt => {
+    g.save(); g.translate(X(pt.x), Y(pt.y)); g.rotate(Math.atan2(pt.dy, pt.dx));
+    const h = pt.span / 2 * s; g.lineWidth = 2.4;
+    if (pt.kind === "res") {
+      g.strokeStyle = COL.res; g.beginPath(); g.moveTo(-h, 0);
+      for (let i = 0; i < 6; i++) g.lineTo(-h + (i + 0.5) * (2 * h / 6), (i % 2 ? 1 : -1) * 0.2 * s);
+      g.lineTo(h, 0); g.stroke();
+    } else if (pt.kind === "sw") {
+      const closed = S.sw; g.strokeStyle = COL.part; g.fillStyle = COL.part;
+      g.beginPath(); g.arc(-h, 0, 3.4, 0, 7); g.arc(h, 0, 3.4, 0, 7); g.fill();
+      g.beginPath(); g.moveTo(-h, 0); g.lineTo(h * (closed ? 1 : 0.86), closed ? 0 : -0.55 * s); g.stroke();
+    } else if (pt.kind === "bat") {
+      g.strokeStyle = "#ff7b7b"; g.lineWidth = 3; g.beginPath(); g.moveTo(-0.15 * s, -0.42 * s); g.lineTo(-0.15 * s, 0.42 * s); g.stroke();
+      g.strokeStyle = "#8ecae6"; g.lineWidth = 5; g.beginPath(); g.moveTo(0.15 * s, -0.22 * s); g.lineTo(0.15 * s, 0.22 * s); g.stroke();
+    } else {
+      const am = pt.kind === "am"; g.strokeStyle = am ? COL.am : COL.vm; g.fillStyle = "rgba(10,16,26,.85)";
+      g.beginPath(); g.arc(0, 0, 0.4 * s, 0, 7); g.fill(); g.stroke();
+      g.rotate(-Math.atan2(pt.dy, pt.dx)); g.fillStyle = am ? COL.am : COL.vm; g.font = "bold " + 0.42 * s + "px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(am ? "A" : "V", 0, 0.02 * s);
+    }
+    g.restore();
+  });
+  // 라벨
+  g.font = "600 " + Math.max(11, 0.3 * s) + "px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+  const lab = (t, x, y, col) => { g.fillStyle = col || COL.text; g.fillText(t, X(x), Y(y)); };
+  plan.parts.forEach(pt => {
+    const vert = Math.abs(pt.dy) > 0.5, ox2 = vert ? 0.95 : 0, oy2 = vert ? 0 : -0.62;
+    if (pt.kind === "bat") lab(c.emf.toFixed(1) + " V" + (c.r > 0 ? " (r=" + c.r.toFixed(1) + "Ω)" : ""), pt.x + 1.05, pt.y, "#ff9b9b");
+    else if (pt.kind === "res") { const r = res.by[pt.id], nmR = (pt.id === "R1" ? "R₁=" + c.R1 : "R₂=" + c.R2) + "Ω"; lab(nmR, pt.x + ox2, pt.y + oy2, COL.res); if (!c.noMeter && r && !vert) lab(fmtV(r.V) + " · " + fmtA(r.I), pt.x, pt.y + oy2 - 0.42, COL.sub); }
+    else if (pt.kind === "sw") lab(S.sw ? "스위치 닫힘" : "스위치 열림", pt.x, pt.y - 0.62, S.sw ? COL.part : COL.warn);
+    else if (pt.kind === "am") { const a = res.by.AM; lab(fmtA(a.I), pt.x, pt.y + (vert ? 0.85 : 0.7), Math.abs(a.I) >= 3 ? COL.warn : COL.am); }
+    else if (pt.kind === "vm") { const v = res.by.VM; lab(fmtV(v.V), pt.x, pt.y + (vert ? 0.85 : 0.7), COL.vm); }
+  });
+}
+
+/* 4. 실물 배선(3D 실험대) */
+const K3 = 2.2, WY = 0.85;
+const DIGIT = [0x111111, 0x7b4a1e, 0xd62828, 0xf77f00, 0xfcbf49, 0x2a9d8f, 0x1d4ed8, 0x7b2cbf, 0x888888, 0xeeeeee];
+const WIRE_COL = [0xe05555, 0x3f8fe0, 0xf1c453, 0x39b36b, 0xc77dff, 0xff9f43, 0x7fd1e8];
+const wpos = (x, y, h) => [(x - 7) * K3, h === undefined ? WY : h, (y - 4) * K3];
+
+function bandsOf(R) { return R >= 10 ? [Math.floor(R / 10), R % 10, 0] : [Math.floor(R), Math.round((R % 1) * 10), -1]; }
+
+function buildBench(api, c, plan) {
+  const T = api.THREE, root = S.bench; clearGroup(root); S.sprites = {}; S.hit = [];
+  const mat = (col, o) => new T.MeshStandardMaterial(Object.assign({ color: col, roughness: 0.6, metalness: 0.1 }, o || {}));
+  const board = new T.Mesh(new T.BoxGeometry(15.4 * K3, 0.5, 8.6 * K3), mat(0x233246)); board.position.set(0, -0.26, 0); root.add(board);
+  const edge = new T.Mesh(new T.BoxGeometry(15.5 * K3, 0.12, 8.7 * K3), mat(0x3a4d68)); edge.position.set(0, -0.5, 0); root.add(edge);
+  const label = (txt, col, x, y, z, sx) => { const sp = makeSprite(T, 256, 64, sx || 4.2, (sx || 4.2) / 4); sp.position.set(x, y, z); setSprite(sp, txt, col); root.add(sp); return sp; };
+  plan.parts.forEach(pt => {
+    const g = new T.Group(), p = wpos(pt.x, pt.y, 0), h = pt.span / 2 * K3;
+    g.position.set(p[0], 0, p[2]); g.rotation.y = -Math.atan2(pt.dy, pt.dx);
+    const post = (lx, col) => { const m = new T.Mesh(new T.CylinderGeometry(0.2, 0.2, WY, 12), mat(col || 0xcfd6df, { metalness: 0.6 })); m.position.set(lx, WY / 2, 0); g.add(m); };
+    if (pt.kind === "res") {
+      const bl = h * 1.25, body = new T.Mesh(new T.CylinderGeometry(0.5, 0.5, bl, 20), mat(0xe6d3a3)); body.rotation.z = Math.PI / 2; body.position.y = WY; g.add(body);
+      const lead = new T.Mesh(new T.CylinderGeometry(0.07, 0.07, 2 * h, 8), mat(0xcfd6df, { metalness: 0.7 })); lead.rotation.z = Math.PI / 2; lead.position.y = WY; g.add(lead);
+      const b = bandsOf(pt.id === "R1" ? c.R1 : c.R2), cols = [DIGIT[b[0]], DIGIT[b[1]], b[2] < 0 ? 0xd4af37 : DIGIT[b[2]], 0xd4af37];
+      cols.forEach((col, i) => { const r = new T.Mesh(new T.CylinderGeometry(0.53, 0.53, 0.18, 20), mat(col)); r.rotation.z = Math.PI / 2; r.position.set(-bl * 0.36 + i * bl * 0.22 + (i === 3 ? bl * 0.1 : 0), WY, 0); g.add(r); });
+      post(-h); post(h);
+      const sp = label((pt.id === "R1" ? "R₁ " : "R₂ ") + (pt.id === "R1" ? c.R1 : c.R2) + " Ω", "#ffd1a1", p[0], 2.6, p[2]); S.sprites[pt.id] = sp;
+    } else if (pt.kind === "sw") {
+      const base = new T.Mesh(new T.BoxGeometry(2 * h + 0.6, 0.3, 1.6), mat(0x5b6577)); base.position.y = 0.15; g.add(base); base.userData.sw = true; S.hit.push(base);
+      post(-h, 0xd9a441); post(h, 0xd9a441);
+      const piv = new T.Group(); piv.position.set(-h, WY, 0); const lever = new T.Mesh(new T.BoxGeometry(2 * h, 0.16, 0.5), mat(0xd9a441, { metalness: 0.7 })); lever.position.x = h; piv.add(lever);
+      const knob = new T.Mesh(new T.SphereGeometry(0.35, 14, 14), mat(0xb02a2a)); knob.position.set(2 * h - 0.2, 0.28, 0); piv.add(knob); knob.userData.sw = true; S.hit.push(knob, lever); lever.userData.sw = true;
+      piv.rotation.z = S.sw ? 0 : 0.75; g.add(piv); S.lever = piv;
+      S.sprites.SW = label("", "#ffd166", p[0], 2.4, p[2], 3.4);
+    } else if (pt.kind === "bat") {
+      const body = new T.Mesh(new T.CylinderGeometry(0.95, 0.95, 2 * h + 1.0, 24), mat(0x2b2f36)); body.rotation.z = Math.PI / 2; g.add(body); body.position.y = 1.0;
+      const wrap = new T.Mesh(new T.CylinderGeometry(0.97, 0.97, h * 1.1, 24), mat(0xc9a227)); wrap.rotation.z = Math.PI / 2; wrap.position.set(h * 0.35, 1.0, 0); g.add(wrap);
+      const cap = new T.Mesh(new T.CylinderGeometry(0.4, 0.4, 0.5, 16), mat(0xd0d6de, { metalness: 0.8 })); cap.rotation.z = Math.PI / 2; cap.position.set(-h - 0.75, 1.0, 0); g.add(cap);
+      post(-h, 0xe05555); post(h, 0x3f8fe0);
+      S.sprites.BAT = label("", "#ff9b9b", p[0] + 0.2, 3.2, p[2], 4.6);
+      label("＋", "#ff7b7b", p[0], 0.1, p[2] - h - 0.3, 1.2); label("－", "#8ecae6", p[0], 0.1, p[2] + h + 0.3, 1.2);
+    } else {
+      const am = pt.kind === "am", col = am ? 0x1d6fa5 : 0x6a3fb5;
+      const box = new T.Mesh(new T.BoxGeometry(1.7, 0.9, 1.7), mat(col)); box.position.y = 0.45; g.add(box);
+      const scr = new T.Mesh(new T.BoxGeometry(1.2, 0.05, 0.9), mat(0x0b1620, { emissive: am ? 0x0a3a55 : 0x2a1a55 })); scr.position.y = 0.92; g.add(scr);
+      post(-h, 0xe05555); post(h, 0x222222);
+      S.sprites[pt.id] = label("", am ? "#7fe0ff" : "#d2b8ff", p[0], 2.4, p[2], 4.4);
+      label(am ? "전류계 A" : "전압계 V", "#fff", p[0], 3.9, p[2], 3.6);
+    }
+    root.add(g);
+  });
+  plan.wires.forEach((w, wi) => {
+    const col = WIRE_COL[wi % WIRE_COL.length], m = mat(col, { roughness: 0.4 });
+    const pts = w.map(q => new T.Vector3(...wpos(q[0], q[1])));
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i], len = a.distanceTo(b); if (len < 1e-3) continue;
+      const cyl = new T.Mesh(new T.CylinderGeometry(0.14, 0.14, len, 10), m); cyl.position.copy(a).add(b).multiplyScalar(0.5);
+      cyl.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), b.clone().sub(a).normalize()); root.add(cyl);
+    }
+    for (let i = 1; i < pts.length - 1; i++) { const j = new T.Mesh(new T.SphereGeometry(0.14, 10, 10), m); j.position.copy(pts[i]); root.add(j); }
+  });
+  plan.juncs.forEach(q => { const j = new T.Mesh(new T.SphereGeometry(0.26, 12, 12), mat(0xd0d6de, { metalness: 0.7 })); j.position.set(...wpos(q[0], q[1])); root.add(j); });
+}
+
+function refreshBench(c, res) {
+  if (S.lever) S.lever.rotation.z = S.sw ? 0 : 0.75;
+  const sp = S.sprites;
+  if (sp.SW) setSprite(sp.SW, S.sw ? "스위치 닫힘" : "스위치 열림", S.sw ? "#ffd166" : "#ff8a8a");
+  if (sp.BAT) setSprite(sp.BAT, "전지 " + c.emf.toFixed(1) + " V" + (c.r > 0 ? " (r=" + c.r.toFixed(1) + "Ω)" : ""), "#ff9b9b");
+  if (sp.AM) { const a = res.by.AM; setSprite(sp.AM, fmtA(a.I), Math.abs(a.I) >= 3 ? "#ff6b6b" : "#7fe0ff"); }
+  if (sp.VM) setSprite(sp.VM, fmtV(res.by.VM.V), "#d2b8ff");
+}
+
+function expKey(c) { return [c.topo, c.target, c.am, c.vm, c.R1, c.topo === "series" || c.topo === "parallel" ? c.R2 : 0].join("|"); }
+
+/* 5. 비유 모형 — 물 파이프 / 높이 지형 (같은 회로 해석 결과로 구동) */
+const HK = 0.7, HH = 1.2, NPART = 170, VMAX = 46;
+const W_AREA = 1.0;   // 굵은 관(도선) 단면적 기준
+const _arA = r => (r / 0.9) * (r / 0.9);
+
+function flowPath(pts, areas, ref) {
+  const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + pts[i].distanceTo(pts[i - 1]));
+  return { pts, areas, cum, len: cum[cum.length - 1], ref, next: [] };
+}
+function slab(T, root, a, b, w, col, thick) {
+  const d = b.clone().sub(a), L = d.length(); if (L < 1e-3) return;
+  const m = new T.Mesh(new T.BoxGeometry(L, thick || 0.3, w), new T.MeshStandardMaterial({ color: col, roughness: 0.7 }));
+  m.position.copy(a).add(b).multiplyScalar(0.5); m.rotation.z = Math.atan2(d.y, d.x) ; root.add(m);
+  // x-y 평면 경사 + z 방향 이동(병렬 가지)은 yaw 처리
+  if (Math.abs(d.z) > 1e-3) { m.rotation.set(0, 0, 0); m.quaternion.setFromUnitVectors(new T.Vector3(1, 0, 0), d.clone().normalize()); }
+  return m;
+}
+function pipeSeg(T, root, a, b, r, col, op) {
+  const d = b.clone().sub(a), L = d.length(); if (L < 1e-3) return;
+  const m = new T.Mesh(new T.CylinderGeometry(r, r, L, 20, 1, true), new T.MeshStandardMaterial({ color: col, transparent: true, opacity: op || 0.3, side: T.DoubleSide, roughness: 0.2 }));
+  m.position.copy(a).add(b).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), d.normalize()); root.add(m);
+  const ring = (p) => { const rg = new T.Mesh(new T.TorusGeometry(r, 0.06, 6, 20), new T.MeshStandardMaterial({ color: 0xdfe8f3 })); rg.position.copy(p); rg.quaternion.setFromUnitVectors(new T.Vector3(0, 0, 1), d.clone().normalize()); root.add(rg); };
+  ring(a); ring(b);
+}
+function mkLabel(T, root, txt, col, x, y, z, sx) { const sp = makeSprite(T, 320, 72, sx || 6, (sx || 6) * 72 / 320); sp.position.set(x, y, z); setSprite(sp, txt, col); root.add(sp); return sp; }
+
+function addStand(T, root, fl, x, z, y0, name, col, getV) {
+  const hmax = 10, glass = new T.Mesh(new T.CylinderGeometry(0.5, 0.5, hmax, 16, 1, true), new T.MeshStandardMaterial({ color: 0xcfe8ff, transparent: true, opacity: 0.18, side: T.DoubleSide }));
+  glass.position.set(x, y0 + hmax / 2, z); root.add(glass);
+  const water = new T.Mesh(new T.CylinderGeometry(0.4, 0.4, 1, 16), new T.MeshStandardMaterial({ color: col || 0x3aa7ff, transparent: true, opacity: 0.9 })); root.add(water);
+  const sp = mkLabel(T, root, "", "#bfe6ff", x, y0 + hmax + 1.6, z, 6.4);
+  fl.stands.push({ water, sp, x, z, y0, name, getV });
+}
+function addValve(T, root, fl, x, y, z, kind) {
+  const g = new T.Group(); g.position.set(x, y, z);
+  const hit = [];
+  if (kind === "water") {
+    const body = new T.Mesh(new T.CylinderGeometry(1.15, 1.15, 1.8, 18), new T.MeshStandardMaterial({ color: 0x6b7686, metalness: 0.5 })); body.rotation.z = Math.PI / 2; g.add(body);
+    const stem = new T.Mesh(new T.CylinderGeometry(0.15, 0.15, 1.6, 8), new T.MeshStandardMaterial({ color: 0xaab3c0 })); stem.position.y = 1.5; g.add(stem);
+    const handle = new T.Mesh(new T.BoxGeometry(2.4, 0.22, 0.5), new T.MeshStandardMaterial({ color: 0xd62828 })); handle.position.y = 2.3; g.add(handle); hit.push(body, handle, stem);
+    fl.valve = { handle, kind };
+  } else {
+    [-1, 1].forEach(s => { const p = new T.Mesh(new T.BoxGeometry(0.4, 6, 0.4), new T.MeshStandardMaterial({ color: 0x8b95a5 })); p.position.set(0, 3, s * 1.9); g.add(p); hit.push(p); });
+    const bar = new T.Mesh(new T.BoxGeometry(0.35, 0.5, 4), new T.MeshStandardMaterial({ color: 0xd62828 })); g.add(bar); hit.push(bar);
+    fl.valve = { handle: bar, kind };
+  }
+  hit.forEach(m => { m.userData.sw = true; S.hit.push(m); });
+  root.add(g); fl.valve.g = g; fl.valve.y0 = y;
+}
+
+function buildFlow(api, kind, topo, c, res) {
+  const T = api.THREE, root = S.flow.root; clearGroup(root); S.hit = [];
+  const fl = S.flow; fl.stands = []; fl.paths = []; fl.labels = {}; fl.kind = kind; fl.topo = topo;
+  const V3 = (x, y, z) => new T.Vector3(x, y, z);
+  const y0 = 2.2, by = res.by, Vp = res.Vterm, Va = Vp - by.SW.V;
+  const gridCol = 0x233246;
+  const floor = new T.Mesh(new T.BoxGeometry(40, 0.4, 24), new T.MeshStandardMaterial({ color: gridCol })); floor.position.set(0, kind === "water" ? -0.4 : -0.5, 2); root.add(floor);
+  if (kind === "water") {
+    const rW = 0.9, rN = 0.5;
+    if (topo === "series") {
+      const L1 = 0.18 * c.R1, L2 = 0.18 * c.R2, xa = -8, x1 = xa + L1, xb = x1 + 2.5, x2 = xb + L2, zt = -5, zb = 5;
+      const P = [V3(-14, y0, zb), V3(-14, y0, zt), V3(xa, y0, zt), V3(x1, y0, zt), V3(xb, y0, zt), V3(x2, y0, zt), V3(15, y0, zt), V3(15, y0, zb), V3(-14, y0, zb)];
+      const ar = [W_AREA, W_AREA, _arA(rN), W_AREA, _arA(rN), W_AREA, W_AREA, W_AREA];
+      const rad = [rW, rW, rN, rW, rN, rW, rW, rW];
+      fl.paths.push(flowPath(P, ar, "SW")); fl.paths[0].next = [{ p: 0, w: () => 1 }];
+      for (let i = 1; i < P.length; i++) pipeSeg(T, root, P[i - 1], P[i], rad[i - 1], 0x9ec9ff, i === 3 || i === 5 ? 0.45 : 0.28);
+      addPump(T, root, fl, -14, y0, 0, c);
+      addValve(T, root, fl, -11.2, y0, zt, "water");
+      addStand(T, root, fl, -12.6, zt - 2.2, y0, "펌프 출구", 0x3aa7ff, () => res.Vterm);
+      addStand(T, root, fl, xa - 0.8, zt - 2.2, y0, "A", 0x3aa7ff, () => Va);
+      addStand(T, root, fl, (x1 + xb) / 2, zt - 2.2, y0, "B", 0x3aa7ff, () => Va - by.R1.V);
+      addStand(T, root, fl, x2 + 1.2, zt - 2.2, y0, "C", 0x3aa7ff, () => Va - by.R1.V - by.R2.V);
+      fl.labels.v1 = mkLabel(T, root, "", "#ffd1a1", (xa + x1) / 2, y0 + 1.6, zt + 3.4, 7); fl.labels.v2 = mkLabel(T, root, "", "#ffd1a1", (xb + x2) / 2 + 1, y0 + 1.6, zt + 3.4, 7);
+      // 등가 관: 길이 L1+L2
+      const gz = 12.5; pipeSeg(T, root, V3(xa, y0, gz), V3(xa + L1 + L2, y0, gz), rN, 0xffd166, 0.55);
+      pipeSeg(T, root, V3(xa, y0, gz), V3(xa + L1, y0, gz), rN + 0.08, 0xf4a261, 0.5);
+      mkLabel(T, root, "등가 관 = 길이가 이어 붙음 (L₁+L₂)", "#ffd166", xa + (L1 + L2) / 2, y0 + 2.2, gz, 9);
+    } else {
+      const aR = r => Math.max(0.18, Math.min(0.8, 0.5 * Math.sqrt(10 / r)));
+      const r1 = aR(c.R1), r2 = aR(c.R2), zt = -6, zm = -1, zb = 6;
+      const P0 = [V3(-14, y0, zb), V3(-14, y0, zt), V3(-6, y0, zt)];
+      const P1 = [V3(-6, y0, zt), V3(-4, y0, zt), V3(6, y0, zt), V3(8, y0, zt), V3(8, y0, zm)];
+      const P2 = [V3(-6, y0, zt), V3(-6, y0, zm), V3(-4, y0, zm), V3(6, y0, zm), V3(8, y0, zm)];
+      const P3 = [V3(8, y0, zm), V3(8, y0, zb), V3(-14, y0, zb)];
+      const mk = (pts, ar, ref) => { const p = flowPath(pts, ar, ref); fl.paths.push(p); return p; };
+      const p0 = mk(P0, [W_AREA, W_AREA], "SW"), p1 = mk(P1, [W_AREA, _arA(r1), W_AREA, W_AREA], "R1"), p2 = mk(P2, [W_AREA, W_AREA, _arA(r2), W_AREA], "R2"), p3 = mk(P3, [W_AREA, W_AREA], "SW");
+      p0.next = [{ p: 1, w: () => Math.abs(by.R1.I) }, { p: 2, w: () => Math.abs(by.R2.I) }]; p1.next = [{ p: 3, w: () => 1 }]; p2.next = [{ p: 3, w: () => 1 }]; p3.next = [{ p: 0, w: () => 1 }];
+      const rd = (p, rr) => { for (let i = 1; i < p.pts.length; i++) pipeSeg(T, root, p.pts[i - 1], p.pts[i], rr[i - 1], 0x9ec9ff, rr[i - 1] < rW ? 0.5 : 0.28); };
+      rd(p0, [rW, rW]); rd(p1, [rW, r1, rW, rW]); rd(p2, [rW, rW, r2, rW]); rd(p3, [rW, rW]);
+      addPump(T, root, fl, -14, y0, 0, c);
+      addValve(T, root, fl, -10.8, y0, zt, "water");
+      addStand(T, root, fl, -12.4, zt - 2.2, y0, "펌프 출구", 0x3aa7ff, () => res.Vterm);
+      addStand(T, root, fl, -5.2, zt - 2.4, y0, "위쪽 모임점", 0x3aa7ff, () => Va);
+      addStand(T, root, fl, 9.4, zm + 0.0, y0, "아래쪽 모임점", 0x3aa7ff, () => 0);
+      fl.labels.i1 = mkLabel(T, root, "", "#ffd1a1", 1, y0 + 2.6, zt - 1.6, 6.5); fl.labels.i2 = mkLabel(T, root, "", "#ffd1a1", 1, y0 + 2.6, zm + 1.6, 6.5);
+      const gz = -12; pipeSeg(T, root, V3(-4, y0, gz), V3(6, y0, gz), Math.sqrt(r1 * r1 + r2 * r2), 0xffd166, 0.55);
+      mkLabel(T, root, "등가 관 = 단면적이 더해짐 (a₁+a₂)", "#ffd166", 1, y0 + 2.6, gz, 9);
+    }
+  } else {
+    const hk = HH, track = 0x6b7a90, bz = 3.4;
+    const pegs = (a, b, n) => { for (let i = 0; i < n; i++) { const t = (i + 0.5) / n, p = a.clone().lerp(b, t); const pg = new T.Mesh(new T.CylinderGeometry(0.2, 0.2, 1.4, 10), new T.MeshStandardMaterial({ color: 0xe76f51 })); pg.position.set(p.x, p.y + 0.8, p.z + (i % 2 ? 0.8 : -0.8)); root.add(pg); } };
+    const lift = (x, z) => { const col = new T.Mesh(new T.BoxGeometry(1.2, c.emf * hk + 1, 2.2), new T.MeshStandardMaterial({ color: 0x3aa7ff, transparent: true, opacity: 0.25 })); col.position.set(x, (c.emf * hk + 1) / 2, z); root.add(col); mkLabel(T, root, "전지 = 엘리베이터 (ε=" + c.emf.toFixed(1) + " V)", "#8ecae6", x + 1, c.emf * hk + 3, z, 8); };
+    const ruler = () => { for (let v = 0; v <= c.emf + 0.01; v += (c.emf > 6 ? 2 : 1)) { const tk = new T.Mesh(new T.BoxGeometry(1.2, 0.08, 0.2), new T.MeshStandardMaterial({ color: 0xd0d6de })); tk.position.set(-17, v * hk, 0); root.add(tk); mkLabel(T, root, v.toFixed(0) + " V", "#9fb0c3", -18.8, v * hk, 0, 2.6); } };
+    ruler();
+    const mkP = (pts, ref) => { const p = flowPath(pts, pts.slice(1).map(() => 1), ref); fl.paths.push(p); return p; };
+    const trackSeg = (a, b) => { if (Math.abs(a.x - b.x) < 1e-3 && Math.abs(a.z - b.z) < 1e-3) return; slab(T, root, a, b, bz, track); };
+    const rDrop = Vp * hk;
+    if (topo === "series") {
+      const Vb1 = Va - by.R1.V, Vb2 = Vb1 - by.R2.V;
+      const pts = [V3(-14, 0.5, 6), V3(-14, 0.5, 0), V3(-14, c.emf * hk + 0.5, 0), V3(-11, rDrop + 0.5, 0), V3(-10, rDrop + 0.5, 0), V3(-9, Va * hk + 0.5, 0), V3(-9, Va * hk + 0.5, 0.0001), V3(-1, Vb1 * hk + 0.5, 0), V3(1, Vb1 * hk + 0.5, 0), V3(9, Vb2 * hk + 0.5, 0), V3(12, Vb2 * hk + 0.5, 0), V3(14, 0.5, 0), V3(14, 0.5, 6), V3(-14, 0.5, 6)];
+      const p = mkP(pts.filter((q, i) => i === 0 || q.distanceTo(pts[i - 1]) > 1e-3), "SW"); p.next = [{ p: 0, w: () => 1 }];
+      for (let i = 1; i < p.pts.length; i++) trackSeg(p.pts[i - 1].clone().setY(p.pts[i - 1].y - 0.5), p.pts[i].clone().setY(p.pts[i].y - 0.5));
+      lift(-14, 0);
+      pegs(V3(-9, Va * hk, 0), V3(-1, Vb1 * hk, 0), Math.max(1, Math.round(c.R1 / 3))); pegs(V3(1, Vb1 * hk, 0), V3(9, Vb2 * hk, 0), Math.max(1, Math.round(c.R2 / 3)));
+      addValve(T, root, fl, -10, 0, 0, "hill");
+      fl.labels.v1 = mkLabel(T, root, "", "#ffd1a1", -5, Math.max(Va, Vb1) * hk + 4.5, 0, 8); fl.labels.v2 = mkLabel(T, root, "", "#ffd1a1", 5, Math.max(Vb1, Vb2) * hk + 4.5, 0, 8);
+    } else {
+      const gx = -10, H = Va * hk + 0.5;
+      const pts0 = [V3(-14, 0.5, 8), V3(-14, 0.5, 0), V3(-14, c.emf * hk + 0.5, 0), V3(-11, rDrop + 0.5, 0), V3(gx, rDrop + 0.5, 0), V3(-8, H, 0), V3(-6, H, 0)];
+      const f = a => a.filter((q, i) => i === 0 || q.distanceTo(a[i - 1]) > 1e-3);
+      const p0 = mkP(f(pts0), "SW");
+      const p1 = mkP([V3(-6, H, 0), V3(-4, H, -4), V3(8, 0.5, -4), V3(10, 0.5, -4), V3(10, 0.5, 0)], "R1");
+      const p2 = mkP([V3(-6, H, 0), V3(-4, H, 4), V3(8, 0.5, 4), V3(10, 0.5, 4), V3(10, 0.5, 0)], "R2");
+      const p3 = mkP([V3(10, 0.5, 0), V3(14, 0.5, 0), V3(14, 0.5, 8), V3(-14, 0.5, 8)], "SW");
+      p0.next = [{ p: 1, w: () => Math.abs(by.R1.I) }, { p: 2, w: () => Math.abs(by.R2.I) }]; p1.next = [{ p: 3, w: () => 1 }]; p2.next = [{ p: 3, w: () => 1 }]; p3.next = [{ p: 0, w: () => 1 }];
+      [p0, p1, p2, p3].forEach(p => { for (let i = 1; i < p.pts.length; i++) trackSeg(p.pts[i - 1].clone().setY(p.pts[i - 1].y - 0.5), p.pts[i].clone().setY(p.pts[i].y - 0.5)); });
+      lift(-14, 0);
+      pegs(V3(-4, Va * hk, -4), V3(8, 0, -4), Math.max(1, Math.round(c.R1 / 3))); pegs(V3(-4, Va * hk, 4), V3(8, 0, 4), Math.max(1, Math.round(c.R2 / 3)));
+      addValve(T, root, fl, gx, 0, 0, "hill");
+      fl.labels.i1 = mkLabel(T, root, "", "#ffd1a1", 2, Va * hk * 0.5 + 4.2, -4, 7); fl.labels.i2 = mkLabel(T, root, "", "#ffd1a1", 2, Va * hk * 0.5 + 4.2, 4, 7);
+      fl.labels.v1 = mkLabel(T, root, "", "#8ecae6", -3, H + 3.6, 0, 8);
+    }
+  }
+  // 입자
+  const geo = new T.SphereGeometry(kind === "water" ? 0.26 : 0.38, 10, 10);
+  const inst = new T.InstancedMesh(geo, new T.MeshStandardMaterial({ color: kind === "water" ? 0x7fd6ff : 0xffb03a, emissive: kind === "water" ? 0x0b3a55 : 0x553300 }), NPART);
+  root.add(inst); fl.inst = inst; fl.part = [];
+  const wts = fl.paths.map(p => { let w = 0; for (let i = 0; i < p.areas.length; i++) w += (p.cum[i + 1] - p.cum[i]) * p.areas[i]; return w; });
+  const Wt = wts.reduce((a, b) => a + b, 0);
+  for (let k = 0; k < NPART; k++) {
+    let r = (k + Math.random() * 0.3) / NPART * Wt, pi = 0; while (pi < wts.length - 1 && r > wts[pi]) { r -= wts[pi]; pi++; }
+    const p = fl.paths[pi]; let u = 0, i = 0; for (; i < p.areas.length; i++) { const w = (p.cum[i + 1] - p.cum[i]) * p.areas[i]; if (r <= w) { u = p.cum[i] + r / p.areas[i]; break; } r -= w; }
+    fl.part.push({ p: pi, u: Math.min(u, p.len - 1e-3) });
+  }
+}
+
+function addPump(T, root, fl, x, y, z, c) {
+  const body = new T.Mesh(new T.CylinderGeometry(2.3, 2.3, 4.2, 28), new T.MeshStandardMaterial({ color: 0x35557d, metalness: 0.4 })); body.position.set(x, y, z); root.add(body);
+  const imp = new T.Mesh(new T.BoxGeometry(3.2, 3.6, 0.3), new T.MeshStandardMaterial({ color: 0xf1c453 })); imp.position.set(x, y, z); root.add(imp); fl.impeller = imp;
+  mkLabel(T, root, "펌프 = 전지 (ε=" + c.emf.toFixed(1) + " V)", "#8ecae6", x + 4, y - 0.7, z + 8.5, 7.5);
+  if (c.r > 0) mkLabel(T, root, "내부 마찰 r=" + c.r.toFixed(1) + " Ω", "#ff9b9b", x + 4, y + 0.9, z + 8.5, 6);
+}
+
+function stepFlow(fl, res, dt) {
+  const K = 16;
+  const m = new fl.T.Matrix4(), sc = new fl.T.Vector3(1, 1, 1), q = new fl.T.Quaternion(), ps = new fl.T.Vector3();
+  fl.part.forEach((pt, k) => {
+    const p = fl.paths[pt.p], Iabs = Math.abs(res.by[p.ref].I);
+    let i = 1; while (i < p.cum.length - 1 && p.cum[i] <= pt.u) i++;
+    const a = p.areas[i - 1], v = VMAX * Math.tanh(K * Iabs / (a * VMAX)) * Math.sign(res.by[p.ref].I || 1);
+    if (fl.playing) pt.u += v * dt;
+    if (pt.u >= p.len) {
+      pt.u -= p.len; const nx = p.next; let tot = 0; nx.forEach(n => tot += n.w());
+      if (nx.length === 1 || tot <= 1e-9) pt.p = nx[0].p; else { let r = Math.random() * tot, j = 0; while (j < nx.length - 1 && r > nx[j].w()) { r -= nx[j].w(); j++; } pt.p = nx[j].p; }
+    } else if (pt.u < 0) {
+      const prev = fl.paths.findIndex(pp => pp.next.some(n => n.p === pt.p)); pt.p = prev < 0 ? pt.p : prev; pt.u += fl.paths[pt.p].len;
+    }
+    const pp = fl.paths[pt.p]; let j = 1; while (j < pp.cum.length - 1 && pp.cum[j] <= pt.u) j++;
+    const t = (pt.u - pp.cum[j - 1]) / ((pp.cum[j] - pp.cum[j - 1]) || 1), A = pp.pts[j - 1], B = pp.pts[j];
+    const jitter = fl.kind === "water" ? ((k * 37) % 7 - 3) * 0.04 : 0;
+    m.compose(ps.set(A.x + (B.x - A.x) * t, A.y + (B.y - A.y) * t + jitter, A.z + (B.z - A.z) * t + jitter), q, sc);
+    fl.inst.setMatrixAt(k, m);
+  });
+  fl.inst.instanceMatrix.needsUpdate = true;
+}
+
+function refreshFlow(c, res) {
+  const fl = S.flow, by = res.by, n = (x) => Math.abs(x);
+  fl.stands.forEach(s => { const V = Math.max(0, s.getV()), h = Math.max(0.05, V * HK); s.water.scale.set(1, h, 1); s.water.position.set(s.x, s.y0 + h / 2, s.z); setSprite(s.sp, s.name + " " + V.toFixed(2) + " V", "#bfe6ff"); });
+  if (fl.valve) { const v = fl.valve; if (v.kind === "water") v.handle.rotation.y = S.sw ? 0 : Math.PI / 2; else v.handle.position.y = S.sw ? 6.8 : 1.2; }
+  const L = fl.labels;
+  if (c.topo === "series") {
+    if (L.v1) setSprite(L.v1, "ΔP₁ = I·R₁ = " + n(by.R1.V).toFixed(2) + " V", "#ffd1a1");
+    if (L.v2) setSprite(L.v2, "ΔP₂ = I·R₂ = " + n(by.R2.V).toFixed(2) + " V", "#ffd1a1");
+  } else {
+    if (L.i1) setSprite(L.i1, "I₁ = " + n(by.R1.I).toFixed(3) + " A", "#ffd1a1");
+    if (L.i2) setSprite(L.i2, "I₂ = " + n(by.R2.I).toFixed(3) + " A", "#ffd1a1");
+    if (L.v1) setSprite(L.v1, "높이 차 V = " + n(by.R1.V).toFixed(2) + " V (두 길 모두)", "#8ecae6");
+  }
+}
+
+/* 6. 생활 속 연결 — 멀티탭 과부하(병렬 + 직렬 차단기), 장식 전구(직렬/병렬) */
+const APPL = [
+  { k: "kettle", n: "전기주전자", s: "주전자", P: 1500, c: 0xd9534f }, { k: "micro", n: "전자레인지", s: "전자레인지", P: 700, c: 0x5b8def },
+  { k: "cooker", n: "전기밥솥", s: "밥솥", P: 1300, c: 0xe0b341 }, { k: "dryer", n: "헤어드라이어", s: "드라이어", P: 1200, c: 0xc77dff },
+  { k: "fryer", n: "에어프라이어", s: "에어프라이어", P: 1400, c: 0x39b36b }, { k: "tv", n: "TV", s: "TV", P: 150, c: 0x7fd1e8 }, { k: "pc", n: "노트북", s: "노트북", P: 65, c: 0xff9f43 },
+];
+const V_HOME = 220, BULB_R = 24, BULB_V = 12;
+
+function tapState(rated) {
+  const on = APPL.filter(a => S.tap.on[a.k]);
+  const P = on.reduce((s, a) => s + a.P, 0), G = on.reduce((s, a) => s + a.P / (V_HOME * V_HOME), 0);
+  const Iraw = P / V_HOME;
+  if (Iraw > rated) S.tap.tripped = true;
+  const I = S.tap.tripped ? 0 : Iraw;
+  return { on, P, Iraw, I, Req: G > 0 ? 1 / G : Infinity, rated };
+}
+
+function buildTap(api) {
+  const T = api.THREE, root = S.life.root; clearGroup(root); S.hit = []; S.tapObj = {};
+  const mat = (c, o) => new T.MeshStandardMaterial(Object.assign({ color: c, roughness: 0.6 }, o || {}));
+  const fl = new T.Mesh(new T.BoxGeometry(40, 0.4, 24), mat(0x233246)); fl.position.set(0, -0.2, 0); root.add(fl);
+  const wall = new T.Mesh(new T.BoxGeometry(2, 8, 6), mat(0xdfe4ea)); wall.position.set(-17, 4, 6); root.add(wall);
+  const strip = new T.Mesh(new T.BoxGeometry(14, 1.4, 3.6), mat(0xf2f2f2)); strip.position.set(2, 0.7, 6); root.add(strip);
+  for (let i = 0; i < 7; i++) { const h = new T.Mesh(new T.BoxGeometry(1.1, 0.1, 1.5), mat(0x222222)); h.position.set(-4 + i * 1.95, 1.42, 6); root.add(h); }
+  // 벽→차단기→멀티탭 전선
+  const cable = new T.Mesh(new T.CylinderGeometry(0.35, 0.35, 11, 12), mat(0xeeeeee)); cable.rotation.z = Math.PI / 2; cable.position.set(-10.5, 0.6, 6); root.add(cable); S.tapObj.cable = cable;
+  const brk = new T.Mesh(new T.BoxGeometry(2.6, 2.4, 2.4), mat(0x44546a)); brk.position.set(-12.5, 1.2, 6); root.add(brk);
+  const lev = new T.Mesh(new T.BoxGeometry(0.6, 1.4, 0.5), mat(0x39b36b)); lev.position.set(-12.5, 2.6, 6); root.add(lev); S.tapObj.lever = lev; lev.userData.sw = true; brk.userData.sw = true; S.hit.push(lev, brk);
+  S.tapObj.brkLabel = mkLabel(T, root, "", "#9fe3b0", -12.5, 5.2, 6, 6); mkLabel(T, root, "차단기 (직렬)", "#cfd8e3", -12.5, 6.8, 6, 5);
+  S.tapObj.total = mkLabel(T, root, "", "#ffd166", 2, 3.6, 8.2, 9);
+  APPL.forEach((a, i) => {
+    const x = -8 + i * 3.6, g = new T.Mesh(new T.BoxGeometry(3, 2.6, 2.6), mat(a.c)); g.position.set(x, 1.3, -3); root.add(g);
+    const wire = new T.Mesh(new T.CylinderGeometry(0.1, 0.1, 8.6, 8), mat(0x333333)); wire.rotation.x = Math.PI / 2; wire.position.set(-4 + i * 1.95 + (x - (-4 + i * 1.95)) / 2, 0.5, 1.4); wire.rotation.set(Math.PI / 2, 0, 0);
+    const a0 = new T.Vector3(-4 + i * 1.95, 0.5, 6), b0 = new T.Vector3(x, 0.5, -1.8); wire.position.copy(a0).add(b0).multiplyScalar(0.5); wire.scale.y = a0.distanceTo(b0) / 8.6; wire.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), b0.clone().sub(a0).normalize()); root.add(wire);
+    g.userData.sw = true; g.userData.app = a.k; S.hit.push(g);
+    S.tapObj[a.k] = { mesh: g, label: mkLabel(T, root, "", "#fff", x, 4.2 + (i % 2) * 1.5, -3, 5.4) };
+  });
+}
+
+function refreshTap(api, st) {
+  const o = S.tapObj, ratio = st.Iraw / st.rated;
+  APPL.forEach(a => { const on = S.tap.on[a.k]; o[a.k].mesh.material.emissive.setHex(on && !S.tap.tripped ? 0x222222 : 0x000000); o[a.k].mesh.material.opacity = 1; o[a.k].mesh.material.color.setHex(on ? a.c : 0x4a5568); setSprite(o[a.k].label, a.s + (on ? " " + (a.P / V_HOME).toFixed(1) + "A" : " 꺼짐"), on ? "#fff" : "#8392a5"); });
+  const hot = S.tap.tripped ? 0x000000 : ratio >= 1 ? 0xff1a1a : ratio > 0.75 ? 0xff8800 : ratio > 0.4 ? 0x553300 : 0x000000;
+  o.cable.material.emissive.setHex(hot); o.cable.material.color.setHex(ratio > 0.75 && !S.tap.tripped ? 0xff9966 : 0xeeeeee);
+  o.cable.scale.set(1 + Math.min(ratio, 1.6) * 0.15, 1, 1 + Math.min(ratio, 1.6) * 0.15);
+  o.lever.position.y = S.tap.tripped ? 1.9 : 2.6; o.lever.rotation.z = S.tap.tripped ? 0.9 : 0; o.lever.material.color.setHex(S.tap.tripped ? 0xd62828 : 0x39b36b);
+  setSprite(o.brkLabel, S.tap.tripped ? "차단됨! (눌러서 복구)" : "연결됨", S.tap.tripped ? "#ff8a8a" : "#9fe3b0");
+  setSprite(o.total, (S.tap.tripped ? "총 전류 0 (차단) · 과부하 " + st.Iraw.toFixed(1) : "총 전류 " + st.I.toFixed(1)) + " A / 정격 " + st.rated + " A", st.Iraw > st.rated ? "#ff8a8a" : "#ffd166");
+}
+
+function buildBulbs(api, N, mode) {
+  const T = api.THREE, root = S.life.root; clearGroup(root); S.hit = []; S.bulbObj = [];
+  const mat = (c, o) => new T.MeshStandardMaterial(Object.assign({ color: c, roughness: 0.5 }, o || {}));
+  const fl = new T.Mesh(new T.BoxGeometry(44, 0.4, 20), mat(0x233246)); fl.position.set(0, -0.2, 0); root.add(fl);
+  const dx = Math.min(1.9, 34 / N), x0 = -dx * (N - 1) / 2;
+  const cyl = (a, b, r, col) => { const d = b.clone().sub(a), m = new T.Mesh(new T.CylinderGeometry(r, r, d.length(), 8), mat(col)); m.position.copy(a).add(b).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), d.normalize()); root.add(m); };
+  const V = (x, y, z) => new T.Vector3(x, y, z);
+  if (mode === 0) { // 직렬: 한 줄 + 전원
+    cyl(V(x0 - 3, 6, 0), V(x0 - dx / 2, 6, 0), 0.12, 0xd0d6de); for (let i = 0; i < N - 1; i++) cyl(V(x0 + i * dx, 6, 0), V(x0 + (i + 1) * dx, 6, 0), 0.12, 0xd0d6de);
+    cyl(V(x0 + (N - 1) * dx, 6, 0), V(-x0 + 3, 6, 0), 0.12, 0xd0d6de); cyl(V(-x0 + 3, 6, 0), V(-x0 + 3, 1, 0), 0.12, 0xd0d6de); cyl(V(-x0 + 3, 1, 0), V(x0 - 3, 1, 0), 0.12, 0xd0d6de); cyl(V(x0 - 3, 1, 0), V(x0 - 3, 6, 0), 0.12, 0xd0d6de);
+  } else { // 병렬: 사다리
+    cyl(V(x0 - 2, 8, 0), V(-x0 + 2, 8, 0), 0.12, 0xd0d6de); cyl(V(x0 - 2, 1, 0), V(-x0 + 2, 1, 0), 0.12, 0xd0d6de);
+    cyl(V(x0 - 2, 8, 0), V(x0 - 2, 1, 0), 0.12, 0xd0d6de);
+    for (let i = 0; i < N; i++) { cyl(V(x0 + i * dx, 8, 0), V(x0 + i * dx, 5.2, 0), 0.1, 0xd0d6de); cyl(V(x0 + i * dx, 3.2, 0), V(x0 + i * dx, 1, 0), 0.1, 0xd0d6de); }
+  }
+  const bat = new T.Mesh(new T.BoxGeometry(3, 2.2, 2), mat(0x2b2f36)); bat.position.set(mode === 0 ? x0 - 3 : x0 - 2, mode === 0 ? 3.5 : 4.5, 0); root.add(bat);
+  for (let i = 0; i < N; i++) {
+    const y = mode === 0 ? 6 : 4.2, x = x0 + i * dx;
+    const g = new T.Group(); g.position.set(x, y, 0);
+    const sock = new T.Mesh(new T.CylinderGeometry(0.35, 0.35, 0.7, 10), mat(0x555b66)); sock.position.y = 0.0; g.add(sock);
+    const bulb = new T.Mesh(new T.SphereGeometry(0.62, 16, 14), mat(0xffe9a8, { emissive: 0x000000 })); bulb.position.y = -0.8; g.add(bulb);
+    bulb.userData.bulb = i; sock.userData.bulb = i; S.hit.push(bulb, sock);
+    root.add(g); S.bulbObj.push({ bulb, x, y });
+  }
+  S.life.vlab = mkLabel(T, root, "", "#ffd166", 0, mode === 0 ? 9.5 : 11, 0, 13);
+}
+
+function bulbState(P) {
+  const N = P.nb | 0, mode = Number(P.bmode) || 0, Vs = P.Vs, broken = S.bulbs.broken;
+  const out = [];
+  if (mode === 0) {
+    const open = broken.some((b, i) => i < N && b), I = open ? 0 : Vs / (N * BULB_R);
+    for (let i = 0; i < N; i++) out.push({ V: broken[i] && open ? Vs : (open ? 0 : I * BULB_R), I, P: broken[i] ? 0 : I * I * BULB_R });
+    return { out, I, open };
+  }
+  let It = 0;
+  for (let i = 0; i < N; i++) { const I = broken[i] ? 0 : Vs / BULB_R; It += I; out.push({ V: Vs, I, P: broken[i] ? 0 : Vs * I }); }
+  return { out, I: It, open: false };
+}
+
+function refreshBulbs(api) {
+  const P = api.P, N = P.nb | 0, mode = Number(P.bmode) || 0, st = bulbState(P), Prated = BULB_V * BULB_V / BULB_R;
+  S.bulbObj.forEach((b, i) => {
+    const o = st.out[i], br = S.bulbs.broken[i], rel = o.P / Prated;
+    b.bulb.material.emissive.setRGB(Math.min(1, rel) * 1.0, Math.min(1, rel) * 0.85, Math.min(1, rel) * 0.3);
+    b.bulb.material.color.setHex(br ? 0x3a3f48 : rel > 2.2 ? 0xffffff : 0xffe9a8);
+    b.bulb.scale.setScalar(1);
+  });
+  const maxrel = Math.max(0, ...st.out.map(o => o.P / Prated));
+  const t = mode === 0 ? (st.open ? "끊어진 전구 때문에 전류 0 — 전부 꺼짐" : "전구 1개에 걸리는 전압 " + (P.Vs / N).toFixed(1) + " V (정격 " + BULB_V + " V)") : "전구마다 전원 전압 " + P.Vs.toFixed(0) + " V 그대로 (정격 " + BULB_V + " V)";
+  setSprite(S.life.vlab, t, st.open || maxrel > 2.2 ? "#ff8a8a" : "#ffd166");
+  return st;
+}
+
+/* 7. 패널(HTML) */
+const $ = (id) => document.getElementById(id);
+function expPanel(api, id) {
+  const meters = id === "exp-meters";
+  api.custom.innerHTML = `<div class="lab">
+    <div class="swrow"><button id="swBtn" class="lbtn"></button><span id="swInfo"></span></div>
+    <canvas id="sch"></canvas>
+    <div id="warn" class="warn"></div>
+    <div class="pbox"><div class="ptitle">⚡ 저항이 소비하는 전력 P = V·I</div><div id="pbars"></div><div id="pnote" class="mut"></div></div>
+    ${meters ? `<div class="cards"><div class="card am"><b>전류계 (A)</b><br>회로 <b>직렬</b>로 끼운다. 전류가 그대로 통과해야 하므로 내부 저항이 <b>매우 작다</b>(여기서는 ${AM_R} Ω).</div>
+      <div class="card vm"><b>전압계 (V)</b><br>재려는 곳과 <b>병렬</b>로 연결한다. 전류를 거의 빼앗지 않도록 내부 저항이 <b>매우 크다</b>(여기서는 ${(VM_R / 1e6)} MΩ).</div>
+      <div class="card sw"><b>스위치</b><br>회로를 열고 닫는다. 열면 전류는 0이 되지만 전지의 전압(기전력)은 그대로다. 배선을 바꾸거나 측정하기 전에 열어 두면 단락·감전 위험을 줄이고 전지가 낭비되지 않는다.</div></div>` : ""}
+    <div class="rtitle">📝 측정값 기록 (교과서 77쪽 표) <button id="recBtn" class="lbtn sm">지금 값 기록</button><button id="recClr" class="lbtn sm ghost">지우기</button></div>
+    <div id="recmsg" class="mut"></div><div id="rectab"></div><div id="chk"></div></div>`;
+  $("swBtn").onclick = () => { S.sw = !S.sw; api.refresh(); };
+  $("recBtn").onclick = () => recordNow(api);
+  $("recClr").onclick = () => { S.rec.rows = {}; api.refresh(); };
+}
+function recordNow(api) {
+  const c = S.cfg, res = S.res, msg = $("recmsg");
+  if (!S.sw) { msg.textContent = "스위치가 열려 있어요. 닫은 뒤 기록하세요."; return; }
+  if (c.am !== 0 || c.vm !== 0) { msg.textContent = "계기를 올바르게 연결(전류계 직렬, 전압계 병렬)한 상태에서만 기록해요."; return; }
+  const key = ["A", "B", "T"][c.target];
+  S.rec.rows[key] = { I: Math.abs(res.by.AM.I), V: Math.abs(res.by.VM.V) };
+  msg.textContent = TGT_NAME[c.target] + " 값을 기록했어요."; api.refresh();
+}
+function renderRec(c) {
+  const sig = [c.topo, c.emf, c.r, c.R1, c.R2].join("|");
+  if (S.rec.sig !== sig) { S.rec.sig = sig; S.rec.rows = {}; }
+  const keys = c.topo === "single" ? ["A", "T"] : ["A", "B", "T"], nm = { A: c.topo === "single" ? "저항" : "저항 A", B: "저항 B", T: "회로 전체" }, R = S.rec.rows;
+  let h = "<table class='rt'><tr><th>구분</th><th>전류 I (A)</th><th>전압 V (V)</th></tr>";
+  keys.forEach(k => { h += `<tr><td>${nm[k]}</td><td>${R[k] ? R[k].I.toFixed(3) : "–"}</td><td>${R[k] ? R[k].V.toFixed(2) : "–"}</td></tr>`; });
+  $("rectab").innerHTML = h + "</table>";
+  let ck = "";
+  const ok = (b) => b ? "✅" : "❌", near = (a, b) => Math.abs(a - b) <= 0.02 * Math.max(Math.abs(a), Math.abs(b), 1e-9);
+  if (c.topo === "series" && R.A && R.B && R.T) {
+    ck += `${ok(near(R.A.I, R.B.I) && near(R.A.I, R.T.I))} 전류: ${R.A.I.toFixed(3)} / ${R.B.I.toFixed(3)} / ${R.T.I.toFixed(3)} A — 어디서나 같다<br>`;
+    ck += `${ok(near(R.A.V + R.B.V, R.T.V))} 전압: V<sub>A</sub>+V<sub>B</sub> = ${(R.A.V + R.B.V).toFixed(2)} V, 전체 ${R.T.V.toFixed(2)} V<br>`;
+    ck += `${ok(near(R.T.V / R.T.I, c.R1 + c.R2))} 합성 저항 V/I = ${(R.T.V / R.T.I).toFixed(1)} Ω, R₁+R₂ = ${c.R1 + c.R2} Ω`;
+  } else if (c.topo === "parallel" && R.A && R.B && R.T) {
+    ck += `${ok(near(R.A.V, R.B.V) && near(R.A.V, R.T.V))} 전압: ${R.A.V.toFixed(2)} / ${R.B.V.toFixed(2)} / ${R.T.V.toFixed(2)} V — 어디서나 같다<br>`;
+    ck += `${ok(near(R.A.I + R.B.I, R.T.I))} 전류: I<sub>A</sub>+I<sub>B</sub> = ${(R.A.I + R.B.I).toFixed(3)} A, 전체 ${R.T.I.toFixed(3)} A<br>`;
+    const Rp = c.R1 * c.R2 / (c.R1 + c.R2);
+    ck += `${ok(near(R.T.V / R.T.I, Rp))} 합성 저항 V/I = ${(R.T.V / R.T.I).toFixed(2)} Ω, R₁R₂/(R₁+R₂) = ${Rp.toFixed(2)} Ω`;
+  } else if (c.topo === "single" && R.A && R.T) {
+    ck += `${ok(near(R.A.I, R.T.I))} 전류: 저항 ${R.A.I.toFixed(3)} A, 전체 ${R.T.I.toFixed(3)} A<br>V/I = ${(R.A.V / R.A.I).toFixed(1)} Ω (저항 R₁ = ${c.R1} Ω)${c.r > 0 ? `<br>전지 단자 전압 ${R.T.V.toFixed(2)} V < 기전력 ${c.emf.toFixed(1)} V (내부 저항 r 때문)` : ""}`;
+  } else ck = "<span class='mut'>저항 A, B, 회로 전체를 모두 기록하면 관계를 자동으로 검사해 줘요.</span>";
+  $("chk").innerHTML = ck;
+}
+
+function powerBars(c, res) {
+  const rows = [["P₁", Math.abs(res.by.R1.P)]]; if (c.topo !== "single") rows.push(["P₂", Math.abs(res.by.R2.P)]);
+  const mx = Math.max(...rows.map(r => r[1]), 1e-9);
+  $("pbars").innerHTML = rows.map(r => `<div class="prow"><span>${r[0]}</span><i style="width:${Math.max(2, r[1] / mx * 100)}%"></i><b>${r[1].toFixed(2)} W</b></div>`).join("");
+  let t = "";
+  if (c.topo === "series") t = `직렬: I가 같아서 P₁:P₂ = R₁:R₂ = ${c.R1}:${c.R2} → <b>저항이 큰 쪽</b>이 더 많이 소비`;
+  else if (c.topo === "parallel") t = `병렬: V가 같아서 P₁:P₂ = 1/R₁:1/R₂ = ${(1 / c.R1).toFixed(3)}:${(1 / c.R2).toFixed(3)} → <b>저항이 작은 쪽</b>이 더 많이 소비`;
+  else t = `P = V·I = I²R. 전지가 내는 전력 ε·I 중 r에서 쓰이는 몫 = ${(res.Ibat * res.Ibat * res.rr).toFixed(2)} W`;
+  $("pnote").innerHTML = t;
+}
+
+function deriveHTML(kind, topo, c, res) {
+  const by = res.by, f = (x, d) => Math.abs(x).toFixed(d === undefined ? 2 : d), nm = kind === "water" ? ["압력 차 ΔP", "펌프", "관"] : ["높이 차 Δh", "엘리베이터", "길"];
+  if (topo === "series") {
+    const Req = c.R1 + c.R2;
+    return `<div class="steps"><div class="st"><b>① 모형에서 관찰</b><br>${kind === "water" ? "관 하나마다 수위(표준관)가 내려가요" : "내리막 하나마다 높이가 줄어요"}: ${nm[0]}₁ = ${f(by.R1.V)} V, ${nm[0]}₂ = ${f(by.R2.V)} V</div>
+    <div class="st"><b>② 같은 양이 차례로 지난다</b><br>${kind === "water" ? "물은 새거나 쌓이지 않으니 모든 곳의 유량이 같다" : "공은 한 줄로만 가니 어디서나 통과 수가 같다"} → I = I₁ = I₂ = ${f(by.R1.I, 3)} A</div>
+    <div class="st"><b>③ 합쳐 보기</b><br>${nm[0]}를 더하면 ${f(by.R1.V)} + ${f(by.R2.V)} = ${f(by.R1.V + by.R2.V)} V = ${nm[1]}가 올려 준 몫(단자 전압 ${f(res.Vterm)} V)<br>I·R₁ + I·R₂ = I·(R₁+R₂) ⇒ <b>R = R₁ + R₂ = ${Req} Ω</b><br>${kind === "water" ? "→ 관을 이어 붙이면 <b>길이가 더해져</b> 등가 관이 더 길어진다 (노란 관)" : "→ 못이 박힌 구간을 이어 붙이면 <b>못이 더해진다</b>"}</div></div>`;
+  }
+  const Rp = c.R1 * c.R2 / (c.R1 + c.R2);
+  return `<div class="steps"><div class="st"><b>① 모형에서 관찰</b><br>${kind === "water" ? "두 관의 양 끝(모임점) 수위 차가 같다" : "두 길의 시작과 끝 높이가 같다"}: ${nm[0]} = ${f(by.R1.V)} V (두 ${nm[2]} 모두)</div>
+    <div class="st"><b>② 갈라져 흐른다</b><br>I₁ = V/R₁ = ${f(by.R1.I, 3)} A, I₂ = V/R₂ = ${f(by.R2.I, 3)} A<br>${kind === "water" ? "넓은 관(작은 R)" : "못이 적은 길(작은 R)"}으로 더 많이 흐른다</div>
+    <div class="st"><b>③ 합쳐 보기</b><br>I = I₁ + I₂ = ${f(by.R1.I + by.R2.I, 3)} A = V·(1/R₁ + 1/R₂)<br>⇒ <b>1/R = 1/R₁ + 1/R₂</b> → R = ${Rp.toFixed(2)} Ω<br>${kind === "water" ? "→ 관을 나란히 놓으면 <b>단면적이 더해져</b> 물이 지나는 통로가 넓어진다 (노란 관)" : "→ 길이 둘이 되어 <b>지나는 통로가 늘어난다</b>"}</div></div>`;
+}
+
+const CMP_HTML = (c, res, kind, topo) => `<div class="cmp">
+  <div class="mut">현재 보이는 모형: <b>${kind === "water" ? "물 파이프" : "높이 지형"} · ${topo === "series" ? "직렬" : "병렬"}</b> (위 선택에서 바꿀 수 있어요)</div>
+  <table class="ct"><tr><th>회로 (실제)</th><th>💧 물 파이프</th><th>⛰️ 높이 지형</th></tr>
+  <tr><td>전하의 흐름 · 전류 I</td><td>단위 시간에 지나가는 물의 양(유량)</td><td>단위 시간에 문을 지나가는 공의 수</td></tr>
+  <tr><td>전지 (기전력 ε)</td><td>펌프: 압력 차를 만들어 낸다</td><td>엘리베이터: 공을 높이 올려 위치 에너지를 준다</td></tr>
+  <tr><td>전압 · 전위차 V</td><td>압력 차 (표준관 수위 차)</td><td>높이 차</td></tr>
+  <tr><td>저항 R</td><td>좁고 긴 관의 마찰 (길수록 ↑, 단면적 클수록 ↓)</td><td>장애물(못)이 많을수록 ↑</td></tr>
+  <tr><td>도선</td><td>굵은 관(마찰 무시)</td><td>평평한 길</td></tr>
+  <tr><td>스위치</td><td>밸브</td><td>문(게이트)</td></tr>
+  <tr><td>전류계 (직렬)</td><td>유량계: 관 중간에 끼워 물이 통과</td><td>문 옆 계수기: 지나가는 공을 센다</td></tr>
+  <tr><td>전압계 (병렬)</td><td>두 지점의 수위 차를 읽는 압력계</td><td>두 지점의 높이 차를 재는 자</td></tr>
+  <tr><td>옴의 법칙 I = V/R</td><td>압력 차에 비례하는 유량</td><td>기울기(높이 차)에 비례하는 공의 속도</td></tr>
+  <tr><td>직렬 R = R₁+R₂</td><td>관을 이어 붙임 → <b>길이 합</b></td><td>내리막을 이어 붙임 → <b>높이 차 합</b></td></tr>
+  <tr><td>병렬 1/R = 1/R₁+1/R₂</td><td>관을 나란히 → <b>단면적 합</b></td><td>길을 나눔 → <b>통로 합</b></td></tr></table>
+  <div class="two"><div class="good"><b>✅ 잘 들어맞는 점</b><ul>
+    <li><b>전류(유량·공의 수) 보존</b>: 갈라졌다 합쳐도 총량은 그대로 → I = I₁ + I₂ (키르히호프 전류 법칙)</li>
+    <li><b>에너지 보존</b>: 올린 높이만큼 내려오며 마찰·충돌로 열이 된다 → ε = V₁ + V₂ (+ 내부 r)</li>
+    <li><b>소비 전력</b> P = V·I : 압력(높이) 차 × 흐르는 양</li>
+    <li><b>스위치를 열면</b> 흐름은 0이지만 펌프·엘리베이터가 만든 압력(높이)은 그대로 남는다 = 전지의 기전력</li></ul></div>
+  <div class="bad"><b>⚠️ 어긋나는 점 (모형의 한계)</b><ul>
+    <li><b>전하의 부호</b>: 실제 전류 운반자 전자는 (−)라서 전류 방향과 반대로 움직인다. 모형은 (+) 전하처럼 그렸다.</li>
+    <li><b>속도</b>: 도선 속 전자의 평균 이동 속도(표류 속도)는 매우 느리다. 전구가 바로 켜지는 것은 전기장이 도선 전체에 빠르게 퍼지기 때문. 모형의 물·공은 눈에 보이게 빠르다.</li>
+    <li><b>저항의 공식</b>: 도선은 R = ρL/A. 실제 물 파이프(푸아죄유)는 반지름의 4제곱에 반비례해 수치가 다르다. 이 모형은 R ∝ 길이/단면적만 따라 그렸다.</li>
+    <li><b>지형</b>: 공은 중력으로 가속되지만 전자는 전기장 힘을 받고 이온과 충돌해 평균 속도가 일정하다. 공끼리는 밀지 않지만 전자끼리는 서로 밀어낸다.</li>
+    <li><b>물</b>: 관 밖으로 새거나 튈 수 있지만 전류는 도선 밖으로 새지 않는다. 물은 압력이 모든 방향으로 작용한다.</li></ul></div></div>
+  <div class="mut">지금 설정 → ε=${c.emf.toFixed(1)} V, R₁=${c.R1} Ω, R₂=${c.R2} Ω, r=${c.r.toFixed(1)} Ω · I=${Math.abs(res.by.SW.I).toFixed(3)} A · P₁=${Math.abs(res.by.R1.P).toFixed(2)} W, P₂=${Math.abs(res.by.R2.P).toFixed(2)} W</div></div>`;
+
+function tapPanel(api) {
+  const names = APPL.map(a => `<button class="lbtn tg" data-k="${a.k}">${a.n} ${a.P}W</button>`).join("");
+  api.custom.innerHTML = `<div class="lab"><div class="mut">가전제품을 눌러 멀티탭에 꽂거나 빼 보세요. (교과서 80~81쪽: 220 V, 16 A 멀티탭 · 각 기구는 병렬, 차단기는 직렬)</div><div class="tgs">${names}</div>
+    <button id="brkBtn" class="lbtn ghost">차단기 올리기(복구)</button><div id="tapnote" class="mut"></div><div id="tapbars"></div></div>`;
+  api.custom.querySelectorAll(".tg").forEach(b => b.onclick = () => { S.tap.on[b.dataset.k] = !S.tap.on[b.dataset.k]; api.refresh(); });
+  $("brkBtn").onclick = () => { S.tap.tripped = false; api.refresh(); };
+}
+function bulbPanel(api) {
+  api.custom.innerHTML = `<div class="lab"><div class="mut">전구를 클릭하면 필라멘트가 끊어집니다(다시 클릭하면 새 전구). 전구는 정격 ${BULB_V} V, ${BULB_V * BULB_V / BULB_R} W (저항 ${BULB_R} Ω) 이다.</div>
+  <button id="rstBulb" class="lbtn ghost">모든 전구 새것으로</button><div id="bulbnote"></div></div>`;
+  $("rstBulb").onclick = () => { S.bulbs.broken.fill(false); api.refresh(); };
+}
+
+function ensurePanel(api) {
+  const id = api.scenario.id; if (S.panelFor === id && api.custom.firstChild) return; S.panelFor = id;
+  if (EXP[id]) expPanel(api, id);
+  else if (id === "compare") api.custom.innerHTML = '<div id="cmpbox"></div>';
+  else if (MOD[id]) { api.custom.innerHTML = '<div class="lab"><div class="swrow"><button id="swBtn" class="lbtn"></button><span id="swInfo"></span></div><div id="drv"></div></div>'; $("swBtn").onclick = () => { S.sw = !S.sw; api.refresh(); }; }
+  else if (id === "life-tap") tapPanel(api); else bulbPanel(api);
+}
+
+/* 8. SIM */
+const EXP = { "exp-series": "series", "exp-parallel": "parallel", "exp-meters": "single" };
+const MOD = { "m-water-s": ["water", "series"], "m-water-p": ["water", "parallel"], "m-hill-s": ["hill", "series"], "m-hill-p": ["hill", "parallel"] };
+function modelOf(api) { const id = api.scenario.id; if (MOD[id]) return MOD[id]; return [Number(api.P.cmodel) === 1 ? "hill" : "water", Number(api.P.ctopo) === 1 ? "parallel" : "series"]; }
+function toggleSwitchIfAny(api) { const id = api.scenario.id; if (EXP[id] || MOD[id] || id === "compare") { S.sw = !S.sw; api.refresh(); } }
+
+const SIM = {
+  init(api) {
+    const T = api.THREE; S.T = T; S.api = api;
+    S.bench = new T.Group(); S.life = { root: new T.Group() }; S.flow = { root: new T.Group(), T, playing: true, stands: [], paths: [], part: [], labels: {} };
+    api.scene.add(S.bench, S.flow.root, S.life.root);
+    S.tap = { on: { kettle: true, micro: true, cooker: false, dryer: false, fryer: false, tv: false, pc: false }, tripped: false };
+    S.bulbs = { broken: new Array(40).fill(false) };
+    const el = api.renderer.domElement; let dn = null; const ray = new T.Raycaster(), v = new T.Vector2();
+    el.addEventListener("pointerdown", e => { dn = [e.clientX, e.clientY]; });
+    el.addEventListener("pointerup", e => {
+      if (!dn || Math.hypot(e.clientX - dn[0], e.clientY - dn[1]) > 5) return; dn = null;
+      const r = el.getBoundingClientRect(); v.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      ray.setFromCamera(v, api.camera); const hit = ray.intersectObjects(S.hit || [], false)[0]; if (!hit) return;
+      const u = hit.object.userData, id = api.scenario.id;
+      if (u.sw && (EXP[id] || MOD[id] || id === "compare")) toggleSwitchIfAny(api);
+      else if (u.sw && id === "life-tap") { if (u.app) S.tap.on[u.app] = !S.tap.on[u.app]; else S.tap.tripped = false; api.refresh(); }
+      else if (u.bulb !== undefined && id === "life-lights") { S.bulbs.broken[u.bulb] = !S.bulbs.broken[u.bulb]; api.refresh(); }
+    });
+  },
+
+  enter(api) {
+    const id = api.scenario.id, cam = api.camera;
+    S.bench.visible = !!EXP[id]; S.flow.root.visible = !!(MOD[id] || id === "compare"); S.life.root.visible = id.startsWith("life");
+    S.cfgKey = ""; S.hit = []; S.panelFor = "";
+    const set = (x, y, z) => { cam.position.set(x, y, z); if (api.controls) { api.controls.target.set(0, MOD[id] || id === "compare" ? 3 : id.startsWith("life") ? 2 : 0, 0); api.controls.update(); } };
+    if (EXP[id]) set(0, 27, 18); else if (MOD[id] || id === "compare") set(0, 26, 33); else if (id === "life-tap") set(0, 24, 30); else set(0, 12, 40);
+    ensurePanel(api); if (EXP[id] || MOD[id] || id === "compare") api.setPlaying(true);
+  },
+
+  update(api) {
+    const id = api.scenario.id, P = api.P; ensurePanel(api);
+    if (EXP[id]) {
+      const topo = EXP[id], c = circuitCfg(api, topo); if (topo === "single" && c.target === 1) c.target = 0;
+      S.cfg = c; const res = S.res = evalCircuit(c), plan = S.plan = buildPlan(c);
+      const key = expKey(c); if (key !== S.cfgKey) { S.cfgKey = key; buildBench(api, c, plan); }
+      refreshBench(c, res); renderRec(c); powerBars(c, res);
+      $("swBtn").textContent = S.sw ? "🔌 스위치 열기" : "🔌 스위치 닫기"; $("swInfo").textContent = S.sw ? "닫힘 — 전류가 흐를 수 있어요" : "열림 — 회로가 끊겼어요 (전지 전압은 그대로)";
+      const A = res.by.AM, V = res.by.VM, w = [];
+      if (Math.abs(A.I) >= 3) w.push("🔥 전류계가 전지를 단락시켰어요! 전류계는 저항이 거의 0이라 저항 대신 <b>병렬</b>로 달면 안 돼요. 실제라면 전지가 뜨거워지고 계기가 망가져요.");
+      else if (c.am === 1) w.push("⚠️ 전류계를 병렬로 달았어요. 저항이 전류계로 '우회'되어 원래 저항에는 전류가 거의 흐르지 않아요(단락).");
+      if (c.vm === 1) w.push("⚠️ 전압계를 직렬로 달았어요. 내부 저항이 매우 커서 회로 전류가 거의 0이 되고, 전압계가 전지 전압 거의 전부를 가져가요.");
+      if (!S.sw) w.push("ℹ️ 스위치가 열려 있어요. 전류계 0 A, 전지 양단에 단 전압계는 기전력 " + c.emf.toFixed(1) + " V를 읽어요.");
+      $("warn").innerHTML = w.map(t => `<div>${t}</div>`).join("");
+      const Req = topo === "series" ? c.R1 + c.R2 : topo === "parallel" ? c.R1 * c.R2 / (c.R1 + c.R2) : c.R1;
+      const rows = [["전류계 읽음", fmtA(A.I)], ["전압계 읽음", fmtV(V.V)], ["측정 대상", TGT_NAME[c.target]], ["합성 저항 (공식)", Req.toFixed(2) + " Ω"], ["전지 단자 전압", res.Vterm.toFixed(2) + " V (기전력 " + c.emf.toFixed(1) + " V)"], ["전지가 내는 전류", Math.abs(res.Ibat).toFixed(3) + " A"]];
+      api.setReadout(rows);
+      api.setNote(topo === "series" ? "직렬: 전류는 어디서나 같고(I=I₁=I₂), 전압은 나뉜다(V=V₁+V₂). 합성 저항 R=R₁+R₂." : topo === "parallel" ? "병렬: 전압은 어디서나 같고(V=V₁=V₂), 전류는 갈라진다(I=I₁+I₂). 1/R=1/R₁+1/R₂." : "전류계는 직렬, 전압계는 병렬! 스위치를 열고 닫으며 값이 어떻게 달라지는지 확인해 보세요.");
+      api.setStatus(S.sw ? "스위치 닫힘 · I = " + fmtA(res.by.SW.I) : "스위치 열림 · I = 0");
+    } else if (MOD[id] || id === "compare") {
+      const [kind, topo] = modelOf(api), c = circuitCfg(api, topo, { noMeter: true, am: 0, vm: 0, target: 0 });
+      S.cfg = c; const res = S.res = evalCircuit(c);
+      const key = [kind, topo, c.R1, c.R2, c.emf, c.r, S.sw].join("|"); S.flow.kind = kind;
+      if (key !== S.cfgKey) { S.cfgKey = key; buildFlow(api, kind, topo, c, res); }
+      S.flow.playing = api.playing; refreshFlow(c, res);
+      if (id === "compare") $("cmpbox").innerHTML = CMP_HTML(c, res, kind, topo); else { $("drv").innerHTML = deriveHTML(kind, topo, c, res); $("swBtn").textContent = S.sw ? (kind === "water" ? "🚰 밸브(스위치) 잠그기" : "🚪 문(스위치) 닫기") : (kind === "water" ? "🚰 밸브(스위치) 열기" : "🚪 문(스위치) 열기"); $("swInfo").textContent = S.sw ? "열림 — 흐른다" : "닫힘 — 흐름 0, 그래도 펌프의 압력(높이)은 남아 있다"; }
+      const by = res.by, Req = topo === "series" ? c.R1 + c.R2 : c.R1 * c.R2 / (c.R1 + c.R2);
+      const rows = [["전체 전류 I", Math.abs(by.SW.I).toFixed(3) + " A"], ["합성 저항 R", Req.toFixed(2) + " Ω"]];
+      rows.push([kind === "water" ? "R₁: 압력 차 · 유량" : "R₁: 높이 차 · 통과 수", Math.abs(by.R1.V).toFixed(2) + " V · " + Math.abs(by.R1.I).toFixed(3) + " A"]);
+      rows.push([kind === "water" ? "R₂: 압력 차 · 유량" : "R₂: 높이 차 · 통과 수", Math.abs(by.R2.V).toFixed(2) + " V · " + Math.abs(by.R2.I).toFixed(3) + " A"]);
+      rows.push(["소비 전력 P₁ : P₂", Math.abs(by.R1.P).toFixed(2) + " W : " + Math.abs(by.R2.P).toFixed(2) + " W"]);
+      api.setReadout(rows);
+      api.setNote(kind === "water" ? "파란 입자 = 물. 좁은 관에서는 입자가 드문드문하지만 훨씬 빠르게 지나가요(같은 유량). 막대(표준관)의 높이가 그 지점의 압력 = 전위예요." : "주황 공 = 전하. 위치(높이)가 전위예요. 못이 많은 길은 R이 커서 공이 천천히 내려오고, 같은 높이 차에서도 통과하는 공의 수가 적어요.");
+      api.setStatus(S.sw ? "I = " + Math.abs(by.SW.I).toFixed(3) + " A" : "스위치 열림 · I = 0");
+    } else if (id === "life-tap") {
+      const st = tapState(Math.round(P.rated || 16));
+      if (!S.tapObj || S.cfgKey !== "tap") { S.cfgKey = "tap"; buildTap(api); }
+      refreshTap(api, st);
+      $("tapnote").innerHTML = st.on.length ? `켜진 기구 ${st.on.length}개 · 합성 저항 R = V²/P = ${st.Req.toFixed(1)} Ω (병렬이라 기구를 꽂을수록 작아짐) · 총 전력 ${st.P} W · 총 전류 ${st.Iraw.toFixed(1)} A` : "꽂은 기구가 없어요.";
+      const mx = Math.max(st.rated, st.Iraw) * 1.05;
+      $("tapbars").innerHTML = st.on.map(a => `<div class="prow"><span>${a.n}</span><i style="width:${a.P / V_HOME / mx * 100}%"></i><b>${(a.P / V_HOME).toFixed(1)} A</b></div>`).join("") + `<div class="prow tot"><span>합계 (I=I₁+I₂+…)</span><i class="${st.Iraw > st.rated ? "bad" : ""}" style="width:${st.Iraw / mx * 100}%"></i><b>${st.Iraw.toFixed(1)} A</b></div><div class="prow lim"><span>멀티탭 정격</span><i style="width:${st.rated / mx * 100}%"></i><b>${st.rated} A</b></div>`;
+      api.setReadout([["공급 전압", V_HOME + " V"], ["총 소비 전력", st.P + " W"], ["총 전류", st.Iraw.toFixed(2) + " A"], ["정격 전류", st.rated + " A"], ["상태", S.tap.tripped ? "차단기 작동(전류 0)" : st.Iraw > st.rated * 0.9 ? "위험: 정격에 근접" : "정상"]]);
+      api.setNote("멀티탭의 기구들은 병렬이라 전압은 모두 220 V, 전류는 더해져요. 직렬로 들어 있는 차단기가 정격을 넘는 전류를 끊어 화재를 막아요.");
+    } else {
+      const N = P.nb | 0, mode = Number(P.bmode) || 0;
+      if (S.cfgKey !== "bulb|" + N + "|" + mode) { S.cfgKey = "bulb|" + N + "|" + mode; buildBulbs(api, N, mode); }
+      const st = refreshBulbs(api), Prated = BULB_V * BULB_V / BULB_R, o = st.out[0];
+      $("bulbnote").innerHTML = mode === 0
+        ? (st.open ? "<b>직렬</b>: 전구 한 개만 끊어져도 전류 경로가 사라져 <b>전부 꺼져요</b>. 끊어진 전구 양끝에는 전원 전압 전체가 걸려요." : `<b>직렬</b>: 전류 I = ${Number(P.Vs).toFixed(0)}/(${N}×${BULB_R}) = ${st.I.toFixed(3)} A, 전구 하나의 전압 ${o.V.toFixed(1)} V, 전력 ${o.P.toFixed(1)} W (정격의 ${(o.P / Prated * 100).toFixed(0)} %). 전구를 빼면 나머지에 걸리는 전압이 커져 더 밝아져요.`)
+        : `<b>병렬</b>: 전구마다 ${Number(P.Vs).toFixed(0)} V 그대로 → 하나가 끊어져도 나머지는 그대로. 총 전류 ${st.I.toFixed(2)} A (전구 수에 비례). 정격 ${BULB_V} V보다 높으면 전구가 상해요.`;
+      api.setReadout([["전원 전압", Number(P.Vs).toFixed(0) + " V"], ["전구 수", N + "개"], ["총 전류", st.I.toFixed(3) + " A"], ["전구 1개 전압", o.V.toFixed(1) + " V"], ["전구 1개 전력", o.P.toFixed(2) + " W (정격 " + Prated.toFixed(0) + " W)"]]);
+      api.setNote("교과서 81쪽: 장식용 전구를 직렬로 연결하면 전체 전압이 전구에 나뉘어 전압 변화에서 전구를 보호하지만, 한 전구만 끊어져도 모두 꺼지는 단점이 있어요.");
+      const prevMode = S.hint.bmode; S.hint.bmode = mode;
+      if (prevMode !== undefined && prevMode !== mode) api.setParam("Vs", mode === 0 ? 220 : 12);
+    }
+  },
+
+  frame(api, dt) {
+    const id = api.scenario.id;
+    if (api.playing) S.t += dt;
+    if (EXP[id] && S.plan) { const cv = $("sch"); if (cv) drawSchematic(cv, S.plan, S.res, S.cfg, S.t); }
+    if ((MOD[id] || id === "compare") && S.flow.part.length && S.res) {
+      S.flow.playing = api.playing; stepFlow(S.flow, S.res, Math.min(dt, 0.05));
+      if (S.flow.impeller) S.flow.impeller.rotation.z += (api.playing ? 1 : 0) * Math.min(4, Math.abs(S.res.by.SW.I) * 3) * dt;
+    }
+  },
+
+  reset(api) { S.sw = true; S.rec = { sig: "", rows: {} }; S.tap.tripped = false; S.bulbs.broken.fill(false); S.t = 0; },
+
+  tests() {
+    const out = [], base = { topo: "series", target: 0, am: 0, vm: 0, sw: true, R1: 10, R2: 20, emf: 6, r: 0 };
+    const ev = o => evalCircuit(Object.assign({}, base, o)), near = (a, b, t) => Math.abs(a - b) <= (t || 0.003) * Math.max(1, Math.abs(b));
+    let r = ev({});
+    out.push(["직렬 I=ε/(R₁+R₂)", near(r.by.AM.I, 0.2), "I=" + r.by.AM.I.toFixed(4) + " (기대 0.2 A)"]);
+    out.push(["직렬 V₁:V₂=R₁:R₂", near(r.by.R1.V / r.by.R2.V, 0.5, 0.01), "V₁/V₂=" + (r.by.R1.V / r.by.R2.V).toFixed(4)]);
+    out.push(["직렬 P₁:P₂=R₁:R₂", near(r.by.R1.P / r.by.R2.P, 0.5, 0.01), "P₁/P₂=" + (r.by.R1.P / r.by.R2.P).toFixed(4)]);
+    r = ev({ topo: "parallel", target: 2 });
+    out.push(["병렬 R=R₁R₂/(R₁+R₂)", near(r.by.VM.V / r.by.AM.I, 20 / 3, 0.01), "V/I=" + (r.by.VM.V / r.by.AM.I).toFixed(3) + " (기대 6.667 Ω)"]);
+    out.push(["병렬 I=I₁+I₂ (전류 보존)", near(r.by.R1.I + r.by.R2.I, r.by.SW.I, 0.001), "I₁+I₂=" + (r.by.R1.I + r.by.R2.I).toFixed(4) + ", I=" + r.by.SW.I.toFixed(4)]);
+    out.push(["병렬 I₁:I₂=R₂:R₁", near(r.by.R1.I / r.by.R2.I, 2, 0.01), "I₁/I₂=" + (r.by.R1.I / r.by.R2.I).toFixed(4)]);
+    r = ev({ target: 2, r: 2 });
+    out.push(["내부저항: V단자=ε−Ir", near(r.by.VM.V, 6 - 2 * r.by.AM.I, 0.003), "V=" + r.by.VM.V.toFixed(3) + ", ε−Ir=" + (6 - 2 * r.by.AM.I).toFixed(3)]);
+    r = ev({ target: 2, sw: false });
+    out.push(["스위치 열림: I=0, 전압계=ε", Math.abs(r.by.AM.I) < 1e-6 && near(r.by.VM.V, 6, 0.001), "I=" + r.by.AM.I.toExponential(1) + " V=" + r.by.VM.V.toFixed(3)]);
+    r = ev({ vm: 1 });
+    out.push(["전압계 직렬 오연결: I≈0, V≈ε", Math.abs(r.by.AM.I) < 1e-4 && near(r.by.VM.V, 6, 0.001), "I=" + r.by.AM.I.toExponential(1) + " V=" + r.by.VM.V.toFixed(3)]);
+    r = ev({ am: 1 });
+    out.push(["전류계 병렬 오연결: R₁ 단락", Math.abs(r.by.R1.I) < 0.002 && near(r.by.SW.I, 0.3, 0.01), "I_R1=" + r.by.R1.I.toFixed(4) + ", I=" + r.by.SW.I.toFixed(3)]);
+    r = ev({ am: 1, target: 2 });
+    out.push(["전지 단락: 과전류", Math.abs(r.by.AM.I) > 3, "I=" + r.by.AM.I.toFixed(0) + " A"]);
+    r = ev({}); const Pin = r.Ibat * 6 - r.Ibat * r.Ibat * 0, Psum = r.by.R1.P + r.by.R2.P;
+    out.push(["에너지 보존 ε·I=ΣP", near(Pin, Psum, 0.01), "ε·I=" + Pin.toFixed(4) + " ΣP=" + Psum.toFixed(4)]);
+    const w = ev({ topo: "series", noMeter: true }); out.push(["계기 없는 회로 해석", near(w.by.R1.I, 0.2, 0.003), "I=" + w.by.R1.I.toFixed(4)]);
+    const plan = buildPlan(Object.assign({}, base, { topo: "parallel", target: 1, am: 1, vm: 1 }));
+    out.push(["배치 계획: 모든 부품 생성", ["BAT", "SW", "R1", "R2", "AM", "VM"].every(id => plan.parts.some(p => p.id === id)), plan.parts.map(p => p.id).join(",")]);
+    return out;
+  },
+};
+
+</script>
+<script>
+"use strict";
+/* ============================ 공용 UI 프레임워크 (템플릿) ============================ */
+(function () {
+  const C = WS_CONFIG;
+  const $ = (id) => document.getElementById(id);
+  const P = {};
+  const ui = { tab: C.tabs[0].id, scenarioId: null, playing: false };
+  const lastScenarioOfTab = {};
+
+  function addDefaults(params) { (params || []).forEach(p => { if (!(p.key in P)) P[p.key] = p.value; }); }
+  C.scenarios.forEach(s => { addDefaults(s.params); addDefaults(s.choices); });
+  if (C.common_params) addDefaults(C.common_params.params);
+
+  function current() { return C.scenarios.find(s => s.id === ui.scenarioId); }
+  function scenariosOfTab(tab) { return C.scenarios.filter(s => s.tab === tab); }
+  function fmtVal(v, unit) {
+    if (!unit) return String(v);
+    return /^[°%′″]/.test(unit) ? v + unit : v + " " + unit;
+  }
+
+  function showError(where, e) {
+    const box = $("simError");
+    box.hidden = false;
+    box.textContent = "시뮬레이션 오류 (" + where + "): " + (e && e.message ? e.message : e);
+    console.error(e);
+  }
+  const SIMOBJ = (typeof SIM !== "undefined") ? SIM : null;
+  function call(hook, ...args) {
+    if (!SIMOBJ || typeof SIMOBJ[hook] !== "function") return undefined;
+    try { return SIMOBJ[hook](api, ...args); } catch (e) { showError(hook, e); return undefined; }
+  }
+
+  /* ---------- 렌더러 ---------- */
+  const wrap = $("sceneWrap");
+  const api = {
+    config: C, P,
+    get scenario() { return current(); },
+    get tab() { return ui.tab; },
+    get playing() { return ui.playing; },
+    setPlaying(b) { ui.playing = !!b; updatePlayButton(); },
+    boxHalf: (C.scene && C.scene.box_half) || 16,
+    sceneEl: wrap,
+    THREE: window.THREE || null,
+    scene: null, camera: null, renderer: null, controls: null,
+    canvas: null, ctx: null, width: 0, height: 0,
+    custom: $("customPanel"),
+    chart: {
+      canvas: $("chartCanvas"),
+      ctx: $("chartCanvas").getContext("2d"),
+      setHint(html) { $("chartHint").innerHTML = html; },
+    },
+    setReadout(rows) {
+      const tbl = $("readout");
+      tbl.innerHTML = "";
+      (rows || []).forEach(r => {
+        const tr = document.createElement("tr");
+        const a = document.createElement("td"); a.textContent = r[0];
+        const b = document.createElement("td"); b.textContent = r[1];
+        tr.append(a, b); tbl.appendChild(tr);
+      });
+    },
+    setNote(text) { $("readoutNote").textContent = text || ""; },
+    setStatus(text) { const el = $("wsStatus"); if (el) el.textContent = text || ""; },
+    setParam(key, v) {
+      P[key] = v;
+      const el = $("p_" + key); if (el) el.value = v;
+      const vEl = $("p_" + key + "_val"); if (vEl) vEl.textContent = fmtVal(v, vEl.dataset.unit);
+    },
+    refresh() { call("update"); },
+  };
+
+  function initRenderer() {
+    const sc = C.scene || {};
+    if (C.renderer === "three") {
+      if (!window.THREE) { showError("init", "Three.js를 불러오지 못했습니다 (인터넷 연결 확인)"); return false; }
+      const T = window.THREE;
+      api.scene = new T.Scene();
+      api.camera = new T.PerspectiveCamera(45, wrap.clientWidth / wrap.clientHeight, 0.1, 500);
+      const cp = sc.camera || [26, 20, 30];
+      api.camera.position.set(cp[0], cp[1], cp[2]);
+      api.renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
+      api.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      wrap.insertBefore(api.renderer.domElement, wrap.firstChild);
+      api.controls = new T.OrbitControls(api.camera, api.renderer.domElement);
+      api.controls.enableDamping = true;
+      api.controls.dampingFactor = 0.08;
+      api.controls.target.set(0, 0, 0);
+      api.scene.add(new T.AmbientLight(0xffffff, 0.55));
+      const dl = new T.DirectionalLight(0xffffff, 0.9);
+      dl.position.set(20, 30, 15);
+      api.scene.add(dl);
+      if (sc.grid !== false) api.scene.add(new T.GridHelper(api.boxHalf * 2, 16, 0x3a5a8a, 0x1f3352));
+      if (sc.axes !== false) api.scene.add(new T.AxesHelper(api.boxHalf * 0.6));
+    } else {
+      api.canvas = document.createElement("canvas");
+      wrap.insertBefore(api.canvas, wrap.firstChild);
+      api.ctx = api.canvas.getContext("2d");
+    }
+    window.addEventListener("resize", onResize);
+    onResize();
+    return true;
+  }
+
+  function onResize() {
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    api.width = w; api.height = h;
+    if (api.renderer) {
+      api.camera.aspect = w / h;
+      api.camera.updateProjectionMatrix();
+      api.renderer.setSize(w, h);
+    } else if (api.canvas) {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      api.canvas.width = Math.round(w * dpr);
+      api.canvas.height = Math.round(h * dpr);
+      api.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (ui.scenarioId) call("update");
+    }
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    if (api.controls) api.controls.update();
+    call("frame", 1 / 60);
+    if (api.renderer) api.renderer.render(api.scene, api.camera);
+  }
+
+  /* ---------- UI ---------- */
+  function renderTabs() {
+    const box = $("tabs");
+    box.innerHTML = "";
+    box.hidden = C.tabs.length < 2;
+    C.tabs.forEach(t => {
+      const b = document.createElement("button");
+      b.textContent = t.label;
+      b.className = t.id === ui.tab ? "active" : "";
+      b.addEventListener("click", () => switchTab(t.id));
+      box.appendChild(b);
+    });
+  }
+
+  function renderPicker() {
+    const box = $("scenarioPicker");
+    const list = scenariosOfTab(ui.tab);
+    box.innerHTML = "";
+    box.hidden = list.length < 2;
+    list.forEach(s => {
+      const b = document.createElement("button");
+      b.textContent = s.name;
+      b.className = s.id === ui.scenarioId ? "active" : "";
+      b.addEventListener("click", () => selectScenario(s.id));
+      box.appendChild(b);
+    });
+  }
+
+  function sliderEl(p) {
+    const div = document.createElement("div");
+    div.className = "param";
+    const label = document.createElement("label");
+    label.textContent = p.label + " ";
+    const val = document.createElement("span");
+    val.className = "val"; val.id = "p_" + p.key + "_val"; val.dataset.unit = p.unit || "";
+    val.textContent = fmtVal(P[p.key], p.unit);
+    label.appendChild(val);
+    const inp = document.createElement("input");
+    inp.type = "range"; inp.id = "p_" + p.key;
+    inp.min = p.min; inp.max = p.max; inp.step = p.step; inp.value = P[p.key];
+    inp.addEventListener("input", () => {
+      const v = parseFloat(inp.value);
+      P[p.key] = v;
+      val.textContent = fmtVal(v, p.unit);
+      call("update");
+    });
+    div.append(label, inp);
+    return div;
+  }
+
+  function choiceEl(c) {
+    const row = document.createElement("div");
+    row.className = "row"; row.style.marginBottom = "8px";
+    if (c.label) { const l = document.createElement("b"); l.style.fontSize = "0.9em"; l.textContent = c.label; row.appendChild(l); }
+    c.options.forEach(o => {
+      const b = document.createElement("button");
+      b.textContent = o.label;
+      b.className = P[c.key] === o.value ? "primary" : "";
+      b.addEventListener("click", () => {
+        P[c.key] = o.value;
+        row.querySelectorAll("button").forEach(x => x.className = "");
+        b.className = "primary";
+        call("update");
+      });
+      row.appendChild(b);
+    });
+    return row;
+  }
+
+  function renderControls() {
+    const s = current();
+    const body = $("scenarioBody");
+    body.innerHTML = "";
+    if (s.desc || s.section) {
+      const p = document.createElement("p");
+      p.className = "hint"; p.style.marginBottom = "10px";
+      if (s.section) { const b = document.createElement("b"); b.textContent = s.section; p.appendChild(b); if (s.desc) p.appendChild(document.createTextNode(" — ")); }
+      if (s.desc) p.appendChild(document.createTextNode(s.desc));
+      body.appendChild(p);
+    }
+    (s.choices || []).forEach(c => body.appendChild(choiceEl(c)));
+    (s.params || []).forEach(p => body.appendChild(sliderEl(p)));
+    if (s.animated) {
+      const st = document.createElement("div");
+      st.className = "hint"; st.id = "wsStatus";
+      st.textContent = s.status_hint || "";
+      body.appendChild(st);
+      const row = document.createElement("div");
+      row.className = "controls-row";
+      const play = document.createElement("button");
+      play.id = "playBtn"; play.className = "primary";
+      play.addEventListener("click", () => { ui.playing = !ui.playing; updatePlayButton(); });
+      const reset = document.createElement("button");
+      reset.textContent = "↺ 리셋";
+      reset.addEventListener("click", () => { ui.playing = false; updatePlayButton(); call("reset"); call("update"); });
+      row.append(play, reset);
+      body.appendChild(row);
+      updatePlayButton();
+    }
+    const cp = C.common_params;
+    if (cp && s.use_common !== false) {
+      const hr = document.createElement("hr");
+      hr.style.cssText = "margin:10px 0;border:none;border-top:1px solid var(--border)";
+      body.appendChild(hr);
+      if (cp.title) { const b = document.createElement("b"); b.style.fontSize = "0.9em"; b.textContent = cp.title; body.appendChild(b); }
+      cp.params.forEach(p => body.appendChild(sliderEl(p)));
+    }
+  }
+
+  function updatePlayButton() {
+    const b = $("playBtn");
+    if (b) b.textContent = ui.playing ? "⏸ 일시정지" : "▶ 재생";
+  }
+
+  function renderFormula() {
+    const s = current();
+    const body = $("formulaBody");
+    body.innerHTML = (s.formula || []).map(f =>
+      (f.eq_html ? `<div class="eq">${f.eq_html}</div>` : "") + (f.text_html || "")
+    ).join("");
+  }
+
+  function renderMisconception() {
+    const s = current();
+    const panel = $("misconceptionPanel");
+    panel.innerHTML = "";
+    panel.hidden = !s.misconception;
+    if (!s.misconception) return;
+    const box = document.createElement("div");
+    box.className = "misconception";
+    const b = document.createElement("b");
+    b.textContent = s.misconception_title || "💡 흔한 오개념";
+    box.append(b, document.createElement("br"), document.createTextNode(s.misconception));
+    panel.appendChild(box);
+  }
+
+  function enterScenario() {
+    ui.playing = false;
+    const s = current();
+    $("graphPanel").hidden = !s.chart;
+    $("chartHint").innerHTML = "";
+    api.custom.innerHTML = "";
+    api.setReadout([]); api.setNote("");
+    renderPicker(); renderControls(); renderFormula(); renderMisconception();
+    call("enter");
+    call("update");
+  }
+
+  function selectScenario(id) {
+    ui.scenarioId = id;
+    lastScenarioOfTab[ui.tab] = id;
+    enterScenario();
+  }
+
+  function switchTab(tab) {
+    ui.tab = tab;
+    renderTabs();
+    selectScenario(lastScenarioOfTab[tab] || scenariosOfTab(tab)[0].id);
+  }
+
+  function renderLegend() {
+    const box = $("legend");
+    (C.legend || []).forEach(l => {
+      const span = document.createElement("span");
+      const sw = document.createElement("i");
+      sw.className = "swatch" + (l.shape === "bar" ? " bar" : "");
+      sw.style.background = l.color;
+      span.append(sw, document.createTextNode(l.label));
+      box.appendChild(span);
+    });
+  }
+
+  function runSelfTests() {
+    if (!SIMOBJ || typeof SIMOBJ.tests !== "function") { console.log("물리 검증 항목 없음"); return; }
+    let results = [];
+    try { results = SIMOBJ.tests() || []; } catch (e) { showError("tests", e); return; }
+    console.log("=== " + C.title + " 물리 검증 ===");
+    let pass = 0;
+    for (const [name, ok, detail] of results) {
+      console.log(`[${ok ? "PASS" : "FAIL"}] ${name}${detail ? " — " + detail : ""}`);
+      if (ok) pass++;
+    }
+    console.log(pass === results.length ? "모든 검증 통과" : "일부 검증 실패 — 콘솔 확인 필요");
+    window.__wsSelfTest = { pass, total: results.length };
+  }
+
+  /* ---------- 시작 ---------- */
+  $("readoutTitle").textContent = C.readout_title || "측정값";
+  $("hoverHint").textContent = (C.scene && C.scene.hint != null) ? C.scene.hint
+    : (C.renderer === "three" ? "마우스 드래그: 회전 · 휠: 확대/축소" : "");
+  $("projectorBtn").addEventListener("click", () => document.body.classList.toggle("projector"));
+  renderLegend();
+  if (!SIMOBJ) showError("load", "sim_js에 SIM 객체가 정의되지 않았습니다");
+  if (initRenderer()) {
+    call("init");
+    renderTabs();
+    switchTab(ui.tab);
+    animate();
+  }
+  runSelfTests();
+})();
+</script>
+
+</body>
+</html>
+<!--claude-meta
+category: 전자기학
+slug: series-parallel-lab
+icon: 🔌
+title: 저항의 직렬연결과 병렬연결 가상 실험실
+desc: 교과서 77~81쪽 실험(전지·스위치·전류계·전압계)을 가상으로 해 보고, 물 파이프·높이 지형 3D 모형으로 합성 저항 공식을 이끌어낸 뒤 실제 회로와 비교합니다.
+-->

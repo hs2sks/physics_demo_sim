@@ -1830,19 +1830,21 @@ const BBC = {
   "bb-1": { title: "① 거실 멀티탭 속 배선", V: 220, par: 4,
     story: "멀티탭 상자 안의 배선이 가려져 있어요. 전기주전자·전자레인지·전기밥솥이 꽂혀 있는데, 플러그(＋/－)와 각 기구의 핀(a,b)이 어떻게 이어져 있을까요?",
     parts: [{ n: "주전자", R: 32 }, { n: "전자레인지", R: 69 }, { n: "밥솥", R: 37 }],
-    nets: { "+": 0, "1a": 0, "2a": 0, "3a": 0, "-": 1, "1b": 1, "2b": 1, "3b": 1 },
-    after: "모든 기구의 한쪽 핀은 ＋선에, 다른 쪽은 －선에 이어진 <b>병렬</b>이에요. 그래서 각 기구에 220 V가 똑같이 걸리고 전류는 더해집니다(I=I₁+I₂+I₃). 기구를 더 꽂을수록 합성 저항이 작아져 전체 전류가 커져요 → 멀티탭 과부하의 이유." },
+    nets: { "+": 0, "1a": 0, "2a": 0, "3a": 0, "-": 1, "1b": 1, "2b": 1, "3b": 1 } },
   "bb-2": { title: "② 장식 전구줄 (순서가 뒤섞임)", V: 48, par: 7,
     story: "전구 4개가 한 줄로 이어진 장식 전구줄인데 핀 번호가 뒤죽박죽이에요. 플러그 ＋에서 －까지 전구가 어떤 순서로 이어져 있는지 알아내 보세요. (힌트: 두 핀 사이 저항이 0 Ω이면 같은 선, 끊어졌으면 ∞)",
     parts: [{ n: "전구1", R: 12 }, { n: "전구2", R: 12 }, { n: "전구3", R: 12 }, { n: "전구4", R: 12 }],
-    nets: { "+": 0, "3a": 0, "3b": 1, "1a": 1, "1b": 2, "4b": 2, "4a": 3, "2a": 3, "2b": 4, "-": 4 },
-    after: "＋ → 전구3 → 전구1 → 전구4 → 전구2 → － 로 이어진 <b>직렬</b>이에요. 전류는 모든 전구에서 같고(I=48/48=1 A) 전압은 12 V씩 나뉘어요. 한 전구만 끊어져도 전체가 꺼지는 이유입니다." },
+    nets: { "+": 0, "3a": 0, "3b": 1, "1a": 1, "1b": 2, "4b": 2, "4a": 3, "2a": 3, "2b": 4, "-": 4 } },
   "bb-3": { title: "③ 헤어드라이어 속 혼합 배선", V: 220, par: 6,
     story: "헤어드라이어 안에는 속도 조절용 보호 저항 R₁, 히터 R₂, 팬 R₃가 들어 있어요. 핀이 섞여 있습니다. 플러그에서 부품들이 직렬과 병렬로 어떻게 섞여 이어졌을까요?",
     parts: [{ n: "보호저항", R: 15 }, { n: "히터", R: 40 }, { n: "팬", R: 60 }],
-    nets: { "+": 0, "1a": 0, "1b": 1, "2a": 1, "3b": 1, "2b": 2, "3a": 2, "-": 2 },
-    after: "보호 저항 R₁이 (히터 ∥ 팬)과 <b>직렬</b>로 이어진 <b>혼합</b> 연결이에요. 히터와 팬은 같은 전압(병렬), R₁에는 전체 전류가 흘러 전압을 나눠 가져요(분압). R_eq = R₁ + R₂R₃/(R₂+R₃) = 39 Ω." },
+    nets: { "+": 0, "1a": 0, "1b": 1, "2a": 1, "3b": 1, "2b": 2, "3a": 2, "-": 2 } },
 };
+const fN = x => String(parseFloat(Number(x).toFixed(2)));
+function afterOf(id, c) { const R = c.parts.map(p => p.R), V = c.V;
+  if (id === "bb-1") return `모든 기구의 한쪽 핀은 ＋선에, 다른 쪽은 －선에 이어진 <b>병렬</b>이에요. 그래서 각 기구에 ${V} V가 똑같이 걸리고 전류는 더해집니다(I=I₁+I₂+I₃). 기구를 더 꽂을수록 합성 저항이 작아져 전체 전류가 커져요 → 멀티탭 과부하의 이유.`;
+  if (id === "bb-2") { const Rs = R.reduce((a, b) => a + b, 0), I = V / Rs; return `＋ → 전구3 → 전구1 → 전구4 → 전구2 → － 로 이어진 <b>직렬</b>이에요. 전류는 모든 전구에서 같고(I=${V}/${Rs}=${fN(I)} A) 전압은 ${R.map(r => fN(I * r)).join(" V, ")} V로 나뉘어요. 한 전구만 끊어져도 전체가 꺼지는 이유입니다.`; }
+  const Rp = R[1] * R[2] / (R[1] + R[2]); return `보호 저항 R₁이 (히터 ∥ 팬)과 <b>직렬</b>로 이어진 <b>혼합</b> 연결이에요. 히터와 팬은 같은 전압(병렬), R₁에는 전체 전류가 흘러 전압을 나눠 가져요(분압). R_eq = R₁ + R₂R₃/(R₂+R₃) = ${fN(R[0] + Rp)} Ω.`; }
 const NETL = ["A", "B", "C", "D", "E", "F"];
 const pinList = c => ["+", "-"].concat(...c.parts.map((p, i) => [(i + 1) + "a", (i + 1) + "b"]));
 const pinName = (c, p) => p === "+" ? "플러그 ＋" : p === "-" ? "플러그 －" : c.parts[+p[0] - 1].n + " " + p[1];
@@ -1949,7 +1951,7 @@ function bbUpdate(api) {
     const Itot = c.parts.length ? Object.values(r.by).reduce((a, x) => a, 0) : 0, Ib = r.Ibat;
     rows.push(["전원", c.V + " V (가상)"], ["합성 저항", (c.V / Ib).toFixed(1) + " Ω"], ["전체 전류", Ib.toFixed(3) + " A"]);
     c.parts.forEach((p, i) => rows.push([p.n + " " + p.R + "Ω", Math.abs(r.by["P" + (i + 1)].V).toFixed(1) + " V · " + Math.abs(r.by["P" + (i + 1)].I).toFixed(3) + " A · " + Math.abs(r.by["P" + (i + 1)].P).toFixed(1) + " W"]));
-    $("gplay").innerHTML = `<div class="gbox win"><div class="gt">🔓 뚜껑을 열었어요! 속 배선이 보여요</div>${c.after}</div>`;
+    $("gplay").innerHTML = `<div class="gbox win"><div class="gt">🔓 뚜껑을 열었어요! 속 배선이 보여요</div>${afterOf(id, c)}</div>`;
   } else $("gplay").innerHTML = "";
   api.setReadout(rows);
   api.setNote("저항계로 두 핀 사이를 재면 그 사이의 합성 저항이 나와요. 0 Ω이면 한 선, ∞이면 끊김. 한 부품의 두 핀 사이를 재면 그 부품이 나머지 회로와 병렬로 읽힌다는 점에 주의!");
@@ -1971,6 +1973,10 @@ function applyHash(api) {
     for (let j = 0; j < pk.length; j++) { pk[j].click(); if (api.scenario && api.scenario.id === q.s) { found = true; break; } }
   }
   if (!found) return;
+  if (BBC[q.s]) { const c = BBC[q.s], old = gameSt(q.s).stars;
+    if (q.V) c.V = Number(q.V);
+    if (q.rr) q.rr.split(",").forEach((x, i) => { if (c.parts[i] && Number(x) > 0) c.parts[i].R = Number(x); });
+    S.gm[q.s] = null; gameSt(q.s).stars = old; S.bb.key = ""; S.panelFor = ""; S.bb.revealed = false; }
   if (q.pre !== undefined) { const row = [...document.querySelectorAll(".row")].find(r => r.firstChild && r.firstChild.textContent === "회로 선택"); const bt = row && row.querySelectorAll("button")[Number(q.pre)]; if (bt) bt.click(); }
   Object.keys(q).forEach(k => { if (k !== "s" && k !== "pre" && !isNaN(Number(q[k]))) api.setParam(k, Number(q[k])); });
   api.refresh();

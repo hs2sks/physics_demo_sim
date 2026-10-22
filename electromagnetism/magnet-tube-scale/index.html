@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>금속관 속 자석 낙하 저울 가상 실험실</title>
+<style>
+  :root { --bg:#f4f6fa; --panel:#fff; --ink:#1c2733; --sub:#5a6b7d; --accent:#1f6fd6; --red:#d64545; --ok:#1e8f4e; --border:#d7dee8; --radius:10px; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  [hidden] { display:none !important; }
+  body { font-family:"Segoe UI","Malgun Gothic",sans-serif; background:var(--bg); color:var(--ink); padding:12px; font-size:15px; }
+  header { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:10px; }
+  header h1 { font-size:1.25em; }
+  header .spacer { flex:1; }
+  a.home { text-decoration:none; color:var(--sub); border:1px solid var(--border); padding:6px 12px; border-radius:8px; font-size:.9em; white-space:nowrap; }
+  .tabs { display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; }
+  .tabs button { padding:8px 16px; border-radius:8px; border:1px solid var(--border); background:#fff; cursor:pointer; font-size:1em; }
+  .tabs button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .tabs button:disabled { opacity:.5; cursor:not-allowed; }
+  .layout { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start; }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:12px; }
+  .left { flex:1 1 380px; min-width:0; }
+  .right { flex:1 1 360px; display:flex; flex-direction:column; gap:12px; min-width:0; }
+  .stage { background:radial-gradient(circle at 50% 20%,#eef2f8,#d9e0ea 80%); border-radius:8px; overflow:hidden; }
+  .stage canvas { display:block; width:100%; height:auto; max-height:80vh; object-fit:contain; margin:0 auto; }
+  canvas.chart { width:100%; background:#fff; border:1px solid var(--border); border-radius:6px; display:block; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .seg { display:flex; flex-wrap:wrap; gap:6px; }
+  .seg button { flex:1 1 auto; padding:7px 8px; font-size:.88em; border-radius:8px; border:1px solid var(--border); background:#fff; cursor:pointer; }
+  .seg button.active { background:#eaf1fd; border-color:var(--accent); color:var(--accent); font-weight:700; }
+  button { font-size:1em; padding:8px 14px; border-radius:8px; border:1px solid var(--border); background:#fff; cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  .param { margin-bottom:10px; }
+  .param label.t { display:flex; justify-content:space-between; font-weight:600; margin-bottom:4px; font-size:.92em; }
+  .param label.t .val { color:var(--accent); font-variant-numeric:tabular-nums; }
+  .param input[type=range] { width:100%; }
+  h3 { font-size:1em; margin-bottom:6px; }
+  .hint { color:var(--sub); font-size:.83em; line-height:1.55; margin-top:4px; }
+  table.readout { width:100%; border-collapse:collapse; font-size:.92em; }
+  table.readout td { padding:4px 2px; border-bottom:1px solid var(--border); font-variant-numeric:tabular-nums; }
+  table.readout td:first-child { color:var(--sub); }
+  table.readout td:last-child { text-align:right; font-weight:700; }
+  .note { border-left:3px solid var(--accent); background:#eef4fd; padding:8px 10px; border-radius:6px; font-size:.88em; line-height:1.65; margin-top:8px; }
+  .warn { border-left:3px solid var(--red); background:#fdeeee; padding:8px 10px; border-radius:6px; font-size:.88em; line-height:1.65; margin-top:8px; }
+  .good { border-left:3px solid var(--ok); background:#eaf7ef; padding:8px 10px; border-radius:6px; font-size:.88em; line-height:1.65; margin-top:8px; }
+  .note:empty,.warn:empty,.good:empty { display:none; }
+  .chk { display:flex; gap:6px; align-items:center; font-size:.9em; margin:3px 0; }
+  .eq { font-family:Georgia,"Malgun Gothic",serif; text-align:center; margin:6px 0; font-size:1.05em; }
+  ol.steps, ul.list { margin:6px 0 6px 20px; line-height:1.75; font-size:.93em; }
+  .step-nav { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+  .step-nav button { padding:5px 10px; font-size:.85em; }
+  .step-nav button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .step-nav button.seen { border-color:var(--accent); }
+  .ex-title { font-size:1.08em; font-weight:700; margin-bottom:6px; }
+  .ex-body { line-height:1.75; font-size:.94em; }
+  .ex-body p { margin:6px 0; }
+  .think { border:1px dashed var(--accent); border-radius:8px; padding:8px 10px; background:#f7faff; margin-top:8px; font-size:.9em; }
+  .fld { display:flex; align-items:center; gap:8px; margin:6px 0; font-size:.93em; }
+  .fld input[type=number] { width:110px; padding:6px; border:1px solid var(--border); border-radius:6px; font-size:1em; }
+  .fld span.u { color:var(--sub); }
+  .refs { font-size:.84em; color:var(--sub); line-height:1.7; }
+  /* 팝업 */
+  #modal { position:fixed; inset:0; background:rgba(15,25,40,.62); display:flex; align-items:center; justify-content:center; padding:12px; z-index:50; }
+  #modal .card { background:#fff; border-radius:14px; max-width:620px; width:100%; max-height:94vh; overflow:auto; padding:18px; box-shadow:0 10px 40px rgba(0,0,0,.35); }
+  #modal .tag { display:inline-block; background:#eaf1fd; color:var(--accent); font-size:.8em; font-weight:700; padding:2px 10px; border-radius:20px; margin-bottom:6px; }
+  #modal h2 { font-size:1.15em; margin-bottom:8px; line-height:1.5; }
+  #modal .qimg { display:block; margin:6px auto 10px; max-width:100%; height:auto; border-radius:8px; background:#e8edf4; }
+  #modal .opt { display:flex; gap:8px; align-items:flex-start; border:1px solid var(--border); border-radius:8px; padding:9px 10px; margin:6px 0; cursor:pointer; line-height:1.5; }
+  #modal .opt.sel { border-color:var(--accent); background:#eaf1fd; }
+  #modal textarea { width:100%; margin-top:8px; padding:8px; border:1px solid var(--border); border-radius:8px; font:inherit; resize:vertical; }
+  #modal .foot { display:flex; justify-content:flex-end; margin-top:10px; gap:8px; }
+  body.projector { font-size:19px; }
+  @media (max-width:640px) { body { padding:8px; } .tabs button { padding:7px 10px; font-size:.92em; } }
+</style>
+</head>
+<body>
+<header>
+  <a class="home" href="../index.html">← 전자기</a>
+  <h1>금속관 속 자석 낙하 저울 가상 실험실</h1>
+  <div class="spacer"></div>
+  <label class="chk"><input type="checkbox" id="projector"> 크게 보기</label>
+</header>
+
+<div class="tabs" id="tabs">
+  <button data-tab="lab" class="active">① 가상 실험</button>
+  <button data-tab="real" id="tabReal" disabled>② 실제 실험 확인 🔒</button>
+  <button data-tab="why" id="tabWhy" disabled>③ 왜 그럴까? 🔒</button>
+</div>
+
+<!-- ① 가상 실험 -->
+<section id="sec-lab" class="layout">
+  <div class="left panel">
+    <div class="stage"><canvas id="scene" style="aspect-ratio:560/700"></canvas></div>
+    <div class="hint">그림의 관은 보기 좋게 짧고 굵게 그렸습니다(계산은 길이 50 cm, 관 질량 200 g 기준). 관 앞면을 잘라 속이 보이게 한 단면 그림입니다.</div>
+  </div>
+  <div class="right">
+    <div class="panel">
+      <h3>실험 조건</h3>
+      <div class="param"><label class="t">관의 재질</label>
+        <div class="seg" id="segMat">
+          <button data-v="cu" class="active">구리</button><button data-v="al">알루미늄</button>
+          <button data-v="pl">플라스틱</button><button data-v="slit">구리(세로 홈)</button>
+        </div></div>
+      <div class="param"><label class="t">자석 세기(상대값)</label>
+        <div class="seg" id="segStr"><button data-v="0.5">약</button><button data-v="1" class="active">보통</button><button data-v="2">강</button></div></div>
+      <div class="param"><label class="t">자석 질량 <span class="val" id="vM">20 g</span></label>
+        <input type="range" id="rM" min="10" max="50" step="5" value="20"></div>
+      <div class="param"><label class="t">놓는 높이(관 입구 위) <span class="val" id="vH">3 cm</span></label>
+        <input type="range" id="rH" min="0" max="15" step="1" value="3"></div>
+      <div class="param"><label class="t">재생 속도</label>
+        <div class="seg" id="segSpd"><button data-v="1" class="active">실제 속도</button><button data-v="0.25">1/4 느리게</button><button data-v="0.05">1/20 느리게</button></div></div>
+      <label class="chk"><input type="checkbox" id="cF" checked> 힘 화살표 보기</label>
+      <label class="chk"><input type="checkbox" id="cE"> 와전류 보기(관 속 전류 고리)</label>
+      <label class="chk"><input type="checkbox" id="cS" checked> 저울을 실제처럼 0.3초 평균으로 표시</label>
+      <div class="row" style="margin-top:8px">
+        <button class="primary" id="btnDrop">▶ 자석 놓기</button>
+        <button id="btnReset">↺ 처음으로</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>측정값</h3>
+      <table class="readout">
+        <tr><td>시간</td><td id="rT">0.00 s</td></tr>
+        <tr><td>자석 속력</td><td id="rV">0.0 cm/s</td></tr>
+        <tr><td>종단 속력 v<sub>t</sub> = mg/k</td><td id="rVt">—</td></tr>
+        <tr><td>관이 자석에 주는 힘 ÷ 자석 무게</td><td id="rF">0 %</td></tr>
+        <tr><td>저울 눈금</td><td id="rN">200.0 g</td></tr>
+      </table>
+      <canvas class="chart" id="graph" style="margin-top:8px"></canvas>
+      <div class="hint">가는 회색선: 이론값(순간), 굵은 파란선: 저울 표시값. 점선: 관만의 무게 M, 관+자석 M+m. 착지 순간의 아주 큰 튐은 그림 위쪽에서 잘립니다.</div>
+    </div>
+    <div class="panel" id="resultPanel" hidden>
+      <h3>이번 실험 결과</h3>
+      <div id="resultTxt" class="ex-body"></div>
+      <div id="fbTxt"></div>
+      <div class="row" style="margin-top:8px"><button class="primary" id="btnGoReal" hidden>실제 실험으로 확인하러 가기 →</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ② 실제 실험 -->
+<section id="sec-real" hidden>
+  <div class="layout">
+    <div class="left panel">
+      <h3>실제 실험 방법</h3>
+      <div class="ex-body"><b>준비물</b></div>
+      <ul class="list">
+        <li>정밀 전자저울(0.01 g, 최대 500 g 이상), 저울 위에 올릴 구리 또는 알루미늄 관(길이 30~50 cm, 안지름이 자석 지름보다 3~5 mm 큰 것)</li>
+        <li>네오디뮴 원통 자석(지름이 관 안지름보다 약간 작은 것), 같은 크기의 플라스틱(PVC) 관, 부드러운 완충재, 실 또는 핀셋</li>
+        <li>휴대폰(저울 화면을 슬로모션·동영상으로 촬영)</li>
+      </ul>
+      <div class="warn"><b>안전·주의</b><br>네오디뮴 자석은 아주 강해 손가락이 끼이면 다칩니다. 서로 붙을 때 깨져 파편이 튈 수 있어 보안경을 쓰고, 시계·카드·휴대폰·심박조율기 등은 멀리 두세요. 삼키지 않게 주의하고, 자석이 저울 접시에 세게 떨어지지 않도록 높이를 낮게(5 cm 이하) 합니다.</div>
+      <div class="ex-body" style="margin-top:8px"><b>절차</b></div>
+      <ol class="steps">
+        <li>자석 질량 <i>m</i>을 따로 재어 적습니다.</li>
+        <li>저울 위에 관을 세우고 관 질량 <i>M</i>을 읽어 적습니다(또는 관을 올린 상태에서 영점을 잡지 말고 그대로 둡니다).</li>
+        <li>자석을 실이나 핀셋으로 관 입구 위에 잡고 눈금이 <i>M</i>인지 확인합니다.</li>
+        <li>화면을 촬영하며 자석을 놓습니다. 자석이 관 속을 천천히 내려가는 동안 눈금이 얼마로 안정되는지 읽습니다. 아래에는 완충재를 깔아 자석을 받습니다.</li>
+        <li>같은 방법으로 플라스틱 관에서도 해 봅니다(자석이 금방 지나가 눈금이 따라오지 못할 수 있습니다. 그래서 가상 실험에서 저울 평균 효과를 켜 둔 것입니다).</li>
+      </ol>
+      <div class="hint">오차 원인: 자석이 관벽에 닿아 생기는 마찰, 저울이 값을 갱신하는 데 걸리는 시간, 자석이 저울 내부 부품에 주는 영향(가능하면 얇은 비자성 받침을 사이에 두고 영점을 다시 잡습니다), 관이 기울어짐.</div>
+    </div>
+    <div class="right">
+      <div class="panel">
+        <h3>내 측정값 기록</h3>
+        <div class="fld"><label style="width:200px">관 질량 M</label><input type="number" id="mM" step="0.01" min="0"><span class="u">g</span></div>
+        <div class="fld"><label style="width:200px">자석 질량 m</label><input type="number" id="mm" step="0.01" min="0"><span class="u">g</span></div>
+        <div class="fld"><label style="width:200px">낙하 중 안정된 눈금</label><input type="number" id="mR" step="0.01" min="0"><span class="u">g</span></div>
+        <div class="param" style="margin-top:8px"><label class="t">실제로 관찰한 결과는?</label>
+          <div id="obsOpts"></div></div>
+        <div class="row"><button class="primary" id="btnCompare">예측과 비교하기</button></div>
+        <div id="cmpTxt"></div>
+        <div class="hint">값을 못 쟀다면 칸을 비우고, 관찰 결과만 고른 뒤 비교하세요.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ③ 왜 그럴까 -->
+<section id="sec-why" hidden>
+  <div class="layout">
+    <div class="left panel">
+      <div class="step-nav" id="exNav"></div>
+      <div class="stage"><canvas id="exCanvas" style="aspect-ratio:560/520"></canvas></div>
+      <div class="row" style="margin-top:8px"><button id="exPrev">← 이전</button><button class="primary" id="exNext">다음 →</button></div>
+    </div>
+    <div class="right">
+      <div class="panel"><div class="ex-title" id="exTitle"></div><div class="ex-body" id="exBody"></div></div>
+      <div class="panel" id="myRecord"></div>
+      <div class="panel refs">
+        <b>교재에서 더 보기</b><br>
+        · Halliday, <i>Fundamentals of Physics</i>, 30장 §30-1 패러데이 법칙과 렌츠 법칙, §30-2 유도와 에너지 전달 (PDF 890·897쪽)<br>
+        · Serway, <i>Physics for Scientists and Engineers</i>, 31장 §31.6 와전류 (PDF 990쪽)<br>
+        · Halliday, 9장 §9-2 계(系)에 대한 뉴턴 제2법칙 (PDF 246쪽)<br>
+        물리 모델은 선형 끌림힘(F = kv)으로 단순화한 것이며 수치는 예시입니다.
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="modal" hidden><div class="card" id="modalCard"></div></div>
+
+<script>
+(function(){
+'use strict';
+const $ = id => document.getElementById(id);
+const G = 9.8, L = 0.5, M_TUBE = 200;            // 관 길이 m, 관 질량 g
+const PXM = 760, TOP_Y = 205, BOT_Y = 585;        // 장면 비율(관 50 cm = 380 px)
+const HALF = 0.033, ZL = L - HALF;                // 자석 그림 반높이(m)와 착지 위치
+const K0 = 0.020 * G / 0.15;                      // 구리·보통 세기 기준: 20 g 자석 종단 15 cm/s
+const MATS = { cu:{name:'구리관', f:1}, al:{name:'알루미늄관', f:0.58}, pl:{name:'플라스틱관', f:0}, slit:{name:'구리관(세로 홈)', f:0.06} };
+const KF = 3000, CF = 10.8;                       // 받침(완충재) 스프링·감쇠
+const TAU_S = 0.3;                                // 저울 표시 평균 시간
+
+const ss = {};  // 세션 상태(예측·진행)
+const S = { mat:'cu', str:1, m:20, h:3, spd:1, phase:'idle', t:0, z:0, v:0, rec:[], nd:M_TUBE, tLand:null, tRel:0, fx:true, ed:false, filt:true, ran:false, recorded:false };
+
+/* ---------- 이미지 ---------- */
+const IMG = {};
+const names = ['scale','magnet','tube_cu_back','tube_cu_front','tube_al_back','tube_al_front','tube_pl_back','tube_pl_front','tube_slit_back','tube_slit_front'];
+let loaded = 0;
+names.forEach(n => { const i = new Image(); i.onload = i.onerror = () => { if (++loaded === names.length) { redraw(); } }; i.src = 'img/' + n + '.webp'; IMG[n] = i; });
+
+/* ---------- 모델 ---------- */
+const sm = x => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
+const kOf = () => K0 * MATS[S.mat].f * S.str;
+const coupling = z => sm((z + 0.05) / 0.10) * sm((L + 0.05 - z) / 0.10);
+function startZ() { return -S.h / 100 - HALF; }
+function resetRun() {
+  S.phase = 'idle'; S.t = 0; S.z = startZ(); S.v = 0; S.rec = []; S.nd = M_TUBE; S.tLand = null;
+  $('btnDrop').disabled = false; updateHUD(M_TUBE, 0, 0); redraw();
+}
+function substep(dt) {
+  const m = S.m / 1000, k = kOf();
+  const Fd = k * coupling(S.z) * S.v;
+  const Fc = S.z > ZL ? Math.max(0, KF * (S.z - ZL) + CF * S.v) : 0;
+  const a = G - (Fd + Fc) / m;
+  S.v += a * dt; S.z += S.v * dt; S.t += dt;
+  if (S.tLand === null && S.z > ZL) S.tLand = S.t;
+  const N = M_TUBE + (Fd + Fc) / G * 1000;
+  S.nd = S.filt ? S.nd + (N - S.nd) * (1 - Math.exp(-dt / TAU_S)) : N;
+  return { N, Fd };
+}
+let lastRecT = -1, last = { N: M_TUBE, Fd: 0 };
+function advance(simdt) {
+  const n = Math.ceil(simdt / 1e-4), dt = simdt / n;
+  for (let i = 0; i < n; i++) {
+    last = substep(dt);
+    if (S.t - lastRecT >= 0.01) { S.rec.push([S.t, last.N, S.nd, S.v, S.z]); lastRecT = S.t; }
+  }
+}
+
+/* ---------- 장면 그리기 ---------- */
+const W = 560, H = 700, CX = 280;
+function setup(cv, w, h) { const d = Math.min(2, window.devicePixelRatio || 1); cv.width = w * d; cv.height = h * d; const c = cv.getContext('2d'); c.setTransform(d, 0, 0, d, 0, 0); return c; }
+const sc = $('scene'), sx = setup(sc, W, H);
+
+function arrow(c, x1, y1, x2, y2, col, w) {
+  w = w || 3; c.strokeStyle = col; c.fillStyle = col; c.lineWidth = w; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
+  const a = Math.atan2(y2 - y1, x2 - x1), s = 6 + w;
+  c.beginPath(); c.moveTo(x2, y2); c.lineTo(x2 - s * Math.cos(a - .45), y2 - s * Math.sin(a - .45)); c.lineTo(x2 - s * Math.cos(a + .45), y2 - s * Math.sin(a + .45)); c.closePath(); c.fill();
+}
+function label(c, txt, x, y, col, size, al) { c.fillStyle = col || '#1c2733'; c.font = (size || 13) + 'px "Malgun Gothic",sans-serif'; c.textAlign = al || 'left'; c.fillText(txt, x, y); }
+function ring(c, cx, y, rx, ry, dir, a) {   // dir +1: 앞쪽이 오른쪽으로(위에서 봐 반시계), -1: 왼쪽
+  c.save(); c.globalAlpha = Math.max(0.15, a);
+  c.strokeStyle = dir > 0 ? '#e07b00' : '#0b8f9c'; c.lineWidth = 4;
+  c.globalAlpha *= 0.35; c.beginPath(); c.ellipse(cx, y, rx, ry, 0, Math.PI, 2 * Math.PI); c.stroke();
+  c.globalAlpha = Math.max(0.15, a); c.beginPath(); c.ellipse(cx, y, rx, ry, 0, 0, Math.PI); c.stroke();
+  const ax = cx + (dir > 0 ? 8 : -8), ay = y + ry; arrow(c, ax - dir * 16, ay, ax, ay, c.strokeStyle, 4);
+  c.restore();
+}
+function drawScene(c, o) {
+  const key = o.mat;
+  c.clearRect(0, 0, W, H);
+  c.fillStyle = '#c9d2de'; c.fillRect(0, 670, W, 30);
+  c.drawImage(IMG.scale, 120, 570, 320, 100);
+  // 저울 표시
+  c.fillStyle = '#243b24'; c.font = 'bold 26px "Courier New",monospace'; c.textAlign = 'center';
+  c.fillText(o.disp.toFixed(1) + ' g', CX, 640);
+  c.drawImage(IMG['tube_' + key + '_back'], 220, 195, 120, 400);
+  const yc = TOP_Y + o.z * PXM;
+  if (o.hold) { c.fillStyle = '#6b7788'; c.fillRect(CX - 3, 0, 6, yc - 30); c.fillRect(CX - 14, yc - 34, 28, 8); label(c, '잡고 있음', CX + 14, 24, '#5a6b7d', 12); }
+  c.drawImage(IMG.magnet, CX - 45, yc - 40, 90, 80);
+  c.drawImage(IMG['tube_' + key + '_front'], 220, 195, 120, 400);
+  if (o.ed && o.amp > 0.02) {
+    ring(c, CX, yc + 46, 52, 12, 1, o.amp); ring(c, CX, yc - 46, 52, 12, -1, o.amp);
+    if (o.amp > 0.25) { ring(c, CX, yc + 76, 52, 12, 1, o.amp * .35); ring(c, CX, yc - 76, 52, 12, -1, o.amp * .35); }
+  }
+  label(c, MATS[key].name, CX, 692, '#1c2733', 13, 'center');
+  if (o.fx) {
+    const m = o.m / 1000, sc2 = 200, mg = m * G;
+    const wy = Math.min(120, mg * sc2);
+    arrow(c, CX + 120, yc, CX + 120, yc + wy, '#d64545', 4); label(c, '중력 mg', CX + 130, yc + wy / 2 + 4, '#d64545', 12);
+    if (o.Fd > 0.002) {
+      const fy = Math.min(120, o.Fd * sc2);
+      arrow(c, CX + 85, yc, CX + 85, yc - fy, '#1e8f4e', 4); label(c, '자기력(관→자석)', CX + 124, yc - fy / 2 - 12, '#1e8f4e', 12);
+      arrow(c, CX - 85, yc, CX - 85, yc + fy, '#8a2be2', 4); label(c, '자석→관', CX - 130, yc + fy / 2 + 4, '#8a2be2', 12);
+    }
+  }
+}
+function redraw() {
+  const k = kOf(), s = coupling(S.z);
+  const Fd = k * s * S.v;
+  drawScene(sx, { mat: S.mat, z: S.z, hold: S.phase === 'idle', m: S.m, fx: S.fx, ed: S.ed, Fd, amp: Math.min(1, Fd / (S.m / 1000 * G) * 0.9 + 0.1 * (Fd > 0)), disp: S.nd });
+  drawGraph();
+}
+
+/* ---------- 그래프 ---------- */
+const gc = $('graph'), gx = setup(gc, 420, 220);
+function drawGraph() {
+  const c = gx, w = 420, h = 220, l = 44, r = 10, t = 10, b = 26;
+  c.clearRect(0, 0, w, h);
+  const m = S.m, ymin = M_TUBE - 0.6 * m, ymax = M_TUBE + 1.6 * m;
+  const tmax = Math.max(3, S.t + 0.5);
+  const X = tt => l + (w - l - r) * tt / tmax, Y = v => t + (h - t - b) * (1 - (Math.max(ymin, Math.min(ymax, v)) - ymin) / (ymax - ymin));
+  c.strokeStyle = '#d7dee8'; c.lineWidth = 1; c.strokeRect(l, t, w - l - r, h - t - b);
+  c.font = '11px sans-serif'; c.fillStyle = '#5a6b7d'; c.textAlign = 'center';
+  for (let i = 0; i <= Math.floor(tmax); i++) c.fillText(i + ' s', X(i), h - 10);
+  c.textAlign = 'right';
+  [[M_TUBE, 'M ' + M_TUBE], [M_TUBE + m, 'M+m ' + (M_TUBE + m)]].forEach(a => {
+    c.setLineDash([5, 4]); c.strokeStyle = '#9aa7b8'; c.beginPath(); c.moveTo(l, Y(a[0])); c.lineTo(w - r, Y(a[0])); c.stroke(); c.setLineDash([]);
+    c.fillText(a[1], l - 4, Y(a[0]) + 4);
+  });
+  c.save(); c.beginPath(); c.rect(l, t, w - l - r, h - t - b); c.clip();
+  const line = (idx, col, lw) => { c.strokeStyle = col; c.lineWidth = lw; c.beginPath(); S.rec.forEach((p, i) => { i ? c.lineTo(X(p[0]), Y(p[idx])) : c.moveTo(X(p[0]), Y(p[idx])); }); c.stroke(); };
+  if (S.rec.length) { line(1, '#b8c1cd', 1); line(2, '#1f6fd6', 2.5); }
+  c.restore();
+  c.save(); c.translate(12, t + (h - t - b) / 2); c.rotate(-Math.PI / 2); c.textAlign = 'center'; c.fillText('눈금(g)', 0, 0); c.restore();
+}
+
+/* ---------- 측정창·결과 ---------- */
+function updateHUD(N, Fd, v) {
+  const k = kOf(), m = S.m / 1000;
+  $('rT').textContent = S.t.toFixed(2) + ' s';
+  $('rV').textContent = (Math.abs(S.v) * 100).toFixed(1) + ' cm/s';
+  $('rVt').textContent = k > 0 ? (m * G / k * 100).toFixed(1) + ' cm/s' : '— (끌림힘 없음)';
+  $('rF').textContent = (Fd / (m * G) * 100).toFixed(0) + ' %';
+  $('rN').textContent = S.nd.toFixed(1) + ' g';
+}
+function finishRun() {
+  S.phase = 'done'; S.ran = true; $('btnDrop').disabled = false;
+  const m = S.m, k = kOf(), vt = k > 0 ? m / 1000 * G / k : Infinity;
+  const fl = S.rec.filter(p => p[0] > S.tRel + 0.05 && (S.tLand === null || p[0] < S.tLand - 0.02));
+  const mean = a => a.reduce((s, x) => s + x, 0) / (a.length || 1);
+  const plat = S.rec.filter(p => p[4] > 0.1 && p[4] < ZL - 0.1 && Math.abs(p[3] - vt) < 0.03 * vt);
+  let h = '';
+  const flightT = (S.tLand || S.t) - S.tRel;
+  if (plat.length > 5) {
+    const P = mean(plat.map(p => p[1]));
+    h += '자석이 <b>종단 속력 ' + (vt * 100).toFixed(1) + ' cm/s</b>에 이르러 일정하게 내려가는 동안 저울 눈금은 <b>' + P.toFixed(1) + ' g</b>였습니다.<br>관 M(' + M_TUBE + ' g) + 자석 m(' + m + ' g) = ' + (M_TUBE + m) + ' g 와 같습니다.';
+    const pk = Math.max.apply(null, fl.map(p => p[1]));
+    if (pk > M_TUBE + m + 1.5) h += '<br>관 입구에서 자석이 종단 속력보다 빨랐다면 감속하느라 눈금이 순간적으로 <b>' + pk.toFixed(0) + ' g</b>까지 튑니다(이론값).';
+  } else if (fl.length) {
+    h += '자석이 착지하기 전 ' + flightT.toFixed(2) + '초 동안의 평균 눈금은 <b>' + mean(fl.map(p => p[1])).toFixed(1) + ' g</b>, 최대 ' + Math.max.apply(null, fl.map(p => p[1])).toFixed(1) + ' g 였습니다.' + (k === 0 ? '<br>자석이 떨어지는 동안은 관 무게 M만 읽습니다. 받침에 닿은 뒤에야 M+m이 됩니다.' : '<br>끌림힘이 작아 눈금이 관 무게에 가깝습니다.');
+  }
+  h += '<br>착지 후에는 자석 무게가 저울에 실려 ' + (M_TUBE + m) + ' g 로 안정됩니다.';
+  $('resultTxt').innerHTML = h; $('resultPanel').hidden = false;
+  $('fbTxt').innerHTML = feedback();
+  $('btnGoReal').hidden = false;
+  unlock('real');
+}
+function feedback() {
+  const q1 = ss.q1, mat = S.mat; let out = '';
+  const box = (cls, t) => '<div class="' + cls + '">' + t + '</div>';
+  if ((mat === 'cu' || mat === 'al') && q1) {
+    const ok = q1 === 'B';
+    const msg = { A: '"관 무게만"이라고 예측했군요. 자석은 관에 닿지 않지만 자기력은 접촉 없이도 작용합니다. 자석이 관에 아래로 힘을 주어 눈금이 올라갑니다.',
+      B: '예측이 맞았습니다. 자석이 일정한 속력으로 내려갈 때 눈금은 관+자석 무게입니다.',
+      C: '"그 사이"는 자석이 빨라지는 도중, 또는 느린 저울 평균 때문에 잠깐 그렇게 보일 수 있습니다. 하지만 종단 속력에서는 정확히 관+자석입니다.',
+      D: '"더 커진다"는 입구에서 자석이 종단 속력보다 빠르게 들어와 감속할 때 순간적으로만 맞습니다. 일정하게 내려가는 동안은 관+자석 무게입니다.' }[q1];
+    out += box(ok ? 'good' : 'note', '<b>예측 확인(처음 질문)</b><br>' + msg);
+  }
+  const q = ss[mat];
+  if (mat === 'pl' && q) out += box(q === 'A' ? 'good' : 'note', '<b>예측 확인</b><br>' + (q === 'A' ? '맞습니다. 플라스틱은 전류가 흐르지 않아 와전류가 없고, 자석은 자유 낙하하므로 관은 자석을 느끼지 못합니다.' : '플라스틱 관에서는 와전류가 생기지 않아 자석과 관 사이에 힘이 없습니다. 그래서 낙하 중 눈금은 관 무게 그대로입니다.'));
+  if (mat === 'slit' && q) out += box(q === 'B' ? 'good' : 'note', '<b>예측 확인</b><br>세로 홈이 전류 고리를 끊어 끌림힘이 크게 줄었습니다. 자석이 훨씬 빨리 떨어지고 눈금은 관 무게에 가깝습니다. ' + (q === 'B' ? '예측이 맞았습니다.' : ''));
+  return out;
+}
+
+/* ---------- 팝업 ---------- */
+let modalOpen = false;
+function ask(q) {
+  return new Promise(res => {
+    modalOpen = true;
+    const m = $('modal'), card = $('modalCard'); let sel = null;
+    card.innerHTML = '<div class="tag">' + q.tag + '</div><h2>' + q.title + '</h2>' + (q.img ? '<canvas class="qimg" id="qimg" width="200" height="330"></canvas>' : '') +
+      '<div id="opts"></div>' + (q.reason ? '<textarea id="why" rows="2" placeholder="그렇게 생각한 이유를 한 줄로 적어 보세요(선택)"></textarea>' : '') +
+      '<div class="foot"><button class="primary" id="qok" disabled>이 답으로 진행하기</button></div>';
+    m.hidden = false;
+    if (q.img) { const cv = $('qimg'), c = cv.getContext('2d'); c.save(); c.scale(0.5, 0.5); c.translate(-100, -45); drawScene(c, { mat: 'cu', z: -0.14 - HALF, hold: true, m: 20, fx: false, ed: false, Fd: 0, amp: 0, disp: M_TUBE }); c.restore();
+      c.fillStyle = '#d64545'; c.font = 'bold 15px "Malgun Gothic"'; c.textAlign = 'left'; c.fillText('눈금은?', 125, 262); }
+    q.options.forEach(o => {
+      const d = document.createElement('div'); d.className = 'opt'; d.innerHTML = '<b>' + o.k + '</b><span>' + o.t + '</span>';
+      d.onclick = () => { sel = o.k; card.querySelectorAll('.opt').forEach(x => x.classList.remove('sel')); d.classList.add('sel'); $('qok').disabled = false; };
+      $('opts').appendChild(d);
+    });
+    $('qok').onclick = () => { const why = q.reason ? $('why').value.trim() : ''; m.hidden = true; modalOpen = false; res({ key: sel, why }); };
+  });
+}
+const Q1 = { tag: '예측하기 ① 먼저 생각해 봅시다', title: '정밀 전자저울 위에 금속(구리) 관이 세워져 있고, 눈금은 관 무게 M만 가리키고 있습니다. 관 위에서 네오디뮴 자석을 놓으면 자석은 관에 닿지 않고 관 속을 천천히 떨어집니다. <u>자석이 일정한 속력으로 내려가는 동안</u> 저울 눈금은?', img: true, reason: true,
+  options: [{ k: 'A', t: '관 무게 M만 가리킨다 (자석은 관에 닿지 않으니까)' }, { k: 'B', t: '관 무게 + 자석 무게 (M + m)를 가리킨다' }, { k: 'C', t: 'M보다는 크지만 M + m보다는 작다' }, { k: 'D', t: 'M + m보다 더 크다' }] };
+const QMAT = {
+  pl: { tag: '예측하기 ② 재질을 바꾸면?', title: '같은 장치에서 관만 <b>플라스틱(비전도체)</b>으로 바꿨습니다. 자석이 관 속을 떨어지는 동안(받침에 닿기 전) 저울 눈금은?', reason: true,
+    options: [{ k: 'A', t: '관 무게 M 그대로이다' }, { k: 'B', t: '구리관처럼 M + m이 된다' }, { k: 'C', t: 'M보다 작아진다' }, { k: 'D', t: 'M + m보다 더 커진다' }] },
+  slit: { tag: '예측하기 ③ 관에 홈을 내면?', title: '구리관에 <b>세로로 긴 홈</b>을 냈습니다. 자석이 떨어지는 속도와 눈금은 어떻게 될까요?', reason: true,
+    options: [{ k: 'A', t: '속도도 눈금도 홈 없는 구리관과 똑같다' }, { k: 'B', t: '훨씬 빨리 떨어지고, 눈금은 관 무게 M에 가깝다' }, { k: 'C', t: '더 느리게 떨어지고, 눈금은 M + m보다 커진다' }, { k: 'D', t: '훨씬 빨리 떨어지지만, 눈금은 M + m으로 같다' }] }
+};
+
+/* ---------- 탭 ---------- */
+function show(tab) {
+  ['lab', 'real', 'why'].forEach(t => { $('sec-' + t).hidden = t !== tab; });
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  if (tab === 'why') { exDraw(); renderRecord(); }
+  if (tab === 'lab') redraw();
+}
+function unlock(which) {
+  const b = which === 'real' ? $('tabReal') : $('tabWhy');
+  if (!b.disabled) return; b.disabled = false; b.textContent = which === 'real' ? '② 실제 실험 확인' : '③ 왜 그럴까?';
+}
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => { if (!b.disabled) show(b.dataset.tab); });
+$('btnGoReal').onclick = () => show('real');
+if (/[?&]unlock=1/.test(location.search)) { S.ran = true; unlock('real'); unlock('why'); }
+
+/* ---------- 컨트롤 ---------- */
+function seg(id, fn) { const e = $(id); e.querySelectorAll('button').forEach(b => b.onclick = () => { e.querySelectorAll('button').forEach(x => x.classList.remove('active')); b.classList.add('active'); fn(b.dataset.v); }); }
+seg('segMat', async v => {
+  const prev = S.mat; S.mat = v; resetRun();
+  if (QMAT[v] && !ss[v]) { const a = await ask(QMAT[v]); ss[v] = a.key; ss[v + 'Why'] = a.why; }
+});
+seg('segStr', v => { S.str = +v; resetRun(); });
+seg('segSpd', v => { S.spd = +v; });
+$('rM').oninput = e => { S.m = +e.target.value; $('vM').textContent = S.m + ' g'; resetRun(); };
+$('rH').oninput = e => { S.h = +e.target.value; $('vH').textContent = S.h + ' cm'; resetRun(); };
+$('cF').onchange = e => { S.fx = e.target.checked; redraw(); };
+$('cE').onchange = e => { S.ed = e.target.checked; redraw(); };
+$('cS').onchange = e => { S.filt = e.target.checked; };
+$('projector').onchange = e => document.body.classList.toggle('projector', e.target.checked);
+$('btnReset').onclick = resetRun;
+$('btnDrop').onclick = () => {
+  if (modalOpen) return;
+  if (S.phase === 'done') resetRun();
+  S.phase = 'run'; S.tRel = S.t; lastRecT = -1; $('btnDrop').disabled = true; lastFrame = 0;
+};
+
+let lastFrame = 0;
+function frame(ts) {
+  if (S.phase === 'run') {
+    const dtr = lastFrame ? Math.min(0.05, (ts - lastFrame) / 1000) : 0.016; lastFrame = ts;
+    advance(dtr * S.spd);
+    if ((S.tLand !== null && S.t - S.tLand > 1.2) || S.t > 20) finishRun();
+    updateHUD(last.N, last.Fd, S.v); redraw();
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* ---------- ② 실제 실험 ---------- */
+const OBS = [['A', '관 무게 그대로였다'], ['B', '관 + 자석 무게 근처로 늘었다'], ['C', 'M보다 늘었지만 M+m보다는 작았다'], ['D', 'M+m보다 더 컸다']];
+let obs = null;
+OBS.forEach(o => { const l = document.createElement('label'); l.className = 'chk'; l.innerHTML = '<input type="radio" name="obs" value="' + o[0] + '"> ' + o[1]; l.firstChild.onchange = () => { obs = o[0]; }; $('obsOpts').appendChild(l); });
+$('btnCompare').onclick = async () => {
+  const M = parseFloat($('mM').value), m = parseFloat($('mm').value), R = parseFloat($('mR').value);
+  let h = '';
+  if (M > 0 && m > 0 && R > 0) {
+    const pred = M + m, d = R - pred, pc = d / pred * 100;
+    ss.real = { M, m, R, d, pc };
+    h += '예측(M+m) = ' + pred.toFixed(2) + ' g, 측정 ' + R.toFixed(2) + ' g → 차 ' + d.toFixed(2) + ' g (' + pc.toFixed(1) + ' %)<br>' +
+      (Math.abs(pc) <= 2 ? '2 % 이내로 일치합니다. 자석 무게가 관을 통해 저울에 전달된 것입니다.' : '차이가 큽니다. 자석이 관벽에 끌리지 않았는지, 저울이 값을 안정되게 읽었는지, 자석이 저울 부품에 영향을 주지 않았는지 확인해 보세요.');
+  } else if (!obs) { $('cmpTxt').innerHTML = '<div class="warn">값을 입력하거나 관찰한 결과를 고르세요.</div>'; return; }
+  ss.obs = obs;
+  $('cmpTxt').innerHTML = '<div class="note">' + h + '</div>';
+  const a = await ask({ tag: '되돌아보기', title: '처음 예측(' + (ss.q1 || '미응답') + ')과 실제 결과를 비교하면 어땠나요?', reason: true,
+    options: [{ k: '맞았다', t: '예측과 실제 결과가 같았다' }, { k: '달랐다', t: '예측과 실제 결과가 달랐다 — 놀랐다' }, { k: '일부', t: '일부만 맞았다 / 아직 잘 모르겠다' }] });
+  ss.reflect = a.key; ss.reflectWhy = a.why;
+  unlock('why'); $('cmpTxt').innerHTML += '<div class="good">③ <b>왜 그럴까?</b> 탭이 열렸습니다. 이제 이유를 눈으로 확인해 봅시다.</div>';
+};
+
+/* ---------- ③ 설명 ---------- */
+const ec = $('exCanvas'), EW = 560, EH = 520, ex = setup(ec, EW, EH);
+const ECX = 280, TW = 46;   // 관 안쪽 반지름
+let exStep = 0, seen = new Set([0]);
+const STEPS = [
+  { t: '① 자석 주위에는 자기장이 있다', b: '<p>자석은 주위에 자기장을 만듭니다(그림의 선). 관은 금속이라 속에 자유롭게 움직이는 전자가 있어, 관 둘레의 <b>고리 모양 길</b>로 전류가 흐를 수 있습니다.</p><p>자석이 <b>가만히</b> 있으면 고리를 지나는 자기장이 변하지 않아 아무 전류도 생기지 않고, 자석과 관 사이에 힘도 없습니다.</p><div class="think">🤔 자석을 손으로 잡고 가만히 있을 때 저울 눈금은? (→ M)</div>' },
+  { t: '② 자석이 움직이면 고리를 지나는 자기장(자속)이 변한다', b: '<p>자석이 내려오면 <b>자석 아래 고리</b>는 자석이 가까워져 아래 방향 자속이 <b>늘고</b>, <b>자석 위 고리</b>는 자석이 멀어져 자속이 <b>줄어듭니다</b>.</p><p>패러데이 법칙: 고리를 지나는 자속이 변하면 그 고리에 기전력(유도 전류)이 생깁니다. 변화가 빠를수록 큽니다.</p><div class="think">🤔 플라스틱 관에서는 같은 자속 변화가 생겨도 전류가 흐를까?</div>' },
+  { t: '③ 위·아래 고리에 반대 방향의 와전류가 생긴다', b: '<p>아래 고리(자속 증가)와 위 고리(자속 감소)는 변화가 반대라 <b>전류 방향도 반대</b>입니다(위에서 내려다볼 때 한쪽은 반시계, 다른 쪽은 시계 방향).</p><p>금속은 저항이 작아 큰 전류가 흐릅니다. 이것이 <b>와전류</b>입니다. 플라스틱은 전류가 흐르지 못해 없고, <b>세로 홈</b>이 있으면 고리가 끊겨 약해집니다.</p><p class="hint">(그림은 N극이 아래인 자석 기준입니다.)</p>' },
+  { t: '④ 렌츠 법칙: 전류는 변화를 방해하는 쪽 — 자석을 위로 당긴다', b: '<p>렌츠 법칙: 유도 전류는 자속의 <b>변화를 방해</b>하는 방향으로 흐릅니다.</p><p>• 아래 고리는 자석과 같은 극이 마주 보는 자석처럼 행동해 자석을 <b>밀어내고</b>,<br>• 위 고리는 반대 극이 마주 보아 자석을 <b>끌어당깁니다</b>.</p><p>두 힘 모두 <b>위쪽</b>이라 자석은 위로 향하는 자기력(자기 제동력)을 받습니다. 자석의 극을 뒤집어도 전류 방향이 함께 뒤집혀 힘은 여전히 위쪽입니다.</p><div class="think">🤔 이 힘은 자석이 빨리 움직일수록 커질까, 작아질까?</div>' },
+  { t: '⑤ 종단 속력: 중력 = 자기 제동력', b: '<p>자석이 빨라지면 자속 변화가 빨라져 와전류와 위로 향하는 힘이 <b>커집니다</b>(F ≈ kv). 힘이 중력과 같아지면 알짜힘이 0이 되어 <b>일정한 속력</b> v<sub>t</sub> = mg/k 로 내려갑니다.</p><div class="eq">mg = k·v<sub>t</sub></div><p>떨어진 만큼 줄어든 위치에너지는 와전류의 <b>줄열</b>(P = mg·v<sub>t</sub>)로 바뀌어 관이 아주 조금 따뜻해집니다. 저울은 에너지가 아니라 <b>힘</b>을 읽습니다.</p><p class="hint">그림 아래 그래프는 가상 실험의 속력 변화입니다. 도달 시간이 아주 짧아(약 수십 ms) 육안으로는 곧바로 일정하게 내려가는 것처럼 보입니다.</p>' },
+  { t: '⑥ 뉴턴 제3법칙: 자석이 관을 아래로 민다 → 저울 눈금', b: '<p>관이 자석을 위로 밀어 올리는 힘 F(= mg)에 대해 <b>반작용</b>으로, 자석은 관을 같은 크기로 <b>아래로</b> 누릅니다.</p><div class="eq">N = Mg + F = Mg + mg = (M + m)g</div><p>자석과 관을 <b>하나의 계</b>로 보아도 같습니다. 외력은 중력 (M+m)g와 저울이 받치는 힘 N뿐이고, 자석이 일정한 속력이면 계의 알짜힘이 0이라 N = (M+m)g 입니다. 자석이 공중에 있어도, 접촉하지 않아도 결과는 같습니다.</p><div class="think">🤔 자석이 빨라지고 있는 중이라면 F는 mg보다 작다. 눈금은?</div>' },
+  { t: '⑦ 한눈에 비교', b: '<p>• <b>잡고 있을 때</b>: 자석은 저울과 상관없음 → M<br>• <b>플라스틱 관 낙하 중</b>: 와전류 없음, 힘 없음 → M<br>• <b>구리·알루미늄 관, 일정 속력</b>: 힘 F = mg → M + m<br>• <b>입구에 빠르게 들어올 때</b>: 감속 → 순간적으로 M + m 보다 큼<br>• <b>세로 홈 관</b>: 전류 고리가 끊겨 F가 작음 → M에 가까움</p><div class="warn"><b>자주 하는 오해</b><br>① "자석이 관에 닿지 않으니 힘이 없다" → 자기력은 접촉 없이 작용(중력도 그렇다).<br>② "자석이 천천히 가니 저울에 덜 실린다" → 눈금은 속력이 아니라 자석 무게 m으로 정해진다(속력은 k로 바뀔 뿐).<br>③ "눈금이 커졌으니 에너지가 늘었다" → 저울은 힘을 읽는다. 에너지는 열로 사라진다.</div>' }
+];
+const nav = $('exNav');
+STEPS.forEach((s, i) => { const b = document.createElement('button'); b.textContent = i + 1; b.onclick = () => { exStep = i; exDraw(); }; nav.appendChild(b); });
+$('exPrev').onclick = () => { if (exStep > 0) { exStep--; exDraw(); } };
+$('exNext').onclick = () => { if (exStep < STEPS.length - 1) { exStep++; exDraw(); } };
+let exT0 = 0;
+function exDraw() {
+  seen.add(exStep); $('exTitle').textContent = STEPS[exStep].t; $('exBody').innerHTML = STEPS[exStep].b;
+  nav.querySelectorAll('button').forEach((b, i) => { b.classList.toggle('active', i === exStep); b.classList.toggle('seen', seen.has(i)); });
+  $('exPrev').disabled = exStep === 0; $('exNext').disabled = exStep === STEPS.length - 1;
+}
+function dipole(c, cx, my) {
+  c.lineWidth = 1.6; c.strokeStyle = 'rgba(40,60,120,.55)'; c.fillStyle = 'rgba(40,60,120,.8)';
+  [75, 110, 160, 220].forEach(Lc => {
+    [-1, 1].forEach(sg => {
+      const th0 = Math.asin(Math.sqrt(Math.min(0.95, 36 / Lc))); c.beginPath();
+      for (let i = 0; i <= 40; i++) { const th = th0 + (Math.PI - 2 * th0) * i / 40, r = Lc * Math.sin(th) ** 2; const x = cx + sg * r * Math.sin(th), y = my - r * Math.cos(th); i ? c.lineTo(x, y) : c.moveTo(x, y); }
+      c.stroke();
+      const ax = cx + sg * Lc, ay = my; c.beginPath(); c.moveTo(ax, ay - 7); c.lineTo(ax - 4, ay + 2); c.lineTo(ax + 4, ay + 2); c.closePath(); c.fill();
+    });
+  });
+}
+function drawTubeSchematic(c, mat) {
+  const colr = mat === 'pl' ? ['#cfd6de', '#aeb7c2'] : mat === 'al' ? ['#e4e8ec', '#a9b2bb'] : ['#f0a27c', '#b5593a'];
+  [[ECX - TW - 24, ECX - TW], [ECX + TW, ECX + TW + 24]].forEach(w => {
+    const g = c.createLinearGradient(w[0], 0, w[1], 0); g.addColorStop(0, colr[0]); g.addColorStop(1, colr[1]);
+    c.fillStyle = g; c.fillRect(w[0], 14, 24, EH - 28);
+  });
+  label(c, '관(단면)', ECX - TW - 12, 10, '#5a6b7d', 12, 'center'); label(c, '관(단면)', ECX + TW + 12, 10, '#5a6b7d', 12, 'center');
+}
+function drawMagnet(c, my) {
+  c.fillStyle = '#2a58c8'; c.fillRect(ECX - 36, my - 33, 72, 33); c.fillStyle = '#c8281e'; c.fillRect(ECX - 36, my, 72, 33);
+  c.fillStyle = '#fff'; c.font = 'bold 18px sans-serif'; c.textAlign = 'center'; c.fillText('S', ECX, my - 10); c.fillText('N', ECX, my + 25);
+}
+function fbd(c, x, y, title, arrows) {
+  c.strokeStyle = '#5a6b7d'; c.lineWidth = 2; c.fillStyle = '#eef2f8'; c.fillRect(x - 28, y - 22, 56, 44); c.strokeRect(x - 28, y - 22, 56, 44);
+  label(c, title, x, y - 150, '#1c2733', 14, 'center');
+  arrows.forEach(a => { const dy = a.up ? -a.len : a.len, ox = a.dx || 0, y0 = a.up ? y - 22 : y + 22; arrow(c, x + ox, a.up ? y0 : y0, x + ox, a.up ? y0 - a.len : y0 + a.len, a.col, 4); label(c, a.txt, x + ox + (a.dx > 0 ? 8 : -8), a.up ? y0 - a.len - 4 : y0 + a.len + 16, a.col, 13, a.dx > 0 ? 'left' : 'center'); });
+}
+function exFrame(ts) {
+  if (!$('sec-why').hidden) {
+    const c = ex, ph = (ts / 1000) % 6, step = exStep;
+    c.clearRect(0, 0, EW, EH); c.fillStyle = '#f4f7fb'; c.fillRect(0, 0, EW, EH);
+    if (step <= 4) {
+      const my = step === 0 ? 260 : 120 + ph / 6 * 220;
+      drawTubeSchematic(c, 'cu'); dipole(c, ECX, my);
+      if (step === 4) { /* 힘의 균형 + v(t) */ }
+      drawMagnet(c, my);
+      if (step >= 1 && step <= 3) {
+        const yA = my - 100, yB = my + 100;
+        if (step === 1) { label(c, '자속 ↓ 감소', ECX + 150, yA, '#0b8f9c', 14); label(c, '자속 ↓ 증가', ECX + 150, yB, '#e07b00', 14);
+          [yA, yB].forEach(y => { c.strokeStyle = '#8a93a0'; c.setLineDash([4, 4]); c.beginPath(); c.ellipse(ECX, y, 56, 13, 0, 0, 2 * Math.PI); c.stroke(); c.setLineDash([]); }); }
+        else { ring(c, ECX, yB, 56, 13, 1, 1); ring(c, ECX, yA, 56, 13, -1, 1);
+          label(c, '반시계(↺) 전류', ECX + 150, yB, '#e07b00', 14); label(c, '시계(↻) 전류', ECX + 150, yA, '#0b8f9c', 14); }
+        arrow(c, ECX - 140, my - 20, ECX - 140, my + 30, '#1c2733', 4); label(c, '자석 운동', ECX - 190, my + 50, '#1c2733', 13);
+      }
+      if (step === 3) { const yA = my - 100, yB = my + 100; arrow(c, ECX + 90, my + 30, ECX + 90, my - 40, '#1e8f4e', 5); label(c, '합친 자기력 ↑', ECX + 100, my - 44, '#1e8f4e', 14);
+        label(c, '밀어냄 ↑', ECX - 150, yB, '#e07b00', 13, 'center'); label(c, '끌어당김 ↑', ECX - 150, yA, '#0b8f9c', 13, 'center'); }
+      if (step === 4) {
+        arrow(c, ECX + 110, my, ECX + 110, my + 50, '#d64545', 5); label(c, '중력 mg', ECX + 120, my + 58, '#d64545', 14);
+        arrow(c, ECX + 80, my, ECX + 80, my - 50, '#1e8f4e', 5); label(c, '자기력 F = kv', ECX + 90, my - 56, '#1e8f4e', 14);
+        label(c, '알짜힘 = 0 → 등속', ECX + 130, my + 90, '#1c2733', 13);
+        // v(t) 작은 그래프
+        const gx0 = 20, gy0 = 410, gw = 210, gh = 90; c.fillStyle = '#fff'; c.fillRect(gx0, gy0, gw, gh); c.strokeStyle = '#d7dee8'; c.strokeRect(gx0, gy0, gw, gh);
+        c.strokeStyle = '#1f6fd6'; c.lineWidth = 2; c.beginPath(); for (let i = 0; i <= 60; i++) { const tt = i / 60, v = 1 - Math.exp(-tt * 6); i ? c.lineTo(gx0 + tt * gw, gy0 + gh - 8 - v * (gh - 20)) : c.moveTo(gx0, gy0 + gh - 8); } c.stroke();
+        c.setLineDash([4, 3]); c.strokeStyle = '#9aa7b8'; c.beginPath(); c.moveTo(gx0, gy0 + 12); c.lineTo(gx0 + gw, gy0 + 12); c.stroke(); c.setLineDash([]);
+        label(c, 'v_t', gx0 + 4, gy0 + 10, '#5a6b7d', 11); label(c, '시간 →', gx0 + gw - 40, gy0 + gh - 12, '#5a6b7d', 11); label(c, '속력', gx0 + 4, gy0 - 4, '#5a6b7d', 11);
+      }
+      if (step === 0) label(c, '자석이 멈춰 있으면 → 전류 없음, 힘 없음', ECX, 505, '#5a6b7d', 14, 'center');
+    } else if (step === 5) {
+      fbd(c, 90, 250, '자석', [{ up: true, len: 60, col: '#1e8f4e', txt: 'F(관→자석)', dx: 0 }, { up: false, len: 60, col: '#d64545', txt: 'mg' }]);
+      fbd(c, 280, 250, '관 (+저울 위)', [{ up: false, len: 50, col: '#d64545', txt: 'Mg', dx: -14 }, { up: false, len: 60, col: '#8a2be2', txt: 'F′=F (자석→관)', dx: 14 }, { up: true, len: 90, col: '#1f6fd6', txt: 'N (저울)', dx: 0 }]);
+      fbd(c, 470, 250, '자석 + 관', [{ up: false, len: 90, col: '#d64545', txt: '(M+m)g' }, { up: true, len: 90, col: '#1f6fd6', txt: 'N' }]);
+      label(c, 'F = mg (등속)', 90, 440, '#1e8f4e', 14, 'center'); label(c, 'N = Mg + F′', 280, 440, '#1f6fd6', 14, 'center'); label(c, 'N = (M+m)g', 470, 440, '#1f6fd6', 14, 'center');
+      label(c, '작용 F ↔ 반작용 F′ : 크기 같고 방향 반대', ECX, 490, '#8a2be2', 14, 'center');
+    } else {
+      const M = 200, m = 20, bars = [['잡고 있음', M, '#9aa7b8'], ['플라스틱\n낙하 중', M, '#9aa7b8'], ['구리·알루미늄\n일정 속력', M + m, '#1f6fd6'], ['입구에서\n빠를 때(순간)', M + m + 9, '#d64545'], ['세로 홈 구리', M + 2, '#9aa7b8']];
+      const x0 = 50, base = 430, top = 70, lo = 190, hi = 235, bw = 70, gap = 28;
+      c.strokeStyle = '#8a93a0'; c.beginPath(); c.moveTo(x0, top); c.lineTo(x0, base); c.lineTo(EW - 10, base); c.stroke();
+      label(c, '눈금(g)', x0 + 4, top - 8, '#5a6b7d', 12);
+      [200, 220].forEach(v => { const y = base - (v - lo) / (hi - lo) * (base - top); c.setLineDash([4, 4]); c.strokeStyle = '#c3cbd6'; c.beginPath(); c.moveTo(x0, y); c.lineTo(EW - 10, y); c.stroke(); c.setLineDash([]); label(c, v + '', x0 - 6, y + 4, '#5a6b7d', 12, 'right'); });
+      bars.forEach((b, i) => { const x = x0 + 14 + i * (bw + gap) * 0.78, hgt = (b[1] - lo) / (hi - lo) * (base - top); c.fillStyle = b[2]; c.fillRect(x, base - hgt, bw * 0.78, hgt);
+        b[0].split('\n').forEach((s, j) => label(c, s, x + bw * 0.39, base + 16 + j * 14, '#1c2733', 11.5, 'center')); });
+      label(c, '※ 세로축은 190 g부터 시작 (M = 200 g, m = 20 g 예시)', ECX, 490, '#5a6b7d', 12, 'center');
+    }
+  }
+  requestAnimationFrame(exFrame);
+}
+requestAnimationFrame(exFrame);
+
+function renderRecord() {
+  const nm = { A: '관 무게만', B: '관 + 자석 무게', C: '그 사이', D: 'M+m보다 큼' };
+  let h = '<h3>내 예측과 결과 기록</h3><table class="readout">';
+  h += '<tr><td>처음 예측</td><td>' + (ss.q1 ? ss.q1 + ' · ' + nm[ss.q1] : '—') + '</td></tr>';
+  h += '<tr><td>실제 측정</td><td>' + (ss.real ? ss.real.R.toFixed(2) + ' g (예측 대비 ' + ss.real.pc.toFixed(1) + ' %)' : (ss.obs ? nm[ss.obs] : '—')) + '</td></tr>';
+  h += '<tr><td>되돌아보기</td><td>' + (ss.reflect || '—') + '</td></tr></table>';
+  $('myRecord').innerHTML = h;
+}
+
+/* ---------- 시작 ---------- */
+resetRun();
+(async () => { await new Promise(r => setTimeout(r, 250)); const a = await ask(Q1); ss.q1 = a.key; ss.q1Why = a.why; })();
+window.addEventListener('resize', () => {});
+})();
+</script>
+<script src="../../site-nav.js?v=8"></script>
+</body>
+</html>

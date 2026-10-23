@@ -42,7 +42,8 @@ electromagnetism/              전자기            시뮬레이션 4개
 optics/                        광학              시뮬레이션 4개
 └── newton-rings/              🔵 뉴턴 링(스마트폰 촬영·분석)  ✔ 완료
 interdisciplinary/             융합
-└── energy-city/               ⚡ 에너지 도시 건설 게임(3D, KENTECH 창의성 면접 문항)  ✔ 완료
+├── energy-city/               ⚡ 에너지 도시 건설 게임(3D, KENTECH 창의성 면접 문항)  ✔ 완료
+└── village-defense/           🏹 시대를 건너는 마을 수비대(포물선·공기저항·천체 중력·전기장 디펜스 게임, 서버 랭킹)  ✔ 완료
 modern-physics/                현대물리
 └── photoelectric-effect/      💡 광전효과        ✔ 완료
 tools/                         분석 도구

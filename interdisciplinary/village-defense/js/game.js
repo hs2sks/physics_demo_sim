@@ -134,11 +134,13 @@
       canvas.addEventListener('pointermove', e => { if (this.dragging) this._drag(e); });
       window.addEventListener('pointerup', () => { this.dragging = false; });
     }
-    start(stage) {
-      const W = VD.WORLDS[stage.world - 1];
+    start(stage, opt) {
+      const W = VD.WORLDS[stage.world - 1], mission = opt && opt.mission;
       Object.assign(this, { stage, world: W, era: W.era, env: stage.env, t: 0, hp: stage.hp, maxHp: stage.hp, ammo: stage.ammo,
-        shots: 0, kills: 0, score: 0, predBonus: 0, bonusKills: 0, enemies: [], balls: [], parts: [], ghost: null, ghostNow: [], cool: 0,
-        spawnIdx: 0, over: false, paused: false, lastGround: null, dragging: false, shake: 0, uid: 0 });
+        shots: 0, kills: 0, score: 0, enemies: [], balls: [], parts: [], ghost: null, cool: 0,
+        spawnIdx: 0, over: false, paused: false, dragging: false, shake: 0, uid: 0,
+        phase: mission ? 'mission' : 'combat', mShots: 0 });
+      if (mission) for (const t of mission.targets) this.enemies.push({ id: ++this.uid, type: 'dummy', kind: t.kind, x: t.x, cy: t.cy, w: t.w, h: t.h, armor: !!t.armor, hp: 1e9, maxhp: 1, speed: 0, age: 0, flash: 0 });
       this.total = stage.spawns.length;
       this.bg = makeBackground(stage, this.era);
       this.aim = { angle: stage.lockAngle || stage.angle.init, speed: stage.lockSpeed || stage.v.init, sign: 1 };
@@ -147,6 +149,11 @@
       requestAnimationFrame(ts => this.loop(ts));
     }
     stop() { this.running = false; }
+    beginCombat() {                                           // 연습(미션)을 마치고 전투 시작: 과녁 치우고 시계·탄을 새로
+      this.enemies = this.enemies.filter(e => e.type !== 'dummy'); this.balls = []; this.ghost = null;
+      this.phase = 'combat'; this.t = 0; this.spawnIdx = 0; this.cool = 0.3; this.ammo = this.stage.ammo;
+      this.hooks.hud && this.hooks.hud(this);
+    }
     setPaused(p) { this.paused = p; }
     setAim(a) {
       const s = this.stage;
@@ -168,11 +175,13 @@
     }
     qm() { const c = this.stage.charge; return c ? this.aim.sign * c.q / c.m : 0; }
 
-    fire(predict) {
-      if (this.over || this.paused || this.cool > 0 || this.ammo <= 0) return false;
+    fire() {
+      const mis = this.phase === 'mission';
+      if (this.over || this.paused || this.cool > 0 || (!mis && this.ammo <= 0)) return false;
       const a = this.aim, p = P.launch(C.CANNON_X, C.MUZZLE_Y, a.speed, a.angle, this.qm());
-      this.ammo--; this.shots++; this.cool = 0.5;
-      this.balls.push({ p, t: 0, trail: [], path: [[p.x, p.y]], angle: a.angle, speed: a.speed, sign: a.sign, predict: isFinite(predict) ? predict : null, maxY: p.y });
+      if (mis) this.mShots++; else { this.ammo--; this.shots++; }
+      this.cool = mis ? 0.4 : 0.5;
+      this.balls.push({ p, t: 0, trail: [], path: [[p.x, p.y]], angle: a.angle, speed: a.speed, sign: a.sign, maxY: p.y, ft: 0, inF: false, enter: null, exit: null });
       const ox = toPx(C.CANNON_X) + Math.cos(a.angle * Math.PI / 180) * 12, oy = toPy(C.MUZZLE_Y) - Math.sin(a.angle * Math.PI / 180) * 12;
       for (let i = 0; i < 6; i++) this.parts.push({ x: ox, y: oy, vx: (Math.random() - 0.3) * 30 + Math.cos(a.angle * Math.PI / 180) * 20, vy: -(Math.random() - 0.3) * 30, life: 0.25, col: this.era === 3 ? '#25e0d0' : '#e8e0c8' });
       this.shake = 0.08;
@@ -184,7 +193,7 @@
       if (!this.running) return;
       const dt = Math.min(0.05, (ts - this.last) / 1000); this.last = ts;
       if (!this.paused && !this.over) {
-        const fast = this.ammo <= 0 && !this.balls.length ? 3 : 1;
+        const fast = this.phase === 'combat' && this.ammo <= 0 && !this.balls.length ? 3 : 1;
         this.acc += dt * fast;
         while (this.acc >= C.DT) { this.update(C.DT); this.acc -= C.DT; }
       }
@@ -193,10 +202,16 @@
       requestAnimationFrame(t => this.loop(t));
     }
 
-    enemyBox(e) { return { x: e.x, y: e.type === 'eagle' ? e.alt + 0.6 * Math.sin(e.age * 2) : VD.ENEMY[e.type].h / 2 }; }
+    enemyBox(e) { return { x: e.x, y: e.type === 'dummy' ? e.cy : e.type === 'eagle' ? e.alt + 0.6 * Math.sin(e.age * 2) : VD.ENEMY[e.type].h / 2 }; }
 
     update(dt) {
-      this.t += dt; this.cool = Math.max(0, this.cool - dt);
+      this.cool = Math.max(0, this.cool - dt);
+      if (this.phase === 'mission') {                         // 연습: 과녁만 있고 적·시간 제한 없음
+        for (const e of this.enemies) { e.age += dt; e.flash = Math.max(0, e.flash - dt); }
+        for (const b of this.balls) this.stepBall(b, dt);
+        this.balls = this.balls.filter(b => !b.end); return;
+      }
+      this.t += dt;
       const sp = this.stage.spawns;
       while (this.spawnIdx < sp.length && sp[this.spawnIdx].t <= this.t) {
         const s = sp[this.spawnIdx++], d = VD.ENEMY[s.type];
@@ -222,18 +237,32 @@
       const p = b.p; b.t += dt;
       P.step(p, this.env, dt);
       if (p.y > b.maxY) b.maxY = p.y;
+      const f = this.env.field;
+      if (f && b.p.qm) {                                      // 평행판 구역 출입(들어갈 때·나올 때 속도 기록)
+        const inside = p.x >= f.x0 && p.x <= f.x1 && p.y >= f.y0 && p.y <= f.y1;
+        const snap = () => ({ vx: p.vx, vy: p.vy, speed: Math.hypot(p.vx, p.vy), ang: Math.atan2(p.vy, p.vx) * 180 / Math.PI });
+        if (inside) b.ft += dt;
+        if (inside && !b.inF) b.enter = snap(); else if (!inside && b.inF) b.exit = snap();
+        b.inF = inside;
+      }
       if (((b.t * 60) | 0) !== (((b.t - dt) * 60) | 0)) { b.path.push([p.x, p.y]); b.trail.push([p.x, p.y]); if (b.trail.length > 9) b.trail.shift(); }
       for (const e of this.enemies) {
         if (e.dead) continue;
-        const d = VD.ENEMY[e.type], c = this.enemyBox(e), r = C.BALL_R;
+        const dummy = e.type === 'dummy', d = dummy ? e : VD.ENEMY[e.type], c = this.enemyBox(e), r = C.BALL_R;
         if (Math.abs(p.x - e.x) <= d.w / 2 + r && Math.abs(p.y - c.y) <= d.h / 2 + r) {
+          const ang = Math.atan2(-p.vy, Math.abs(p.vx)) * 180 / Math.PI;
+          const tinfo = dummy ? { kind: e.kind, ascending: p.vy > 0, descDeg: ang, t: b.t } : null;
           if (e.armor) {
-            const ang = Math.atan2(-p.vy, Math.abs(p.vx)) * 180 / Math.PI;
             if (!(p.vy < 0 && ang >= C.ARMOR_DEG)) {
               this.burst(toPx(p.x), toPy(p.y), '#ffe08a', 7);
               this.hooks.float && this.hooks.float(p.vy < 0 ? '튕겨냄! (' + Math.round(ang) + '°)' : '튕겨냄!', p.x, p.y + 3, 'bad');
-              return this.endBall(b, 'bounce');
+              return this.endBall(b, 'bounce', tinfo && Object.assign(tinfo, { bounce: true }));
             }
+          }
+          if (dummy) {
+            e.flash = 0.25; this.burst(toPx(p.x), toPy(p.y), '#ffe08a', 8);
+            this.hooks.float && this.hooks.float('명중!', e.x, c.y + 3, 'good');
+            return this.endBall(b, 'target', Object.assign(tinfo, { hit: true }));
           }
           e.hp--;
           this.burst(toPx(p.x), toPy(p.y), this.era === 3 ? '#25e0d0' : '#e8334a', 6);
@@ -250,16 +279,13 @@
       if (p.x > 70 || p.x < -6 || p.y > 90 || b.t > 40) return this.endBall(b, 'out');
     }
 
-    endBall(b, how) {
+    endBall(b, how, target) {
       b.end = true; const p = b.p, d = p.x - C.CANNON_X;
-      if (b.predict != null && how !== 'out') {
-        const err = Math.abs(b.predict - d), bonus = err <= 1.5 ? 60 : err <= 3 ? 30 : 0;
-        if (bonus) { this.predBonus += bonus; this.score += bonus; }
-        this.hooks.float && this.hooks.float(bonus ? '예측 +' + bonus + ' (오차 ' + err.toFixed(1) + ' m)' : '예측 오차 ' + err.toFixed(1) + ' m', p.x, Math.max(p.y, 0) + 6, bonus ? 'good' : 'info');
-      }
       this.ghost = b.path.slice();
-      if (how === 'ground') this.lastGround = { angle: b.angle, speed: b.speed, sign: b.sign, range: d, time: b.t, apex: b.maxY };
-      this.hooks.shot && this.hooks.shot({ how, range: d, time: b.t, angle: b.angle, speed: b.speed, sign: b.sign, apex: b.maxY });
+      const g = this.env.g;
+      this.hooks.shot && this.hooks.shot({ how, range: d, time: b.t, angle: b.angle, speed: b.speed, sign: b.sign, apex: b.maxY, target: target || null,
+        vac: g > 0 ? P.vacuumRange(b.speed, b.angle, C.MUZZLE_Y, g) : null, earth: P.vacuumRange(b.speed, b.angle, C.MUZZLE_Y, 10),
+        field: b.p.qm ? { time: b.ft, enter: b.enter, exit: b.exit } : null });
       this.hooks.hud && this.hooks.hud(this);
     }
 
@@ -277,21 +303,8 @@
       const total = win ? this.score + hpBonus + ammoBonus : 0;
       const stars = win ? 1 + (full ? 1 : 0) + (this.shots <= s.par ? 1 : 0) : 0;
       const res = { win, stars, score: total, shots: this.shots, par: s.par, kills: this.kills, total: this.total, hp: this.hp,
-        parts: { kills: this.score - this.predBonus, pred: this.predBonus, hp: hpBonus, ammo: ammoBonus }, last: this.lastGround };
+        parts: { kills: this.score, hp: hpBonus, ammo: ammoBonus } };
       setTimeout(() => this.hooks.end && this.hooks.end(res), win ? 700 : 900);
-    }
-
-    // 이론값(공기저항·바람이 없고 전기장이 없거나 화면 전체일 때는 정확한 식, 아니면 진공 기준)
-    theory(lg) {
-      const env = this.env, c = this.stage.charge, qm = c ? lg.sign * c.q / c.m : 0, a = lg.angle * Math.PI / 180;
-      const f = env.field, full = f && f.x0 < 0 && f.x1 > C.FIELD_W + 5;
-      const exact = !env.k && !env.wind && (!f || full);
-      const ax = exact && f ? qm * f.ex : 0, ay = -env.g + (exact && f ? qm * f.ey : 0);
-      const vx = lg.speed * Math.cos(a), vy = lg.speed * Math.sin(a), h0 = C.MUZZLE_Y;
-      let t;
-      if (Math.abs(ay) < 1e-9) t = NaN; else { const disc = vy * vy - 2 * ay * h0; t = (-vy - Math.sqrt(disc)) / ay; }
-      if (!(t > 0)) return null;
-      return { exact, range: vx * t + 0.5 * ax * t * t, time: t, apex: vy > 0 ? h0 + vy * vy / (2 * -ay) : h0 };
     }
 
     // ---------- 그리기 ----------
@@ -306,12 +319,27 @@
       drawWeapon(g, era, this.aim.angle, this.aim.sign);
       this.drawPreview(g);
       if (this.ghost) { g.fillStyle = 'rgba(255,255,255,0.35)'; this.ghost.forEach(([x, y], i) => { if (i % 2 === 0) g.fillRect(Math.round(toPx(x)), Math.round(toPy(y)), 1, 1); }); }
-      for (const e of this.enemies) this.drawEnemy(g, e, time);
+      for (const e of this.enemies) (e.type === 'dummy' ? this.drawDummy(g, e) : this.drawEnemy(g, e, time));
       for (const b of this.balls) this.drawBall(g, b);
       for (const q of this.parts) { g.fillStyle = q.col; g.fillRect(Math.round(q.x), Math.round(q.y), 2, 2); }
       g.restore();
     }
 
+    drawDummy(g, e) {
+      const x = Math.round(toPx(e.x)), y = Math.round(toPy(e.cy)), A = SP.PAL[this.era].A;
+      if (e.kind === 'balloon') {
+        const r = Math.round(e.w * PX / 2);
+        rect(g, x, y + r, 1, 14, '#e8e0c8');
+        for (let dy = -r; dy <= r; dy++) { const hw = Math.round(Math.sqrt(r * r - dy * dy)); rect(g, x - hw, y + dy, hw * 2 + 1, 1, e.flash > 0 ? '#fff' : (dy < -r / 3 ? '#ff6a7a' : '#e8334a')); }
+        rect(g, x - r / 2, y - r / 2, 2, 2, '#ffd0d6'); return;
+      }
+      const hs = Math.round(e.h * PX / 2), half = hs;
+      rect(g, x - 1, y + hs - 1, 3, GY - (y + hs) + 1, '#6a4524');               // 받침대
+      rect(g, x - half, y - half, half * 2, half * 2, e.armor ? (SP.PAL[this.era].A) : '#8a5a30');
+      const ring = [['#fff', 0.8], ['#e8334a', 0.62], ['#fff', 0.44], ['#e8334a', 0.26], ['#fff', 0.1]];
+      ring.forEach(([c, k]) => { const h = Math.max(1, Math.round(half * k)); rect(g, x - h, y - h, h * 2, h * 2, e.flash > 0 ? '#ffe08a' : c); });
+      if (e.armor) { [[-half, -half], [half - 2, -half], [-half, half - 2], [half - 2, half - 2]].forEach(([dx, dy]) => rect(g, x + dx, y + dy, 2, 2, '#2c2f36')); }
+    }
     drawEnemy(g, e, time) {
       const d = VD.ENEMY[e.type], c = this.enemyBox(e);
       const name = e.type === 'eagle' ? 'eagle' + (Math.floor(time * 5) % 2) : e.type;

@@ -29,6 +29,7 @@
 
   const rank = {
     API,
+    kv: { get, put },                                       // 탐구 노트 등 기기에만 저장하는 값
     profile() { return get(K.profile, null); },
     setProfile(nick, cls) {
       const old = get(K.profile, null) || {};

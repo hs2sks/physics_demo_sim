@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>뉴턴 링 — 스마트폰으로 찍고 분석하는 박막 간섭 실험</title>
+<style>
+  :root {
+    --bg: #f4f6fa; --panel: #ffffff; --ink: #1c2733; --sub: #5a6b7d;
+    --accent: #1f6fd6; --accent2: #d64545; --ok: #1e8f4e;
+    --border: #d7dee8; --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+  body {
+    font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+    background: var(--bg); color: var(--ink);
+    padding: 12px; font-size: 15px;
+  }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  header h1 { font-size: 1.25em; }
+  header .spacer { flex: 1; }
+  a.home { text-decoration:none; color:var(--sub); border:1px solid var(--border); padding:6px 12px; border-radius:8px; font-size:0.9em; white-space:nowrap; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .tabs button { flex: 0 0 auto; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 1em; }
+  .tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .layout { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .sim-col { flex: 2 1 480px; display: flex; flex-direction: column; gap: 12px; }
+  .side-col { flex: 1 1 320px; display: flex; flex-direction: column; gap: 12px; }
+
+  #sceneWrap { position: relative; width: 100%; aspect-ratio: 16/10; border-radius: 8px; overflow: hidden; background: radial-gradient(circle at 50% 30%, #16233a, #060a12 75%); }
+  #sceneWrap canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #hoverHint { position:absolute; left:8px; bottom:8px; color:#9fb3d9; font-size:0.78em; background:rgba(6,10,18,0.55); padding:4px 8px; border-radius:6px; pointer-events:none; }
+  #hoverHint:empty { display: none; }
+  #simError { position:absolute; left:8px; right:8px; top:8px; color:#fff; background:rgba(214,69,69,0.92); padding:6px 10px; border-radius:6px; font-size:0.82em; white-space:pre-wrap; }
+
+  .scenario-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .scenario-picker button { flex: 1 1 30%; min-width: 120px; padding: 8px 6px; font-size: 0.86em; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  .scenario-picker button.active { background: #eaf1fd; border-color: var(--accent); color: var(--accent); font-weight: 700; }
+
+  .param { margin-bottom: 10px; }
+  .param label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 4px; font-size: 0.92em; }
+  .param label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .param input[type=range] { width: 100%; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .hint { color: var(--sub); font-size: 0.83em; margin-top: 2px; line-height: 1.5; }
+
+  button { font-size: 1em; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.warn { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .controls-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.82em; color: var(--sub); margin-top: 8px; }
+  .legend:empty { display: none; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .swatch { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .swatch.bar { border-radius: 2px; }
+
+  table.readout { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+  table.readout td { padding: 4px 2px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  table.readout td:first-child { color: var(--sub); }
+  table.readout td:last-child { text-align: right; font-weight: 700; }
+
+  details { margin-top: 6px; }
+  summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+  .formula-body { padding: 8px 2px; line-height: 1.8; font-size: 0.92em; }
+  .formula-body .eq { font-size: 1.08em; text-align: center; margin: 6px 0; font-family: Georgia, serif; }
+  .note { border-left: 3px solid var(--accent); background: #eef4fd; padding: 8px 10px; border-radius: 6px; font-size: 0.86em; margin-top: 8px; line-height: 1.6; }
+  .note:empty { display: none; }
+  .misconception { border-left: 3px solid var(--accent2); background: #fdeeee; padding: 8px 10px; border-radius: 6px; font-size: 0.86em; margin-top: 8px; line-height: 1.6; }
+
+  canvas.chart { width: 100%; background: #fff; border: 1px solid var(--border); border-radius: 6px; }
+
+  body.projector { font-size: 19px; }
+  body.projector button { padding: 12px 18px; }
+  body.projector .scenario-picker button { font-size: 1em; padding: 12px 8px; }
+
+  @media (max-width: 720px) {
+    body { font-size: 16px; padding: 8px; }
+    .layout { flex-direction: column; }
+    .sim-col, .side-col { flex: 1 1 100%; }
+    button { padding: 11px 14px; }
+    input[type=range] { height: 26px; }
+  }
+/* ---- 레시피 입력 extra_css ---- */
+.nr-box{border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-top:8px;font-size:.9em}
+.nr-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:5px 0}
+.nr-btn{padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:.92em}
+.nr-btn.sm{padding:4px 9px}.nr-btn.on{background:#ffe9a8;border-color:#e0a800}
+.nr-tab{width:100%;border-collapse:collapse;font-size:.85em;margin-top:8px}.nr-tab th,.nr-tab td{border-bottom:1px solid var(--border);padding:3px 6px;text-align:right}.nr-tab tr.off td{color:#99a;text-decoration:line-through}
+.nr-lab{display:block;margin:6px 0}.nr-lab span{display:block;font-size:.84em;color:var(--sub)}.nr-fld{width:100%;box-sizing:border-box;padding:6px;border:1px solid var(--border);border-radius:6px;font:inherit}
+.nr-ul{margin:6px 0 2px 18px;padding:0;line-height:1.7}
+</style>
+</head>
+<body>
+
+<header>
+  <a class="home" href="../../index.html">🏠 홈</a>
+  <h1>🔵 뉴턴 링 — 스마트폰으로 찍고 분석하는 박막 간섭 실험</h1>
+  <span class="spacer"></span>
+  <button id="projectorBtn" title="프로젝터용 큰 글씨 모드">🖥 큰 글씨 모드</button>
+</header>
+
+<div class="tabs" id="tabs"></div>
+
+<div class="layout">
+
+  <div class="sim-col">
+    <div class="panel">
+      <div id="sceneWrap">
+        <div id="hoverHint"></div>
+        <div id="simError" hidden></div>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="panel" id="graphPanel" hidden>
+      <canvas id="chartCanvas" class="chart" width="440" height="220"></canvas>
+      <div class="hint" id="chartHint"></div>
+    </div>
+  </div>
+
+  <div class="side-col">
+
+    <div class="panel" id="scenarioPanel">
+      <div class="scenario-picker" id="scenarioPicker"></div>
+      <div id="scenarioBody"></div>
+      <div id="customPanel"></div>
+    </div>
+
+    <div class="panel" id="readoutPanel">
+      <b id="readoutTitle"></b>
+      <table class="readout" id="readout"></table>
+      <div class="note" id="readoutNote"></div>
+    </div>
+
+    <div class="panel">
+      <details id="formulaDetails">
+        <summary>📐 관련 공식 보기</summary>
+        <div class="formula-body" id="formulaBody"></div>
+      </details>
+    </div>
+
+    <div class="panel" id="misconceptionPanel"></div>
+
+  </div>
+</div>
+
+
+<script>
+const WS_CONFIG = {
+ "title": "뉴턴 링 — 스마트폰으로 찍고 분석하는 박막 간섭 실험",
+ "renderer": "canvas2d",
+ "scene": {
+  "aspect": "16/10",
+  "hint": "③ 사진 분석에서는 화면의 사진을 눌러 눈금·중심을 지정합니다"
+ },
+ "legend": [
+  {
+   "label": "렌즈면 반사 ①",
+   "color": "#ffb454"
+  },
+  {
+   "label": "유리판 반사 ②",
+   "color": "#7fd6ff"
+  },
+  {
+   "label": "합성",
+   "color": "#ff5d73"
+  },
+  {
+   "label": "어두운 고리",
+   "color": "#5eead4"
+  }
+ ],
+ "tabs": [
+  {
+   "id": "a",
+   "label": "① 원리 (가상 실험)"
+  },
+  {
+   "id": "b",
+   "label": "② 스마트폰 촬영 설계"
+  },
+  {
+   "id": "c",
+   "label": "③ 사진 분석"
+  },
+  {
+   "id": "d",
+   "label": "④ 보고서"
+  }
+ ],
+ "scenarios": [
+  {
+   "id": "cross",
+   "tab": "a",
+   "name": "공기층과 경로차",
+   "section": "가상 실험 ①",
+   "desc": "렌즈 볼록면과 유리판 사이의 공기층 두께 d = r²/2R. 관찰 반경 r 을 움직이며 두 반사파의 경로차와 합성 세기를 확인하세요. (교재: Jenkins·White 『Fundamentals of Optics』 14.5 뉴턴 링, Hecht 『Optics』 9.4)",
+   "misconception_title": "오개념: 렌즈 속·표면에서 생기는 무늬이고, 중심은 밝을 것이다",
+   "misconception": "무늬는 렌즈 안이 아니라 렌즈와 유리판 사이 얇은 공기층의 위·아래 면에서 반사된 두 빛이 만나 생기는 간섭이다. 중심은 d≈0 이라 경로차가 거의 0이지만, 유리판 쪽 반사에서만 위상이 π 바뀌므로 소멸간섭 → 반사로 보면 중심이 어둡다.",
+   "formula": [
+    {
+     "eq_html": "d = R − √(R² − r²) ≈ r² / 2R",
+     "text_html": "공기층 두께 (r ≪ R)"
+    },
+    {
+     "eq_html": "경로차 = 2d + λ/2",
+     "text_html": "λ/2 는 유리판(공기→유리) 반사의 위상 π"
+    },
+    {
+     "eq_html": "어두운 고리: 2d = mλ  →  r<sub>m<\/sub>² = mλR",
+     "text_html": "m = 0, 1, 2, … (반사로 볼 때)"
+    },
+    {
+     "eq_html": "밝은 고리: r<sub>m<\/sub>² = (m − ½)λR",
+     "text_html": ""
+    }
+   ],
+   "params": [
+    {
+     "key": "R",
+     "label": "렌즈 곡률반경 R",
+     "min": 0.5,
+     "max": 10,
+     "step": 0.1,
+     "value": 2.4,
+     "unit": "m"
+    },
+    {
+     "key": "lam",
+     "label": "파장 λ",
+     "min": 400,
+     "max": 700,
+     "step": 5,
+     "value": 530,
+     "unit": "nm"
+    },
+    {
+     "key": "robs",
+     "label": "관찰 반경 r",
+     "min": 0,
+     "max": 4,
+     "step": 0.05,
+     "value": 1.0,
+     "unit": "mm"
+    }
+   ],
+   "chart": true
+  },
+  {
+   "id": "top",
+   "tab": "a",
+   "name": "위에서 본 동심원",
+   "section": "가상 실험 ②",
+   "desc": "실제로 보이는 모양. 곡률반경·파장·접촉 상태·광원·반사/투과를 바꾸며 고리 반경이 √m 로 커지는 것을 확인하세요.",
+   "misconception_title": "오개념: 고리 사이 간격은 일정하다",
+   "misconception": "고리 반경은 r_m = √(mλR) 이므로 바깥으로 갈수록 간격이 줄어든다(Δr ∝ 1/√m). 간격이 일정한 것은 쐐기(공기 쐐기)의 직선 무늬이다. 또 r² 대 m 을 그리면 직선이 된다.",
+   "formula": [
+    {
+     "eq_html": "r<sub>m<\/sub> = √(mλR)",
+     "text_html": "어두운 고리의 반지름"
+    },
+    {
+     "eq_html": "r<sub>m<\/sub>² = mλR",
+     "text_html": "r²–m 직선의 기울기 = λR  →  R = 기울기 / λ"
+    },
+    {
+     "eq_html": "Δr ≈ λR / (2r)",
+     "text_html": "바깥 고리일수록 간격이 좁다"
+    }
+   ],
+   "params": [
+    {
+     "key": "R",
+     "label": "렌즈 곡률반경 R",
+     "min": 0.5,
+     "max": 10,
+     "step": 0.1,
+     "value": 2.4,
+     "unit": "m"
+    },
+    {
+     "key": "lam",
+     "label": "파장 λ (단색광)",
+     "min": 400,
+     "max": 700,
+     "step": 5,
+     "value": 530,
+     "unit": "nm"
+    },
+    {
+     "key": "eps",
+     "label": "접촉 불완전 d₀ (먼지·눌림)",
+     "min": 0,
+     "max": 400,
+     "step": 10,
+     "value": 0,
+     "unit": "nm"
+    }
+   ],
+   "choices": [
+    {
+     "key": "src",
+     "label": "광원",
+     "value": "mono",
+     "options": [
+      {
+       "value": "mono",
+       "label": "단색광"
+      },
+      {
+       "value": "white",
+       "label": "백색광 (대역 넓음)"
+      }
+     ]
+    },
+    {
+     "key": "view",
+     "label": "관찰 방향",
+     "value": "refl",
+     "options": [
+      {
+       "value": "refl",
+       "label": "반사 (위에서 비춰 위에서 봄)"
+      },
+      {
+       "value": "trans",
+       "label": "투과 (아래에서 비춰 위에서 봄)"
+      }
+     ]
+    }
+   ],
+   "chart": true
+  },
+  {
+   "id": "phone",
+   "tab": "b",
+   "name": "줌·거리·해상도",
+   "section": "스마트폰 촬영 설계",
+   "desc": "스마트폰으로 뉴턴 링을 찍을 때 촬영 거리와 줌, 화소에 따라 고리가 몇 줄, 몇 픽셀 간격으로 찍히는지 미리 확인합니다. 카메라 화각·최소 초점거리는 기종마다 다른 예시값입니다(확인 필요).",
+   "misconception_title": "오개념: 많이 확대(줌)할수록 더 정확하게 잴 수 있다",
+   "misconception": "디지털 줌은 사진의 가운데를 잘라 키우는 것이라 화소가 줄어든다. 고리 간격이 3 px 아래로 좁아지는 바깥 고리는 어차피 쓸 수 없고, LED 의 대역폭 때문에 고리는 12~20번째 안팎에서 흐려진다. 접사 모드·광학 줌으로 가까이 찍는 편이 낫다.",
+   "formula": [
+    {
+     "eq_html": "시야 가로 = 2 · 거리 · tan(화각/2) / 줌",
+     "text_html": "(예시 카메라 값)"
+    },
+    {
+     "eq_html": "배율 [px/mm] = 가로 화소 / 시야 가로",
+     "text_html": ""
+    },
+    {
+     "eq_html": "바깥 고리 간격 = (λR / 2r) × 배율",
+     "text_html": "r = 화면 가장자리까지 거리"
+    },
+    {
+     "eq_html": "대비 30% 이상인 최대 m ≈ 0.58 λ/Δλ",
+     "text_html": "Δλ = 광원 스펙트럼 폭 (LED 25 nm 예시)"
+    }
+   ],
+   "params": [
+    {
+     "key": "R",
+     "label": "렌즈 곡률반경 R",
+     "min": 0.5,
+     "max": 10,
+     "step": 0.1,
+     "value": 2.4,
+     "unit": "m"
+    },
+    {
+     "key": "dist",
+     "label": "촬영 거리",
+     "min": 0.5,
+     "max": 40,
+     "step": 0.5,
+     "value": 2,
+     "unit": "cm"
+    },
+    {
+     "key": "dz",
+     "label": "디지털 줌",
+     "min": 1,
+     "max": 10,
+     "step": 0.5,
+     "value": 1,
+     "unit": "×"
+    },
+    {
+     "key": "npx",
+     "label": "원본 가로 화소",
+     "min": 1000,
+     "max": 4000,
+     "step": 100,
+     "value": 4000,
+     "unit": "px"
+    }
+   ],
+   "choices": [
+    {
+     "key": "cam",
+     "label": "카메라 (화각·최소초점은 예시)",
+     "value": "clip",
+     "options": [
+      {
+       "value": "clip",
+       "label": "접사 클립렌즈 장착"
+      },
+      {
+       "value": "ultra",
+       "label": "초광각 접사 모드"
+      },
+      {
+       "value": "wide",
+       "label": "주 카메라(광각)"
+      },
+      {
+       "value": "tele",
+       "label": "망원 3배"
+      }
+     ]
+    },
+    {
+     "key": "light",
+     "label": "광원",
+     "value": "g",
+     "options": [
+      {
+       "value": "g",
+       "label": "녹색 LED (530 nm 예시)"
+      },
+      {
+       "value": "r",
+       "label": "적색 LED (630 nm 예시)"
+      },
+      {
+       "value": "b",
+       "label": "청색 LED (465 nm 예시)"
+      },
+      {
+       "value": "w",
+       "label": "백색 LED (R·G·B 합성)"
+      }
+     ]
+    }
+   ],
+   "chart": true
+  },
+  {
+   "id": "photo",
+   "tab": "c",
+   "name": "사진·눈금·중심",
+   "section": "사진 분석 ①",
+   "desc": "실제 촬영한 사진을 불러오거나 연습용 가상 사진을 만든 뒤, 눈금자로 배율을 정하고 무늬의 중심을 지정합니다. 가상 사진은 아래 슬라이더 조건으로 만들어지고 정답 R 은 숨겨져 있습니다.",
+   "misconception_title": "오개념: 사진 속 픽셀 수만으로 반지름을 알 수 있다",
+   "misconception": "픽셀은 길이가 아니다. 같은 렌즈도 촬영 거리·줌이 달라지면 픽셀 수가 달라진다. 반드시 같은 평면에 놓은 눈금자(mm)로 1 mm 당 픽셀 수를 먼저 정해야 한다.",
+   "formula": [
+    {
+     "eq_html": "배율 s = (두 점 사이 픽셀) / (실제 길이 mm)",
+     "text_html": "r[mm] = r[px] / s"
+    },
+    {
+     "eq_html": "r² 의 상대오차 ≈ 2 × 배율의 상대오차",
+     "text_html": "눈금 두 점은 가능한 한 멀리 찍을 것"
+    }
+   ],
+   "params": [
+    {
+     "key": "R",
+     "label": "(가상 사진) 곡률반경 R",
+     "min": 0.5,
+     "max": 10,
+     "step": 0.1,
+     "value": 2.4,
+     "unit": "m"
+    },
+    {
+     "key": "fov",
+     "label": "(가상 사진) 시야 가로",
+     "min": 6,
+     "max": 30,
+     "step": 0.5,
+     "value": 12,
+     "unit": "mm"
+    },
+    {
+     "key": "epsc",
+     "label": "(가상 사진) 접촉 불완전 d₀",
+     "min": 0,
+     "max": 300,
+     "step": 10,
+     "value": 0,
+     "unit": "nm"
+    },
+    {
+     "key": "noise",
+     "label": "(가상 사진) 센서 잡음",
+     "min": 0,
+     "max": 10,
+     "step": 0.5,
+     "value": 2,
+     "unit": "%"
+    }
+   ],
+   "choices": [
+    {
+     "key": "light",
+     "label": "(가상 사진) 광원",
+     "value": "g",
+     "options": [
+      {
+       "value": "g",
+       "label": "녹색 LED (530 nm 예시)"
+      },
+      {
+       "value": "r",
+       "label": "적색 LED (630 nm 예시)"
+      },
+      {
+       "value": "b",
+       "label": "청색 LED (465 nm 예시)"
+      },
+      {
+       "value": "w",
+       "label": "백색 LED (R·G·B 합성)"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "rings",
+   "tab": "c",
+   "name": "고리 검출과 R 계산",
+   "section": "사진 분석 ②",
+   "desc": "중심에서 같은 거리의 밝기를 평균해 어두운 고리의 반지름을 자동 검출하고, r² 대 m 직선의 기울기로 곡률반경 R 을 구합니다. 이상한 점은 표에서 제외해 보세요.",
+   "misconception_title": "오개념: 고리 번호를 정확히 세어야 하고, 중심이 m=0 이어야만 R 이 나온다",
+   "misconception": "R 은 r²–m 직선의 \"기울기\"로 구하므로, 첫 고리의 번호가 한두 칸 밀려도(먼지로 접촉이 불완전한 경우) 기울기는 같다. 그러나 중간에 한 줄을 건너뛰면 기울기가 틀린다. 번호는 연속인지가 중요하다.",
+   "formula": [
+    {
+     "eq_html": "r<sub>m<\/sub>² = mλR + 상수",
+     "text_html": "절편은 접촉 불완전·중심 오차 때문에 생기는 값"
+    },
+    {
+     "eq_html": "R = (기울기 b) / λ",
+     "text_html": "b 의 단위 mm² → R[m] = b[mm²]·1000 / λ[nm]"
+    },
+    {
+     "eq_html": "δR/R = √[(δb/b)² + (2δs/s)² + (δλ/λ)²]",
+     "text_html": "맞춤·배율·파장 불확도 합성"
+    }
+   ],
+   "params": [
+    {
+     "key": "thr",
+     "label": "검출 임계(대비)",
+     "min": 3,
+     "max": 50,
+     "step": 1,
+     "value": 15,
+     "unit": "%"
+    },
+    {
+     "key": "sm",
+     "label": "평활 폭",
+     "min": 0,
+     "max": 4,
+     "step": 0.1,
+     "value": 1.5,
+     "unit": "px"
+    },
+    {
+     "key": "m0",
+     "label": "첫 고리 번호 m₀",
+     "min": 0,
+     "max": 4,
+     "step": 0.5,
+     "value": 1,
+     "unit": ""
+    },
+    {
+     "key": "rfrac",
+     "label": "분석 반경",
+     "min": 30,
+     "max": 100,
+     "step": 1,
+     "value": 100,
+     "unit": "%"
+    },
+    {
+     "key": "lam_an",
+     "label": "분석 파장 λ",
+     "min": 400,
+     "max": 750,
+     "step": 1,
+     "value": 530,
+     "unit": "nm"
+    },
+    {
+     "key": "dlam",
+     "label": "파장 불확도 ±",
+     "min": 0,
+     "max": 60,
+     "step": 1,
+     "value": 20,
+     "unit": "nm"
+    }
+   ],
+   "choices": [
+    {
+     "key": "ch",
+     "label": "색 채널",
+     "value": "y",
+     "options": [
+      {
+       "value": "y",
+       "label": "밝기(전체)"
+      },
+      {
+       "value": "r",
+       "label": "빨강"
+      },
+      {
+       "value": "g",
+       "label": "초록"
+      },
+      {
+       "value": "b",
+       "label": "파랑"
+      }
+     ]
+    },
+    {
+     "key": "mode",
+     "label": "검출할 고리",
+     "value": "dark",
+     "options": [
+      {
+       "value": "dark",
+       "label": "어두운 고리"
+      },
+      {
+       "value": "bright",
+       "label": "밝은 고리"
+      }
+     ]
+    }
+   ],
+   "chart": true
+  },
+  {
+   "id": "report",
+   "tab": "d",
+   "name": "결과 정리와 보고서",
+   "section": "보고서",
+   "desc": "분석 결과가 자동으로 정리됩니다. 목적·가설·오차 원인·결론을 쓰고 보고서를 열어 인쇄하거나 PDF 로 저장하세요. 내용은 이 기기 브라우저에만 임시 저장되며 서버로 전송되지 않습니다.",
+   "misconception_title": "오개념: 계산한 R 값 하나만 있으면 보고서가 완성된다",
+   "misconception": "측정값에는 불확도가 있고(맞춤·배율·파장), 가설과의 차이를 설명하는 오차 원인과 개선책이 보고서의 핵심이다. 렌즈 표시값(R = (n−1)f)이 있다면 서로 비교하고, 차이가 불확도 안인지 밖인지 판단해 보자.",
+   "formula": [
+    {
+     "eq_html": "R = (n − 1) f",
+     "text_html": "얇은 평볼록 렌즈(공기 중)의 예상값, 가설 세울 때 참고 (n≈1.5 예시)"
+    },
+    {
+     "eq_html": "차이 = |R<sub>측정<\/sub> − R<sub>예상<\/sub>| / δR",
+     "text_html": "1~2 이하면 불확도 안에서 일치"
+    }
+   ],
+   "params": []
+  }
+ ],
+ "common_params": null,
+ "readout_title": "측정값"
+};
+</script>
+<script>
+/* ============================ 시뮬레이션 코드 (레시피 입력 sim_js) ============================ */
+/* ② 그리기 도우미: 가상 좌표 1000×625 에 그리고 화면 크기에 맞춰 축소·중앙 정렬 */
+const COL = { bg: '#0f1a33', text: '#e3ecff', dim: '#9db0d8', ok: '#5eead4', bad: '#ff5d73', a: '#7fd6ff', b: '#ffb454', c: '#b48cff', grid: 'rgba(160,190,255,.18)' };
+const W0 = 1000, H0 = 625;
+function begin(api) { const { ctx, width: w, height: h } = api; ctx.fillStyle = COL.bg; ctx.fillRect(0, 0, w, h); const k = Math.min(w / W0, h / H0); ctx.save(); ctx.translate((w - W0 * k) / 2, (h - H0 * k) / 2); ctx.scale(k, k); return ctx; }  // 끝에 ctx.restore()
+function txt(ctx, s, x, y, col, px, wt, al) { ctx.font = `${wt || 600} ${px || 18}px sans-serif`; ctx.fillStyle = col || COL.text; ctx.textAlign = al || 'left'; ctx.fillText(s, x, y); ctx.textAlign = 'left'; }
+function arrow(ctx, x0, y0, x1, y1, col, lw = 3) {
+  const len = Math.hypot(x1 - x0, y1 - y0); if (len < 3) return; const a = Math.atan2(y1 - y0, x1 - x0), hd = Math.min(12, len * .5);
+  ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - Math.cos(a) * hd * .7, y1 - Math.sin(a) * hd * .7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - hd * Math.cos(a - .45), y1 - hd * Math.sin(a - .45)); ctx.lineTo(x1 - hd * Math.cos(a + .45), y1 - hd * Math.sin(a + .45)); ctx.closePath(); ctx.fill();
+}
+/* 차트(시나리오에 chart:true): 곡선·점·로그축. o = {xmin,xmax,ymin,ymax,xt,yt,xl,yl,curves:[{fn,col}],marks:[{x,y,lab}],log} */
+function plot(api, o) {
+  const ch = api.chart; if (!ch) return; const cv = ch.canvas, c2 = ch.ctx, cw = cv.width, chh = cv.height, sc = cw / (cv.clientWidth || cw);
+  c2.save(); c2.setTransform(1, 0, 0, 1, 0, 0); c2.fillStyle = COL.bg; c2.fillRect(0, 0, cw, chh);
+  const l = 56 * sc, r = cw - 16 * sc, t = 20 * sc, b = chh - 36 * sc, X = v => l + (o.log ? (Math.log10(v) - Math.log10(o.xmin)) / (Math.log10(o.xmax) - Math.log10(o.xmin)) : (v - o.xmin) / (o.xmax - o.xmin)) * (r - l), Y = v => b - (v - o.ymin) / (o.ymax - o.ymin) * (b - t);
+  c2.font = `${12 * sc}px sans-serif`; c2.fillStyle = COL.dim; c2.strokeStyle = COL.grid; c2.lineWidth = sc;
+  (o.xt || []).forEach(v => { c2.beginPath(); c2.moveTo(X(v), t); c2.lineTo(X(v), b); c2.stroke(); c2.fillText(String(v), X(v) - 8 * sc, b + 16 * sc); });
+  (o.yt || []).forEach(v => { c2.beginPath(); c2.moveTo(l, Y(v)); c2.lineTo(r, Y(v)); c2.stroke(); c2.fillText(String(v), 6 * sc, Y(v) + 4 * sc); });
+  c2.fillText(o.xl || '', r - 120 * sc, b + 30 * sc); c2.fillText(o.yl || '', 6 * sc, t - 6 * sc);
+  (o.curves || []).forEach(cv2 => { c2.strokeStyle = cv2.col || COL.a; c2.lineWidth = 2.5 * sc; c2.beginPath(); let st = true; for (let i = 0; i <= 160; i++) { const x = o.log ? o.xmin * Math.pow(o.xmax / o.xmin, i / 160) : o.xmin + (o.xmax - o.xmin) * i / 160, y = cv2.fn(x); if (!Number.isFinite(y)) continue; const py = Y(Math.min(Math.max(y, o.ymin), o.ymax)); st ? c2.moveTo(X(x), py) : c2.lineTo(X(x), py); st = false; } c2.stroke(); });
+  (o.marks || []).forEach(m => { c2.fillStyle = m.col || COL.ok; c2.beginPath(); c2.arc(X(m.x), Y(Math.min(Math.max(m.y, o.ymin), o.ymax)), 6 * sc, 0, 2 * Math.PI); c2.fill(); if (m.lab) c2.fillText(m.lab, X(m.x) + 9 * sc, Y(m.y) - 8 * sc); });
+  c2.restore();
+}
+
+
+/* ===== 뉴턴 링 전용 ===== */
+// 단위: r[mm], R[m], λ·d[nm]. d = r²/2R → d[nm] = r_mm² · 500 / R_m
+const PH = {
+  gapNm(R, rmm) { return rmm * rmm * 500 / R; },
+  gapExactNm(R, rmm) { const r = rmm * 1e-3; return (R - Math.sqrt(R * R - r * r)) * 1e9; },
+  vis(lam, dnm, dl) { const s = dl / (2.355 * lam * lam), o = 2 * dnm; return Math.exp(-2 * Math.PI * Math.PI * s * s * o * o); },
+  inten(lam, dnm, view, dl) { const V = dl > 0 ? PH.vis(lam, dnm, dl) : 1, c = V * Math.cos(4 * Math.PI * dnm / lam); return view === 'trans' ? 0.5 * (1 + c) : 0.5 * (1 - c); },
+  rDark(m, lam, R) { return Math.sqrt(m * lam * 1e-9 * R) * 1e3; },
+};
+const LIGHTS = {
+  r: { name: '적색 LED', lam: 630, dl: 25, rgb: [1, 0, 0] },
+  g: { name: '녹색 LED', lam: 530, dl: 25, rgb: [0, 1, 0] },
+  b: { name: '청색 LED', lam: 465, dl: 25, rgb: [0, 0, 1] },
+  w: { name: '백색 LED', lam: 530, dl: 40, rgb: null },
+};
+function wl2rgb(w) {
+  let r = 0, g = 0, b = 0;
+  if (w < 440) { r = (440 - w) / 60; b = 1; } else if (w < 490) { g = (w - 440) / 50; b = 1; } else if (w < 510) { g = 1; b = (510 - w) / 20; }
+  else if (w < 580) { r = (w - 510) / 70; g = 1; } else if (w < 645) { r = 1; g = (645 - w) / 65; } else { r = 1; }
+  const f = w < 420 ? 0.3 + 0.7 * (w - 380) / 40 : w > 700 ? 0.3 + 0.7 * (780 - w) / 80 : 1;
+  return [r * f, g * f, b * f];
+}
+function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const f1 = (v, n = 2) => Number.isFinite(v) ? v.toFixed(n) : '–';
+
+/* ---------- 간섭 무늬 영상 렌더러 (반사: 중심이 어둡다) ---------- */
+// o: {R, fov(mm, 가로), cx, cy(px), eps(nm), light|lam+tint, dl, view, noise(0~1), vig, seed, ss}
+function renderRings(w, h, o) {
+  const img = new ImageData(w, h), D = img.data, ss = o.ss || 2, mmpp = o.fov / w, rnd = rng(o.seed || 1);
+  const L = o.light && LIGHTS[o.light];
+  const chans = (L && o.light === 'w') ? [[630, [1, 0, 0]], [530, [0, 1, 0]], [465, [0, 0, 1]]] : [[o.lam || (L && L.lam) || 530, o.tint || (L && L.rgb) || [1, 1, 1]]];
+  const dl = o.dl != null ? o.dl : (L ? L.dl : 0), eps = o.eps || 0, view = o.view || 'refl', R = o.R;
+  const hw = w / 2, hh = h / 2, rr = hw * hw + hh * hh, nz = o.noise || 0, vg = o.vig || 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let a0 = 0, a1 = 0, a2 = 0;
+    for (let sy = 0; sy < ss; sy++) for (let sx = 0; sx < ss; sx++) {
+      const px = (x + (sx + .5) / ss - o.cx) * mmpp, py = (y + (sy + .5) / ss - o.cy) * mmpp, dnm = (px * px + py * py) * 500 / R + eps;
+      for (const [lam, t] of chans) { const I = PH.inten(lam, dnm, view, dl); a0 += I * t[0]; a1 += I * t[1]; a2 += I * t[2]; }
+    }
+    const n = ss * ss, v = (0.92 - vg * ((x - hw) * (x - hw) + (y - hh) * (y - hh)) / rr) * 255 / n, j = (y * w + x) * 4;
+    let g = 0; if (nz > 0) { const u = rnd() || 1e-9, q = rnd(); g = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * q) * nz * 255; }
+    D[j] = Math.max(0, Math.min(255, a0 * v + g)); D[j + 1] = Math.max(0, Math.min(255, a1 * v + g)); D[j + 2] = Math.max(0, Math.min(255, a2 * v + g)); D[j + 3] = 255;
+  }
+  return img;
+}
+
+/* ---------- 사진 분석 (순수 함수) ---------- */
+function toGray(img, ch) { const { w, h, data } = img, g = new Float32Array(w * h); for (let i = 0; i < w * h; i++) { const j = i * 4; g[i] = ch === 'r' ? data[j] : ch === 'g' ? data[j + 1] : ch === 'b' ? data[j + 2] : 0.299 * data[j] + 0.587 * data[j + 1] + 0.114 * data[j + 2]; } return g; }
+function maxRadius(img, cx, cy) { return Math.min(cx, img.w - cx, cy, img.usableH - cy) - 1; }
+function radialProfile(g, w, uh, cx, cy, rmax) {
+  const n = Math.floor(rmax) + 2, s = new Float64Array(n), c = new Float64Array(n);
+  const x0 = Math.max(0, Math.floor(cx - rmax - 1)), x1 = Math.min(w - 1, Math.ceil(cx + rmax + 1)), y0 = Math.max(0, Math.floor(cy - rmax - 1)), y1 = Math.min(uh - 1, Math.ceil(cy + rmax + 1));
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    const dx = x + .5 - cx, dy = y + .5 - cy, r = Math.sqrt(dx * dx + dy * dy); if (r >= rmax) continue;
+    const i = r | 0, f = r - i, v = g[y * w + x]; s[i] += (1 - f) * v; c[i] += 1 - f; s[i + 1] += f * v; c[i + 1] += f;
+  }
+  const p = new Float64Array(n); let last = 0; for (let i = 0; i < n; i++) { p[i] = c[i] > 1e-6 ? s[i] / c[i] : last; last = p[i]; }
+  return p;
+}
+function refineCenter(g, w, uh, cx, cy, rEval) {
+  const rm = Math.max(30, Math.min(rEval, 220, maxRadius({ w, usableH: uh }, cx, cy) - 26));
+  function score(x, y, st) {
+    const nb = Math.floor(rm) + 1, S = new Float64Array(nb), N = new Float64Array(nb);
+    for (let yy = Math.max(0, Math.floor(y - rm)); yy <= Math.min(uh - 1, Math.ceil(y + rm)); yy += st) for (let xx = Math.max(0, Math.floor(x - rm)); xx <= Math.min(w - 1, Math.ceil(x + rm)); xx += st) {
+      const dx = xx + .5 - x, dy = yy + .5 - y, r = Math.sqrt(dx * dx + dy * dy); if (r >= rm) continue; const b = r | 0; S[b] += g[yy * w + xx]; N[b]++;
+    }
+    let sc = 0; for (let b = 0; b < nb; b++) if (N[b] > 0) sc += S[b] * S[b] / N[b]; return sc;
+  }
+  let best = { x: cx, y: cy, s: -1 };
+  for (const [span, step, st] of [[18, 3, 2], [4, 1, 2], [1, 0.25, 1]]) {
+    const c0 = best.s < 0 ? { x: cx, y: cy } : { x: best.x, y: best.y }; best.s = -1;
+    for (let dy = -span; dy <= span + 1e-9; dy += step) for (let dx = -span; dx <= span + 1e-9; dx += step) { const s = score(c0.x + dx, c0.y + dy, st); if (s > best.s) best = { x: c0.x + dx, y: c0.y + dy, s }; }
+  }
+  return { x: best.x, y: best.y };
+}
+function smoothProf(p, sig) {
+  if (sig < 0.3) return Float64Array.from(p);
+  const K = Math.ceil(sig * 3), ker = []; let sk = 0; for (let k = -K; k <= K; k++) { const v = Math.exp(-k * k / (2 * sig * sig)); ker.push(v); sk += v; }
+  const o = new Float64Array(p.length); for (let i = 0; i < p.length; i++) { let a = 0, wsum = 0; for (let k = -K; k <= K; k++) { const j = i + k; if (j < 0 || j >= p.length) continue; a += ker[k + K] * p[j]; wsum += ker[k + K]; } o[i] = a / wsum; }
+  return o;
+}
+function detectRings(p, o) {
+  const n = p.length, q = o.dark ? p : p.map(v => -v), minR = o.minR || 3;
+  let lo = Infinity, hi = -Infinity; for (let i = 0; i < n; i++) { if (q[i] < lo) lo = q[i]; if (q[i] > hi) hi = q[i]; }
+  const range = hi - lo; if (!(range > 1e-9)) return [];
+  const cand = [];
+  for (let i = Math.max(2, minR); i < n - 2; i++) {
+    if (!(q[i] < q[i - 1] && q[i] <= q[i + 1])) continue;
+    let mL = q[i], j = i - 1; while (j >= 0 && q[j] >= q[i]) { if (q[j] > mL) mL = q[j]; j--; }
+    let mR = q[i]; j = i + 1; while (j < n && q[j] >= q[i]) { if (q[j] > mR) mR = q[j]; j++; }
+    const prom = Math.min(mL, mR) - q[i]; if (prom >= o.thr * range) cand.push({ i, prom });
+  }
+  cand.sort((a, b) => b.prom - a.prom); const keep = [], sep = o.minSep || 4;
+  for (const c of cand) if (keep.every(k => Math.abs(k.i - c.i) >= sep)) keep.push(c);
+  keep.sort((a, b) => a.i - b.i);
+  return keep.map(c => { const y0 = q[c.i - 1], y1 = q[c.i], y2 = q[c.i + 1], den = y0 - 2 * y1 + y2; return c.i + (Math.abs(den) > 1e-12 ? Math.max(-.5, Math.min(.5, .5 * (y0 - y2) / den)) : 0); });
+}
+function median(a) { const s = a.slice().sort((x, y) => x - y), n = s.length; return n ? (n % 2 ? s[(n - 1) / 2] : .5 * (s[n / 2 - 1] + s[n / 2])) : NaN; }
+function assignOrders(rs, m0) {
+  const y = rs.map(r => r * r), n = y.length, m = [], warn = [], d = []; for (let i = 1; i < n; i++) d.push(y[i] - y[i - 1]);
+  const dm = d.length ? median(d) : NaN;
+  for (let i = 0; i < n; i++) {
+    if (i === 0) { m.push(m0); warn.push(false); continue; }
+    const q = Number.isFinite(dm) && dm > 0 ? d[i - 1] / dm : 1, k = Math.max(1, Math.round(q));
+    m.push(m[i - 1] + k); warn.push(k > 1 || Math.abs(q - k) > 0.35);
+  }
+  return { m, warn, dm };
+}
+function linfit(x, y) {
+  const n = x.length; if (n < 2) return null;
+  const mx = x.reduce((a, b) => a + b, 0) / n, my = y.reduce((a, b) => a + b, 0) / n;
+  let sxx = 0, sxy = 0, syy = 0; for (let i = 0; i < n; i++) { sxx += (x[i] - mx) ** 2; sxy += (x[i] - mx) * (y[i] - my); syy += (y[i] - my) ** 2; }
+  if (sxx <= 0) return null; const b = sxy / sxx, a = my - b * mx; let ssr = 0; for (let i = 0; i < n; i++) ssr += (y[i] - a - b * x[i]) ** 2;
+  const s = n > 2 ? Math.sqrt(ssr / (n - 2)) : NaN;
+  return { a, b, n, s, sb: n > 2 ? s / Math.sqrt(sxx) : NaN, r2: syy > 0 ? 1 - ssr / syy : 1 };
+}
+// a: {img, center, scale(px/mm), calPx, g(회색 배열), o:{thr, sm, m0, rfrac, dark, lam, dlam}, excl}
+function runAnalysis(a) {
+  if (!a.img) return { err: '사진이 없습니다 (③-1에서 불러오거나 가상 사진을 만드세요).' };
+  if (!a.center) return { err: '중심을 지정하지 않았습니다 (③-1에서 중심 클릭).' };
+  if (!(a.scale > 0)) return { err: '길이 눈금(배율)을 지정하지 않았습니다 (③-1에서 눈금 두 점 클릭).' };
+  const o = a.o, rmax = maxRadius(a.img, a.center.x, a.center.y) * o.rfrac / 100;
+  if (!(rmax > 20)) return { err: '중심이 사진 가장자리에 너무 가깝습니다.' };
+  const prof = radialProfile(a.g, a.img.w, a.img.usableH, a.center.x, a.center.y, rmax), ps = smoothProf(prof, o.sm);
+  const rs = detectRings(ps, { thr: o.thr / 100, dark: o.dark });
+  const rows = rs.map((r, k) => ({ k, rpx: r, rmm: r / a.scale, y: (r / a.scale) ** 2 }));
+  const ord = assignOrders(rs, o.m0); rows.forEach((r, i) => { r.m = ord.m[i]; r.warn = ord.warn[i]; });
+  const use = rows.filter(r => !(a.excl && a.excl[r.k])), fit = use.length >= 2 ? linfit(use.map(r => r.m), use.map(r => r.y)) : null;
+  const res = { prof, ps, rows, fit, rmax, nUse: use.length, dm: ord.dm };
+  if (rows.length) res.firstRatio = Number.isFinite(ord.dm) ? (rows[0].rpx ** 2) / ord.dm : NaN;
+  if (fit && fit.b > 0) {
+    res.R = fit.b * 1000 / o.lam;                    // [m]  (b: mm²/ring, λ: nm)
+    const rf = Number.isFinite(fit.sb) ? fit.sb / fit.b : 0, rs2 = a.calPx ? 2 * Math.SQRT2 / a.calPx : 0, rl = (o.dlam || 0) / o.lam;
+    res.rel = { fit: rf, scale: rs2, lam: rl, tot: Math.sqrt(rf * rf + rs2 * rs2 + rl * rl) }; res.dR = res.R * res.rel.tot;
+  }
+  return res;
+}
+
+/* ---------- 상태 ---------- */
+const S = { img: null, cal: [], calLen: 5, scale: null, calPx: null, center: null, mode: 'none', excl: {}, vseed: 0, imgId: 0, vtruth: null, view: null, gc: null, an: null, ui: {}, showTruth: false, rep: { purpose: '', hypo: '', setup: '', err: '', concl: '', lens: '', light: '', phone: '' } };
+try { const sv = JSON.parse(localStorage.getItem('newton-rep') || 'null'); if (sv) Object.assign(S.rep, sv); } catch (e) { }
+function saveRep() { try { localStorage.setItem('newton-rep', JSON.stringify(S.rep)); } catch (e) { } }
+function resetAnalysisState() { S.cal = []; S.scale = null; S.calPx = null; S.center = null; S.mode = 'none'; S.excl = {}; S.gc = null; S.an = null; S.showTruth = false; }
+function setImage(canvas, w, h, uh, src) {
+  S.imgId++; S.img = { w, h, usableH: uh, canvas, data: canvas.getContext('2d').getImageData(0, 0, w, h).data, id: S.imgId, src }; resetAnalysisState();
+}
+function makeVirtual(P) {
+  const w = 800, uh = 560, h = 600, seed = ++S.vseed, r0 = rng(seed * 7919 + 13), L = LIGHTS[P.light] || LIGHTS.g;
+  const cx = w / 2 + (r0() - .5) * 50, cy = uh / 2 + (r0() - .5) * 40;
+  const id = renderRings(w, uh, { R: P.R, fov: P.fov, cx, cy, eps: P.epsc, light: P.light, noise: P.noise / 100, vig: .35, seed, ss: 3 });
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const c = cv.getContext('2d');
+  c.fillStyle = '#202020'; c.fillRect(0, 0, w, h); c.putImageData(id, 0, 0);
+  c.fillStyle = '#d9d2bd'; c.fillRect(0, uh, w, h - uh); c.strokeStyle = '#222'; c.fillStyle = '#222'; c.font = '12px sans-serif'; c.lineWidth = 1;
+  const ppm = w / P.fov, x0 = 12; for (let k = 0; x0 + k * ppm < w - 6; k++) { const x = Math.round(x0 + k * ppm) + .5, big = k % 5 === 0; c.beginPath(); c.moveTo(x, uh); c.lineTo(x, uh + (big ? 22 : 12)); c.stroke(); if (big) c.fillText(k + ' mm', x + 3, uh + 36); }
+  setImage(cv, w, h, uh, 'virtual');
+  S.vtruth = { R: P.R, lam: L.lam, light: P.light, cx, cy, ppm, fov: P.fov, eps: P.epsc };
+}
+function loadFile(file, api) {
+  const url = URL.createObjectURL(file), im = new Image();
+  im.onload = () => {
+    const sc = Math.min(1, 1000 / Math.max(im.naturalWidth, im.naturalHeight)), w = Math.round(im.naturalWidth * sc), h = Math.round(im.naturalHeight * sc);
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').drawImage(im, 0, 0, w, h); URL.revokeObjectURL(url);
+    setImage(cv, w, h, h, 'upload'); S.vtruth = null; api.refresh();
+  };
+  im.onerror = () => { URL.revokeObjectURL(url); api.setNote('사진을 읽지 못했습니다 (JPG·PNG 권장).'); };
+  im.src = url;
+}
+function getAnalysis(P) {
+  if (!S.img) return runAnalysis({});
+  if (!S.gc || S.gc.id !== S.img.id || S.gc.ch !== P.ch) S.gc = { id: S.img.id, ch: P.ch, g: toGray(S.img, P.ch) };
+  const key = JSON.stringify([S.img.id, S.center, S.scale, P.ch, P.thr, P.sm, P.m0, P.rfrac, P.mode, P.lam_an, P.dlam, S.excl]);
+  if (S.an && S.an.key === key) return S.an.res;
+  const res = runAnalysis({ img: S.img, g: S.gc.g, center: S.center, scale: S.scale, calPx: S.calPx, excl: S.excl, o: { thr: P.thr, sm: P.sm, m0: P.m0, rfrac: P.rfrac, dark: P.mode !== 'bright', lam: P.lam_an, dlam: P.dlam } });
+  S.an = { key, res }; return res;
+}
+
+/* ---------- 작은 DOM 도우미 ---------- */
+function el(tag, props, ...kids) { const e = document.createElement(tag); if (props) Object.assign(e, props); kids.forEach(k => e.append(k)); return e; }
+function btn(text, fn, cls) { return el('button', { textContent: text, className: 'nr-btn ' + (cls || ''), onclick: fn, type: 'button' }); }
+function box(title, ...kids) { return el('div', { className: 'nr-box' }, el('b', { textContent: title }), ...kids); }
+function row(...kids) { return el('div', { className: 'nr-row' }, ...kids); }
+
+/* ---------- 그리기 공통 ---------- */
+function ringCanvas(w, h, o) { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').putImageData(renderRings(w, h, o), 0, 0); return cv; }
+function lamTint(lam) { return wl2rgb(lam); }
+function drawPhotoScene(api, ctx, region, withRings, an) {
+  const [rx, ry, rw, rh] = region;
+  if (!S.img) { txt(ctx, '사진이 없습니다', rx + rw / 2, ry + rh / 2 - 8, COL.dim, 22, 700, 'center'); txt(ctx, '아래에서 내 사진을 불러오거나 가상 사진을 만드세요', rx + rw / 2, ry + rh / 2 + 24, COL.dim, 16, 500, 'center'); S.view = null; return; }
+  const k = Math.min(rw / S.img.w, rh / S.img.h), ox = rx + (rw - S.img.w * k) / 2, oy = ry + (rh - S.img.h * k) / 2;
+  ctx.drawImage(S.img.canvas, ox, oy, S.img.w * k, S.img.h * k); S.view = { ox, oy, k };
+  const X = x => ox + x * k, Y = y => oy + y * k;
+  if (S.img.usableH < S.img.h) { ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(ox, Y(S.img.usableH)); ctx.lineTo(ox + S.img.w * k, Y(S.img.usableH)); ctx.stroke(); ctx.setLineDash([]); }
+  if (S.cal.length) { ctx.strokeStyle = '#ffd166'; ctx.fillStyle = '#ffd166'; ctx.lineWidth = 2; S.cal.forEach(p => { ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), 5, 0, 6.3); ctx.fill(); }); if (S.cal.length === 2) { ctx.beginPath(); ctx.moveTo(X(S.cal[0].x), Y(S.cal[0].y)); ctx.lineTo(X(S.cal[1].x), Y(S.cal[1].y)); ctx.stroke(); } }
+  if (S.center) { ctx.strokeStyle = '#ff5d73'; ctx.lineWidth = 2; const cx = X(S.center.x), cy = Y(S.center.y); ctx.beginPath(); ctx.moveTo(cx - 12, cy); ctx.lineTo(cx + 12, cy); ctx.moveTo(cx, cy - 12); ctx.lineTo(cx, cy + 12); ctx.stroke(); }
+  if (withRings && an && an.rows && S.center) {
+    an.rows.forEach(r => { const off = S.excl[r.k]; ctx.strokeStyle = off ? 'rgba(160,170,190,.55)' : r.warn ? '#ffb454' : '#5eead4'; ctx.lineWidth = off ? 1 : 1.6; ctx.setLineDash(off ? [5, 4] : []); ctx.beginPath(); ctx.arc(X(S.center.x), Y(S.center.y), r.rpx * k, 0, 6.3); ctx.stroke(); });
+    ctx.setLineDash([]);
+  }
+}
+function drawProfile(ctx, region, an, P) {
+  const [x, y, w, h] = region; ctx.fillStyle = 'rgba(255,255,255,.05)'; ctx.fillRect(x, y, w, h); txt(ctx, '중심에서 거리에 따른 평균 밝기 (원 둘레 평균)', x + 8, y + 18, COL.dim, 13, 600);
+  if (!an || !an.ps) return; const ps = an.ps, n = ps.length; let lo = Infinity, hi = -Infinity; for (const v of ps) { if (v < lo) lo = v; if (v > hi) hi = v; } if (hi - lo < 1e-9) return;
+  const X = i => x + 36 + i / (n - 1) * (w - 52), Y = v => y + h - 18 - (v - lo) / (hi - lo) * (h - 48);
+  ctx.strokeStyle = COL.a; ctx.lineWidth = 1.6; ctx.beginPath(); ps.forEach((v, i) => { i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v)); }); ctx.stroke();
+  an.rows.forEach(r => { const off = S.excl[r.k]; ctx.fillStyle = off ? '#778' : r.warn ? '#ffb454' : '#5eead4'; const i = Math.min(n - 1, Math.round(r.rpx)); ctx.beginPath(); ctx.arc(X(r.rpx), Y(ps[i]), 4, 0, 6.3); ctx.fill(); });
+  txt(ctx, '0', x + 30, y + h - 4, COL.dim, 11, 500, 'right'); txt(ctx, Math.round(n) + ' px', x + w - 6, y + h - 4, COL.dim, 11, 500, 'right');
+}
+function drawFitGraph(ctx, x, y, w, h, an, dark) {
+  const fg = dark ? '#e3ecff' : '#222', dm = dark ? '#9db0d8' : '#555';
+  ctx.save(); ctx.font = '600 13px sans-serif'; ctx.fillStyle = fg; ctx.textAlign = 'left'; ctx.fillText('r² – m 그래프 (직선의 기울기 = λR)', x, y + 14);
+  if (!an || !an.rows || !an.rows.length) { ctx.restore(); return; }
+  const pts = an.rows.filter(r => !S.excl[r.k]), mx = Math.max(...an.rows.map(r => r.m)) + 1, my = Math.max(...an.rows.map(r => r.y)) * 1.1;
+  const l = x + 44, r = x + w - 10, t = y + 26, b = y + h - 28, X = v => l + v / mx * (r - l), Y = v => b - v / my * (b - t);
+  ctx.strokeStyle = dm; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(l, t); ctx.lineTo(l, b); ctx.lineTo(r, b); ctx.stroke(); ctx.font = '11px sans-serif'; ctx.fillStyle = dm;
+  for (let m = 0; m <= mx; m += Math.max(1, Math.ceil(mx / 8))) { ctx.fillText(String(m), X(m) - 4, b + 14); }
+  for (let i = 0; i <= 4; i++) { const v = my * i / 4; ctx.fillText(v.toFixed(1), x, Y(v) + 4); }
+  ctx.fillText('m (고리 번호)', r - 70, b + 26); ctx.fillText('r² (mm²)', x, t - 4);
+  if (an.fit) { ctx.strokeStyle = '#ff8f7a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X(0), Y(an.fit.a)); ctx.lineTo(X(mx), Y(an.fit.a + an.fit.b * mx)); ctx.stroke(); }
+  an.rows.forEach(rw => { const off = S.excl[rw.k]; ctx.fillStyle = off ? '#99a' : '#2aa89a'; ctx.beginPath(); ctx.arc(X(rw.m), Y(rw.y), 4, 0, 6.3); ctx.fill(); });
+  ctx.restore();
+}
+
+/* ---------- 시나리오 그리기 ---------- */
+function drawCross(api) {
+  const P = api.P, ctx = begin(api), R = P.R, lam = P.lam, ro = P.robs;
+  const xc = 330, py = 470, ppm = 70, kap = 6, xo = xc + ro * ppm, ys = x => py - kap * ((x - xc) / ppm) ** 2;
+  const d = PH.gapNm(R, ro), two = 2 * d / lam, phi = 4 * Math.PI * d / lam + Math.PI, I = PH.inten(lam, d, 'refl', 0);
+  ctx.fillStyle = 'rgba(120,170,255,.22)'; ctx.fillRect(40, py, 600, 50); ctx.strokeStyle = 'rgba(160,200,255,.6)'; ctx.strokeRect(40, py, 600, 50);
+  ctx.beginPath(); ctx.moveTo(40, 250); ctx.lineTo(640, 250); for (let x = 640; x >= 40; x -= 4) ctx.lineTo(x, Math.min(py, ys(x))); ctx.closePath(); ctx.fillStyle = 'rgba(180,220,255,.18)'; ctx.fill(); ctx.strokeStyle = 'rgba(160,200,255,.7)'; ctx.stroke();
+  txt(ctx, '평볼록 렌즈 (볼록면이 아래)', 50, 275, COL.dim, 15); txt(ctx, '평면 유리판', 50, py + 32, COL.dim, 15); txt(ctx, '공기층 (두께 세로 과장)', 480, py - 20, COL.b, 14);
+  const yo = Math.min(py, ys(xo));
+  arrow(ctx, xo, 70, xo, 250, '#e3ecff', 3); txt(ctx, '입사 (단색광)', xo + 12, 100, COL.text, 14);
+  ctx.setLineDash([5, 4]); ctx.strokeStyle = 'rgba(227,236,255,.5)'; ctx.beginPath(); ctx.moveTo(xo, 250); ctx.lineTo(xo, yo); ctx.stroke(); ctx.setLineDash([]);
+  arrow(ctx, xo, yo, xo - 46, 120, COL.b, 3); txt(ctx, '① 렌즈면 반사 (위상 변화 0)', 90, 120, COL.b, 14);
+  ctx.strokeStyle = COL.a; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(xo, yo); ctx.lineTo(xo, py); ctx.stroke(); arrow(ctx, xo, py, xo + 46, 150, COL.a, 3); txt(ctx, '② 유리판 반사 (위상 π 변화)', xo + 56, 150, COL.a, 14);
+  if (d > 2) { ctx.strokeStyle = COL.ok; ctx.lineWidth = 2; const bx = xo + 22; ctx.beginPath(); ctx.moveTo(bx, yo); ctx.lineTo(bx, py); ctx.stroke(); ctx.beginPath(); ctx.moveTo(bx - 5, yo); ctx.lineTo(bx + 5, yo); ctx.moveTo(bx - 5, py); ctx.lineTo(bx + 5, py); ctx.stroke(); }
+  txt(ctx, 'd = ' + f1(d, 0) + ' nm', xo + 30, (yo + py) / 2 + 5, COL.ok, 16, 700);
+  txt(ctx, '※ 실제 d는 수백 nm. 그림은 세로를 크게 과장함', 40, 600, COL.dim, 13, 500);
+  /* 위상자 */
+  const cx = 820, cy = 300, u = 70; txt(ctx, '두 반사파의 합성 (위상자)', 680, 70, COL.text, 15, 700);
+  ctx.strokeStyle = COL.grid; ctx.beginPath(); ctx.arc(cx, cy, u, 0, 6.3); ctx.stroke();
+  const e1 = [u, 0], e2 = [u * Math.cos(phi), -u * Math.sin(phi)];
+  arrow(ctx, cx, cy, cx + e1[0], cy + e1[1], COL.b, 3); arrow(ctx, cx + e1[0], cy + e1[1], cx + e1[0] + e2[0], cy + e1[1] + e2[1], COL.a, 3); arrow(ctx, cx, cy, cx + e1[0] + e2[0], cy + e1[1] + e2[1], COL.bad, 4);
+  txt(ctx, '합성 세기 I/I₀ = ' + f1(I, 2), 680, 450, I < 0.05 ? COL.ok : COL.text, 16, 700); txt(ctx, I < 0.05 ? '→ 소멸간섭: 어두운 고리' : I > 0.95 ? '→ 보강간섭: 밝은 고리' : '→ 중간 밝기', 680, 476, COL.dim, 14);
+  txt(ctx, '위상차 = 4πd/λ + π', 680, 510, COL.dim, 13, 500); txt(ctx, '(경로차 2d + λ/2)', 680, 530, COL.dim, 13, 500);
+  api.setReadout([['관찰 반경 r', f1(ro, 2) + ' mm'], ['공기층 두께 d = r²/2R', f1(d, 1) + ' nm'], ['정확한 d (구면)', f1(PH.gapExactNm(R, ro), 1) + ' nm'], ['경로차 2d', f1(two, 2) + ' λ'], ['합성 세기', f1(I, 3)], ['판정', I < 0.05 ? '어두움 (m = ' + Math.round(two) + ')' : I > 0.95 ? '밝음 (m = ' + f1(two - .5, 0) + '+½)' : '중간']]);
+  api.setNote('어두운 고리: 2d = mλ (m = 0, 1, 2…). 중심(d = 0)이 어두운 이유는 유리판 반사에서만 위상이 π 바뀌기 때문. 이 값은 이상적 단색광·완전 접촉 가정.');
+  ctx.restore();
+  const rD = []; for (let m = 1; m * lam * R * 1e-3 < 16; m++) rD.push({ x: PH.rDark(m, lam, R), y: 0, col: COL.ok });
+  plot(api, { xmin: 0, xmax: 4, ymin: 0, ymax: 1, xt: [0, 1, 2, 3, 4], yt: [0, .5, 1], xl: 'r (mm)', yl: '반사 세기 I/I₀', curves: [{ fn: r => PH.inten(lam, PH.gapNm(R, r), 'refl', 0), col: COL.a }], marks: rD.filter(p => p.x <= 4).concat([{ x: ro, y: I, col: COL.bad }]) });
+  api.chart.setHint('초록 점 = 어두운 고리의 반경 (r_m = √(mλR)). 반경이 클수록 간격이 좁아집니다.');
+}
+function drawTop(api) {
+  const P = api.P, ctx = begin(api), R = P.R, lam = P.lam, white = P.src === 'white', view = P.view, fov = 6;
+  const o = { R, fov, cx: 150, cy: 150, eps: P.eps, view, ss: 2, vig: 0 };
+  if (white) { o.light = 'w'; o.dl = 60; } else { o.lam = lam; o.tint = lamTint(lam); o.dl = 0; }
+  const cv = ringCanvas(300, 300, o); ctx.drawImage(cv, 40, 40, 540, 540); ctx.strokeStyle = COL.dim; ctx.strokeRect(40, 40, 540, 540);
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; const L1 = 540 / fov; ctx.beginPath(); ctx.moveTo(60, 560); ctx.lineTo(60 + L1, 560); ctx.stroke(); txt(ctx, '1 mm', 60, 548, '#fff', 14, 700);
+  txt(ctx, '어두운 고리 (m)', 620, 70, COL.text, 16, 700);
+  txt(ctx, 'm', 620, 100, COL.dim, 13); txt(ctx, 'r_m (mm)', 680, 100, COL.dim, 13); txt(ctx, '간격 Δr (mm)', 790, 100, COL.dim, 13);
+  let prev = 0, dmax = 0; for (let m = 1; m <= 8; m++) { dmax = Math.max(dmax, PH.rDark(m, lam, R) - PH.rDark(m - 1, lam, R)); }
+  for (let m = 1; m <= 8; m++) { const r = PH.rDark(m, lam, R), dr = r - prev; prev = r; const y = 128 + (m - 1) * 52; txt(ctx, String(m), 620, y, COL.text, 15, 600); txt(ctx, f1(r, 3), 680, y, COL.text, 15, 600); ctx.fillStyle = COL.a; ctx.fillRect(790, y - 14, dr / dmax * 170, 16); txt(ctx, f1(dr, 3), 795, y - 2, '#06101f', 12, 700); }
+  txt(ctx, '→ 바깥일수록 간격이 좁아집니다', 620, 560, COL.dim, 13, 500);
+  api.setReadout([['첫 번째 어두운 고리 r₁', f1(PH.rDark(1, lam, R), 3) + ' mm'], ['r₄ / r₁', f1(PH.rDark(4, lam, R) / PH.rDark(1, lam, R), 2) + ' (√4 = 2)'], ['기울기 λR = r²/m', f1(lam * R * 1e-3, 3) + ' mm²'], ['보이는 관찰 모드', view === 'trans' ? '투과 (중심이 밝다)' : '반사 (중심이 어둡다)']]);
+  api.setNote('접촉 불완전(먼지·눌림)으로 d₀ = ' + P.eps + ' nm만큼 간격이 있으면 고리 번호만 밀리고 r²–m 직선의 기울기(λR)는 그대로입니다. 백색광(대역폭 큼)은 몇 줄 뒤 색이 흐려집니다. 파장·색은 예시입니다.');
+  ctx.restore();
+  const mk = []; for (let m = 1; m <= 8; m++) mk.push({ x: m, y: PH.rDark(m, lam, R) ** 2, col: COL.ok });
+  plot(api, { xmin: 0, xmax: 9, ymin: 0, ymax: Math.max(1, PH.rDark(8, lam, R) ** 2 * 1.1), xt: [0, 2, 4, 6, 8], yt: [], xl: 'm', yl: 'r² (mm²)', curves: [{ fn: m => m * lam * R * 1e-3, col: COL.a }], marks: mk });
+  api.chart.setHint('r² 대 m 은 원점을 지나는 직선, 기울기 = λR. 사진 분석에서 이 직선의 기울기로 R을 구합니다.');
+}
+const CAMS = { clip: { n: '접사 클립렌즈', hfov: 40, dmin: 1 }, ultra: { n: '초광각 접사', hfov: 110, dmin: 2.5 }, wide: { n: '주 카메라', hfov: 70, dmin: 10 }, tele: { n: '망원 3배', hfov: 25, dmin: 25 } };
+function phoneCalc(P) {
+  const cam = CAMS[P.cam] || CAMS.clip, fov0 = 2 * P.dist * 10 * Math.tan(cam.hfov * Math.PI / 360), fov = fov0 / P.dz, npx = P.npx / P.dz;
+  const L = LIGHTS[P.light] || LIGHTS.g, lamR = L.lam * P.R * 1e-3, dl = L.dl, hh = 0.375 * fov, ppm = npx / fov;
+  const mGeo = hh * hh / lamR, dr = lamR / (2 * hh) * ppm, mVis = 0.5815 * L.lam / dl;
+  return { cam, fov, fov0, npx, ppm, mGeo, drPx: dr, mVis, lamR, focus: P.dist >= cam.dmin };
+}
+function drawPhone(api) {
+  const P = api.P, ctx = begin(api), c = phoneCalc(P), L = LIGHTS[P.light] || LIGHTS.g;
+  const o = { R: P.R, fov: c.fov, cx: 160, cy: 120, eps: 0, ss: 2, vig: .3, light: P.light, noise: .01, seed: 3 };
+  if (c.fov > 0.3) { const cv = ringCanvas(320, 240, o); ctx.drawImage(cv, 40, 40, 640, 480); }
+  ctx.strokeStyle = '#7fd6ff'; ctx.lineWidth = 3; ctx.strokeRect(40, 40, 640, 480); txt(ctx, '스마트폰 화면에 보이는 모습 (가로 ' + f1(c.fov, 1) + ' mm)', 40, 32, COL.text, 15, 700);
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; const sb = 640 / c.fov; ctx.beginPath(); ctx.moveTo(56, 500); ctx.lineTo(56 + sb, 500); ctx.stroke(); txt(ctx, '1 mm', 56, 488, '#fff', 14, 700);
+  const ok = c.focus; txt(ctx, ok ? '✔ 초점이 맞는 거리' : '✖ 최소초점 ' + c.cam.dmin + ' cm 이내', 710, 70, ok ? COL.ok : COL.bad, 15, 700);
+  const lines = [['카메라 (화각은 예시)', c.cam.n + ' · ' + c.cam.hfov + '°'], ['유효 가로 화소 (줌 ' + P.dz + '×)', Math.round(c.npx) + ' px'], ['배율', f1(c.ppm, 0) + ' px/mm'], ['바깥 고리 간격', f1(c.drPx, 1) + ' px'], ['LED 가시도 한계', 'm ≈ ' + f1(c.mVis, 0)], ['화면 안 고리 수', 'm ≈ ' + f1(c.mGeo, 0)]];
+  lines.forEach((l, i) => { txt(ctx, l[0], 710, 110 + i * 40, COL.dim, 13, 600); txt(ctx, l[1], 710, 130 + i * 40, COL.text, 15, 700); });
+  const verdict = c.drPx >= 6 ? ['간격 충분: 분석 쉬움', COL.ok] : c.drPx >= 3 ? ['간격 좁음: 바깥 부정확', COL.b] : ['3 px 미만: 바깥 분석 불가', COL.bad];
+  txt(ctx, verdict[0], 710, 370, verdict[1], 15, 700);
+  api.setReadout([['시야 가로(줌 전)', f1(c.fov0, 1) + ' mm'], ['시야 가로(줌 후)', f1(c.fov, 1) + ' mm'], ['배율', f1(c.ppm, 0) + ' px/mm'], ['바깥 고리 간격', f1(c.drPx, 1) + ' px'], ['화면 안에 들어오는 최대 m', f1(c.mGeo, 1)], ['LED 때문에 대비 30%↑인 최대 m', f1(c.mVis, 1)], ['추천 시야 (가상 사진용)', f1(c.fov, 1) + ' mm']]);
+  api.setNote('카메라 화각·최소 초점거리는 기종마다 다른 예시값(확인 필요). 디지털 줌은 화소를 잘라내므로 고리 수·정밀도가 늘지 않습니다. 접사·광학 확대가 유리합니다.');
+  ctx.restore();
+  const lamR_ = c.lamR;
+  plot(api, { xmin: 1, xmax: 30, ymin: 0, ymax: 40, xt: [1, 5, 10, 20, 30], yt: [0, 6, 20, 40], xl: 'm', yl: '고리 간격 (px)', curves: [{ fn: m => Math.min(40, 0.5 * Math.sqrt(lamR_ / m) * c.ppm), col: COL.a }, { fn: () => 6, col: COL.ok }, { fn: () => 3, col: COL.bad }], marks: [{ x: Math.min(30, Math.max(1, c.mGeo)), y: Math.min(40, c.drPx), col: COL.b }] });
+  api.chart.setHint('파랑 = m번째 고리의 간격(px). 초록선 6 px(양호), 빨강선 3 px(분석 한계). 주황 점 = 화면 가장자리의 고리.');
+}
+function drawPhoto(api) {
+  const ctx = begin(api); drawPhotoScene(api, ctx, [10, 10, 980, 605], false, null);
+  const rows = []; rows.push(['사진', S.img ? (S.img.src === 'virtual' ? '가상 사진' : '내 사진') + ' ' + S.img.w + '×' + S.img.h + ' px' : '없음']);
+  rows.push(['배율', S.scale ? f1(S.scale, 1) + ' px/mm' : '미지정']); rows.push(['중심', S.center ? '(' + f1(S.center.x, 1) + ', ' + f1(S.center.y, 1) + ') px' : '미지정']);
+  api.setReadout(rows); api.setNote(S.mode === 'cal' ? '사진에서 눈금자의 서로 먼 두 점을 차례로 누르세요.' : S.mode === 'center' ? '가운데 어두운 점(무늬의 중심)을 누르세요.' : '순서: 사진 → 눈금 두 점 → 중심 → 다음 시나리오 "고리 검출".'); ctx.restore(); syncPhotoUI();
+}
+function drawRings(api) {
+  const P = api.P, ctx = begin(api), an = getAnalysis(P);
+  drawPhotoScene(api, ctx, [10, 10, 980, 430], true, an); drawProfile(ctx, [10, 450, 980, 165], an, P);
+  if (an.err) { txt(ctx, an.err, 500, 225, COL.bad, 18, 700, 'center'); api.setReadout([['상태', an.err]]); api.setNote(''); }
+  else {
+    const f = an.fit, rd = [['검출한 고리', an.rows.length + '개 (사용 ' + an.nUse + '개)']];
+    if (f && an.R) { rd.push(['기울기 b = λR', f1(f.b, 3) + (Number.isFinite(f.sb) ? ' ± ' + f1(f.sb, 3) : '') + ' mm²']); rd.push(['곡률반경 R', f1(an.R, 2) + ' ± ' + f1(an.dR, 2) + ' m']); rd.push(['직선성 r²(결정계수)', f1(f.r2, 4)]); rd.push(['불확도 원천(상대)', '맞춤 ' + f1(an.rel.fit * 100, 1) + '%, 눈금 ' + f1(an.rel.scale * 100, 1) + '%, λ ' + f1(an.rel.lam * 100, 1) + '%']); }
+    else rd.push(['곡률반경 R', '고리 2개 이상 필요']);
+    if (S.vtruth && S.showTruth) rd.push(['(가상 사진) 정답 R', f1(S.vtruth.R, 2) + ' m, λ=' + S.vtruth.lam + ' nm']);
+    api.setReadout(rd);
+    const fr = an.firstRatio, tip = Number.isFinite(fr) ? '첫 고리 r₁²/(기울기) = ' + f1(fr, 2) + ' → ' + (Math.abs(fr - 1) < .3 ? '첫 고리가 m = 1 (중심이 어두운 정상 접촉)' : Math.abs(fr - 2) < .4 ? '첫 고리를 m = 2로 두거나, 놓친 고리가 있는지 확인' : Math.abs(fr - 0.5) < .2 ? '중심이 밝다면 m₀ = 0.5 (밝은 고리 모드 확인)' : '먼지·눌림으로 번호가 밀렸을 수 있음 (기울기에는 영향 없음)') : '';
+    api.setNote((an.rows.some(r => r.warn) ? '주황 고리: 간격이 이웃과 달라 의심되는 고리입니다 (표에서 제외 가능). ' : '') + tip);
+  }
+  ctx.restore(); buildTable(api, an);
+  if (an.rows && an.rows.length) { const pts = an.rows.filter(r => !S.excl[r.k]), mm = Math.max(...an.rows.map(r => r.m)) + 1, my = Math.max(...an.rows.map(r => r.y)) * 1.1; const f = an.fit; plot(api, { xmin: 0, xmax: mm, ymin: 0, ymax: my, xt: [], yt: [], xl: 'm', yl: 'r² (mm²)', curves: f ? [{ fn: m => f.a + f.b * m, col: COL.bad }] : [], marks: an.rows.map(r => ({ x: r.m, y: r.y, col: S.excl[r.k] ? '#778' : COL.ok })) }); api.chart.setHint('점 = 측정한 (m, r²), 빨강선 = 최소제곱 직선. 직선에서 벗어난 점은 표에서 제외해 보세요.'); }
+  else { plot(api, { xmin: 0, xmax: 10, ymin: 0, ymax: 10, xt: [], yt: [], xl: 'm', yl: 'r² (mm²)', curves: [], marks: [] }); api.chart.setHint('고리가 검출되면 r²–m 점이 나타납니다.'); }
+}
+function drawReport(api) {
+  const P = api.P, ctx = begin(api), an = getAnalysis(P);
+  ctx.fillStyle = '#f4f6fb'; ctx.fillRect(0, 0, W0, H0);
+  if (S.img) { const reg = [20, 20, 460, 345], k = Math.min(reg[2] / S.img.w, reg[3] / S.img.h); ctx.drawImage(S.img.canvas, reg[0], reg[1], S.img.w * k, S.img.h * k); if (S.center && an && an.rows) { ctx.strokeStyle = '#0fb5a3'; ctx.lineWidth = 1.2; an.rows.forEach(r => { if (S.excl[r.k]) return; ctx.beginPath(); ctx.arc(reg[0] + S.center.x * k, reg[1] + S.center.y * k, r.rpx * k, 0, 6.3); ctx.stroke(); }); } }
+  else txt(ctx, '(사진 없음)', 150, 190, '#667', 18, 600);
+  drawFitGraph(ctx, 510, 20, 470, 345, an, false);
+  const d = repSummary(P, an); d.lines.forEach((l, i) => txt(ctx, l, 24, 410 + i * 28, '#223', 16, 600));
+  api.setReadout(d.readout); api.setNote(d.note); ctx.restore(); syncReportUI();
+}
+const DRAW = { cross: drawCross, top: drawTop, phone: drawPhone, photo: drawPhoto, rings: drawRings, report: drawReport };
+
+/* ---------- 보고서 ---------- */
+function repSummary(P, an) {
+  const lines = [], ro = [], miss = [];
+  if (an && an.R) {
+    lines.push('R = ' + f1(an.R, 2) + ' ± ' + f1(an.dR, 2) + ' m   (λ = ' + P.lam_an + ' nm, 기울기 b = ' + f1(an.fit.b, 3) + ' mm²)');
+    lines.push('사용한 고리 ' + an.nUse + '개 (m = ' + an.rows.filter(r => !S.excl[r.k]).map(r => r.m).join(', ') + ')   직선성 ' + f1(an.fit.r2, 4));
+    lines.push('불확도: 맞춤 ' + f1(an.rel.fit * 100, 1) + '% · 눈금 ' + f1(an.rel.scale * 100, 1) + '% · 파장 ' + f1(an.rel.lam * 100, 1) + '%');
+    ro.push(['곡률반경 R', f1(an.R, 2) + ' ± ' + f1(an.dR, 2) + ' m'], ['고리 수', String(an.nUse)], ['직선성', f1(an.fit.r2, 4)]);
+  } else { lines.push('분석 결과가 아직 없습니다. ③ 사진 분석을 먼저 끝내세요.'); ro.push(['상태', '분석 결과 없음']); }
+  const f = S.rep; if (!f.purpose.trim()) miss.push('목적'); if (!f.hypo.trim()) miss.push('가설(예상 R)'); if (!f.err.trim()) miss.push('오차 원인'); if (!f.concl.trim()) miss.push('결론');
+  return { lines, readout: ro, note: miss.length ? '아직 비어 있는 항목: ' + miss.join(', ') : '모든 항목이 채워졌습니다. 보고서를 열어 인쇄하거나 PDF로 저장하세요.' };
+}
+function reportText(P, an) {
+  const f = S.rep, L = []; L.push('뉴턴 링 실험 보고서', ''); L.push('1. 목적', f.purpose || '(작성)', ''); L.push('2. 이론', 'r_m² = mλR (어두운 고리), 공기층 d = r²/2R, 경로차 2d + λ/2', ''); L.push('3. 가설(예상 R)', f.hypo || '(작성)', '');
+  L.push('4. 장치·조건', '렌즈: ' + (f.lens || '(작성)'), '광원: ' + (f.light || '(작성)') + ', 분석 파장 ' + P.lam_an + ' ± ' + P.dlam + ' nm', '촬영: ' + (f.phone || '(작성)'), f.setup || '', '');
+  L.push('5. 결과'); if (an && an.R) { L.push('사용한 고리 ' + an.nUse + '개, 기울기 b = ' + f1(an.fit.b, 3) + ' mm², 직선성 ' + f1(an.fit.r2, 4)); L.push('곡률반경 R = ' + f1(an.R, 2) + ' ± ' + f1(an.dR, 2) + ' m'); L.push('', 'm\tr(mm)\tr²(mm²)\t사용'); an.rows.forEach(r => L.push(r.m + '\t' + f1(r.rmm, 3) + '\t' + f1(r.y, 3) + '\t' + (S.excl[r.k] ? '제외' : 'O'))); } else L.push('(분석 결과 없음)');
+  L.push('', '6. 오차 원인 분석', f.err || '(작성)', '', '7. 결론·개선점', f.concl || '(작성)'); return L.join('\n');
+}
+function snapshotURL(an) {
+  const cv = document.createElement('canvas'); cv.width = 900; cv.height = 340; const c = cv.getContext('2d'); c.fillStyle = '#fff'; c.fillRect(0, 0, 900, 340);
+  if (S.img) { const k = Math.min(430 / S.img.w, 320 / S.img.h); c.drawImage(S.img.canvas, 10, 10, S.img.w * k, S.img.h * k); if (S.center && an && an.rows) { c.strokeStyle = '#0fb5a3'; c.lineWidth = 1.2; an.rows.forEach(r => { if (S.excl[r.k]) return; c.beginPath(); c.arc(10 + S.center.x * k, 10 + S.center.y * k, r.rpx * k, 0, 6.3); c.stroke(); }); } }
+  drawFitGraph(c, 460, 6, 430, 328, an, false); return cv.toDataURL('image/jpeg', 0.85);
+}
+function openReport(P) {
+  const an = getAnalysis(P), f = S.rep, esc = s => String(s || '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])).replace(/\n/g, '<br>');
+  let tb = ''; if (an && an.rows) an.rows.forEach(r => { tb += '<tr><td>' + r.m + '</td><td>' + f1(r.rmm, 3) + '</td><td>' + f1(r.y, 3) + '</td><td>' + (S.excl[r.k] ? '제외' : 'O') + '</td></tr>'; });
+  const res = an && an.R ? '곡률반경 <b>R = ' + f1(an.R, 2) + ' ± ' + f1(an.dR, 2) + ' m</b> (기울기 b = ' + f1(an.fit.b, 3) + ' mm², 직선성 ' + f1(an.fit.r2, 4) + ', 고리 ' + an.nUse + '개)' : '(분석 결과 없음)';
+  const html = '<!doctype html><meta charset="utf-8"><title>뉴턴 링 실험 보고서</title><style>body{font-family:sans-serif;max-width:800px;margin:20px auto;padding:0 16px;line-height:1.6;color:#111}h1{font-size:1.4em}h2{font-size:1.05em;border-bottom:1px solid #999;margin-top:1.2em}table{border-collapse:collapse}td,th{border:1px solid #999;padding:3px 10px;text-align:right}img{max-width:100%}.top{display:flex;justify-content:space-between}button{padding:6px 12px}@media print{button{display:none}}</style>' +
+    '<div class="top"><h1>뉴턴 링 실험 보고서</h1><button onclick="print()">인쇄 / PDF 저장</button></div><div>작성자: ____________ 일자: ____________</div>' +
+    '<h2>1. 목적</h2><p>' + esc(f.purpose) + '</p><h2>2. 이론</h2><p>평볼록 렌즈와 평면 유리판 사이 공기층 두께 d = r²/2R. 반사광 경로차 2d + λ/2 이므로 어두운 고리는 2d = mλ, 즉 r_m² = mλR. r²–m 직선의 기울기 = λR → R = 기울기/λ.</p>' +
+    '<h2>3. 가설(예상 R)</h2><p>' + esc(f.hypo) + '</p><h2>4. 장치·조건</h2><p>렌즈: ' + esc(f.lens) + '<br>광원: ' + esc(f.light) + ' (분석 파장 ' + P.lam_an + ' ± ' + P.dlam + ' nm)<br>촬영: ' + esc(f.phone) + '<br>' + esc(f.setup) + '</p>' +
+    '<h2>5. 결과</h2><p>' + res + '</p><img src="' + snapshotURL(an) + '"><table><tr><th>m</th><th>r (mm)</th><th>r² (mm²)</th><th>사용</th></tr>' + tb + '</table>' +
+    '<h2>6. 오차 원인 분석</h2><p>' + esc(f.err) + '</p><h2>7. 결론·개선점</h2><p>' + esc(f.concl) + '</p>';
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html' })); const w = window.open(url, '_blank'); if (!w) location.href = url; setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+function downloadCSV(an) {
+  const L = ['m,r_px,r_mm,r2_mm2,used']; if (an && an.rows) an.rows.forEach(r => L.push([r.m, f1(r.rpx, 2), f1(r.rmm, 4), f1(r.y, 4), S.excl[r.k] ? 0 : 1].join(',')));
+  const a = el('a', { href: URL.createObjectURL(new Blob(['﻿' + L.join('\n')], { type: 'text/csv' })), download: 'newton-rings.csv' }); document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* ---------- 시나리오별 UI ---------- */
+function syncPhotoUI() { const u = S.ui; if (!u.cal) return; u.cal.textContent = S.scale ? '배율 ' + f1(S.scale, 1) + ' px/mm (두 점 거리 ' + f1(S.calPx, 0) + ' px)' : (S.cal.length === 1 ? '한 점 지정됨 — 두 번째 점을 누르세요' : '배율 미지정'); u.ctr.textContent = S.center ? '중심 (' + f1(S.center.x, 1) + ', ' + f1(S.center.y, 1) + ') px' : '중심 미지정'; u.calB.classList.toggle('on', S.mode === 'cal'); u.ctrB.classList.toggle('on', S.mode === 'center'); }
+function recomputeScale() { if (S.cal.length === 2 && S.calLen > 0) { S.calPx = Math.hypot(S.cal[0].x - S.cal[1].x, S.cal[0].y - S.cal[1].y); S.scale = S.calPx / S.calLen; S.excl = {}; } else { S.scale = null; S.calPx = null; } }
+function buildPhotoUI(api) {
+  const u = S.ui = {}, c = api.custom, P = api.P;
+  const file = el('input', { type: 'file', accept: 'image/*', style: 'display:none', onchange: e => { const f = e.target.files[0]; if (f) loadFile(f, api); e.target.value = ''; } });
+  c.append(box('③-1 사진·눈금·중심', row(btn('📂 내 사진 불러오기', () => file.click()), btn('🧪 가상 사진 만들기 (새로 촬영)', () => { makeVirtual(P); api.refresh(); })), file,
+    el('div', { className: 'hint', textContent: '사진은 이 기기 안에서만 처리되며 서버로 전송되지 않습니다. 사진 속에 눈금자(mm)나 길이를 아는 물체를 같이 찍어 두세요.' }),
+    row(u.calB = btn('📏 눈금 두 점 클릭', () => { S.mode = S.mode === 'cal' ? 'none' : 'cal'; if (S.mode === 'cal') { S.cal = []; S.scale = null; } api.refresh(); }), el('span', { textContent: '두 점 사이 실제 길이' }), el('input', { type: 'number', value: S.calLen, min: 0.1, step: 0.5, style: 'width:70px', oninput: e => { S.calLen = parseFloat(e.target.value) || 0; recomputeScale(); api.refresh(); } }), el('span', { textContent: 'mm' })),
+    row(u.cal = el('span', { className: 'hint' })),
+    row(u.ctrB = btn('🎯 중심 클릭', () => { S.mode = S.mode === 'center' ? 'none' : 'center'; api.refresh(); }), btn('✨ 중심 자동 보정', () => { if (!S.img || !S.center) return; const g = toGray(S.img, P.ch || 'y'); S.center = refineCenter(g, S.img.w, S.img.usableH, S.center.x, S.center.y, maxRadius(S.img, S.center.x, S.center.y)); S.excl = {}; api.refresh(); }),
+      ...[['←', -1, 0], ['→', 1, 0], ['↑', 0, -1], ['↓', 0, 1]].map(a => btn(a[0], () => { if (S.center) { S.center = { x: S.center.x + a[1] * .5, y: S.center.y + a[2] * .5 }; S.excl = {}; api.refresh(); } }, 'sm'))),
+    row(u.ctr = el('span', { className: 'hint' })), el('div', { className: 'hint', textContent: '중심은 가운데 어두운 점입니다. 대충 누른 뒤 "자동 보정"을 누르면 고리가 가장 동그랗게 겹치는 위치로 맞춥니다(화살표는 0.5 px씩 미세 이동).' })));
+  syncPhotoUI();
+}
+function buildTable(api, an) {
+  const c = api.custom; c.innerHTML = '';
+  const bar = row(btn('✨ 중심 자동 보정 후 다시 검출', () => { if (!S.img || !S.center) return; const g = toGray(S.img, api.P.ch); S.center = refineCenter(g, S.img.w, S.img.usableH, S.center.x, S.center.y, maxRadius(S.img, S.center.x, S.center.y)); S.excl = {}; api.refresh(); }));
+  if (S.vtruth) bar.append(btn(S.showTruth ? '정답 숨기기' : '🔍 (가상 사진) 정답 보기', () => { S.showTruth = !S.showTruth; api.refresh(); }));
+  c.append(bar);
+  if (!an || !an.rows || !an.rows.length) { c.append(el('div', { className: 'hint', textContent: an && an.err ? an.err : '검출된 고리가 없습니다. 감도를 낮추거나 색 채널·분석 반경을 바꿔 보세요.' })); return; }
+  const t = el('table', { className: 'nr-tab' }), th = el('tr'); ['사용', 'm', 'r (px)', 'r (mm)', 'r² (mm²)', '비고'].forEach(h => th.append(el('th', { textContent: h }))); t.append(th);
+  an.rows.forEach(r => { const tr = el('tr', { className: S.excl[r.k] ? 'off' : '' }); const cb = el('input', { type: 'checkbox', checked: !S.excl[r.k], onchange: e => { if (e.target.checked) delete S.excl[r.k]; else S.excl[r.k] = true; api.refresh(); } }); const td0 = el('td'); td0.append(cb); tr.append(td0);
+    [r.m, f1(r.rpx, 1), f1(r.rmm, 3), f1(r.y, 3), r.warn ? '간격 이상?' : ''].forEach(v => tr.append(el('td', { textContent: v }))); t.append(tr); });
+  c.append(t);
+}
+function buildRingsUI(api) { buildTable(api, getAnalysis(api.P)); }
+function syncReportUI() { }
+function buildReportUI(api) {
+  const c = api.custom, P = api.P, f = S.rep;
+  function fld(label, key, ph, big) { const e = el(big ? 'textarea' : 'input', { value: f[key], placeholder: ph, rows: 3, className: 'nr-fld', oninput: ev => { f[key] = ev.target.value; saveRep(); api.refresh(); } }); return el('label', { className: 'nr-lab' }, el('span', { textContent: label }), e); }
+  c.append(box('④ 보고서 내용 (이 기기에만 임시 저장됩니다)', fld('목적', 'purpose', '예: 뉴턴 링의 r²–m 관계로 볼록렌즈의 곡률반경 R을 구한다', true), fld('가설 (예상 R)', 'hypo', '예: 렌즈 초점거리 ○○ cm로 보아 R ≈ ○○ m일 것이다', true),
+    fld('렌즈 정보', 'lens', '예: 평볼록 렌즈, 표시 f = ○○ cm (R = (n−1)f 로 예측)'), fld('광원', 'light', '예: 녹색 LED + 확산지'), fld('스마트폰·촬영 조건', 'phone', '예: 기종 / 줌 배율 / 촬영 거리 / 삼각대 / 플래시 끔'), fld('기타 장치·절차', 'setup', '렌즈를 놓는 방법, 눈금자 위치 등', true),
+    fld('오차 원인 분석', 'err', '예: 접촉 불완전, 눈금 읽기, 파장 불확실, 렌즈 변형, 사진 초점…', true), fld('결론·개선점', 'concl', '가설과 비교한 결과, 다음에 개선할 점', true),
+    row(btn('📄 보고서 열기 (인쇄 / PDF 저장)', () => openReport(P)), btn('📋 텍스트 복사', () => { const t = reportText(P, getAnalysis(P)); if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => api.setNote('복사했습니다.'), () => api.setNote('복사에 실패했습니다.')); else api.setNote('이 브라우저는 복사를 지원하지 않습니다.'); }), btn('⬇ 측정 데이터 CSV', () => downloadCSV(getAnalysis(P))))));
+}
+function buildPhoneUI(api) {
+  api.custom.append(box('📋 촬영 체크리스트', el('ul', { className: 'nr-ul' }, ...['플래시 끄기, 노출·초점 고정(화면 길게 누르기 AE/AF 잠금)', '삼각대나 스탠드에 폰 고정, 렌즈 면과 폰이 평행 (비스듬하면 원이 타원이 됨)', '확산된 단색 LED(색종이·반투명 커버)를 옆에서 비스듬히 비춰 반사 무늬 만들기', '렌즈와 유리판은 먼지 제거 후 눌러 밀착 (너무 세게 누르면 변형)', '무늬 옆에 mm 눈금자(자·모눈종이)를 같은 높이에 함께 촬영', '디지털 줌은 최소로, 접사 모드·광학 줌 이용. 원본(최대 화질)으로 저장', '찍은 뒤 중심이 화면 가운데에 오고 바깥 고리가 사진 안에 완전히 들어왔는지 확인'].map(t => el('li', { textContent: t }))), el('div', { className: 'hint', textContent: '※ 스마트폰 단독으로는 고리 전체(지름 수 mm)를 크게 찍기 어렵습니다. 시판 접사 클립렌즈(예시)를 붙이거나 망원 + 디지털 줌을 쓰고, 이 화면에서 간격(px)을 확인하세요.' })));
+}
+
+/* ---------- SIM ---------- */
+function synth(o) {
+  const w = 640, h = 480, cx = o.cx || 321.3, cy = o.cy || 238.6, id = renderRings(w, h, { R: o.R || 2.4, fov: 12, cx, cy, eps: o.eps || 0, lam: 530, tint: [1, 1, 1], dl: 25, noise: o.noise || 0, ss: 2, seed: 5 });
+  return { img: { w, h, usableH: h, data: id.data }, cx, cy, scale: w / 12 };
+}
+const AO = { thr: 15, sm: 1.5, m0: 1, rfrac: 100, dark: true, lam: 530, dlam: 20 };
+const SIM = {
+  init(api) {
+    api.canvas.addEventListener('pointerdown', e => {
+      if (api.scenario.id !== 'photo' || !S.img || !S.view || S.mode === 'none') return;
+      const rc = api.canvas.getBoundingClientRect(), k0 = Math.min(api.width / W0, api.height / H0);
+      const vx = (e.clientX - rc.left - (api.width - W0 * k0) / 2) / k0, vy = (e.clientY - rc.top - (api.height - H0 * k0) / 2) / k0;
+      const ix = (vx - S.view.ox) / S.view.k, iy = (vy - S.view.oy) / S.view.k; if (ix < 0 || iy < 0 || ix > S.img.w || iy > S.img.h) return;
+      if (S.mode === 'cal') { S.cal.push({ x: ix, y: iy }); if (S.cal.length > 2) S.cal = [{ x: ix, y: iy }]; if (S.cal.length === 2) { S.mode = 'none'; recomputeScale(); } }
+      else if (S.mode === 'center') { S.center = { x: ix, y: iy }; S.mode = 'none'; S.excl = {}; }
+      api.refresh();
+    });
+  },
+  enter(api) {
+    const id = api.scenario.id; S.ui = {}; if (id !== 'photo') S.mode = 'none';
+    if (id === 'photo') buildPhotoUI(api); else if (id === 'phone') buildPhoneUI(api); else if (id === 'report') buildReportUI(api);
+  },
+  update(api) { (DRAW[api.scenario.id] || drawCross)(api); },
+  tests() {
+    const T = [], near = (a, b, e) => Math.abs(a / b - 1) < e, R0 = 2.4, lam0 = 530;
+    T.push(['공기층 두께: 구면 정확해 ≈ r²/2R (r=3 mm, R=0.5 m)', near(PH.gapExactNm(0.5, 3), PH.gapNm(0.5, 3), 1e-4), '상대오차 ~ r²/4R² ≈ 9e-6']);
+    let okD = true, okB = true; for (let m = 1; m <= 12; m++) { const rd = PH.rDark(m, lam0, R0), rb = Math.sqrt((m - .5) * lam0 * 1e-9 * R0) * 1e3; if (PH.inten(lam0, PH.gapNm(R0, rd), 'refl', 0) > 1e-9) okD = false; if (PH.inten(lam0, PH.gapNm(R0, rb), 'refl', 0) < 1 - 1e-9) okB = false; }
+    T.push(['r_m = √(mλR) 에서 반사 세기 0 (m=1~12)', okD, '해석해']); T.push(['r = √((m−½)λR) 에서 반사 세기 1', okB, '밝은 고리']);
+    T.push(['중심(d=0) 반사는 어둡고 투과는 밝다', PH.inten(lam0, 0, 'refl', 0) < 1e-12 && PH.inten(lam0, 0, 'trans', 0) > 1 - 1e-12, 'π 위상 변화']);
+    T.push(['반사+투과 = 1 (에너지 보존, 손실 없는 이상 모델)', Math.abs(PH.inten(lam0, 123, 'refl', 0) + PH.inten(lam0, 123, 'trans', 0) - 1) < 1e-12, '']);
+    T.push(['r₄/r₁ = 2', near(PH.rDark(4, lam0, R0) / PH.rDark(1, lam0, R0), 2, 1e-12), '√m 비례']);
+    T.push(['LED 가시도 V = 0.3 이 되는 m ≈ 0.58 λ/Δλ', near(PH.vis(530, 0.5815 * 530 / 25 * 530 / 2, 25), 0.3, 0.01), 'Δλ=25 nm 예시 대역폭, 가우스 스펙트럼 가정']);
+    let fin = true; for (const R of [.5, 10]) for (const lam of [400, 700]) for (const r of [0, 4]) { const d = PH.gapNm(R, r); if (![PH.inten(lam, d, 'refl', 0), PH.inten(lam, d, 'trans', 25), PH.rDark(3, lam, R)].every(Number.isFinite)) fin = false; }
+    for (const cam of ['clip', 'wide', 'ultra', 'tele']) for (const dz of [1, 10]) for (const dist of [.5, 40]) for (const R of [.5, 10]) { const c = phoneCalc({ cam, dz, dist, npx: 4000, R, light: 'w' }); if (![c.fov, c.ppm, c.mGeo, c.drPx, c.mVis].every(v => Number.isFinite(v) && v > 0)) fin = false; }
+    T.push(['슬라이더 양 끝값에서 NaN/Infinity 없음', fin, 'R, λ, r, 줌, 거리']);
+    const fit = linfit([1, 2, 3, 4, 5], [2.3, 4.3, 6.3, 8.3, 10.3]); T.push(['최소제곱: y = 2m + 0.3 복원', fit && near(fit.b, 2, 1e-9) && Math.abs(fit.a - .3) < 1e-9, '']);
+    const C = 530e-9 * R0 * 1e6, rs = [1, 2, 4, 5, 6].map(m => Math.sqrt(m * C) * 50), ao = assignOrders(rs, 1); T.push(['놓친 고리(m=3) 자동 보정', JSON.stringify(ao.m) === '[1,2,4,5,6]' && ao.warn[2], '간격 ≈ 2배 → m 건너뜀']);
+    const run = (sy, ctr, ex) => { const g = toGray(sy.img, 'g'); return runAnalysis({ img: sy.img, g, center: ctr, scale: sy.scale, calPx: 400, excl: {}, o: Object.assign({}, AO, ex || {}) }); };
+    const A = synth({}), a = run(A, { x: A.cx, y: A.cy }); T.push(['사진 분석 복원: 정확한 중심, R=2.4 m 오차 <1.5%', a.R && near(a.R, 2.4, 0.015) && a.rows.length >= 8, a.R ? 'R=' + f1(a.R, 3) + ', 고리 ' + a.rows.length + '개, 정답 2.4' : '실패']);
+    const g = toGray(A.img, 'g'), rc = refineCenter(g, 640, 480, A.cx + 9, A.cy - 7, maxRadius(A.img, A.cx, A.cy)); const ce = Math.hypot(rc.x - A.cx, rc.y - A.cy);
+    T.push(['중심 자동 보정: (+9, −7) px 어긋남 → 0.7 px 이내', ce < 0.7, '오차 ' + f1(ce, 2) + ' px']);
+    const b = run(A, rc); T.push(['보정한 중심으로 R 복원 오차 <2%', b.R && near(b.R, 2.4, 0.02), b.R ? 'R=' + f1(b.R, 3) : '실패']);
+    const N = synth({ noise: 0.04 }), n = run(N, { x: N.cx, y: N.cy }, { thr: 20 }); T.push(['센서 잡음 4%: R 복원 오차 <3%', n.R && near(n.R, 2.4, 0.03), n.R ? 'R=' + f1(n.R, 3) : '실패']);
+    const E = synth({ eps: 150 }), e = run(E, { x: E.cx, y: E.cy }); T.push(['접촉 불완전(d₀=150 nm): 번호는 밀리지만 기울기 → R 불변', e.R && near(e.R, 2.4, 0.02) && e.firstRatio < 0.9, e.R ? 'R=' + f1(e.R, 3) + ', r₁²/b=' + f1(e.firstRatio, 2) : '실패']);
+    const L = synth({ R: 8.0 }), l = run(L, { x: L.cx, y: L.cy }); T.push(['R=8 m 에서도 복원 (고리 간격이 더 넓음)', l.R && near(l.R, 8.0, 0.02), l.R ? 'R=' + f1(l.R, 3) : '실패']);
+    return T;
+  },
+};
+
+</script>
+<script>
+"use strict";
+/* ============================ 공용 UI 프레임워크 (템플릿) ============================ */
+(function () {
+  const C = WS_CONFIG;
+  const $ = (id) => document.getElementById(id);
+  const P = {};
+  const ui = { tab: C.tabs[0].id, scenarioId: null, playing: false };
+  const lastScenarioOfTab = {};
+
+  function addDefaults(params) { (params || []).forEach(p => { if (!(p.key in P)) P[p.key] = p.value; }); }
+  C.scenarios.forEach(s => { addDefaults(s.params); addDefaults(s.choices); });
+  if (C.common_params) addDefaults(C.common_params.params);
+
+  function current() { return C.scenarios.find(s => s.id === ui.scenarioId); }
+  function scenariosOfTab(tab) { return C.scenarios.filter(s => s.tab === tab); }
+  function fmtVal(v, unit) {
+    if (!unit) return String(v);
+    return /^[°%′″]/.test(unit) ? v + unit : v + " " + unit;
+  }
+
+  function showError(where, e) {
+    const box = $("simError");
+    box.hidden = false;
+    box.textContent = "시뮬레이션 오류 (" + where + "): " + (e && e.message ? e.message : e);
+    console.error(e);
+  }
+  const SIMOBJ = (typeof SIM !== "undefined") ? SIM : null;
+  function call(hook, ...args) {
+    if (!SIMOBJ || typeof SIMOBJ[hook] !== "function") return undefined;
+    try { return SIMOBJ[hook](api, ...args); } catch (e) { showError(hook, e); return undefined; }
+  }
+
+  /* ---------- 렌더러 ---------- */
+  const wrap = $("sceneWrap");
+  const api = {
+    config: C, P,
+    get scenario() { return current(); },
+    get tab() { return ui.tab; },
+    get playing() { return ui.playing; },
+    setPlaying(b) { ui.playing = !!b; updatePlayButton(); },
+    boxHalf: (C.scene && C.scene.box_half) || 16,
+    sceneEl: wrap,
+    THREE: window.THREE || null,
+    scene: null, camera: null, renderer: null, controls: null,
+    canvas: null, ctx: null, width: 0, height: 0,
+    custom: $("customPanel"),
+    chart: {
+      canvas: $("chartCanvas"),
+      ctx: $("chartCanvas").getContext("2d"),
+      setHint(html) { $("chartHint").innerHTML = html; },
+    },
+    setReadout(rows) {
+      const tbl = $("readout");
+      tbl.innerHTML = "";
+      (rows || []).forEach(r => {
+        const tr = document.createElement("tr");
+        const a = document.createElement("td"); a.textContent = r[0];
+        const b = document.createElement("td"); b.textContent = r[1];
+        tr.append(a, b); tbl.appendChild(tr);
+      });
+    },
+    setNote(text) { $("readoutNote").textContent = text || ""; },
+    setStatus(text) { const el = $("wsStatus"); if (el) el.textContent = text || ""; },
+    setParam(key, v) {
+      P[key] = v;
+      const el = $("p_" + key); if (el) el.value = v;
+      const vEl = $("p_" + key + "_val"); if (vEl) vEl.textContent = fmtVal(v, vEl.dataset.unit);
+    },
+    refresh() { call("update"); },
+  };
+
+  function initRenderer() {
+    const sc = C.scene || {};
+    if (C.renderer === "three") {
+      if (!window.THREE) { showError("init", "Three.js를 불러오지 못했습니다 (인터넷 연결 확인)"); return false; }
+      const T = window.THREE;
+      api.scene = new T.Scene();
+      api.camera = new T.PerspectiveCamera(45, wrap.clientWidth / wrap.clientHeight, 0.1, 500);
+      const cp = sc.camera || [26, 20, 30];
+      api.camera.position.set(cp[0], cp[1], cp[2]);
+      api.renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
+      api.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      wrap.insertBefore(api.renderer.domElement, wrap.firstChild);
+      api.controls = new T.OrbitControls(api.camera, api.renderer.domElement);
+      api.controls.enableDamping = true;
+      api.controls.dampingFactor = 0.08;
+      api.controls.target.set(0, 0, 0);
+      api.scene.add(new T.AmbientLight(0xffffff, 0.55));
+      const dl = new T.DirectionalLight(0xffffff, 0.9);
+      dl.position.set(20, 30, 15);
+      api.scene.add(dl);
+      if (sc.grid !== false) api.scene.add(new T.GridHelper(api.boxHalf * 2, 16, 0x3a5a8a, 0x1f3352));
+      if (sc.axes !== false) api.scene.add(new T.AxesHelper(api.boxHalf * 0.6));
+    } else {
+      api.canvas = document.createElement("canvas");
+      wrap.insertBefore(api.canvas, wrap.firstChild);
+      api.ctx = api.canvas.getContext("2d");
+    }
+    window.addEventListener("resize", onResize);
+    onResize();
+    return true;
+  }
+
+  function onResize() {
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    api.width = w; api.height = h;
+    if (api.renderer) {
+      api.camera.aspect = w / h;
+      api.camera.updateProjectionMatrix();
+      api.renderer.setSize(w, h);
+    } else if (api.canvas) {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      api.canvas.width = Math.round(w * dpr);
+      api.canvas.height = Math.round(h * dpr);
+      api.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (ui.scenarioId) call("update");
+    }
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    if (api.controls) api.controls.update();
+    call("frame", 1 / 60);
+    if (api.renderer) api.renderer.render(api.scene, api.camera);
+  }
+
+  /* ---------- UI ---------- */
+  function renderTabs() {
+    const box = $("tabs");
+    box.innerHTML = "";
+    box.hidden = C.tabs.length < 2;
+    C.tabs.forEach(t => {
+      const b = document.createElement("button");
+      b.textContent = t.label;
+      b.className = t.id === ui.tab ? "active" : "";
+      b.addEventListener("click", () => switchTab(t.id));
+      box.appendChild(b);
+    });
+  }
+
+  function renderPicker() {
+    const box = $("scenarioPicker");
+    const list = scenariosOfTab(ui.tab);
+    box.innerHTML = "";
+    box.hidden = list.length < 2;
+    list.forEach(s => {
+      const b = document.createElement("button");
+      b.textContent = s.name;
+      b.className = s.id === ui.scenarioId ? "active" : "";
+      b.addEventListener("click", () => selectScenario(s.id));
+      box.appendChild(b);
+    });
+  }
+
+  function sliderEl(p) {
+    const div = document.createElement("div");
+    div.className = "param";
+    const label = document.createElement("label");
+    label.textContent = p.label + " ";
+    const val = document.createElement("span");
+    val.className = "val"; val.id = "p_" + p.key + "_val"; val.dataset.unit = p.unit || "";
+    val.textContent = fmtVal(P[p.key], p.unit);
+    label.appendChild(val);
+    const inp = document.createElement("input");
+    inp.type = "range"; inp.id = "p_" + p.key;
+    inp.min = p.min; inp.max = p.max; inp.step = p.step; inp.value = P[p.key];
+    inp.addEventListener("input", () => {
+      const v = parseFloat(inp.value);
+      P[p.key] = v;
+      val.textContent = fmtVal(v, p.unit);
+      call("update");
+    });
+    div.append(label, inp);
+    return div;
+  }
+
+  function choiceEl(c) {
+    const row = document.createElement("div");
+    row.className = "row"; row.style.marginBottom = "8px";
+    if (c.label) { const l = document.createElement("b"); l.style.fontSize = "0.9em"; l.textContent = c.label; row.appendChild(l); }
+    c.options.forEach(o => {
+      const b = document.createElement("button");
+      b.textContent = o.label;
+      b.className = P[c.key] === o.value ? "primary" : "";
+      b.addEventListener("click", () => {
+        P[c.key] = o.value;
+        row.querySelectorAll("button").forEach(x => x.className = "");
+        b.className = "primary";
+        call("update");
+      });
+      row.appendChild(b);
+    });
+    return row;
+  }
+
+  function renderControls() {
+    const s = current();
+    const body = $("scenarioBody");
+    body.innerHTML = "";
+    if (s.desc || s.section) {
+      const p = document.createElement("p");
+      p.className = "hint"; p.style.marginBottom = "10px";
+      if (s.section) { const b = document.createElement("b"); b.textContent = s.section; p.appendChild(b); if (s.desc) p.appendChild(document.createTextNode(" — ")); }
+      if (s.desc) p.appendChild(document.createTextNode(s.desc));
+      body.appendChild(p);
+    }
+    (s.choices || []).forEach(c => body.appendChild(choiceEl(c)));
+    (s.params || []).forEach(p => body.appendChild(sliderEl(p)));
+    if (s.animated) {
+      const st = document.createElement("div");
+      st.className = "hint"; st.id = "wsStatus";
+      st.textContent = s.status_hint || "";
+      body.appendChild(st);
+      const row = document.createElement("div");
+      row.className = "controls-row";
+      const play = document.createElement("button");
+      play.id = "playBtn"; play.className = "primary";
+      play.addEventListener("click", () => { ui.playing = !ui.playing; updatePlayButton(); });
+      const reset = document.createElement("button");
+      reset.textContent = "↺ 리셋";
+      reset.addEventListener("click", () => { ui.playing = false; updatePlayButton(); call("reset"); call("update"); });
+      row.append(play, reset);
+      body.appendChild(row);
+      updatePlayButton();
+    }
+    const cp = C.common_params;
+    if (cp && s.use_common !== false) {
+      const hr = document.createElement("hr");
+      hr.style.cssText = "margin:10px 0;border:none;border-top:1px solid var(--border)";
+      body.appendChild(hr);
+      if (cp.title) { const b = document.createElement("b"); b.style.fontSize = "0.9em"; b.textContent = cp.title; body.appendChild(b); }
+      cp.params.forEach(p => body.appendChild(sliderEl(p)));
+    }
+  }
+
+  function updatePlayButton() {
+    const b = $("playBtn");
+    if (b) b.textContent = ui.playing ? "⏸ 일시정지" : "▶ 재생";
+  }
+
+  function renderFormula() {
+    const s = current();
+    const body = $("formulaBody");
+    body.innerHTML = (s.formula || []).map(f =>
+      (f.eq_html ? `<div class="eq">${f.eq_html}</div>` : "") + (f.text_html || "")
+    ).join("");
+  }
+
+  function renderMisconception() {
+    const s = current();
+    const panel = $("misconceptionPanel");
+    panel.innerHTML = "";
+    panel.hidden = !s.misconception;
+    if (!s.misconception) return;
+    const box = document.createElement("div");
+    box.className = "misconception";
+    const b = document.createElement("b");
+    b.textContent = s.misconception_title || "💡 흔한 오개념";
+    box.append(b, document.createElement("br"), document.createTextNode(s.misconception));
+    panel.appendChild(box);
+  }
+
+  function enterScenario() {
+    ui.playing = false;
+    const s = current();
+    $("graphPanel").hidden = !s.chart;
+    $("chartHint").innerHTML = "";
+    api.custom.innerHTML = "";
+    api.setReadout([]); api.setNote("");
+    renderPicker(); renderControls(); renderFormula(); renderMisconception();
+    call("enter");
+    call("update");
+  }
+
+  function selectScenario(id) {
+    ui.scenarioId = id;
+    lastScenarioOfTab[ui.tab] = id;
+    enterScenario();
+  }
+
+  function switchTab(tab) {
+    ui.tab = tab;
+    renderTabs();
+    selectScenario(lastScenarioOfTab[tab] || scenariosOfTab(tab)[0].id);
+  }
+
+  function renderLegend() {
+    const box = $("legend");
+    (C.legend || []).forEach(l => {
+      const span = document.createElement("span");
+      const sw = document.createElement("i");
+      sw.className = "swatch" + (l.shape === "bar" ? " bar" : "");
+      sw.style.background = l.color;
+      span.append(sw, document.createTextNode(l.label));
+      box.appendChild(span);
+    });
+  }
+
+  function runSelfTests() {
+    if (!SIMOBJ || typeof SIMOBJ.tests !== "function") { console.log("물리 검증 항목 없음"); return; }
+    let results = [];
+    try { results = SIMOBJ.tests() || []; } catch (e) { showError("tests", e); return; }
+    console.log("=== " + C.title + " 물리 검증 ===");
+    let pass = 0;
+    for (const [name, ok, detail] of results) {
+      console.log(`[${ok ? "PASS" : "FAIL"}] ${name}${detail ? " — " + detail : ""}`);
+      if (ok) pass++;
+    }
+    console.log(pass === results.length ? "모든 검증 통과" : "일부 검증 실패 — 콘솔 확인 필요");
+    window.__wsSelfTest = { pass, total: results.length };
+  }
+
+  /* ---------- 시작 ---------- */
+  $("readoutTitle").textContent = C.readout_title || "측정값";
+  $("hoverHint").textContent = (C.scene && C.scene.hint != null) ? C.scene.hint
+    : (C.renderer === "three" ? "마우스 드래그: 회전 · 휠: 확대/축소" : "");
+  $("projectorBtn").addEventListener("click", () => document.body.classList.toggle("projector"));
+  renderLegend();
+  if (!SIMOBJ) showError("load", "sim_js에 SIM 객체가 정의되지 않았습니다");
+  if (initRenderer()) {
+    call("init");
+    renderTabs();
+    switchTab(ui.tab);
+    animate();
+  }
+  runSelfTests();
+})();
+</script>
+
+</body>
+</html>
+<!--claude-meta
+category: 광학
+slug: newton-rings
+icon: 🔵
+title: 뉴턴 링 — 스마트폰으로 찍고 분석하는 박막 간섭 실험
+desc: 볼록렌즈와 유리판 사이 공기층의 간섭 무늬를 가상 실험으로 이해하고, 스마트폰 사진에서 고리 반지름을 재어 렌즈 곡률반경을 구해 보고서까지 작성 (물리학 파동·빛)
+-->

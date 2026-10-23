@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>에너지 도시 건설 게임</title>
+<style>
+  :root { --bg:#0d2a47; --panel:rgba(14,30,52,.94); --ink:#eaf2fb; --sub:#9db4cc; --accent:#ffc94d; --border:#2c4a6e; --ok:#58d68d; --bad:#ff6b5e; --card:#f5eedc; --cardink:#1c2b44; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { height:100%; overflow:hidden; background:linear-gradient(#1b4f7c,#0d2a47); color:var(--ink); font-family:"Segoe UI","Malgun Gothic","Noto Sans KR",sans-serif; font-size:14px; }
+  #stage { position:fixed; inset:0; } #stage canvas { display:block; touch-action:none; }
+  button { font:inherit; color:inherit; cursor:pointer; }
+  .panel { position:fixed; background:var(--panel); border:1px solid var(--border); border-radius:12px; }
+  h1 { font-size:1.08em; color:var(--accent); } h2 { font-size:.95em; color:var(--accent); margin-bottom:6px; }
+  .sub { color:var(--sub); font-size:.82em; line-height:1.45; }
+
+  /* 왼쪽 열 */
+  #leftcol { position:fixed; left:12px; top:56px; bottom:60px; width:292px; display:flex; flex-direction:column; gap:10px; overflow:auto; scrollbar-width:thin; }
+  #brand, #vills, #tray { position:static; padding:11px 12px; }
+  #brand h1 { margin-bottom:4px; }
+  .tabs { display:flex; gap:6px; margin:8px 0 6px; }
+  .tabs button { flex:1; padding:7px 4px; border-radius:8px; border:1px solid var(--border); background:#173556; color:var(--sub); font-size:.84em; line-height:1.25; }
+  .tabs button.on { border-color:var(--accent); background:#3a3416; color:var(--ink); }
+  .linkbtn { background:none; border:none; color:#7fc4ff; text-decoration:underline; font-size:.84em; padding:2px 0; }
+  #tray { display:flex; flex-direction:column; gap:7px; }
+  #tray h2 { margin-bottom:0; }
+  .pcard { display:grid; grid-template-columns:44px 1fr; gap:8px; padding:8px; border-radius:10px; border:2px solid #0c1e36; background:var(--card); color:var(--cardink); cursor:grab; user-select:none; touch-action:pan-x; position:relative; }
+  .pcard:hover { border-color:var(--accent); } .pcard.on { border-color:var(--accent); box-shadow:0 0 0 3px rgba(255,201,77,.35); }
+  .pcard.full { opacity:.45; cursor:not-allowed; }
+  .pcard .ic { font-size:1.9em; display:flex; align-items:center; justify-content:center; background:#1c2b44; border-radius:8px; }
+  .pcard b { font-size:.92em; } .pcard .cnt { position:absolute; right:8px; top:6px; font-size:.78em; background:#1c2b44; color:#fff; border-radius:99px; padding:1px 8px; }
+  .pcard small { display:block; font-size:.72em; line-height:1.35; color:#4a5870; }
+  .pcard small u { text-decoration:none; font-weight:700; color:#1c2b44; }
+  .vcard { display:flex; gap:8px; align-items:flex-start; padding:7px 4px; border-top:1px solid var(--border); cursor:pointer; }
+  .vcard:hover { background:rgba(255,255,255,.05); }
+  .dot { flex:0 0 auto; width:12px; height:12px; border-radius:50%; margin-top:3px; }
+  .vcard b { font-size:.9em; } .vcard small { color:var(--sub); font-size:.76em; line-height:1.4; display:block; }
+
+  /* 위쪽 도구 */
+  #top { position:fixed; left:12px; right:12px; top:10px; display:flex; gap:6px; align-items:center; flex-wrap:nowrap; overflow-x:auto; padding-bottom:2px; scrollbar-width:none; pointer-events:none; }
+  #top > * { pointer-events:auto; flex:0 0 auto; }
+  .seg { display:flex; background:var(--panel); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  .seg button { padding:7px 10px; border:none; background:none; color:var(--sub); font-size:.84em; border-right:1px solid var(--border); white-space:nowrap; }
+  .seg button:last-child { border-right:none; } .seg button.on { background:#3a3416; color:var(--ink); }
+  .tbtn { padding:7px 10px; border-radius:10px; border:1px solid var(--border); background:var(--panel); font-size:.84em; white-space:nowrap; }
+  #mobL, #mobR { display:none; }
+  #legend { position:fixed; left:50%; top:50px; transform:translateX(-50%); background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:5px 12px; font-size:.8em; color:var(--sub); display:none; max-width:92vw; text-align:center; }
+
+  /* 오른쪽 */
+  #right { right:12px; top:56px; bottom:60px; width:318px; padding:12px; overflow:auto; scrollbar-width:thin; display:flex; flex-direction:column; gap:10px; }
+  .sec { border-top:1px solid var(--border); padding-top:9px; } .sec:first-child { border-top:none; padding-top:0; }
+  .meter { margin:5px 0; font-size:.84em; } .meter .bar { height:9px; background:#0b1b30; border-radius:99px; overflow:hidden; margin-top:3px; border:1px solid var(--border); }
+  .meter .bar i { display:block; height:100%; background:var(--ok); transition:width .3s; } .meter.mid .bar i { background:#f0b429; } .meter.low .bar i { background:var(--bad); }
+  .meter .row { display:flex; justify-content:space-between; gap:6px; }
+  .btn { padding:9px 10px; border-radius:9px; border:1px solid var(--border); background:#173556; font-size:.88em; }
+  .btn:hover:not(:disabled) { border-color:var(--accent); } .btn:disabled { opacity:.4; cursor:default; }
+  .btn.go { background:#a5410e; border-color:var(--accent); font-weight:700; font-size:.95em; padding:11px; width:100%; }
+  .btn.sm { padding:5px 8px; font-size:.8em; }
+  .rowb { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; } .rowb .btn { flex:1 1 auto; }
+  .prow { display:flex; gap:6px; align-items:center; padding:5px 4px; border-radius:6px; cursor:pointer; font-size:.84em; } .prow:hover, .prow.on { background:rgba(255,255,255,.08); }
+  .prow .dot { margin:0; }
+  textarea { width:100%; min-height:62px; resize:vertical; background:#0b1b30; color:var(--ink); border:1px solid var(--border); border-radius:8px; padding:7px; font:inherit; font-size:.84em; margin-top:6px; }
+  .tag { display:inline-block; padding:1px 7px; border-radius:99px; background:#0b1b30; border:1px solid var(--border); font-size:.76em; margin:2px 3px 0 0; color:var(--sub); }
+  .lnk { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; } .lnk button { flex:1 1 30%; padding:6px 4px; border-radius:8px; border:2px solid; background:#0b1b30; font-size:.82em; } .lnk button.on { color:#fff; }
+
+  #cellinfo { position:fixed; left:50%; bottom:12px; transform:translateX(-50%); background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:7px 14px; font-size:.86em; max-width:min(560px, calc(100vw - 24px)); text-align:center; line-height:1.5; }
+  #cellinfo .bad { color:var(--bad); } #cellinfo .good { color:var(--ok); }
+  a.home { position:fixed; left:12px; bottom:12px; text-decoration:none; color:var(--ink); background:var(--panel); border:1px solid var(--border); padding:7px 12px; border-radius:8px; font-size:.9em; z-index:30; }
+  #src { position:fixed; right:12px; bottom:14px; font-size:.7em; color:var(--sub); max-width:300px; text-align:right; line-height:1.35; }
+  #src a { color:#7fc4ff; }
+
+  #labels { position:fixed; inset:0; pointer-events:none; overflow:hidden; }
+  .lb { position:absolute; transform:translate(-50%,-50%); white-space:nowrap; font-weight:700; text-shadow:0 1px 3px #000; }
+  .lb.ax { font-size:.78em; color:#dff2ff; background:#12294a; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; text-shadow:none; }
+  .lb.vn { font-size:.82em; padding:2px 8px; border-radius:99px; color:#fff; border:2px solid #fff; transform:translate(-50%,-130%); }
+  .lb.pb { font-size:.74em; padding:1px 7px; border-radius:99px; background:#0c1e36; color:#ffe27a; border:1px solid #ffe27a; transform:translate(-50%,-100%); text-shadow:none; }
+  .bubble { position:absolute; transform:translate(-50%,-100%); width:200px; background:#fff; color:#1c2b44; border-radius:12px; padding:8px 10px; font-size:.78em; line-height:1.4; box-shadow:0 4px 14px rgba(0,0,0,.4); text-align:left; animation:pop .5s ease; }
+  .bubble:after { content:""; position:absolute; left:50%; bottom:-8px; margin-left:-8px; border:8px solid transparent; border-top-color:#fff; border-bottom:0; }
+  .bubble .hd { font-weight:800; font-size:1.05em; margin-bottom:2px; }
+  .bubble.cheer { border:3px solid #2e9e4f; } .bubble.ok { border:3px solid #3a8fb7; } .bubble.idle { border:3px solid #9aa5b1; } .bubble.worry { border:3px solid #d9a21b; } .bubble.anger, .bubble.riot { border:3px solid #c0392b; }
+  @keyframes pop { from { transform:translate(-50%,-90%) scale(.5); opacity:0; } to { transform:translate(-50%,-100%) scale(1); opacity:1; } }
+
+  #toast { position:fixed; left:50%; top:96px; transform:translateX(-50%); background:#5a1f17; border:1px solid var(--bad); padding:8px 16px; border-radius:9px; font-size:.88em; display:none; z-index:40; max-width:90vw; text-align:center; }
+  #drag { position:fixed; pointer-events:none; z-index:50; display:none; padding:6px 10px; border-radius:10px; background:var(--card); color:var(--cardink); font-weight:700; box-shadow:0 4px 12px rgba(0,0,0,.5); transform:translate(-50%,-120%); }
+
+  .modal { position:fixed; inset:0; background:rgba(5,15,30,.82); display:none; align-items:center; justify-content:center; z-index:60; padding:12px; }
+  .modal.show { display:flex; }
+  .sheet { background:#102a49; border:1px solid var(--border); border-radius:14px; max-width:680px; width:100%; max-height:92vh; overflow:auto; padding:18px 20px; line-height:1.6; }
+  .sheet h1 { font-size:1.25em; margin-bottom:6px; } .sheet h3 { font-size:1em; color:var(--accent); margin:12px 0 4px; }
+  .sheet ul { margin-left:18px; } .sheet li { margin:3px 0; font-size:.92em; }
+  .paper { background:var(--card); color:var(--cardink); border-radius:10px; padding:10px 14px; font-size:.9em; margin:6px 0; }
+  .paper b { color:#a5410e; }
+  .cond { display:inline-block; background:#1c2b44; color:#fff; border-radius:5px; padding:0 7px; margin-right:6px; font-size:.82em; }
+
+  #result { position:fixed; right:0; top:0; bottom:0; width:min(470px, 100vw); background:rgba(10,24,44,.97); border-left:1px solid var(--border); overflow:auto; padding:16px 16px 28px; transform:translateX(105%); transition:transform .45s; z-index:35; }
+  #result.show { transform:none; }
+  .score { display:flex; align-items:center; gap:14px; } .grade { width:78px; height:78px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:2.6em; font-weight:900; color:#10223a; background:var(--accent); flex:0 0 auto; }
+  .grade.S { background:#ffd84d; } .grade.A { background:#7fe0a0; } .grade.B { background:#8cc8ff; } .grade.C { background:#f5b46a; } .grade.D { background:#ff8a80; }
+  .big { font-size:2.1em; font-weight:800; line-height:1; } .big small { font-size:.4em; color:var(--sub); }
+  .cat { margin:7px 0; font-size:.84em; } .cat .bar { height:10px; background:#0b1b30; border-radius:99px; border:1px solid var(--border); overflow:hidden; } .cat .bar i { display:block; height:100%; background:linear-gradient(90deg,#ffb347,#ffd84d); }
+  .vres { border:1px solid var(--border); border-radius:10px; padding:10px; margin:9px 0; background:#0e2340; }
+  .vres .hd { display:flex; align-items:center; gap:8px; } .vres .em { font-size:1.9em; } .vres .q { font-size:.86em; margin:6px 0; background:#fff; color:#1c2b44; border-radius:8px; padding:6px 9px; }
+  .mood { position:relative; height:10px; border-radius:99px; background:linear-gradient(90deg,#d62828,#f4a261 38%,#e9e9e9 50%,#8ad26b 70%,#1e9e4a); margin:8px 0 3px; }
+  .mood i { position:absolute; top:-4px; width:4px; height:18px; background:#fff; border-radius:2px; box-shadow:0 0 0 2px #0b1b30; }
+  .chip { display:inline-block; margin:2px 3px 0 0; padding:2px 8px; border-radius:99px; font-size:.76em; } .chip.p { background:#16452c; color:#8ff0b3; } .chip.n { background:#53201c; color:#ffb1a8; }
+  .fq { background:#173556; border-left:4px solid var(--accent); border-radius:6px; padding:7px 10px; margin:6px 0; font-size:.86em; }
+  details.how { font-size:.8em; color:var(--sub); margin-top:10px; } details.how p { margin:4px 0; }
+  @media print { html, body { overflow:visible; height:auto; background:#fff; color:#000; } body > *:not(#result) { display:none !important; } #result { position:static; transform:none; width:100%; background:#fff; color:#000; border:none; overflow:visible; } .vres, .fq { background:#fff; border-color:#999; color:#000; } .btn, .rowb { display:none; } .chip.p, .chip.n { background:#eee; color:#000; border:1px solid #999; } .grade { border:2px solid #000; } h2 { color:#000; } }
+
+  @media (max-width: 900px) {
+    #mobL, #mobR { display:block; }
+    #leftcol { display:none; top:50px; bottom:132px; left:8px; right:8px; width:auto; }
+    body.showleft #leftcol { display:flex; z-index:20; }
+    #leftcol #tray { position:fixed; left:0; right:0; bottom:0; top:auto; flex-direction:row; overflow-x:auto; gap:6px; padding:8px; border-radius:12px 12px 0 0; z-index:25; }
+    body:not(.showleft) #leftcol { display:flex; position:static; }
+    #leftcol #brand, #leftcol #vills { display:none; } body.showleft #leftcol #brand, body.showleft #leftcol #vills { display:block; }
+    #tray h2 { display:none; } .pcard { min-width:132px; grid-template-columns:34px 1fr; padding:6px; } .pcard small { display:none; } .pcard .ic { font-size:1.4em; } .pcard .cnt { position:static; display:inline-block; margin-left:5px; } .pcard b { font-size:.8em; }
+    #right { display:none; left:8px; right:8px; width:auto; top:50px; bottom:132px; z-index:20; } body.showright #right { display:flex; }
+    a.home { bottom:78px; } #cellinfo { bottom:78px; left:auto; right:8px; transform:none; max-width:calc(100vw - 110px); text-align:left; font-size:.8em; }
+    #src { display:none; } #legend { top:46px; font-size:.74em; }
+    .bubble { width:150px; font-size:.7em; } #result { width:100vw; top:auto; height:62vh; border-left:none; border-top:1px solid var(--border); transform:translateY(105%); } #result.show { transform:none; }
+  }
+</style>
+<script type="importmap">
+{ "imports": { "three": "../../vendor/three-0.186.1/build/three.module.js", "three/addons/": "../../vendor/three-0.186.1/examples/jsm/" } }
+</script>
+</head>
+<body>
+<div id="stage"></div>
+<div id="labels"></div>
+
+<div id="top">
+  <button class="tbtn" id="mobL">☰ 안내</button>
+  <button class="tbtn" id="mobR">📊 현황</button>
+  <div class="seg" id="layers">
+    <button data-l="none" class="on">지도</button><button data-l="sun">☀ 일사량</button><button data-l="wind">💨 바람</button>
+    <button data-l="cur">🌊 해류</button><button data-l="air">🌫 미세먼지</button><button data-l="rad">☢ 사고 가정</button>
+  </div>
+  <div class="seg"><button id="vObl">🎥 비스듬히</button><button id="vTop">🧭 위에서</button></div>
+  <button class="tbtn" id="help">❓ 문제 보기</button>
+</div>
+<div id="legend"></div>
+
+<aside id="leftcol">
+  <div class="panel" id="brand">
+    <h1>⚡ 에너지 도시 건설</h1>
+    <div class="sub">KENTECH 도시의 세 마을에 어떤 발전소를 어디에 지을까요? 짓고 → 제출하면 마을 사람들이 평가해요.</div>
+    <div class="tabs" id="tabs"><button data-m="1">미션 1<br>위치 고르기</button><button data-m="2">미션 2<br>전기 공급하기</button></div>
+    <div class="sub" id="missionNote"></div>
+  </div>
+  <div class="panel" id="tray"><h2>🃏 발전 설비 카드 <span class="sub">(끌어다 놓거나, 고른 뒤 지도를 누르세요)</span></h2><div id="cards" style="display:contents"></div></div>
+  <div class="panel" id="vills"><h2>🏘 마을 카드 <span class="sub">(누르면 이동)</span></h2><div id="vlist"></div></div>
+</aside>
+
+<aside class="panel" id="right">
+  <div class="sec" id="status"></div>
+  <div class="sec" id="sel"></div>
+  <div class="sec" id="plist"></div>
+  <div class="sec"><button class="btn go" id="submit">🏁 건설 완료 · 제출</button><div class="sub" id="submitHint" style="margin-top:6px"></div>
+    <div class="rowb"><button class="btn sm" id="autolink">🔌 자동 연결</button><button class="btn sm" id="clear">🧹 모두 철거</button></div></div>
+</aside>
+
+<div id="cellinfo">지도 위에 마우스를 올리거나 칸을 눌러 보세요.</div>
+<a class="home" href="../../index.html">🏠 홈</a>
+<div id="src">자료: <a href="https://www.kentech.ac.kr" target="_blank" rel="noopener">KENTECH</a> 2022학년도 선행학습 영향평가 보고서 중 창의성 면접 문항(지도·데이터·카드)을 옮겨 만든 학습용 게임. 마을 반응과 점수 계산은 이 게임의 가정이에요.</div>
+<div id="toast"></div>
+<div id="drag"></div>
+
+<div class="modal" id="intro"><div class="sheet" id="introBody"></div></div>
+<aside id="result"></aside>
+
+<script type="module">
+import * as E from './engine.js';
+import { createWorld } from './world.js';
+
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const world = createWorld($('#stage'));
+window.__game = { E, world };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ── 상태 ──
+const KEY = 'energy-city-v1';
+const S = { carry: null, mission: 1, plans: { 1: [], 2: [] }, sel: null, tool: null, layer: 'none', n: 1, result: null, hover: null };
+try { const d = JSON.parse(localStorage.getItem(KEY) || 'null'); if (d && d.plans) { S.plans = d.plans; S.mission = d.mission || 1; S.n = d.n || 1; } } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ plans: S.plans, mission: S.mission, n: S.n })); } catch (e) {} };
+const plants = () => S.plans[S.mission];
+const plantAt = (r, c) => plants().find(p => p.r === r && p.c === c);
+const byId = id => plants().find(p => p.id === id);
+
+const INFO = {
+  fossil: { cond: '유전 좌표에만', env: '온실가스·미세먼지가 많이 나와요. 미세먼지는 바람 따라 이동!', out: '발전량 60' },
+  nuclear: { cond: '육지, 바다·호수 옆(냉각)', env: '온실가스·미세먼지는 거의 없지만, 사고 시 방사성 물질이 바람·해류를 따라 퍼져요.', out: '발전량 90' },
+  wind: { cond: '육상·해상 모두', env: '온실가스·미세먼지 거의 없음. 풍속이 클수록 많이 만들어요.', out: '발전량 = 풍속' },
+  solar: { cond: '육상·해상 모두', env: '온실가스·미세먼지 거의 없음. 일사량이 클수록 많이 만들어요.', out: '발전량 = 일사량' },
+};
+const FNAME = { mountain: '산악지대', lake: '호수', oil: '유전', culture: '문화재', birds: '새 서식지', deer: '야생동물(사슴) 서식지', whale: '고래 출몰 해역', fish: '물고기 서식지(어장)', farm: '농경지' };
+const ARROW = { v: '↓', s: '↙', w: '←' };
+const CURA = { N: '↑', S: '↓', E: '→', W: '←' };
+
+// ── 화면 조각 ──
+function drawCards() {
+  $('#cards').innerHTML = E.TYPES.map(t => {
+    const P = E.PLANT[t], I = INFO[t], n = plants().filter(p => p.type === t).length, full = S.mission === 1 && n >= 1;
+    return `<div class="pcard${S.tool === t ? ' on' : ''}${full ? ' full' : ''}" data-t="${t}"><div class="ic">${P.icon}</div><div><b>${P.label}</b><span class="cnt">${S.mission === 1 ? n + '/1' : n + '개'}</span>
+      <small><u>설치</u> ${I.cond}<br><u>${I.out}</u> · 비용 ${P.cost}<br>${I.env}</small></div></div>`;
+  }).join('');
+}
+function drawVillages() {
+  $('#vlist').innerHTML = E.VILLAGES.map((v, i) => `<div class="vcard" data-i="${i}"><span class="dot" style="background:${v.color}"></span><div><b>${v.name} 마을 · ${v.cell}</b><small>${S.mission === 2 ? `필요 전력 ${v.demand} · ` : ''}시의원 선거 투표율 ${v.turnout}%<br>${v.desc}</small></div></div>`).join('');
+}
+function drawMission() {
+  $$('#tabs button').forEach(b => b.classList.toggle('on', +b.dataset.m === S.mission));
+  $('#missionNote').innerHTML = S.mission === 1
+    ? '발전 설비 4종을 <b>1개씩</b> 골라 경제·사회·환경 측면에서 적합한 좌표에 놓아요. (전선 비용은 무시)'
+    : '세 마을에 <b>60 · 80 · 100</b>의 전기를 공급해요. 설비 종류·개수는 자유! 전선은 가로·세로로만, 길이만큼 비용이 들어요.';
+}
+function cellLabel(r, c) {
+  const vi = E.villageAt(r, c); if (vi >= 0) return `${E.VILLAGES[vi].name} 마을`;
+  const f = E.featAt(r, c); return (E.isLand(r, c) ? '육지' : '바다') + (f ? ' · ' + FNAME[f] : '');
+}
+function drawStatus() {
+  const pl = plants(); let h = '<h2>📊 도시 현황</h2>';
+  if (S.mission === 1) {
+    h += `<div class="sub">설치한 설비 ${pl.length}/4 — 설비마다 좌표를 고르고 이유를 적어 보세요.</div>`;
+  } else {
+    const ev = E.evaluate({ mission: 2, plants: pl });
+    h += E.VILLAGES.map((v, i) => {
+      const s = ev.supply[i], k = s >= v.demand ? '' : s > 0 ? ' mid' : ' low';
+      return `<div class="meter${k}"><div class="row"><span><span class="dot" style="background:${v.color};display:inline-block"></span> ${v.name}</span><span>${s} / ${v.demand} ${s >= v.demand ? '✅' : '⚠️'}</span></div><div class="bar"><i style="width:${Math.min(100, s / v.demand * 100)}%"></i></div></div>`;
+    }).join('');
+    const prod = pl.reduce((a, p) => a + E.outputAt(p.type, p.r, p.c), 0), used = E.VILLAGES.reduce((a, v, i) => a + Math.min(v.demand, ev.supply[i]), 0);
+    h += `<div class="sub" style="margin-top:6px">건설비 ${ev.cost.plants} + 전선 ${ev.cost.wires.toFixed(1)} = <b style="color:var(--ink)">${ev.cost.total.toFixed(1)}</b><br>총 발전 ${prod} · 쓰이는 전기 ${used}${prod - used > 0 ? ` · <span style="color:#f0b429">남거나 연결 안 된 전기 ${prod - used}</span>` : ''}</div>`;
+  }
+  $('#status').innerHTML = h;
+}
+function nearby(p) {
+  const out = new Set(), same = E.featAt(p.r, p.c);
+  for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { if (!a && !b) continue; const f = E.inb(p.r + a, p.c + b) && E.featAt(p.r + a, p.c + b); if (f) out.add(FNAME[f]); }
+  const vi = E.VILLAGES.map((v, i) => [Math.max(Math.abs(v.r - p.r), Math.abs(v.c - p.c)), v]).sort((x, y) => x[0] - y[0])[0];
+  return { same: same ? FNAME[same] : null, near: [...out], village: vi };
+}
+function drawSel() {
+  const p = byId(S.sel), el = $('#sel');
+  if (!p) { el.innerHTML = '<h2>🔎 선택한 설비</h2><div class="sub">지도에서 설비를 누르면 자세히 보고, 이유를 적고, 마을에 연결할 수 있어요.</div>'; return; }
+  const P = E.PLANT[p.type], out = E.outputAt(p.type, p.r, p.c), nb = nearby(p);
+  const why = p.type === 'solar' ? `일사량 ${out}` : p.type === 'wind' ? `풍속 ${out}` : '고정';
+  let h = `<h2>${P.icon} ${P.label} · ${E.name(p.r, p.c)}</h2><div class="sub">발전량 <b style="color:var(--ink)">${out}</b> (${why}) · 건설 비용 ${P.cost}<br>이 칸: ${cellLabel(p.r, p.c)}<br>가장 가까운 마을: ${nb.village[1].name} (${nb.village[0]}칸)</div>`;
+  if (nb.same || nb.near.length) h += '<div style="margin-top:4px">' + (nb.same ? `<span class="tag">같은 칸: ${nb.same}</span>` : '') + nb.near.map(n => `<span class="tag">옆: ${n}</span>`).join('') + '</div>';
+  if (S.mission === 2) {
+    h += '<div class="lnk">' + E.VILLAGES.map((v, i) => `<button data-link="${i}" class="${p.link === i ? 'on' : ''}" style="border-color:${v.color};${p.link === i ? 'background:' + v.color : ''}">→ ${v.name}</button>`).join('') + '</div>';
+    h += `<div class="sub" style="margin-top:4px">${p.link == null ? '⚠️ 아직 어느 마을에도 연결되지 않았어요.' : '전선은 가로·세로로 이어져요. 바다 위 전선은 2배 길이로 계산해요.'}</div>`;
+  }
+  h += `<textarea id="note" placeholder="이 위치를 고른 이유를 경제·사회·환경 측면에서 적어 보세요. (면접에서 말할 내용)">${esc(p.note || '')}</textarea><div class="rowb"><button class="btn sm" id="mv">📍 옮기기</button><button class="btn sm" id="del">🗑 철거</button></div>`;
+  el.innerHTML = h;
+  const ta = $('#note'); ta.oninput = () => { p.note = ta.value; save(); };
+  $$('#sel [data-link]').forEach(b => b.onclick = () => { const i = +b.dataset.link; p.link = p.link === i ? null : i; refresh(); });
+  $('#del').onclick = () => removePlant(p.id);
+  $('#mv').onclick = () => { S.carry = { type: p.type, note: p.note, link: p.link }; removePlant(p.id); S.tool = p.type; drawCards(); hover(S.hover); toast('새로 놓을 칸을 누르세요'); };
+}
+function drawList() {
+  const pl = plants();
+  $('#plist').innerHTML = `<h2>🏗 지은 설비 (${pl.length})</h2>` + (pl.length ? pl.map(p => {
+    const v = p.link != null ? E.VILLAGES[p.link] : null;
+    return `<div class="prow${p.id === S.sel ? ' on' : ''}" data-id="${p.id}">${E.PLANT[p.type].icon} <b>${E.name(p.r, p.c)}</b> · ${E.outputAt(p.type, p.r, p.c)}${v ? ` <span class="dot" style="background:${v.color}"></span>${v.name}` : (S.mission === 2 ? ' <span style="color:#f0b429">미연결</span>' : '')}${p.note ? ' 📝' : ''}</div>`;
+  }).join('') : '<div class="sub">카드를 지도 위로 끌어다 놓아 보세요.</div>');
+  $$('#plist .prow').forEach(r => r.onclick = () => { S.sel = r.dataset.id; const p = byId(S.sel); world.focusCell(p.r, p.c, 6); refresh(); });
+}
+function drawSubmit() {
+  const pl = plants(), b = $('#submit'); let ok, hint;
+  if (S.mission === 1) { ok = pl.length === 4; hint = ok ? '준비 완료! 제출하면 마을 사람들의 평가가 시작돼요.' : `발전 설비 4종을 모두 설치해야 제출할 수 있어요. (${pl.length}/4)`; }
+  else { ok = pl.length > 0; hint = ok ? (pl.some(p => p.link == null) ? '⚠️ 연결 안 된 설비가 있어요. 그 설비의 전기는 쓰이지 않아요.' : '모든 설비가 마을에 연결됐어요.') : '발전소를 먼저 지어 보세요.'; }
+  b.disabled = !ok; $('#submitHint').textContent = hint;
+  $('#autolink').style.display = S.mission === 2 ? '' : 'none';
+}
+
+// ── 3D와 연동 ──
+function refresh() {
+  const pl = plants();
+  if (S.sel && !byId(S.sel)) S.sel = null;
+  world.setPlants(pl);
+  const wr = E.wires(pl, S.mission === 2); world.setWires(wr.list, pl);
+  applyLayer();
+  drawCards(); drawStatus(); drawSel(); drawList(); drawSubmit(); drawVillages(); drawMission();
+  buildBadges(); save();
+}
+function applyLayer() {
+  const l = S.layer, pl = plants();
+  world.setOverlay(l, l === 'air' ? E.airGrid(pl) : l === 'rad' ? E.radGrid(pl) : null);
+  const L = {
+    sun: '☀ 일사량(= 태양광 발전량): 연한 분홍 5 → 진한 자주 20', wind: '💨 풍속(= 풍력 발전량): 연한 하늘 5 → 짙은 남색 20 · 화살표는 바람이 부는 방향',
+    cur: '🌊 평균 해류 방향(바다)', air: '🌫 화석 연료 발전소의 미세먼지가 바람을 따라 퍼지는 정도(현재 계획)', rad: '☢ 원자력 발전소에 사고가 났다고 가정할 때 바람·해류를 따라 퍼지는 정도(현재 계획)',
+  }[l];
+  $('#legend').style.display = L ? 'block' : 'none'; $('#legend').textContent = L || '';
+  $$('#layers button').forEach(b => b.classList.toggle('on', b.dataset.l === l));
+}
+function place(type, r, c) {
+  const pl = plants();
+  if (S.mission === 1 && pl.some(p => p.type === type)) return toast('미션 1은 같은 종류를 1개씩만 설치해요. 지은 설비를 철거하고 옮겨 보세요.');
+  const ck = E.canPlace(pl, type, r, c); if (!ck.ok) return toast(ck.why);
+  const cr = S.carry && S.carry.type === type ? S.carry : null; S.carry = null;
+  const p = { id: 'p' + S.n++, type, r, c, link: cr ? cr.link : null, note: cr ? cr.note : '' };
+  pl.push(p);
+  if (S.mission === 2) E.autoLink(pl);
+  if (S.mission === 1 || cr) S.tool = null;
+  S.sel = p.id; refresh(); hover(S.hover);
+}
+function removePlant(id) { const pl = plants(), i = pl.findIndex(p => p.id === id); if (i >= 0) pl.splice(i, 1); if (S.sel === id) S.sel = null; refresh(); }
+
+let toastT; function toast(m) { const t = $('#toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => t.style.display = 'none', 2600); }
+
+// ── 칸 정보와 유령 ──
+function hover(cell) {
+  S.hover = cell;
+  const ci = $('#cellinfo');
+  if (!cell) { world.setCursor(null); world.setGhost(null); if (!S.sel) ci.innerHTML = '지도 위에 마우스를 올리거나 칸을 눌러 보세요.'; return; }
+  const { r, c } = cell, nm = E.name(r, c);
+  let h = `<b>${nm}</b> · ${cellLabel(r, c)}<br>☀ 일사량 ${E.SUN[r]} · 💨 풍속 ${E.SPEED[r][c]} ${ARROW[E.windCode(r, c)]}` + (E.curDirs(r, c).length ? ` · 🌊 해류 ${E.curDirs(r, c).map(d => CURA[d]).join('')}` : '');
+  let state = null;
+  if (S.tool) {
+    const ck = E.canPlace(plants(), S.tool, r, c), P = E.PLANT[S.tool];
+    state = ck.ok ? 'ok' : 'bad';
+    h += `<br>${P.icon} ${P.label}: ` + (ck.ok ? `<span class="good">설치 가능 · 발전량 ${E.outputAt(S.tool, r, c)}</span>` : `<span class="bad">${ck.why}</span>`);
+    world.setGhost(S.tool, r, c);
+  } else world.setGhost(null);
+  world.setCursor(r, c, state); ci.innerHTML = h;
+}
+
+// ── 입력 ──
+const cv = world.renderer.domElement; let down = null;
+cv.addEventListener('pointermove', e => { if (e.pointerType === 'touch') return; hover(world.pick(e.clientX, e.clientY)); });
+cv.addEventListener('pointerleave', () => { if (!S.tool) hover(null); });
+cv.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY, t: performance.now() }; tourTok++; });
+cv.addEventListener('pointerup', e => {
+  if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6 || performance.now() - down.t > 600) { down = null; return; }
+  down = null; const cell = world.pick(e.clientX, e.clientY); if (!cell) return;
+  hover(cell);
+  if (S.result) return;
+  if (S.tool) return place(S.tool, cell.r, cell.c);
+  const p = plantAt(cell.r, cell.c), vi = E.villageAt(cell.r, cell.c);
+  if (p) { S.sel = p.id; refresh(); document.body.classList.add('showright'); if (innerWidth > 900) document.body.classList.remove('showright'); }
+  else if (vi >= 0) { world.focusCell(cell.r, cell.c, 4); toast(`${E.VILLAGES[vi].name}: ${E.VILLAGES[vi].desc}`); }
+  else if (S.sel) { S.sel = null; refresh(); }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { S.tool = null; hover(S.hover); drawCards(); }
+  if ((e.key === 'Delete' || e.key === 'Backspace') && S.sel && document.activeElement.tagName !== 'TEXTAREA') removePlant(S.sel);
+});
+// 카드: 끌어다 놓기(마우스) 또는 눌러서 고르기
+let drag = null;
+$('#cards').addEventListener('pointerdown', e => {
+  const card = e.target.closest('.pcard'); if (!card) return;
+  if (card.classList.contains('full')) return toast('이미 설치했어요. 지도에서 설비를 눌러 옮기거나 철거하세요.');
+  drag = { t: card.dataset.t, x: e.clientX, y: e.clientY, on: false, touch: e.pointerType === 'touch' };
+});
+addEventListener('pointermove', e => {
+  if (!drag || drag.touch) return;
+  if (!drag.on && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 6) { drag.on = true; S.tool = drag.t; drawCards(); }
+  if (drag.on) {
+    const d = $('#drag'); d.style.display = 'block'; d.style.left = e.clientX + 'px'; d.style.top = e.clientY + 'px'; d.textContent = E.PLANT[drag.t].icon + ' ' + E.PLANT[drag.t].label;
+    hover(document.elementFromPoint(e.clientX, e.clientY) === cv ? world.pick(e.clientX, e.clientY) : null);
+  }
+});
+addEventListener('pointerup', e => {
+  if (!drag) return; const d = drag; drag = null; $('#drag').style.display = 'none';
+  if (d.on) {
+    const cell = document.elementFromPoint(e.clientX, e.clientY) === cv ? world.pick(e.clientX, e.clientY) : null;
+    if (cell) place(d.t, cell.r, cell.c); S.tool = null; hover(S.hover); drawCards();
+  } else { S.tool = S.tool === d.t ? null : d.t; S.sel = null; drawCards(); drawSel(); hover(S.hover); if (S.tool && innerWidth <= 900) toast('지도에서 놓을 칸을 누르세요'); }
+});
+$('#vlist').addEventListener('click', e => { const v = e.target.closest('.vcard'); if (!v) return; const x = E.VILLAGES[+v.dataset.i]; world.focusCell(x.r, x.c, 4.2); document.body.classList.remove('showleft'); });
+$$('#layers button').forEach(b => b.onclick = () => { S.layer = b.dataset.l; applyLayer(); });
+$('#vObl').onclick = () => world.view('oblique'); $('#vTop').onclick = () => world.view('top');
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.mission = +b.dataset.m; S.sel = null; S.tool = null; refresh(); hover(null); });
+$('#mobL').onclick = () => { document.body.classList.toggle('showleft'); document.body.classList.remove('showright'); };
+$('#mobR').onclick = () => { document.body.classList.toggle('showright'); document.body.classList.remove('showleft'); };
+$('#autolink').onclick = () => { E.autoLink(plants().filter(p => p.link == null)); refresh(); };
+$('#clear').onclick = () => { if (!plants().length || confirm('지금 미션에 지은 설비를 모두 철거할까요?')) { S.plans[S.mission] = []; S.sel = null; refresh(); } };
+$('#submit').onclick = () => {
+  const pl = plants();
+  if (S.mission === 2 && pl.some(p => p.link == null) && !confirm('마을에 연결되지 않은 설비가 있어요. 그 전기는 쓰이지 않아요. 그래도 제출할까요?')) return;
+  submit();
+};
+
+// ── 이름표 ──
+const lab = $('#labels'), labels = [];
+function mk(cls, html, fn) { const d = document.createElement('div'); d.className = 'lb ' + cls; d.innerHTML = html; lab.appendChild(d); const o = { d, fn }; labels.push(o); return o; }
+for (let c = 0; c < 10; c++) mk('ax', c + 1, () => world.project(-1, c, .2));
+for (let r = 0; r < 10; r++) mk('ax', E.ROW[r], () => world.project(r, -1, .2));
+E.VILLAGES.forEach(v => { const o = mk('vn', '🏠 ' + v.name, () => world.project(v.r, v.c, .9)); o.d.style.background = v.color; });
+let badges = [];
+function buildBadges() {
+  badges.forEach(o => { o.d.remove(); labels.splice(labels.indexOf(o), 1); }); badges = [];
+  plants().forEach(p => { const v = p.link != null && S.mission === 2 ? E.VILLAGES[p.link] : null; const o = mk('pb', `⚡${E.outputAt(p.type, p.r, p.c)}`, () => world.project(p.r, p.c, 1.1)); if (v) o.d.style.borderColor = v.color; badges.push(o); });
+}
+let bubbles = [];
+world.onFrame(() => { for (const o of labels) { const q = o.fn(); o.d.style.display = q.visible ? '' : 'none'; o.d.style.left = q.x + 'px'; o.d.style.top = q.y + 'px'; } for (const b of bubbles) { const q = world.project(b.v.r, b.v.c, .5); b.d.style.left = q.x + 'px'; b.d.style.top = q.y + 'px'; } });
+
+// ── 제출과 결과 ──
+const resultShift = () => innerWidth > 900 ? [2.4, 0] : [0, 3.6]; // 결과 서랍에 가리지 않게 지도를 옮김
+let tourTok = 0; const sleep = ms => new Promise(r => setTimeout(r, ms));
+function submit() {
+  const ev = E.evaluate({ mission: S.mission, plants: plants().map(p => ({ ...p })) }); S.result = ev;
+  S.tool = null; S.sel = null; world.setCursor(null); world.setGhost(null); S.layer = 'none'; applyLayer();
+  document.body.classList.remove('showleft', 'showright'); $('#leftcol').style.visibility = 'hidden'; $('#right').style.visibility = 'hidden'; $('#cellinfo').style.display = 'none';
+  world.showReactions(ev.vs.map((x, i) => ({ r: E.VILLAGES[i].r, c: E.VILLAGES[i].c, cls: x.tier.cls })));
+  bubbles.forEach(b => b.d.remove()); bubbles = [];
+  ev.vs.forEach((x, i) => {
+    const d = document.createElement('div'); d.className = 'bubble ' + x.tier.cls;
+    d.innerHTML = `<div class="hd">${x.tier.emoji} ${x.name} · ${x.tier.label}</div>${esc(x.quote || '잘 모르겠어요. 일단 지켜볼게요.')}`; d.style.display = 'none'; lab.appendChild(d); bubbles.push({ d, v: E.VILLAGES[i] });
+  });
+  drawResult(ev); $('#result').classList.add('show'); $('#result').scrollTop = 0;
+  const tok = ++tourTok;
+  (async () => {
+    for (let i = 0; i < 3; i++) { if (tok !== tourTok) return; const v = E.VILLAGES[i]; world.focusCell(v.r, v.c, 5.4, innerWidth > 900 ? 1.7 : 0); await sleep(1300); if (tok !== tourTok) break; bubbles[i].d.style.display = ''; await sleep(1700); }
+    if (tok === tourTok) world.view('oblique', ...resultShift()); bubbles.forEach(b => b.d.style.display = '');
+  })();
+  window.__result = ev;
+}
+function drawResult(ev) {
+  const m2 = ev.mission === 2;
+  const bar = (n, v, max) => `<div class="cat"><div style="display:flex;justify-content:space-between"><span>${n}</span><span>${v.toFixed(1)} / ${max}</span></div><div class="bar"><i style="width:${v / max * 100}%"></i></div></div>`;
+  let h = `<div class="score"><div class="grade ${ev.grade}">${ev.grade}</div><div><div class="big">${Math.round(ev.total)}<small> / 100점</small></div><div class="sub">${E.GRADES[ev.grade]}<br>시장 지지율 <b style="color:var(--ink)">${Math.round(ev.approval)}%</b> (투표율로 가중)</div></div></div><div style="margin-top:10px">`;
+  h += bar('🗳 주민 평가', ev.sc.resid, ev.W.resid) + (m2 ? bar('🔌 전력 공급', ev.sc.supply, ev.W.supply) : '') + bar('💰 경제성', ev.sc.econ, ev.W.econ) + bar('🌿 환경', ev.sc.env, ev.W.env) + '</div>';
+  h += '<h2 style="margin-top:12px">🏘 마을 사람들의 평가</h2>';
+  ev.vs.forEach((x, i) => {
+    const chips = x.points.slice(0, 6).map(p => `<span class="chip ${p.pts > 0 ? 'p' : 'n'}">${E.FACTOR[p.id]} ${p.pts > 0 ? '+' : ''}${Math.round(p.pts)}</span>`).join('');
+    h += `<div class="vres"><div class="hd"><span class="em">${x.tier.emoji}</span><div><b style="color:${E.VILLAGES[i].color === '#2c4a8a' ? '#8fb0ff' : E.VILLAGES[i].color}">${x.name} 마을</b> <span class="sub">투표율 ${x.turnout}%${m2 ? ` · 공급 ${x.supply}/${x.demand}` : ''}</span><br><b>${x.tier.label}</b></div></div>
+      <div class="q">“${esc(x.quote || '잘 모르겠어요. 일단 지켜볼게요.')}”</div><div class="mood"><i style="left:calc(${(x.mood + 100) / 2}% - 2px)"></i></div><div class="sub" style="display:flex;justify-content:space-between"><span>시위 −100</span><span>만족도 ${Math.round(x.mood)}</span><span>축제 +100</span></div><div>${chips}</div>
+      ${x.mood < -15 && x.turnout >= 60 ? `<div class="sub" style="margin-top:4px">⚠ 투표율이 ${x.turnout}%라 다음 선거에서 표로 심판받을 수 있어요.</div>` : ''}</div>`;
+  });
+  h += '<h2 style="margin-top:12px">🏗 내 계획</h2><div class="sub">' + ev.plants.map(p => `${E.PLANT[p.type].icon} ${E.name(p.r, p.c)}(${p.out})${p.link != null && m2 ? '→' + E.VILLAGES[p.link].name : ''}${p.note ? ` — ${esc(p.note)}` : ''}`).join('<br>') + `</div>${m2 ? `<div class="sub" style="margin-top:4px">건설비 ${ev.cost.plants} + 전선 ${ev.cost.wires.toFixed(1)} = ${ev.cost.total.toFixed(1)}</div>` : ''}`;
+  h += '<h2 style="margin-top:12px">🎤 면접관이 이어서 물어본다면?</h2>' + E.followUps(ev).map(q => `<div class="fq">${esc(q)}</div>`).join('');
+  h += `<div class="rowb"><button class="btn" id="rBack">✏️ 계획 고치기</button><button class="btn" id="rCopy">📋 결과 복사</button><button class="btn" id="rPrint">🖨 인쇄·PDF</button></div>`;
+  h += `<details class="how"><summary>점수는 어떻게 계산했나요? (이 게임의 가정)</summary><p>마을 만족도 = 전력 공급, 미세먼지(바람 방향), 방사능 불안(사고 가정: 바람·해류), 어장·야생동물·문화재·농경지·경관 훼손, 일자리, 친환경·탄소, 비용을 마을 성격(카드)에 따라 다른 가중치로 더한 값이에요. 마을 점수는 투표율로 가중해 합쳐요.</p><p>${m2 ? '100점 = 주민 평가 50 + 전력 공급 20 + 경제성 15 + 환경 15.' : '100점 = 주민 평가 35 + 경제성 30 + 환경 35. 경제성은 풍력·태양광을 발전량이 큰 곳에 놓았는지로 봐요.'}</p><p>실제 면접에는 정답이 없어요. 점수가 낮아도 이유를 논리적으로 설명할 수 있다면 좋은 답이 될 수 있어요.</p></details>`;
+  $('#result').innerHTML = h;
+  $('#rBack').onclick = backToEdit; $('#rPrint').onclick = () => print();
+  $('#rCopy').onclick = () => { const t = reportText(ev); (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast('결과를 복사했어요'), () => { prompt('아래 글을 복사하세요', t); }); };
+}
+function reportText(ev) {
+  const L = [`[에너지 도시 건설] 미션 ${ev.mission} · ${Math.round(ev.total)}점 (${ev.grade}) · 시장 지지율 ${Math.round(ev.approval)}%`];
+  ev.plants.forEach(p => L.push(`- ${E.PLANT[p.type].label} ${E.name(p.r, p.c)} (발전량 ${p.out})${p.link != null && ev.mission === 2 ? ' → ' + E.VILLAGES[p.link].name : ''}${p.note ? ' / 이유: ' + p.note : ''}`));
+  ev.vs.forEach(x => L.push(`${x.name}: ${x.tier.label} (만족도 ${Math.round(x.mood)}) “${x.quote}”`));
+  return L.join('\n');
+}
+function backToEdit() {
+  tourTok++; S.result = null; $('#result').classList.remove('show'); world.clearReactions(); bubbles.forEach(b => b.d.remove()); bubbles = [];
+  $('#leftcol').style.visibility = ''; $('#right').style.visibility = ''; $('#cellinfo').style.display = ''; world.view('oblique'); refresh();
+}
+
+// ── 시작 안내 ──
+function drawIntro() {
+  $('#introBody').innerHTML = `<h1>⚡ 에너지 도시 건설 게임</h1>
+  <div class="sub">KENTECH 2022학년도 창의성 면접 문항 「미션 켄텍 패키지」를 3D 게임으로 바꿨어요. 정답은 없고, <b>이유를 말할 수 있는 선택</b>이 중요해요.</div>
+  <div class="paper"><b>문제</b> KENTECH 도시의 세 마을에 전기 에너지 공급 계획을 세웁니다. 모든 문제에서 <b>[지도], [데이터], [마을]의 특성</b>을 고려하여 [발전 설비]의 종류와 위치를 결정해야 합니다.</div>
+  <h3>미션 1 · 위치 고르기</h3><div class="paper"><span class="cond">조건 1</span>1개의 좌표에는 1개의 발전소만 설치할 수 있다.<br><span class="cond">조건 2</span>전선 연결 비용은 무시한다.<br>발전 설비 4종을 1개씩, 경제·사회·환경 측면에서 적합한 좌표를 고르고 이유를 설명해요.</div>
+  <h3>미션 2 · 마을에 전기 공급하기</h3><div class="paper">배멧 <b>60</b>, 참살이 <b>80</b>, 빛가람 <b>100</b>의 전기 에너지를 공급해야 해요.<br><span class="cond">조건 2</span>설비 종류와 개수는 자유<br><span class="cond">조건 3</span>전선은 가로·세로로만, 길이에 따라 비용 증가<br><span class="cond">조건 4</span>카드 내용 + 표: 화석 60·비용 15, 태양광 = 일사량·비용 2, 풍력 = 풍속·비용 2, 원자력 90·비용 15</div>
+  <h3>하는 방법</h3><ul><li>왼쪽 <b>카드</b>를 지도로 끌어다 놓기(또는 카드를 누른 뒤 칸 누르기) → 건물이 지어져요.</li><li>위쪽 버튼으로 <b>일사량·바람·해류·미세먼지·사고 가정</b> 데이터를 지도에 겹쳐 봐요.</li><li>지은 설비를 눌러 <b>이유를 적고</b>(미션 2는 마을에 연결), 다 지었으면 <b>제출</b>!</li><li>마을 사람들이 환영·무관심·항의·시위로 반응하고 점수가 나와요. 제출 뒤에도 계획을 고칠 수 있어요.</li></ul>
+  <div class="rowb" style="margin-top:14px"><button class="btn go" id="start1">미션 1 시작</button><button class="btn go" id="start2" style="background:#1e5b8f">미션 2 시작</button></div>
+  <div class="sub" style="margin-top:8px">마을 반응·점수 계산은 이 게임이 정한 가정이에요(문항·채점 기준이 아니에요). 지도와 데이터는 보고서에서 옮겨 적었으므로 틀린 곳이 있으면 알려 주세요.</div>`;
+  $('#start1').onclick = () => { S.mission = 1; closeIntro(); }; $('#start2').onclick = () => { S.mission = 2; closeIntro(); };
+}
+function closeIntro() { $('#intro').classList.remove('show'); S.sel = null; S.tool = null; refresh(); hover(null); try { localStorage.setItem(KEY + '-seen', '1'); } catch (e) {} }
+$('#help').onclick = () => { drawIntro(); $('#intro').classList.add('show'); };
+
+// ── 시작 ──
+const q = new URLSearchParams(location.search);
+refresh();
+const demo = q.get('demo');
+if (demo) { // 교사용 시연: ?demo=1 (보고서 예시 답변) / ?demo=2 (재생에너지 중심 계획), &submit=1 이면 바로 제출
+  const mk = (t, c, link = null) => { const [r, cc] = E.parse(c); return { id: 'p' + S.n++, type: t, r, c: cc, link, note: '' }; };
+  if (demo === '1') { S.mission = 1; S.plans[1] = [mk('fossil', 'F5'), mk('nuclear', 'I9'), mk('solar', 'I7'), mk('wind', 'B1')]; }
+  else { S.mission = 2; S.plans[2] = [...'I8 I9 J7 J8 J9 J10 I7'.split(' ').map(c => mk('solar', c)), ...'A5 A6 A7 B5 B6'.split(' ').map(c => mk('wind', c))]; E.autoLink(S.plans[2]); }
+  refresh(); if (q.get('submit')) submit();
+} else { drawIntro(); let seen = false; try { seen = localStorage.getItem(KEY + '-seen'); } catch (e) {} if (!seen && !q.get('skip')) $('#intro').classList.add('show'); }
+</script>
+</body>
+</html>

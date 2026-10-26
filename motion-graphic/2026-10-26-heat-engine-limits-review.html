@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>물리학 모션그래픽 — 열기관과 열효율 복습, 실제 열효율의 한계</title>
+<!-- heat-engine-limits-review · 열기관의 에너지 흐름·카르노 효율·T–S 그래프·기관 비교·현실의 한계(손실 폭포)·효율–출력 타협을 LINE 스타일로 복습 (약 130초) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Nanum+Pen+Script&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<style>
+:root{
+  --page:#e7e3d8; --ink:#23261f; --barbg:#d8d3c6;
+  --board:#1f3d31; --chalk:#f3f0e6; --yellow:#f4cf5a; --pink:#f29aac; --blue:#8cc3e8; --wood:#6b4a2f;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#111513;--ink:#e6e6de;--barbg:#1c211e}}
+:root[data-theme="dark"]{--page:#111513;--ink:#e6e6de;--barbg:#1c211e}
+html{height:100%} body{height:100%;margin:0}
+body{background:var(--page);color:var(--ink);font-family:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;display:flex;flex-direction:column;overflow:hidden}
+#wrap{flex:1;position:relative;overflow:hidden}
+#stage{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center center;overflow:hidden;color:var(--chalk);
+  background:
+    radial-gradient(ellipse 900px 500px at 25% 20%,rgba(255,255,255,.07),transparent 70%),
+    radial-gradient(ellipse 700px 400px at 75% 70%,rgba(255,255,255,.05),transparent 70%),
+    radial-gradient(ellipse 1400px 700px at 50% 110%,rgba(0,0,0,.35),transparent 70%),
+    var(--board);
+  box-shadow:inset 0 0 0 22px var(--wood), inset 0 0 0 26px #4d341f, inset 0 0 120px rgba(0,0,0,.45);
+}
+#tray{position:absolute;left:22px;right:22px;bottom:22px;height:18px;background:linear-gradient(#7a5738,#50361f)}
+.stick{position:absolute;bottom:40px;height:12px;border-radius:6px}
+.dsp{font-family:"Black Han Sans","Malgun Gothic",sans-serif;font-weight:400}
+.pen{font-family:"Nanum Pen Script",cursive}
+.ch{text-shadow:0 0 1px currentColor,0 0 10px rgba(255,255,255,.12)}
+.sc{position:absolute;inset:0;display:none}
+.row{position:absolute;left:0;right:0;text-align:center;white-space:nowrap;will-change:transform,opacity}
+.abs{position:absolute;will-change:transform,opacity}
+.y{color:var(--yellow)} .p{color:var(--pink)} .b{color:var(--blue)}
+.card{position:absolute;border:4px solid rgba(243,240,230,.85);border-radius:22px 12px 26px 14px;background:var(--board)}
+.fig{position:absolute;transform-origin:50% 100%}
+.fig svg{display:block;overflow:visible}
+
+/* control bar */
+#bar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--barbg);font-size:15px;flex-wrap:wrap}
+#bar button{font:inherit;padding:7px 14px;border-radius:8px;border:1px solid rgba(127,127,127,.5);background:var(--page);color:var(--ink);cursor:pointer}
+#bar button:focus-visible,#seek:focus-visible{outline:3px solid #3b82f6;outline-offset:2px}
+#seek{flex:1;min-width:140px}
+#time{font-variant-numeric:tabular-nums;min-width:92px}
+.hint{opacity:.7}
+body.rec #bar,body.embed #bar{display:none}
+@media (max-width:640px){.hint{display:none}}
+#mgError{position:absolute;left:40px;right:40px;top:40px;z-index:50;background:rgba(184,50,31,.95);color:#fff;font:22px/1.4 sans-serif;padding:10px 18px;border-radius:12px;white-space:pre-wrap;display:none}
+#mgError.on{display:block}
+body.nodecor #tray, body.nodecor .stick{display:none}
+/* ---- theme ---- */
+:root{--board:#08142a;--chalk:#f3f0e6;--yellow:#f4cf5a;--pink:#f29aac;--blue:#8cc3e8;--wood:#6b4a2f}
+/* ---- MotionKit 스타일 프리셋 (내장) ---- */
+/* ==== MotionKit 스타일 프리셋 (템플릿 내장) ==== */
+.mk-u{display:inline-block;will-change:transform,opacity}
+.mk-bg{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden}
+.mk-grain{position:absolute;left:0;top:0;width:1920px;height:1080px;pointer-events:none;background-image:var(--mk-noise);opacity:.13;mix-blend-mode:multiply}
+/* 글꼴 */
+.f-sans{font-family:'Noto Sans KR','Black Han Sans',sans-serif;font-weight:900;letter-spacing:-.04em}
+.f-thin{font-family:'Noto Sans KR',sans-serif;font-weight:300;letter-spacing:.02em}
+.f-plex{font-family:'IBM Plex Sans KR',sans-serif;font-weight:300}
+.f-mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+.f-paper{font-family:'Do Hyeon','Black Han Sans',sans-serif}
+.f-serif{font-family:'Nanum Myeongjo',serif}
+/* 1. SWISS — 그리드·원색·굵은 산세리프 */
+.mk-swiss{background:#f2efe8;color:#111;background-image:repeating-linear-gradient(90deg,rgba(0,0,0,.06) 0 1px,transparent 1px 160px)}
+.mk-swiss .accent{background:#e8321e}
+/* 2. LINE — 블루프린트 선화 */
+.mk-line{background:radial-gradient(ellipse at 50% 40%,#13305a,#060e1d 75%);color:#d8ecff}
+.mk-line .grid{position:absolute;inset:0;background-image:linear-gradient(rgba(140,200,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(140,200,255,.08) 1px,transparent 1px);background-size:60px 60px}
+.mk-line svg *{fill:none;stroke:#8fd0ff;stroke-width:3;stroke-linecap:round}
+/* 3. PAPER — 종이 컷아웃 */
+.mk-paper{background:radial-gradient(circle at 30% 20%,#f6eedf,#e6d8bf);color:#3b2f22}
+.mk-paper .card{position:absolute;border-radius:18px;box-shadow:0 10px 0 rgba(0,0,0,.08),0 22px 40px rgba(60,40,10,.18)}
+/* 4. RISO — 형광 잉크 겹침 */
+.mk-riso{background:#f4f0e6;color:#1a1a1a}
+.mk-riso .ink-p{color:#ff48b0;fill:#ff48b0;mix-blend-mode:multiply}
+.mk-riso .ink-b{color:#0078bf;fill:#0078bf;mix-blend-mode:multiply}
+.mk-riso .ink-y{color:#ffe800;fill:#ffe800;mix-blend-mode:multiply}
+/* 5. COSMIC — 입자·글로우·세리프 */
+.mk-cosmic{background:radial-gradient(circle at 50% 60%,#22124a,#04030c 70%);color:#f5f0ff}
+.mk-cosmic .glow{text-shadow:0 0 24px rgba(190,160,255,.7)}
+/* 6. CHALK — 블록용 칠판(.mk-blk 한정). 템플릿 기본 칠판 테마(.mk-bg 없는 장면)와는 별개 */
+.mk-chalk{background:radial-gradient(ellipse 900px 500px at 25% 20%,rgba(255,255,255,.07),transparent 70%),radial-gradient(ellipse 1400px 700px at 50% 110%,rgba(0,0,0,.35),transparent 70%),#1f3d31;color:#f3f0e6;box-shadow:inset 0 0 0 22px #6b4a2f,inset 0 0 0 26px #4d341f,inset 0 0 120px rgba(0,0,0,.45)}
+/* ==== 블록 색 스타일: assemble.py --style 이 루트에 mk-<스타일> mk-blk 를 붙인다. 블록은 var(--토큰,LINE값)만 쓰므로 여기서 토큰 값만 바꾼다 ==== */
+.mk-blk svg *{fill:none;stroke:var(--ax);stroke-width:3;stroke-linecap:round}
+.mk-blk .grid{display:none}
+.mk-blk.mk-cosmic{--mk-ink:#f5f0ff;--ax:#b9a6ff;--c1:#ffd98a;--c2:#ff8fc8;--red:#ff6b8a;--grn:#7df0c0;--vio:#d6a8ff;--blu:#8ab4ff;--onc:#120a2a}
+.mk-blk.mk-cosmic .grid{display:block;background-image:radial-gradient(2px 2px at 8% 18%,rgba(255,255,255,.7),transparent),radial-gradient(1.5px 1.5px at 21% 74%,rgba(255,255,255,.55),transparent),radial-gradient(2px 2px at 34% 36%,rgba(220,200,255,.6),transparent),radial-gradient(1.5px 1.5px at 47% 90%,rgba(255,255,255,.5),transparent),radial-gradient(2px 2px at 59% 12%,rgba(255,255,255,.65),transparent),radial-gradient(1.5px 1.5px at 72% 58%,rgba(220,200,255,.55),transparent),radial-gradient(2px 2px at 83% 28%,rgba(255,255,255,.7),transparent),radial-gradient(1.5px 1.5px at 93% 82%,rgba(255,255,255,.5),transparent),radial-gradient(1.5px 1.5px at 15% 48%,rgba(255,255,255,.4),transparent),radial-gradient(1.5px 1.5px at 66% 40%,rgba(255,255,255,.4),transparent)}
+.mk-blk.mk-cosmic .f-plex{font-family:'Nanum Myeongjo',serif;font-weight:400}
+.mk-blk.mk-cosmic .f-plex,.mk-blk.mk-cosmic .f-mono{text-shadow:0 0 18px rgba(190,160,255,.45)}
+.mk-blk.mk-chalk{--mk-ink:#f3f0e6;--ax:#f3f0e6;--c1:#f4cf5a;--c2:#f7a8b8;--red:#ff9a86;--grn:#9fe3a8;--vio:#c9b5f0;--blu:#8cc3e8;--onc:#1f3d31;text-shadow:0 0 1px currentColor}
+.mk-blk.mk-chalk .f-plex{font-family:'Gowun Dodum','Malgun Gothic',sans-serif;font-weight:400}
+.mk-blk.mk-swiss{--mk-ink:#111;--ax:#111;--c1:#a35f00;--c2:#c2185b;--red:#d92b12;--grn:#0b7a43;--vio:#6d28d9;--blu:#1d4ed8;--onc:#fff}
+.mk-blk.mk-swiss .f-plex{font-weight:600}
+/* ==== /MotionKit CSS ==== */
+
+/* ---- extra_css ---- */
+
+</style>
+</head>
+<body class="nodecor">
+<div id="wrap">
+ <div id="stage">
+  <div id="tray"></div>
+  <div class="stick" style="left:300px;width:90px;background:#f3f0e6"></div>
+  <div class="stick" style="left:420px;width:60px;background:#f4cf5a"></div>
+  <div class="stick" style="left:1500px;width:70px;background:#f29aac"></div>
+
+  <!-- s0: 도입: 열을 100 % 일로? -->
+  <div class="sc" id="s0">
+<div class='mk-bg mk-line'><div class='grid'></div><canvas id='s0p' width='1920' height='1080' style='position:absolute;left:0;top:0'></canvas><canvas id='s0c' width='1920' height='1080' style='position:absolute;left:0;top:0'></canvas><div class='abs f-plex' id='s0t' style='left:110px;top:64px;font-size:30px;color:#8fd0ff;font-weight:500;white-space:nowrap;opacity:0;letter-spacing:.08em'>역학과 에너지 · Ⅱ. 열과 에너지 · 복습</div><div class='abs f-plex' id='s0h' style='left:110px;top:190px;font-size:150px;color:#d8ecff;font-weight:700;white-space:nowrap;'>열기관과 열효율</div><div class='abs f-plex' id='s0s' style='left:116px;top:400px;font-size:58px;color:#ffd24a;font-weight:500;white-space:nowrap;'></div></div>
+  </div>
+
+  <!-- s1: 에너지 흐름 Q1 = W + Q2, e = W/Q1 -->
+  <div class="sc" id="s1">
+<div class='mk-bg mk-line'><div class='grid'></div><canvas id='s1c' width='1920' height='1080' style='position:absolute;left:0;top:0'></canvas><div class='abs f-plex' id='s1t' style='left:110px;top:64px;font-size:30px;color:#8fd0ff;font-weight:500;white-space:nowrap;opacity:0;letter-spacing:.08em'>역학과 에너지 · 열기관과 열효율 복습 · 02</div><div class='abs f-plex' id='s1h' style='left:110px;top:120px;font-size:76px;color:#d8ecff;font-weight:700;white-space:nowrap;opacity:0;'>열기관의 에너지 흐름</div></div>
+  </div>
+
+  <!-- s2: 순환 과정 P-V 넓이, 시계/반시계 -->
+  <div class="sc" id="s2">
+<div class='mk-bg mk-line'><div class='grid'></div><canvas id='s2c' width='1920' height='1080' style='position:absolute;left:0;top:0'></canvas><div class='abs f-plex' id='s2t' style='left:110px;top:64px;font-size:30px;color:#8fd0ff;font-weight:500;white-space:nowrap;opacity:0;letter-spacing:.08em'>역학과 에너지 · 열기관과 열효율 복습 · 03</div><div class='abs f-plex' id='s2h' style='left:110px;top:120px;font-size:76px;color:#d8ecff;font-weight:700;white-space:nowrap;opacity:0;'>순환 과정과 P–V 그래프</div></div>
+  </div>
+
+  <!-- s3: 카르노 기관 4과정 -->
+  <div class="sc" id="s3">
+<div class='mk-bg mk-line'><div class='grid'></div><canvas id='s3c' width='1920' height='1080' style='position:absolute;left:0;top:0'></canvas><div class='abs f-plex' id='s3t' style='left:110px;top:64px;font-size:30px;color:#8fd0ff;font-weight:500;white-space:nowrap;opacity:0;letter-spacing:.08em'>역학과 에너지 · 열기관과 열효율 복습 · 04</div><div class='abs f-plex' id='s3h' style='left:110px;top:120px;font-size:76px;color:#d8ecff;font-weight:700;white-space:nowrap;opacity:0;'>카르노 기관의 한 바퀴</div></div>
+  </div>
+
+  <!-- s4: e = 1 - TL/TH -->
+  <div class="sc" id="s4">
+<div class='mk-bg mk-line'><div class='grid'></div><canvas id='s4c' width='1920' height='1080' style='position:absolute;left:0;top:0'></canvas><div class='abs f-plex' id='s4t' style='left:110px;top:64px;font-size:30px;color:#8fd0ff;font-weight:500;white-space:nowrap;opacity:0;letter-spacing:.08em'>역학과 에너지 · 열기관과 열효율 복습 · 05</div><div class='abs f-plex' id='s4h' style='left:110px;top:120px;font-size:76px;color:#d8ecff;font-weight:700;white-space:nowrap;opacity:0;'>카르노 효율 : 1 − T_L / T_H</div></div>
+  </div>
+
+  <!-- s5: T-S 사각형 -->
+  <div class="sc" id="s5">
+<div class='mk-bg mk-line'><div class='grid'></div><canvas id='s5c' width='1920' height='1080' style='position:absolute;left:0;top:0'></canvas><div class='abs f-plex' id='s5t' style='left:110px;top:64px;font-size:30px;color:#8fd0ff;font-weight:500;white-space:nowrap;opacity:0;letter-spacing:.08em'>역학과 에너지 · 열기관과 열효율 복습 · 06 · 교과서 밖 심화</div><div class='abs f-plex' id='s5h' style='left:110px;top:120px;font-size:76px;color:#d8ecff;font-weight:700;white-space:nowrap;opacity:0;'>T–S 그래프 : 넓이가 열이다</div></div>
+  </div>
+
+  <!-- s6: 같은 온도범위 기관 비교 -->
+  <div class="sc" id="s6">
+<div class='mk-bg mk-line'><div class='grid'></div><canvas id='s6c' width='1920' height='1080' style='position:absolute;left:0;top:0'></canvas><div class='abs f-plex' id='s6t' style='left:110px;top:64px;font-size:30px;color:#8fd0ff;font-weight:500;white-space:nowrap;opacity:0;letter-spacing:.08em'>역학과 에너지 · 열기관과 열효율 복습 · 07</div><div class='abs f-plex' id='s6h' style='left:110px;top:120px;font-size:76px;color:#d8ecff;font-weight:700;white-space:nowrap;opacity:0;'>같은 온도 범위, 다른 기관</div></div>
+  </div>
+
+  <!-- s7: 현실의 한계 폭포 + 벽 3가지 -->
+  <div class="sc" id="s7">
+<div class='mk-bg mk-line'><div class='grid'></div><canvas id='s7c' width='1920' height='1080' style='position:absolute;left:0;top:0'></canvas><div class='abs f-plex' id='s7t' style='left:110px;top:64px;font-size:30px;color:#8fd0ff;font-weight:500;white-space:nowrap;opacity:0;letter-spacing:.08em'>역학과 에너지 · 열기관과 열효율 복습 · 08</div><div class='abs f-plex' id='s7h' style='left:110px;top:120px;font-size:76px;color:#d8ecff;font-weight:700;white-space:nowrap;opacity:0;'>현실의 한계 : 왜 못 미칠까?</div></div>
+  </div>
+
+  <!-- s8: 효율-출력 트레이드오프 -->
+  <div class="sc" id="s8">
+<div class='mk-bg mk-line'><div class='grid'></div><canvas id='s8c' width='1920' height='1080' style='position:absolute;left:0;top:0'></canvas><div class='abs f-plex' id='s8t' style='left:110px;top:64px;font-size:30px;color:#8fd0ff;font-weight:500;white-space:nowrap;opacity:0;letter-spacing:.08em'>역학과 에너지 · 열기관과 열효율 복습 · 09 · 교과서 밖 심화</div><div class='abs f-plex' id='s8h' style='left:110px;top:120px;font-size:76px;color:#d8ecff;font-weight:700;white-space:nowrap;opacity:0;'>효율과 출력의 타협</div></div>
+  </div>
+
+  <!-- s9: 정리 + 확인 문제 -->
+  <div class="sc" id="s9">
+<div class='mk-bg mk-line'><div class='grid'></div><canvas id='s9c' width='1920' height='1080' style='position:absolute;left:0;top:0'></canvas><div class='abs f-plex' id='s9t' style='left:110px;top:64px;font-size:30px;color:#8fd0ff;font-weight:500;white-space:nowrap;opacity:0;letter-spacing:.08em'>역학과 에너지 · 열기관과 열효율 복습 · 10</div><div class='abs f-plex' id='s9h' style='left:110px;top:120px;font-size:76px;color:#d8ecff;font-weight:700;white-space:nowrap;opacity:0;'>정리 : 열효율의 한계</div></div>
+  </div>
+
+  <div id="mgError"></div>
+ </div>
+</div>
+
+<div id="bar">
+ <button id="play" aria-label="재생">▶ 재생</button>
+ <button id="restart">처음부터</button>
+ <input id="seek" type="range" min="0" step="0.01" value="0" aria-label="재생 위치">
+ <span id="time">0.0 / 0.0초</span>
+ <button id="mute">🔊 음악 켬</button>
+ <button id="fs">전체 화면</button>
+ <button id="rec">녹화 모드</button>
+ <span class="hint">Space 재생 · ← → 2초 이동 · R 처음부터 · M 음악 · F 전체화면 · H 녹화 모드</span>
+</div>
+
+
+<script>
+/* ===== 문구·설정 (content.config) ===== */
+const CONFIG = {};
+const MUSIC = {"on": true, "volume": 0.4, "bpm": 90, "melody_at": 14, "kick_at": 55, "hat_at": 85};
+
+/* ===== 공용 도우미 (템플릿 제공) ===== */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const cl = (x,a=0,b=1) => x<a?a:x>b?b:x;
+const P = (t,s,d) => cl((t-s)/d);                 // t가 s에서 d초 동안 0→1
+const eo = x => 1-Math.pow(1-x,3);                 // ease-out
+const eio = x => x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2; // ease-in-out
+const eb = x => {const c1=1.9,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)}; // 살짝 튀어 오르기
+const S = (el,o,tr) => {el.style.opacity=o; el.style.transform=tr||"none";};
+const colors=["y","p","b"], HEX={"y": "#f4cf5a", "p": "#f29aac", "b": "#8cc3e8", "c": "#f3f0e6"};
+/* 자주 쓰는 동작 */
+const typeText = (el,text,t,start,cps=18) => { el.textContent = text.slice(0, cl(Math.floor((t-start)*cps),0,text.length)); };
+const fadeUp = (el,t,start,dur=.6,dist=40) => { const a=eo(P(t,start,dur)); S(el,a,`translateY(${(1-a)*dist}px)`); };
+const popIn = (el,t,start,dur=.6) => { const a=P(t,start,dur); S(el,P(t,start,.1),`scale(${.4+.6*eb(a)})`); };
+const drawPath = (pathEl,t,start,dur=.8) => { pathEl.style.strokeDashoffset = 1-eio(P(t,start,dur)); }; // path에 pathLength="1" stroke-dasharray="1"
+
+/* 분필 사람 그림: person(색, 'down'|'point'|'wave'|'talk', 'smile'|'worry') → SVG 문자열 */
+function person(col,pose,mood){
+  const arms={down:"M60 92 L32 142 M60 92 L88 142",point:"M60 92 L32 142 M60 92 L114 56",wave:"M60 92 L30 142 M60 92 L98 34",talk:"M60 92 L32 142 M60 92 L110 100"}[pose]||"M60 92 L32 142 M60 92 L88 142";
+  const mouth=mood==="worry"?"M50 54 Q60 46 70 54":"M50 48 Q60 57 70 48";
+  return `<svg viewBox="0 0 120 220" width="100%" height="100%" fill="none" stroke="${col}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><circle cx="60" cy="36" r="26"/><circle cx="50" cy="33" r="2.6" fill="${col}"/><circle cx="70" cy="33" r="2.6" fill="${col}"/><path d="${mouth}"/><path d="M60 62 L60 150 M60 150 L36 214 M60 150 L84 214 ${arms}"/></svg>`;
+}
+
+window.__mgErrors = [];
+function reportError(where, e){
+  const msg = `${where}: ${e && e.message ? e.message : e}`;
+  if (!window.__mgErrors.includes(msg)) { window.__mgErrors.push(msg); console.error('[장면 오류] ' + msg); }
+  const box = $("#mgError"); box.textContent = window.__mgErrors.slice(-3).join("\n"); box.classList.add("on");
+}
+
+/* ===== MotionKit (내장) ===== */
+/* ==== MotionKit v1 (템플릿 내장) — 모든 함수는 t(장면 경과 초)의 순수 함수 ==== */
+window.MK=window.MK||(()=>{
+const c=(x,a=0,b=1)=>x<a?a:x>b?b:x;
+const p=(t,s,d)=>c((t-s)/d);
+const lerp=(a,b,k)=>a+(b-a)*k;
+const h=i=>{const s=Math.sin(i*127.1+311.7)*43758.5453;return s-Math.floor(s);};
+const n1=x=>{const i=Math.floor(x),f=x-i,u=f*f*(3-2*f);return lerp(h(i),h(i+1),u)*2-1;};
+const E={
+ lin:x=>x,
+ out:x=>1-Math.pow(1-x,3),
+ inOut:x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2,
+ expo:x=>x>=1?1:1-Math.pow(2,-10*x),
+ antic:x=>{const k=1.70158;return (k+1)*x*x*x-k*x*x;},
+ back:x=>{const k=1.70158,y=x-1;return 1+(k+1)*y*y*y+k*y*y;},
+ elastic:x=>x<=0?0:x>=1?1:Math.pow(2,-10*x)*Math.sin((x*10-.75)*2.0944)+1,
+ bounce:x=>{const n=7.5625,d=2.75;if(x<1/d)return n*x*x;if(x<2/d)return n*(x-=1.5/d)*x+.75;if(x<2.5/d)return n*(x-=2.25/d)*x+.9375;return n*(x-=2.625/d)*x+.984375;},
+ snap:x=>x<.2?-0.08*Math.sin(x/.2*Math.PI/2):1-Math.exp(-7*(x-.2))*Math.cos(9*(x-.2))*1.08
+};
+const ez=e=>typeof e==='function'?e:(E[e]||E.out);
+const spring=(x,damp=6,freq=1.6)=>x<=0?0:1-Math.exp(-damp*x)*Math.cos(6.2832*freq*x);
+const split=(el,mode='char',text)=>{const s=text!=null?text:el.textContent;el.innerHTML='';el._u=[];
+ (mode==='word'?s.split(/(\s+)/):Array.from(s)).forEach(ch=>{if(!ch)return;if(/^\s+$/.test(ch)){el.appendChild(document.createTextNode(ch));return;}
+ const sp=document.createElement('span');sp.className='mk-u';sp.textContent=ch;el.appendChild(sp);el._u.push(sp);});return el._u;};
+const kinetic=(el,t,start,o={})=>{const u=el._u||split(el,o.mode);const {type='rise',gap=.045,dur=.7,dist=80,order='lr'}=o;const n=u.length;
+ u.forEach((sp,i)=>{const j=order==='rl'?n-1-i:order==='center'?Math.abs(i-(n-1)/2):order==='random'?h(i+7)*n:i;
+  const k=p(t,start+j*gap,dur);let op=c(k*3),tr='',e;
+  switch(type){
+   case 'drop':e=E.bounce(k);tr=`translateY(${(e-1)*dist*2}px)`;op=k>0?1:0;break;
+   case 'flip':e=E.back(k);tr=`perspective(600px) rotateX(${(1-e)*-90}deg)`;break;
+   case 'pop':e=E.elastic(k);tr=`scale(${e})`;op=k>0?1:0;break;
+   case 'scatter':{e=E.expo(k);const a=h(i)*2-1,b=h(i+50)*2-1;tr=`translate(${(1-e)*a*dist*4}px,${(1-e)*b*dist*3}px) rotate(${(1-e)*a*180}deg)`;break;}
+   case 'blur':e=E.out(k);sp.style.filter=`blur(${(1-e)*14}px)`;tr=`scale(${1.3-.3*e})`;break;
+   case 'wave':e=E.out(k);tr=`translateY(${(1-e)*dist+Math.sin(t*4-i*.5)*8*e}px)`;break;
+   default:e=E.back(k);tr=`translateY(${(1-e)*dist}px)`;
+  }
+  sp.style.opacity=op;sp.style.transform=tr;});};
+const kineticOut=(el,t,start,o={})=>{const u=el._u||split(el,o.mode);const {gap=.03,dur=.45,dist=60}=o;
+ u.forEach((sp,i)=>{const k=E.antic(p(t,start+i*gap,dur));if(k<=0&&t<start)return;sp.style.opacity=1-c(k);sp.style.transform=`translateY(${-k*dist}px)`;});};
+const stagger=(els,t,start,o,fn)=>{const {gap=.08,dur=.6,ease='back'}=o||{};const f=ez(ease);Array.from(els).forEach((el,i)=>fn(el,f(p(t,start+i*gap,dur)),i));};
+const reveal=(el,t,start,dur,o={})=>{const {shape='circle',x=50,y=50,ease='inOut',dir='left'}=o;const k=ez(ease)(p(t,start,dur));let cp;
+ if(shape==='wipe'){const r=(1-k)*100;cp=dir==='right'?`inset(0 0 0 ${r}%)`:dir==='up'?`inset(${r}% 0 0 0)`:dir==='down'?`inset(0 0 ${r}% 0)`:`inset(0 ${r}% 0 0)`;}
+ else if(shape==='diag'){const a=k*200;cp=`polygon(0 0,${a}% 0,${a-100}% 100%,0 100%)`;}
+ else if(shape==='iris'){const r=(1-k)*50;cp=`inset(${r}% ${r}% ${r}% ${r}% round ${r}%)`;}
+ else cp=`circle(${k*150}% at ${x}% ${y}%)`;
+ el.style.clipPath=cp;el.style.webkitClipPath=cp;};
+const camera=(el,t,keys,ease='inOut')=>{let a=keys[0],b=keys[keys.length-1];
+ if(t<=a.t)b=a;else if(t>=b.t)a=b;else for(let i=0;i<keys.length-1;i++)if(t>=keys[i].t&&t<=keys[i+1].t){a=keys[i];b=keys[i+1];break;}
+ const k=a===b?0:ez(ease)((t-a.t)/(b.t-a.t));const g=(q,d)=>lerp(a[q]??d,b[q]??d,k);
+ el.style.transformOrigin='960px 540px';el.style.transform=`translate(${g('x',0)}px,${g('y',0)}px) scale(${g('s',1)}) rotate(${g('r',0)}deg)`;};
+const ngon=(sides,N=72,r=200,cx=0,cy=0,rot=-90)=>{const P=[];for(let i=0;i<N;i++){const s=i/N;
+ if(!sides){const a=(rot+360*s)*Math.PI/180;P.push([cx+r*Math.cos(a),cy+r*Math.sin(a)]);continue;}
+ const f=s*sides,j=Math.floor(f),u=f-j,A=(rot+360*j/sides)*Math.PI/180,B=(rot+360*(j+1)/sides)*Math.PI/180;
+ P.push([cx+r*lerp(Math.cos(A),Math.cos(B),u),cy+r*lerp(Math.sin(A),Math.sin(B),u)]);}return P;};
+const morph=(el,A,B,k)=>el.setAttribute('points',A.map((a,i)=>`${lerp(a[0],B[i][0],k).toFixed(1)},${lerp(a[1],B[i][1],k).toFixed(1)}`).join(' '));
+const ball=(el,t,start,o={})=>{const {h:H=400,decay=.55,fall=.55,sq=.35}=o;const g=2*H/(fall*fall);let tt=t-start,y=H,v=0;
+ if(tt>0){if(tt<fall){y=H-.5*g*tt*tt;v=-g*tt;}else{tt-=fall;let hk=H*decay,vk=Math.sqrt(2*g*hk),T=2*vk/g,n=0;
+  while(tt>T&&hk>1&&n++<30){tt-=T;hk*=decay;vk=Math.sqrt(2*g*hk);T=2*vk/g;}
+  if(hk<=1||n>=30){y=0;v=0;}else{y=vk*tt-.5*g*tt*tt;v=vk-g*tt;}}}
+ const sp=Math.abs(v)/Math.sqrt(2*g*H);let sx=1,sy=1;
+ if(y<H*.04&&sp>.05){sx=1+sq*sp;sy=1-sq*sp;}else{sy=1+.25*sp;sx=1-.15*sp;}
+ el.style.transformOrigin='50% 100%';el.style.transform=`translateY(${-y}px) scale(${sx},${sy})`;return y;};
+const boil=(el,t,amt=1.5,fps=8,base='')=>{const f=Math.floor(t*fps);el.style.transform=`${base} translate(${(h(f)*2-1)*amt}px,${(h(f+9)*2-1)*amt}px) rotate(${(h(f+3)*2-1)*amt*.3}deg)`;};
+const misreg=(el,t,amt=4,fps=10)=>{const f=Math.floor(t*fps);el.style.transform=`translate(${(h(f+1)*2-1)*amt}px,${(h(f+2)*2-1)*amt}px)`;};
+const grain=(el,t,fps=12)=>{const f=Math.floor(t*fps);el.style.backgroundPosition=`${Math.floor(h(f)*256)}px ${Math.floor(h(f+5)*256)}px`;};
+const count=(el,t,start,dur,from,to,dec=0,ease='out')=>{el.textContent=lerp(from,to,ez(ease)(p(t,start,dur))).toFixed(dec);};
+const scramble=(el,text,t,start,dur,chars='01▲■●◆ABCDEFGHJKLMNPRSTUVWXYZ')=>{const k=p(t,start,dur),n=text.length,done=Math.floor(k*n),f=Math.floor(t*20);let s='';
+ for(let i=0;i<n;i++){if(i<done||text[i]===' ')s+=text[i];else if(k>0&&i<done+6)s+=chars[Math.floor(h(i+f*13)*chars.length)];}el.textContent=s;};
+const drawAll=(root,t,start,o={})=>{const {dur=1.2,gap=.15,ease='inOut'}=o;root.querySelectorAll('path,line,polyline,circle,rect').forEach((el,i)=>{
+ el.setAttribute('pathLength','1');el.style.strokeDasharray='1';el.style.strokeDashoffset=1-ez(ease)(p(t,start+i*gap,dur));});};
+const particles=(cv,t,o={})=>{const ctx=cv.getContext('2d');const {n=160,mode='drift',color='255,255,255',size=2.2,speed=.08,glow=0,cx=960,cy=540,alpha=1}=o;
+ ctx.clearRect(0,0,cv.width,cv.height);ctx.save();if(glow){ctx.shadowBlur=glow;ctx.shadowColor=`rgba(${color},1)`;}
+ for(let i=0;i<n;i++){let x,y;const a=h(i+3),b=h(i+91),z=.3+.7*h(i+17);
+  if(mode==='orbit'){const R=80+a*620,w=(.15+.6/(1+R/200))*(b<.5?1:-1),ang=b*6.2832+t*w;x=cx+R*Math.cos(ang);y=cy+R*Math.sin(ang)*.42;}
+  else if(mode==='rise'){x=a*cv.width+n1(i+t*.5)*30;y=((b*cv.height-t*speed*600*z)%cv.height+cv.height)%cv.height;}
+  else{x=a*cv.width+n1(i*1.7+t*speed*3)*120;y=b*cv.height+n1(i*2.3+50+t*speed*3)*120;}
+  ctx.globalAlpha=alpha*z*(.55+.45*Math.sin(t*2+i));ctx.fillStyle=`rgb(${color})`;ctx.beginPath();ctx.arc(x,y,size*z,0,6.2832);ctx.fill();}
+ ctx.restore();};
+/* 3D 무대(Three.js, content.three:true 필요): host 안에 투명 캔버스를 한 번 만들고 {T,scene,cam,look,place,draw}를 돌려준다. 장면 구성은 S.init 가드 안에서 한 번만, 카메라·객체 상태는 매 프레임 t의 함수로 정한다 */
+const stage3d=(host,o={})=>{if(host._s3)return host._s3;const T=window.THREE;if(!T)throw new Error('Three.js가 없습니다 (content.three:true 필요)');
+ /* r140 호환: 색 변환 없이 선언한 값 그대로 출력(r152+는 기본이 sRGB 변환), 조명은 옛 단위(세기×π, 점광원 감쇠 없음)로 해석 */
+ T.ColorManagement.enabled=false;
+ const cv=document.createElement('canvas');cv.style.cssText='position:absolute;left:0;top:0;width:1920px;height:1080px';host.appendChild(cv);
+ const r=new T.WebGLRenderer({canvas:cv,alpha:true,antialias:true,preserveDrawingBuffer:true});r.outputColorSpace=T.LinearSRGBColorSpace;r.setSize(1920,1080,false);r.setClearColor(0,0);
+ const scene=new T.Scene(),cam=new T.PerspectiveCamera(o.fov||35,16/9,.1,200);
+ const S={T,scene,cam,r,
+  look(az,el,dist,tg){const a=az*Math.PI/180,e=el*Math.PI/180;cam.position.set(tg.x+dist*Math.cos(e)*Math.sin(a),tg.y+dist*Math.sin(e),tg.z+dist*Math.cos(e)*Math.cos(a));cam.lookAt(tg);cam.updateMatrixWorld();},
+  /* 카메라 경로: keys=[[t,az,el,dist],…](t 오름차순, 2개 이상). o.tg=바라볼 점(Vector3), o.ease='cr'(기본: 키마다 멈추지 않고 이어짐, 처음·끝은 서서히)|'inout'(키마다 서서히 멈춤), o.sway=도(°) 단위 미세 흔들림(조작이 안 되는 임베드에서 입체감을 주려면 1~2) */
+  path(t,keys,q={}){const k=keys,n=k.length,tg=q.tg||new T.Vector3(),tt=Math.min(Math.max(t,k[0][0]),k[n-1][0]);let i=0;while(i<n-2&&tt>=k[i+1][0])i++;
+   const a=k[i],b=k[i+1],dt=b[0]-a[0],u=(tt-a[0])/dt,v=[];
+   for(let j=1;j<4;j++){let y;
+    if(q.ease==='inout')y=a[j]+(b[j]-a[j])*E.inOut(u);
+    else{const m0=i>0?(b[j]-k[i-1][j])/(b[0]-k[i-1][0]):0,m1=i<n-2?(k[i+2][j]-a[j])/(k[i+2][0]-a[0]):0,u2=u*u,u3=u2*u;
+     y=(2*u3-3*u2+1)*a[j]+(u3-2*u2+u)*dt*m0+(-2*u3+3*u2)*b[j]+(u3-u2)*dt*m1;}
+    v.push(y);}
+   const s=q.sway||0;S.look(v[0]+s*Math.sin(t*.55),v[1]+s*.45*Math.sin(t*.4+1.3),v[2],tg);},
+  /* 화살표 묶음(벡터장·힘 표시): n개를 InstancedMesh 2개(몸통·머리)로 그린다. A.set(i,px,py,pz,dx,dy,dz,길이[,Color,밝기0~1])로 매 프레임 갱신(길이 0이면 숨김), 끝나면 A.commit(). 방향(dx,dy,dz)은 정규화하지 않아도 된다 */
+  arrows(n,q={}){const {shaft=.035,head=.11,hmax=.32}=q,UP=new T.Vector3(0,1,0),base=q.color||new T.Color(0xffffff);
+   const sg=new T.CylinderGeometry(shaft,shaft,1,8),hg=new T.ConeGeometry(head,1,14);sg.translate(0,.5,0);hg.translate(0,.5,0);
+   const mk=g=>{const m=new T.InstancedMesh(g,new T.MeshBasicMaterial({color:0xffffff}),n);m.frustumCulled=false;scene.add(m);return m;};
+   const A=mk(sg),B=mk(hg),M=new T.Matrix4(),Qt=new T.Quaternion(),P=new T.Vector3(),D=new T.Vector3(),Sc=new T.Vector3(),C=new T.Color();
+   return {A,B,set(i,px,py,pz,dx,dy,dz,len,col,k=1){D.set(dx,dy,dz);const L=len>1e-4&&D.lengthSq()>0?len:0;
+     if(L){D.normalize();Qt.setFromUnitVectors(UP,D);}else Qt.identity();
+     const hl=Math.min(hmax,.4*L),sl=L-hl;
+     P.set(px,py,pz);Sc.set(L?1:0,sl,L?1:0);M.compose(P,Qt,Sc);A.setMatrixAt(i,M);
+     P.set(px+D.x*sl,py+D.y*sl,pz+D.z*sl);Sc.set(L?1:0,hl,L?1:0);M.compose(P,Qt,Sc);B.setMatrixAt(i,M);
+     C.copy(col||base).multiplyScalar(.35+.65*k);A.setColorAt(i,C);B.setColorAt(i,C);},
+    commit(){A.instanceMatrix.needsUpdate=B.instanceMatrix.needsUpdate=true;if(A.instanceColor)A.instanceColor.needsUpdate=B.instanceColor.needsUpdate=true;}};},
+  xy(x,y,z){const v=new T.Vector3(x,y,z).project(cam);return [(v.x+1)*960,(1-v.y)*540];},
+  place(el,x,y,z,q={}){const {w=240,h=60,dx=0,dy=0}=q,s=S.xy(x,y,z);el.style.width=w+'px';el.style.left=(s[0]-w/2+dx)+'px';el.style.top=(s[1]-h/2+dy)+'px';},
+  draw(){const ls=[];scene.traverse(o=>{if(o.isLight){ls.push([o,o.intensity]);o.intensity*=Math.PI;if(o.isPointLight||o.isSpotLight)o.decay=0;}});r.render(scene,cam);ls.forEach(([o,v])=>{o.intensity=v;});}};
+ return host._s3=S;};
+/* 준비: 웹폰트·그레인 텍스처 (한 번만) */
+(()=>{try{if(!document.getElementById('mk-fonts')){const l=document.createElement('link');l.id='mk-fonts';l.rel='stylesheet';
+ l.href='https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;900&family=IBM+Plex+Sans+KR:wght@300;600&family=Do+Hyeon&family=Nanum+Myeongjo:wght@400;800&display=swap';document.head.appendChild(l);}
+ const cv=document.createElement('canvas');cv.width=cv.height=256;const g=cv.getContext('2d'),im=g.createImageData(256,256);
+ for(let i=0;i<im.data.length;i+=4){const v=Math.floor(h(i*.25+1)*255);im.data[i]=im.data[i+1]=im.data[i+2]=v;im.data[i+3]=255;}
+ g.putImageData(im,0,0);document.documentElement.style.setProperty('--mk-noise',`url(${cv.toDataURL()})`);}catch(e){}})();
+return {c,p,lerp,h,n1,E,ez,spring,split,kinetic,kineticOut,stagger,reveal,camera,ngon,morph,ball,boil,misreg,grain,count,scramble,drawAll,particles,stage3d};
+})();
+/* ==== /MotionKit ==== */
+
+
+/* ===== setup_js (장면 요소 준비: 한 번 실행, 여기서 선언한 const/function은 장면 코드에서 쓸 수 있다) ===== */
+
+const COL={Q:'#ff8a5a',C:'#8fd0ff',W:'#ffd24a',G:'#7be0a0',ax:'#8fd0ff',ink:'#d8ecff',pk:'#ff7aa8',V:'#c4a5ff',dim:'#7f9cc4'};
+const E=MK.E;
+function cvs(id){const c=document.getElementById(id),x=c.getContext('2d');x.setTransform(1,0,0,1,0,0);x.clearRect(0,0,1920,1080);return x;}
+function fade(id,t,s,d){d=d||.5;const k=MK.p(t,s,d),e=document.getElementById(id);e.style.opacity=k;e.style.transform='translateY('+((1-E.out(k))*26)+'px)';}
+function txt(c,s,x,y,size,col,al,w){c.font=(w||600)+' '+size+'px "IBM Plex Sans KR",sans-serif';c.fillStyle=col;c.textAlign=al||'left';c.fillText(s,x,y);c.textAlign='left';}
+function tx(c,t,s,str,x,y,size,col,al,w,fo){let a=MK.p(t,s,.5);if(fo!==undefined)a*=1-MK.p(t,fo,.4);if(a<=0)return;c.globalAlpha=a;txt(c,str,x,y+(1-E.out(MK.p(t,s,.5)))*18,size,col,al,w);c.globalAlpha=1;}
+function arrow(c,x0,y0,x1,y1,col,w){c.strokeStyle=col;c.fillStyle=col;c.lineWidth=w;c.lineCap='round';c.beginPath();c.moveTo(x0,y0);c.lineTo(x1,y1);c.stroke();const a=Math.atan2(y1-y0,x1-x0),h=w*3.2;c.beginPath();c.moveTo(x1+Math.cos(a)*w,y1+Math.sin(a)*w);c.lineTo(x1-h*Math.cos(a-.45),y1-h*Math.sin(a-.45));c.lineTo(x1-h*Math.cos(a+.45),y1-h*Math.sin(a+.45));c.closePath();c.fill();}
+function axes(c,x,y,w,h,xl,yl,k){k=k===undefined?1:k;c.globalAlpha=k;c.strokeStyle=COL.ax;c.lineWidth=5;c.lineCap='round';c.beginPath();c.moveTo(x,y-10);c.lineTo(x,y+h);c.lineTo(x+w+10,y+h);c.stroke();txt(c,yl,x-16,y-22,36,COL.ax,'right');txt(c,xl,x+w+30,y+h+14,36,COL.ax,'left');c.globalAlpha=1;}
+function dot(c,x,y,r,col){c.fillStyle=col;c.shadowColor=col;c.shadowBlur=22;c.beginPath();c.arc(x,y,r,0,6.2832);c.fill();c.shadowBlur=0;}
+function rect(c,x,y,w,h,col,a){c.globalAlpha=a;c.fillStyle=col;c.shadowColor=col;c.shadowBlur=14;c.fillRect(x,y,w,h);c.shadowBlur=0;c.globalAlpha=1;}
+
+
+/* ===== 장면 ===== */
+const SC=[
+ {id:"s0",d:10,up(t){
+
+MK.particles($('#s0p'),t,{mode:'drift',n:70,color:'255,138,90',size:2.6,glow:8});
+const c=cvs('s0c');fade('s0t',t,.1);
+MK.kinetic($('#s0h'),t,.3,{type:'rise',gap:.07,dur:.7,dist:60});
+MK.scramble($('#s0s'),'열을 100 % 일로 바꿀 수 있을까?',t,1.6,1.4);
+const bx=260,by=700,bw=1400,bh=96,a=MK.p(t,2.6,.6);
+const up=E.inOut(MK.p(t,3.2,2.2)),dn=E.back(MK.p(t,6.8,.9)),frac=up*(1-dn*.7);
+c.globalAlpha=a;c.strokeStyle=COL.ax;c.lineWidth=5;c.strokeRect(bx,by,bw,bh);
+txt(c,'열 Q₁',bx,by-30,44,COL.Q,'left');
+c.setLineDash([12,10]);c.strokeStyle=COL.pk;c.lineWidth=4;c.beginPath();c.moveTo(bx+bw,by-70);c.lineTo(bx+bw,by+bh+30);c.stroke();c.setLineDash([]);c.globalAlpha=1;
+if(frac>0){rect(c,bx+3,by+3,(bw-6)*frac,bh-6,COL.W,.9*a);}
+if(t>5.4&&t<6.8)tx(c,t,5.4,'100 % ?',bx+bw-10,by+bh+90,60,COL.pk,'right',700);
+if(t>=6.8){tx(c,t,7.2,'현실은 25 ~ 30 %',bx+(bw-6)*.3+24,by+bh+90,58,COL.G,'left',700);}
+
+ }},
+ {id:"s1",d:12,up(t){
+const c=cvs('s1c');fade('s1t',t,.1);fade('s1h',t,.3);
+
+function band(x0,y0,x1,y1,th,col,k){c.globalAlpha=.55;c.fillStyle=col;c.shadowColor=col;c.shadowBlur=14;if(y0===y1)c.fillRect(x0,y0-th/2,(x1-x0)*k,th);else c.fillRect(x0-th/2,y0,th,(y1-y0)*k);c.shadowBlur=0;c.globalAlpha=1;}
+function dots(x0,y0,x1,y1,th,k,n){const L=Math.hypot(x1-x0,y1-y0);for(let i=0;i<n;i++){const s=((t*.35+i/n)%1);if(s>k)continue;const q=s*L,x=x0+(x1-x0)*s,y=y0+(y1-y0)*s,o=((i*37)%11-5)*(th/22);c.fillStyle='#fff';c.globalAlpha=.85;c.beginPath();c.arc(y0===y1?x:x+o,y0===y1?y+o:y,5,0,6.2832);c.fill();c.globalAlpha=1;}}
+const k1=MK.p(t,1.4,1.2),kw=MK.p(t,3.4,1),kq=MK.p(t,5,1);
+// boxes
+c.globalAlpha=MK.p(t,.6,.6);c.fillStyle='rgba(255,138,90,.16)';c.fillRect(110,470,290,260);c.strokeStyle=COL.Q;c.lineWidth=5;c.strokeRect(110,470,290,260);txt(c,'고열원',255,590,48,COL.Q,'center',700);txt(c,'T_H 높은 온도',255,642,30,COL.dim,'center');
+c.globalAlpha=MK.p(t,1.8,.6);c.fillStyle='rgba(216,236,255,.06)';c.fillRect(760,480,300,240);c.strokeStyle=COL.ink;c.strokeRect(760,480,300,240);txt(c,'열기관',910,618,54,COL.ink,'center',700);
+c.globalAlpha=MK.p(t,4.6,.6);c.fillStyle='rgba(143,208,255,.14)';c.fillRect(660,880,500,130);c.strokeStyle=COL.C;c.strokeRect(660,880,500,130);txt(c,'저열원  T_L 낮은 온도',910,958,42,COL.C,'center',700);c.globalAlpha=1;
+band(400,600,760,600,90,COL.Q,k1);dots(400,600,760,600,90,k1,9);
+band(1060,600,1560,600,18,COL.W,kw);dots(1060,600,1560,600,18,kw,6);
+band(910,720,910,880,72,COL.C,kq);dots(910,720,910,880,72,kq,7);
+if(kw>.99)arrow(c,1560,600,1650,600,COL.W,10);
+tx(c,t,2.4,'Q₁ = 150 J',580,528,46,COL.Q,'center',700);
+tx(c,t,4.2,'W = 30 J',1310,560,46,COL.W,'center',700);
+tx(c,t,5.8,'Q₂ = 120 J',1000,810,46,COL.C,'left',700);
+tx(c,t,6.8,'W = Q₁ − Q₂ = 30 J',1240,830,46,COL.W,'left',700);
+tx(c,t,8.6,'e = W / Q₁ = 30 / 150',1240,910,46,COL.ink,'left',600);
+tx(c,t,9.8,'= 0.2  (20 %)',1240,990,60,COL.G,'left',700);
+
+ }},
+ {id:"s2",d:12,up(t){
+const c=cvs('s2c');fade('s2t',t,.1);fade('s2h',t,.3);
+
+const X0=200,Y0=300,Wd=760,Ht=600;
+const px=V=>X0+V/3*Wd,py=P=>Y0+Ht-P/3.2*Ht;
+const pt=f=>[px(1.5+.8*Math.cos(f)),py(2+.9*Math.sin(f))];
+axes(c,X0,Y0,Wd,Ht,'V','P',MK.p(t,.4,.5));
+function trail(f0,f1,col,w){c.strokeStyle=col;c.lineWidth=w;c.lineCap='round';c.beginPath();const n=Math.max(2,Math.floor(Math.abs(f1-f0)*14));for(let i=0;i<=n;i++){const q=pt(f0+(f1-f0)*i/n);i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]);}c.stroke();}
+function fillLoop(col,a){c.globalAlpha=a;c.fillStyle=col;c.beginPath();for(let i=0;i<=80;i++){const q=pt(i/80*6.2832);i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]);}c.closePath();c.fill();c.globalAlpha=1;}
+const u1=E.inOut(MK.p(t,1,2.4)),u2=E.inOut(MK.p(t,5.6,2.2));
+const fy=MK.p(t,3.6,.6)*(1-MK.p(t,5,.6)),fp=MK.p(t,7.9,.6);
+fillLoop(COL.W,.32*fy);fillLoop(COL.pk,.32*fp);
+if(t<5.2){if(u1>0){trail(Math.PI,Math.PI-6.2832*u1,COL.C,7);const q=pt(Math.PI-6.2832*u1);dot(c,q[0],q[1],14,COL.W);}}
+else{const col=COL.C;trail(Math.PI,Math.PI+6.2832*u2,col,7);const q=pt(Math.PI+6.2832*u2);dot(c,q[0],q[1],14,COL.pk);}
+if(t>3.4&&t<5.4)tx(c,t,3.6,'시계 방향',px(1.5),py(2),44,COL.W,'center',700,5);
+if(t>8)tx(c,t,8.0,'반시계',px(1.5),py(2),44,COL.pk,'center',700);
+tx(c,t,.9,'처음 상태로 돌아오는 과정',1100,380,46,COL.ink,'left',600);
+tx(c,t,2.2,'한 바퀴 : ΔU = 0',1100,470,50,COL.G,'left',700);
+tx(c,t,2.8,'→ Q₁ − Q₂ = W',1100,540,50,COL.W,'left',700);
+tx(c,t,4.2,'시계 방향 : W > 0  (일을 한다)',1100,650,44,COL.W,'left',700);
+tx(c,t,8.4,'반시계 방향 : W < 0  (일을 받는다)',1100,730,44,COL.pk,'left',700);
+tx(c,t,10.1,'순일 W = 둘러싼 넓이',1100,860,56,COL.ink,'left',700);
+
+ }},
+ {id:"s3",d:14,up(t){
+const c=cvs('s3c');fade('s3t',t,.1);fade('s3h',t,.3);
+
+const X0=170,Y0=290,Wd=900,Ht=620,GM=5/3,PB=1,VB=2,TH=2,TL=1;
+const VC=VB*Math.pow(TH/TL,1/(GM-1)),VD=1*Math.pow(TH/TL,1/(GM-1));
+const px=V=>X0+V/6*Wd,py=P=>Y0+Ht-P/2.2*Ht;
+const segs=[
+ {f:u=>{const V=1+(VB-1)*u;return [V,TH/V];},col:COL.Q,s:1.2},
+ {f:u=>{const V=VB+(VC-VB)*u;return [V,PB*Math.pow(VB/V,GM)];},col:COL.V,s:3.8},
+ {f:u=>{const V=VC+(VD-VC)*u;return [V,TL/V];},col:COL.C,s:6.4},
+ {f:u=>{const V=VD+(1-VD)*u;return [V,(TL/VD)*Math.pow(VD/V,GM)];},col:COL.V,s:9.0}];
+axes(c,X0,Y0,Wd,Ht,'V','P',MK.p(t,.4,.5));
+const D=2.4;
+if(t>11.6){c.globalAlpha=.3*MK.p(t,11.8,.8);c.fillStyle=COL.W;c.beginPath();let first=true;segs.forEach(sg=>{for(let i=0;i<=30;i++){const q=sg.f(i/30);const x=px(q[0]),y=py(q[1]);if(first){c.moveTo(x,y);first=false;}else c.lineTo(x,y);}});c.closePath();c.fill();c.globalAlpha=1;}
+segs.forEach((sg,k)=>{const u=E.inOut(MK.p(t,sg.s,D));if(u<=0)return;c.strokeStyle=sg.col;c.lineWidth=8;c.lineCap='round';c.beginPath();for(let i=0;i<=40;i++){const q=sg.f(u*i/40);i?c.lineTo(px(q[0]),py(q[1])):c.moveTo(px(q[0]),py(q[1]));}c.stroke();
+ if(u<1){const q=sg.f(u);dot(c,px(q[0]),py(q[1]),15,'#fff');}});
+const names=[['① 등온 팽창','Q₁ 흡수 · 온도 T_H 일정',COL.Q],['② 단열 팽창','열 출입 없음 · 온도 내려감',COL.V],['③ 등온 압축','Q₂ 방출 · 온도 T_L 일정',COL.C],['④ 단열 압축','열 출입 없음 · 온도 올라감',COL.V]];
+names.forEach((n,k)=>{const s=segs[k].s;const on=MK.p(t,s-.2,.4)*(1-MK.p(t,s+D+.1,.3)*.65);const y=390+k*128;c.globalAlpha=.45+.55*(t>=s-.2&&t<s+D+.1?1:0);if(t<s-.2)c.globalAlpha=.25;txt(c,n[0],1180,y,48,n[2],'left',700);txt(c,n[1],1180,y+44,32,COL.ink,'left',500);c.globalAlpha=1;});
+tx(c,t,11.9,'넓이 = 순일 W',px(2.6),py(.95),48,COL.W,'center',700);
+tx(c,t,12.4,'e = W / Q₁ = 1 − T_L / T_H',1180,960,52,COL.G,'left',700);
+
+ }},
+ {id:"s4",d:12,up(t){
+const c=cvs('s4c');fade('s4t',t,.1);fade('s4h',t,.3);
+
+const TH=600+300*E.inOut(MK.p(t,3.5,2.4));
+const TL=300-240*E.out(MK.p(t,7,2.6));
+const e=1-TL/TH,base=950,sc_=.55;
+c.globalAlpha=MK.p(t,.4,.5);c.strokeStyle=COL.ax;c.lineWidth=5;c.beginPath();c.moveTo(150,base);c.lineTo(640,base);c.stroke();c.globalAlpha=1;
+const a=MK.p(t,.6,.6);
+rect(c,200,base-TH*sc_,130,TH*sc_,COL.Q,.75*a);rect(c,420,base-TL*sc_,130,TL*sc_,COL.C,.75*a);
+if(a>0){c.globalAlpha=a;txt(c,'T_H',265,base+48,40,COL.Q,'center',700);txt(c,'T_L',485,base+48,40,COL.C,'center',700);
+ txt(c,Math.round(TH)+' K',265,base-TH*sc_-18,38,COL.Q,'center',700);txt(c,Math.round(TL)+' K',485,base-TL*sc_-18,38,COL.C,'center',700);c.globalAlpha=1;}
+tx(c,t,.9,'e = 1 − T_L / T_H',760,330,92,COL.W,'left',700);
+c.globalAlpha=MK.p(t,1.4,.5);txt(c,(e*100).toFixed(0)+' %',760,540,170,COL.G,'left',700);
+c.fillStyle='rgba(143,208,255,.14)';c.fillRect(760,600,900,46);c.globalAlpha=1;rect(c,760,600,900*e,46,COL.G,.9*MK.p(t,1.4,.5));
+const win=(a,b)=>MK.p(t,a,.4)*(1-MK.p(t,b,.4));
+function L(s,a,b,str,col){const k=win(a,b);if(k<=0)return;c.globalAlpha=k;txt(c,str,760,760,48,col,'left',700);c.globalAlpha=1;}
+L(0,1.6,3.4,'고열원 600 K , 저열원 300 K',COL.ink);
+L(0,3.6,6.9,'T_H 를 올리면  e 가 커진다',COL.Q);
+L(0,7.1,9.5,'T_L 을 낮추면  e 가 커진다',COL.C);
+if(t>9.7){c.globalAlpha=MK.p(t,9.8,.5);c.setLineDash([12,10]);c.strokeStyle=COL.pk;c.lineWidth=4;c.beginPath();c.moveTo(150,base);c.lineTo(640,base);c.stroke();c.setLineDash([]);txt(c,'0 K',660,base+12,36,COL.pk,'left',700);
+ txt(c,'T_L = 0 K 는 만들 수 없다',760,760,48,COL.pk,'left',700);txt(c,'→ e 는 언제나 1(100 %)보다 작다',760,830,46,COL.ink,'left',600);c.globalAlpha=1;}
+
+ }},
+ {id:"s5",d:12,up(t){
+const c=cvs('s5c');fade('s5t',t,.1);fade('s5h',t,.3);
+
+MK.reveal($('#s5c'),t,0,1.1,{shape:'circle',x:30,y:60});
+const X0=220,Y0=280,Wd=820,Ht=640,S1=.8,S2=2.2;
+const TH=800+150*E.inOut(MK.p(t,9.2,1.6)),TL=300;
+const sx=S=>X0+S/3*Wd,ty=Tk=>Y0+Ht-Tk/1000*Ht;
+axes(c,X0,Y0,Wd,Ht,'S','T',MK.p(t,.4,.5));
+const xa=sx(S1),xb=sx(S2),yh=ty(TH),yl=ty(TL),y0=ty(0);
+// 채움
+if(t>5){rect(c,xa,yh,xb-xa,yl-yh,COL.W,.42*MK.p(t,5,.8));}
+if(t>6){rect(c,xa,yl,xb-xa,y0-yl,COL.C,.30*MK.p(t,6,.8));}
+function ln(x0,y0_,x1,y1,col,k){c.strokeStyle=col;c.lineWidth=9;c.lineCap='round';c.beginPath();c.moveTo(x0,y0_);c.lineTo(x0+(x1-x0)*k,y0_+(y1-y0_)*k);c.stroke();}
+ln(xa,yh,xb,yh,COL.Q,E.inOut(MK.p(t,.8,1.3)));ln(xb,yh,xb,yl,COL.V,E.inOut(MK.p(t,2.2,1.2)));ln(xb,yl,xa,yl,COL.C,E.inOut(MK.p(t,3.4,1.3)));ln(xa,yl,xa,yh,COL.V,E.inOut(MK.p(t,4.6,1.0)));
+tx(c,t,1.6,'등온 (T_H)',(xa+xb)/2,yh-22,36,COL.Q,'center',700);
+tx(c,t,3.0,'단열',xb+22,(yh+yl)/2+12,36,COL.V,'left',700);
+tx(c,t,4.2,'등온 (T_L)',(xa+xb)/2,yl-22,36,COL.C,'center',700);
+tx(c,t,5.4,'W',(xa+xb)/2,(yh+yl)/2+16,56,'#10162b','center',800);
+tx(c,t,6.4,'Q₂',(xa+xb)/2,(yl+y0)/2+16,54,COL.C,'center',800);
+tx(c,t,6.0,'Q₁ = T_H ΔS',1150,400,48,COL.Q,'left',700);
+tx(c,t,6.8,'Q₂ = T_L ΔS',1150,480,48,COL.C,'left',700);
+tx(c,t,7.6,'W = (T_H − T_L) ΔS',1150,560,48,COL.W,'left',700);
+tx(c,t,8.4,'e = W / Q₁ = 1 − T_L / T_H',1150,680,46,COL.G,'left',700);
+c.globalAlpha=MK.p(t,9.2,.5);txt(c,'T_H ↑ → 사각형이 높아져 e = '+((1-TL/TH)*100).toFixed(0)+' %',1150,790,42,COL.ink,'left',600);c.globalAlpha=1;
+
+ }},
+ {id:"s6",d:12,up(t){
+const c=cvs('s6c');fade('s6t',t,.1);fade('s6h',t,.3);
+
+const vals=[66.7,66.7,19.6,56.5],cols=[COL.W,COL.G,COL.C,COL.Q];
+const names=[['카르노','기관'],['스털링','(이상적 재생기)'],['스털링','(재생기 없음)'],['오토 (가솔린)','이상 사이클']];
+const base=900,s_=6.2,bw=250,gp=120,x0=230;
+tx(c,t,.6,'T_H = 900 K ,  T_L = 300 K',110,262,44,COL.ink,'left',600);
+c.strokeStyle=COL.ax;c.lineWidth=5;c.globalAlpha=MK.p(t,.4,.5);c.beginPath();c.moveTo(150,base);c.lineTo(1780,base);c.stroke();c.globalAlpha=1;
+vals.forEach((v,i)=>{const st=1.2+i*1.2,k=E.out(MK.p(t,st,1)),x=x0+i*(bw+gp),h=v*s_*k;rect(c,x,base-h,bw,h,cols[i],.85);
+ if(k>0){c.globalAlpha=Math.min(1,k*1.5);txt(c,(v*k).toFixed(1)+' %',x+bw/2,base-h-18,46,cols[i],'center',700);}
+ const o=MK.p(t,st,.5);c.globalAlpha=o;txt(c,names[i][0],x+bw/2,base+46,36,cols[i],'center',700);txt(c,names[i][1],x+bw/2,base+88,30,COL.dim,'center',500);c.globalAlpha=1;});
+const yl=base-66.7*s_,kk=MK.p(t,6,.8);
+if(kk>0){c.globalAlpha=kk;c.setLineDash([14,9]);c.strokeStyle=COL.W;c.lineWidth=4;c.beginPath();c.moveTo(150,yl);c.lineTo(150+(1630)*kk,yl);c.stroke();c.setLineDash([]);c.globalAlpha=1;}
+tx(c,t,6.6,'카르노 한계',1780,yl-18,38,COL.W,'right',700);
+tx(c,t,8.4,'같은 두 열원 사이에서 점선을 넘는 기관은 없다',110,338,50,COL.pk,'left',700);
+
+ }},
+ {id:"s7",d:15,up(t){
+const c=cvs('s7c');fade('s7t',t,.1);fade('s7h',t,.3);
+
+const e=[83.3,56.5,39.6,29.7],base=860,s_=6,bw=210,gp=70,x0=210;
+const cols=[COL.W,COL.Q,COL.pk,COL.G];
+const nm=[['카르노','한계'],['이상 오토','사이클'],['열손실·','불완전 연소'],['마찰 뒤','= 실제']];
+c.globalAlpha=MK.p(t,.3,.5);
+for(let p=0;p<=80;p+=20){const y=base-p*s_;c.strokeStyle='rgba(160,190,255,.16)';c.lineWidth=2;c.beginPath();c.moveTo(x0-20,y);c.lineTo(x0+4*bw+3*gp+20,y);c.stroke();txt(c,p+' %',x0-30,y+10,26,COL.dim,'right');}
+c.globalAlpha=1;
+const st=[1.0,3.2,5.0,6.8];
+e.forEach((v,i)=>{const k=E.out(MK.p(t,st[i],.9)),x=x0+i*(bw+gp);let top=v,bot=0;
+ if(i===1||i===2){top=e[i-1];bot=e[i];}
+ const hTop=(top-(top-bot)*(1-k)*0)*s_;
+ if(i===0||i===3){rect(c,x,base-v*s_*k,bw,v*s_*k,cols[i],.88);}
+ else{ // 남은 몫(아래) + 깎인 몫(위, 점선)
+  rect(c,x,base-bot*s_*k,bw,bot*s_*k,i===1?COL.Q:COL.Q,.55*(i===1?1:.7));
+  if(k>0){c.globalAlpha=k;c.setLineDash([10,8]);c.strokeStyle=COL.pk;c.lineWidth=4;c.strokeRect(x,base-top*s_,bw,(top-bot)*s_);c.setLineDash([]);c.fillStyle='rgba(255,122,168,.2)';c.fillRect(x,base-top*s_,bw,(top-bot)*s_);c.globalAlpha=1;
+   txt(c,'−'+(top-bot).toFixed(1)+'%p',x+bw/2,base-top*s_+40,34,COL.pk,'center',700);}}
+ if(k>.2){c.globalAlpha=Math.min(1,k);const ty_=(i===1||i===2)?base-bot*s_-16:base-v*s_*k-16;txt(c,v.toFixed(1)+' %',x+bw/2,ty_,40,cols[i],'center',800);c.globalAlpha=1;}
+ const o=MK.p(t,st[i]+.2,.5);c.globalAlpha=o;txt(c,nm[i][0],x+bw/2,base+46,32,cols[i],'center',700);txt(c,nm[i][1],x+bw/2,base+84,28,COL.ink,'center',500);c.globalAlpha=1;
+ if(i>0&&k>0){c.globalAlpha=.5*k;c.setLineDash([5,6]);c.strokeStyle=COL.dim;c.lineWidth=2;c.beginPath();c.moveTo(x-gp,base-e[i-1]*s_);c.lineTo(x,base-e[i-1]*s_);c.stroke();c.setLineDash([]);c.globalAlpha=1;}});
+tx(c,t,8.2,'가솔린 기관의 실제 열효율 : 25 ~ 30 %',210,1010,40,COL.G,'left',700);
+tx(c,t,8.2,'※ 열손실 30 %, 마찰 25 %는 어림값',210,1056,26,COL.dim,'left',500);
+tx(c,t,9.0,'넘을 수 없는 벽',1360,330,48,COL.ink,'left',700);
+tx(c,t,9.6,'① T_L ≥ 주변 온도',1360,420,40,COL.C,'left',700);
+tx(c,t,9.9,'더 낮추려면 또 일이 필요',1360,462,30,COL.dim,'left',500);
+tx(c,t,11.0,'② T_H ≤ 재료의 한계',1360,560,40,COL.Q,'left',700);
+tx(c,t,11.3,'녹지 않는 온도까지만',1360,602,30,COL.dim,'left',500);
+tx(c,t,12.4,'③ 비가역 손실',1360,700,40,COL.pk,'left',700);
+tx(c,t,12.7,'마찰 · 열 누출 · 유한한 속도',1360,742,30,COL.dim,'left',500);
+
+ }},
+ {id:"s8",d:14,up(t){
+const c=cvs('s8c');fade('s8t',t,.1);fade('s8h',t,.3);
+
+if(!window.__tr){const TH=900,TL=300,a=[];let pm=0;for(let i=1;i<4000;i++){const T1=TH/2+TH/2*i/4000,T2=TL*T1/(2*T1-TH),P=(TH-T1)-(T2-TL);if(P>=0){a.push([1-T2/T1,P]);if(P>pm)pm=P;}}window.__tr={a:a,pm:pm,eC:1-TL/TH,eCA:1-Math.sqrt(TL/TH)};}
+const R=window.__tr,X0=200,Y0=300,Wd=900,Ht=600;
+const px=e=>X0+e/R.eC*Wd,py=p=>Y0+Ht-p/R.pm/1.1*Ht;
+axes(c,X0,Y0,Wd,Ht,'e','P',MK.p(t,.4,.5));
+const u=E.inOut(MK.p(t,1.2,4.2)),n=Math.floor(R.a.length*u);
+if(n>1){c.strokeStyle=COL.G;c.lineWidth=8;c.lineCap='round';c.beginPath();for(let i=0;i<n;i+=8){const q=R.a[i];i?c.lineTo(px(q[0]),py(q[1])):c.moveTo(px(q[0]),py(q[1]));}const q=R.a[n-1];c.lineTo(px(q[0]),py(q[1]));c.stroke();dot(c,px(q[0]),py(q[1]),14,'#fff');}
+c.setLineDash([12,9]);c.strokeStyle=COL.W;c.lineWidth=4;c.globalAlpha=MK.p(t,5.2,.5);c.beginPath();c.moveTo(px(R.eC),Y0);c.lineTo(px(R.eC),Y0+Ht);c.stroke();c.setLineDash([]);c.globalAlpha=1;
+tx(c,t,1.4,'아주 빠르게',X0+8,Y0+Ht+84,34,COL.dim,'left',600);
+tx(c,t,5.4,'카르노 한계 (출력 0)',px(R.eC)+16,Y0+36,34,COL.W,'left',700);
+if(t>6.4){const k=E.back(MK.p(t,6.4,.7));dot(c,px(R.eCA),py(R.pm),16*k,COL.Q);}
+tx(c,t,6.8,'최대 출력  e ≈ '+(R.eCA*100).toFixed(0)+' %',px(R.eCA)-20,py(R.pm)-30,38,COL.Q,'center',700);
+tx(c,t,1.0,'출력 P',X0-16,Y0-70,34,COL.ax,'right',600);
+tx(c,t,7.8,'효율을 한계까지 올리면',1180,420,46,COL.ink,'left',600);
+tx(c,t,8.4,'출력이 0 → 쓸모없다',1180,490,52,COL.pk,'left',700);
+tx(c,t,9.8,'실제 기관 = 효율 · 출력 · 비용의 타협',1180,610,40,COL.ink,'left',600);
+tx(c,t,11.2,'발전소 T_H ≈ 870 K',1180,730,44,COL.G,'left',700);
+tx(c,t,11.7,'e = 1 − √(T_L/T_H) ≈ 41 %',1180,795,44,COL.G,'left',700);
+tx(c,t,12.2,'실제 화력 발전 약 40 %',1180,860,38,COL.dim,'left',500);
+
+ }},
+ {id:"s9",d:17,up(t){
+const c=cvs('s9c');fade('s9t',t,.1);fade('s9h',t,.3);
+
+tx(c,t,.8,'① 열효율  e = W / Q₁ = 1 − Q₂ / Q₁',110,330,48,COL.ink,'left',700);
+tx(c,t,2.0,'② 이상적 한계 : 카르노  e = 1 − T_L / T_H',110,410,48,COL.W,'left',700);
+tx(c,t,3.2,'③ 현실은 더 낮다 : 손실 · 재료 · 속도',110,490,48,COL.pk,'left',700);
+const a=MK.p(t,5,.7);
+c.globalAlpha=a;c.fillStyle='rgba(143,208,255,.07)';c.fillRect(110,590,1700,390);c.strokeStyle=COL.C;c.lineWidth=4;c.strokeRect(110,590,1700,390);
+txt(c,'확인 문제',150,650,40,COL.C,'left',700);c.globalAlpha=1;
+tx(c,t,5.4,'400 K 와 300 K 사이에서 작동하는 기관의 열효율이 30 % 라고 한다.',150,730,44,COL.ink,'left',600);
+tx(c,t,5.8,'가능할까?',150,792,52,COL.W,'left',700);
+if(t>6.4&&t<9.6){const d=Math.floor((t-6.4)*1.6)%4;txt(c,'생각해 보세요'+'.'.repeat(d),150,890,42,COL.dim,'left',500);}
+tx(c,t,9.8,'e_max = 1 − 300 / 400 = 0.25  (25 %)',150,870,50,COL.G,'left',700);
+tx(c,t,11.8,'30 % > 25 %  →  불가능',150,950,56,COL.pk,'left',700);
+tx(c,t,14.0,'한계는 기술이 아니라 자연법칙',110,1040,40,COL.ink,'left',600);
+
+ }}
+];
+let acc=0; SC.forEach(s=>{s.el=$("#"+s.id);s.s=acc;acc+=s.d;});
+const TOTAL=acc;
+
+/* ===== 배경음악: 코드로 합성한 단순 멜로디 (외부 음원 없음) ===== */
+const BPM=MUSIC.bpm||112, SD=60/BPM/2;
+const CH=[[48,52,55],[43,47,50],[45,48,52],[41,45,48]];   // C G Am F
+const MEL=[76,0,79,0,76,74,72,0, 74,0,71,0,74,76,74,0, 72,0,76,0,81,0,79,76, 77,0,76,74,72,0,0,0];
+const ARP=[0,1,2,1,0,1,2,1];
+const mf=m=>440*Math.pow(2,(m-69)/12);
+let actx=null,master=null,noiseBuf=null,muted=!MUSIC.on,nextStep=0,baseA=0,baseT=0;
+function initAudio(){
+  if(!actx){
+    try{actx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return;}
+    master=actx.createGain();master.gain.value=0;master.connect(actx.destination);
+    noiseBuf=actx.createBuffer(1,actx.sampleRate*.1,actx.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  }
+  if(actx.state!=="running")actx.resume().then(syncAudio);
+  syncAudio();
+}
+function syncAudio(){if(actx){baseA=actx.currentTime;baseT=T;nextStep=Math.ceil(T/SD-1e-6);}}
+function tone(f,t,dur,type,g){const o=actx.createOscillator(),v=actx.createGain();o.type=type;o.frequency.value=f;
+  v.gain.setValueAtTime(0.0001,t);v.gain.linearRampToValueAtTime(g,t+.012);v.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(v).connect(master);o.start(t);o.stop(t+dur+.05);}
+function kick(t){const o=actx.createOscillator(),v=actx.createGain();o.frequency.setValueAtTime(140,t);o.frequency.exponentialRampToValueAtTime(45,t+.14);
+  v.gain.setValueAtTime(.55,t);v.gain.exponentialRampToValueAtTime(.001,t+.25);o.connect(v).connect(master);o.start(t);o.stop(t+.3);}
+function hat(t){const s=actx.createBufferSource(),h=actx.createBiquadFilter(),v=actx.createGain();s.buffer=noiseBuf;h.type="highpass";h.frequency.value=7000;
+  v.gain.setValueAtTime(.07,t);v.gain.exponentialRampToValueAtTime(.001,t+.05);s.connect(h).connect(v).connect(master);s.start(t);s.stop(t+.08);}
+function playStep(n,at,tl){
+  const bar=Math.floor(n/8)%4, st=n%8, ch=CH[bar];
+  const nt=ch[ARP[st]]+24+(st>=4&&ARP[st]===0?12:0);
+  tone(mf(nt),at,.22,"triangle",.07);
+  if(st===0||st===3||st===6)tone(mf(ch[0]),at,.32,"sine",.22);
+  if(tl>=MUSIC.melody_at){const m=MEL[n%32];if(m)tone(mf(m),at,.42,"sine",.13),tone(mf(m+12),at,.2,"sine",.025);}
+  if(tl>=MUSIC.kick_at&&(st===0||st===4))kick(at);
+  if(tl>=MUSIC.hat_at&&st%2===1)hat(at);
+}
+function audioTick(){
+  if(!actx||actx.state!=="running")return;
+  const vol=(muted?0:MUSIC.volume)*(1-P(T,TOTAL-3,3))*(playing?1:0);
+  master.gain.setTargetAtTime(vol,actx.currentTime,.05);
+  if(!playing||muted)return;
+  const now=actx.currentTime;
+  while(nextStep*SD<T+.2){const st=nextStep*SD;if(st>=T-.03&&st<TOTAL-.5)playStep(nextStep,now+Math.max(0,st-T),st);nextStep++;}
+}
+
+/* ===== 재생 엔진 ===== */
+let T=0,playing=false,last=null,cur=null;
+function render(t){
+  let sc=SC[SC.length-1]; for(const s of SC){if(t<s.s+s.d){sc=s;break;}}
+  if(cur!==sc){SC.forEach(s=>s.el.style.display="none");sc.el.style.display="block";cur=sc;}
+  const lt=t-sc.s, isLast=sc===SC[SC.length-1];
+  sc.el.style.opacity=P(lt,0,.25)*(isLast?1:1-P(lt,sc.d-.35,.35));
+  try { sc.up(lt); } catch (e) { reportError(sc.id, e); }
+  $("#seek").value=t; $("#time").textContent=`${t.toFixed(1)} / ${TOTAL.toFixed(1)}초`;
+}
+function frame(ts){
+  if(playing){
+    if(actx&&actx.state==="running"){T=baseT+(actx.currentTime-baseA);}
+    else{if(last!==null)T+=(ts-last)/1000;last=ts;}
+    if(T>=TOTAL){T=TOTAL;setPlay(false);}
+  } else last=null;
+  audioTick(); render(T); requestAnimationFrame(frame);
+}
+function setPlay(p){playing=p;last=null;syncAudio();$("#play").textContent=p?"❚❚ 일시정지":"▶ 재생";$("#play").setAttribute("aria-label",p?"일시정지":"재생");}
+$("#seek").max=TOTAL;
+$("#mute").textContent=muted?"🔇 음악 끔":"🔊 음악 켬";
+$("#play").onclick=()=>{initAudio();if(T>=TOTAL)T=0;setPlay(!playing);};
+$("#restart").onclick=()=>{initAudio();T=0;setPlay(true);};
+$("#seek").oninput=e=>{T=+e.target.value;syncAudio();};
+$("#mute").onclick=()=>{initAudio();muted=!muted;$("#mute").textContent=muted?"🔇 음악 끔":"🔊 음악 켬";syncAudio();};
+function toggleFS(){try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}catch(e){}}
+function toggleRec(){document.body.classList.toggle("rec");fit();}
+$("#fs").onclick=toggleFS; $("#rec").onclick=toggleRec;
+addEventListener("keydown",e=>{
+  if(e.target.tagName==="BUTTON"&&e.code==="Space")return;
+  initAudio();
+  if(e.code==="Space"){e.preventDefault();$("#play").click();}
+  else if(e.key==="f"||e.key==="F")toggleFS();
+  else if(e.key==="h"||e.key==="H")toggleRec();
+  else if(e.key==="m"||e.key==="M")$("#mute").click();
+  else if(e.key==="r"||e.key==="R"){T=0;setPlay(true);}
+  else if(e.key==="ArrowRight"){T=Math.min(TOTAL,T+2);syncAudio();}
+  else if(e.key==="ArrowLeft"){T=Math.max(0,T-2);syncAudio();}
+});
+function fit(){const w=$("#wrap"),s=Math.min(w.clientWidth/1920,w.clientHeight/1080);$("#stage").style.transform=`translate(-50%,-50%) scale(${s})`;}
+addEventListener("resize",fit); fit();
+/* 임베드 모드(?embed): 슬라이드 iframe용 — 컨트롤 바 숨김, 음악 끔, ?autoplay면 바로 재생. 부모는 postMessage({mg:"cmd",cmd:"restart|play|pause"})로 제어 */
+if(/[?&]embed\b/.test(location.search)){
+  document.body.classList.add("embed"); muted=true; fit();
+  if(/[?&]autoplay\b/.test(location.search)){T=0;setPlay(true);}
+  addEventListener("message",e=>{const d=e.data;if(e.source!==parent||!d||d.mg!=="cmd")return;
+    if(d.cmd==="restart"){T=0;setPlay(true);}else if(d.cmd==="play"){if(T>=TOTAL)T=0;setPlay(true);}else if(d.cmd==="pause")setPlay(false);});
+}
+window.__mg = { TOTAL, SC, render: t => { T = t; render(t); }, get T(){ return T; } };
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

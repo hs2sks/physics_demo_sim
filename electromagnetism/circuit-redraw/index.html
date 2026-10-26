@@ -644,7 +644,13 @@ function applyEdits(c, ops) {
   const cnt = { A: 0, V: 0, R: 0, S: 0, W: 0 };
   for (const op of ops || []) {
     const nm = (k, v) => k === "A" ? "A" + sub(++cnt.A) : k === "V" ? "V" + sub(++cnt.V) : k === "R" ? "R′" + sub(++cnt.R) + "" : k === "S" ? "S′" + sub(++cnt.S) : "";
-    if (op.t === "rep") {
+    if (op.t === "ser") {
+      const i = c.els.findIndex(e => e.id === op.id); if (i < 0) continue;
+      const o = c.els[i], m = "m" + op.uid, f = 0.7, A = c.nodes[o.a], B = c.nodes[o.b];
+      c.nodes[m] = [A[0] + (B[0] - A[0]) * f, A[1] + (B[1] - A[1]) * f];
+      if (Object.keys(c.tgt).length) { const ta = c.tgt[o.a] || A, tb = c.tgt[o.b] || B; c.tgt[m] = [ta[0] + (tb[0] - ta[0]) * f, ta[1] + (tb[1] - ta[1]) * f]; }
+      const nb = o.b; o.b = m; c.els.splice(i + 1, 0, E(op.k, "x" + op.uid, m, nb, 0, nm(op.k), { on: true, ser: true }));
+    } else if (op.t === "rep") {
       const i = c.els.findIndex(e => e.id === op.id); if (i < 0) continue;
       const o = c.els[i]; c.els[i] = E(op.k, o.id, o.a, o.b, op.v, nm(op.k), { on: !!op.on, route: o.route, edited: true, watt: 0 });
     } else if (op.t === "add" && c.nodes[op.a] && c.nodes[op.b]) {
@@ -861,7 +867,7 @@ const SWTXT = { sw: (id, v) => id === "s5" ? "S → " + v : "S " + (v === "close
 function flipSw(api, id, key) {
   const opts = SWOPT[key], cur = S.sw[id][key] || DEF[id][key]; S.sw[id][key] = opts[(opts.indexOf(cur) + 1) % opts.length]; api.refresh();
 }
-const HINT = { toggle: "스위치를 눌러 열고 닫는다(그림의 스위치를 직접 눌러도 된다).", swap: "고른 소자로 ‘바꿀 곳’(도선·저항 등)을 그림에서 누른다. 전류계는 도선 자리에 끼워 직렬로 연결하는 방법이다.", link: "점 두 개를 차례로 눌러 고른 소자를 잇는다. 전압계는 재려는 두 점에 연결(병렬)하며 회로에 영향이 없다." };
+const HINT = { toggle: "스위치를 눌러 열고 닫는다(그림의 스위치를 직접 눌러도 된다).", swap: "고른 소자로 바꿀 곳을 그림에서 누른다. 전류계는 저항·스위치를 누르면 그 소자와 직렬로 끼워지고, 도선을 누르면 도선 자리에 들어간다.", link: "점 두 개를 차례로 눌러 고른 소자를 잇는다. 전압계는 재려는 두 점에 연결(병렬)하며 회로에 영향이 없다." };
 function toVirtual(ev) { const rc = ev.target.getBoundingClientRect(); return [((ev.clientX - rc.left) - S.xf.ox) / S.xf.sc, ((ev.clientY - rc.top) - S.xf.oy) / S.xf.sc]; }
 function pick(ev) {
   const C = S.cur; if (!C) return null; const p = toVirtual(ev), pos = S.pos;
@@ -870,7 +876,7 @@ function pick(ev) {
   }
   let best = null, bd = 26;
   for (const el of C.c.els) {
-    if (el.k === "B" || el.k === "V") continue; if (S.mode === "toggle" && el.k !== "S") continue; if (S.mode === "swap" && el.x) continue;
+    if (el.k === "B" || el.k === "V") continue; if (S.mode === "toggle" && el.k !== "S") continue; 
     const pts = pathOf(el, pos[el.a], pos[el.b]); for (let i = 0; i + 1 < pts.length; i++) { const d = dSeg(p, pts[i], pts[i + 1]); if (d < bd) { bd = d; best = el; } }
   }
   return best ? { id: best.id, el: best } : null;
@@ -879,12 +885,15 @@ function onDown(api, ev) {
   const id = api.scenario.id, h = pick(ev); if (!h) { S.pend = null; draw(api); return; }
   const ops = S.edits[id];
   if (S.mode === "toggle") {
-    const m = SWMAP[id] && SWMAP[id][h.id];
-    if (m) flipSw(api, id, m);
-    else { const op = ops.find(o => (o.t === "rep" ? o.id : "x" + o.uid) === h.id && o.k === "S"); if (op) { op.on = !op.on; api.refresh(); } }
+    const m = SWMAP[id] && SWMAP[id][h.id], op = ops.slice().reverse().find(o => (o.t === "rep" ? o.id : "x" + o.uid) === h.id);
+    if (op) { if (op.k === "S") { op.on = !op.on; api.refresh(); } }
+    else if (m) flipSw(api, id, m);
   } else if (S.mode === "swap") {
     if (S.kind === "V") { S.msg = "전압계는 ‘두 점 잇기’에서 재려는 두 점에 연결합니다."; api.refresh(); return; }
-    ops.push({ t: "rep", id: h.id, k: S.kind, v: S.kind === "R" ? S.rv : 0, on: false }); api.refresh();
+    if (S.kind === "A" && !h.el.x && (h.el.k === "R" || h.el.k === "S")) ops.push({ t: "ser", id: h.id, k: "A", uid: ++S.uid });
+    else if (h.el.x && h.el.op) { Object.assign(h.el.op, { k: S.kind, v: S.kind === "R" ? S.rv : 0, on: S.kind === "S" ? !!h.el.on : false }); }
+    else ops.push({ t: "rep", id: h.id, k: S.kind, v: S.kind === "R" ? S.rv : 0, on: S.kind === "S" ? (h.el.k === "S" ? !!h.el.on : true) : false });
+    api.refresh();
   } else if (S.mode === "link") {
     if (!S.pend) { S.pend = h.node; draw(api); }
     else if (S.pend === h.node) { S.pend = null; draw(api); }
@@ -932,10 +941,16 @@ function buildUI(api) {
     api.canvas.addEventListener("pointerleave", () => { if (S.hover) { S.hover = null; draw(api); } });
   }
 }
+function editWarn(id) {
+  const w = [];
+  if (S.edits[id].some(o => o.t === "add" && o.k === "A")) w.push("전류계를 ‘두 점 잇기’로 달면 그 두 점이 도선으로 이어져 그 사이 소자가 단락됩니다. 전류계는 ‘소자 바꾸기’로 도선 자리에 직렬로 끼우세요.");
+  if (S.edits[id].some(o => o.t === "add" && o.k === "W")) w.push("두 점을 도선으로 잇는 것은 그 사이를 단락시키는 것입니다.");
+  return w.join(" ");
+}
 function syncTools(api) {
   for (const m of Object.keys(S.modeBtns || {})) S.modeBtns[m].classList.toggle("on", S.mode === m);
   if (S.rvBox) S.rvBox.forEach(e => { e.style.display = S.kind === "R" ? "" : "none"; });
-  if (S.hint) S.hint.textContent = (S.msg ? S.msg + " " : "") + HINT[S.mode] + (S.mode === "link" && S.pend ? " (첫 점 선택됨 — 둘째 점을 누르세요)" : "");
+  if (S.hint) S.hint.textContent = (S.cur && editWarn(S.cur.id) ? "⚠ " + editWarn(S.cur.id) + " " : "") + (S.msg ? S.msg + " " : "") + HINT[S.mode] + (S.mode === "link" && S.pend ? " (첫 점 선택됨 — 둘째 점을 누르세요)" : "");
 }
 function stepsExtra(id, P, c, r) {
   const L = [], I = r.I;
@@ -1030,6 +1045,8 @@ const SIM = {
     T.push(["편집: 도선 자리에 전류계를 끼우면 그 가지 전류를 읽고 회로는 불변", near(Math.abs(ed2.r.I.w1), Math.abs(ed2.r.I.R3)) && near(ed2.r.I.B, run("s1", pOf("s1", { sw: "closed" })).r.I.B), `전류계 ${fx(Math.abs(ed2.r.I.w1), 5)} A, R₃ ${fx(Math.abs(ed2.r.I.R3), 5)} A`]);
     const ed3 = run("s1", pOf("s1", { sw: "closed" }), [{ t: "add", uid: 2, k: "R", a: "P", b: "N", v: 4 }]);
     T.push(["편집: 전원 양 끝에 저항 4 Ω 을 병렬로 달면 전체 전류 +3 A", near(ed3.r.I.B - run("s1", pOf("s1", { sw: "closed" })).r.I.B, 3), `증가 ${fx(ed3.r.I.B - run("s1", pOf("s1", { sw: "closed" })).r.I.B, 5)} A`]);
+    const ed4 = run("s1", pOf("s1", { sw: "closed" }), [{ t: "ser", id: "R2", k: "A", uid: 4 }]), b4 = run("s1", pOf("s1", { sw: "closed" }));
+    T.push(["편집: 저항에 전류계를 직렬로 끼우면 그 저항 전류를 읽고 회로는 불변", near(Math.abs(ed4.r.I.x4), Math.abs(b4.r.I.R2)) && near(ed4.r.I.B, b4.r.I.B) && near(Math.abs(ed4.r.I.R2), Math.abs(b4.r.I.R2)), `전류계 ${fx(Math.abs(ed4.r.I.x4), 5)} A, R₂ ${fx(Math.abs(b4.r.I.R2), 5)} A`]);
     T.push(["편집: 전원 양 끝을 도선으로 이으면 단락으로 알려 줌", run("s1", pOf("s1", { sw: "closed" }), [{ t: "add", uid: 3, k: "W", a: "P", b: "Q", v: 0 }]).r.short === true, "short 표시"]);
     let okE = true, okG = true, okP = true, msg = "", msgG = "", msgP = "";
     for (const id of IDS) for (const st of STATES[id]) {

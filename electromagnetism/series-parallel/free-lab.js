@@ -18,7 +18,7 @@
   const isAnalog = p => p.type === 'ammA' || p.type === 'vmA';
   const RANGES = { A: [0.03, 0.3, 3], V: [3, 15] };
   const CELL_E = 1.5, CELL_R = 0.3, R_SW = 0.005, R_RATED_W = 0.25;
-  const E_NOMINAL = [10, 20, 30, 47, 100, 200, 470, 1000];
+  const E_NOMINAL = [10, 20, 30, 47, 68, 100, 150, 200, 330, 470, 680, 1000, 2200];
 
   function rangeOf(p) { return (isA(p) ? RANGES.A : RANGES.V)[p.range || 0]; }
   function meterR(p) {            // 전류계: 풀스케일에서 0.1 V 강하, 전압계: 아날로그 1 kΩ/V, 디지털 1 MΩ
@@ -126,7 +126,7 @@
     const layout = document.querySelector('.layout');
     const NS = 'http://www.w3.org/2000/svg', BW = 1000, BH = 620;
     const KEY = 'freeLab-v1';
-    const S = { parts: [], wires: [], nid: 1, sel: null, pending: null, theory: false, hideVal: false, rows: [], cnt: { R: 0, A: 0, V: 0, B: 0 } };
+    const S = { parts: [], wires: [], nid: 1, sel: null, pending: null, theory: false, schem: false, hideVal: false, rows: [], cnt: { R: 0, A: 0, V: 0, B: 0 } };
     const WCOL = { red: '#d64545', black: '#26303c', blue: '#1f6fd6', green: '#1e8f4e', orange: '#e08a00' };
     const BANDS = ['#111', '#7a4a1c', '#d64545', '#f08a1c', '#f2d21b', '#2e9b45', '#2f6fd6', '#8a4fc7', '#888', '#fff'];
     const AR = ['30 mA', '300 mA', '3 A'], VR = ['3 V', '15 V'];
@@ -146,7 +146,7 @@
     .fl-items{display:flex;flex-direction:column;gap:6px}
     .fl-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:#fafcff;cursor:grab;touch-action:none;user-select:none;font-size:.9em}
     .fl-item:hover{border-color:var(--accent);background:#eef5ff}.fl-item svg{flex:0 0 auto}
-    .fl-sep{font-size:.75em;color:var(--sub);margin:6px 0 0}
+    .fl-item span{white-space:nowrap}.fl-item select{margin-left:auto;max-width:70px;font:inherit;font-size:.9em}.fl-sep{font-size:.75em;color:var(--sub);margin:6px 0 0}
     .fl-trash{margin-top:10px;border:2px dashed #c9d3e0;border-radius:8px;padding:10px 6px;text-align:center;font-size:.8em;color:var(--sub)}
     .fl-trash.hot{border-color:#d64545;color:#d64545;background:#fff1f1}
     .fl-bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;font-size:.88em}
@@ -170,8 +170,8 @@
       <div class="fl-tray"><b>🧰 부품 상자</b><div class="fl-hint">끌어서 보드에 놓거나, 눌러서 추가하세요.</div><div class="fl-items" id="fl-items"></div>
         <div class="fl-trash" id="fl-trash">🗑 부품을 여기로 끌면 삭제</div></div>
       <div class="fl-mid"><div class="fl-bar">
-          <button id="fl-del">선택 삭제</button><button id="fl-clear">모두 지우기</button>
-          <label><input type="checkbox" id="fl-hide"> 저항 값 가리기(색띠로 읽기)</label>
+          <button id="fl-rot" title="선택한 부품 회전 (R 키)">⟳ 회전</button><label id="fl-valbox" hidden>저항 값 <select id="fl-val"></select></label><button id="fl-del">선택 삭제</button><button id="fl-clear">모두 지우기</button>
+          <button id="fl-schem" class="primary">🔌 회로도 보기</button><label><input type="checkbox" id="fl-hide"> 저항 값 가리기(색띠로 읽기)</label>
           <label><input type="checkbox" id="fl-theory"> 이론값 보기(교사용)</label></div>
         <div class="fl-board" id="fl-board"></div><div class="fl-msgs" id="fl-msgs" aria-live="polite"></div></div>
       <div class="fl-side">
@@ -202,7 +202,8 @@
     const snap = v => Math.round(v / 10) * 10;
     const partById = id => S.parts.find(p => p.id === id);
     const tdef = (p, t) => termsOf(p)[t];
-    function tpos(key) { const [id, t] = key.split('.'); const p = partById(id); if (!p) return null; const d = tdef(p, t); return { x: p.x + d.x, y: p.y + d.y, d: d.d, p, t }; }
+    function rotv(x, y, rot) { switch (((rot || 0) % 360 + 360) % 360) { case 90: return [-y, x]; case 180: return [-x, -y]; case 270: return [y, -x]; default: return [x, y]; } }
+    function tpos(key) { const [id, t] = key.split('.'); const p = partById(id); if (!p) return null; const d = tdef(p, t), o = rotv(d.x, d.y, p.rot); return { x: p.x + o[0], y: p.y + o[1], d: rotv(d.d[0], d.d[1], p.rot), p, t }; }
 
     /* ---------- 부품 만들기 ---------- */
     function bandColors(nom) {
@@ -332,7 +333,65 @@
       const c1 = { x: a.x + da[0] * k, y: a.y + da[1] * k }, c2 = { x: b.x + db[0] * k, y: b.y + db[1] * k };
       return `M${a.x} ${a.y} C${c1.x} ${c1.y} ${c2.x} ${c2.y} ${b.x} ${b.y}`;
     }
+
+    /* ---------- 회로도 ---------- */
+    function symbol(p) {
+      const g = h('g', { stroke: '#111', 'stroke-width': 3, fill: 'none', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' });
+      const L = (x1, y1, x2, y2, w) => g.appendChild(h('line', { x1, y1, x2, y2, 'stroke-width': w || 3 }));
+      if (p.type === 'res') {
+        g.appendChild(h('polyline', { points: '-70,0 -34,0 -28,-14 -16,14 -4,-14 8,14 20,-14 28,0 34,0 70,0' }));
+      } else if (p.type === 'sw') {
+        L(-60, 0, -30, 0); L(30, 0, 60, 0);
+        g.appendChild(h('circle', { cx: -30, cy: 0, r: 4, fill: '#111' })); g.appendChild(h('circle', { cx: 30, cy: 0, r: 4, fill: '#111' }));
+        if (p.closed) L(-30, 0, 30, 0); else L(-30, 0, 24, -26);
+      } else if (p.type === 'bat') {
+        L(-40, -58, -40, -20); L(40, -58, 40, -20); L(-40, -20, -8, -20); L(8, -20, 40, -20);
+        L(-8, -38, -8, -2, 5); L(8, -30, 8, -10, 5);
+        g.appendChild(T('+', -52, -38, 20, '#111', 'middle', 700)); g.appendChild(T('−', 52, -38, 20, '#111', 'middle', 700));
+        g.appendChild(h('g', { fill: '#111', stroke: 'none' }));
+      } else {
+        const A = isA(p);
+        g.appendChild(h('circle', { cx: 0, cy: 40, r: 28, fill: '#fff' }));
+        L(-35, 100, -35, 40); L(-35, 40, -28, 40); L(35, 100, 35, 40); L(35, 40, 28, 40);
+        g.appendChild(T(A ? 'A' : 'V', 0, 50, 30, '#111', 'middle', 700));
+        g.appendChild(T('+', -46, 84, 18, '#111', 'middle', 700)); g.appendChild(T('−', 46, 84, 18, '#111', 'middle', 700));
+      }
+      return g;
+    }
+    function symLabel(p, r) {
+      const base = p.type === 'res' ? [0, -22] : p.type === 'sw' ? [0, 28] : p.type === 'bat' ? [0, 10] : [0, 4];
+      let t = p.name;
+      if (p.type === 'res') t += ' ' + fmtOhm(p.nom); else if (p.type === 'bat') t += ' ' + (CELL_E * p.cells).toFixed(1) + ' V';
+      if (S.theory && r) { if (p.type === 'res') t += ` (${r.V.toFixed(2)} V, ${(r.I * 1000).toFixed(1)} mA)`; else if (isA(p) || isV(p)) t += ' ' + (isA(p) ? (r.reading * 1000).toFixed(2) + ' mA' : r.reading.toFixed(3) + ' V'); }
+      return T(t, base[0], base[1], 15, '#1c2733', 'middle', 700);
+    }
+    function schemPath(a, b) {
+      const S0 = 26, a1 = { x: a.x + a.d[0] * S0, y: a.y + a.d[1] * S0 }, b1 = { x: b.x + b.d[0] * S0, y: b.y + b.d[1] * S0 };
+      const pts = [a, a1];
+      if (a.d[1] === 0 && a1.x !== b1.x) { const mx = (a1.x + b1.x) / 2; pts.push({ x: mx, y: a1.y }, { x: mx, y: b1.y }); }
+      else if (a.d[0] === 0 && a1.y !== b1.y) { const my = (a1.y + b1.y) / 2; pts.push({ x: a1.x, y: my }, { x: b1.x, y: my }); }
+      pts.push(b1, b);
+      return pts.map(q => q.x + ',' + q.y).join(' ');
+    }
+    function renderSchem() {
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      svg.appendChild(h('rect', { x: 0, y: 0, width: BW, height: BH, fill: '#fff' }));
+      const cnt = {};
+      S.wires.forEach(w => { cnt[w.a] = (cnt[w.a] || 0) + 1; cnt[w.b] = (cnt[w.b] || 0) + 1; });
+      S.wires.forEach(w => { const a = tpos(w.a), b = tpos(w.b); if (a && b) svg.appendChild(h('polyline', { points: schemPath(a, b), fill: 'none', stroke: '#111', 'stroke-width': 3, 'stroke-linejoin': 'round' })); });
+      S.parts.forEach(p => {
+        const r = R && R.res[p.id], sy = symbol(p), lab = symLabel(p, r);
+        const grp = h('g', { transform: `translate(${p.x} ${p.y}) rotate(${p.rot || 0})` }, sy, lab);
+        if (p.rot) grp.querySelectorAll('text').forEach(t => t.setAttribute('transform', `rotate(${-p.rot} ${t.getAttribute('x')} ${t.getAttribute('y')})`));
+        svg.appendChild(grp);
+        Object.keys(termsOf(p)).forEach(t => { const q = tpos(p.id + '.' + t); svg.appendChild(h('circle', { cx: q.x, cy: q.y, r: (cnt[p.id + '.' + t] || 0) > 1 ? 6 : 4, fill: (cnt[p.id + '.' + t] || 0) ? '#111' : '#fff', stroke: '#111', 'stroke-width': 2 })); });
+      });
+      if (!S.parts.length) svg.appendChild(T('보드에 부품을 놓고 도선을 이으면 회로도가 그려져요', BW / 2, BH / 2, 24, '#9aa8b8', 'middle', 700));
+      svg.appendChild(T('회로도 (보드 배치와 같은 모양) · 도선 연결 점 ●', 14, BH - 12, 14, '#6b7a8c', 'start', 700));
+      renderPanels();
+    }
     function render() {
+      if (S.schem) { rafPending = false; return renderSchem(); }
       rafPending = false; needles = Object.assign({}, needles);
       while (svg.firstChild) svg.removeChild(svg.firstChild);
       svg.appendChild(h('defs', null, h('pattern', { id: 'flgrid', width: 20, height: 20, patternUnits: 'userSpaceOnUse' }, h('circle', { cx: 1, cy: 1, r: 1, fill: '#d2dae6' }))));
@@ -342,7 +401,8 @@
       S.parts.forEach(p => {
         const r = R && R.res[p.id];
         const body = p.type === 'res' ? drawResistor(p, r) : p.type === 'sw' ? drawSwitch(p, r) : p.type === 'bat' ? drawBattery(p, r) : drawMeter(p, r);
-        const grp = h('g', { transform: `translate(${p.x} ${p.y})`, 'data-id': p.id, style: 'cursor:move' }, body);
+        if (p.rot) body.querySelectorAll('text').forEach(t => t.setAttribute('transform', `rotate(${-p.rot} ${t.getAttribute('x')} ${t.getAttribute('y')})`));
+        const grp = h('g', { transform: `translate(${p.x} ${p.y}) rotate(${p.rot || 0})`, 'data-id': p.id, style: 'cursor:move' }, body);
         if (S.sel && S.sel.k === 'part' && S.sel.id === p.id) {
           const bb = { res: [-78, -34, 156, 68], sw: [-84, -30, 168, 70], bat: [-90, -72, 180, 150], mtr: [-92, -86, 184, 214] }[p.type.startsWith('amm') || p.type.startsWith('vm') ? 'mtr' : p.type];
           grp.insertBefore(h('rect', { x: bb[0], y: bb[1], width: bb[2], height: bb[3], rx: 12, fill: 'rgba(31,111,214,.06)', stroke: '#1f6fd6', 'stroke-dasharray': '6 5', 'stroke-width': 2 }), grp.firstChild);
@@ -350,9 +410,9 @@
         grp.addEventListener('pointerdown', e => partDown(e, p));
         gP.appendChild(grp);
         Object.keys(termsOf(p)).forEach(t => {
-          const d = termsOf(p)[t], key = p.id + '.' + t, pend = S.pending === key;
+          const q = tpos(p.id + '.' + t), d = { d: q.d }, key = p.id + '.' + t, pend = S.pending === key;
           const plus = t === '+', minus = t === '-', col = plus ? '#d64545' : (minus ? '#26303c' : '#8a96a6');
-          const tg = h('g', { transform: `translate(${p.x + d.x} ${p.y + d.y})`, style: 'cursor:crosshair' },
+          const tg = h('g', { transform: `translate(${q.x} ${q.y})`, style: 'cursor:crosshair' },
             h('circle', { r: 12, fill: col, stroke: pend ? '#1f6fd6' : '#fff', 'stroke-width': pend ? 4 : 2.5, class: pend ? 'fl-pend' : '' }),
             h('circle', { r: 4.5, fill: '#e9edf3' }),
             h('circle', { r: 32, fill: 'transparent' }));
@@ -400,6 +460,9 @@
       const rt = $('fl-rec');
       rt.innerHTML = '<tr><th>#</th><th>무엇을 쟀나요?</th><th>읽은 값</th></tr>' + (S.rows.length ? S.rows.map((r, i) => `<tr><td>${i + 1}</td><td><input type="text" data-r="${i}" data-f="label" value="${esc(r.label)}" placeholder="예: R₁ 양단"></td><td><input type="text" data-r="${i}" data-f="val" value="${esc(r.val)}" placeholder="예: 2.0 V, 0.06 A"></td></tr>`).join('') : '<tr><td colspan="3">아직 기록이 없어요</td></tr>');
       rt.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => { S.rows[+inp.dataset.r][inp.dataset.f] = inp.value; save(); }));
+      const sp = S.sel && S.sel.k === 'part' && partById(S.sel.id), vb = $('fl-valbox');
+      vb.hidden = !(sp && sp.type === 'res') || S.schem; if (!vb.hidden) ohmOpts($('fl-val'), sp.nom);
+      $('fl-schem').textContent = S.schem ? '🔧 보드로 돌아가기' : '🔌 회로도 보기'; $('fl-rot').disabled = S.schem;
       $('fl-hide').checked = S.hideVal; $('fl-theory').checked = S.theory;
     }
     const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
@@ -467,15 +530,22 @@
       else { const A = type.startsWith('amm'), c = A ? '#1b8fb8' : '#7a4fd1'; s.appendChild(h('rect', { x: -15, y: -13, width: 30, height: 26, rx: 4, fill: type.endsWith('A') ? '#f8f7f1' : '#b9d1a0', stroke: c, 'stroke-width': 2 })); s.appendChild(T(A ? 'A' : 'V', 0, 5, 14, c, 'middle', 700)); }
       return s;
     }
-    const ITEMS = [['bat', '건전지', null], ['sw', '스위치', null]].concat(E_NOMINAL.map(n => ['res', '저항 ' + fmtOhm(n), n])).concat([['ammA', '전류계 (아날로그)'], ['ammD', '전류계 (디지털)'], ['vmA', '전압계 (아날로그)'], ['vmD', '전압계 (디지털)']]);
+    const ITEMS = [['bat', '건전지'], ['sw', '스위치'], ['res', '저항'], ['ammA', '전류계 (아날로그)'], ['ammD', '전류계 (디지털)'], ['vmA', '전압계 (아날로그)'], ['vmD', '전압계 (디지털)']];
     const itemsBox = $('fl-items');
-    ITEMS.forEach(([type, label, nom], i) => {
-      if (i === 2) itemsBox.appendChild(Object.assign(document.createElement('div'), { className: 'fl-sep', textContent: '저항 (정격 ¼ W, 오차 ±5 %)' }));
-      if (i === 2 + E_NOMINAL.length) itemsBox.appendChild(Object.assign(document.createElement('div'), { className: 'fl-sep', textContent: '계기' }));
+    const ohmOpts = (sel, cur) => { sel.innerHTML = E_NOMINAL.map(n => `<option value="${n}"${n === cur ? ' selected' : ''}>${fmtOhm(n)}</option>`).join(''); };
+    ITEMS.forEach(([type, label], i) => {
+      if (i === 2) itemsBox.appendChild(Object.assign(document.createElement('div'), { className: 'fl-sep', textContent: '저항 (값을 고른 뒤 놓기)' }));
+      if (i === 3) itemsBox.appendChild(Object.assign(document.createElement('div'), { className: 'fl-sep', textContent: '계기' }));
       const d = document.createElement('div'); d.className = 'fl-item'; d.setAttribute('role', 'button'); d.title = label;
-      d.appendChild(itemIcon(type, nom)); d.appendChild(Object.assign(document.createElement('span'), { textContent: label }));
+      let icon = itemIcon(type, 100), sel = null;
+      d.appendChild(icon); d.appendChild(Object.assign(document.createElement('span'), { textContent: label }));
+      if (type === 'res') {
+        sel = document.createElement('select'); sel.title = '저항 값 고르기'; ohmOpts(sel, 100); d.appendChild(sel);
+        sel.addEventListener('change', () => { const n = itemIcon('res', +sel.value); d.replaceChild(n, icon); icon = n; });
+      }
       d.addEventListener('pointerdown', e => {
-        if (e.button !== undefined && e.button !== 0) return; e.preventDefault(); const e0 = e; let dragged = false;
+        if (e.target.tagName === 'SELECT') return;
+        if (e.button !== undefined && e.button !== 0) return; e.preventDefault(); const e0 = e, nom = sel ? +sel.value : null; let dragged = false;
         const ghost = d.cloneNode(true); ghost.style.cssText = 'position:fixed;pointer-events:none;opacity:.85;z-index:9999;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.25);width:150px'; document.body.appendChild(ghost);
         const place = ev => { ghost.style.left = (ev.clientX - 75) + 'px'; ghost.style.top = (ev.clientY - 16) + 'px'; };
         place(e);
@@ -491,6 +561,10 @@
     /* 막대 단추와 기록 */
     function delSel() { if (!S.sel) return; if (S.sel.k === 'part') removePart(S.sel.id); else { S.wires = S.wires.filter(w => w.id !== S.sel.id); S.sel = null; update(); } }
     $('fl-del').addEventListener('click', delSel);
+    function rotSel() { const p = S.sel && S.sel.k === 'part' && partById(S.sel.id); if (!p || S.schem) return; p.rot = ((p.rot || 0) + 90) % 360; update(); }
+    $('fl-rot').addEventListener('click', rotSel);
+    $('fl-val').addEventListener('change', e => { const p = S.sel && S.sel.k === 'part' && partById(S.sel.id); if (p && p.type === 'res') { p.nom = +e.target.value; update(); } });
+    $('fl-schem').addEventListener('click', () => { S.schem = !S.schem; S.pending = null; schedule(); });
     $('fl-clear').addEventListener('click', () => { if (!S.parts.length || confirm('보드의 부품과 도선을 모두 지울까요?')) { S.parts = []; S.wires = []; S.sel = null; S.pending = null; S.cnt = { R: 0, A: 0, V: 0, B: 0 }; needles = {}; update(); } });
     $('fl-hide').addEventListener('change', e => { S.hideVal = e.target.checked; save(); schedule(); });
     $('fl-theory').addEventListener('change', e => { S.theory = e.target.checked; schedule(); });
@@ -503,7 +577,7 @@
       const t = '#\t무엇을 쟀나요\t읽은 값\n' + S.rows.map((r, i) => (i + 1) + '\t' + r.label + '\t' + r.val).join('\n');
       if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => { $('fl-copy').textContent = '복사됨 ✓'; setTimeout(() => { $('fl-copy').textContent = '표 복사'; }, 1400); }, () => { });
     });
-    document.addEventListener('keydown', e => { if (host.hidden) return; const t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return; if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); delSel(); } });
+    document.addEventListener('keydown', e => { if (host.hidden) return; const t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return; if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); delSel(); } else if (e.key === 'r' || e.key === 'R') rotSel(); });
 
     /* 교사용 예시 */
     function example(kind) {

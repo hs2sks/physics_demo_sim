@@ -1,0 +1,944 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>전기 에너지와 소비 전력, 저항의 연결</title>
+<!-- power-resistor-connection · 전기 에너지·전력·전력량, 저항의 직렬·병렬·혼합연결과 전류·전압·소비 전력 계산, 전위차 계단, 멀티탭 허용 전류까지 2차시 분량의 시뮬레이션 수업 덱 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap">
+<style>
+:root{
+  --bg:#dfe5f0; --slide:#f5f7fc; --panel:#ffffff; --ink:#14203a; --muted:#54617b; --line:#c9d2e4;
+  --blue:#1f5fd1; --onblue:#ffffff; --amber:#b45f00; --green:#0c7a58; --red:#b8321f;
+  --blue-soft:#dce8fb; --amber-soft:#fbe8cf;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+    --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+    --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+  --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+  --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;overflow:hidden}
+#viewport{position:relative;width:100%;height:100%;overflow:hidden}
+#deck{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center center;background:var(--slide);box-shadow:0 12px 70px rgba(0,0,0,.28);overflow:hidden}
+.slide{position:absolute;inset:0;display:none;flex-direction:column;padding:84px 88px 52px;gap:24px;background:var(--slide);font-size:32px;line-height:1.4}
+.slide.active{display:flex}
+.hd{display:flex;align-items:baseline;justify-content:space-between;gap:24px;flex:none}
+.hd h2{font-size:58px;line-height:1.15;margin:0;font-weight:800;letter-spacing:-.01em}
+.hd .src{font-size:26px;color:var(--muted);white-space:nowrap}
+.body{flex:1;min-height:0;display:grid;gap:36px}
+.mg-box{position:relative;aspect-ratio:16/9;border-radius:16px;overflow:hidden;background:#06142a;align-self:start}
+.mg-box.mg-full{height:100%;max-width:100%;justify-self:center}
+.mg-box iframe{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none}
+.mg-re{position:absolute;right:14px;bottom:14px;font:inherit;font-size:24px;padding:8px 18px;border-radius:10px;border:1px solid rgba(255,255,255,.4);background:rgba(0,0,0,.55);color:#fff;cursor:pointer;opacity:.75}
+.mg-re:hover,.mg-re:focus-visible{opacity:1}
+.side{display:flex;flex-direction:column;gap:18px;min-height:0}
+canvas{display:block;border-radius:16px;background:#0a1330}
+.box{background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:20px 26px}
+.box h3{margin:0 0 8px;font-size:30px}
+.sm{font-size:26px;color:var(--muted)}
+.lead{font-size:40px;line-height:1.35}
+.k{color:var(--amber);font-weight:700}.p{color:var(--blue);font-weight:700}.ok{color:var(--green);font-weight:700}.bad{color:var(--red);font-weight:700}
+/* math */
+.m{font-family:'STIX Two Text','Times New Roman',serif;font-style:italic;font-size:1.1em;white-space:nowrap}
+.m .u,.u{font-style:normal}
+.m sub,.m sup{font-size:.68em;line-height:0;font-style:normal}
+.fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.15;margin:0 .12em;font-size:.95em}
+.fr>span:first-child{padding:0 .2em .06em;border-bottom:.07em solid currentColor}
+.fr>span:last-child{padding-top:.06em}
+.sq{white-space:nowrap}.sq .rad{border-top:.07em solid currentColor;padding:0 .15em;margin-left:-.04em}
+.eq{font-size:44px;text-align:center;padding:6px 0}
+/* controls */
+.ctl{display:flex;flex-direction:column;gap:4px}
+.ctl .row{display:flex;justify-content:space-between;align-items:baseline;font-size:27px;gap:12px}
+.ctl .val{font-weight:700;font-variant-numeric:tabular-nums}
+.rangew{position:relative}
+input[type=range]{width:100%;height:44px;-webkit-appearance:none;appearance:none;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:38px;height:38px;border-radius:50%;background:var(--blue);margin-top:-13px;border:4px solid var(--panel);box-shadow:0 1px 6px rgba(0,0,0,.35)}
+input[type=range]::-moz-range-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;background:var(--blue);border:4px solid var(--panel)}
+input[type=range]:focus-visible{outline:3px solid var(--blue);outline-offset:4px;border-radius:8px}
+.marks{position:relative;height:60px;font-size:22px;color:var(--muted)}
+.marks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.btns{display:flex;gap:12px;flex-wrap:wrap}
+.btn,.chip{font:inherit;font-size:27px;font-weight:700;padding:10px 24px;border-radius:12px;border:2px solid var(--blue);background:var(--panel);color:var(--blue);cursor:pointer;line-height:1.25}
+.btn.pri{background:var(--blue);color:var(--onblue)}
+.chip{padding:8px 18px;font-size:26px;border-color:var(--line);color:var(--ink);font-weight:500}
+.chip.on{border-color:var(--blue);background:var(--blue-soft);font-weight:700}
+.btn:focus-visible,.chip:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.chips{display:flex;gap:10px;flex-wrap:wrap}
+/* step reveal */
+.st{display:grid;grid-template-columns:46px 1fr;gap:14px;padding:8px 14px;border-radius:14px;opacity:0;transform:translateY(10px);transition:opacity .35s,transform .35s;border:2px solid transparent}
+.st.on{opacity:.55;transform:none}
+.st.cur{opacity:1;background:var(--panel);border-color:var(--blue)}
+.st .n{width:42px;height:42px;border-radius:50%;background:var(--blue);color:var(--onblue);display:grid;place-items:center;font-weight:800;font-size:24px;margin-top:2px}
+.st .tl{display:flex;flex-wrap:wrap;gap:2px 14px;align-items:baseline}
+.st .t{font-size:23px;color:var(--muted);line-height:1.3}
+.st b{font-size:27px}
+.st .eq{font-size:35px;line-height:1.1;text-align:left;padding:2px 0}
+/* cover */
+.cover{flex-direction:row;align-items:center;gap:56px}
+.cover.active{display:flex}
+.cv-l{flex:1;display:flex;flex-direction:column;gap:28px}
+.cv-l h1{font-size:200px;line-height:1;margin:0;font-weight:800;letter-spacing:-.04em}
+.cv-l h1.long{font-size:92px;line-height:1.22;letter-spacing:-.02em;text-wrap:balance;word-break:keep-all}
+.cv-tag{font-size:30px;color:var(--muted)}
+.q{border-left:8px solid var(--blue);border-radius:6px;padding:8px 0 8px 28px;font-size:36px;line-height:1.45}
+/* table */
+table.t{border-collapse:collapse;width:100%;font-size:27px}
+table.t th,table.t td{padding:10px 14px;border-bottom:2px solid var(--line);text-align:right;white-space:nowrap}
+table.t th:first-child,table.t td:first-child,table.t th:last-child,table.t td:last-child{text-align:left}
+table.t th{font-size:24px;color:var(--muted);font-weight:500}
+table.t tbody tr{cursor:pointer}
+table.t tbody tr.on{background:var(--blue-soft);font-weight:700}
+/* HUD / notes */
+#hud{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:10px;align-items:center;background:rgba(10,19,48,.86);color:#e9effd;padding:8px 14px;border-radius:14px;font-size:18px;opacity:0;transition:opacity .3s;z-index:20}
+#hud.show{opacity:1}
+#hud button{font:inherit;font-size:18px;color:#e9effd;background:transparent;border:1.5px solid rgba(233,239,253,.5);border-radius:8px;padding:4px 12px;cursor:pointer}
+#notes{position:absolute;left:0;right:0;bottom:0;background:rgba(10,19,48,.94);color:#eaf0ff;padding:26px 88px 34px;font-size:30px;line-height:1.5;display:none;z-index:15}
+#notes.on{display:block}
+#notes b{color:#ffb454}
+
+.ko{font-family:'Noto Sans KR',sans-serif;font-style:normal;font-size:.8em}
+#bar{position:absolute;top:14px;left:88px;right:88px;height:54px;display:flex;justify-content:space-between;align-items:center;z-index:12}
+#bar .bl{font-size:26px;font-weight:800}
+#bar .br{display:flex;gap:10px}
+.tb{font:inherit;font-size:24px;font-weight:700;padding:7px 18px;border-radius:12px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;line-height:1.2}
+.tb:hover{border-color:var(--blue)}.tb.on{border-color:var(--blue);background:var(--blue-soft)}
+.tb:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+#help{position:absolute;inset:0;background:rgba(6,11,30,.82);display:none;align-items:center;justify-content:center;z-index:30}
+#help.on{display:flex}
+.hp{background:var(--panel);color:var(--ink);border-radius:22px;padding:36px 52px 40px;width:1320px;max-height:960px;overflow:auto;font-size:27px;line-height:1.5;border:2px solid var(--line)}
+.hp h3{font-size:40px;margin:0 0 14px}.hp h4{font-size:29px;margin:18px 0 6px;color:var(--blue)}
+.hp .g{display:grid;grid-template-columns:230px 1fr;gap:6px 22px}
+.hp kbd{font:inherit;font-size:24px;font-weight:700;background:var(--blue-soft);border:2px solid var(--line);border-radius:8px;padding:1px 10px;margin-right:4px}
+#ask{position:absolute;inset:0;background:rgba(6,11,30,.6);display:none;align-items:center;justify-content:center;z-index:25;cursor:pointer}
+#ask.on{display:flex}
+#ask .ak{background:var(--panel);color:var(--ink);border-radius:24px;border-left:16px solid var(--blue);padding:44px 72px 40px 60px;width:1500px;box-shadow:0 20px 80px rgba(0,0,0,.45)}
+#ask .ah{font-size:30px;color:var(--blue);font-weight:800;margin-bottom:18px}
+#ask .aq{font-size:54px;line-height:1.4;font-weight:700;margin:10px 0;letter-spacing:-.01em}
+#ask .aq span{color:var(--blue);margin-right:14px}
+#ask .af{font-size:24px;color:var(--muted);margin-top:22px}
+#notes .nh{font-size:24px;color:#9db0d8;margin-bottom:6px}
+#notes .nq{margin:4px 0 10px;font-size:29px}
+#notes .ni{margin:6px 0;font-size:27px;line-height:1.45}
+#notes .nx{color:#ff9d9d;font-weight:700}#notes .nv{color:#5eead4;font-weight:700}
+@media (prefers-reduced-motion: reduce){.st{transition:none}}
+#simError{position:absolute;left:88px;right:88px;top:76px;z-index:40;background:rgba(184,50,31,.95);color:#fff;font-size:22px;line-height:1.4;padding:10px 18px;border-radius:12px;white-space:pre-wrap;display:none}
+#simError.on{display:block}
+/* ---- 반응형(reflow): 폭 1100px 미만(폰·태블릿)에서는 1920 스케일 대신 세로로 흐르는 레이아웃 ---- */
+html.rf #deck{left:0;top:0;transform-origin:top left;box-shadow:none}
+html.rf .slide{padding:104px 22px 100px;gap:18px;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;font-size:30px}
+html.rf .body{display:flex !important;flex-direction:column;gap:22px;flex:none;min-height:auto}
+html.rf .side{min-height:auto}
+html.rf .hd{flex-direction:column;align-items:flex-start;gap:6px}
+html.rf .hd h2{font-size:44px}
+html.rf .hd .src{font-size:23px;white-space:normal}
+html.rf canvas{width:100% !important;height:auto !important;max-width:100%}
+html.rf .mg-box.mg-full{height:auto;width:100%}
+html.rf img,html.rf svg,html.rf video{max-width:100%;height:auto}
+html.rf .cover{flex-direction:column;align-items:stretch;gap:26px}
+html.rf .cv-l h1{font-size:112px}
+html.rf .cv-l h1.long{font-size:52px}
+html.rf .cv-tag{font-size:26px}
+html.rf .q{font-size:30px}
+html.rf .lead{font-size:34px}
+html.rf .eq{font-size:36px;overflow-x:auto}
+html.rf table.t{display:block;overflow-x:auto;font-size:24px}
+html.rf .btn,html.rf .chip{min-height:52px}
+html.rf #bar{left:14px;right:14px;top:12px;height:auto;flex-wrap:wrap;gap:8px}
+html.rf #bar .bl{display:none}
+html.rf #bar .br{flex-wrap:wrap;justify-content:flex-end;width:100%}
+html.rf .tb{font-size:20px;padding:8px 12px}
+html.rf .hp{width:92%;max-height:88%;padding:24px 22px 28px;font-size:23px}
+html.rf .hp h3{font-size:32px}
+html.rf .hp .g{grid-template-columns:1fr;gap:2px 0}
+html.rf #ask .ak{width:92%;padding:26px 24px 24px 28px;border-left-width:10px}
+html.rf #ask .aq{font-size:34px}
+html.rf #notes{padding:18px 20px 26px;font-size:23px;max-height:62%;overflow:auto}
+html.rf #notes .nq{font-size:25px}
+html.rf #notes .ni{font-size:23px}
+html.rf #simError{left:14px;right:14px;top:96px}
+html.rf #hud{padding:8px 16px;width:max-content;max-width:96%}
+html.rf #hud #h-pg{white-space:nowrap;font-size:22px}
+html.rf .st:not(.on){display:none}
+html.rf #hud button{font-size:22px;padding:6px 16px;min-height:44px}
+/* ---- extra_css ---- */
+table.t{table-layout:fixed} table.t th,table.t td{text-align:left !important;vertical-align:middle;white-space:normal} .dim{color:var(--dim,#8896b8)}
+</style>
+</head>
+<body>
+<div id="viewport">
+<div id="deck">
+
+<!-- a1 -->
+<section class="slide cover" id="a1">
+  <div class="cv-l"><div class="cv-tag">2022 개정 물리학 · 교과서 76~81쪽 · 전기 에너지와 전력, 저항의 연결</div>
+    <h1 class="long">멀티탭 문어발은 왜 위험할까?</h1>
+    <p class="lead" style="margin:0">전구를 하나 더 꽂으면 무엇이 달라질까요?</p>
+    <div class="q">직렬이면 소비 전력이 줄고 병렬이면 늘어난다. 왜 그럴까?</div>
+    <div class="sm">1차시: 전기 에너지·전력·직렬 / 2차시: 병렬·혼합·실생활<br>→ / Space 로 시작</div></div>
+  <canvas id="c-hero"></canvas>
+</section>
+
+<!-- a2 -->
+<section class="slide" id="a2">
+  <header class="hd"><h2>이 단원에서 배울 것 — 멀티탭 문어발은 왜 위험할까?</h2><span class="src">교과서 76쪽 · 지도 목표</span></header>
+<div class="body" style="grid-template-columns:1fr 1fr">
+<div class="box" style="font-size:30px;line-height:1.8"><b class="k">학습 목표</b><br>① 저항의 직렬·병렬연결에서 전류와 전압을 측정해 비교할 수 있다.<br>② 직렬·병렬연결에서 <b>전류, 전압, 소비 전력</b>이 어떻게 달라지는지 설명할 수 있다.<br>③ 실생활에서 직렬·병렬연결의 원리가 어떻게 쓰이는지 설명할 수 있다.</div>
+<div class="box" style="font-size:28px;line-height:1.8"><b class="k">개념의 흐름</b><br>전위차(전압) <span class="dim">→</span> 전기 에너지 <span class="m">W=VIt</span><br><span class="dim">→</span> 소비 전력 <span class="m">P=VI=I<sup>2</sup>R=V<sup>2</sup>/R</span><br><span class="dim">→</span> 전력량 (J, Wh)<br><span class="dim">→</span> 직렬 · 병렬 · 혼합연결의 <span class="m">R,&thinsp;I,&thinsp;V,&thinsp;P</span><br><span class="dim">→</span> 멀티탭·분전반·누전 차단기<br><div class="sm" style="margin-top:12px">1차시: 앞의 세 줄과 직렬연결 · 2차시: 병렬·혼합·실생활</div></div>
+</div>
+</section>
+
+<!-- a3 -->
+<section class="slide" id="a3" data-steps="5">
+  <header class="hd"><h2>전위차가 하는 일 → 전기 에너지와 소비 전력</h2><span class="src">교과서 75~76쪽</span></header>
+<div class="body" style="grid-template-columns:820px 1fr">
+<div class="box" style="font-size:28px;line-height:1.75"><b class="k">물 높이 비유</b><br>전위 = 전기장의 <b>높이</b>, 전위차 = <b>높이 차</b>.<br>저항 양단의 전위차 <span class="m">V</span> 만큼 전하가 내려가면, 전하 1 C당 <span class="m">V</span> J의 전기 에너지가 열 등으로 바뀐다.<div class="sm" style="margin-top:10px">전하(물)는 줄어들지 않는다. 줄어드는 것은 전기 에너지(높이)이다.</div></div>
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>전위차 V = 단위 전하당 일(에너지)</b></div><div class="eq"><span class="m">V=<span class="fr"><span>W</span><span>q</span></span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">1 C가 V만큼 내려갈 때 V J의 에너지</div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>시간 t 동안 지나간 전하량</b></div><div class="eq"><span class="m">q=It</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">전류 = 단위 시간당 지나가는 전하량</div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>전기 에너지 (저항에서 열로 소모)</b></div><div class="eq"><span class="m">W=qV=VIt&nbsp;[<span class="ko">J</span>]</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">교과서 76쪽</div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>소비 전력 = 단위 시간당 소모되는 에너지</b></div><div class="eq"><span class="m">P=<span class="fr"><span>W</span><span>t</span></span>=VI&nbsp;[<span class="ko">W</span>=<span class="ko">J/s</span>]</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">전류가 클수록, 전압이 클수록 큰 전력</div></div></div>
+<div class="st" data-i="5"><div class="n">5</div><div><div class="tl"><b>옴의 법칙을 대입하면</b></div><div class="eq"><span class="m">P=VI=I<sup>2</sup>R=<span class="fr"><span>V<sup>2</sup></span><span>R</span></span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">상황에 맞는 식을 고른다 (다음 슬라이드)</div></div></div></div>
+</div>
+</section>
+
+<!-- a4 -->
+<section class="slide" id="a4">
+  <header class="hd"><h2>W = VIt 계산해 보기 — 전기 에너지가 물을 데운다</h2><span class="src">교과서 76쪽 · 전기 에너지(J)</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-w"></canvas><div class="side"><div class="box" style="color:var(--ink);line-height:1.75"><div class="eq"><span class="m">W=VIt&emsp;,&emsp; P=VI</span></div><div class="sm" style="text-align:center">열 손실이 없다고 가정</div></div><div class="ctl"><div class="row"><span>전압 V</span><span class="val" id="w-Vv">220 V</span></div><input id="w-V" type="range" min="1" max="220" step="1" value="220"></div><div class="ctl"><div class="row"><span>전류 I</span><span class="val" id="w-Iv">6.8 A</span></div><input id="w-I" type="range" min="0.1" max="10" step="0.1" value="6.8"></div><div class="ctl"><div class="row"><span>시간 t</span><span class="val" id="w-tv">60 s</span></div><input id="w-t" type="range" min="1" max="600" step="1" value="60"></div><div class="chips"><span class="sm">물의 질량:</span> <button class="chip" id="w-m1">0.5 kg</button><button class="chip on" id="w-m2">1 kg</button><button class="chip" id="w-m3">2 kg</button></div><div class="box" style="color:var(--ink);line-height:1.75">P = <b class="k" id="w-P">0</b> W<br>W = <b class="k" id="w-W">0</b> kJ<br>물의 온도 상승 ΔT = <b class="p" id="w-dT">0</b> ℃<div class="sm"><span class="m">Δ T=W/(c&thinsp;m)</span>, c = 4186 J/(kg·℃)</div></div></div>
+</div>
+</section>
+
+<!-- a5 -->
+<section class="slide" id="a5">
+  <header class="hd"><h2>P = VI = I²R = V²/R — 언제 어느 식을 쓸까?</h2><span class="src">교과서 76쪽 · 소비 전력</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-pf"></canvas><div class="side"><div class="chips"><button class="chip on" id="pf-m1">전압 일정 (V = 100 V)</button><button class="chip" id="pf-m2">전류 일정 (I = 1 A)</button></div><div class="ctl"><div class="row"><span>저항 R</span><span class="val" id="pf-Rv">100 Ω</span></div><input id="pf-R" type="range" min="20" max="400" step="5" value="100"></div><div class="box" style="color:var(--ink);line-height:1.75">V = <b class="k" id="pf-V"></b> V, I = <b class="k" id="pf-I"></b> A<br>P = <b class="k" id="pf-P"></b> W<br><b id="pf-msg" class="p"></b></div><div class="sm">전압이 일정한 곳(콘센트·병렬)에서는 <span class="m">P=V<sup>2</sup>/R</span>, 전류가 일정한 곳(직렬 한 줄)에서는 <span class="m">P=I<sup>2</sup>R</span>가 편하다.</div></div>
+</div>
+</section>
+
+<!-- a6 -->
+<section class="slide" id="a6">
+  <header class="hd"><h2>전력량 — J, Wh, kWh</h2><span class="src">교과서 76쪽 · 전력량 = 소비 전력 × 시간</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-kwh"></canvas><div class="side"><div class="box" style="color:var(--ink);line-height:1.75"><div class="eq"><span class="m"><span class="ko">전력량</span>=P&thinsp;t</span></div><div class="sm" style="text-align:center">1 Wh = 1 W × 3600 s = 3600 J<br>1 kWh = 3.6×10⁶ J</div></div><div class="chips"><button class="chip on" id="k-a0">선풍기 40 W</button><button class="chip" id="k-a1">TV 150 W</button><button class="chip" id="k-a2">밥솥 1300 W</button><button class="chip" id="k-a3">주전자 1500 W</button></div><div class="ctl"><div class="row"><span>사용 시간</span><span class="val" id="k-hv">5 h</span></div><input id="k-h" type="range" min="0.1" max="24" step="0.1" value="5"></div><div class="box" style="color:var(--ink);line-height:1.75">P = <b class="k" id="k-P"></b> W, t = <b class="k" id="k-t"></b> h<br>전력량 = <b class="k" id="k-E"></b> kWh<br>= <b class="p" id="k-J"></b> MJ</div></div>
+</div>
+</section>
+
+<!-- a7 -->
+<section class="slide" id="a7">
+  <header class="hd"><h2>저항이란? — 전자와 원자의 충돌, 그리고 열</h2><span class="src">교과서 76쪽 · 저항 내부의 전자와 열</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-res"></canvas><div class="side"><div class="ctl"><div class="row"><span>양단 전압 V</span><span class="val" id="r-Vv">6 V</span></div><input id="r-V" type="range" min="1" max="12" step="1" value="6"></div><div class="ctl"><div class="row"><span>저항 R (충돌이 잦을수록 큼)</span><span class="val" id="r-Rv">3 Ω</span></div><input id="r-R" type="range" min="1" max="12" step="1" value="3"></div><div class="box" style="color:var(--ink);line-height:1.75">I = V/R = <b class="k" id="r-I"></b> A<br>P = VI = <b class="k" id="r-P"></b> W<div class="sm" style="margin-top:8px">원자(이온)가 세게 떨림 = 열 발생</div></div><div class="box" style="color:var(--ink);line-height:1.75"><div class="eq"><span class="m">I=<span class="fr"><span>V</span><span>R</span></span>&nbsp;,&nbsp;&nbsp;P=I<sup>2</sup>R</span></div></div></div>
+</div>
+</section>
+
+<!-- a8 -->
+<section class="slide" id="a8">
+  <header class="hd"><h2>[1차시] 저항의 직렬연결 — 전류는 같고 전압이 나뉜다</h2><span class="src">교과서 78쪽</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-ser"></canvas><div class="side"><div class="ctl"><div class="row"><span>전원 전압 V</span><span class="val" id="s-Vv">100 V</span></div><input id="s-V" type="range" min="10" max="100" step="5" value="100"></div><div class="ctl"><div class="row"><span>저항 R₁</span><span class="val" id="s-1v">100 Ω</span></div><input id="s-1" type="range" min="50" max="400" step="10" value="100"></div><div class="ctl"><div class="row"><span>저항 R₂</span><span class="val" id="s-2v">200 Ω</span></div><input id="s-2" type="range" min="50" max="400" step="10" value="200"></div><div class="box" style="color:var(--ink);line-height:1.75">R<sub>합성</sub> = R₁+R₂ = <b class="k" id="s-R"></b> Ω<br>I = V/R<sub>합성</sub> = <b class="k" id="s-I"></b> A<br>V₁ : V₂ = R₁ : R₂<br>P = VI = <b class="k" id="s-P"></b> W</div><div class="sm">R을 늘려 보며 "합성 저항 ↑ → 전류 ↓ → 전체 소비 전력 ↓"를 확인한다. 막대: 생산 전력 = 소비 전력의 합.</div></div>
+</div>
+</section>
+
+<!-- a9 -->
+<section class="slide" id="a9" data-steps="5">
+  <header class="hd"><h2>직렬연결 유도 — 합성 저항 R합성 = R₁ + R₂</h2><span class="src">교과서 78쪽</span></header>
+<div class="body" style="grid-template-columns:820px 1fr">
+<div class="box" style="font-size:27px;line-height:1.75"><b class="k">직렬연결의 규칙</b><br>• 전류: <span class="m">I=I<sub>1</sub>=I<sub>2</sub></span> (일정)<br>• 전압: <span class="m">V=V<sub>1</sub>+V<sub>2</sub></span><br>• 합성 저항: <span class="m">R<sub>합성</sub>=R<sub>1</sub>+R<sub>2</sub></span> (연결할수록 커짐)<br>• 전압 비 <span class="m">V<sub>1</sub>:V<sub>2</sub>=R<sub>1</sub>:R<sub>2</sub></span><br>• 소비 전력 비 <span class="m">P<sub>1</sub>:P<sub>2</sub>=R<sub>1</sub>:R<sub>2</sub></span><br>• 전체 <span class="m">P=V<sup>2</sup>/R<sub>합성</sub></span> (연결할수록 작아짐)<div class="sm" style="margin-top:8px">학생이 어려워하는 단계이므로 한 줄씩 천천히 (교과서 지도서)</div></div>
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>모든 지점에서 전류가 같다</b></div><div class="eq"><span class="m">I=I<sub>1</sub>=I<sub>2</sub></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">전하는 도중에 쌓이지 않는다</div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>각 저항에 옴의 법칙</b></div><div class="eq"><span class="m">V<sub>1</sub>=IR<sub>1</sub>,&nbsp;V<sub>2</sub>=IR<sub>2</sub></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">전류가 같으므로 R 큰 쪽의 전압이 크다</div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>전체 전압은 각 전압의 합</b></div><div class="eq"><span class="m">V=V<sub>1</sub>+V<sub>2</sub></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">전위가 단계적으로 내려간다</div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>합성 저항 R합성에도 옴의 법칙</b></div><div class="eq"><span class="m">IR<sub>합성</sub>=IR<sub>1</sub>+IR<sub>2</sub>=I(R<sub>1</sub>+R<sub>2</sub>)</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">양변의 I를 약분</div></div></div>
+<div class="st" data-i="5"><div class="n">5</div><div><div class="tl"><b>합성 저항과 소비 전력 비</b></div><div class="eq"><span class="m">R<sub>합성</sub>=R<sub>1</sub>+R<sub>2</sub>,&nbsp;&nbsp;P<sub>1</sub>:P<sub>2</sub>=R<sub>1</sub>:R<sub>2</sub></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">P=V₁I : V₂I = V₁ : V₂</div></div></div></div>
+</div>
+</section>
+
+<!-- a10 -->
+<section class="slide" id="a10" data-steps="5">
+  <header class="hd"><h2>확인 문제 — 직렬: R₁=100 Ω, R₂=200 Ω, V=100 V</h2><span class="src">교과서 78쪽 · 확인 02</span></header>
+<div class="body" style="grid-template-columns:820px 1fr">
+<canvas id="c-sx"></canvas>
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>① 합성 저항</b></div><div class="eq"><span class="m">R<sub>합성</sub>=100+200=300&thinsp;Ω</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">직렬은 단순 합</div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>② 전류</b></div><div class="eq"><span class="m">I=<span class="fr"><span>V</span><span>R<sub>합성</sub></span></span>=<span class="fr"><span>100</span><span>300</span></span>=<span class="fr"><span>1</span><span>3</span></span>&thinsp;<span class="ko">A</span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">두 저항에 모두 같은 전류</div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>③ 각 저항의 전압</b></div><div class="eq"><span class="m">V<sub>1</sub>=<span class="fr"><span>100</span><span>3</span></span>&thinsp;<span class="ko">V</span>,&nbsp;&nbsp;V<sub>2</sub>=<span class="fr"><span>200</span><span>3</span></span>&thinsp;<span class="ko">V</span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">합 = 100 V 확인</div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>④ 각 소비 전력</b></div><div class="eq"><span class="m">P<sub>1</sub>=<span class="fr"><span>100</span><span>9</span></span>&thinsp;<span class="ko">W</span>,&nbsp;&nbsp;P<sub>2</sub>=<span class="fr"><span>200</span><span>9</span></span>&thinsp;<span class="ko">W</span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">P=I²R, R 큰 쪽이 2배</div></div></div>
+<div class="st" data-i="5"><div class="n">5</div><div><div class="tl"><b>⑤ 전체 소비 전력</b></div><div class="eq"><span class="m">P=VI=<span class="fr"><span>100</span><span>3</span></span>&thinsp;<span class="ko">W</span>=P<sub>1</sub>+P<sub>2</sub></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">에너지 보존 확인</div></div></div></div>
+</div>
+</section>
+
+<!-- a11 -->
+<section class="slide" id="a11" data-steps="5">
+  <header class="hd"><h2>[1차시] 정리와 확인 문제</h2><span class="src">교과서 76~78쪽</span></header>
+<div class="body" style="grid-template-columns:820px 1fr">
+<div class="box" style="font-size:28px;line-height:1.75"><b class="k">한 줄 요약</b><br>&emsp;<span class="m">W=VIt</span>, <span class="m">P=VI=I<sup>2</sup>R=V<sup>2</sup>/R</span>, 전력량 <span class="m">=Pt</span><br>&emsp;직렬: <span class="m">I</span> 같음, <span class="m">V=V<sub>1</sub>+V<sub>2</sub></span>, <span class="m">R=R<sub>1</sub>+R<sub>2</sub></span><br>&emsp;&emsp;R이 클수록 V, P가 큼 / 연결할수록 전체 P 작아짐</div>
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>Q1. 220 V, 1100 W 전기 히터의 전류와 저항은?</b><span class="t">정답: 5 A, 44 Ω</span></div><div class="eq"><span class="m">I=<span class="fr"><span>P</span><span>V</span></span>=5&thinsp;<span class="ko">A</span>,&nbsp;R=<span class="fr"><span>V</span><span>I</span></span>=44&thinsp;Ω</span></div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>Q2. 이 히터를 3시간 쓰면 전력량은 몇 kWh, 몇 J?</b><span class="t">정답: 3.3 kWh = 1.19×10⁷ J</span></div><div class="eq"><span class="m">1.1&thinsp;<span class="ko">kW</span>×3&thinsp;<span class="ko">h</span>=3.3&thinsp;<span class="ko">kWh</span></span></div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>Q3. R₁=20 Ω, R₂=30 Ω을 50 V에 직렬. I, V₁, V₂, P₁, P₂는?</b><span class="t">정답: 1 A, 20 V, 30 V, 20 W, 30 W</span></div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>Q4. 직렬에서 저항을 하나 더 연결하면 전체 소비 전력은?</b><span class="t">정답: 작아진다 (R합성↑, P=V²/R합성)</span></div></div></div>
+<div class="st" data-i="5"><div class="n">5</div><div><div class="tl"><b>Q5. 문어발 위험 질문, 지금까지는 아직 모른다 → 2차시에서!</b><span class="t">예고: 병렬연결일수록 전체 전류가 커진다</span></div></div></div></div>
+</div>
+</section>
+
+<!-- a12 -->
+<section class="slide" id="a12">
+  <header class="hd"><h2>[2차시] 저항의 병렬연결 — 전압은 같고 전류가 나뉜다</h2><span class="src">교과서 79쪽</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-par"></canvas><div class="side"><div class="ctl"><div class="row"><span>전원 전압 V</span><span class="val" id="p-Vv">100 V</span></div><input id="p-V" type="range" min="10" max="100" step="5" value="100"></div><div class="ctl"><div class="row"><span>저항 R₁</span><span class="val" id="p-1v">100 Ω</span></div><input id="p-1" type="range" min="50" max="400" step="10" value="100"></div><div class="ctl"><div class="row"><span>저항 R₂</span><span class="val" id="p-2v">200 Ω</span></div><input id="p-2" type="range" min="50" max="400" step="10" value="200"></div><div class="box" style="color:var(--ink);line-height:1.75">1/R<sub>합성</sub> = 1/R₁+1/R₂<br>R<sub>합성</sub> = <b class="k" id="p-R"></b> Ω<br>I = I₁+I₂ = <b class="k" id="p-I"></b> A<br>P = <b class="k" id="p-P"></b> W</div><div class="sm">R₁, R₂ 중 하나를 줄여 보자: 합성 저항은 줄고 전체 전류와 소비 전력은 커진다.</div></div>
+</div>
+</section>
+
+<!-- a13 -->
+<section class="slide" id="a13" data-steps="5">
+  <header class="hd"><h2>병렬연결 유도 — 1/R합성 = 1/R₁ + 1/R₂</h2><span class="src">교과서 79쪽</span></header>
+<div class="body" style="grid-template-columns:820px 1fr">
+<div class="box" style="font-size:27px;line-height:1.75"><b class="k">병렬연결의 규칙</b><br>• 전압: <span class="m">V=V<sub>1</sub>=V<sub>2</sub></span> (일정)<br>• 전류: <span class="m">I=I<sub>1</sub>+I<sub>2</sub></span><br>• 합성 저항: <span class="m"><span class="fr"><span>1</span><span>R<sub>합성</sub></span></span>=<span class="fr"><span>1</span><span>R<sub>1</sub></span></span>+<span class="fr"><span>1</span><span>R<sub>2</sub></span></span></span> (연결할수록 작아짐)<br>• 전류 비 <span class="m">I<sub>1</sub>:I<sub>2</sub>=<span class="fr"><span>1</span><span>R<sub>1</sub></span></span>:<span class="fr"><span>1</span><span>R<sub>2</sub></span></span></span><br>• 소비 전력 비 <span class="m">P<sub>1</sub>:P<sub>2</sub>=<span class="fr"><span>1</span><span>R<sub>1</sub></span></span>:<span class="fr"><span>1</span><span>R<sub>2</sub></span></span></span><br>• 전체 <span class="m">P=V<sup>2</sup>/R<sub>합성</sub></span> (연결할수록 커짐)<div class="sm" style="margin-top:8px">직렬 유도(78쪽)와 짝지어 비교한다.</div></div>
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>전원과 각 저항의 전압이 같다</b></div><div class="eq"><span class="m">V=V<sub>1</sub>=V<sub>2</sub></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">같은 두 점(도선)에 연결</div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>각 저항에 옴의 법칙</b></div><div class="eq"><span class="m">I<sub>1</sub>=<span class="fr"><span>V</span><span>R<sub>1</sub></span></span>,&nbsp;&nbsp;I<sub>2</sub>=<span class="fr"><span>V</span><span>R<sub>2</sub></span></span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">R 작은 쪽에 큰 전류</div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>전체 전류는 가지 전류의 합</b></div><div class="eq"><span class="m">I=I<sub>1</sub>+I<sub>2</sub></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">전하 보존 (갈림점)</div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>합성 저항에도 옴의 법칙</b></div><div class="eq"><span class="m"><span class="fr"><span>V</span><span>R<sub>합성</sub></span></span>=<span class="fr"><span>V</span><span>R<sub>1</sub></span></span>+<span class="fr"><span>V</span><span>R<sub>2</sub></span></span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">양변의 V를 약분</div></div></div>
+<div class="st" data-i="5"><div class="n">5</div><div><div class="tl"><b>합성 저항의 역수와 소비 전력 비</b></div><div class="eq"><span class="m"><span class="fr"><span>1</span><span>R<sub>합성</sub></span></span>=<span class="fr"><span>1</span><span>R<sub>1</sub></span></span>+<span class="fr"><span>1</span><span>R<sub>2</sub></span></span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">P₁:P₂ = I₁:I₂ (P=VI, V 같음)</div></div></div></div>
+</div>
+</section>
+
+<!-- a14 -->
+<section class="slide" id="a14" data-steps="5">
+  <header class="hd"><h2>확인 문제 — 병렬: R₁=100 Ω, R₂=200 Ω, V=100 V</h2><span class="src">교과서 79쪽 · 확인 03</span></header>
+<div class="body" style="grid-template-columns:820px 1fr">
+<canvas id="c-px"></canvas>
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>① 각 저항의 전압</b></div><div class="eq"><span class="m">V<sub>1</sub>=V<sub>2</sub>=100&thinsp;<span class="ko">V</span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">병렬은 전압이 같다</div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>② 각 저항의 전류</b></div><div class="eq"><span class="m">I<sub>1</sub>=<span class="fr"><span>100</span><span>100</span></span>=1&thinsp;<span class="ko">A</span>,&nbsp;&nbsp;I<sub>2</sub>=<span class="fr"><span>100</span><span>200</span></span>=0.5&thinsp;<span class="ko">A</span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">R 작은 쪽이 2배</div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>③ 각 소비 전력</b></div><div class="eq"><span class="m">P<sub>1</sub>=100&thinsp;<span class="ko">W</span>,&nbsp;&nbsp;P<sub>2</sub>=50&thinsp;<span class="ko">W</span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">P=VI</div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>④ 전체 전류·소비 전력</b></div><div class="eq"><span class="m">I=1.5&thinsp;<span class="ko">A</span>,&nbsp;&nbsp;P=150&thinsp;<span class="ko">W</span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">전원이 내놓는 전류 = 합</div></div></div>
+<div class="st" data-i="5"><div class="n">5</div><div><div class="tl"><b>⑤ 합성 저항으로 검산</b></div><div class="eq"><span class="m">R<sub>합성</sub>=<span class="fr"><span>200</span><span>3</span></span>&thinsp;Ω,&nbsp;&nbsp;P=<span class="fr"><span>V<sup>2</sup></span><span>R<sub>합성</sub></span></span>=150&thinsp;<span class="ko">W</span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">직렬(100/3 W)보다 4.5배</div></div></div></div>
+</div>
+</section>
+
+<!-- a15 -->
+<section class="slide" id="a15">
+  <header class="hd"><h2>실험 — 직렬·병렬 회로의 전류와 전압 측정하기</h2><span class="src">교과서 77쪽 · 활동지 181~182쪽</span></header>
+<div class="body" style="grid-template-columns:1fr 1fr">
+<div class="box" style="font-size:27px;line-height:1.7"><b class="k">준비물</b> 저항 2개, 전지, 전압계, 전류계, 전선, 스위치<br><b class="p">전압계는 병렬로, 전류계는 직렬로</b> 연결한다.<br><b class="bad">안전</b> 전지 양단을 도선만으로 직접 연결하지 않는다(과전류·발열·폭발 위험). 젖은 손으로 만지지 않는다.<div class="sm" style="margin-top:10px">모둠 역할: 준비 · 수행 · 기록 · 발표 · 정리</div></div>
+<div class="box" style="font-size:25px"><table class="t" style="width:100%;font-size:25px"><tr><th>구분</th><th>직렬 전류</th><th>직렬 전압</th><th>병렬 전류</th><th>병렬 전압</th></tr><tr><td>저항 A</td><td></td><td></td><td></td><td></td></tr><tr><td>저항 B</td><td></td><td></td><td></td><td></td></tr><tr><td>회로 전체</td><td></td><td></td><td></td><td></td></tr></table><div class="sm" style="margin-top:12px"><b>예상해 보기</b> 측정 전에 각 칸을 "같다 / 합이 같다 / 다르다" 중 고른다. <b>토의</b> 각 저항의 소비 전력은 어떻게 될까?</div></div>
+</div>
+</section>
+
+<!-- a16 -->
+<section class="slide" id="a16">
+  <header class="hd"><h2>직렬 vs 병렬 — 같은 전구 두 개, 어느 쪽이 더 밝을까?</h2><span class="src">교과서 78~79쪽 · 비교</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-bulb"></canvas><div class="side"><div class="chips"><button class="chip on" id="b-m1">직렬</button><button class="chip" id="b-m2">병렬</button></div><div class="chips"><button class="chip" id="b-brk">전구 ② 끊기</button></div><div class="ctl"><div class="row"><span>전원 전압 V</span><span class="val" id="b-Vv">12 V</span></div><input id="b-V" type="range" min="6" max="24" step="1" value="12"></div><div class="box" style="color:var(--ink);line-height:1.75">각 전구 R = 24 Ω<br>전구 ①: <b class="k" id="b-P1"></b> W<br>전구 ②: <b class="k" id="b-P2"></b> W<br>전원: <b class="p" id="b-I"></b> A</div><div class="sm">전구 저항이 일정하다고 가정(실제 필라멘트는 온도에 따라 변함).</div></div>
+</div>
+</section>
+
+<!-- a17 -->
+<section class="slide" id="a17">
+  <header class="hd"><h2>직렬 ↔ 병렬 한눈에 비교</h2><span class="src">교과서 78~79쪽 정리</span></header>
+<div class="box" style="font-size:27px"><table class="t" style="width:100%;font-size:27px"><colgroup><col style="width:22%"><col style="width:39%"><col style="width:39%"></colgroup><tr><th></th><th>직렬연결</th><th>병렬연결</th></tr>
+<tr><td>같은 것</td><td class="k">전류 <span class="m">I=I<sub>1</sub>=I<sub>2</sub></span></td><td class="k">전압 <span class="m">V=V<sub>1</sub>=V<sub>2</sub></span></td></tr>
+<tr><td>합해지는 것</td><td>전압 <span class="m">V=V<sub>1</sub>+V<sub>2</sub></span></td><td>전류 <span class="m">I=I<sub>1</sub>+I<sub>2</sub></span></td></tr>
+<tr><td>합성 저항</td><td><span class="m">R=R<sub>1</sub>+R<sub>2</sub></span> <span class="sm">(커짐)</span></td><td><span class="m"><span class="fr"><span>1</span><span>R</span></span>=<span class="fr"><span>1</span><span>R<sub>1</sub></span></span>+<span class="fr"><span>1</span><span>R<sub>2</sub></span></span></span> <span class="sm">(작아짐)</span></td></tr>
+<tr><td>나뉘는 비</td><td><span class="m">V<sub>1</sub>:V<sub>2</sub>=R<sub>1</sub>:R<sub>2</sub></span></td><td><span class="m">I<sub>1</sub>:I<sub>2</sub>=<span class="fr"><span>1</span><span>R<sub>1</sub></span></span>:<span class="fr"><span>1</span><span>R<sub>2</sub></span></span></span></td></tr>
+<tr><td>소비 전력 비</td><td><span class="m">P<sub>1</sub>:P<sub>2</sub>=R<sub>1</sub>:R<sub>2</sub></span><br><span class="sm">R 큰 쪽이 큼</span></td><td><span class="m">P<sub>1</sub>:P<sub>2</sub>=<span class="fr"><span>1</span><span>R<sub>1</sub></span></span>:<span class="fr"><span>1</span><span>R<sub>2</sub></span></span></span><br><span class="sm">R 작은 쪽이 큼</span></td></tr>
+<tr><td>전체 소비 전력</td><td><span class="m">V<sup>2</sup>/R</span>: 연결할수록 <b class="p">작아짐</b></td><td><span class="m">V<sup>2</sup>/R</span>: 연결할수록 <b class="bad">커짐</b></td></tr>
+<tr><td>한 곳이 끊기면</td><td>전체가 멈춤</td><td>나머지는 정상 작동</td></tr></table></div>
+</section>
+
+<!-- a18 -->
+<section class="slide" id="a18">
+  <header class="hd"><h2>혼합연결 — R₁ 직렬 + (R₂ ∥ R₃) 병렬</h2><span class="src">교과서 78~79쪽 응용</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-mix"></canvas><div class="side"><div class="ctl"><div class="row"><span>전원 전압 V</span><span class="val" id="m-Vv">60 V</span></div><input id="m-V" type="range" min="10" max="100" step="5" value="60"></div><div class="ctl"><div class="row"><span>R₁ (직렬)</span><span class="val" id="m-1v">40 Ω</span></div><input id="m-1" type="range" min="10" max="100" step="5" value="40"></div><div class="ctl"><div class="row"><span>R₂ (병렬)</span><span class="val" id="m-2v">60 Ω</span></div><input id="m-2" type="range" min="10" max="100" step="5" value="60"></div><div class="ctl"><div class="row"><span>R₃ (병렬)</span><span class="val" id="m-3v">30 Ω</span></div><input id="m-3" type="range" min="10" max="100" step="5" value="30"></div><div class="box" style="color:var(--ink);line-height:1.75">R₂∥R₃ = <b class="k" id="m-Rp"></b> Ω<br>R<sub>합성</sub> = <b class="k" id="m-R"></b> Ω<br>I = <b class="k" id="m-I"></b> A<br>P = <b class="k" id="m-P"></b> W</div></div>
+</div>
+</section>
+
+<!-- a19 -->
+<section class="slide" id="a19" data-steps="5">
+  <header class="hd"><h2>혼합연결 풀이 4단계 — V=60 V, R₁=40, R₂=60, R₃=30 Ω</h2><span class="src">교과서 78~79쪽 응용</span></header>
+<div class="body" style="grid-template-columns:820px 1fr">
+<div class="box" style="font-size:28px;line-height:1.75"><b class="k">풀이 전략</b><br>① 병렬 덩어리를 한 저항으로 묶는다<br>② 직렬로 합쳐 전체 전류를 구한다<br>③ <b>되돌려</b> 각 부분의 전압을 구한다<br>④ 가지 전류·소비 전력을 구하고 검산한다<div class="sm" style="margin-top:10px">검산: <span class="m">P<sub>1</sub>+P<sub>2</sub>+P<sub>3</sub>=VI</span></div></div>
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>① 병렬부 합성</b></div><div class="eq"><span class="m">R<sub>23</sub>=<span class="fr"><span>60×30</span><span>60+30</span></span>=20&thinsp;Ω</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">R₂∥R₃</div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>② 전체 합성 저항과 전류</b></div><div class="eq"><span class="m">R=40+20=60&thinsp;Ω,&nbsp;&nbsp;I=<span class="fr"><span>60</span><span>60</span></span>=1&thinsp;<span class="ko">A</span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">R₁은 병렬부와 직렬</div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>③ 각 부분의 전압</b></div><div class="eq"><span class="m">V<sub>1</sub>=IR<sub>1</sub>=40&thinsp;<span class="ko">V</span>,&nbsp;&nbsp;V<sub>23</sub>=60-40=20&thinsp;<span class="ko">V</span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">R₂, R₃ 양단 전압은 같다</div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>④ 가지 전류</b></div><div class="eq"><span class="m">I<sub>2</sub>=<span class="fr"><span>20</span><span>60</span></span>=<span class="fr"><span>1</span><span>3</span></span>&thinsp;<span class="ko">A</span>,&nbsp;&nbsp;I<sub>3</sub>=<span class="fr"><span>20</span><span>30</span></span>=<span class="fr"><span>2</span><span>3</span></span>&thinsp;<span class="ko">A</span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">I₂+I₃ = 1 A = I</div></div></div>
+<div class="st" data-i="5"><div class="n">5</div><div><div class="tl"><b>⑤ 소비 전력과 검산</b></div><div class="eq"><span class="m">∑ P=60&thinsp;<span class="ko">W</span>=VI</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">P₁=40, P₂=20/3, P₃=40/3 W</div></div></div></div>
+</div>
+</section>
+
+<!-- a20 -->
+<section class="slide" id="a20">
+  <header class="hd"><h2>전위차로 계산하기 — 회로의 전위 계단</h2><span class="src">교과서 75쪽 전위차 + 76~79쪽</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-pot"></canvas><div class="side"><div class="ctl"><div class="row"><span>전원 전압 V</span><span class="val" id="q-Vv">60 V</span></div><input id="q-V" type="range" min="10" max="100" step="5" value="60"></div><div class="ctl"><div class="row"><span>R₁</span><span class="val" id="q-1v">40 Ω</span></div><input id="q-1" type="range" min="10" max="100" step="5" value="40"></div><div class="ctl"><div class="row"><span>R₂</span><span class="val" id="q-2v">60 Ω</span></div><input id="q-2" type="range" min="10" max="100" step="5" value="60"></div><div class="ctl"><div class="row"><span>R₃</span><span class="val" id="q-3v">30 Ω</span></div><input id="q-3" type="range" min="10" max="100" step="5" value="30"></div><div class="box" style="color:var(--ink);line-height:1.75">A → B: 전위 <b class="k" id="q-d1"></b> V 내려감<br>B → C: 전위 <b class="k" id="q-d2"></b> V 내려감<br>합 = 전원 전압 <b class="p" id="q-s"></b> V</div><div class="sm">전지를 한 바퀴 돌면 전위는 제자리 (올라간 만큼 내려옴).</div></div>
+</div>
+</section>
+
+<!-- a21 -->
+<section class="slide" id="a21">
+  <header class="hd"><h2>실생활 ① 병렬: 멀티탭과 허용 전류 (220 V, 16 A)</h2><span class="src">교과서 80쪽 · 해 보기</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-mt"></canvas><div class="side"><div class="sm">눌러서 멀티탭에 꽂기/빼기</div><div class="chips"><button class="chip on" id="mt-0">주전자 1500 W</button><button class="chip on" id="mt-1">밥솥 1300 W</button><button class="chip on" id="mt-2">전자레인지 700 W</button><button class="chip" id="mt-3">드라이어 1200 W</button><button class="chip" id="mt-4">에어프라이어 1400 W</button></div><div class="box" style="color:var(--ink);line-height:1.75">소비 전력 합 = <b class="k" id="mt-P"></b> W<br>전류 I = ΣP / 220 V = <b class="k" id="mt-I"></b> A<br><b id="mt-msg"></b></div><div class="sm">허용 전류 16 A → 허용 전력 220×16 = 3520 W. 기기들은 병렬이라 각자 220 V를 받고, 도선에는 전류의 합이 흐른다.</div></div>
+</div>
+</section>
+
+<!-- a22 -->
+<section class="slide" id="a22">
+  <header class="hd"><h2>실생활 ② 직렬과 병렬 — 분전반·누전 차단기·전기난로·장식 전구</h2><span class="src">교과서 80~81쪽</span></header>
+<div class="body" style="grid-template-columns:1fr 1fr">
+<div class="box" style="font-size:27px;line-height:1.7"><b class="k">병렬을 이용한 예</b><br>• <b>분전반</b>: 전기 기구 회로를 병렬로 배치, 각 기구에 일정한 전압. 과전류가 흐르면 해당 회로만 차단<br>• <b>멀티탭</b>: 내부 구리판이 나란히 놓여 병렬 연결<br>• <b>전기난로</b>: 저항값이 다른 전열선들이 병렬 → 저항이 작은 쪽에 연결할수록 <span class="m">P=V<sup>2</sup>/R</span>가 커져 고온<br><div class="sm" style="margin-top:8px">저항을 병렬로 연결할수록 전체 전류와 소비 전력이 커진다.</div></div>
+<div class="box" style="font-size:27px;line-height:1.7"><b class="p">직렬을 이용한 예</b><br>• <b>누전 차단기</b>: 가정 내 전체 전류가 허용 전류 이상이면 직렬로 연결된 차단기가 전력 공급을 끊음<br>• <b>대기 전력 자동 차단 멀티탭</b>: 직렬로 연결된 차단 장치가 소비 전력이 일정 값 이하면 차단<br>• <b>장식용 전구</b>: 직렬로 연결하면 전체 전압이 개별 전구에 나뉘어 전압 변동에도 보호됨, 단 하나가 끊기면 모두 꺼짐<br><div class="sm" style="margin-top:8px">직렬은 "전체를 한 번에 제어"할 때, 병렬은 "각각 독립적으로 쓸" 때.</div></div>
+</div>
+</section>
+
+<!-- a23 -->
+<section class="slide" id="a23" data-steps="5">
+  <header class="hd"><h2>[2차시] 정리와 확인 문제</h2><span class="src">교과서 76~81쪽 정리</span></header>
+<div class="body" style="grid-template-columns:820px 1fr">
+<div class="box" style="font-size:27px;line-height:1.7"><b class="k">두 차시 한 줄 요약</b><br>&emsp;<span class="m">W=VIt</span>, <span class="m">P=VI=I<sup>2</sup>R=V<sup>2</sup>/R</span>, 전력량 <span class="m">=Pt</span> [J, Wh, kWh]<br>&emsp;직렬: <span class="m">I</span> 같음, <span class="m">R=∑ R</span>, 연결↑ → 전체 <span class="m">P</span>↓<br>&emsp;병렬: <span class="m">V</span> 같음, <span class="m">1/R=∑ 1/R</span>, 연결↑ → 전체 <span class="m">I,P</span>↑<br>&emsp;혼합: 병렬부 묶기 → 직렬 → 되돌리기<br><b class="p">문어발 위험 ⇒ 병렬 ⇒ 전체 <span class="m">I</span>↑ ⇒ 허용 전류 초과 ⇒ 과열</b></div>
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>Q1. 병렬로 연결한 두 저항 중 소비 전력이 더 큰 것은?</b><span class="t">정답: 저항값이 작은 쪽 (P=V²/R)</span></div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>Q2. 12 Ω, 6 Ω 병렬 합성 저항과 12 V일 때 전체 전류는?</b><span class="t">정답: 4 Ω, 3 A</span></div><div class="eq"><span class="m">R=<span class="fr"><span>12×6</span><span>18</span></span>=4&thinsp;Ω,&nbsp;I=<span class="fr"><span>12</span><span>4</span></span>=3&thinsp;<span class="ko">A</span></span></div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>Q3. 220 V, 16 A 멀티탭에서 쓸 수 있는 최대 소비 전력의 합은?</b><span class="t">정답: 3520 W</span></div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>Q4. R₁=30 Ω 직렬 + (60 Ω ∥ 60 Ω), V=60 V일 때 I와 R₁의 소비 전력은?</b><span class="t">정답: 1 A, 30 W</span></div><div class="eq"><span class="m">R=30+30=60&thinsp;Ω,&nbsp;I=1&thinsp;<span class="ko">A</span>,&nbsp;P<sub>1</sub>=I<sup>2</sup>R<sub>1</sub>=30&thinsp;<span class="ko">W</span></span></div></div></div>
+<div class="st" data-i="5"><div class="n">5</div><div><div class="tl"><b>Q5. 처음 질문: 문어발이 위험한 까닭을 한 문장으로 쓰시오.</b><span class="t">예시: 병렬로 기구를 늘릴수록 도선의 전류가 합쳐져 허용 전류를 넘고, 도선 발열 P=I²R선이 커져서</span></div></div></div></div>
+</div>
+</section>
+
+<div id="notes"></div>
+<div id="bar"><div class="bl">⚡ 저항의 연결과 소비 전력 — 전기 에너지·전력·직렬·병렬·혼합 (2차시) <span class="sm">· 2022 개정 물리학 · 교과서 76~81쪽</span></div><div class="br"><button class="tb" id="b-help">❓ 조작법</button><button class="tb" id="b-ask">💬 발문 띄우기</button><button class="tb" id="b-notes">📝 오개념 교정 노트</button><button class="tb" id="b-theme">🌙 다크 전환</button></div></div>
+<div id="ask" role="dialog" aria-label="발문"></div>
+<div id="help" role="dialog" aria-label="조작법 설명"><div class="hp">
+<h3>조작법</h3>
+<h4>키보드</h4>
+<div class="g"><div><kbd>→</kbd><kbd>Space</kbd></div><div>다음 (단계가 있는 슬라이드는 단계부터 진행)</div>
+<div><kbd>←</kbd></div><div>이전 (단계도 거꾸로)</div>
+<div><kbd>Home</kbd><kbd>End</kbd></div><div>처음 / 마지막 슬라이드</div>
+<div><kbd>F</kbd></div><div>전체 화면</div>
+<div><kbd>Q</kbd></div><div>이 슬라이드의 <b>발문(학생용 질문)</b>을 화면 위에 크게 띄우기 / 닫기 (아무 곳이나 클릭해도 닫힘)</div>
+<div><kbd>N</kbd></div><div>오개념 교정 노트 열기/닫기 (교사용)</div>
+<div><kbd>T</kbd></div><div>다크 / 라이트 전환</div>
+<div><kbd>?</kbd><kbd>Esc</kbd></div><div>조작법 열기 / 닫기</div></div>
+<h4>화면 조작</h4>
+<div class="g"><div>슬라이더</div><div>값 바꾸기 (터치 가능)</div>
+<div>칩/버튼</div><div>누르면 선택·전환</div>
+<div>→ / Space</div><div>다음 단계(유도·확인 문제 공개)</div>
+<div>❓ / 📝</div><div>조작법 / 오개념 교정 노트</div>
+<div>슬라이더 키보드</div><div>슬라이더를 클릭해 초점이 있는 동안에는 ← → 가 값 조절에 쓰입니다. 마우스로 놓으면 자동 해제</div></div>
+<h4>수업 진행 팁</h4>
+<div>① 학생에게 결과를 <b>먼저 예측</b>하게 하고 → ② 슬라이더로 확인하고 → ③ 식으로 정리하면 오개념이 잘 교정됩니다.</div>
+<div class="btns" style="margin-top:22px"><button class="btn pri" id="help-x">닫기 (Esc)</button></div>
+</div></div>
+<div id="simError"></div>
+</div>
+<div id="hud"><button id="h-prev" aria-label="이전">◀</button><span id="h-pg">1 / 1</span><button id="h-next" aria-label="다음">▶</button><button id="h-fs" aria-label="전체화면">⛶</button></div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   공통 유틸 / 그리기 도우미 (템플릿 제공)
+   ===================================================================== */
+const DECK = {"title":"저항의 연결과 소비 전력 — 전기 에너지·전력·직렬·병렬·혼합 (2차시)","notes":{"a1":{"q":"먼저 예측을 받으세요: 회로에 저항을 하나 더 병렬로 달면 전원이 내놓는 전류는 늘까, 줄까? 오른쪽 그림에서 저항을 두 개 달면 점의 흐름이 두 갈래로 나뉘고 주 도선의 흐름이 빨라집니다.","m":[["저항을 더 연결하면 전류는 언제나 줄어든다.","직렬은 줄지만 병렬은 늘어난다 (2차시)."],["전기 기구는 전기를 \"써서 없앤다\".","전하는 소모되지 않는다. 전하가 잃는 것은 전기 에너지(열·빛 등으로 전환)이다."]]},"a2":{"q":"교과서 76쪽 도입 질문입니다. 지금 답을 받아 칠판에 적어 두고, 2차시 끝 슬라이드에서 다시 비교하세요. 옴의 법칙은 중학교에서 어려워한 개념이라 3번 슬라이드 전에 한 번 환기합니다 (교과서 지도서 제안).","m":[["옴의 법칙 V=IR은 모든 도체에서 성립한다.","저항값이 일정한 도체(옴 저항)에서 성립한다. 전구 필라멘트는 온도에 따라 R이 변한다 (심화)."]]},"a3":{"q":"→ 키로 한 줄씩 드러내며 \"왜 이 식이 나오는가\"를 학생이 말하게 합니다. 단위 확인(J/C × C/s = J/s)을 꼭 하세요.","m":[["소비 전력 P는 전기 기구의 고정된 성질이다.","P는 걸리는 전압과 저항에 따라 달라진다. 정격 전압일 때의 값이 표시된 소비 전력이다."],["전류가 저항을 지나면 전류가 줄어든다.","전류(단위 시간당 전하)는 직렬 한 줄에서 같다. 줄어드는 것은 전위(전기 에너지)이다."]]},"a4":{"q":"슬라이더를 직접 움직여 보게 한 뒤 규칙을 말하게 합니다.","m":[["전력이 크면 항상 온도가 많이 오른다.","W=Pt, 에너지(전력×시간)와 물의 질량에 따라 오른다."]]},"a5":{"q":"슬라이더를 직접 움직여 보게 한 뒤 규칙을 말하게 합니다.","m":[["P=I²R이므로 R이 크면 항상 P가 크다.","전압이 일정하면 P=V²/R이라 R이 작을수록 P가 크다."]]},"a6":{"q":"슬라이더를 직접 움직여 보게 한 뒤 규칙을 말하게 합니다.","m":[["kWh는 전력의 단위이다.","kWh는 에너지(전력량)의 단위이다. 전력은 kW."]]},"a7":{"q":"전자가 전기장에서 가속되다가 원자와 충돌해 에너지를 잃고, 그 에너지가 원자 진동(열)으로 바뀐다고 설명합니다. 같은 V에서 R이 클수록 전류는 줄고(전자의 평균 이동이 느림), 충돌당 에너지 전달은 커집니다. P=I²R, V²/R 어느 쪽으로 봐도 P가 계산됩니다.","m":[["전자가 저항에서 소모되어 없어진다.","전자는 계속 순환한다. 전자가 잃는 것은 전기 에너지(운동 에너지가 원자 진동으로 전달)."],["전류가 흐르는 방향으로 전자가 움직인다.","전자는 (−)전하라 전류와 반대 방향으로 이동한다. 그림의 점은 전자이므로 오른쪽→왼쪽이 아니라 전기장 반대 방향이다."]]},"a8":{"q":"슬라이더 R₂만 바꾸며 \"I는 바뀌어도 두 저항에서 같다\"를 확인하게 합니다. 막대에서 생산 전력(초록)과 소비 합(쌓은 막대)이 항상 같은 것은 에너지 보존입니다.","m":[["직렬에서는 전류가 저항을 지날 때마다 줄어든다.","전류는 직렬 어디서나 같다 (전하 보존). 전압(전위)이 저항마다 나뉘어 떨어진다."],["직렬에서는 저항이 작은 쪽이 더 많이 소모한다.","P=I²R, I가 같으므로 R이 큰 쪽의 소비 전력이 더 크다."]]},"a9":{"q":"이 유도는 4단계(전류-전압-합-약분)입니다. 학생이 \"왜 I를 약분해도 되는가\"를 말하게 하세요 — 세 식 모두 같은 I이기 때문입니다.","m":[["R합성이 R₁, R₂보다 작을 수 있다.","직렬 합성 저항은 각 저항보다 항상 크다."]]},"a10":{"q":"스텝을 열기 전에 학생이 먼저 계산하게 하고 모둠별 답을 비교하세요. ⑤에서 P₁+P₂=P가 되는지 검산하는 습관을 갖게 합니다.","m":[["V₁=V₂=50 V (똑같이 나눈다).","저항이 다르면 전압도 R 비로 나뉜다."]]},"a11":{"q":"Q1~4는 모둠 카드로 답하게 한 뒤 →로 정답 공개. Q3은 P=I²R와 P=V·I 두 방법으로 풀게 하세요.","m":[["3시간이면 3.3 kW이다.","전력(kW)과 전력량(kWh)을 혼동한 것. 단위로 구분한다."]]},"a12":{"q":"\"R₂를 바꿔도 I₁은 안 변한다\"를 먼저 확인시키세요 — 병렬 가지는 서로 독립입니다. 이것이 가정에서 전기 기구를 병렬로 쓰는 이유(80쪽)와 이어집니다.","m":[["병렬에서는 저항이 큰 쪽에 더 많은 전류가 흐른다.","V가 같으므로 I=V/R, R이 작은 쪽에 더 큰 전류가 흐른다."],["병렬로 연결하면 합성 저항이 더 커진다.","병렬 합성 저항은 가장 작은 저항보다 작다."]]},"a13":{"q":"직렬 슬라이드(a9)와 나란히 보이게 하세요: 직렬은 I 약분 → R 합, 병렬은 V 약분 → 1/R 합. 약분하는 양이 다를 뿐 구조가 같습니다.","m":[["두 저항의 병렬 합성은 R₁R₂/(R₁+R₂)이다. 그러면 세 개도 R₁R₂R₃/(...)이다.","세 개 이상이면 1/R=1/R₁+1/R₂+1/R₃에서 시작한다. 두 개일 때 곱/합 공식은 쓸 수 있다."]]},"a14":{"q":"직렬 확인 문제(a10)와 같은 저항·같은 전원입니다. 전체 소비 전력이 100/3 W → 150 W로 4.5배가 됨을 직접 비교하세요.","m":[["I=100/300 A로 계산한다 (직렬 방식).","병렬은 각 저항에 V=100 V가 그대로 걸린다."]]},"a15":{"q":"측정 전 예상을 적게 하면 결과 비교가 학습이 됩니다. 전압계·전류계 연결 사진이나 시연(교과서 지도서)을 먼저 보여 주세요. 측정값은 이상적인 전지·도선이 아니므로 약간의 오차가 있습니다.","m":[["전류계는 전압계처럼 병렬로 연결해도 된다.","전류계는 저항이 매우 작아 병렬로 달면 단락(합선) 위험이 있다. 반드시 직렬."]]},"a16":{"q":"직렬: 각 전구에 V/2 → P=V²/(4R). 병렬: 각 전구에 V → P=V²/R. 병렬이 4배 밝습니다. \"전구 끊기\"로 장식 전구(81쪽)의 단점과 가정 배선이 병렬인 이유를 연결하세요.","m":[["직렬이 전류가 같으니 전구가 더 밝다.","밝기는 P=VI, 직렬은 전압이 절반이라 오히려 어둡다."],["병렬에서 한 전구가 꺼지면 다른 전구도 약해진다.","병렬 가지는 독립이라 나머지는 그대로이다."]]},"a17":{"q":"\"같은 것 / 합해지는 것\" 두 행만 외우면 나머지가 따라옵니다. 소비 전력 비가 서로 반대인 점(직렬 R 큰 쪽, 병렬 R 작은 쪽)이 가장 자주 틀립니다.","m":[["소비 전력 비는 직렬이든 병렬이든 R 비와 같다.","직렬 P∝R (I 같음), 병렬 P∝1/R (V 같음)."]]},"a18":{"q":"혼합연결은 \"병렬 덩어리 → 하나의 저항으로 묶기 → 직렬 계산 → 다시 펼치기\"의 4단계로 풉니다 (다음 슬라이드). R₃를 줄이면 병렬부 저항이 줄어 병렬부 전압이 작아지고 R₁ 전압이 커집니다.","m":[["병렬 부분의 각 저항에도 전체 전류 I가 흐른다.","I는 갈림점에서 I₂+I₃로 나뉜다."],["R₂를 바꾸면 R₃의 소비 전력도 바뀐다.","R₂를 바꾸면 병렬부 전압이 바뀌어 R₃의 P도 바뀐다 (슬라이더로 확인)."]]},"a19":{"q":"앞 슬라이드의 슬라이더 값이 이 문제와 같습니다. 학생이 풀이 후 슬라이드 시뮬레이션의 숫자와 비교하게 하세요.","m":[["R₁에 걸리는 전압도 V₂와 같다.","R₁은 병렬부와 직렬이다. V₁≠V₂=V₃."]]},"a20":{"q":"전위차(전압)는 높이 차입니다. (−)극 C를 0 V로 두면 B의 전위 = 병렬부 전압, A의 전위 = 전원 전압입니다. 전지는 전위를 V만큼 끌어올리고, 저항들이 그만큼 내립니다.","m":[["전위 지점이 같은 도선의 위치마다 달라진다.","이상적인 도선은 저항이 0이라 도선 위 전위는 일정하다."],["저항을 지나면 전하가 줄어들어 전위가 낮아진다.","전하는 그대로, 전기 에너지(전위)가 줄어든다."]]},"a21":{"q":"세 기기 합 3500 W → 15.9 A < 16 A, 사용 가능(교과서 해 보기 답). 하나만 더 꽂으면 16 A를 넘습니다. 과전류 → 도선 발열(<span class=\"m\">P=I<sup>2<\/sup>R<sub>선<\/sub><\/span>) → 화재. 같은 220 V에서 소비 전력이 큰 기기는 저항이 작아 전류가 큽니다.","m":[["전기 기구에 적힌 소비 전력은 항상 그 값을 쓴다.","정격 전압(220 V)일 때의 값이다. 전압이 달라지면 P=V²/R로 바뀐다."],["멀티탭 허용 전류는 기기마다 하나씩 따로 적용된다.","멀티탭 전선에는 모든 기기의 전류의 합이 흐른다."]]},"a22":{"q":"교과서 지도서는 직렬 사례는 많지 않으니 교과서에 제시된 정도로 간단히 설명하라고 제안합니다. 병렬 사례는 학생이 자유롭게 말하게 하세요. 스위치(기기 안)와 기기는 직렬임을 짚으면 직렬 사례를 하나 더 얻습니다.","m":[["전기 기구마다 소비 전력은 고정이다.","조절 가능한 기구(난로)는 R을 바꾸어 소비 전력을 바꾼다."],["누전 차단기는 전기 기구와 병렬이다.","전류 전체가 지나야 하므로 직렬이다."]]},"a23":{"q":"a2의 질문에 대한 학생들의 처음 답과 지금 답을 비교하게 하세요. Q4는 병렬부 합성(60∥60=30 Ω)을 놓치기 쉽습니다.","m":[["병렬이면 전류가 둘로 나뉘어 도선에 걸리는 전류가 줄어든다.","가지마다 나뉘지만 주 도선에는 합이 흐른다."]]}},"ask":{"a2":["멀티탭에 전기 기구를 문어발식으로 꽂으면 위험한 까닭을 지금 아는 대로 말해 보자.","옴의 법칙 <span class=\"m\">V=IR<\/span>을 중학교에서 어떻게 배웠는지 떠올려 보자."],"a5":["같은 전압에서 저항이 반이 되면 소비 전력은 몇 배가 될까?"],"a8":["R₂를 크게 하면 R₁에 걸리는 전압은 어떻게 될까?","전체 소비 전력이 줄어드는 까닭을 <span class=\"m\">P=V<sup>2<\/sup>/R<sub>합성<\/sub><\/span>로 설명해 보자."],"a12":["R₂를 작게 하면 R₁을 지나는 전류는 바뀔까?","저항을 병렬로 계속 추가하면 전원이 내놓는 전류는 어떻게 될까?"],"a16":["같은 전구를 직렬과 병렬로 연결했을 때 각 전구의 밝기를 비교해 보자.","한 전구가 끊어지면 나머지는 어떻게 될까? (직렬/병렬)"],"a21":["교과서의 세 기기(1500 W, 700 W, 1300 W)를 모두 꽂으면 몇 A가 흐를까?","네 번째 기기를 꽂으면 어떻게 될까? 왜 위험할까?"]}};
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const TAU = Math.PI * 2, DPR = 2;
+const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const C = { bg: '#0a1330', grid: 'rgba(160,190,255,.22)', text: '#e3ecff', dim: '#9db0d8', KE: '#ffb454', PE: '#7fb2ff', E: '#ffffff', ok: '#5eead4', bad: '#ff9d9d' };
+const font = (px, w = 500, it = false) => `${it ? 'italic ' : ''}${w} ${px}px 'Noto Sans KR',sans-serif`;
+const mathFont = px => `italic 400 ${px}px 'STIX Two Text','Times New Roman',serif`;
+function setupCanvas(cv, W, H) { cv.width = W * DPR; cv.height = H * DPR; cv.style.width = W + 'px'; cv.style.height = H + 'px'; const c = cv.getContext('2d'); c.setTransform(DPR, 0, 0, DPR, 0, 0); return c; }
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function makeStars(W, H, n, seed) { const r = mulberry(seed); return Array.from({ length: n }, () => [r() * W, r() * H, .25 + r() * .55, r() < .12 ? 3 : 2]); }
+function drawStars(ctx, stars) { stars.forEach(([x, y, a, s]) => { ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(x, y, s, s); }); }
+function arrow(ctx, x0, y0, x1, y1, color, lw = 4, head = 15) {
+  const a = Math.atan2(y1 - y0, x1 - x0); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - Math.cos(a) * head * .6, y1 - Math.sin(a) * head * .6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - head * Math.cos(a - .45), y1 - head * Math.sin(a - .45)); ctx.lineTo(x1 - head * Math.cos(a + .45), y1 - head * Math.sin(a + .45)); ctx.closePath(); ctx.fill();
+}
+function mathRun(ctx, x, y, parts) { let cx = x; parts.forEach(q => { ctx.font = q.f; ctx.fillStyle = q.c; ctx.fillText(q.t, cx, y + (q.dy || 0)); cx += ctx.measureText(q.t).width; }); return cx; }
+function bindRange(id, cb) { const el = $('#' + id); el.addEventListener('input', () => cb(parseFloat(el.value))); el.addEventListener('change', () => el.blur()); return el; }
+const fmt = (x, d = 2) => (x < 0 ? '−' : '') + Math.abs(x).toFixed(d);
+
+/* 오류 표시: 슬라이드 코드 예외를 화면 상단과 window.__wsErrors에 남긴다 (헤드리스 검사용) */
+window.__wsErrors = [];
+function reportError(where, e) {
+  const msg = `${where}: ${e && e.message ? e.message : e}`;
+  if (!window.__wsErrors.includes(msg)) { window.__wsErrors.push(msg); console.error('[슬라이드 오류] ' + msg); }
+  const box = document.getElementById('simError'); box.textContent = window.__wsErrors.slice(-3).join('\n'); box.classList.add('on');
+}
+function safe(where, fn, ...args) { try { return fn && fn(...args); } catch (e) { reportError(where, e); } }
+
+/* =====================================================================
+   shared_js (주제별 물리 계산부·공용 시뮬레이터)
+   ===================================================================== */
+
+const BLUE='#7fb2ff',ORG='#ffb86b',PINK='#ff9d9d',GRN='#7ee08a',YEL='#ffd166',WIRE='#9fb3d9';
+function setT(id,s){$('#'+id).textContent=s;}
+function hTxt(ctx,s,x,y,size,color,align,w){ctx.font=font(size,w||400);ctx.fillStyle=color;ctx.textAlign=align||'left';ctx.fillText(s,x,y);ctx.textAlign='left';}
+function bindChips(ids,cb){ids.forEach((id,i)=>{$('#'+id).addEventListener('click',()=>{ids.forEach(j=>$('#'+j).classList.remove('on'));$('#'+id).classList.add('on');cb(i);});});}
+function sl(id,unit,dec,cb){const g=v=>(+v).toFixed(dec)+unit;setT(id+'v',g($('#'+id).value));bindRange(id,v=>{setT(id+'v',g(v));cb(+v);});}
+const ELEC=(()=>{
+  const ser=(V,R1,R2)=>{const R=R1+R2,I=V/R;return{R,I,V1:I*R1,V2:I*R2,P1:I*I*R1,P2:I*I*R2,P:V*I};};
+  const par=(V,R1,R2)=>{const R=R1*R2/(R1+R2),I1=V/R1,I2=V/R2;return{R,I:I1+I2,I1,I2,P1:V*I1,P2:V*I2,P:V*(I1+I2)};};
+  const mix=(V,R1,R2,R3)=>{const Rp=R2*R3/(R2+R3),R=R1+Rp,I=V/R,V1=I*R1,Vp=I*Rp;return{R,Rp,I,V1,Vp,I2:Vp/R2,I3:Vp/R3,P1:I*V1,P2:Vp*Vp/R2,P3:Vp*Vp/R3,P:V*I};};
+  const load=(e,r,R)=>{const I=e/(R+r);return{I,P:I*I*R,Pr:I*I*r,eff:R/(R+r)};};
+  const node=(e1,R1,e2,R2,R3)=>{const Va=(e1/R1+e2/R2)/(1/R1+1/R2+1/R3);return{Va,I1:(e1-Va)/R1,I2:(e2-Va)/R2,I3:Va/R3};};
+  const bridge=(V,R1,R2,R3,Rx)=>{const Va=V*R2/(R1+R2),Vb=V*Rx/(R3+Rx);return{Va,Vb,d:Va-Vb};};
+  const trans=(P,V,Rl)=>{const I=P/V,loss=I*I*Rl;return{I,loss,frac:loss/P};};
+  return{ser,par,mix,load,node,bridge,trans};
+})();
+function seg(ctx,pts,col,w){ctx.strokeStyle=col||WIRE;ctx.lineWidth=w||5;ctx.lineJoin='round';ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();}
+function resis(ctx,cx,cy,len,vert,col,heat){
+  const n=6,amp=17;ctx.save();ctx.translate(cx,cy);if(vert)ctx.rotate(Math.PI/2);
+  ctx.fillStyle=C.bg;ctx.fillRect(-len/2-3,-amp-8,len+6,2*amp+16);
+  const h=Math.max(0,Math.min(1,heat||0));
+  ctx.shadowColor='rgba(255,140,40,'+h+')';ctx.shadowBlur=h>0?10+36*h:0;
+  ctx.strokeStyle=h>0.02?'rgb(255,'+Math.round(200-110*h)+','+Math.round(140-90*h)+')':col;
+  ctx.lineWidth=6;ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(-len/2,0);
+  for(let i=0;i<n;i++)ctx.lineTo(-len/2+len*(i+.5)/n,i%2?amp:-amp);
+  ctx.lineTo(len/2,0);ctx.stroke();ctx.restore();
+}
+function battery(ctx,x,yb,lab){
+  ctx.fillStyle=C.bg;ctx.fillRect(x-40,yb-40,80,80);
+  ctx.strokeStyle=WIRE;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(x,yb-40);ctx.lineTo(x,yb-9);ctx.moveTo(x,yb+9);ctx.lineTo(x,yb+40);ctx.stroke();
+  ctx.strokeStyle=GRN;ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(x-34,yb-9);ctx.lineTo(x+34,yb-9);ctx.stroke();
+  ctx.lineWidth=11;ctx.beginPath();ctx.moveTo(x-18,yb+9);ctx.lineTo(x+18,yb+9);ctx.stroke();
+  hTxt(ctx,'+',x+42,yb-12,28,GRN,'left',700);hTxt(ctx,'−',x+42,yb+34,30,GRN,'left',700);
+  if(lab)hTxt(ctx,lab,x+78,yb+10,30,GRN,'left',700);
+}
+function flow(ctx,pts,I,t,col){
+  if(!(I>1e-9))return;
+  let L=0;const cum=[0];for(let i=1;i<pts.length;i++){L+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);cum.push(L);}
+  const gap=34,ph=((t*Math.min(I,4)*55)%gap+gap)%gap;
+  ctx.fillStyle=YEL;
+  for(let d=ph;d<L;d+=gap){let k=1;while(k<cum.length-1&&cum[k]<d)k++;const f=(d-cum[k-1])/(cum[k]-cum[k-1]);
+    ctx.beginPath();ctx.arc(pts[k-1][0]+(pts[k][0]-pts[k-1][0])*f,pts[k-1][1]+(pts[k][1]-pts[k-1][1])*f,6,0,TAU);ctx.fill();}
+}
+function pbars(ctx,x,y0,h,maxP,gen,parts,cols,bw){
+  bw=bw||90;const sp=bw+60,sc=Math.min(1,maxP/Math.max(gen,1e-9));
+  hTxt(ctx,'생산',x+bw/2,y0+32,24,C.dim,'center');hTxt(ctx,'소비 합',x+sp+bw/2,y0+32,24,C.dim,'center');
+  const gh=gen/maxP*h*sc;ctx.fillStyle=GRN;ctx.fillRect(x,y0-gh,bw,gh);
+  hTxt(ctx,gen.toFixed(gen<10?2:1)+' W',x+bw/2,y0-gh-10,24,GRN,'center',700);
+  let yy=y0;parts.forEach((p,i)=>{const hh=p/maxP*h*sc;ctx.fillStyle=cols[i];ctx.fillRect(x+sp,yy-hh,bw,hh);yy-=hh;});
+  hTxt(ctx,'= '+parts.reduce((a,b)=>a+b,0).toFixed(gen<10?2:1)+' W',x+sp+bw/2,yy-10,24,C.text,'center',700);
+  ctx.strokeStyle=C.grid;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-14,y0);ctx.lineTo(x+sp+bw+14,y0);ctx.stroke();
+}
+const HEADV=96;
+function drawSeries(ctx,V,R1,R2,t){
+  const W=1100,H=800,s=ELEC.ser(V,R1,R2),L=150,Rt=960,T=170,B=640,yb=405,mp=110;
+  ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  const path=[[L,yb-40],[L,T],[Rt,T],[Rt,B],[L,B],[L,yb+40]];
+  seg(ctx,path);flow(ctx,path,s.I,t);
+  resis(ctx,400,T,170,false,BLUE,s.P1/mp*1.6);resis(ctx,720,T,170,false,ORG,s.P2/mp*1.6);battery(ctx,L,yb,'V = '+V+' V');
+  hTxt(ctx,'R₁ = '+R1+' Ω',400,T-44,28,BLUE,'center',700);hTxt(ctx,'R₂ = '+R2+' Ω',720,T-44,28,ORG,'center',700);
+  hTxt(ctx,'V₁ = '+s.V1.toFixed(1)+' V',400,T+66,28,BLUE,'center',700);hTxt(ctx,'V₂ = '+s.V2.toFixed(1)+' V',720,T+66,28,ORG,'center',700);
+  hTxt(ctx,'I = '+s.I.toFixed(2)+' A  (어느 곳에서나 같다)',560,B-22,28,YEL,'center',700);
+  pbars(ctx,360,560,240,mp,s.P,[s.P1,s.P2],[BLUE,ORG]);
+  hTxt(ctx,'P₁ : P₂ = R₁ : R₂',700,420,28,C.text,'left',700);hTxt(ctx,'= '+(s.P1/s.P2).toFixed(2)+' : 1',700,462,28,C.dim,'left');
+}
+function drawParallel(ctx,V,R1,R2,t){
+  const W=1100,H=800,s=ELEC.par(V,R1,R2),L=150,x1=380,x2=620,T=170,B=640,yb=405,mp=450;
+  ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  const pm=[[L,yb-40],[L,T],[x1,T]],p1=[[x1,T],[x1,B]],pn=[[x1,T],[x2,T]],p2=[[x2,T],[x2,B]],pb=[[x2,B],[x1,B]],pr=[[x1,B],[L,B],[L,yb+40]];
+  [pm,p1,pn,p2,pb,pr].forEach(p=>seg(ctx,p));
+  flow(ctx,pm,s.I,t);flow(ctx,p1,s.I1,t);flow(ctx,pn,s.I2,t);flow(ctx,p2,s.I2,t);flow(ctx,pb,s.I2,t);flow(ctx,pr,s.I,t);
+  [[x1,T],[x2,T],[x1,B],[x2,B]].forEach(p=>{ctx.fillStyle=WIRE;ctx.beginPath();ctx.arc(p[0],p[1],9,0,TAU);ctx.fill();});
+  resis(ctx,x1,405,170,true,BLUE,s.P1/mp*1.6);resis(ctx,x2,405,170,true,ORG,s.P2/mp*1.6);battery(ctx,L,yb,'V = '+V+' V');
+  hTxt(ctx,'R₁ = '+R1+' Ω',x1-34,372,26,BLUE,'right',700);hTxt(ctx,'I₁ = '+s.I1.toFixed(2)+' A',x1-34,412,26,YEL,'right',700);hTxt(ctx,'V₁ = '+V+' V',x1-34,452,26,BLUE,'right',700);
+  hTxt(ctx,'R₂ = '+R2+' Ω',x2+34,372,26,ORG,'left',700);hTxt(ctx,'I₂ = '+s.I2.toFixed(2)+' A',x2+34,412,26,YEL,'left',700);hTxt(ctx,'V₂ = '+V+' V',x2+34,452,26,ORG,'left',700);
+  hTxt(ctx,'I = I₁ + I₂ = '+s.I.toFixed(2)+' A',(L+x2)/2+20,B+54,28,YEL,'center',700);
+  pbars(ctx,780,560,240,mp,s.P,[s.P1,s.P2],[BLUE,ORG],80);
+  hTxt(ctx,'P₁ : P₂ = 1/R₁ : 1/R₂',780,T+20,26,C.text,'left',700);
+}
+function drawMixed(ctx,V,R1,R2,R3,t){
+  const W=1100,H=800,s=ELEC.mix(V,R1,R2,R3),L=130,x2=640,x3=900,T=170,B=640,yb=405,mp=100;
+  ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  const pm=[[L,yb-40],[L,T],[x2,T]],p2=[[x2,T],[x2,B]],pn=[[x2,T],[x3,T]],p3=[[x3,T],[x3,B]],pb=[[x3,B],[x2,B]],pr=[[x2,B],[L,B],[L,yb+40]];
+  [pm,p2,pn,p3,pb,pr].forEach(p=>seg(ctx,p));
+  flow(ctx,pm,s.I,t);flow(ctx,p2,s.I2,t);flow(ctx,pn,s.I3,t);flow(ctx,p3,s.I3,t);flow(ctx,pb,s.I3,t);flow(ctx,pr,s.I,t);
+  [[x2,T],[x3,T],[x2,B],[x3,B]].forEach(p=>{ctx.fillStyle=WIRE;ctx.beginPath();ctx.arc(p[0],p[1],9,0,TAU);ctx.fill();});
+  resis(ctx,370,T,170,false,BLUE,s.P1/mp*1.6);resis(ctx,x2,405,170,true,ORG,s.P2/mp*1.6);resis(ctx,x3,405,170,true,PINK,s.P3/mp*1.6);battery(ctx,L,yb,'');
+  hTxt(ctx,'V = '+V+' V',L+60,yb+60,26,GRN,'left',700);
+  hTxt(ctx,'R₁ = '+R1+' Ω',370,T-44,26,BLUE,'center',700);hTxt(ctx,'V₁ = '+s.V1.toFixed(1)+' V',370,T+64,26,BLUE,'center',700);
+  hTxt(ctx,'R₂ = '+R2+' Ω',x2-34,372,24,ORG,'right',700);hTxt(ctx,'I₂ = '+s.I2.toFixed(2)+' A',x2-34,408,24,YEL,'right',700);hTxt(ctx,'V₂ = '+s.Vp.toFixed(1)+' V',x2-34,444,24,ORG,'right',700);
+  hTxt(ctx,'R₃ = '+R3+' Ω',x3+34,372,24,PINK,'left',700);hTxt(ctx,'I₃ = '+s.I3.toFixed(2)+' A',x3+34,408,24,YEL,'left',700);hTxt(ctx,'V₃ = '+s.Vp.toFixed(1)+' V',x3+34,444,24,PINK,'left',700);
+  hTxt(ctx,'I = '+s.I.toFixed(2)+' A',L+240,B-22,28,YEL,'center',700);
+  pbars(ctx,215,560,230,mp,s.P,[s.P1,s.P2,s.P3],[BLUE,ORG,PINK],70);
+}
+
+function TESTS(){
+  const a=ELEC.ser(100,100,200),b=ELEC.par(100,100,200),m=ELEC.mix(60,40,60,30);
+  const ok=(x,y)=>Math.abs(x-y)<1e-9*Math.max(1,Math.abs(y));
+  return [
+    ['직렬 100Ω+200Ω, 100V: I=1/3 A, V₁=100/3 V',ok(a.I,1/3)&&ok(a.V1,100/3)&&ok(a.V2,200/3),'교과서 78쪽 확인 문제'],
+    ['직렬 소비 전력 P₁=100/9, P₂=200/9, P=100/3 W',ok(a.P1,100/9)&&ok(a.P2,200/9)&&ok(a.P,100/3),'P=VI'],
+    ['병렬 I₁=1 A, I₂=0.5 A, P₁=100 W, P₂=50 W, P=150 W',ok(b.I1,1)&&ok(b.I2,.5)&&ok(b.P1,100)&&ok(b.P2,50)&&ok(b.P,150),'교과서 79쪽 확인 문제'],
+    ['병렬 합성 저항 200/3 Ω',ok(b.R,200/3),'1/R=1/100+1/200'],
+    ['혼합 60V: R=60 Ω, I=1 A, I₂=1/3, I₃=2/3',ok(m.R,60)&&ok(m.I,1)&&ok(m.I2,1/3)&&ok(m.I3,2/3),'R₁+(R₂∥R₃)'],
+    ['혼합 에너지 보존 P₁+P₂+P₃=VI',ok(m.P1+m.P2+m.P3,m.P)&&ok(m.P,60),'생산 전력=소비 전력 합'],
+    ['멀티탭 3500 W/220 V ≈ 15.9 A < 16 A',Math.abs(3500/220-15.909)<0.001&&3500/220<16,'교과서 80쪽'],
+    ['1 kWh = 3.6×10⁶ J',ok(1000*3600,3.6e6),'전력량 단위'],
+    ['1 kW 가열기 60 s로 물 1 kg: ΔT≈14.3 K',Math.abs(1000*60/4186-14.33)<0.01,'효율 100 % 가정']
+  ];
+}
+
+function glowBulb(ctx,x,y,P,Pm,on){
+  const b=on?Math.min(1,Math.sqrt(P/Pm)):0;
+  if(b>0.02){const g=ctx.createRadialGradient(x,y,6,x,y,40+100*b);g.addColorStop(0,'rgba(255,230,140,'+(0.35+0.65*b)+')');g.addColorStop(1,'rgba(255,200,80,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,40+100*b,0,TAU);ctx.fill();}
+  ctx.fillStyle=on?'rgb('+Math.round(120+135*b)+','+Math.round(110+110*b)+','+Math.round(60+30*b)+')':'#2b3558';ctx.strokeStyle=WIRE;ctx.lineWidth=4;
+  ctx.beginPath();ctx.arc(x,y,34,0,TAU);ctx.fill();ctx.stroke();
+  if(!on){ctx.strokeStyle=C.bad;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(x-22,y-22);ctx.lineTo(x+22,y+22);ctx.moveTo(x+22,y-22);ctx.lineTo(x-22,y+22);ctx.stroke();}
+}
+
+
+/* =====================================================================
+   슬라이드별 모듈: { start(), stop(), frame(dt), onStep(step) }
+   ===================================================================== */
+const REG = {};
+/* ---- a1 ---- */
+REG["a1"] = safe("a1.init", function () {
+
+const W=820,H=820,ctx=setupCanvas($('#c-hero'),W,H);let t=0;
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  hTxt(ctx,'병렬로 하나 더 꽂으면?',W/2,64,34,C.text,'center',700);
+  ctx.save();ctx.translate(0,110);ctx.scale(.745,.745);drawParallel(ctx,100,100,200,t);ctx.restore();
+  hTxt(ctx,'주 도선의 전류 I = I₁ + I₂ 가 커진다',W/2,H-60,30,YEL,'center',700);}
+return {start(){t=0;draw();},stop(){},frame(dt){if(!REDUCED)t+=dt;draw();}};
+
+});
+
+/* ---- a4 ---- */
+REG["a4"] = safe("a4.init", function () {
+
+const W=1100,H=800,ctx=setupCanvas($('#c-w'),W,H);let V=220,I=6.8,tt=60,m=1,t=0;
+function calc(){const P=V*I,Wj=P*tt,dT=Wj/(4186*m);return{P,Wj,dT};}
+function sync(){const r=calc();setT('w-P',r.P.toFixed(0));setT('w-W',(r.Wj/1000).toFixed(1));setT('w-dT',r.dT.toFixed(1));}
+function draw(){const r=calc();ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  hTxt(ctx,'전기 주전자 (가열 코일 저항)',330,60,30,C.text,'center',700);
+  const bx=130,by=190,bw=400,bh=430;ctx.strokeStyle=WIRE;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx,by+bh);ctx.lineTo(bx+bw,by+bh);ctx.lineTo(bx+bw,by);ctx.stroke();
+  const lv=0.35+0.2*m/2*1.0,wh=bh*Math.min(.85,lv);const u=Math.min(1,r.dT/80);
+  ctx.fillStyle='rgb('+Math.round(70+185*u)+','+Math.round(140-60*u)+','+Math.round(230-170*u)+')';ctx.globalAlpha=.75;ctx.fillRect(bx+4,by+bh-wh,bw-8,wh-3);ctx.globalAlpha=1;
+  resis(ctx,330,by+bh-40,260,false,ORG,Math.min(1,r.P/1500));
+  hTxt(ctx,m+' kg 물',330,by+bh-wh-14,26,C.text,'center',700);
+  // 온도계
+  const tx=800,ty=150,th=520;ctx.strokeStyle=WIRE;ctx.lineWidth=5;ctx.strokeRect(tx-18,ty,36,th);
+  const hh=th*Math.min(1,r.dT/80);ctx.fillStyle=u>.6?C.bad:'#ffb86b';ctx.fillRect(tx-12,ty+th-hh,24,hh);
+  for(let k=0;k<=4;k++){const yy=ty+th-k*th/4;ctx.strokeStyle=C.grid;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(tx+22,yy);ctx.lineTo(tx+44,yy);ctx.stroke();hTxt(ctx,'+'+(k*20)+' ℃',tx+54,yy+8,22,C.dim);}
+  hTxt(ctx,'ΔT = '+r.dT.toFixed(1)+' ℃',tx,ty-26,30,u>.6?C.bad:ORG,'center',700);
+  hTxt(ctx,'W = '+V+' V × '+I.toFixed(1)+' A × '+tt+' s = '+(r.Wj/1000).toFixed(1)+' kJ',W/2,H-44,30,YEL,'center',700);
+}
+sl('w-V',' V',0,v=>{V=v;sync();draw();});sl('w-I',' A',1,v=>{I=v;sync();draw();});sl('w-t',' s',0,v=>{tt=v;sync();draw();});
+bindChips(['w-m1','w-m2','w-m3'],i=>{m=[.5,1,2][i];sync();draw();});
+return {start(){sync();draw();},stop(){},frame(){}};
+
+});
+
+/* ---- a5 ---- */
+REG["a5"] = safe("a5.init", function () {
+
+const W=1100,H=800,ctx=setupCanvas($('#c-pf'),W,H);let mode=0,R=100;
+const f=(r)=>mode?1*1*r:100*100/r, vv=(r)=>mode?1*r:100, ii=(r)=>mode?1:100/r;
+function sync(){setT('pf-V',vv(R).toFixed(1));setT('pf-I',ii(R).toFixed(2));setT('pf-P',f(R).toFixed(1));setT('pf-msg',mode?'R이 클수록 P가 커진다 (P=I²R)':'R이 작을수록 P가 커진다 (P=V²/R)');}
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  const x0=130,y0=680,w=880,h=540,ym=mode?400:500;
+  ctx.strokeStyle=C.grid;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x0,y0-h-20);ctx.lineTo(x0,y0);ctx.lineTo(x0+w,y0);ctx.stroke();
+  hTxt(ctx,'R (Ω)',x0+w,y0+44,24,C.dim,'right');hTxt(ctx,'P (W)',x0-10,y0-h-30,24,C.dim,'right');
+  for(let r=100;r<=400;r+=100){const x=x0+(r-20)/380*w;hTxt(ctx,r,x,y0+30,22,C.dim,'center');}
+  for(let p=0;p<=ym;p+=100){const y=y0-p/ym*h;hTxt(ctx,p,x0-12,y+8,22,C.dim,'right');ctx.strokeStyle='rgba(255,255,255,.07)';ctx.beginPath();ctx.moveTo(x0,y);ctx.lineTo(x0+w,y);ctx.stroke();}
+  ctx.strokeStyle=mode?ORG:BLUE;ctx.lineWidth=5;ctx.beginPath();for(let r=20;r<=400;r+=4){const x=x0+(r-20)/380*w,y=y0-Math.min(f(r),ym*1.05)/ym*h;r===20?ctx.moveTo(x,y):ctx.lineTo(x,y);}ctx.stroke();
+  const x=x0+(R-20)/380*w,y=y0-f(R)/ym*h;ctx.setLineDash([8,8]);ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y0);ctx.lineTo(x,y);ctx.lineTo(x0,y);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle=YEL;ctx.beginPath();ctx.arc(x,y,12,0,TAU);ctx.fill();
+  hTxt(ctx,mode?'P = I²R  (I = 1 A 고정): 직선':'P = V²/R  (V = 100 V 고정): 반비례',W/2,56,32,mode?ORG:BLUE,'center',700);
+}
+sl('pf-R',' Ω',0,v=>{R=v;sync();draw();});
+bindChips(['pf-m1','pf-m2'],i=>{mode=i;sync();draw();});
+return {start(){sync();draw();},stop(){},frame(){}};
+
+});
+
+/* ---- a6 ---- */
+REG["a6"] = safe("a6.init", function () {
+
+const W=1100,H=800,ctx=setupCanvas($('#c-kwh'),W,H);const A=[['선풍기',40],['TV',150],['밥솥',1300],['주전자',1500]];let sel=0,h=5;
+function sync(){const P=A[sel][1],E=P*h/1000;setT('k-P',P);setT('k-t',h.toFixed(1));setT('k-E',E.toFixed(2));setT('k-J',(E*3.6).toFixed(2));}
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  hTxt(ctx,'같은 시간 ('+h.toFixed(1)+' h) 사용했을 때 전력량 비교',W/2,56,32,C.text,'center',700);
+  const x0=250,y0=150,bh=70,gap=40,mx=Math.max(1.6*24,1);const sc=780/(1.5*24);
+  A.forEach((a,i)=>{const E=a[1]*h/1000,y=y0+i*(bh+gap),wd=E*sc/24*24*1;const wpx=Math.min(780,E/(1.5*24)*780*1);
+    hTxt(ctx,a[0],x0-20,y+bh/2+10,28,i===sel?YEL:C.dim,'right',i===sel?700:400);
+    ctx.fillStyle=i===sel?ORG:'#3b5a99';ctx.fillRect(x0,y,Math.max(2,wpx),bh);
+    hTxt(ctx,E.toFixed(2)+' kWh',x0+Math.max(2,wpx)+14,y+bh/2+10,26,i===sel?YEL:C.dim,'left',700);});
+  // 계량기 숫자
+  const E=A[sel][1]*h/1000;const s=E.toFixed(2).padStart(7,'0');
+  hTxt(ctx,'전력량계에 찍히는 값',W/2,520,28,C.dim,'center');
+  for(let i=0,x=W/2-240;i<s.length;i++){if(s[i]==='.'){hTxt(ctx,'.',x+14,640,90,C.text,'center',700);x+=34;continue;}
+    ctx.fillStyle='#10193a';ctx.fillRect(x,560,66,110);ctx.strokeStyle=WIRE;ctx.lineWidth=3;ctx.strokeRect(x,560,66,110);hTxt(ctx,s[i],x+33,644,80,YEL,'center',700);x+=76;}
+  hTxt(ctx,'kWh',W/2+300,644,40,C.text,'left',700);
+  hTxt(ctx,'기준: 100 W 전구를 10시간 켜면 1 kWh',W/2,740,28,C.dim,'center');
+}
+bindChips(['k-a0','k-a1','k-a2','k-a3'],i=>{sel=i;sync();draw();});
+sl('k-h',' h',1,v=>{h=v;sync();draw();});
+return {start(){sync();draw();},stop(){},frame(){}};
+
+});
+
+/* ---- a7 ---- */
+REG["a7"] = safe("a7.init", function () {
+
+const W=1100,H=800,ctx=setupCanvas($('#c-res'),W,H);let V=6,R=3,t=0;const rnd=mulberry(7);
+const ions=[];for(let r=0;r<5;r++)for(let c=0;c<11;c++)ions.push([180+c*74,260+r*74]);
+const el=[];for(let i=0;i<34;i++)el.push([140+rnd()*820,235+rnd()*330,(rnd()-.5)*2,(rnd()-.5)*2]);
+let flash=[];
+function sync(){setT('r-I',(V/R).toFixed(2));setT('r-P',(V*V/R).toFixed(1));}
+function step(dt){const I=V/R,vd=I*70;const pj=Math.min(1,V*V/R/40);
+  el.forEach(e=>{e[0]-=vd*dt;e[0]+=e[2]*30*dt;e[1]+=e[3]*30*dt;if(Math.random()<dt*R*1.2){e[2]=(Math.random()-.5)*3;e[3]=(Math.random()-.5)*3;flash.push([e[0],e[1],0.25]);}
+    if(e[0]<140)e[0]+=820;if(e[0]>960)e[0]-=820;if(e[1]<235)e[1]=235;if(e[1]>565)e[1]=565;});
+  flash=flash.filter(f=>(f[2]-=dt)>0);t+=dt;}
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  const pj=Math.min(1,V*V/R/40);
+  ctx.fillStyle='rgba(255,'+Math.round(170-80*pj)+',80,'+(0.06+0.3*pj)+')';ctx.fillRect(130,220,840,360);ctx.strokeStyle=WIRE;ctx.lineWidth=4;ctx.strokeRect(130,220,840,360);
+  ions.forEach(p=>{const j=pj*5;const x=p[0]+Math.sin(t*20+p[1])*j,y=p[1]+Math.cos(t*23+p[0])*j;ctx.fillStyle='rgb('+Math.round(120+135*pj)+','+Math.round(150-50*pj)+',200)';ctx.beginPath();ctx.arc(x,y,14,0,TAU);ctx.fill();hTxt(ctx,'+',x,y+8,22,'#0a1330','center',700);});
+  flash.forEach(f=>{ctx.strokeStyle='rgba(255,230,120,'+(f[2]*3)+')';ctx.lineWidth=3;ctx.beginPath();ctx.arc(f[0],f[1],10+(.25-f[2])*60,0,TAU);ctx.stroke();});
+  el.forEach(e=>{ctx.fillStyle=BLUE;ctx.beginPath();ctx.arc(e[0],e[1],7,0,TAU);ctx.fill();});
+  arrow(ctx,320,150,780,150,YEL,5,16);hTxt(ctx,'전류 I (전자는 반대 방향으로 이동)',550,118,28,YEL,'center',700);
+  hTxt(ctx,'● 전자    ● 원자(이온)    번쩍 = 충돌로 에너지 전달',550,660,28,C.dim,'center');
+  hTxt(ctx,'열 발생 P = '+(V*V/R).toFixed(1)+' W',550,730,34,ORG,'center',700);
+}
+sl('r-V',' V',0,v=>{V=v;sync();});sl('r-R',' Ω',0,v=>{R=v;sync();});
+return {start(){sync();draw();},stop(){},frame(dt){if(!REDUCED)step(Math.min(dt,.05));draw();}};
+
+});
+
+/* ---- a8 ---- */
+REG["a8"] = safe("a8.init", function () {
+
+const W=1100,H=800,ctx=setupCanvas($('#c-ser'),W,H);let V=100,R1=100,R2=200,t=0;
+function sync(){const s=ELEC.ser(V,R1,R2);setT('s-R',s.R);setT('s-I',s.I.toFixed(2));setT('s-P',s.P.toFixed(1));}
+sl('s-V',' V',0,v=>{V=v;sync();});sl('s-1',' Ω',0,v=>{R1=v;sync();});sl('s-2',' Ω',0,v=>{R2=v;sync();});
+return {start(){sync();drawSeries(ctx,V,R1,R2,t);},stop(){},frame(dt){if(!REDUCED)t+=dt;drawSeries(ctx,V,R1,R2,t);}};
+
+});
+
+/* ---- a10 ---- */
+REG["a10"] = safe("a10.init", function () {
+
+const W=820,H=640,ctx=setupCanvas($('#c-sx'),W,H);let t=0,k=0;
+function draw(){ctx.save();ctx.scale(.745,.745*.8);drawSeries(ctx,100,100,200,t);ctx.restore();}
+return {start(){t=0;draw();},stop(){},frame(dt){if(!REDUCED)t+=dt;draw();}};
+
+});
+
+/* ---- a12 ---- */
+REG["a12"] = safe("a12.init", function () {
+
+const W=1100,H=800,ctx=setupCanvas($('#c-par'),W,H);let V=100,R1=100,R2=200,t=0;
+function sync(){const s=ELEC.par(V,R1,R2);setT('p-R',s.R.toFixed(1));setT('p-I',s.I.toFixed(2));setT('p-P',s.P.toFixed(1));}
+sl('p-V',' V',0,v=>{V=v;sync();});sl('p-1',' Ω',0,v=>{R1=v;sync();});sl('p-2',' Ω',0,v=>{R2=v;sync();});
+return {start(){sync();drawParallel(ctx,V,R1,R2,t);},stop(){},frame(dt){if(!REDUCED)t+=dt;drawParallel(ctx,V,R1,R2,t);}};
+
+});
+
+/* ---- a14 ---- */
+REG["a14"] = safe("a14.init", function () {
+
+const W=820,H=640,ctx=setupCanvas($('#c-px'),W,H);let t=0;
+function draw(){ctx.save();ctx.scale(.745,.745*.8);drawParallel(ctx,100,100,200,t);ctx.restore();}
+return {start(){t=0;draw();},stop(){},frame(dt){if(!REDUCED)t+=dt;draw();}};
+
+});
+
+/* ---- a16 ---- */
+REG["a16"] = safe("a16.init", function () {
+
+const W=1100,H=800,ctx=setupCanvas($('#c-bulb'),W,H);let mode=0,brk=false,V=12,t=0;const R=24;
+function st(){let P1,P2,I;if(mode===0){const c=!brk;I=c?V/(2*R):0;P1=I*I*R;P2=brk?0:I*I*R;}else{I=V/R+(brk?0:V/R);P1=V*V/R;P2=brk?0:V*V/R;}return{P1,P2,I};}
+function sync(){const s=st();setT('b-P1',s.P1.toFixed(2));setT('b-P2',s.P2.toFixed(2));setT('b-I',s.I.toFixed(2));}
+function draw(){const s=st();ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);const L=170,yb=400,T=210,B=620;
+  hTxt(ctx,mode?'병렬: 각 전구에 V 전체가 걸린다':'직렬: 전구마다 전압이 절반씩',W/2,60,32,C.text,'center',700);
+  if(mode===0){const path=[[L,yb-40],[L,T],[930,T],[930,B],[L,B],[L,yb+40]];seg(ctx,path);flow(ctx,path,s.I,t);
+    glowBulb(ctx,430,T,s.P1,24,true);glowBulb(ctx,700,T,s.P2,24,!brk);
+    hTxt(ctx,'①',430,T-60,28,C.text,'center',700);hTxt(ctx,'②',700,T-60,28,C.text,'center',700);
+    if(brk){ctx.strokeStyle=C.bg;ctx.lineWidth=14;ctx.beginPath();ctx.moveTo(800,T);ctx.lineTo(860,T);ctx.stroke();}
+    hTxt(ctx,'각 전구 '+(V/2).toFixed(1)+' V',560,B-26,28,YEL,'center',700);
+  }else{const x1=470,x2=760;const pm=[[L,yb-40],[L,T],[x1,T]],p1=[[x1,T],[x1,B]],pn=[[x1,T],[x2,T]],p2=[[x2,T],[x2,B]],pb=[[x2,B],[x1,B]],pr=[[x1,B],[L,B],[L,yb+40]];
+    [pm,p1,pn,p2,pb,pr].forEach(p=>seg(ctx,p));const i1=V/R,i2=brk?0:V/R;flow(ctx,pm,s.I,t);flow(ctx,p1,i1,t);flow(ctx,pn,i2,t);flow(ctx,p2,i2,t);flow(ctx,pb,i2,t);flow(ctx,pr,s.I,t);
+    glowBulb(ctx,x1,yb,s.P1,24,true);glowBulb(ctx,x2,yb,s.P2,24,!brk);
+    hTxt(ctx,'①',x1-62,yb+10,28,C.text,'center',700);hTxt(ctx,'②',x2+62,yb+10,28,C.text,'center',700);
+    hTxt(ctx,'각 전구 '+V+' V',(x1+x2)/2,B+54,28,YEL,'center',700);}
+  battery(ctx,L,yb,'V = '+V+' V');
+}
+bindChips(['b-m1','b-m2'],i=>{mode=i;sync();});
+$('#b-brk').addEventListener('click',()=>{brk=!brk;$('#b-brk').classList.toggle('on',brk);$('#b-brk').textContent=brk?'전구 ② 이어 붙이기':'전구 ② 끊기';sync();});
+sl('b-V',' V',0,v=>{V=v;sync();});
+return {start(){sync();draw();},stop(){},frame(dt){if(!REDUCED)t+=dt;draw();}};
+
+});
+
+/* ---- a18 ---- */
+REG["a18"] = safe("a18.init", function () {
+
+const W=1100,H=800,ctx=setupCanvas($('#c-mix'),W,H);let V=60,R1=40,R2=60,R3=30,t=0;
+function sync(){const s=ELEC.mix(V,R1,R2,R3);setT('m-Rp',s.Rp.toFixed(1));setT('m-R',s.R.toFixed(1));setT('m-I',s.I.toFixed(2));setT('m-P',s.P.toFixed(1));}
+sl('m-V',' V',0,v=>{V=v;sync();});sl('m-1',' Ω',0,v=>{R1=v;sync();});sl('m-2',' Ω',0,v=>{R2=v;sync();});sl('m-3',' Ω',0,v=>{R3=v;sync();});
+return {start(){sync();drawMixed(ctx,V,R1,R2,R3,t);},stop(){},frame(dt){if(!REDUCED)t+=dt;drawMixed(ctx,V,R1,R2,R3,t);}};
+
+});
+
+/* ---- a20 ---- */
+REG["a20"] = safe("a20.init", function () {
+
+const W=1100,H=800,ctx=setupCanvas($('#c-pot'),W,H);let V=60,R1=40,R2=60,R3=30;
+function sync(){const s=ELEC.mix(V,R1,R2,R3);setT('q-d1',s.V1.toFixed(1));setT('q-d2',s.Vp.toFixed(1));setT('q-s',(s.V1+s.Vp).toFixed(1));}
+function draw(){const s=ELEC.mix(V,R1,R2,R3);ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  const y0=690,h=520,sc=h/100,yA=y0-V*sc,yB=y0-s.Vp*sc;
+  ctx.strokeStyle=C.grid;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(90,y0-h-20);ctx.lineTo(90,y0);ctx.lineTo(1030,y0);ctx.stroke();hTxt(ctx,'전위 (V)',90,y0-h-32,24,C.dim,'center');
+  for(let v=0;v<=100;v+=20){const y=y0-v*sc;hTxt(ctx,v,80,y+8,22,C.dim,'right');ctx.strokeStyle='rgba(255,255,255,.07)';ctx.beginPath();ctx.moveTo(90,y);ctx.lineTo(1030,y);ctx.stroke();}
+  const P=[[130,330,yA,'A (+극 쪽)',GRN],[470,640,yB,'B',YEL],[800,1000,y0,'C (−극, 0 V)',YEL]];
+  P.forEach(p=>{ctx.strokeStyle=p[4];ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(p[0],p[2]);ctx.lineTo(p[1],p[2]);ctx.stroke();hTxt(ctx,p[3],(p[0]+p[1])/2,p[2]-18,26,p[4],'center',700);});
+  hTxt(ctx,((y0-yA)/sc).toFixed(0)+' V',230,yA+40,28,GRN,'center',700);hTxt(ctx,s.Vp.toFixed(1)+' V',555,yB+40,28,YEL,'center',700);
+  ctx.strokeStyle=BLUE;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(330,yA);ctx.lineTo(470,yB);ctx.stroke();hTxt(ctx,'R₁',385,(yA+yB)/2-14,26,BLUE,'center',700);
+  ctx.strokeStyle=ORG;ctx.beginPath();ctx.moveTo(640,yB);ctx.lineTo(800,y0);ctx.stroke();hTxt(ctx,'R₂',735,(yB+y0)/2-14,26,ORG,'center',700);
+  ctx.strokeStyle=PINK;ctx.setLineDash([10,8]);ctx.beginPath();ctx.moveTo(640,yB+8);ctx.lineTo(800,y0-8);ctx.stroke();ctx.setLineDash([]);hTxt(ctx,'R₃',655,(yB+y0)/2+50,26,PINK,'center',700);
+  hTxt(ctx,'V₁ = '+s.V1.toFixed(1)+' V',390,(yA+yB)/2+36,24,BLUE,'center',700);
+  hTxt(ctx,'병렬: 양단 전위차 같음',840,y0-120,24,C.text,'center',700);
+}
+sl('q-V',' V',0,v=>{V=v;sync();draw();});sl('q-1',' Ω',0,v=>{R1=v;sync();draw();});sl('q-2',' Ω',0,v=>{R2=v;sync();draw();});sl('q-3',' Ω',0,v=>{R3=v;sync();draw();});
+return {start(){sync();draw();},stop(){},frame(){}};
+
+});
+
+/* ---- a21 ---- */
+REG["a21"] = safe("a21.init", function () {
+
+const W=1100,H=800,ctx=setupCanvas($('#c-mt'),W,H);const D=[['주전자',1500,ORG],['밥솥',1300,BLUE],['전자레인지',700,PINK],['드라이어',1200,GRN],['에어프라이어',1400,YEL]];const on=[true,true,true,false,false];let t=0;
+function tot(){let p=0;on.forEach((o,i)=>{if(o)p+=D[i][1];});return p;}
+function sync(){const P=tot(),I=P/220;setT('mt-P',P);setT('mt-I',I.toFixed(1));const el=$('#mt-msg');el.textContent=I>16?'허용 전류 초과! 과열·화재 위험':'안전 범위 (≤ 16 A)';el.className=I>16?'bad':'ok';}
+function draw(){const P=tot(),I=P/220,over=I>16;ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  hTxt(ctx,'멀티탭 전선의 전류 I = ΣP/V',W/2,56,32,C.text,'center',700);
+  const gx=120,gy=180,gw=860,gh=70,mx=30;ctx.strokeStyle=WIRE;ctx.lineWidth=4;ctx.strokeRect(gx,gy,gw,gh);
+  let x=gx;D.forEach((d,i)=>{if(!on[i])return;const w=d[1]/220/mx*gw;ctx.fillStyle=d[2];ctx.globalAlpha=.85;ctx.fillRect(x,gy,w,gh);ctx.globalAlpha=1;hTxt(ctx,(d[1]/220).toFixed(1),x+w/2,gy+gh/2+9,24,'#0a1330','center',700);x+=w;});
+  const lx=gx+16/mx*gw;ctx.strokeStyle=C.bad;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(lx,gy-26);ctx.lineTo(lx,gy+gh+26);ctx.stroke();hTxt(ctx,'허용 16 A',lx,gy-36,26,C.bad,'center',700);
+  hTxt(ctx,'0',gx,gy+gh+44,22,C.dim,'center');hTxt(ctx,mx+' A',gx+gw,gy+gh+44,22,C.dim,'right');
+  hTxt(ctx,'I = '+I.toFixed(1)+' A',W/2,360,44,over?C.bad:C.ok,'center',700);
+  // 벽 콘센트 - 멀티탭 - 기기들 (병렬 가지)
+  const ty=470;const wcol=over?'rgb(255,'+Math.round(120+60*Math.sin(t*10))+',60)':WIRE;seg(ctx,[[120,ty],[980,ty]],wcol,over?12:6);
+  hTxt(ctx,'220 V 전원',120,ty-24,24,C.dim);hTxt(ctx,'멀티탭 도선',980,ty-24,24,C.dim,'right');
+  const act=D.map((d,i)=>i).filter(i=>on[i]);act.forEach((i,k)=>{const xx=220+k*170;seg(ctx,[[xx,ty],[xx,560]]);resis(ctx,xx,610,90,true,D[i][2],D[i][1]/1500);hTxt(ctx,D[i][0],xx,720,24,D[i][2],'center',700);hTxt(ctx,D[i][1]+' W',xx,752,22,C.dim,'center');seg(ctx,[[xx,660],[xx,690]]);});
+  if(over)hTxt(ctx,'🔥 도선이 뜨거워진다 (P = I²R선)',W/2,420,30,C.bad,'center',700);
+}
+D.forEach((d,i)=>{$('#mt-'+i).addEventListener('click',()=>{on[i]=!on[i];$('#mt-'+i).classList.toggle('on',on[i]);sync();});});
+return {start(){sync();draw();},stop(){},frame(dt){if(!REDUCED)t+=dt;draw();}};
+
+});
+
+/* =====================================================================
+   슬라이드 관리자
+   ===================================================================== */
+const slides = $$('.slide'), deck = $('#deck'); let cur = -1, step = 0, activeFrame = null, activeId = '', hudTimer = 0;
+const NOTES = DECK.notes, ASK = DECK.ask, CIRC = ['①', '②', '③', '④', '⑤'];
+function renderNotes(i) {
+  const n = NOTES[slides[i].id]; if (!n) { $('#notes').innerHTML = ''; return; }
+  $('#notes').innerHTML = `<div class="nh">📝 오개념 교정 노트 · 슬라이드 ${i + 1} / ${slides.length}<span style="float:right">발문을 화면에 띄우기: Q 키</span></div>` + (n.q ? `<div class="nq">💬 발문: ${n.q}</div>` : '') +
+    (n.m || []).map(([a, b]) => `<div class="ni"><span class="nx">❌ 오개념</span> ${a}<br><span class="nv">✅ 교정</span> ${b}</div>`).join('');
+}
+function renderAsk(i) {
+  const q = ASK[slides[i].id] || [];
+  $('#ask').innerHTML = `<div class="ak"><div class="ah">💬 생각해 보기 · ${i + 1} / ${slides.length}</div>` + (q.length ? q.map((t, k) => `<div class="aq">${q.length > 1 ? `<span>${CIRC[k] || (k + 1) + '.'}</span>` : ''}${t}</div>`).join('') : '<div class="aq" style="color:var(--muted)">이 슬라이드에는 발문이 없습니다.</div>') + '<div class="af">Q 키 · Esc · 화면 클릭으로 닫기</div></div>';
+}
+function toggleAsk(force) { const on = $('#ask').classList.toggle('on', force); $('#b-ask').classList.toggle('on', on); }
+const maxStep = i => +(slides[i].dataset.steps || 0);
+function fit() {
+  const vp = $('#viewport'), vw = vp.clientWidth, vh = vp.clientHeight, rf = vw < 1100;
+  document.documentElement.classList.toggle('rf', rf);
+  if (rf) { const W = vw < 640 ? 640 : vw, s = vw / W; deck.style.width = W + 'px'; deck.style.height = (vh / s) + 'px'; deck.style.transform = `scale(${s})`; return; }
+  deck.style.width = ''; deck.style.height = '';
+  const s = Math.min(vw / 1920, vh / 1080); deck.style.transform = `translate(-50%,-50%) scale(${s})`;
+}
+function fitSteps() { // 단계 목록이 영역을 넘으면 자동 축소 (실제 렌더링 높이 기준)
+  if (cur < 0) return; const side = $('.side.steps', slides[cur]); if (!side) return;
+  side.style.transform = ''; side.style.width = '';
+  if (side.clientHeight > 0 && side.scrollHeight > side.clientHeight + 1) { const k = side.clientHeight / side.scrollHeight; side.style.transformOrigin = 'top left'; side.style.transform = `scale(${k})`; side.style.width = (100 / k) + '%'; }
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitSteps);
+function applyStep() {
+  $$('.st', slides[cur]).forEach(el => { el.classList.toggle('on', +el.dataset.i <= step); el.classList.toggle('cur', +el.dataset.i === step); });
+  const id = slides[cur].id, r = REG[id]; r && r.onStep && safe(id + '.onStep', () => r.onStep(step));
+}
+const mgSet = (sl, on) => $$('iframe.mg-embed', sl).forEach(f => { f.src = on ? f.dataset.src : 'about:blank'; });
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.mg-re'); if (b) { const f = $('iframe', b.parentElement); f && f.contentWindow && f.contentWindow.postMessage({ mg: 'cmd', cmd: 'restart' }, '*'); b.blur(); } });
+function show(i, st = 0) {
+  i = Math.max(0, Math.min(slides.length - 1, i));
+  if (cur >= 0) { const oid = slides[cur].id, o = REG[oid]; o && o.stop && safe(oid + '.stop', () => o.stop()); slides[cur].classList.remove('active'); mgSet(slides[cur], false); }
+  cur = i; step = Math.min(st, maxStep(i)); slides[i].classList.add('active'); mgSet(slides[i], true);
+  const id = slides[i].id, r = REG[id]; activeFrame = r && r.frame ? (dt => r.frame(dt)) : null; activeId = id;
+  fitSteps(); r && r.start && safe(id + '.start', () => r.start());
+  $('#h-pg').textContent = `${i + 1} / ${slides.length}`; renderNotes(i); renderAsk(i); toggleAsk(false); applyStep();
+  if (DECK.ask_auto !== false && (ASK[id] || []).length && !askSeen[id]) { askSeen[id] = 1; toggleAsk(true); } // 처음 들어오면 발문을 먼저 띄운다(닫기 전까지 시뮬레이션 정지)
+}
+const askSeen = {};
+const next = () => { if ($('#ask').classList.contains('on')) { toggleAsk(false); return; } if (step < maxStep(cur)) { step++; applyStep(); } else if (cur < slides.length - 1) show(cur + 1); };
+const prev = () => { if (step > 0) { step--; applyStep(); } else if (cur > 0) show(cur - 1, maxStep(cur - 1)); };
+function isDark() { const r = document.documentElement; return r.dataset.theme === 'dark' || (!r.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches); }
+function themeBtn() { $('#b-theme').textContent = isDark() ? '☀ 라이트 전환' : '🌙 다크 전환'; }
+function toggleTheme() { document.documentElement.dataset.theme = isDark() ? 'light' : 'dark'; themeBtn(); }
+function toggleNotes() { const on = $('#notes').classList.toggle('on'); $('#b-notes').classList.toggle('on', on); }
+function toggleHelp(force) { const on = $('#help').classList.toggle('on', force); $('#b-help').classList.toggle('on', on); }
+function fullscreen() { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) { } }
+function poke() { $('#hud').classList.add('show'); clearTimeout(hudTimer); hudTimer = setTimeout(() => $('#hud').classList.remove('show'), 2600); }
+document.addEventListener('keydown', e => {
+  const t = e.target; if (t && t.tagName === 'INPUT' && t.type === 'range' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); next(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+  else if (e.key === 'Home') show(0); else if (e.key === 'End') show(slides.length - 1);
+  else if (e.key === 'f' || e.key === 'F') fullscreen(); else if (e.key === 'n' || e.key === 'N') toggleNotes(); else if (e.key === 't' || e.key === 'T') toggleTheme(); else if (e.key === 'q' || e.key === 'Q') toggleAsk(); else if (e.key === '?' || e.key === 'h' || e.key === 'H') toggleHelp(); else if (e.key === 'Escape') { toggleHelp(false); toggleAsk(false); if ($('#notes').classList.contains('on')) toggleNotes(); }
+});
+$('#h-prev').onclick = prev; $('#h-next').onclick = next; $('#h-fs').onclick = fullscreen; $('#b-help').onclick = () => toggleHelp(); $('#b-ask').onclick = () => toggleAsk(); $('#ask').onclick = () => toggleAsk(false); $('#help-x').onclick = () => toggleHelp(false); $('#help').onclick = e => { if (e.target.id === 'help') toggleHelp(false); }; $('#b-notes').onclick = toggleNotes; $('#b-theme').onclick = toggleTheme;
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
+['mousemove', 'touchstart', 'pointerdown'].forEach(ev => document.addEventListener(ev, poke, { passive: true }));
+window.addEventListener('resize', () => { fit(); fitSteps(); }); fit();
+/* 터치: 좌우로 쓸어 넘기기 (슬라이더·캔버스·버튼 위에서 시작한 건 제외) */
+(function () {
+  let x0 = 0, y0 = 0, ok = false;
+  document.addEventListener('touchstart', e => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; ok = !(e.target.closest && e.target.closest('input,canvas,button,table,.eq,#help,#notes')); }, { passive: true });
+  document.addEventListener('touchend', e => { if (!ok) return; const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; if (Math.abs(dx) > 70 && Math.abs(dx) > 2 * Math.abs(dy)) { dx < 0 ? next() : prev(); } }, { passive: true });
+})();
+let lastT = performance.now();
+(function loop(now) {
+  const dt = Math.min(.05, (now - lastT) / 1000); lastT = now;
+  if (activeFrame && !$('#ask').classList.contains('on')) { try { activeFrame(dt); } catch (e) { reportError(activeId + '.frame', e); activeFrame = null; } }
+  requestAnimationFrame(loop);
+})(lastT);
+
+/* 물리 검증: shared_js에 TESTS() → [[이름, 통과여부, 설명], ...] 가 있으면 콘솔에 출력 */
+(function runSelfTests() {
+  if (typeof TESTS !== 'function') { console.log('물리 검증 항목 없음'); return; }
+  let results = [];
+  try { results = TESTS() || []; } catch (e) { reportError('TESTS', e); return; }
+  console.log('=== ' + DECK.title + ' 물리 검증 ==='); let pass = 0;
+  for (const [name, ok, detail] of results) { console.log(`[${ok ? 'PASS' : 'FAIL'}] ${name}${detail ? ' — ' + detail : ''}`); if (ok) pass++; }
+  console.log(pass === results.length ? '모든 검증 통과' : '일부 검증 실패 — 콘솔 확인 필요');
+  window.__wsSelfTest = { pass, total: results.length };
+})();
+
+window.__deck = { show, next, get cur() { return cur; }, get step() { return step; }, count: slides.length, maxStep };
+let startAt = 0; try { const h = parseInt(location.hash.slice(1), 10); if (h >= 1 && h <= slides.length) startAt = h - 1; } catch (e) { }
+themeBtn(); show(startAt); poke();
+</script>
+</body>
+</html>

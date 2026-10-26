@@ -1,0 +1,746 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>저항 연결 심화</title>
+<!-- power-resistor-advanced · 교과서 76~81쪽 개념을 대학 일반물리 수준으로 확장한 심화 덱: R=ρL/A, 미시적 줄 열, 내부 저항과 최대 전력, 분압·분류, 키르히호프, 휘트스톤 브리지, 송전 손실 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap">
+<style>
+:root{
+  --bg:#dfe5f0; --slide:#f5f7fc; --panel:#ffffff; --ink:#14203a; --muted:#54617b; --line:#c9d2e4;
+  --blue:#1f5fd1; --onblue:#ffffff; --amber:#b45f00; --green:#0c7a58; --red:#b8321f;
+  --blue-soft:#dce8fb; --amber-soft:#fbe8cf;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+    --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+    --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+  --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+  --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;overflow:hidden}
+#viewport{position:relative;width:100%;height:100%;overflow:hidden}
+#deck{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center center;background:var(--slide);box-shadow:0 12px 70px rgba(0,0,0,.28);overflow:hidden}
+.slide{position:absolute;inset:0;display:none;flex-direction:column;padding:84px 88px 52px;gap:24px;background:var(--slide);font-size:32px;line-height:1.4}
+.slide.active{display:flex}
+.hd{display:flex;align-items:baseline;justify-content:space-between;gap:24px;flex:none}
+.hd h2{font-size:58px;line-height:1.15;margin:0;font-weight:800;letter-spacing:-.01em}
+.hd .src{font-size:26px;color:var(--muted);white-space:nowrap}
+.body{flex:1;min-height:0;display:grid;gap:36px}
+.mg-box{position:relative;aspect-ratio:16/9;border-radius:16px;overflow:hidden;background:#06142a;align-self:start}
+.mg-box.mg-full{height:100%;max-width:100%;justify-self:center}
+.mg-box iframe{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none}
+.mg-re{position:absolute;right:14px;bottom:14px;font:inherit;font-size:24px;padding:8px 18px;border-radius:10px;border:1px solid rgba(255,255,255,.4);background:rgba(0,0,0,.55);color:#fff;cursor:pointer;opacity:.75}
+.mg-re:hover,.mg-re:focus-visible{opacity:1}
+.side{display:flex;flex-direction:column;gap:18px;min-height:0}
+canvas{display:block;border-radius:16px;background:#0a1330}
+.box{background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:20px 26px}
+.box h3{margin:0 0 8px;font-size:30px}
+.sm{font-size:26px;color:var(--muted)}
+.lead{font-size:40px;line-height:1.35}
+.k{color:var(--amber);font-weight:700}.p{color:var(--blue);font-weight:700}.ok{color:var(--green);font-weight:700}.bad{color:var(--red);font-weight:700}
+/* math */
+.m{font-family:'STIX Two Text','Times New Roman',serif;font-style:italic;font-size:1.1em;white-space:nowrap}
+.m .u,.u{font-style:normal}
+.m sub,.m sup{font-size:.68em;line-height:0;font-style:normal}
+.fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.15;margin:0 .12em;font-size:.95em}
+.fr>span:first-child{padding:0 .2em .06em;border-bottom:.07em solid currentColor}
+.fr>span:last-child{padding-top:.06em}
+.sq{white-space:nowrap}.sq .rad{border-top:.07em solid currentColor;padding:0 .15em;margin-left:-.04em}
+.eq{font-size:44px;text-align:center;padding:6px 0}
+/* controls */
+.ctl{display:flex;flex-direction:column;gap:4px}
+.ctl .row{display:flex;justify-content:space-between;align-items:baseline;font-size:27px;gap:12px}
+.ctl .val{font-weight:700;font-variant-numeric:tabular-nums}
+.rangew{position:relative}
+input[type=range]{width:100%;height:44px;-webkit-appearance:none;appearance:none;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:38px;height:38px;border-radius:50%;background:var(--blue);margin-top:-13px;border:4px solid var(--panel);box-shadow:0 1px 6px rgba(0,0,0,.35)}
+input[type=range]::-moz-range-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;background:var(--blue);border:4px solid var(--panel)}
+input[type=range]:focus-visible{outline:3px solid var(--blue);outline-offset:4px;border-radius:8px}
+.marks{position:relative;height:60px;font-size:22px;color:var(--muted)}
+.marks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.btns{display:flex;gap:12px;flex-wrap:wrap}
+.btn,.chip{font:inherit;font-size:27px;font-weight:700;padding:10px 24px;border-radius:12px;border:2px solid var(--blue);background:var(--panel);color:var(--blue);cursor:pointer;line-height:1.25}
+.btn.pri{background:var(--blue);color:var(--onblue)}
+.chip{padding:8px 18px;font-size:26px;border-color:var(--line);color:var(--ink);font-weight:500}
+.chip.on{border-color:var(--blue);background:var(--blue-soft);font-weight:700}
+.btn:focus-visible,.chip:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.chips{display:flex;gap:10px;flex-wrap:wrap}
+/* step reveal */
+.st{display:grid;grid-template-columns:46px 1fr;gap:14px;padding:8px 14px;border-radius:14px;opacity:0;transform:translateY(10px);transition:opacity .35s,transform .35s;border:2px solid transparent}
+.st.on{opacity:.55;transform:none}
+.st.cur{opacity:1;background:var(--panel);border-color:var(--blue)}
+.st .n{width:42px;height:42px;border-radius:50%;background:var(--blue);color:var(--onblue);display:grid;place-items:center;font-weight:800;font-size:24px;margin-top:2px}
+.st .tl{display:flex;flex-wrap:wrap;gap:2px 14px;align-items:baseline}
+.st .t{font-size:23px;color:var(--muted);line-height:1.3}
+.st b{font-size:27px}
+.st .eq{font-size:35px;line-height:1.1;text-align:left;padding:2px 0}
+/* cover */
+.cover{flex-direction:row;align-items:center;gap:56px}
+.cover.active{display:flex}
+.cv-l{flex:1;display:flex;flex-direction:column;gap:28px}
+.cv-l h1{font-size:200px;line-height:1;margin:0;font-weight:800;letter-spacing:-.04em}
+.cv-l h1.long{font-size:92px;line-height:1.22;letter-spacing:-.02em;text-wrap:balance;word-break:keep-all}
+.cv-tag{font-size:30px;color:var(--muted)}
+.q{border-left:8px solid var(--blue);border-radius:6px;padding:8px 0 8px 28px;font-size:36px;line-height:1.45}
+/* table */
+table.t{border-collapse:collapse;width:100%;font-size:27px}
+table.t th,table.t td{padding:10px 14px;border-bottom:2px solid var(--line);text-align:right;white-space:nowrap}
+table.t th:first-child,table.t td:first-child,table.t th:last-child,table.t td:last-child{text-align:left}
+table.t th{font-size:24px;color:var(--muted);font-weight:500}
+table.t tbody tr{cursor:pointer}
+table.t tbody tr.on{background:var(--blue-soft);font-weight:700}
+/* HUD / notes */
+#hud{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:10px;align-items:center;background:rgba(10,19,48,.86);color:#e9effd;padding:8px 14px;border-radius:14px;font-size:18px;opacity:0;transition:opacity .3s;z-index:20}
+#hud.show{opacity:1}
+#hud button{font:inherit;font-size:18px;color:#e9effd;background:transparent;border:1.5px solid rgba(233,239,253,.5);border-radius:8px;padding:4px 12px;cursor:pointer}
+#notes{position:absolute;left:0;right:0;bottom:0;background:rgba(10,19,48,.94);color:#eaf0ff;padding:26px 88px 34px;font-size:30px;line-height:1.5;display:none;z-index:15}
+#notes.on{display:block}
+#notes b{color:#ffb454}
+
+.ko{font-family:'Noto Sans KR',sans-serif;font-style:normal;font-size:.8em}
+#bar{position:absolute;top:14px;left:88px;right:88px;height:54px;display:flex;justify-content:space-between;align-items:center;z-index:12}
+#bar .bl{font-size:26px;font-weight:800}
+#bar .br{display:flex;gap:10px}
+.tb{font:inherit;font-size:24px;font-weight:700;padding:7px 18px;border-radius:12px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;line-height:1.2}
+.tb:hover{border-color:var(--blue)}.tb.on{border-color:var(--blue);background:var(--blue-soft)}
+.tb:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+#help{position:absolute;inset:0;background:rgba(6,11,30,.82);display:none;align-items:center;justify-content:center;z-index:30}
+#help.on{display:flex}
+.hp{background:var(--panel);color:var(--ink);border-radius:22px;padding:36px 52px 40px;width:1320px;max-height:960px;overflow:auto;font-size:27px;line-height:1.5;border:2px solid var(--line)}
+.hp h3{font-size:40px;margin:0 0 14px}.hp h4{font-size:29px;margin:18px 0 6px;color:var(--blue)}
+.hp .g{display:grid;grid-template-columns:230px 1fr;gap:6px 22px}
+.hp kbd{font:inherit;font-size:24px;font-weight:700;background:var(--blue-soft);border:2px solid var(--line);border-radius:8px;padding:1px 10px;margin-right:4px}
+#ask{position:absolute;inset:0;background:rgba(6,11,30,.6);display:none;align-items:center;justify-content:center;z-index:25;cursor:pointer}
+#ask.on{display:flex}
+#ask .ak{background:var(--panel);color:var(--ink);border-radius:24px;border-left:16px solid var(--blue);padding:44px 72px 40px 60px;width:1500px;box-shadow:0 20px 80px rgba(0,0,0,.45)}
+#ask .ah{font-size:30px;color:var(--blue);font-weight:800;margin-bottom:18px}
+#ask .aq{font-size:54px;line-height:1.4;font-weight:700;margin:10px 0;letter-spacing:-.01em}
+#ask .aq span{color:var(--blue);margin-right:14px}
+#ask .af{font-size:24px;color:var(--muted);margin-top:22px}
+#notes .nh{font-size:24px;color:#9db0d8;margin-bottom:6px}
+#notes .nq{margin:4px 0 10px;font-size:29px}
+#notes .ni{margin:6px 0;font-size:27px;line-height:1.45}
+#notes .nx{color:#ff9d9d;font-weight:700}#notes .nv{color:#5eead4;font-weight:700}
+@media (prefers-reduced-motion: reduce){.st{transition:none}}
+#simError{position:absolute;left:88px;right:88px;top:76px;z-index:40;background:rgba(184,50,31,.95);color:#fff;font-size:22px;line-height:1.4;padding:10px 18px;border-radius:12px;white-space:pre-wrap;display:none}
+#simError.on{display:block}
+/* ---- 반응형(reflow): 폭 1100px 미만(폰·태블릿)에서는 1920 스케일 대신 세로로 흐르는 레이아웃 ---- */
+html.rf #deck{left:0;top:0;transform-origin:top left;box-shadow:none}
+html.rf .slide{padding:104px 22px 100px;gap:18px;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;font-size:30px}
+html.rf .body{display:flex !important;flex-direction:column;gap:22px;flex:none;min-height:auto}
+html.rf .side{min-height:auto}
+html.rf .hd{flex-direction:column;align-items:flex-start;gap:6px}
+html.rf .hd h2{font-size:44px}
+html.rf .hd .src{font-size:23px;white-space:normal}
+html.rf canvas{width:100% !important;height:auto !important;max-width:100%}
+html.rf .mg-box.mg-full{height:auto;width:100%}
+html.rf img,html.rf svg,html.rf video{max-width:100%;height:auto}
+html.rf .cover{flex-direction:column;align-items:stretch;gap:26px}
+html.rf .cv-l h1{font-size:112px}
+html.rf .cv-l h1.long{font-size:52px}
+html.rf .cv-tag{font-size:26px}
+html.rf .q{font-size:30px}
+html.rf .lead{font-size:34px}
+html.rf .eq{font-size:36px;overflow-x:auto}
+html.rf table.t{display:block;overflow-x:auto;font-size:24px}
+html.rf .btn,html.rf .chip{min-height:52px}
+html.rf #bar{left:14px;right:14px;top:12px;height:auto;flex-wrap:wrap;gap:8px}
+html.rf #bar .bl{display:none}
+html.rf #bar .br{flex-wrap:wrap;justify-content:flex-end;width:100%}
+html.rf .tb{font-size:20px;padding:8px 12px}
+html.rf .hp{width:92%;max-height:88%;padding:24px 22px 28px;font-size:23px}
+html.rf .hp h3{font-size:32px}
+html.rf .hp .g{grid-template-columns:1fr;gap:2px 0}
+html.rf #ask .ak{width:92%;padding:26px 24px 24px 28px;border-left-width:10px}
+html.rf #ask .aq{font-size:34px}
+html.rf #notes{padding:18px 20px 26px;font-size:23px;max-height:62%;overflow:auto}
+html.rf #notes .nq{font-size:25px}
+html.rf #notes .ni{font-size:23px}
+html.rf #simError{left:14px;right:14px;top:96px}
+html.rf #hud{padding:8px 16px;width:max-content;max-width:96%}
+html.rf #hud #h-pg{white-space:nowrap;font-size:22px}
+html.rf .st:not(.on){display:none}
+html.rf #hud button{font-size:22px;padding:6px 16px;min-height:44px}
+/* ---- extra_css ---- */
+table.t{table-layout:fixed} table.t th,table.t td{text-align:left !important;vertical-align:middle;white-space:normal}
+</style>
+</head>
+<body>
+<div id="viewport">
+<div id="deck">
+
+<!-- b1 -->
+<section class="slide cover" id="b1">
+  <div class="cv-l"><div class="cv-tag">심화 · 고등학교 → 대학 일반물리 (전기 에너지·전력·저항 연결)</div>
+    <h1 class="long">저항 연결, 한 단계 더</h1>
+    <p class="lead" style="margin:0">합성 저항 공식이 왜 그렇게 되는지, 전원의 한계는 어디인지, 전기를 멀리 보내는 방법까지.</p>
+    <div class="q">부하 저항을 아무리 키워도 전원이 내놓는 전력에는 한계가 있다. 최대는 언제일까?</div>
+    <div class="sm">교과서 76~81쪽의 심화 · Serway·Jewett, Halliday 일반물리 대응<br>→ / Space 로 시작</div></div>
+  <canvas id="c-hero"></canvas>
+</section>
+
+<!-- b2 -->
+<section class="slide" id="b2">
+  <header class="hd"><h2>저항은 어디서 오나 — R = ρL/A, 그리고 J = σE</h2><span class="src">Serway·Jewett PSE 27장 · Halliday 26장 (저항·저항률)</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-rho"></canvas><div class="side"><div class="chips"><button class="chip on" id="rh-0">구리</button><button class="chip" id="rh-1">알루미늄</button><button class="chip" id="rh-2">니크롬</button></div><div class="ctl"><div class="row"><span>길이 L</span><span class="val" id="rh-Lv">10 m</span></div><input id="rh-L" type="range" min="1" max="100" step="1" value="10"></div><div class="ctl"><div class="row"><span>단면적 A</span><span class="val" id="rh-Av">1.5 mm²</span></div><input id="rh-A" type="range" min="0.5" max="10" step="0.1" value="1.5"></div><div class="box" style="color:var(--ink);line-height:1.75">R = ρL/A = <b class="k" id="rh-R"></b> Ω<br>12 V에서 I = <b class="k" id="rh-I"></b> A<br>P = V²/R = <b class="k" id="rh-P"></b> W</div><div class="box" style="color:var(--ink);line-height:1.75"><span class="m">R=ρ L/A</span>,&ensp;<span class="m">J=σ E</span><div class="sm">ρ=1/σ: 물질의 성질. R은 모양까지 포함</div></div></div>
+</div>
+</section>
+
+<!-- b3 -->
+<section class="slide" id="b3" data-steps="5">
+  <header class="hd"><h2>P = VI의 미시적 근거 — 드리프트 속도와 줄 열</h2><span class="src">Serway·Jewett PSE 27장 · Halliday 26장</span></header>
+<div class="body" style="grid-template-columns:820px 1fr">
+<div class="box" style="font-size:27px;line-height:1.75"><b class="k">수치 감각 (구리선, 1 A, 1 mm²)</b><br><span class="m">n≈8.5×10<sup>28</sup>&thinsp;<span class="ko">m</span><sup>-3</sup></span><br><span class="m">v<sub>d</sub>=<span class="fr"><span>I</span><span>nqA</span></span>≈7×10<sup>-5</sup>&thinsp;<span class="ko">m/s</span></span><br>= 시간당 약 26 cm 이동!<div class="sm" style="margin-top:8px">스위치를 켜면 바로 불이 켜지는 것은 전자가 빨리 가기 때문이 아니라, 전기장(신호)이 도선 전체에 빛에 가까운 속력으로 퍼지기 때문이다.</div></div>
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>전류 = 단위 시간당 단면을 지나는 전하</b></div><div class="eq"><span class="m">I=nqAv<sub>d</sub></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">n: 자유 전자 밀도, q=e, v_d: 표류(드리프트) 속력</div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>전하 q가 거리 Δx를 가면 전기장이 한 일</b></div><div class="eq"><span class="m">Δ W=qE&thinsp;Δ x</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">E = V/L (균일한 도선)</div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>단위 시간당 한 일 (도선 전체의 전자)</b></div><div class="eq"><span class="m">P=(nAL)(qEv<sub>d</sub>)=(EL)(I)</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">전자 수 nAL × 전자 하나의 일률 qEv_d</div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>V = EL, I = nqv_dA 를 쓰면</b></div><div class="eq"><span class="m">P=VI</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">전기장이 전자에 준 에너지는 충돌로 원자에 전달되어 열이 됨</div></div></div>
+<div class="st" data-i="5"><div class="n">5</div><div><div class="tl"><b>단위 부피당 줄 열 (대학 표현)</b></div><div class="eq"><span class="m"><span class="fr"><span>P</span><span>AL</span></span>=JE=σ E<sup>2</sup>=ρ J<sup>2</sup></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">J = I/A 전류 밀도</div></div></div></div>
+</div>
+</section>
+
+<!-- b4 -->
+<section class="slide" id="b4">
+  <header class="hd"><h2>전원의 한계 — 내부 저항과 최대 전력 전달</h2><span class="src">Serway·Jewett PSE 28.1~28.2, 예제 28.2 (PDF 871~872쪽) · Halliday 27-1</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-mp"></canvas><div class="side"><div class="box" style="color:var(--ink);line-height:1.75"><div class="eq"><span class="m">P=I<sup>2</sup>R=<span class="fr"><span>ε<sup>2</sup>R</span><span>(R+r)<sup>2</sup></span></span></span></div><div class="sm" style="text-align:center">ε = 12 V (기전력), r = 내부 저항</div></div><div class="ctl"><div class="row"><span>내부 저항 r</span><span class="val" id="mp-rv">2 Ω</span></div><input id="mp-r" type="range" min="0.5" max="5" step="0.1" value="2"></div><div class="ctl"><div class="row"><span>부하 저항 R</span><span class="val" id="mp-Rv">4 Ω</span></div><input id="mp-R" type="range" min="0.2" max="10" step="0.1" value="4"></div><div class="box" style="color:var(--ink);line-height:1.75">I = <b class="k" id="mp-I"></b> A<br>부하 소비 전력 P = <b class="k" id="mp-P"></b> W<br>내부에서 열 = <b class="p" id="mp-Pr"></b> W<br>효율 = <b class="k" id="mp-e"></b> %<br>P<sub>max</sub> = ε²/4r = <b id="mp-pm"></b> W</div></div>
+</div>
+</section>
+
+<!-- b5 -->
+<section class="slide" id="b5">
+  <header class="hd"><h2>분압과 분류 — 직렬·병렬 식에서 나오는 쓸모 있는 공식</h2><span class="src">Serway·Jewett PSE 28.2 · College Physics 18.2~18.3 (PDF 616, 619쪽)</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-dv"></canvas><div class="side"><div class="chips"><button class="chip on" id="dv-m0">분압 (직렬)</button><button class="chip" id="dv-m1">분류 (병렬)</button></div><div class="ctl"><div class="row"><span>R₁</span><span class="val" id="dv-1v">1000 Ω</span></div><input id="dv-1" type="range" min="100" max="5000" step="100" value="1000"></div><div class="ctl"><div class="row"><span>R₂</span><span class="val" id="dv-2v">3000 Ω</span></div><input id="dv-2" type="range" min="100" max="5000" step="100" value="3000"></div><div class="box" style="color:var(--ink);line-height:1.75"><b id="dv-t1"></b> = <b class="k" id="dv-v1"></b><br><b id="dv-t2"></b> = <b class="k" id="dv-v2"></b></div><div class="box" style="color:var(--ink);line-height:1.75"><b class="p" id="dv-f"></b></div></div>
+</div>
+</section>
+
+<!-- b6 -->
+<section class="slide" id="b6">
+  <header class="hd"><h2>합성 저항 공식의 의미 — 길이·단면적, 전도도, 두 보존 법칙</h2><span class="src">Serway·Jewett PSE 28.2 · Halliday 27 · 기본 덱 a9, a13</span></header>
+<div class="body" style="grid-template-columns:1fr 1fr">
+<div class="box" style="font-size:26px;line-height:1.7"><b class="k">두 보존 법칙으로 보는 유도</b><br>• 전하 보존: 직렬 <span class="m">I<sub>1</sub>=I<sub>2</sub></span>, 병렬 갈림점 <span class="m">I=I<sub>1</sub>+I<sub>2</sub></span><br>• 에너지 보존(전위): 직렬 <span class="m">V=V<sub>1</sub>+V<sub>2</sub></span>, 병렬 <span class="m">V<sub>1</sub>=V<sub>2</sub></span><br><br><b class="k">R = ρL/A 로 보면</b><br>• 직렬 = 길이 L이 늘어난다 → <span class="m">R</span> 합<br>• 병렬 = 단면적 A가 늘어난다 → <span class="m">1/R</span> 합<br><br><b class="k">전도도 <span class="m">G=1/R</span> [S]</b><br>• 병렬: <span class="m">G=∑ G<sub>i</sub></span> (간단하다)<br>• 직렬: <span class="m">1/G=∑ 1/G<sub>i</sub></span></div>
+<div class="box" style="font-size:26px;line-height:1.7"><b class="k">일반화와 점검</b><br>• 같은 저항 n개: 직렬 <span class="m">nR</span>, 병렬 <span class="m">R/n</span><br>• 병렬 합성은 항상 가장 작은 저항보다 작다<br>• 전체 소비 전력 <span class="m">P=∑ P<sub>i</sub></span> (직렬·병렬 모두), 그러나 비 <span class="m">P<sub>i</sub></span>는 직렬 <span class="m">∝ R<sub>i</sub></span>, 병렬 <span class="m">∝ 1/R<sub>i</sub></span><br>• 두 저항 병렬: <span class="m">R=<span class="fr"><span>R<sub>1</sub>R<sub>2</sub></span><span>R<sub>1</sub>+R<sub>2</sub></span></span></span>, 하나가 아주 크면 <span class="m">R≈</span> 작은 쪽<br><br><b class="p">예)</b> 10 Ω, 20 Ω, 20 Ω 병렬<br><span class="m"><span class="fr"><span>1</span><span>R</span></span>=<span class="fr"><span>1</span><span>10</span></span>+<span class="fr"><span>1</span><span>20</span></span>+<span class="fr"><span>1</span><span>20</span></span>=<span class="fr"><span>1</span><span>5</span></span>&nbsp;⇒ R=5&thinsp;Ω</span></div>
+</div>
+</section>
+
+<!-- b7 -->
+<section class="slide" id="b7">
+  <header class="hd"><h2>키르히호프 규칙 — 직렬·병렬만으로 안 풀리는 회로</h2><span class="src">Serway·Jewett PSE 28.3 (PDF 879쪽) · Halliday 27-2 (PDF 807쪽)</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-kf"></canvas><div class="side"><div class="ctl"><div class="row"><span>ε₁</span><span class="val" id="kf-1v">12 V</span></div><input id="kf-1" type="range" min="0" max="20" step="1" value="12"></div><div class="ctl"><div class="row"><span>ε₂</span><span class="val" id="kf-2v">6 V</span></div><input id="kf-2" type="range" min="0" max="20" step="1" value="6"></div><div class="ctl"><div class="row"><span>R₃ (가운데)</span><span class="val" id="kf-3v">6 Ω</span></div><input id="kf-3" type="range" min="1" max="20" step="1" value="6"></div><div class="box" style="color:var(--ink);line-height:1.75">V<sub>a</sub> = <b class="k" id="kf-Va"></b> V<br>I₁ = <b class="k" id="kf-I1"></b> A<br>I₂ = <b class="k" id="kf-I2"></b> A<br>I₃ = <b class="k" id="kf-I3"></b> A</div><div class="box" style="color:var(--ink);line-height:1.75"><span class="sm">접합점: <span class="m">I<sub>1</sub>+I<sub>2</sub>=I<sub>3</sub></span><br>고리: <span class="m">ε<sub>1</sub>-I<sub>1</sub>R<sub>1</sub>-I<sub>3</sub>R<sub>3</sub>=0</span><br>(R₁=4 Ω, R₂=2 Ω)</span></div></div>
+</div>
+</section>
+
+<!-- b8 -->
+<section class="slide" id="b8">
+  <header class="hd"><h2>휘트스톤 브리지 — 직렬·병렬이 아닌 연결, 그리고 균형</h2><span class="src">Halliday 27장 · Serway·Jewett PSE 28장 (측정 회로)</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-wb"></canvas><div class="side"><div class="box" style="color:var(--ink);line-height:1.75"><span class="m">R<sub>1</sub>/R<sub>2</sub>=R<sub>3</sub>/R<sub>x</sub>⇒ V<sub>a</sub>=V<sub>b</sub></span><div class="sm">R₁=100, R₂=200, R₃=150 Ω, V=10 V</div></div><div class="ctl"><div class="row"><span>미지 저항 R<sub>x</sub></span><span class="val" id="wb-xv">250 Ω</span></div><input id="wb-x" type="range" min="100" max="500" step="5" value="250"></div><div class="box" style="color:var(--ink);line-height:1.75">V<sub>a</sub> = <b class="k" id="wb-a"></b> V<br>V<sub>b</sub> = <b class="k" id="wb-b"></b> V<br>검류계 전압 V<sub>a</sub>−V<sub>b</sub> = <b class="p" id="wb-d"></b> V<br><b id="wb-m"></b></div></div>
+</div>
+</section>
+
+<!-- b9 -->
+<section class="slide" id="b9">
+  <header class="hd"><h2>전기를 멀리 보내는 법 — 송전 손실 I²R과 고전압</h2><span class="src">Serway·Jewett PSE 33.8 변압기와 송전 (PDF 1051쪽) · 27.6 전력 (PDF 856쪽)</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-tr"></canvas><div class="side"><div class="ctl"><div class="row"><span>송전 전력 P</span><span class="val" id="tr-Pv">1 MW</span></div><input id="tr-P" type="range" min="1" max="100" step="1" value="1"></div><div class="ctl"><div class="row"><span>송전 전압 V</span><span class="val" id="tr-Vv">10 kV</span></div><input id="tr-V" type="range" min="5" max="500" step="5" value="10"></div><div class="ctl"><div class="row"><span>선로 저항 R</span><span class="val" id="tr-Rv">10 Ω</span></div><input id="tr-R" type="range" min="1" max="50" step="1" value="10"></div><div class="box" style="color:var(--ink);line-height:1.75">전류 I = P/V = <b class="k" id="tr-I"></b> A<br>선로 손실 = I²R = <b class="k" id="tr-L"></b> kW<br>손실률 = <b class="p" id="tr-f"></b> %</div><div class="box" style="color:var(--ink);line-height:1.75"><div class="eq"><span class="m">P<sub><span class="ko">손실</span></sub>=(<span class="fr"><span>P</span><span>V</span></span>)<sup>2</sup>R</span></div><div class="sm" style="text-align:center">같은 전력이면 V를 10배로 → 손실 1/100</div></div></div>
+</div>
+</section>
+
+<!-- b10 -->
+<section class="slide" id="b10">
+  <header class="hd"><h2>에너지 계산 연결 — 물 끓이기와 전력량 (효율 포함)</h2><span class="src">교과서 76쪽 전력량 + 열 (Q = mcΔT)</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-ht"></canvas><div class="side"><div class="ctl"><div class="row"><span>물의 질량 m</span><span class="val" id="ht-mv">1 kg</span></div><input id="ht-m" type="range" min="0.2" max="2" step="0.1" value="1"></div><div class="ctl"><div class="row"><span>온도 상승 ΔT</span><span class="val" id="ht-Tv">80 ℃</span></div><input id="ht-T" type="range" min="10" max="80" step="5" value="80"></div><div class="ctl"><div class="row"><span>소비 전력 P</span><span class="val" id="ht-Pv">1500 W</span></div><input id="ht-P" type="range" min="500" max="2000" step="100" value="1500"></div><div class="ctl"><div class="row"><span>효율 η</span><span class="val" id="ht-ev">90 %</span></div><input id="ht-e" type="range" min="50" max="100" step="5" value="90"></div><div class="box" style="color:var(--ink);line-height:1.75">필요한 열 Q = mcΔT = <b class="k" id="ht-Q"></b> kJ<br>걸리는 시간 t = Q/(ηP) = <b class="k" id="ht-t"></b> s<br>사용 전력량 = <b class="p" id="ht-E"></b> kWh</div></div>
+</div>
+</section>
+
+<!-- b11 -->
+<section class="slide" id="b11">
+  <header class="hd"><h2>교과서 ↔ 대학 교재 대응표 (찾아 읽기 안내)</h2><span class="src">bookref 색인 기준 PDF 쪽수 · 본문은 직접 확인</span></header>
+<div class="box" style="font-size:24px"><table class="t" style="width:100%;font-size:24px"><colgroup><col style="width:22%"><col style="width:39%"><col style="width:39%"></colgroup><tr><th>교과서(76~81쪽) 개념</th><th>Serway·Jewett, Physics for Scientists and Engineers</th><th>College Physics (Serway) · Halliday</th></tr>
+<tr><td>전기 에너지·전력·전력량</td><td>27.6 Electrical Power (PDF 856쪽)</td><td>Halliday 26장 후반 (소비 전력)</td></tr>
+<tr><td>저항의 직렬·병렬</td><td>28.2 Resistors in Series and Parallel (PDF 872~875쪽)</td><td>CP 18.2 직렬 (616쪽), 18.3 병렬 (619쪽)</td></tr>
+<tr><td>내부 저항·최대 전력</td><td>28.1, 예제 28.2 (PDF 871~872쪽)</td><td>Halliday 27-1 Single-Loop Circuits (797쪽)</td></tr>
+<tr><td>비직렬병렬 회로·키르히호프</td><td>28.3 Kirchhoff’s Rules (PDF 879쪽)</td><td>Halliday 27-2 Multiloop Circuits (807쪽)</td></tr>
+<tr><td>송전 손실</td><td>33.8 The Transformer and Power Transmission (PDF 1051쪽)</td><td>—</td></tr></table>
+<div class="sm" style="margin-top:12px">표의 쪽수는 색인이 가리킨 PDF 쪽(교재 인쇄 쪽과 다를 수 있음). 쪽 단위 내용은 28.2의 872~874쪽을 읽어 확인했고, 나머지는 장·절 제목 기준이다.</div></div>
+</section>
+
+<!-- b12 -->
+<section class="slide" id="b12" data-steps="5">
+  <header class="hd"><h2>심화 확인 문제</h2><span class="src">b2~b9 정리</span></header>
+<div class="body" style="grid-template-columns:820px 1fr">
+<div class="box" style="font-size:27px;line-height:1.7"><b class="k">핵심 한 줄</b><br>&emsp;<span class="m">R=ρ L/A</span>, <span class="m">P=<b>J</b>·<b>E</b></span>, <span class="m">P<sub>max</sub>=ε<sup>2</sup>/4r</span><br>&emsp;분압 <span class="m">V<sub>2</sub>=V<span class="fr"><span>R<sub>2</sub></span><span>R<sub>1</sub>+R<sub>2</sub></span></span></span>, 브리지 <span class="m">R<sub>1</sub>/R<sub>2</sub>=R<sub>3</sub>/R<sub>x</sub></span><br>&emsp;송전 손실 <span class="m">(P/V)<sup>2</sup>R</span></div>
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>Q1. 구리선(ρ=1.68×10⁻⁸ Ω·m) 100 m, 단면적 1.5 mm²의 저항은?</b><span class="t">정답: 1.12 Ω</span></div><div class="eq"><span class="m">R=ρ<span class="fr"><span>L</span><span>A</span></span>=1.12&thinsp;Ω</span></div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>Q2. ε=12 V, r=2 Ω인 전지에서 부하가 낼 수 있는 최대 전력과 그때 R은?</b><span class="t">정답: R=2 Ω, P=18 W (효율 50 %)</span></div><div class="eq"><span class="m">P<sub>max</sub>=<span class="fr"><span>ε<sup>2</sup></span><span>4r</span></span>=18&thinsp;<span class="ko">W</span></span></div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>Q3. 12 V를 1 kΩ, 3 kΩ 직렬에 걸 때 3 kΩ 양단 전압은?</b><span class="t">정답: 9 V</span></div><div class="eq"><span class="m">V<sub>2</sub>=12·<span class="fr"><span>3</span><span>4</span></span>=9&thinsp;<span class="ko">V</span></span></div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>Q4. 브리지에서 R₁=100, R₂=200, R₃=150 Ω이 균형일 때 Rx는?</b><span class="t">정답: 300 Ω</span></div><div class="eq"><span class="m">R<sub>x</sub>=<span class="fr"><span>R<sub>2</sub>R<sub>3</sub></span><span>R<sub>1</sub></span></span>=300&thinsp;Ω</span></div></div></div>
+<div class="st" data-i="5"><div class="n">5</div><div><div class="tl"><b>Q5. 1 MW를 10 kV→100 kV로 송전하면 손실(R=10 Ω)은 어떻게 변하는가?</b><span class="t">정답: 100 kW → 1 kW (1/100)</span></div><div class="eq"><span class="m">(<span class="fr"><span>P</span><span>V</span></span>)<sup>2</sup>R</span></div></div></div></div>
+</div>
+</section>
+
+<div id="notes"></div>
+<div id="bar"><div class="bl">🔌 저항 연결 심화 — 내부 저항·키르히호프·송전 손실 (고교→대학) <span class="sm">· 교과서 76~81쪽 심화 · Serway·Jewett / Halliday 대응</span></div><div class="br"><button class="tb" id="b-help">❓ 조작법</button><button class="tb" id="b-ask">💬 발문 띄우기</button><button class="tb" id="b-notes">📝 오개념 교정 노트</button><button class="tb" id="b-theme">🌙 다크 전환</button></div></div>
+<div id="ask" role="dialog" aria-label="발문"></div>
+<div id="help" role="dialog" aria-label="조작법 설명"><div class="hp">
+<h3>조작법</h3>
+<h4>키보드</h4>
+<div class="g"><div><kbd>→</kbd><kbd>Space</kbd></div><div>다음 (단계가 있는 슬라이드는 단계부터 진행)</div>
+<div><kbd>←</kbd></div><div>이전 (단계도 거꾸로)</div>
+<div><kbd>Home</kbd><kbd>End</kbd></div><div>처음 / 마지막 슬라이드</div>
+<div><kbd>F</kbd></div><div>전체 화면</div>
+<div><kbd>Q</kbd></div><div>이 슬라이드의 <b>발문(학생용 질문)</b>을 화면 위에 크게 띄우기 / 닫기 (아무 곳이나 클릭해도 닫힘)</div>
+<div><kbd>N</kbd></div><div>오개념 교정 노트 열기/닫기 (교사용)</div>
+<div><kbd>T</kbd></div><div>다크 / 라이트 전환</div>
+<div><kbd>?</kbd><kbd>Esc</kbd></div><div>조작법 열기 / 닫기</div></div>
+<h4>화면 조작</h4>
+<div class="g"><div>슬라이더</div><div>값 바꾸기 (터치 가능)</div>
+<div>칩/버튼</div><div>누르면 선택·전환</div>
+<div>→ / Space</div><div>다음 단계(확인 문제 공개)</div>
+<div>❓ / 📝</div><div>조작법 / 오개념 교정 노트</div>
+<div>슬라이더 키보드</div><div>슬라이더를 클릭해 초점이 있는 동안에는 ← → 가 값 조절에 쓰입니다. 마우스로 놓으면 자동 해제</div></div>
+<h4>수업 진행 팁</h4>
+<div>① 학생에게 결과를 <b>먼저 예측</b>하게 하고 → ② 슬라이더로 확인하고 → ③ 식으로 정리하면 오개념이 잘 교정됩니다.</div>
+<div class="btns" style="margin-top:22px"><button class="btn pri" id="help-x">닫기 (Esc)</button></div>
+</div></div>
+<div id="simError"></div>
+</div>
+<div id="hud"><button id="h-prev" aria-label="이전">◀</button><span id="h-pg">1 / 1</span><button id="h-next" aria-label="다음">▶</button><button id="h-fs" aria-label="전체화면">⛶</button></div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   공통 유틸 / 그리기 도우미 (템플릿 제공)
+   ===================================================================== */
+const DECK = {"title":"저항 연결 심화 — 내부 저항·키르히호프·송전 손실 (고교→대학)","notes":{"b1":{"q":"기본 덱을 마친 학생(또는 이공계 지망생)용입니다. 대학 교재 수준 식(J=σE, 키르히호프 규칙, 최대 전력 전달)을 고교 수식 수준에서 다룹니다.","m":[["부하 저항이 클수록 소비 전력이 커진다.","전원에 내부 저항이 있으면 R=r에서 최대이고, 더 커지면 오히려 작아진다."]]},"b2":{"q":"R은 모양(L,A)과 물질(ρ)의 곱입니다. 병렬 연결이 \"단면적을 늘리는 것\"과 같고 직렬 연결이 \"길이를 늘리는 것\"과 같다는 해석으로 기본 덱의 합성 저항 공식을 다시 설명할 수 있습니다.","m":[["저항 R은 물질의 고유한 성질이다.","저항률 ρ가 물질의 성질이고, R은 모양(L, A)에도 의존한다."]]},"b3":{"q":"\"전자는 느리게 움직이는데 왜 불은 바로 켜지는가?\"를 먼저 묻고, 마지막 단계 후 다시 답하게 하세요. 이 유도는 기본 덱 a3의 W=qV 유도와 같은 결과를 미시 모델로 확인한 것입니다.","m":[["전자가 광속에 가깝게 움직인다.","표류 속력은 ~10⁻⁵ m/s. 빠른 것은 전기장(신호)의 전파이다."]]},"b4":{"q":"dP/dR=0을 풀면 R=r입니다 (Serway·Jewett 예제 28.2). 이때 효율은 50 %로, 전력 전송에서는 효율이 중요해 R≫r로 씁니다. 손전등 전지는 r이 크면 새 전지도 약한 이유가 됩니다.","m":[["전원 전압은 항상 ε 그대로 부하에 걸린다.","실제 전원은 단자 전압 = ε − Ir 이다. I가 클수록 단자 전압이 떨어진다."],["소비 전력이 최대일 때 효율도 최대이다.","최대 전력일 때 효율은 50 %뿐이다."]]},"b5":{"q":"분압: 12 V 입력, R₂ 양단 전압을 출력으로 취하면 V₂=V·R₂/(R₁+R₂). 센서 회로·가변 저항(볼륨)의 원리입니다. 분류: 전체 전류 I₀가 가지에 반비례로 나뉨 I₁=I₀R₂/(R₁+R₂). 전류계 션트 저항의 원리.","m":[["분류에서는 큰 저항 쪽으로 전류가 더 많이 나뉜다.","작은 저항 쪽으로 더 많이 흐른다. 분자에 \"상대편 저항\"이 온다."]]},"b6":{"q":"합성 저항 공식을 \"외우는 공식\"에서 \"보존 법칙의 결과\"로 바꾸는 슬라이드입니다. 병렬 = 굵은 도선 비유로 직관을 줍니다.","m":[["병렬로 연결하면 모든 저항이 작아진다.","합성 저항이 작아질 뿐 각 저항값은 그대로이다."]]},"b7":{"q":"ε₂를 키워 I₂의 부호가 바뀌는 순간을 찾게 하세요: 그때 배터리 2는 충전되는 쪽(부하)이 됩니다. 접합점 규칙은 전하 보존, 고리 규칙은 에너지 보존(전위의 한 바퀴 합=0)입니다.","m":[["전류의 방향을 잘못 가정하면 풀 수 없다.","가정이 틀리면 부호가 음수로 나올 뿐 식은 성립한다."]]},"b8":{"q":"균형(Rx=300 Ω)에서는 a, b가 같은 전위라 가운데 선에 전류가 없어 직렬·병렬로 단순화됩니다. 변형률 센서(스트레인 게이지)·온도 센서의 기본 구조입니다.","m":[["검류계에 전류가 없으면 회로가 끊어진 것이다.","a, b의 전위가 같아 전류가 0일 뿐, 회로는 이어져 있다."]]},"b9":{"q":"멀티탭 화재(전류 합 증가 → 선의 I²R 발열)와 송전 손실(전류가 크면 선의 I²R)은 같은 원리 P=I²R선입니다. 전압을 높이면 같은 전력을 작은 전류로 보낼 수 있어 손실이 1/V²로 줄어듭니다 (변압기는 교류에서만).","m":[["전압이 높으면 전력 손실이 커진다.","같은 전력이면 V↑ → I↓ → 손실 I²R↓. (전류가 손실을 결정)"]]},"b10":{"q":"교과서 76쪽의 전력량을 열량과 연결합니다. P·t = Q/η. 같은 일을 하더라도 전력이 큰 기구는 시간이 짧아 전력량은 같습니다(효율이 같다면). 전기 요금은 전력량(kWh)에 비례합니다.","m":[["전력이 큰 기구가 전기를 더 많이 쓴다.","전력량=전력×시간. 같은 일이면 전력이 커도 시간이 짧아 전력량은 같다."]]},"b11":{"q":"학생이 직접 찾아 읽을 때는 인쇄 쪽과 PDF 쪽이 다를 수 있음을 알려 주세요. 스캔본이 아닌 텍스트 PDF라 수식 기호가 깨질 수 있어 원본을 눈으로 확인하는 것이 안전합니다.","m":[["대학 교재는 고교 내용과 완전히 다른 내용이다.","같은 개념(옴의 법칙, 합성 저항, P=VI)을 더 일반적인 식과 보존 법칙으로 설명한다."]]},"b12":{"q":"Q2의 효율이 50 %인 점을 짚고, 전력 회사는 효율을 위해 R≫r로 쓴다는 점을 연결하세요.","m":[["Q2에서 R이 클수록 계속 증가한다.","R=r에서 최대이고 그 이후 감소한다."]]}},"ask":{"b3":["전자가 느린데 스위치를 켜면 바로 불이 켜지는 까닭은?"],"b4":["R를 0에 가깝게 하면(단락) 전원은 어떻게 될까?","R를 키우면 효율은 올라가지만 전력은?"],"b9":["전압을 10배로 올리면 손실은 몇 배가 될까?","교과서의 멀티탭 과열 문제와 같은 원리는 무엇일까?"]}};
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const TAU = Math.PI * 2, DPR = 2;
+const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const C = { bg: '#0a1330', grid: 'rgba(160,190,255,.22)', text: '#e3ecff', dim: '#9db0d8', KE: '#ffb454', PE: '#7fb2ff', E: '#ffffff', ok: '#5eead4', bad: '#ff9d9d' };
+const font = (px, w = 500, it = false) => `${it ? 'italic ' : ''}${w} ${px}px 'Noto Sans KR',sans-serif`;
+const mathFont = px => `italic 400 ${px}px 'STIX Two Text','Times New Roman',serif`;
+function setupCanvas(cv, W, H) { cv.width = W * DPR; cv.height = H * DPR; cv.style.width = W + 'px'; cv.style.height = H + 'px'; const c = cv.getContext('2d'); c.setTransform(DPR, 0, 0, DPR, 0, 0); return c; }
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function makeStars(W, H, n, seed) { const r = mulberry(seed); return Array.from({ length: n }, () => [r() * W, r() * H, .25 + r() * .55, r() < .12 ? 3 : 2]); }
+function drawStars(ctx, stars) { stars.forEach(([x, y, a, s]) => { ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(x, y, s, s); }); }
+function arrow(ctx, x0, y0, x1, y1, color, lw = 4, head = 15) {
+  const a = Math.atan2(y1 - y0, x1 - x0); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - Math.cos(a) * head * .6, y1 - Math.sin(a) * head * .6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - head * Math.cos(a - .45), y1 - head * Math.sin(a - .45)); ctx.lineTo(x1 - head * Math.cos(a + .45), y1 - head * Math.sin(a + .45)); ctx.closePath(); ctx.fill();
+}
+function mathRun(ctx, x, y, parts) { let cx = x; parts.forEach(q => { ctx.font = q.f; ctx.fillStyle = q.c; ctx.fillText(q.t, cx, y + (q.dy || 0)); cx += ctx.measureText(q.t).width; }); return cx; }
+function bindRange(id, cb) { const el = $('#' + id); el.addEventListener('input', () => cb(parseFloat(el.value))); el.addEventListener('change', () => el.blur()); return el; }
+const fmt = (x, d = 2) => (x < 0 ? '−' : '') + Math.abs(x).toFixed(d);
+
+/* 오류 표시: 슬라이드 코드 예외를 화면 상단과 window.__wsErrors에 남긴다 (헤드리스 검사용) */
+window.__wsErrors = [];
+function reportError(where, e) {
+  const msg = `${where}: ${e && e.message ? e.message : e}`;
+  if (!window.__wsErrors.includes(msg)) { window.__wsErrors.push(msg); console.error('[슬라이드 오류] ' + msg); }
+  const box = document.getElementById('simError'); box.textContent = window.__wsErrors.slice(-3).join('\n'); box.classList.add('on');
+}
+function safe(where, fn, ...args) { try { return fn && fn(...args); } catch (e) { reportError(where, e); } }
+
+/* =====================================================================
+   shared_js (주제별 물리 계산부·공용 시뮬레이터)
+   ===================================================================== */
+
+const BLUE='#7fb2ff',ORG='#ffb86b',PINK='#ff9d9d',GRN='#7ee08a',YEL='#ffd166',WIRE='#9fb3d9';
+function setT(id,s){$('#'+id).textContent=s;}
+function hTxt(ctx,s,x,y,size,color,align,w){ctx.font=font(size,w||400);ctx.fillStyle=color;ctx.textAlign=align||'left';ctx.fillText(s,x,y);ctx.textAlign='left';}
+function bindChips(ids,cb){ids.forEach((id,i)=>{$('#'+id).addEventListener('click',()=>{ids.forEach(j=>$('#'+j).classList.remove('on'));$('#'+id).classList.add('on');cb(i);});});}
+function sl(id,unit,dec,cb){const g=v=>(+v).toFixed(dec)+unit;setT(id+'v',g($('#'+id).value));bindRange(id,v=>{setT(id+'v',g(v));cb(+v);});}
+const ELEC=(()=>{
+  const ser=(V,R1,R2)=>{const R=R1+R2,I=V/R;return{R,I,V1:I*R1,V2:I*R2,P1:I*I*R1,P2:I*I*R2,P:V*I};};
+  const par=(V,R1,R2)=>{const R=R1*R2/(R1+R2),I1=V/R1,I2=V/R2;return{R,I:I1+I2,I1,I2,P1:V*I1,P2:V*I2,P:V*(I1+I2)};};
+  const mix=(V,R1,R2,R3)=>{const Rp=R2*R3/(R2+R3),R=R1+Rp,I=V/R,V1=I*R1,Vp=I*Rp;return{R,Rp,I,V1,Vp,I2:Vp/R2,I3:Vp/R3,P1:I*V1,P2:Vp*Vp/R2,P3:Vp*Vp/R3,P:V*I};};
+  const load=(e,r,R)=>{const I=e/(R+r);return{I,P:I*I*R,Pr:I*I*r,eff:R/(R+r)};};
+  const node=(e1,R1,e2,R2,R3)=>{const Va=(e1/R1+e2/R2)/(1/R1+1/R2+1/R3);return{Va,I1:(e1-Va)/R1,I2:(e2-Va)/R2,I3:Va/R3};};
+  const bridge=(V,R1,R2,R3,Rx)=>{const Va=V*R2/(R1+R2),Vb=V*Rx/(R3+Rx);return{Va,Vb,d:Va-Vb};};
+  const trans=(P,V,Rl)=>{const I=P/V,loss=I*I*Rl;return{I,loss,frac:loss/P};};
+  return{ser,par,mix,load,node,bridge,trans};
+})();
+function seg(ctx,pts,col,w){ctx.strokeStyle=col||WIRE;ctx.lineWidth=w||5;ctx.lineJoin='round';ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();}
+function resis(ctx,cx,cy,len,vert,col,heat){
+  const n=6,amp=17;ctx.save();ctx.translate(cx,cy);if(vert)ctx.rotate(Math.PI/2);
+  ctx.fillStyle=C.bg;ctx.fillRect(-len/2-3,-amp-8,len+6,2*amp+16);
+  const h=Math.max(0,Math.min(1,heat||0));
+  ctx.shadowColor='rgba(255,140,40,'+h+')';ctx.shadowBlur=h>0?10+36*h:0;
+  ctx.strokeStyle=h>0.02?'rgb(255,'+Math.round(200-110*h)+','+Math.round(140-90*h)+')':col;
+  ctx.lineWidth=6;ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(-len/2,0);
+  for(let i=0;i<n;i++)ctx.lineTo(-len/2+len*(i+.5)/n,i%2?amp:-amp);
+  ctx.lineTo(len/2,0);ctx.stroke();ctx.restore();
+}
+function battery(ctx,x,yb,lab){
+  ctx.fillStyle=C.bg;ctx.fillRect(x-40,yb-40,80,80);
+  ctx.strokeStyle=WIRE;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(x,yb-40);ctx.lineTo(x,yb-9);ctx.moveTo(x,yb+9);ctx.lineTo(x,yb+40);ctx.stroke();
+  ctx.strokeStyle=GRN;ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(x-34,yb-9);ctx.lineTo(x+34,yb-9);ctx.stroke();
+  ctx.lineWidth=11;ctx.beginPath();ctx.moveTo(x-18,yb+9);ctx.lineTo(x+18,yb+9);ctx.stroke();
+  hTxt(ctx,'+',x+42,yb-12,28,GRN,'left',700);hTxt(ctx,'−',x+42,yb+34,30,GRN,'left',700);
+  if(lab)hTxt(ctx,lab,x+78,yb+10,30,GRN,'left',700);
+}
+function flow(ctx,pts,I,t,col){
+  if(!(I>1e-9))return;
+  let L=0;const cum=[0];for(let i=1;i<pts.length;i++){L+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);cum.push(L);}
+  const gap=34,ph=((t*Math.min(I,4)*55)%gap+gap)%gap;
+  ctx.fillStyle=YEL;
+  for(let d=ph;d<L;d+=gap){let k=1;while(k<cum.length-1&&cum[k]<d)k++;const f=(d-cum[k-1])/(cum[k]-cum[k-1]);
+    ctx.beginPath();ctx.arc(pts[k-1][0]+(pts[k][0]-pts[k-1][0])*f,pts[k-1][1]+(pts[k][1]-pts[k-1][1])*f,6,0,TAU);ctx.fill();}
+}
+function pbars(ctx,x,y0,h,maxP,gen,parts,cols,bw){
+  bw=bw||90;const sp=bw+60,sc=Math.min(1,maxP/Math.max(gen,1e-9));
+  hTxt(ctx,'생산',x+bw/2,y0+32,24,C.dim,'center');hTxt(ctx,'소비 합',x+sp+bw/2,y0+32,24,C.dim,'center');
+  const gh=gen/maxP*h*sc;ctx.fillStyle=GRN;ctx.fillRect(x,y0-gh,bw,gh);
+  hTxt(ctx,gen.toFixed(gen<10?2:1)+' W',x+bw/2,y0-gh-10,24,GRN,'center',700);
+  let yy=y0;parts.forEach((p,i)=>{const hh=p/maxP*h*sc;ctx.fillStyle=cols[i];ctx.fillRect(x+sp,yy-hh,bw,hh);yy-=hh;});
+  hTxt(ctx,'= '+parts.reduce((a,b)=>a+b,0).toFixed(gen<10?2:1)+' W',x+sp+bw/2,yy-10,24,C.text,'center',700);
+  ctx.strokeStyle=C.grid;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-14,y0);ctx.lineTo(x+sp+bw+14,y0);ctx.stroke();
+}
+const HEADV=96;
+function drawSeries(ctx,V,R1,R2,t){
+  const W=1100,H=800,s=ELEC.ser(V,R1,R2),L=150,Rt=960,T=170,B=640,yb=405,mp=110;
+  ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  const path=[[L,yb-40],[L,T],[Rt,T],[Rt,B],[L,B],[L,yb+40]];
+  seg(ctx,path);flow(ctx,path,s.I,t);
+  resis(ctx,400,T,170,false,BLUE,s.P1/mp*1.6);resis(ctx,720,T,170,false,ORG,s.P2/mp*1.6);battery(ctx,L,yb,'V = '+V+' V');
+  hTxt(ctx,'R₁ = '+R1+' Ω',400,T-44,28,BLUE,'center',700);hTxt(ctx,'R₂ = '+R2+' Ω',720,T-44,28,ORG,'center',700);
+  hTxt(ctx,'V₁ = '+s.V1.toFixed(1)+' V',400,T+66,28,BLUE,'center',700);hTxt(ctx,'V₂ = '+s.V2.toFixed(1)+' V',720,T+66,28,ORG,'center',700);
+  hTxt(ctx,'I = '+s.I.toFixed(2)+' A  (어느 곳에서나 같다)',560,B-22,28,YEL,'center',700);
+  pbars(ctx,360,560,240,mp,s.P,[s.P1,s.P2],[BLUE,ORG]);
+  hTxt(ctx,'P₁ : P₂ = R₁ : R₂',700,420,28,C.text,'left',700);hTxt(ctx,'= '+(s.P1/s.P2).toFixed(2)+' : 1',700,462,28,C.dim,'left');
+}
+function drawParallel(ctx,V,R1,R2,t){
+  const W=1100,H=800,s=ELEC.par(V,R1,R2),L=150,x1=380,x2=620,T=170,B=640,yb=405,mp=450;
+  ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  const pm=[[L,yb-40],[L,T],[x1,T]],p1=[[x1,T],[x1,B]],pn=[[x1,T],[x2,T]],p2=[[x2,T],[x2,B]],pb=[[x2,B],[x1,B]],pr=[[x1,B],[L,B],[L,yb+40]];
+  [pm,p1,pn,p2,pb,pr].forEach(p=>seg(ctx,p));
+  flow(ctx,pm,s.I,t);flow(ctx,p1,s.I1,t);flow(ctx,pn,s.I2,t);flow(ctx,p2,s.I2,t);flow(ctx,pb,s.I2,t);flow(ctx,pr,s.I,t);
+  [[x1,T],[x2,T],[x1,B],[x2,B]].forEach(p=>{ctx.fillStyle=WIRE;ctx.beginPath();ctx.arc(p[0],p[1],9,0,TAU);ctx.fill();});
+  resis(ctx,x1,405,170,true,BLUE,s.P1/mp*1.6);resis(ctx,x2,405,170,true,ORG,s.P2/mp*1.6);battery(ctx,L,yb,'V = '+V+' V');
+  hTxt(ctx,'R₁ = '+R1+' Ω',x1-34,372,26,BLUE,'right',700);hTxt(ctx,'I₁ = '+s.I1.toFixed(2)+' A',x1-34,412,26,YEL,'right',700);hTxt(ctx,'V₁ = '+V+' V',x1-34,452,26,BLUE,'right',700);
+  hTxt(ctx,'R₂ = '+R2+' Ω',x2+34,372,26,ORG,'left',700);hTxt(ctx,'I₂ = '+s.I2.toFixed(2)+' A',x2+34,412,26,YEL,'left',700);hTxt(ctx,'V₂ = '+V+' V',x2+34,452,26,ORG,'left',700);
+  hTxt(ctx,'I = I₁ + I₂ = '+s.I.toFixed(2)+' A',(L+x2)/2+20,B+54,28,YEL,'center',700);
+  pbars(ctx,780,560,240,mp,s.P,[s.P1,s.P2],[BLUE,ORG],80);
+  hTxt(ctx,'P₁ : P₂ = 1/R₁ : 1/R₂',780,T+20,26,C.text,'left',700);
+}
+function drawMixed(ctx,V,R1,R2,R3,t){
+  const W=1100,H=800,s=ELEC.mix(V,R1,R2,R3),L=130,x2=640,x3=900,T=170,B=640,yb=405,mp=100;
+  ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  const pm=[[L,yb-40],[L,T],[x2,T]],p2=[[x2,T],[x2,B]],pn=[[x2,T],[x3,T]],p3=[[x3,T],[x3,B]],pb=[[x3,B],[x2,B]],pr=[[x2,B],[L,B],[L,yb+40]];
+  [pm,p2,pn,p3,pb,pr].forEach(p=>seg(ctx,p));
+  flow(ctx,pm,s.I,t);flow(ctx,p2,s.I2,t);flow(ctx,pn,s.I3,t);flow(ctx,p3,s.I3,t);flow(ctx,pb,s.I3,t);flow(ctx,pr,s.I,t);
+  [[x2,T],[x3,T],[x2,B],[x3,B]].forEach(p=>{ctx.fillStyle=WIRE;ctx.beginPath();ctx.arc(p[0],p[1],9,0,TAU);ctx.fill();});
+  resis(ctx,370,T,170,false,BLUE,s.P1/mp*1.6);resis(ctx,x2,405,170,true,ORG,s.P2/mp*1.6);resis(ctx,x3,405,170,true,PINK,s.P3/mp*1.6);battery(ctx,L,yb,'');
+  hTxt(ctx,'V = '+V+' V',L+60,yb+60,26,GRN,'left',700);
+  hTxt(ctx,'R₁ = '+R1+' Ω',370,T-44,26,BLUE,'center',700);hTxt(ctx,'V₁ = '+s.V1.toFixed(1)+' V',370,T+64,26,BLUE,'center',700);
+  hTxt(ctx,'R₂ = '+R2+' Ω',x2-34,372,24,ORG,'right',700);hTxt(ctx,'I₂ = '+s.I2.toFixed(2)+' A',x2-34,408,24,YEL,'right',700);hTxt(ctx,'V₂ = '+s.Vp.toFixed(1)+' V',x2-34,444,24,ORG,'right',700);
+  hTxt(ctx,'R₃ = '+R3+' Ω',x3+34,372,24,PINK,'left',700);hTxt(ctx,'I₃ = '+s.I3.toFixed(2)+' A',x3+34,408,24,YEL,'left',700);hTxt(ctx,'V₃ = '+s.Vp.toFixed(1)+' V',x3+34,444,24,PINK,'left',700);
+  hTxt(ctx,'I = '+s.I.toFixed(2)+' A',L+240,B-22,28,YEL,'center',700);
+  pbars(ctx,215,560,230,mp,s.P,[s.P1,s.P2,s.P3],[BLUE,ORG,PINK],70);
+}
+
+function TESTS(){
+  const ok=(x,y,e)=>Math.abs(x-y)<=(e||1e-9)*Math.max(1,Math.abs(y));
+  const l=ELEC.load(12,2,2),n=ELEC.node(12,4,6,2,6),br=ELEC.bridge(10,100,200,150,300),tr1=ELEC.trans(1e6,1e4,10),tr2=ELEC.trans(1e6,1e5,10);
+  const rho=1.68e-8*100/1.5e-6,vd=1/(8.5e28*1.602176634e-19*1e-6);
+  return [
+    ['구리 100 m, 1.5 mm²: R≈1.12 Ω',ok(rho,1.12,1e-6),'R=ρL/A'],
+    ['표류 속력 1 A, 1 mm² 구리 ≈ 7.3×10⁻⁵ m/s',ok(vd,7.34e-5,2e-3),'I=nqAv_d'],
+    ['최대 전력 전달 ε=12 V, r=2 Ω: R=r에서 P=18 W',ok(l.P,18)&&ok(l.eff,.5),'Pmax=ε²/4r'],
+    ['R≠r이면 P가 더 작다 (R=1, 4)',ELEC.load(12,2,1).P<18&&ELEC.load(12,2,4).P<18,'최대점 확인'],
+    ['키르히호프: I₁+I₂=I₃ (12 V,4 Ω / 6 V,2 Ω / 6 Ω)',ok(n.I1+n.I2,n.I3)&&ok(n.Va,6.545454545,1e-6),'접합점 규칙'],
+    ['휘트스톤 브리지 균형 R₁/R₂=R₃/Rx (100,200,150,300) → ΔV=0',ok(br.d,0,1e-9),'Rx=R₂R₃/R₁'],
+    ['송전 1 MW: 10 kV → 손실 100 kW, 100 kV → 1 kW',ok(tr1.loss,1e5)&&ok(tr2.loss,1e3),'P손실=(P/V)²R선'],
+    ['물 1 kg 20→100 ℃, 1500 W, 효율 90 %: t≈248 s',ok(1*4186*80/(1500*.9),248.06,1e-4),'t=mcΔT/(ηP)']
+  ];
+}
+
+
+/* =====================================================================
+   슬라이드별 모듈: { start(), stop(), frame(dt), onStep(step) }
+   ===================================================================== */
+const REG = {};
+/* ---- b1 ---- */
+REG["b1"] = safe("b1.init", function () {
+
+const W=820,H=820,ctx=setupCanvas($('#c-hero'),W,H);let t=0;
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  const x0=90,y0=680,w=650,h=480;ctx.strokeStyle=C.grid;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x0,y0-h-20);ctx.lineTo(x0,y0);ctx.lineTo(x0+w,y0);ctx.stroke();
+  hTxt(ctx,'P(R) = ε²R/(R+r)²',W/2,60,34,C.text,'center',700);
+  ctx.strokeStyle=ORG;ctx.lineWidth=6;ctx.beginPath();for(let R=.2;R<=10;R+=.1){const P=ELEC.load(12,2,R).P,x=x0+R/10*w,y=y0-P/18*h*.95;R<.25?ctx.moveTo(x,y):ctx.lineTo(x,y);}ctx.stroke();
+  const R=2+1.8*Math.sin(t*.8)+2.1,P=ELEC.load(12,2,R).P,x=x0+R/10*w,y=y0-P/18*h*.95;
+  ctx.fillStyle=YEL;ctx.beginPath();ctx.arc(x,y,13,0,TAU);ctx.fill();
+  hTxt(ctx,'R = r 에서 최대',x0+2/10*w,y0-.95*h-34,28,YEL,'center',700);hTxt(ctx,'R (부하 저항) →',x0+w,y0+48,24,C.dim,'right');}
+return {start(){t=0;draw();},stop(){},frame(dt){if(!REDUCED)t+=dt;draw();}};
+
+});
+
+/* ---- b2 ---- */
+REG["b2"] = safe("b2.init", function () {
+
+const W=1100,H=800,ctx=setupCanvas($('#c-rho'),W,H);const M=[['구리',1.68e-8,'#e08a5a'],['알루미늄',2.65e-8,'#c4cad8'],['니크롬',1.10e-6,'#8a8f9c']];let m=0,L=10,A=1.5,t=0;
+function calc(){const R=M[m][1]*L/(A*1e-6);return{R,I:12/R,P:144/R};}
+function sync(){const r=calc();setT('rh-R',r.R<10?r.R.toFixed(3):r.R.toFixed(1));setT('rh-I',r.I.toFixed(2));setT('rh-P',r.P.toFixed(1));}
+function draw(){const r=calc();ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  hTxt(ctx,M[m][0]+' ρ = '+M[m][1].toExponential(2)+' Ω·m',W/2,60,32,M[m][2],'center',700);
+  const hh=30+Math.sqrt(A/10)*170,x0=150,x1=950,yc=300;ctx.fillStyle=M[m][2];ctx.fillRect(x0,yc-hh/2,x1-x0,hh);
+  hTxt(ctx,'전류 방향',550,yc-hh/2-60,26,YEL,'center',700);arrow(ctx,350,yc-hh/2-30,750,yc-hh/2-30,YEL,5,16);
+  ctx.strokeStyle=C.dim;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x0,yc+hh/2+26);ctx.lineTo(x1,yc+hh/2+26);ctx.stroke();hTxt(ctx,'L = '+L+' m',550,yc+hh/2+66,28,C.text,'center',700);
+  hTxt(ctx,'단면적 A = '+A.toFixed(1)+' mm²',550,yc+hh/2+104,26,C.dim,'center');
+  const b=Math.min(1,Math.log10(r.R*1000+1)/6);
+  hTxt(ctx,'저항 R = '+(r.R<10?r.R.toFixed(3):r.R.toFixed(1))+' Ω',W/2,560,44,YEL,'center',700);
+  ctx.fillStyle='#10193a';ctx.fillRect(150,610,800,40);ctx.fillStyle=ORG;ctx.fillRect(150,610,800*b,40);hTxt(ctx,'R (로그 눈금)',550,690,24,C.dim,'center');
+  hTxt(ctx,'병렬 = 단면적 ↑ → R ↓ / 직렬 = 길이 ↑ → R ↑',W/2,750,28,C.text,'center',700);
+}
+bindChips(['rh-0','rh-1','rh-2'],i=>{m=i;sync();draw();});
+sl('rh-L',' m',0,v=>{L=v;sync();draw();});sl('rh-A',' mm²',1,v=>{A=v;sync();draw();});
+return {start(){sync();draw();},stop(){},frame(){}};
+
+});
+
+/* ---- b4 ---- */
+REG["b4"] = safe("b4.init", function () {
+
+const W=1100,H=800,ctx=setupCanvas($('#c-mp'),W,H);let r=2,R=4;
+function sync(){const s=ELEC.load(12,r,R);setT('mp-I',s.I.toFixed(2));setT('mp-P',s.P.toFixed(2));setT('mp-Pr',s.Pr.toFixed(2));setT('mp-e',(s.eff*100).toFixed(0));setT('mp-pm',(144/(4*r)).toFixed(1));}
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  const x0=130,y0=690,w=850,h=520,pm=144/(4*.5);
+  ctx.strokeStyle=C.grid;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x0,y0-h-20);ctx.lineTo(x0,y0);ctx.lineTo(x0+w,y0);ctx.stroke();
+  hTxt(ctx,'R (Ω)',x0+w,y0+46,24,C.dim,'right');hTxt(ctx,'P (W) / 효율',x0,y0-h-34,24,C.dim,'left');
+  for(let v=0;v<=10;v+=2){const x=x0+v/10*w;hTxt(ctx,v,x,y0+30,22,C.dim,'center');}
+  const ym=Math.max(18,144/(4*r))*1.1;
+  ctx.strokeStyle=ORG;ctx.lineWidth=6;ctx.beginPath();for(let q=.1;q<=10;q+=.1){const x=x0+q/10*w,y=y0-ELEC.load(12,r,q).P/ym*h;q<.15?ctx.moveTo(x,y):ctx.lineTo(x,y);}ctx.stroke();
+  ctx.strokeStyle=BLUE;ctx.lineWidth=4;ctx.setLineDash([10,8]);ctx.beginPath();for(let q=.1;q<=10;q+=.1){const x=x0+q/10*w,y=y0-ELEC.load(12,r,q).eff*h;q<.15?ctx.moveTo(x,y):ctx.lineTo(x,y);}ctx.stroke();ctx.setLineDash([]);
+  hTxt(ctx,'P (부하)',x0+w-10,y0-h*0.08,26,ORG,'right',700);hTxt(ctx,'효율 η = R/(R+r)',x0+w-10,y0-h*0.95,26,BLUE,'right',700);
+  const xr=x0+r/10*w;ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=2;ctx.setLineDash([6,8]);ctx.beginPath();ctx.moveTo(xr,y0);ctx.lineTo(xr,y0-ELEC.load(12,r,r).P/ym*h);ctx.stroke();ctx.setLineDash([]);hTxt(ctx,'R = r',xr,y0+66,24,C.text,'center');
+  const s=ELEC.load(12,r,R),x=x0+R/10*w,y=y0-s.P/ym*h;ctx.fillStyle=YEL;ctx.beginPath();ctx.arc(x,y,12,0,TAU);ctx.fill();
+  hTxt(ctx,'최대: P = ε²/4r = '+(144/(4*r)).toFixed(1)+' W',W/2,56,32,YEL,'center',700);
+}
+sl('mp-r',' Ω',1,v=>{r=v;sync();draw();});sl('mp-R',' Ω',1,v=>{R=v;sync();draw();});
+return {start(){sync();draw();},stop(){},frame(){}};
+
+});
+
+/* ---- b5 ---- */
+REG["b5"] = safe("b5.init", function () {
+
+const W=1100,H=800,ctx=setupCanvas($('#c-dv'),W,H);let mode=0,R1=1000,R2=3000;
+function sync(){const a=R1+R2;
+  if(mode===0){setT('dv-t1','V₁ (V=12 V)');setT('dv-v1',(12*R1/a).toFixed(2)+' V');setT('dv-t2','V₂');setT('dv-v2',(12*R2/a).toFixed(2)+' V');setT('dv-f','V₂ = V · R₂ / (R₁ + R₂)');}
+  else{setT('dv-t1','I₁ (I₀=12 mA)');setT('dv-v1',(12*R2/a).toFixed(2)+' mA');setT('dv-t2','I₂');setT('dv-v2',(12*R1/a).toFixed(2)+' mA');setT('dv-f','I₁ = I₀ · R₂ / (R₁ + R₂)');}
+}
+function bar(x,y,w,h,col,lab,val){ctx.fillStyle=col;ctx.fillRect(x,y-h,w,h);hTxt(ctx,val,x+w/2,y-h-12,28,col,'center',700);hTxt(ctx,lab,x+w/2,y+36,28,col,'center',700);}
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);const a=R1+R2,y0=640,H0=440;
+  hTxt(ctx,mode?'전체 12 mA가 두 가지로 나뉜다':'12 V가 두 저항에 R 비로 나뉜다',W/2,56,32,C.text,'center',700);
+  const x1=mode?12*R2/a:12*R1/a,x2=mode?12*R1/a:12*R2/a;
+  bar(250,y0,170,x1/12*H0,BLUE,mode?'I₁ (R₁)':'V₁ (R₁)',x1.toFixed(2));bar(520,y0,170,x2/12*H0,ORG,mode?'I₂ (R₂)':'V₂ (R₂)',x2.toFixed(2));
+  ctx.fillStyle=GRN;ctx.globalAlpha=.55;ctx.fillRect(790,y0-H0,170,H0);ctx.globalAlpha=1;hTxt(ctx,mode?'I₀ = 12':'V = 12',875,y0-H0-12,28,GRN,'center',700);hTxt(ctx,'전체',875,y0+36,28,GRN,'center',700);
+  hTxt(ctx,'R₁ : R₂ = '+R1+' : '+R2,W/2,740,28,C.dim,'center');
+}
+bindChips(['dv-m0','dv-m1'],i=>{mode=i;sync();draw();});
+sl('dv-1',' Ω',0,v=>{R1=v;sync();draw();});sl('dv-2',' Ω',0,v=>{R2=v;sync();draw();});
+return {start(){sync();draw();},stop(){},frame(){}};
+
+});
+
+/* ---- b7 ---- */
+REG["b7"] = safe("b7.init", function () {
+
+const W=1100,H=800,ctx=setupCanvas($('#c-kf'),W,H);let e1=12,e2=6,R3=6,t=0;const R1=4,R2=2;
+function sync(){const n=ELEC.node(e1,R1,e2,R2,R3);setT('kf-Va',n.Va.toFixed(2));setT('kf-I1',n.I1.toFixed(2));setT('kf-I2',n.I2.toFixed(2));setT('kf-I3',n.I3.toFixed(2));}
+function bat(x,y,lab){ctx.fillStyle=C.bg;ctx.fillRect(x-40,y-40,80,80);ctx.strokeStyle=WIRE;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(x,y-40);ctx.lineTo(x,y-9);ctx.moveTo(x,y+9);ctx.lineTo(x,y+40);ctx.stroke();ctx.strokeStyle=GRN;ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(x-30,y-9);ctx.lineTo(x+30,y-9);ctx.stroke();ctx.lineWidth=11;ctx.beginPath();ctx.moveTo(x-16,y+9);ctx.lineTo(x+16,y+9);ctx.stroke();hTxt(ctx,lab,x+44,y+10,28,GRN,'left',700);}
+function draw(){const n=ELEC.node(e1,R1,e2,R2,R3);ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);const xl=170,xm=550,xr=930,T=190,B=640;
+  const pl=[[xl,T+60],[xl,T],[xm,T]],pm=[[xm,T],[xm,B]],pr=[[xr,T+60],[xr,T],[xm,T]];
+  seg(ctx,[[xl,T],[xm,T],[xr,T]]);seg(ctx,[[xl,T],[xl,B],[xr,B],[xr,T]]);seg(ctx,[[xm,T],[xm,B]]);
+  flow(ctx,[[xl,B-100],[xl,T],[xm,T]],n.I1,t);flow(ctx,[[xr,B-100],[xr,T],[xm,T]],n.I2,t);flow(ctx,[[xm,T],[xm,B]],n.I3,t);
+  [[xm,T],[xm,B]].forEach(p=>{ctx.fillStyle=WIRE;ctx.beginPath();ctx.arc(p[0],p[1],9,0,TAU);ctx.fill();});
+  bat(xl,430,'ε₁');bat(xr,430,'ε₂');resis(ctx,xm,430,150,true,PINK,Math.min(1,n.I3*n.I3*R3/40));
+  resis(ctx,xl,260,110,true,BLUE,Math.min(1,n.I1*n.I1*R1/40));resis(ctx,xr,260,110,true,ORG,Math.min(1,n.I2*n.I2*R2/40));
+  hTxt(ctx,'R₁=4 Ω  I₁='+n.I1.toFixed(2),xl+36,260,24,BLUE,'left',700);hTxt(ctx,'R₂=2 Ω  I₂='+n.I2.toFixed(2),xr-36,260,24,ORG,'right',700);
+  hTxt(ctx,'R₃='+R3+' Ω  I₃='+n.I3.toFixed(2),xm+44,440,24,PINK,'left',700);hTxt(ctx,'a',xm,T-26,26,YEL,'center',700);hTxt(ctx,'b (0 V)',xm,B+44,26,YEL,'center',700);
+  hTxt(ctx,'I₁ + I₂ = I₃  (접합점 a)',W/2,740,30,YEL,'center',700);
+}
+sl('kf-1',' V',0,v=>{e1=v;sync();});sl('kf-2',' V',0,v=>{e2=v;sync();});sl('kf-3',' Ω',0,v=>{R3=v;sync();});
+return {start(){sync();draw();},stop(){},frame(dt){if(!REDUCED)t+=dt;draw();}};
+
+});
+
+/* ---- b8 ---- */
+REG["b8"] = safe("b8.init", function () {
+
+const W=1100,H=800,ctx=setupCanvas($('#c-wb'),W,H);let Rx=250;const R1=100,R2=200,R3=150,V=10;
+function sync(){const b=ELEC.bridge(V,R1,R2,R3,Rx);setT('wb-a',b.Va.toFixed(2));setT('wb-b',b.Vb.toFixed(2));setT('wb-d',b.d.toFixed(3));const m=$('#wb-m');m.textContent=Math.abs(b.d)<0.005?'균형! (Rx = R₂R₃/R₁)':'불균형';m.className=Math.abs(b.d)<0.005?'ok':'bad';}
+function draw(){const b=ELEC.bridge(V,R1,R2,R3,Rx);ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);const cx=550,top=150,bot=650,cy=400,lx=300,rx=800;
+  seg(ctx,[[cx,top],[lx,cy],[cx,bot],[rx,cy],[cx,top]]);seg(ctx,[[lx,cy],[rx,cy]],YEL,4);
+  const mid=(a,b2)=>[(a[0]+b2[0])/2,(a[1]+b2[1])/2];
+  const rs=(a,b2,col,lab)=>{const m=mid(a,b2);const ang=Math.atan2(b2[1]-a[1],b2[0]-a[0]);ctx.save();ctx.translate(m[0],m[1]);ctx.rotate(ang);ctx.fillStyle=C.bg;ctx.fillRect(-55,-22,110,44);ctx.strokeStyle=col;ctx.lineWidth=6;ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(-55,0);for(let i=0;i<6;i++)ctx.lineTo(-55+110*(i+.5)/6,i%2?15:-15);ctx.lineTo(55,0);ctx.stroke();ctx.restore();hTxt(ctx,lab,m[0]+(m[0]<cx?-30:30),m[1]+(m[1]<cy?-36:48),26,col,m[0]<cx?'right':'left',700);};
+  rs([lx,cy],[cx,top],BLUE,'R₁');rs([lx,cy],[cx,bot],ORG,'R₂');rs([rx,cy],[cx,top],PINK,'R₃');rs([rx,cy],[cx,bot],GRN,'Rₓ');
+  ctx.fillStyle=C.bg;ctx.beginPath();ctx.arc(550,cy,34,0,TAU);ctx.fill();ctx.strokeStyle=YEL;ctx.lineWidth=4;ctx.stroke();hTxt(ctx,'G',550,cy+10,30,YEL,'center',700);
+  const ang=Math.max(-1,Math.min(1,b.d/2))*0.9;ctx.strokeStyle=C.bad;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(550,cy+22);ctx.lineTo(550+Math.sin(ang)*28,cy+22-Math.cos(ang)*40);ctx.stroke();
+  hTxt(ctx,'a  '+b.Va.toFixed(2)+' V',lx-20,cy-10,26,YEL,'right',700);hTxt(ctx,'b  '+b.Vb.toFixed(2)+' V',rx+20,cy-10,26,YEL,'left',700);
+  hTxt(ctx,'10 V',550,top-22,28,GRN,'center',700);hTxt(ctx,'0 V',550,bot+44,28,GRN,'center',700);
+  hTxt(ctx,'Rₓ = '+Rx+' Ω  →  V_a − V_b = '+b.d.toFixed(3)+' V',W/2,740,30,Math.abs(b.d)<.005?C.ok:C.text,'center',700);
+}
+sl('wb-x',' Ω',0,v=>{Rx=v;sync();draw();});
+return {start(){sync();draw();},stop(){},frame(){}};
+
+});
+
+/* ---- b9 ---- */
+REG["b9"] = safe("b9.init", function () {
+
+const W=1100,H=800,ctx=setupCanvas($('#c-tr'),W,H);let P=1,V=10,R=10,t=0;
+function sync(){const s=ELEC.trans(P*1e6,V*1e3,R);setT('tr-I',s.I.toFixed(0));setT('tr-L',(s.loss/1e3).toFixed(1));setT('tr-f',(s.frac*100).toFixed(2));}
+function draw(){const s=ELEC.trans(P*1e6,V*1e3,R);ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  hTxt(ctx,'발전소 → 선로(저항 R) → 도시',W/2,60,32,C.text,'center',700);
+  const y=240;ctx.fillStyle=GRN;ctx.fillRect(100,y-50,140,100);hTxt(ctx,'발전소',170,y+10,28,'#0a1330','center',700);ctx.fillStyle=BLUE;ctx.fillRect(860,y-50,140,100);hTxt(ctx,'도시',930,y+10,28,'#0a1330','center',700);
+  seg(ctx,[[240,y],[860,y]]);resis(ctx,550,y,200,false,ORG,Math.min(1,s.frac*4));hTxt(ctx,'선로 R = '+R+' Ω',550,y-50,26,ORG,'center',700);
+  const fl=[[240,y],[860,y]];flow(ctx,fl,Math.min(4,s.I/100),t);
+  const x0=150,y0=700,h=300,w=800,mx=P*1e6;hTxt(ctx,'발전 P = '+P+' MW',x0,y0-h-26,26,GRN,'left',700);
+  ctx.fillStyle=GRN;ctx.globalAlpha=.4;ctx.fillRect(x0,y0-h,w,h);ctx.globalAlpha=1;
+  const lw=Math.min(w,w*s.frac);ctx.fillStyle=C.bad;ctx.fillRect(x0+w-lw,y0-h,Math.max(lw,2),h);
+  hTxt(ctx,'손실 '+(s.frac*100).toFixed(2)+' % ('+(s.loss/1e3).toFixed(1)+' kW)',x0+w-8,y0-h/2+10,26,s.frac>.25?'#fff':C.bad,'right',700);
+  hTxt(ctx,'도시에 도착 '+(100-Math.min(100,s.frac*100)).toFixed(2)+' %',x0+8,y0-h/2+10,26,'#0a1330','left',700);
+  hTxt(ctx,'전류 I = '+s.I.toFixed(0)+' A',W/2,760,30,YEL,'center',700);
+}
+sl('tr-P',' MW',0,v=>{P=v;sync();});sl('tr-V',' kV',0,v=>{V=v;sync();});sl('tr-R',' Ω',0,v=>{R=v;sync();});
+return {start(){sync();draw();},stop(){},frame(dt){if(!REDUCED)t+=dt;draw();}};
+
+});
+
+/* ---- b10 ---- */
+REG["b10"] = safe("b10.init", function () {
+
+const W=1100,H=800,ctx=setupCanvas($('#c-ht'),W,H);let m=1,dT=80,P=1500,eta=.9;
+function calc(){const Q=m*4186*dT,t=Q/(eta*P);return{Q,t,E:P*t/3.6e6};}
+function sync(){const c=calc();setT('ht-Q',(c.Q/1000).toFixed(0));setT('ht-t',c.t.toFixed(0));setT('ht-E',c.E.toFixed(3));}
+function draw(){const c=calc();ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  hTxt(ctx,'전기 에너지 P·t → (η) 물이 얻는 열 + (1−η) 손실',W/2,60,30,C.text,'center',700);
+  const x0=120,y0=300,w=860,h=120;ctx.fillStyle=GRN;ctx.globalAlpha=.4;ctx.fillRect(x0,y0,w,h);ctx.globalAlpha=1;hTxt(ctx,'공급 전기 에너지 '+(P*c.t/1000).toFixed(0)+' kJ',x0+10,y0-14,26,GRN,'left',700);
+  ctx.fillStyle=ORG;ctx.fillRect(x0,y0+160,w*eta,h);hTxt(ctx,'물이 얻는 열 '+(c.Q/1000).toFixed(0)+' kJ',x0+10,y0+160+h/2+10,26,'#0a1330','left',700);
+  if(eta<.999){ctx.fillStyle=C.bad;ctx.fillRect(x0+w*eta,y0+160,w*(1-eta),h);hTxt(ctx,'손실',x0+w*eta+(w*(1-eta))/2,y0+160+h/2+10,24,'#fff','center',700);}
+  hTxt(ctx,'t = '+c.t.toFixed(0)+' s  ('+(c.t/60).toFixed(1)+' 분)',W/2,640,44,YEL,'center',700);
+  hTxt(ctx,'전력량 '+c.E.toFixed(3)+' kWh = '+(c.E*3.6).toFixed(2)+' MJ',W/2,710,30,C.dim,'center');
+}
+sl('ht-m',' kg',1,v=>{m=v;sync();draw();});sl('ht-T',' ℃',0,v=>{dT=v;sync();draw();});sl('ht-P',' W',0,v=>{P=v;sync();draw();});sl('ht-e',' %',0,v=>{eta=v/100;sync();draw();});
+return {start(){sync();draw();},stop(){},frame(){}};
+
+});
+
+/* =====================================================================
+   슬라이드 관리자
+   ===================================================================== */
+const slides = $$('.slide'), deck = $('#deck'); let cur = -1, step = 0, activeFrame = null, activeId = '', hudTimer = 0;
+const NOTES = DECK.notes, ASK = DECK.ask, CIRC = ['①', '②', '③', '④', '⑤'];
+function renderNotes(i) {
+  const n = NOTES[slides[i].id]; if (!n) { $('#notes').innerHTML = ''; return; }
+  $('#notes').innerHTML = `<div class="nh">📝 오개념 교정 노트 · 슬라이드 ${i + 1} / ${slides.length}<span style="float:right">발문을 화면에 띄우기: Q 키</span></div>` + (n.q ? `<div class="nq">💬 발문: ${n.q}</div>` : '') +
+    (n.m || []).map(([a, b]) => `<div class="ni"><span class="nx">❌ 오개념</span> ${a}<br><span class="nv">✅ 교정</span> ${b}</div>`).join('');
+}
+function renderAsk(i) {
+  const q = ASK[slides[i].id] || [];
+  $('#ask').innerHTML = `<div class="ak"><div class="ah">💬 생각해 보기 · ${i + 1} / ${slides.length}</div>` + (q.length ? q.map((t, k) => `<div class="aq">${q.length > 1 ? `<span>${CIRC[k] || (k + 1) + '.'}</span>` : ''}${t}</div>`).join('') : '<div class="aq" style="color:var(--muted)">이 슬라이드에는 발문이 없습니다.</div>') + '<div class="af">Q 키 · Esc · 화면 클릭으로 닫기</div></div>';
+}
+function toggleAsk(force) { const on = $('#ask').classList.toggle('on', force); $('#b-ask').classList.toggle('on', on); }
+const maxStep = i => +(slides[i].dataset.steps || 0);
+function fit() {
+  const vp = $('#viewport'), vw = vp.clientWidth, vh = vp.clientHeight, rf = vw < 1100;
+  document.documentElement.classList.toggle('rf', rf);
+  if (rf) { const W = vw < 640 ? 640 : vw, s = vw / W; deck.style.width = W + 'px'; deck.style.height = (vh / s) + 'px'; deck.style.transform = `scale(${s})`; return; }
+  deck.style.width = ''; deck.style.height = '';
+  const s = Math.min(vw / 1920, vh / 1080); deck.style.transform = `translate(-50%,-50%) scale(${s})`;
+}
+function fitSteps() { // 단계 목록이 영역을 넘으면 자동 축소 (실제 렌더링 높이 기준)
+  if (cur < 0) return; const side = $('.side.steps', slides[cur]); if (!side) return;
+  side.style.transform = ''; side.style.width = '';
+  if (side.clientHeight > 0 && side.scrollHeight > side.clientHeight + 1) { const k = side.clientHeight / side.scrollHeight; side.style.transformOrigin = 'top left'; side.style.transform = `scale(${k})`; side.style.width = (100 / k) + '%'; }
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitSteps);
+function applyStep() {
+  $$('.st', slides[cur]).forEach(el => { el.classList.toggle('on', +el.dataset.i <= step); el.classList.toggle('cur', +el.dataset.i === step); });
+  const id = slides[cur].id, r = REG[id]; r && r.onStep && safe(id + '.onStep', () => r.onStep(step));
+}
+const mgSet = (sl, on) => $$('iframe.mg-embed', sl).forEach(f => { f.src = on ? f.dataset.src : 'about:blank'; });
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.mg-re'); if (b) { const f = $('iframe', b.parentElement); f && f.contentWindow && f.contentWindow.postMessage({ mg: 'cmd', cmd: 'restart' }, '*'); b.blur(); } });
+function show(i, st = 0) {
+  i = Math.max(0, Math.min(slides.length - 1, i));
+  if (cur >= 0) { const oid = slides[cur].id, o = REG[oid]; o && o.stop && safe(oid + '.stop', () => o.stop()); slides[cur].classList.remove('active'); mgSet(slides[cur], false); }
+  cur = i; step = Math.min(st, maxStep(i)); slides[i].classList.add('active'); mgSet(slides[i], true);
+  const id = slides[i].id, r = REG[id]; activeFrame = r && r.frame ? (dt => r.frame(dt)) : null; activeId = id;
+  fitSteps(); r && r.start && safe(id + '.start', () => r.start());
+  $('#h-pg').textContent = `${i + 1} / ${slides.length}`; renderNotes(i); renderAsk(i); toggleAsk(false); applyStep();
+  if (DECK.ask_auto !== false && (ASK[id] || []).length && !askSeen[id]) { askSeen[id] = 1; toggleAsk(true); } // 처음 들어오면 발문을 먼저 띄운다(닫기 전까지 시뮬레이션 정지)
+}
+const askSeen = {};
+const next = () => { if ($('#ask').classList.contains('on')) { toggleAsk(false); return; } if (step < maxStep(cur)) { step++; applyStep(); } else if (cur < slides.length - 1) show(cur + 1); };
+const prev = () => { if (step > 0) { step--; applyStep(); } else if (cur > 0) show(cur - 1, maxStep(cur - 1)); };
+function isDark() { const r = document.documentElement; return r.dataset.theme === 'dark' || (!r.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches); }
+function themeBtn() { $('#b-theme').textContent = isDark() ? '☀ 라이트 전환' : '🌙 다크 전환'; }
+function toggleTheme() { document.documentElement.dataset.theme = isDark() ? 'light' : 'dark'; themeBtn(); }
+function toggleNotes() { const on = $('#notes').classList.toggle('on'); $('#b-notes').classList.toggle('on', on); }
+function toggleHelp(force) { const on = $('#help').classList.toggle('on', force); $('#b-help').classList.toggle('on', on); }
+function fullscreen() { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) { } }
+function poke() { $('#hud').classList.add('show'); clearTimeout(hudTimer); hudTimer = setTimeout(() => $('#hud').classList.remove('show'), 2600); }
+document.addEventListener('keydown', e => {
+  const t = e.target; if (t && t.tagName === 'INPUT' && t.type === 'range' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); next(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+  else if (e.key === 'Home') show(0); else if (e.key === 'End') show(slides.length - 1);
+  else if (e.key === 'f' || e.key === 'F') fullscreen(); else if (e.key === 'n' || e.key === 'N') toggleNotes(); else if (e.key === 't' || e.key === 'T') toggleTheme(); else if (e.key === 'q' || e.key === 'Q') toggleAsk(); else if (e.key === '?' || e.key === 'h' || e.key === 'H') toggleHelp(); else if (e.key === 'Escape') { toggleHelp(false); toggleAsk(false); if ($('#notes').classList.contains('on')) toggleNotes(); }
+});
+$('#h-prev').onclick = prev; $('#h-next').onclick = next; $('#h-fs').onclick = fullscreen; $('#b-help').onclick = () => toggleHelp(); $('#b-ask').onclick = () => toggleAsk(); $('#ask').onclick = () => toggleAsk(false); $('#help-x').onclick = () => toggleHelp(false); $('#help').onclick = e => { if (e.target.id === 'help') toggleHelp(false); }; $('#b-notes').onclick = toggleNotes; $('#b-theme').onclick = toggleTheme;
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
+['mousemove', 'touchstart', 'pointerdown'].forEach(ev => document.addEventListener(ev, poke, { passive: true }));
+window.addEventListener('resize', () => { fit(); fitSteps(); }); fit();
+/* 터치: 좌우로 쓸어 넘기기 (슬라이더·캔버스·버튼 위에서 시작한 건 제외) */
+(function () {
+  let x0 = 0, y0 = 0, ok = false;
+  document.addEventListener('touchstart', e => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; ok = !(e.target.closest && e.target.closest('input,canvas,button,table,.eq,#help,#notes')); }, { passive: true });
+  document.addEventListener('touchend', e => { if (!ok) return; const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; if (Math.abs(dx) > 70 && Math.abs(dx) > 2 * Math.abs(dy)) { dx < 0 ? next() : prev(); } }, { passive: true });
+})();
+let lastT = performance.now();
+(function loop(now) {
+  const dt = Math.min(.05, (now - lastT) / 1000); lastT = now;
+  if (activeFrame && !$('#ask').classList.contains('on')) { try { activeFrame(dt); } catch (e) { reportError(activeId + '.frame', e); activeFrame = null; } }
+  requestAnimationFrame(loop);
+})(lastT);
+
+/* 물리 검증: shared_js에 TESTS() → [[이름, 통과여부, 설명], ...] 가 있으면 콘솔에 출력 */
+(function runSelfTests() {
+  if (typeof TESTS !== 'function') { console.log('물리 검증 항목 없음'); return; }
+  let results = [];
+  try { results = TESTS() || []; } catch (e) { reportError('TESTS', e); return; }
+  console.log('=== ' + DECK.title + ' 물리 검증 ==='); let pass = 0;
+  for (const [name, ok, detail] of results) { console.log(`[${ok ? 'PASS' : 'FAIL'}] ${name}${detail ? ' — ' + detail : ''}`); if (ok) pass++; }
+  console.log(pass === results.length ? '모든 검증 통과' : '일부 검증 실패 — 콘솔 확인 필요');
+  window.__wsSelfTest = { pass, total: results.length };
+})();
+
+window.__deck = { show, next, get cur() { return cur; }, get step() { return step; }, count: slides.length, maxStep };
+let startAt = 0; try { const h = parseInt(location.hash.slice(1), 10); if (h >= 1 && h <= slides.length) startAt = h - 1; } catch (e) { }
+themeBtn(); show(startAt); poke();
+</script>
+</body>
+</html>

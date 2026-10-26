@@ -563,6 +563,8 @@ function solveCirc(nodes, els) {
     else if (e.k === "V" || (e.k === "S" && !e.on)) I[e.id] = 0;
     else I[e.id] = (V[e.a] - V[e.b]) / (e.k === "R" ? e.v : R0);
   }
+  let vmx = 0; for (const n of ids) vmx = Math.max(vmx, Math.abs(V[n]));
+  const tol = 2e-6 * Math.max(1, vmx); for (const k of Object.keys(I)) if (Math.abs(I[k]) < tol) I[k] = 0;
   const short = !isFinite(I.B) || Math.abs(I.B) > 1e4;
   return { V, I, short };
 }
@@ -710,8 +712,26 @@ const hue = (t) => { t = Math.max(0, Math.min(1, t)); return `hsl(${Math.round(2
 const ease = (u) => u * u * (3 - 2 * u);
 function posAt(c, n, e) { const a = c.nodes[n], b = c.tgt[n] || a; return [a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e]; }
 function pathOf(el, A, B) {
+  if (el.rp) return el.rp;
   if (!(el.k === "W" || el.x) || Math.abs(A[0] - B[0]) < 0.5 || Math.abs(A[1] - B[1]) < 0.5) return [A, B];
   return el.route === "vh" ? [A, [A[0], B[1]], B] : [A, [B[0], A[1]], B];
+}
+function routeX(el, A, B, others) {
+  const cand = [];
+  if (Math.abs(A[0] - B[0]) < 0.5) for (const o of [70, -70, 130, -130]) cand.push([A, [A[0] + o, A[1]], [B[0] + o, B[1]], B]);
+  else if (Math.abs(A[1] - B[1]) < 0.5) for (const o of [70, -70, 130, -130]) cand.push([A, [A[0], A[1] + o], [B[0], B[1] + o], B]);
+  else { cand.push([A, [B[0], A[1]], B]); cand.push([A, [A[0], B[1]], B]); }
+  let best = cand[0], bs = -1;
+  for (const pts of cand) {
+    let sc = 1e9;
+    for (let i = 0; i + 1 < pts.length; i++) for (const t of (pts.length === 4 && i !== 1 ? [] : [0.25, 0.5, 0.75])) {
+      const p = [pts[i][0] + (pts[i + 1][0] - pts[i][0]) * t, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * t];
+      for (const q of others) for (let k = 0; k + 1 < q.length; k++) sc = Math.min(sc, dSeg(p, q[k], q[k + 1]));
+    }
+    const oob = pts.some(p => p[0] < 30 || p[0] > VW - 30 || p[1] < 70 || p[1] > VH - 70); if (oob) sc -= 1000;
+    if (sc > bs) { bs = sc; best = pts; }
+  }
+  return best;
 }
 function longest(pts) { let bi = 0, bl = -1; for (let i = 0; i + 1 < pts.length; i++) { const l = Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]); if (l > bl) { bl = l; bi = i; } } return bi; }
 function dSeg(p, a, b) { const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy; let t = l2 ? ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2 : 0; t = Math.max(0, Math.min(1, t)); return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy); }
@@ -804,6 +824,8 @@ function draw(api) {
   ctx.save(); ctx.translate((w - VW * sc) / 2, (h - VH * sc) / 2); ctx.scale(sc, sc);
   const vmax = Math.max(1e-6, ...Object.values(r.V));
   const pos = {}; Object.keys(c.nodes).forEach(n => { pos[n] = posAt(c, n, e); });
+  const others = c.els.filter(x => !x.x).map(x => pathOf(x, pos[x.a], pos[x.b]));
+  for (const x of c.els) { if (!x.x) continue; x.rp = null; const A = pos[x.a], B = pos[x.b]; x.rp = Math.hypot(A[0] - B[0], A[1] - B[1]) < 1 ? [A, B] : routeX(x, A, B, others.concat(c.els.filter(y => y.x && y.rp).map(y => y.rp))); }
   S.pos = pos; S.xf = { sc, ox: (w - VW * sc) / 2, oy: (h - VH * sc) / 2 };
   if (S.hover && S.hover.id) { const he = c.els.find(x => x.id === S.hover.id); if (he) { const hp = pathOf(he, pos[he.a], pos[he.b]); ctx.save(); ctx.strokeStyle = "rgba(255,255,255,.28)"; ctx.lineWidth = 22; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(hp[0][0], hp[0][1]); for (let k = 1; k < hp.length; k++) ctx.lineTo(hp[k][0], hp[k][1]); ctx.stroke(); ctx.restore(); } }
   const order = { W: 0, R: 1, B: 1, S: 1, A: 1, V: 2 };
@@ -864,9 +886,8 @@ function compute(api) {
   return S.cur;
 }
 const SWTXT = { sw: (id, v) => id === "s5" ? "S → " + v : "S " + (v === "closed" ? "닫힘" : "열림"), mid: (id, v) => "가운데 소자: " + (v === "R" ? "저항 R₅" : v === "A" ? "전류계" : "끊김"), sw1: (id, v) => "S₁ " + (v === "closed" ? "닫힘" : "열림"), sw2: (id, v) => "S₂ " + (v === "closed" ? "닫힘" : "열림"), sw3: (id, v) => "S₃ " + (v === "closed" ? "닫힘" : "열림") };
-function flipSw(api, id, key) {
-  const opts = SWOPT[key], cur = S.sw[id][key] || DEF[id][key]; S.sw[id][key] = opts[(opts.indexOf(cur) + 1) % opts.length]; api.refresh();
-}
+function nextSw(id, key, cur) { const o = id === "s5" ? ["a", "b"] : SWOPT[key]; return o[(o.indexOf(cur) + 1) % o.length]; }
+function flipSw(api, id, key) { S.sw[id][key] = nextSw(id, key, S.sw[id][key] || DEF[id][key]); api.refresh(); }
 const HINT = { toggle: "스위치를 눌러 열고 닫는다(그림의 스위치를 직접 눌러도 된다).", swap: "고른 소자로 바꿀 곳을 그림에서 누른다. 전류계는 저항·스위치를 누르면 그 소자와 직렬로 끼워지고, 도선을 누르면 도선 자리에 들어간다.", link: "점 두 개를 차례로 눌러 고른 소자를 잇는다. 전압계는 재려는 두 점에 연결(병렬)하며 회로에 영향이 없다." };
 function toVirtual(ev) { const rc = ev.target.getBoundingClientRect(); return [((ev.clientX - rc.left) - S.xf.ox) / S.xf.sc, ((ev.clientY - rc.top) - S.xf.oy) / S.xf.sc]; }
 function pick(ev) {
@@ -1047,6 +1068,13 @@ const SIM = {
     T.push(["편집: 전원 양 끝에 저항 4 Ω 을 병렬로 달면 전체 전류 +3 A", near(ed3.r.I.B - run("s1", pOf("s1", { sw: "closed" })).r.I.B, 3), `증가 ${fx(ed3.r.I.B - run("s1", pOf("s1", { sw: "closed" })).r.I.B, 5)} A`]);
     const ed4 = run("s1", pOf("s1", { sw: "closed" }), [{ t: "ser", id: "R2", k: "A", uid: 4 }]), b4 = run("s1", pOf("s1", { sw: "closed" }));
     T.push(["편집: 저항에 전류계를 직렬로 끼우면 그 저항 전류를 읽고 회로는 불변", near(Math.abs(ed4.r.I.x4), Math.abs(b4.r.I.R2)) && near(ed4.r.I.B, b4.r.I.B) && near(Math.abs(ed4.r.I.R2), Math.abs(b4.r.I.R2)), `전류계 ${fx(Math.abs(ed4.r.I.x4), 5)} A, R₂ ${fx(Math.abs(b4.r.I.R2), 5)} A`]);
+    T.push(["⑤ 스위치는 a↔b 로만 바뀐다(둘 다 열림 불가)", nextSw("s5", "sw", "a") === "b" && nextSw("s5", "sw", "b") === "a" && nextSw("s1", "sw", "open") === "closed", "a→b→a"]);
+    const z7 = run("s7", pOf("s7", { sw2: "open", sw3: "open" })).r.I;
+    T.push(["⑦ S₂·S₃ 열림: B·C 쪽 도선 전류는 정확히 0", z7.w2 === 0 && z7.w3 === 0 && z7.w5 === 0 && z7.w6 === 0, `w2 ${z7.w2}, w3 ${z7.w3}`]);
+    const c1 = run("s1", pOf("s1", { sw: "closed" }), [{ t: "add", uid: 9, k: "A", a: "M", b: "N", v: 0 }]).c, pp = {}; Object.keys(c1.nodes).forEach(n => { pp[n] = c1.nodes[n]; });
+    const ex = c1.els.find(e => e.x), oth = c1.els.filter(e => !e.x).map(e => pathOf(e, pp[e.a], pp[e.b])), rt = routeX(ex, pp.M, pp.N, oth);
+    let mind = 1e9; for (let i = 0; i + 1 < rt.length; i++) if (i === longest(rt)) for (const t of [0.5]) { const p = [(rt[i][0] + rt[i + 1][0]) / 2, (rt[i][1] + rt[i + 1][1]) / 2]; for (const q of oth) for (let k = 0; k + 1 < q.length; k++) mind = Math.min(mind, dSeg(p, q[k], q[k + 1])); }
+    T.push(["편집: 두 점 잇기로 놓은 소자가 R₂ 위에 겹쳐 그려지지 않음", mind > 30, `기존 소자와의 최소 거리 ${fx(mind, 1)}`]);
     T.push(["편집: 전원 양 끝을 도선으로 이으면 단락으로 알려 줌", run("s1", pOf("s1", { sw: "closed" }), [{ t: "add", uid: 3, k: "W", a: "P", b: "Q", v: 0 }]).r.short === true, "short 표시"]);
     let okE = true, okG = true, okP = true, msg = "", msgG = "", msgP = "";
     for (const id of IDS) for (const st of STATES[id]) {

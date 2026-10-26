@@ -9,6 +9,8 @@
   const TERMS = {
     res: { a: { x: -70, y: 0, d: [-1, 0] }, b: { x: 70, y: 0, d: [1, 0] } },
     sw: { a: { x: -60, y: 0, d: [-1, 0] }, b: { x: 60, y: 0, d: [1, 0] } },
+    cap: { a: { x: -70, y: 0, d: [-1, 0] }, b: { x: 70, y: 0, d: [1, 0] } },
+    coil: { a: { x: -70, y: 0, d: [-1, 0] }, b: { x: 70, y: 0, d: [1, 0] } },
     bat: { '+': { x: -40, y: -58, d: [0, -1] }, '-': { x: 40, y: -58, d: [0, -1] } },
     mtr: { '+': { x: -35, y: 100, d: [0, 1] }, '-': { x: 35, y: 100, d: [0, 1] } }
   };
@@ -19,6 +21,8 @@
   const RANGES = { A: [0.03, 0.3, 3], V: [3, 15] };
   const CELL_E = 1.5, CELL_R = 0.3, R_SW = 0.005, R_RATED_W = 0.25;
   const E_NOMINAL = [10, 20, 30, 47, 68, 100, 150, 200, 330, 470, 680, 1000, 2200];
+  const CAP_UF = [10, 47, 100, 220, 470, 1000, 4700], COIL_MH = [10, 50, 100, 500, 1000];
+  const R_COIL_DCR = 10, COIL_MAX_A = 0.5;   // 코일 권선 저항 10 Ω, 허용 전류 0.5 A
 
   function rangeOf(p) { return (isA(p) ? RANGES.A : RANGES.V)[p.range || 0]; }
   function meterR(p) {            // 전류계: 풀스케일에서 0.1 V 강하, 전압계: 아날로그 1 kΩ/V, 디지털 1 MΩ
@@ -29,7 +33,7 @@
   function resActual(p) { return p.nom * (1 + (p.tol || 0)); }
 
   /* ================= 엔진 ================= */
-  function analyze(parts, wires) {
+  function analyze(parts, wires, dyn, dt, commit) {   // dt가 있으면 축전기·코일을 그 시간 간격의 후진 오일러 등가회로로 푼다
     const idx = new Map(), names = [];
     parts.forEach(p => Object.keys(termsOf(p)).forEach(t => { idx.set(p.id + '.' + t, names.length); names.push(p.id + '.' + t); }));
     const uf = names.map((_, i) => i);
@@ -44,6 +48,15 @@
       const t = Object.keys(termsOf(p)), a = node(p.id + '.' + t[0]), b = node(p.id + '.' + t[1]);
       if (p.type === 'res') els.push({ p, a, b, g: 1 / resActual(p) });
       else if (p.type === 'sw') { if (p.closed) els.push({ p, a, b, g: 1 / R_SW }); else els.push({ p, a, b, g: 0 }); }
+      else if (p.type === 'cap') {
+        const st = (dyn && dyn[p.id]) || { v: 0, i: 0 };
+        if (dt) { const g = p.c * 1e-6 / dt; els.push({ p, a, b, g, vp: st.v }); src[a] += g * st.v; src[b] -= g * st.v; }
+        else els.push({ p, a, b, g: 0, vp: st.v });
+      } else if (p.type === 'coil') {
+        const st = (dyn && dyn[p.id]) || { v: 0, i: 0 };
+        if (dt) { const Ls = p.l * 1e-3 / dt, g = 1 / (R_COIL_DCR + Ls), ieq = g * Ls * st.i; els.push({ p, a, b, g, ieq }); src[a] -= ieq; src[b] += ieq; }
+        else els.push({ p, a, b, g: 1 / R_COIL_DCR, ieq: 0 });
+      }
       else if (p.type === 'bat') {
         const e = CELL_E * p.cells, r = CELL_R * p.cells;
         els.push({ p, a, b, g: 1 / r, e, r }); src[a] += e / r; src[b] -= e / r;
@@ -88,6 +101,8 @@
       const p = e.p, dv = v[e.a] - v[e.b];
       if (p.type === 'res') { const I = dv * e.g; res[p.id] = { V: dv, I, P: dv * I }; }
       else if (p.type === 'sw') res[p.id] = { V: dv, I: dv * e.g };
+      else if (p.type === 'cap') { const I = dt ? e.g * (dv - e.vp) : 0; res[p.id] = { V: dv, I }; if (commit && dt) dyn[p.id] = { v: dv, i: I }; }
+      else if (p.type === 'coil') { const I = e.g * dv + e.ieq; res[p.id] = { V: dv, I }; if (commit && dt) dyn[p.id] = { v: dv, i: I }; }
       else if (p.type === 'bat') { const I = (e.e - dv) / e.r; res[p.id] = { I, Vt: dv, e: e.e }; }
       else if (isA(p)) res[p.id] = { reading: dv * e.g, V: dv };
       else res[p.id] = { reading: dv, V: dv };
@@ -103,6 +118,7 @@
       const r = R.res[p.id]; if (!r) return;
       if (p.type === 'bat' && (r.I > 1.5 || (r.e - r.Vt) > 0.4 * r.e)) out.push(['bad', `⚠ 합선에 가까워요! ${nm(p)}에서 ${r.I.toFixed(1)} A가 흘러요. 스위치를 열고 도선·전류계 연결을 확인하세요. (전류계는 재려는 곳과 직렬)`]);
       if (p.type === 'res' && r.P > R_RATED_W) out.push(['warn', `🔥 ${nm(p)}(${p.nom} Ω)이 뜨거워요: ${r.P.toFixed(2)} W (정격 ${R_RATED_W} W). 큰 저항으로 바꾸거나 전압을 낮추세요.`]);
+      if (p.type === 'coil' && Math.abs(r.I) > COIL_MAX_A) out.push(['warn', `🔥 ${nm(p)}에 ${Math.abs(r.I).toFixed(2)} A가 흘러 뜨거워요 (허용 ${COIL_MAX_A} A). 저항을 직렬로 넣어 전류를 줄이세요.`]);
       if (isA(p) && Math.abs(r.reading) > 1.15 * rangeOf(p)) out.push(['warn', `${nm(p)} 범위 초과: 더 큰 범위로 바꾸세요.`]);
       if (isV(p) && Math.abs(r.reading) > 1.15 * rangeOf(p)) out.push(['warn', `${nm(p)} 범위 초과: 더 큰 범위로 바꾸세요.`]);
       if ((isA(p) || isV(p)) && r.reading < -1e-6 * rangeOf(p) * 10 && Math.abs(r.reading) > 0.02 * rangeOf(p)) out.push(['warn', `${nm(p)}: 바늘이 거꾸로 가요. (+)(−) 단자 연결이 반대예요.`]);
@@ -110,7 +126,7 @@
     return out;
   }
 
-  const engine = { analyze, diagnose, rangeOf, meterR, resActual, TERMS, termsOf, isA, isV, isAnalog, RANGES, CELL_E, CELL_R, E_NOMINAL };
+  const engine = { analyze, diagnose, rangeOf, meterR, resActual, TERMS, termsOf, isA, isV, isAnalog, RANGES, CELL_E, CELL_R, E_NOMINAL, CAP_UF, COIL_MH, R_COIL_DCR };
   if (typeof module !== 'undefined' && module.exports) module.exports = engine;
   root.FreeLabEngine = engine;
   root.FreeLabEngineReady = true;
@@ -126,7 +142,7 @@
     const layout = document.querySelector('.layout');
     const NS = 'http://www.w3.org/2000/svg', BW = 1000, BH = 620;
     const KEY = 'freeLab-v1';
-    const S = { parts: [], wires: [], nid: 1, sel: null, pending: null, theory: false, schem: false, hideVal: false, rows: [], cnt: { R: 0, A: 0, V: 0, B: 0 } };
+    const S = { parts: [], wires: [], nid: 1, sel: null, pending: null, theory: false, schem: false, dyn: {}, t: 0, run: true, speed: 1, hist: [], hideVal: false, rows: [], cnt: { R: 0, A: 0, V: 0, B: 0 } };
     const WCOL = { red: '#d64545', black: '#26303c', blue: '#1f6fd6', green: '#1e8f4e', orange: '#e08a00' };
     const BANDS = ['#111', '#7a4a1c', '#d64545', '#f08a1c', '#f2d21b', '#2e9b45', '#2f6fd6', '#8a4fc7', '#888', '#fff'];
     const AR = ['30 mA', '300 mA', '3 A'], VR = ['3 V', '15 V'];
@@ -140,13 +156,17 @@
     const css = document.createElement('style');
     css.textContent = `
     #freeLab{margin-top:4px}
-    .fl-wrap{display:grid;grid-template-columns:168px minmax(0,1fr) 300px;gap:12px;align-items:start}
+    .fl-wrap{display:grid;grid-template-columns:200px minmax(0,1fr) 300px;gap:12px;align-items:start}
     .fl-tray,.fl-side>*{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:10px}
     .fl-tray b{display:block;margin-bottom:4px}.fl-tray .fl-hint{font-size:.78em;color:var(--sub);margin-bottom:8px;line-height:1.4}
     .fl-items{display:flex;flex-direction:column;gap:6px}
     .fl-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:#fafcff;cursor:grab;touch-action:none;user-select:none;font-size:.9em}
     .fl-item:hover{border-color:var(--accent);background:#eef5ff}.fl-item svg{flex:0 0 auto}
-    .fl-item span{white-space:nowrap}.fl-item select{margin-left:auto;max-width:70px;font:inherit;font-size:.9em}.fl-sep{font-size:.75em;color:var(--sub);margin:6px 0 0}
+    .fl-item select{margin-left:auto;max-width:78px;flex:0 0 auto;font:inherit;font-size:.9em}.fl-pop{position:absolute;z-index:5;background:#fff;border:2px solid var(--accent);border-radius:10px;padding:6px 8px;display:flex;gap:6px;align-items:center;box-shadow:0 4px 14px rgba(0,0,0,.2);font-size:.88em;transform:translateX(-50%);white-space:nowrap}
+    .fl-pop input{width:84px;font:inherit;padding:2px 4px}.fl-pop select{font:inherit}
+    .fl-sim{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;font-size:.9em}.fl-sim button,.fl-sim select{font:inherit;padding:4px 8px}#fl-t{font-variant-numeric:tabular-nums;min-width:70px}
+    .fl-ch{width:100%;height:auto;background:#fff;border:1px solid var(--border);border-radius:8px;margin-top:8px}
+    .fl-sep{font-size:.75em;color:var(--sub);margin:6px 0 0}
     .fl-trash{margin-top:10px;border:2px dashed #c9d3e0;border-radius:8px;padding:10px 6px;text-align:center;font-size:.8em;color:var(--sub)}
     .fl-trash.hot{border-color:#d64545;color:#d64545;background:#fff1f1}
     .fl-bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;font-size:.88em}
@@ -170,10 +190,14 @@
       <div class="fl-tray"><b>🧰 부품 상자</b><div class="fl-hint">끌어서 보드에 놓거나, 눌러서 추가하세요.</div><div class="fl-items" id="fl-items"></div>
         <div class="fl-trash" id="fl-trash">🗑 부품을 여기로 끌면 삭제</div></div>
       <div class="fl-mid"><div class="fl-bar">
-          <button id="fl-rot" title="선택한 부품 회전 (R 키)">⟳ 회전</button><label id="fl-valbox" hidden>저항 값 <select id="fl-val"></select></label><button id="fl-del">선택 삭제</button><button id="fl-clear">모두 지우기</button>
+          <button id="fl-rot" title="선택한 부품 회전 (R 키)">⟳ 회전</button><button id="fl-del">선택 삭제</button><button id="fl-clear">모두 지우기</button>
           <button id="fl-schem" class="primary">🔌 회로도 보기</button><label><input type="checkbox" id="fl-hide"> 저항 값 가리기(색띠로 읽기)</label>
           <label><input type="checkbox" id="fl-theory"> 이론값 보기(교사용)</label></div>
-        <div class="fl-board" id="fl-board"></div><div class="fl-msgs" id="fl-msgs" aria-live="polite"></div></div>
+        <div class="fl-board" id="fl-board"></div><div class="fl-sim" id="fl-sim" hidden><b>⏱ 시간</b> <span id="fl-t">0.000 s</span>
+          <button id="fl-run">⏸ 멈춤</button><button id="fl-reset">↺ 방전·처음으로</button>
+          <label>속도 <select id="fl-speed"><option value="0.01">1/100배 (아주 느리게)</option><option value="0.1">1/10배 (느리게)</option><option value="1">실제 속도</option><option value="10">10배 빠르게</option><option value="100">100배 빠르게</option></select></label></div>
+        <div id="fl-chart"></div>
+        <div class="fl-msgs" id="fl-msgs" aria-live="polite"></div></div>
       <div class="fl-side">
         <div><b>📟 계기</b><table id="fl-meters"></table></div>
         <div><b>📝 측정 기록</b><table id="fl-rec"></table><div class="fl-btns"><button id="fl-addrow" class="primary">지금 값 기록</button><button id="fl-copy">표 복사</button><button id="fl-clrrows">표 지우기</button></div></div>
@@ -183,7 +207,7 @@
           <li><b>전류계</b>는 재려는 곳과 <b>직렬</b>, <b>전압계</b>는 재려는 곳과 <b>병렬</b>. 계기의 <b>(+)는 전지 (+)쪽</b>에 이어요.</li>
           <li><b>스위치를 닫고</b>(레버 클릭) 값을 읽습니다. 계기 아래 <b>범위</b> 단추로 눈금을 바꿔요.</li>
           <li>도선은 클릭해서 <b>선택 삭제</b>. 부품을 눌러 끌면 옮겨요. 값은 위 표에 기록하세요.</li></ol></details>
-        <details><summary>🧑‍🏫 교사용 도구</summary><div class="fl-btns"><button id="fl-ex1">직렬 예시 불러오기</button><button id="fl-ex2">병렬 예시 불러오기</button></div></details>
+        <details><summary>🧑‍🏫 교사용 도구</summary><div class="fl-btns"><button id="fl-ex1">직렬 예시</button><button id="fl-ex2">병렬 예시</button><button id="fl-ex3">RC 충전 예시</button><button id="fl-ex4">RL 예시</button></div></details>
       </div></div>`;
     const $ = id => host.querySelector('#' + id);
     const svg = document.createElementNS(NS, 'svg');
@@ -206,12 +230,16 @@
     function tpos(key) { const [id, t] = key.split('.'); const p = partById(id); if (!p) return null; const d = tdef(p, t), o = rotv(d.x, d.y, p.rot); return { x: p.x + o[0], y: p.y + o[1], d: rotv(d.d[0], d.d[1], p.rot), p, t }; }
 
     /* ---------- 부품 만들기 ---------- */
-    function bandColors(nom) {
-      let e = 0, v = nom; while (v >= 100) { v /= 10; e++; }
-      const d1 = Math.floor(v / 10), d2 = Math.round(v % 10);
-      return [BANDS[d1], BANDS[d2], BANDS[e]];
+    function bandColors(v) {
+      v = Math.max(0.1, v); let e = Math.floor(Math.log10(v)) - 1, d = Math.round(v / Math.pow(10, e));
+      if (d >= 100) { d = Math.round(d / 10); e++; }
+      return [BANDS[Math.floor(d / 10)], BANDS[d % 10], e >= 0 ? BANDS[Math.min(9, e)] : (e === -1 ? '#d4a82a' : '#c0c0c0')];
     }
-    function fmtOhm(v) { return v >= 1000 ? (v / 1000) + ' kΩ' : v + ' Ω'; }
+    function fmtOhm(v) { return v >= 1e6 ? (v / 1e6) + ' MΩ' : v >= 1000 ? (v / 1000) + ' kΩ' : v + ' Ω'; }
+    const fmtC = v => v + ' µF', fmtL = v => v >= 1000 ? (v / 1000) + ' H' : v + ' mH';
+    const valTxt = p => p.type === 'res' ? fmtOhm(p.nom) : p.type === 'cap' ? fmtC(p.c) : p.type === 'coil' ? fmtL(p.l) : '';
+    const isRCL = p => p.type === 'res' || p.type === 'cap' || p.type === 'coil';
+    const hasDyn = () => S.parts.some(p => p.type === 'cap' || p.type === 'coil');
     function freeSpot(type) {
       const big = type !== 'res' && type !== 'sw';
       for (let k = 0; k < 40; k++) {
@@ -225,6 +253,8 @@
       const p = { id: 'p' + (S.nid++), type, x: 0, y: 0 };
       if (type === 'res') { p.nom = opt.nom || 100; p.tol = (Math.random() * 2 - 1) * 0.05; p.name = 'R' + (++S.cnt.R); }
       else if (type === 'sw') { p.closed = false; p.name = '스위치'; }
+      else if (type === 'cap') { p.c = opt.val || 100; p.name = 'C' + (S.cnt.C = (S.cnt.C || 0) + 1); }
+      else if (type === 'coil') { p.l = opt.val || 100; p.name = 'L' + (S.cnt.L = (S.cnt.L || 0) + 1); }
       else if (type === 'bat') { p.cells = 4; p.name = '건전지' + (++S.cnt.B > 1 ? S.cnt.B : ''); }
       else { p.range = 0; p.name = (isA(p) ? 'A' : 'V') + (isA(p) ? ++S.cnt.A : ++S.cnt.V); }
       const s0 = (x === undefined) ? freeSpot(type) : { x: snap(x), y: snap(y) };
@@ -256,6 +286,28 @@
       g.appendChild(T(p.name + (S.hideVal ? '' : ' · ' + fmtOhm(p.nom)), 0, -26, 15, '#6b4e17', 'middle', 700));
       if (hot) g.appendChild(T('🔥', 0, 5, 22, '#000', 'middle'));
       if (S.theory && r) g.appendChild(T(`V=${r.V.toFixed(2)} V · I=${(r.I * 1000).toFixed(1)} mA`, 0, 36, 13, '#1d4a85', 'middle', 700));
+      return g;
+    }
+    function drawCap(p, r) {
+      const g = h('g'), vc = r ? Math.abs(r.V) : 0;
+      g.appendChild(h('line', { x1: -70, y1: 0, x2: -36, y2: 0, stroke: '#9aa5b3', 'stroke-width': 5, 'stroke-linecap': 'round' }));
+      g.appendChild(h('line', { x1: 36, y1: 0, x2: 70, y2: 0, stroke: '#9aa5b3', 'stroke-width': 5, 'stroke-linecap': 'round' }));
+      g.appendChild(h('rect', { x: -36, y: -20, width: 72, height: 40, rx: 8, fill: '#2f62b5', stroke: '#1d3f7a', 'stroke-width': 2.5 }));
+      g.appendChild(h('rect', { x: -26, y: -11, width: 52, height: 22, rx: 4, fill: '#ffd166', 'fill-opacity': Math.min(1, vc / 6) * 0.95 + 0.05 }));
+      g.appendChild(T('C', 0, 6, 17, '#1d3f7a', 'middle', 700));
+      g.appendChild(T(p.name + ' · ' + fmtC(p.c), 0, -30, 15, '#1d3f7a', 'middle', 700));
+      if (S.theory && r) g.appendChild(T(`Vc=${r.V.toFixed(2)} V · I=${(r.I * 1000).toFixed(1)} mA`, 0, 40, 13, '#1d4a85', 'middle', 700));
+      return g;
+    }
+    function drawCoil(p, r) {
+      const g = h('g'); let d = 'M-45 0';
+      for (let i = 0; i < 6; i++) d += ' a7.5 20 0 0 1 15 0';
+      g.appendChild(h('line', { x1: -70, y1: 0, x2: -45, y2: 0, stroke: '#9aa5b3', 'stroke-width': 5, 'stroke-linecap': 'round' }));
+      g.appendChild(h('line', { x1: 45, y1: 0, x2: 70, y2: 0, stroke: '#9aa5b3', 'stroke-width': 5, 'stroke-linecap': 'round' }));
+      g.appendChild(h('path', { d, fill: 'none', stroke: '#b8651b', 'stroke-width': 7, 'stroke-linecap': 'round' }));
+      g.appendChild(T(p.name + ' · ' + fmtL(p.l), 0, -32, 15, '#8a4a10', 'middle', 700));
+      g.appendChild(T('(권선 저항 ' + R_COIL_DCR + ' Ω)', 0, 24, 12, '#8a96a6', 'middle'));
+      if (S.theory && r) g.appendChild(T(`V=${r.V.toFixed(2)} V · I=${(r.I * 1000).toFixed(1)} mA`, 0, 42, 13, '#1d4a85', 'middle', 700));
       return g;
     }
     function drawSwitch(p, r) {
@@ -340,6 +392,10 @@
       const L = (x1, y1, x2, y2, w) => g.appendChild(h('line', { x1, y1, x2, y2, 'stroke-width': w || 3 }));
       if (p.type === 'res') {
         g.appendChild(h('polyline', { points: '-70,0 -34,0 -28,-14 -16,14 -4,-14 8,14 20,-14 28,0 34,0 70,0' }));
+      } else if (p.type === 'cap') {
+        L(-70, 0, -8, 0); L(8, 0, 70, 0); L(-8, -20, -8, 20, 5); L(8, -20, 8, 20, 5);
+      } else if (p.type === 'coil') {
+        L(-70, 0, -45, 0); L(45, 0, 70, 0); let d = 'M-45 0'; for (let i = 0; i < 6; i++) d += ' a7.5 18 0 0 1 15 0'; g.appendChild(h('path', { d }));
       } else if (p.type === 'sw') {
         L(-60, 0, -30, 0); L(30, 0, 60, 0);
         g.appendChild(h('circle', { cx: -30, cy: 0, r: 4, fill: '#111' })); g.appendChild(h('circle', { cx: 30, cy: 0, r: 4, fill: '#111' }));
@@ -359,10 +415,10 @@
       return g;
     }
     function symLabel(p, r) {
-      const base = p.type === 'res' ? [0, -22] : p.type === 'sw' ? [0, 28] : p.type === 'bat' ? [0, 10] : [0, 4];
+      const base = isRCL(p) ? [0, -26] : p.type === 'sw' ? [0, 28] : p.type === 'bat' ? [0, 10] : [0, 4];
       let t = p.name;
-      if (p.type === 'res') t += ' ' + fmtOhm(p.nom); else if (p.type === 'bat') t += ' ' + (CELL_E * p.cells).toFixed(1) + ' V';
-      if (S.theory && r) { if (p.type === 'res') t += ` (${r.V.toFixed(2)} V, ${(r.I * 1000).toFixed(1)} mA)`; else if (isA(p) || isV(p)) t += ' ' + (isA(p) ? (r.reading * 1000).toFixed(2) + ' mA' : r.reading.toFixed(3) + ' V'); }
+      if (isRCL(p)) t += ' ' + valTxt(p); else if (p.type === 'bat') t += ' ' + (CELL_E * p.cells).toFixed(1) + ' V';
+      if (S.theory && r) { if (isRCL(p)) t += ` (${r.V.toFixed(2)} V, ${(r.I * 1000).toFixed(1)} mA)`; else if (isA(p) || isV(p)) t += ' ' + (isA(p) ? (r.reading * 1000).toFixed(2) + ' mA' : r.reading.toFixed(3) + ' V'); }
       return T(t, base[0], base[1], 15, '#1c2733', 'middle', 700);
     }
     function schemPath(a, b) {
@@ -445,7 +501,7 @@
       const dot = (x, y) => g.appendChild(h('circle', { cx: x, cy: y, r: 5.5, fill: '#111', stroke: 'none' }));
       const tx = (t, x, y, sz, col, anc) => g.appendChild(h('text', { x, y, 'font-size': sz, fill: col || '#1c2733', 'text-anchor': anc || 'middle', 'font-weight': 700, stroke: 'none', 'font-family': '"Malgun Gothic","Segoe UI",sans-serif' }, t));
       const lay = t => {
-        if (t.k === 'leaf') t.L = { w: t.p.type === 'res' ? 140 : t.p.type === 'sw' ? 130 : 110, h: 90, y: 45 };
+        if (t.k === 'leaf') t.L = { w: isRCL(t.p) ? 140 : t.p.type === 'sw' ? 130 : 110, h: 90, y: 45 };
         else {
           t.kids.forEach(lay);
           if (t.k === 'ser') { const top = Math.max(...t.kids.map(c => c.L.y)), bot = Math.max(...t.kids.map(c => c.L.h - c.L.y)); t.L = { w: t.kids.reduce((a, c) => a + c.L.w, 0), h: top + bot, y: top }; }
@@ -460,6 +516,12 @@
         if (p.type === 'res') {
           L(-hw, 0, -34, 0); L(34, 0, hw, 0); add(h('polyline', { points: '-34,0 -28,-14 -16,14 -4,-14 8,14 20,-14 28,0 34,0' }));
           name += ' ' + fmtOhm(p.nom);
+        } else if (p.type === 'cap') {
+          L(-hw, 0, -8, 0); L(8, 0, hw, 0); add(h('line', { x1: -8, y1: -22, x2: -8, y2: 22, 'stroke-width': 5 })); add(h('line', { x1: 8, y1: -22, x2: 8, y2: 22, 'stroke-width': 5 }));
+          name += ' ' + fmtC(p.c);
+        } else if (p.type === 'coil') {
+          L(-hw, 0, -45, 0); L(45, 0, hw, 0); let d = 'M-45 0'; for (let i = 0; i < 6; i++) d += ' a7.5 18 0 0 1 15 0'; add(h('path', { d }));
+          name += ' ' + fmtL(p.l);
         } else if (p.type === 'sw') {
           L(-hw, 0, -30, 0); L(30, 0, hw, 0); add(h('circle', { cx: -30, cy: 0, r: 4.5, fill: '#111' })); add(h('circle', { cx: 30, cy: 0, r: 4.5, fill: '#111' }));
           if (p.closed) L(-30, 0, 30, 0); else L(-30, 0, 24, -28);
@@ -471,7 +533,7 @@
         }
         g.appendChild(gg);
         tx(name, cx, cy - 38, 15);
-        if (S.theory && r) tx(p.type === 'res' ? `${r.V.toFixed(2)} V · ${(r.I * 1000).toFixed(1)} mA` : (isA(p) ? (r.reading * 1000).toFixed(2) + ' mA' : isV(p) ? r.reading.toFixed(3) + ' V' : ''), cx, cy + 44, 13, '#1d4a85');
+        if (S.theory && r) tx(isRCL(p) ? `${r.V.toFixed(2)} V · ${(r.I * 1000).toFixed(1)} mA` : (isA(p) ? (r.reading * 1000).toFixed(2) + ' mA' : isV(p) ? r.reading.toFixed(3) + ' V' : ''), cx, cy + 44, 13, '#1d4a85');
       }
       function draw(t, x, y) {
         if (t.k === 'leaf') return leaf(t, x, y);
@@ -512,11 +574,11 @@
       const gP = h('g'), gW = h('g'), gT = h('g'), gX = h('g');
       S.parts.forEach(p => {
         const r = R && R.res[p.id];
-        const body = p.type === 'res' ? drawResistor(p, r) : p.type === 'sw' ? drawSwitch(p, r) : p.type === 'bat' ? drawBattery(p, r) : drawMeter(p, r);
+        const body = p.type === 'res' ? drawResistor(p, r) : p.type === 'cap' ? drawCap(p, r) : p.type === 'coil' ? drawCoil(p, r) : p.type === 'sw' ? drawSwitch(p, r) : p.type === 'bat' ? drawBattery(p, r) : drawMeter(p, r);
         if (p.rot) body.querySelectorAll('text').forEach(t => t.setAttribute('transform', `rotate(${-p.rot} ${t.getAttribute('x')} ${t.getAttribute('y')})`));
         const grp = h('g', { transform: `translate(${p.x} ${p.y}) rotate(${p.rot || 0})`, 'data-id': p.id, style: 'cursor:move' }, body);
         if (S.sel && S.sel.k === 'part' && S.sel.id === p.id) {
-          const bb = { res: [-78, -34, 156, 68], sw: [-84, -30, 168, 70], bat: [-90, -72, 180, 150], mtr: [-92, -86, 184, 214] }[p.type.startsWith('amm') || p.type.startsWith('vm') ? 'mtr' : p.type];
+          const bb = { res: [-78, -34, 156, 68], cap: [-78, -40, 156, 90], coil: [-78, -42, 156, 90], sw: [-84, -30, 168, 70], bat: [-90, -72, 180, 150], mtr: [-92, -86, 184, 214] }[p.type.startsWith('amm') || p.type.startsWith('vm') ? 'mtr' : p.type];
           grp.insertBefore(h('rect', { x: bb[0], y: bb[1], width: bb[2], height: bb[3], rx: 12, fill: 'rgba(31,111,214,.06)', stroke: '#1f6fd6', 'stroke-dasharray': '6 5', 'stroke-width': 2 }), grp.firstChild);
         }
         grp.addEventListener('pointerdown', e => partDown(e, p));
@@ -550,16 +612,17 @@
     const schedule = () => { if (!rafPending) { rafPending = true; requestAnimationFrame(render); } };
 
     /* ---------- 계산·패널 ---------- */
+    function solveNow() { R = hasDyn() ? analyze(S.parts, S.wires, S.dyn, 1e-6, false) : analyze(S.parts, S.wires); }
     function update() {
-      R = analyze(S.parts, S.wires);
+      solveNow();
       msgs = diagnose(S.parts, R);
-      if (S.parts.length && !msgs.length) {
+      if (S.parts.length && !msgs.length && !hasDyn()) {
         const bat = S.parts.filter(p => p.type === 'bat'), sw = S.parts.filter(p => p.type === 'sw');
         if (bat.length && S.wires.length && sw.some(s => !s.closed) && bat.every(b => Math.abs(R.res[b.id].I) < 1e-4)) msgs.push(['info', '스위치가 열려 있어서 전류가 흐르지 않아요. 레버를 눌러 닫아 보세요.']);
         else if (bat.length && S.wires.length >= 2 && bat.every(b => Math.abs(R.res[b.id].I) < 1e-4)) msgs.push(['info', '전류가 흐르지 않아요. 전지에서 나간 도선이 다시 전지로 돌아오는 닫힌 회로인지 확인하세요.']);
         if (!bat.length) msgs.push(['info', '건전지를 가져다 놓으면 회로에 전류가 흘러요.']);
       }
-      save(); schedule();
+      save(); schedule(); drawChart();
     }
     function renderPanels() {
       const mt = $('fl-meters'), ms = S.parts.filter(p => isA(p) || isV(p));
@@ -570,10 +633,10 @@
       }).join('') : '<tr><td>전류계·전압계를 놓으면 여기에 표시돼요</td></tr>';
       const mb = $('fl-msgs'); mb.innerHTML = msgs.map(m => `<div class="fl-msg ${m[0]}">${m[1]}</div>`).join('');
       const rt = $('fl-rec');
-      rt.innerHTML = '<tr><th>#</th><th>무엇을 쟀나요?</th><th>읽은 값</th></tr>' + (S.rows.length ? S.rows.map((r, i) => `<tr><td>${i + 1}</td><td><input type="text" data-r="${i}" data-f="label" value="${esc(r.label)}" placeholder="예: R₁ 양단"></td><td><input type="text" data-r="${i}" data-f="val" value="${esc(r.val)}" placeholder="예: 2.0 V, 0.06 A"></td></tr>`).join('') : '<tr><td colspan="3">아직 기록이 없어요</td></tr>');
-      rt.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => { S.rows[+inp.dataset.r][inp.dataset.f] = inp.value; save(); }));
-      const sp = S.sel && S.sel.k === 'part' && partById(S.sel.id), vb = $('fl-valbox');
-      vb.hidden = !(sp && sp.type === 'res') || S.schem; if (!vb.hidden) ohmOpts($('fl-val'), sp.nom);
+      if (rt._n !== S.rows.length) { rt._n = S.rows.length; rt.innerHTML = '<tr><th>#</th><th>무엇을 쟀나요?</th><th>읽은 값</th></tr>' + (S.rows.length ? S.rows.map((r, i) => `<tr><td>${i + 1}</td><td><input type="text" data-r="${i}" data-f="label" value="${esc(r.label)}" placeholder="예: R₁ 양단"></td><td><input type="text" data-r="${i}" data-f="val" value="${esc(r.val)}" placeholder="예: 2.0 V, 0.06 A"></td></tr>`).join('') : '<tr><td colspan="3">아직 기록이 없어요</td></tr>');
+      rt.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => { S.rows[+inp.dataset.r][inp.dataset.f] = inp.value; save(); })); }
+      updatePop(); $('fl-sim').hidden = !hasDyn(); $('fl-run').textContent = S.run ? '⏸ 멈춤' : '▶ 계속'; $('fl-t').textContent = fmtT(S.t);
+      if ($('fl-speed').value !== String(S.speed)) $('fl-speed').value = String(S.speed);
       $('fl-schem').textContent = S.schem ? '🔧 보드로 돌아가기' : '🔌 회로도 보기'; $('fl-rot').disabled = S.schem;
       $('fl-hide').checked = S.hideVal; $('fl-theory').checked = S.theory;
     }
@@ -637,47 +700,107 @@
     function itemIcon(type, nom) {
       const s = h('svg', { width: 46, height: 30, viewBox: '-24 -15 48 30' });
       if (type === 'res') { const b = bandColors(nom); s.appendChild(h('line', { x1: -22, y1: 0, x2: 22, y2: 0, stroke: '#9aa5b3', 'stroke-width': 3 })); s.appendChild(h('rect', { x: -15, y: -8, width: 30, height: 16, rx: 6, fill: '#ecd5a6', stroke: '#a58650' })); [[-9, b[0]], [-3, b[1]], [3, b[2]], [10, '#d4a82a']].forEach(([x, c]) => s.appendChild(h('rect', { x, y: -8, width: 3.5, height: 16, fill: c }))); }
+      else if (type === 'cap') { s.appendChild(h('line', { x1: -22, y1: 0, x2: 22, y2: 0, stroke: '#9aa5b3', 'stroke-width': 3 })); s.appendChild(h('rect', { x: -14, y: -11, width: 28, height: 22, rx: 5, fill: '#2f62b5', stroke: '#1d3f7a', 'stroke-width': 1.5 })); s.appendChild(h('rect', { x: -8, y: -5, width: 16, height: 10, fill: '#ffd166' })); }
+      else if (type === 'coil') { s.appendChild(h('line', { x1: -22, y1: 0, x2: 22, y2: 0, stroke: '#9aa5b3', 'stroke-width': 3 })); let d = 'M-16 0'; for (let i = 0; i < 4; i++) d += ' a4 10 0 0 1 8 0'; s.appendChild(h('path', { d, fill: 'none', stroke: '#b8651b', 'stroke-width': 4, 'stroke-linecap': 'round' })); }
       else if (type === 'bat') { s.appendChild(h('rect', { x: -20, y: -11, width: 40, height: 22, rx: 4, fill: '#2d3b52' })); s.appendChild(h('rect', { x: -15, y: -6, width: 6, height: 10, fill: '#ffd166' })); s.appendChild(h('rect', { x: -5, y: -6, width: 6, height: 10, fill: '#ffd166' })); s.appendChild(h('rect', { x: 5, y: -6, width: 6, height: 10, fill: '#ffd166' })); }
       else if (type === 'sw') { s.appendChild(h('rect', { x: -20, y: 4, width: 40, height: 6, fill: '#4a5666' })); s.appendChild(h('line', { x1: -16, y1: 3, x2: 14, y2: -9, stroke: '#c0861a', 'stroke-width': 3, 'stroke-linecap': 'round' })); }
       else { const A = type.startsWith('amm'), c = A ? '#1b8fb8' : '#7a4fd1'; s.appendChild(h('rect', { x: -15, y: -13, width: 30, height: 26, rx: 4, fill: type.endsWith('A') ? '#f8f7f1' : '#b9d1a0', stroke: c, 'stroke-width': 2 })); s.appendChild(T(A ? 'A' : 'V', 0, 5, 14, c, 'middle', 700)); }
       return s;
     }
-    const ITEMS = [['bat', '건전지'], ['sw', '스위치'], ['res', '저항'], ['ammA', '전류계 (아날로그)'], ['ammD', '전류계 (디지털)'], ['vmA', '전압계 (아날로그)'], ['vmD', '전압계 (디지털)']];
+    const ITEMS = [['bat', '건전지'], ['sw', '스위치'], ['res', '저항'], ['cap', '축전기'], ['coil', '코일'], ['ammA', '전류계 (아날로그)'], ['ammD', '전류계 (디지털)'], ['vmA', '전압계 (아날로그)'], ['vmD', '전압계 (디지털)']];
+    const OPTS = { res: [E_NOMINAL, fmtOhm, 100], cap: [CAP_UF, fmtC, 100], coil: [COIL_MH, fmtL, 100] };
     const itemsBox = $('fl-items');
-    const ohmOpts = (sel, cur) => { sel.innerHTML = E_NOMINAL.map(n => `<option value="${n}"${n === cur ? ' selected' : ''}>${fmtOhm(n)}</option>`).join(''); };
+    const fillOpts = (sel, list, fmt, cur) => { const L = list.indexOf(cur) < 0 && cur ? list.concat([cur]).sort((a, b) => a - b) : list; sel.innerHTML = L.map(n => `<option value="${n}"${n === cur ? ' selected' : ''}>${fmt(n)}</option>`).join(''); };
     ITEMS.forEach(([type, label], i) => {
-      if (i === 2) itemsBox.appendChild(Object.assign(document.createElement('div'), { className: 'fl-sep', textContent: '저항 (값을 고른 뒤 놓기)' }));
-      if (i === 3) itemsBox.appendChild(Object.assign(document.createElement('div'), { className: 'fl-sep', textContent: '계기' }));
+      if (i === 2) itemsBox.appendChild(Object.assign(document.createElement('div'), { className: 'fl-sep', textContent: '값을 고른 뒤 놓기 (놓은 뒤에도 바꿀 수 있어요)' }));
+      if (i === 5) itemsBox.appendChild(Object.assign(document.createElement('div'), { className: 'fl-sep', textContent: '계기' }));
       const d = document.createElement('div'); d.className = 'fl-item'; d.setAttribute('role', 'button'); d.title = label;
-      let icon = itemIcon(type, 100), sel = null;
+      let icon = itemIcon(type, 100), sel = null; const op = OPTS[type];
       d.appendChild(icon); d.appendChild(Object.assign(document.createElement('span'), { textContent: label }));
-      if (type === 'res') {
-        sel = document.createElement('select'); sel.title = '저항 값 고르기'; ohmOpts(sel, 100); d.appendChild(sel);
-        sel.addEventListener('change', () => { const n = itemIcon('res', +sel.value); d.replaceChild(n, icon); icon = n; });
+      if (op) {
+        sel = document.createElement('select'); sel.title = '값 고르기'; fillOpts(sel, op[0], op[1], op[2]); d.appendChild(sel);
+        sel.addEventListener('change', () => { if (type === 'res') { const n = itemIcon('res', +sel.value); d.replaceChild(n, icon); icon = n; } });
       }
       d.addEventListener('pointerdown', e => {
         if (e.target.tagName === 'SELECT') return;
-        if (e.button !== undefined && e.button !== 0) return; e.preventDefault(); const e0 = e, nom = sel ? +sel.value : null; let dragged = false;
+        if (e.button !== undefined && e.button !== 0) return; e.preventDefault(); const e0 = e, val = sel ? +sel.value : null; let dragged = false;
         const ghost = d.cloneNode(true); ghost.style.cssText = 'position:fixed;pointer-events:none;opacity:.85;z-index:9999;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.25);width:150px'; document.body.appendChild(ghost);
         const place = ev => { ghost.style.left = (ev.clientX - 75) + 'px'; ghost.style.top = (ev.clientY - 16) + 'px'; };
         place(e);
         track(ev => { if (moved(e0, ev) > 6) dragged = true; place(ev); }, ev => {
           ghost.remove(); const rr = $('fl-board').getBoundingClientRect();
-          if (dragged) { if (ev.clientX >= rr.left && ev.clientX <= rr.right && ev.clientY >= rr.top && ev.clientY <= rr.bottom) { const pt = toBoard(ev); addPart(type, { nom }, pt.x, pt.y); } }
-          else addPart(type, { nom });
+          if (dragged) { if (ev.clientX >= rr.left && ev.clientX <= rr.right && ev.clientY >= rr.top && ev.clientY <= rr.bottom) { const pt = toBoard(ev); addPart(type, { nom: val, val }, pt.x, pt.y); } }
+          else addPart(type, { nom: val, val });
         });
       });
       itemsBox.appendChild(d);
     });
+
+    /* 놓은 부품의 값 바꾸기: 부품 옆에 뜨는 작은 편집 창 */
+    const pop = document.createElement('div'); pop.className = 'fl-pop'; pop.hidden = true;
+    pop.innerHTML = '<b class="fl-pt"></b><select class="fl-ps"></select><input class="fl-pi" type="number" step="any" min="0"><span class="fl-pu"></span>';
+    $('fl-board').appendChild(pop);
+    const PO = { res: ['nom', 'Ω', 1, 1e6, E_NOMINAL, fmtOhm], cap: ['c', 'µF', 1, 100000, CAP_UF, fmtC], coil: ['l', 'mH', 1, 5000, COIL_MH, fmtL] };
+    function applyPop(v) {
+      const p = S.sel && S.sel.k === 'part' && partById(S.sel.id), o = p && PO[p.type]; if (!o || !isFinite(v) || v <= 0) return;
+      p[o[0]] = Math.max(o[2], Math.min(o[3], v)); update();
+    }
+    pop.querySelector('.fl-ps').addEventListener('change', e => applyPop(+e.target.value));
+    pop.querySelector('.fl-pi').addEventListener('change', e => applyPop(+e.target.value));
+    pop.addEventListener('pointerdown', e => e.stopPropagation());
+    function updatePop() {
+      const p = S.sel && S.sel.k === 'part' && partById(S.sel.id), o = p && PO[p.type];
+      if (!o || S.schem) { pop.hidden = true; pop._sig = ''; return; }
+      const sig = p.id + '|' + p[o[0]]; pop.hidden = false;
+      if (pop._sig !== sig) {
+        pop._sig = sig; pop.querySelector('.fl-pt').textContent = p.name;
+        fillOpts(pop.querySelector('.fl-ps'), o[4], o[5], p[o[0]]); pop.querySelector('.fl-pi').value = p[o[0]]; pop.querySelector('.fl-pu').textContent = o[1];
+      }
+      const sc = svg.clientWidth / BW, vert = (p.rot || 0) % 180 !== 0;
+      pop.style.left = (p.x * sc) + 'px'; pop.style.top = ((p.y + (vert ? 84 : 52)) * sc) + 'px';
+    }
+
+    /* 시간에 따른 변화(축전기·코일) */
+    const fmtT = t => t < 1 ? (t * 1000).toFixed(0) + ' ms' : t.toFixed(2) + ' s';
+    let frameN = 0;
+    function resetSim() { S.dyn = {}; S.t = 0; S.hist = []; solveNow(); record(); drawChart(); }
+    function record() { const m = {}; S.parts.forEach(p => { if (isA(p) || isV(p)) { const r = R && R.res[p.id]; m[p.id] = r ? r.reading : 0; } }); S.hist.push({ t: S.t, m }); if (S.hist.length > 3000) S.hist = S.hist.filter((_, i) => i % 2 === 0); }
+    function simStep(wall) {
+      const adv = wall * S.speed; if (adv <= 0) return;
+      const n = Math.max(1, Math.min(300, Math.ceil(adv / 2e-4))), dt = adv / n;
+      for (let i = 0; i < n; i++) R = analyze(S.parts, S.wires, S.dyn, dt, true);
+      S.t += adv; msgs = diagnose(S.parts, R); record(); schedule(); if (frameN++ % 3 === 0) drawChart();
+    }
+    function drawChart() {
+      const box = $('fl-chart'), ms = S.parts.filter(p => isA(p) || isV(p));
+      if (!hasDyn() || !ms.length || S.hist.length < 2) { box.innerHTML = ''; return; }
+      const groups = [[ms.filter(isV), 1, 'V'], [ms.filter(isA), 1000, 'mA']].filter(g => g[0].length);
+      const tmax = Math.max(S.t, 1e-3), W = 900, H = 150, pl = 58, pr = 12, pt = 12, pb = 26, COL = ['#7a4fd1', '#1b8fb8', '#d64545', '#1e8f4e', '#e08a00'];
+      let out = '';
+      groups.forEach(([list, sc, unit]) => {
+        let lo = 0, hi = 0; S.hist.forEach(sm => list.forEach(p => { const v = (sm.m[p.id] || 0) * sc; lo = Math.min(lo, v); hi = Math.max(hi, v); }));
+        if (hi - lo < 1e-9) hi = lo + 1; const pad = (hi - lo) * 0.1; hi += pad; if (lo < 0) lo -= pad;
+        const X = t => pl + (W - pl - pr) * t / tmax, Y = v => pt + (H - pt - pb) * (1 - (v - lo) / (hi - lo));
+        let g = `<rect width="${W}" height="${H}" fill="#fff"/>`;
+        [lo, (lo + hi) / 2, hi].forEach(v => { g += `<line x1="${pl}" x2="${W - pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="#e1e7ef"/><text x="${pl - 6}" y="${Y(v) + 4}" font-size="12" text-anchor="end" fill="#5b6877">${v.toFixed(Math.abs(hi) < 10 ? 2 : 0)}</text>`; });
+        g += `<line x1="${pl}" x2="${pl}" y1="${pt}" y2="${H - pb}" stroke="#8a96a6"/><line x1="${pl}" x2="${W - pr}" y1="${Y(0)}" y2="${Y(0)}" stroke="#8a96a6"/>`;
+        g += `<text x="${pl}" y="${H - 6}" font-size="12" fill="#5b6877">0</text><text x="${W - pr}" y="${H - 6}" font-size="12" text-anchor="end" fill="#5b6877">${fmtT(tmax)}</text><text x="12" y="${pt + 10}" font-size="12" fill="#5b6877">${unit}</text>`;
+        list.forEach((p, k) => { const c = COL[k % COL.length]; g += `<polyline fill="none" stroke="${c}" stroke-width="2.4" points="${S.hist.map(sm => X(sm.t).toFixed(1) + ',' + Y((sm.m[p.id] || 0) * sc).toFixed(1)).join(' ')}"/><text x="${pl + 10 + k * 110}" y="${pt + 12}" font-size="13" font-weight="700" fill="${c}">━ ${p.name}</text>`; });
+        out += `<svg viewBox="0 0 ${W} ${H}" class="fl-ch">${g}</svg>`;
+      });
+      box.innerHTML = out;
+    }
+    $('fl-run').addEventListener('click', () => { S.run = !S.run; schedule(); });
+    $('fl-reset').addEventListener('click', () => { resetSim(); update(); });
+    $('fl-speed').addEventListener('change', e => { S.speed = +e.target.value; });
 
     /* 막대 단추와 기록 */
     function delSel() { if (!S.sel) return; if (S.sel.k === 'part') removePart(S.sel.id); else { S.wires = S.wires.filter(w => w.id !== S.sel.id); S.sel = null; update(); } }
     $('fl-del').addEventListener('click', delSel);
     function rotSel() { const p = S.sel && S.sel.k === 'part' && partById(S.sel.id); if (!p || S.schem) return; p.rot = ((p.rot || 0) + 90) % 360; update(); }
     $('fl-rot').addEventListener('click', rotSel);
-    $('fl-val').addEventListener('change', e => { const p = S.sel && S.sel.k === 'part' && partById(S.sel.id); if (p && p.type === 'res') { p.nom = +e.target.value; update(); } });
     $('fl-schem').addEventListener('click', () => { S.schem = !S.schem; S.pending = null; schedule(); });
-    $('fl-clear').addEventListener('click', () => { if (!S.parts.length || confirm('보드의 부품과 도선을 모두 지울까요?')) { S.parts = []; S.wires = []; S.sel = null; S.pending = null; S.cnt = { R: 0, A: 0, V: 0, B: 0 }; needles = {}; update(); } });
+    $('fl-clear').addEventListener('click', () => { if (!S.parts.length || confirm('보드의 부품과 도선을 모두 지울까요?')) { S.parts = []; S.wires = []; S.sel = null; S.pending = null; S.cnt = { R: 0, A: 0, V: 0, B: 0 }; needles = {}; S.dyn = {}; S.t = 0; S.hist = []; update(); } });
     $('fl-hide').addEventListener('change', e => { S.hideVal = e.target.checked; save(); schedule(); });
     $('fl-theory').addEventListener('change', e => { S.theory = e.target.checked; schedule(); });
     $('fl-addrow').addEventListener('click', () => {
@@ -693,26 +816,31 @@
 
     /* 교사용 예시 */
     function example(kind) {
-      S.parts = []; S.wires = []; S.cnt = { R: 0, A: 0, V: 0, B: 0 }; S.nid = 1; needles = {};
+      S.parts = []; S.wires = []; S.cnt = { R: 0, A: 0, V: 0, B: 0 }; S.nid = 1; needles = {}; S.dyn = {}; S.t = 0; S.hist = [];
       const add = (t, o, x, y) => { const p = addPart(t, o || {}, x, y); return p; };
       const b = add('bat', {}, 130, 380), sw = add('sw', {}, 340, 110);
       const r1 = add('res', { nom: 100 }, 560, 110), a = add('ammD', {}, 700, 330);
       r1.tol = 0.02;
-      if (kind === 1) {
+      if (kind >= 3) {
+        const c = kind === 3 ? add('cap', { val: 1000 }, 560, 260) : add('coil', { val: 1000 }, 560, 260), v = add('vmD', {}, 330, 400);
+        a.range = 1; v.range = 1; S.speed = kind === 3 ? 1 : 0.1;
+        [[b.id + '.+', sw.id + '.a'], [sw.id + '.b', r1.id + '.a'], [r1.id + '.b', a.id + '.+'], [a.id + '.-', c.id + '.a'], [c.id + '.b', b.id + '.-'], [v.id + '.+', c.id + '.a'], [v.id + '.-', c.id + '.b']].forEach(w => S.wires.push({ id: 'w' + (S.nid++), a: w[0], b: w[1], c: wireColor(w[0], w[1]) }));
+      } else if (kind === 1) {
         const r2 = add('res', { nom: 200 }, 450, 220), v = add('vmA', {}, 430, 400); r2.tol = -0.03; a.range = 1; v.range = 1;
         [[b.id + '.+', sw.id + '.a'], [sw.id + '.b', r1.id + '.a'], [r1.id + '.b', r2.id + '.a'], [r2.id + '.b', a.id + '.+'], [a.id + '.-', b.id + '.-'], [v.id + '.+', r2.id + '.a'], [v.id + '.-', r2.id + '.b']].forEach(w => S.wires.push({ id: 'w' + (S.nid++), a: w[0], b: w[1], c: wireColor(w[0], w[1]) }));
       } else {
         const r2 = add('res', { nom: 200 }, 560, 250), v = add('vmA', {}, 330, 400); r2.tol = -0.03; a.range = 1; v.range = 0;
         [[b.id + '.+', sw.id + '.a'], [sw.id + '.b', a.id + '.+'], [a.id + '.-', r1.id + '.a'], [a.id + '.-', r2.id + '.a'], [r1.id + '.b', b.id + '.-'], [r2.id + '.b', b.id + '.-'], [v.id + '.+', r1.id + '.a'], [v.id + '.-', r1.id + '.b']].forEach(w => S.wires.push({ id: 'w' + (S.nid++), a: w[0], b: w[1], c: wireColor(w[0], w[1]) }));
       }
-      sw.closed = true; S.sel = null; update();
+      sw.closed = kind < 3; S.sel = null; update(); if (hasDyn()) { S.run = true; record(); }
     }
-    $('fl-ex1').addEventListener('click', () => example(1)); $('fl-ex2').addEventListener('click', () => example(2));
+    $('fl-ex1').addEventListener('click', () => example(1)); $('fl-ex2').addEventListener('click', () => example(2)); $('fl-ex3').addEventListener('click', () => example(3)); $('fl-ex4').addEventListener('click', () => example(4));
 
     /* 바늘 애니메이션 */
     let last = performance.now();
     (function loop(now) {
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      if (!host.hidden && S.run && hasDyn()) simStep(dt);
       if (!host.hidden) for (const id in needles) {
         const n = needles[id]; if (!n || !n.el || !n.el.isConnected) continue;
         const k = Math.min(1, dt * 9); n.ang += (n.target - n.ang) * k;

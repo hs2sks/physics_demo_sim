@@ -373,7 +373,7 @@
       pts.push(b1, b);
       return pts.map(q => q.x + ',' + q.y).join(' ');
     }
-    function renderSchem() {
+    function renderSchemFree(note) {
       while (svg.firstChild) svg.removeChild(svg.firstChild);
       svg.appendChild(h('rect', { x: 0, y: 0, width: BW, height: BH, fill: '#fff' }));
       const cnt = {};
@@ -387,7 +387,119 @@
         Object.keys(termsOf(p)).forEach(t => { const q = tpos(p.id + '.' + t); svg.appendChild(h('circle', { cx: q.x, cy: q.y, r: (cnt[p.id + '.' + t] || 0) > 1 ? 6 : 4, fill: (cnt[p.id + '.' + t] || 0) ? '#111' : '#fff', stroke: '#111', 'stroke-width': 2 })); });
       });
       if (!S.parts.length) svg.appendChild(T('보드에 부품을 놓고 도선을 이으면 회로도가 그려져요', BW / 2, BH / 2, 24, '#9aa8b8', 'middle', 700));
-      svg.appendChild(T('회로도 (보드 배치와 같은 모양) · 도선 연결 점 ●', 14, BH - 12, 14, '#6b7a8c', 'start', 700));
+      svg.appendChild(T(note || '', 14, BH - 12, 14, '#9a6a00', 'start', 700));
+      renderPanels();
+    }
+    /* 표준 회로도: 직·병렬로 줄여서 전지 왼쪽, 부품은 위쪽 가로줄에 배치 */
+    function spLayout() {
+      const par = {}; const find = k => { if (par[k] === undefined) par[k] = k; return par[k] === k ? k : (par[k] = find(par[k])); };
+      S.wires.forEach(w => { const ra = find(w.a), rb = find(w.b); par[ra] = rb; });
+      const bats = S.parts.filter(p => p.type === 'bat');
+      if (bats.length !== 1) return { err: bats.length ? '건전지가 둘 이상이라' : '건전지가 없어서' };
+      const bat = bats[0], P = find(bat.id + '.+'), N = find(bat.id + '.-');
+      if (P === N) return { err: '건전지 양쪽이 바로 이어져 있어서' };
+      let edges = [];
+      for (const p of S.parts) {
+        if (p === bat) continue;
+        const ts = (isA(p) || isV(p)) ? ['+', '-'] : ['a', 'b'], u = find(p.id + '.' + ts[0]), v = find(p.id + '.' + ts[1]);
+        if (u === v) return { err: '양쪽 단자가 같은 점에 이어진(합선) 부품이 있어서' };
+        edges.push({ u, v, tree: { k: 'leaf', p, rev: false } });
+      }
+      const flip = t => t.k === 'leaf' ? { k: 'leaf', p: t.p, rev: !t.rev } : t.k === 'ser' ? { k: 'ser', kids: t.kids.slice().reverse().map(flip) } : { k: 'par', kids: t.kids.map(flip) };
+      const orient = (e, from) => e.u === from ? e : { u: e.v, v: e.u, tree: flip(e.tree) };
+      const kidsOf = (t, k) => t.k === k ? t.kids : [t];
+      let dropped = 0, ch = true;
+      while (ch) {
+        ch = false;
+        for (let i = 0; i < edges.length && !ch; i++) for (let j = i + 1; j < edges.length && !ch; j++) {
+          const a = edges[i], b = edges[j];
+          if ((a.u === b.u && a.v === b.v) || (a.u === b.v && a.v === b.u)) {
+            const bb = orient(b, a.u); edges.splice(j, 1);
+            edges[i] = { u: a.u, v: a.v, tree: { k: 'par', kids: kidsOf(a.tree, 'par').concat(kidsOf(bb.tree, 'par')) } }; ch = true;
+          }
+        }
+        if (ch) continue;
+        const deg = {}; edges.forEach(e => { deg[e.u] = (deg[e.u] || 0) + 1; deg[e.v] = (deg[e.v] || 0) + 1; });
+        for (const n in deg) {
+          if (n === P || n === N) continue;
+          if (deg[n] === 1) { edges = edges.filter(e => e.u !== n && e.v !== n); dropped++; ch = true; break; }
+          if (deg[n] === 2) {
+            const es = edges.filter(e => e.u === n || e.v === n), e1 = es[0], e2 = es[1];
+            const x = e1.u === n ? e1.v : e1.u, a1 = orient(e1, x), a2 = orient(e2, n);
+            edges = edges.filter(e => e !== e1 && e !== e2);
+            edges.push({ u: x, v: a2.v, tree: { k: 'ser', kids: kidsOf(a1.tree, 'ser').concat(kidsOf(a2.tree, 'ser')) } }); ch = true; break;
+          }
+        }
+      }
+      if (edges.length !== 1 || !((edges[0].u === P && edges[0].v === N) || (edges[0].u === N && edges[0].v === P))) return { err: edges.length ? '브리지처럼 직렬·병렬로 나눌 수 없는 연결이라' : '전지에서 이어진 부품이 없어서' };
+      return { bat, tree: orient(edges[0], P).tree, dropped };
+    }
+    function renderSchem() {
+      const SP = spLayout();
+      if (SP.err) return renderSchemFree('※ ' + SP.err + ' 표준 모양으로 정리하지 못하고 보드 배치 그대로 그렸어요.');
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      svg.appendChild(h('rect', { x: 0, y: 0, width: BW, height: BH, fill: '#fff' }));
+      const RAIL = 34, ST = { stroke: '#111', 'stroke-width': 3, fill: 'none', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' };
+      const g = h('g', ST);
+      const ln = (x1, y1, x2, y2) => { if (x1 !== x2 || y1 !== y2) g.appendChild(h('line', { x1, y1, x2, y2 })); };
+      const dot = (x, y) => g.appendChild(h('circle', { cx: x, cy: y, r: 5.5, fill: '#111', stroke: 'none' }));
+      const tx = (t, x, y, sz, col, anc) => g.appendChild(h('text', { x, y, 'font-size': sz, fill: col || '#1c2733', 'text-anchor': anc || 'middle', 'font-weight': 700, stroke: 'none', 'font-family': '"Malgun Gothic","Segoe UI",sans-serif' }, t));
+      const lay = t => {
+        if (t.k === 'leaf') t.L = { w: t.p.type === 'res' ? 140 : t.p.type === 'sw' ? 130 : 110, h: 90, y: 45 };
+        else {
+          t.kids.forEach(lay);
+          if (t.k === 'ser') { const top = Math.max(...t.kids.map(c => c.L.y)), bot = Math.max(...t.kids.map(c => c.L.h - c.L.y)); t.L = { w: t.kids.reduce((a, c) => a + c.L.w, 0), h: top + bot, y: top }; }
+          else t.L = { w: Math.max(...t.kids.map(c => c.L.w)) + 2 * RAIL, h: t.kids.reduce((a, c) => a + c.L.h, 0), y: t.kids[0].L.y };
+        }
+      };
+      function leaf(t, x, y) {
+        const p = t.p, hw = t.L.w / 2, cx = x + hw, cy = y + t.L.y, r = R && R.res[p.id];
+        const gg = h('g', { transform: `translate(${cx} ${cy})` }); const add = e => gg.appendChild(e);
+        const L = (x1, y1, x2, y2) => add(h('line', { x1, y1, x2, y2 }));
+        let name = p.name;
+        if (p.type === 'res') {
+          L(-hw, 0, -34, 0); L(34, 0, hw, 0); add(h('polyline', { points: '-34,0 -28,-14 -16,14 -4,-14 8,14 20,-14 28,0 34,0' }));
+          name += ' ' + fmtOhm(p.nom);
+        } else if (p.type === 'sw') {
+          L(-hw, 0, -30, 0); L(30, 0, hw, 0); add(h('circle', { cx: -30, cy: 0, r: 4.5, fill: '#111' })); add(h('circle', { cx: 30, cy: 0, r: 4.5, fill: '#111' }));
+          if (p.closed) L(-30, 0, 30, 0); else L(-30, 0, 24, -28);
+        } else {
+          const A = isA(p), lp = t.rev ? -1 : 1;
+          L(-hw, 0, -26, 0); L(26, 0, hw, 0); add(h('circle', { cx: 0, cy: 0, r: 26, fill: '#fff' }));
+          const q = h('text', { x: 0, y: 10, 'font-size': 28, 'text-anchor': 'middle', 'font-weight': 700, fill: '#111', stroke: 'none' }, A ? 'A' : 'V'); add(q);
+          [[-1, lp === 1 ? '+' : '−'], [1, lp === 1 ? '−' : '+']].forEach(([sd, c]) => add(h('text', { x: sd * 38, y: -8, 'font-size': 18, 'text-anchor': 'middle', 'font-weight': 700, fill: '#111', stroke: 'none' }, c)));
+        }
+        g.appendChild(gg);
+        tx(name, cx, cy - 38, 15);
+        if (S.theory && r) tx(p.type === 'res' ? `${r.V.toFixed(2)} V · ${(r.I * 1000).toFixed(1)} mA` : (isA(p) ? (r.reading * 1000).toFixed(2) + ' mA' : isV(p) ? r.reading.toFixed(3) + ' V' : ''), cx, cy + 44, 13, '#1d4a85');
+      }
+      function draw(t, x, y) {
+        if (t.k === 'leaf') return leaf(t, x, y);
+        if (t.k === 'ser') { let cx = x; t.kids.forEach(c => { draw(c, cx, y + t.L.y - c.L.y); cx += c.L.w; }); return; }
+        const mw = t.L.w - 2 * RAIL; let cy = y; const ys = [];
+        t.kids.forEach(c => {
+          const off = (mw - c.L.w) / 2, py = cy + c.L.y; ys.push(py);
+          draw(c, x + RAIL + off, cy);
+          ln(x + RAIL, py, x + RAIL + off, py); ln(x + RAIL + off + c.L.w, py, x + t.L.w - RAIL, py);
+          cy += c.L.h;
+        });
+        ln(x, ys[0], x + RAIL, ys[0]); ln(x + t.L.w - RAIL, ys[0], x + t.L.w, ys[0]);
+        ln(x + RAIL, ys[0], x + RAIL, ys[ys.length - 1]); ln(x + t.L.w - RAIL, ys[0], x + t.L.w - RAIL, ys[ys.length - 1]);
+        ys.forEach((py, i) => { if (i < ys.length - 1) { dot(x + RAIL, py); dot(x + t.L.w - RAIL, py); } });
+      }
+      const tree = SP.tree; lay(tree);
+      const BX = 150, X0 = BX + 90, ym = tree.L.y, yb = Math.max(tree.L.h + 30, ym + 150);
+      draw(tree, X0, 0);
+      const cyb = (ym + yb) / 2, bat = SP.bat;
+      ln(BX, ym, X0, ym); ln(BX, ym, BX, cyb - 9); ln(BX, cyb + 9, BX, yb);
+      ln(BX - 20, cyb - 9, BX + 20, cyb - 9); g.appendChild(h('line', { x1: BX - 11, y1: cyb + 9, x2: BX + 11, y2: cyb + 9, 'stroke-width': 6 }));
+      tx('+', BX + 30, cyb - 12, 20); tx('−', BX + 30, cyb + 22, 20);
+      tx(bat.name, BX - 30, cyb - 2, 15, '#1c2733', 'end'); tx((CELL_E * bat.cells).toFixed(1) + ' V', BX - 30, cyb + 18, 15, '#1c2733', 'end');
+      const XR = X0 + tree.L.w; ln(XR, ym, XR, yb); ln(XR, yb, BX, yb);
+      const W = XR + 24, H = yb + 24, sc = Math.min(1.25, (BW - 40) / W, (BH - 60) / H);
+      g.setAttribute('transform', `translate(${(BW - W * sc) / 2 + 8 * sc} ${(BH - H * sc) / 2 + 16 * sc}) scale(${sc})`);
+      svg.appendChild(g);
+      svg.appendChild(T('회로도 · 도선 연결 점 ●' + (SP.dropped ? ' · 연결이 끊긴 부품은 뺐어요' : ''), 14, BH - 12, 14, '#6b7a8c', 'start', 700));
       renderPanels();
     }
     function render() {

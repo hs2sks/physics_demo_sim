@@ -150,5 +150,57 @@
     return (cache[key] = c);
   }
 
-  VD.sprites = { PAL, MAP, make, village };
+
+  // ---------- 고해상도 변환: 원본 도트를 2배로 키우며(EPX) 윤곽을 가늘게 하고 위·아래 음영을 넣는다 ----------
+  const HS = 2;                                               // 고해상도 배율(game.js 의 S 와 같아야 한다)
+  const hx = v => v ? [(v - 1) >> 16 & 255, (v - 1) >> 8 & 255, (v - 1) & 255] : null;
+  const hv = (r, g, b) => ((r << 16) | (g << 8) | b) + 1;
+  const lighten = (v, f) => { const c = hx(v); return hv(...c.map(k => Math.round(k + (255 - k) * f))); };
+  const darken = (v, f) => { const c = hx(v); return hv(...c.map(k => Math.round(k * (1 - f)))); };
+  function hires(src, kHex) {
+    const w = src.width, h = src.height, d = src.getContext('2d').getImageData(0, 0, w, h).data;
+    const px = (x, y) => { if (x < 0 || y < 0 || x >= w || y >= h) return 0; const i = (y * w + x) * 4; return d[i + 3] ? hv(d[i], d[i + 1], d[i + 2]) : 0; };
+    const W = w * HS, H = h * HS, o = new Int32Array(W * H);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {          // EPX(Scale2x): 대각선이 매끈해진다
+      const P = px(x, y), A = px(x, y - 1), B = px(x + 1, y), C = px(x - 1, y), D = px(x, y + 1);
+      const X = x * 2, Y = y * 2;
+      o[Y * W + X] = (C === A && C !== D && A !== B) ? A : P;
+      o[Y * W + X + 1] = (A === B && A !== C && B !== D) ? B : P;
+      o[(Y + 1) * W + X] = (D === C && D !== B && C !== A) ? C : P;
+      o[(Y + 1) * W + X + 1] = (B === D && B !== A && D !== C) ? D : P;
+    }
+    const kv = kHex ? hv(parseInt(kHex.substr(1, 2), 16), parseInt(kHex.substr(3, 2), 16), parseInt(kHex.substr(5, 2), 16)) : -1;
+    const at = (x, y) => (x < 0 || y < 0 || x >= W || y >= H) ? 0 : o[y * W + x];
+    const out = new Int32Array(W * H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const v = o[y * W + x]; if (!v) continue;
+      const up = at(x, y - 1), dn = at(x, y + 1), lf = at(x - 1, y), rt = at(x + 1, y);
+      if (v === kv) {                                                   // 안쪽 윤곽선은 이웃색을 어둡게 한 선으로(눈·입 같은 세부 유지)
+        if (up && dn && lf && rt) { const nb = [up, dn, lf, rt].find(q => q && q !== kv); out[y * W + x] = nb ? darken(nb, 0.5) : v; } else out[y * W + x] = v;
+        continue;
+      }
+      if (!up || up === kv) out[y * W + x] = lighten(v, 0.2);          // 위쪽 가장자리: 하이라이트
+      else if (!dn || dn === kv) out[y * W + x] = darken(v, 0.22);     // 아래쪽 가장자리: 그림자
+      else if (!lf || lf === kv) out[y * W + x] = lighten(v, 0.07);
+      else if (!rt || rt === kv) out[y * W + x] = darken(v, 0.08);
+      else out[y * W + x] = v;
+    }
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const g = c.getContext('2d'), im = g.createImageData(W, H);
+    for (let i = 0; i < W * H; i++) { const v = out[i]; if (v) { const k = hx(v); im.data[i * 4] = k[0]; im.data[i * 4 + 1] = k[1]; im.data[i * 4 + 2] = k[2]; im.data[i * 4 + 3] = 255; } }
+    g.putImageData(im, 0, 0); c.lw = w; c.lh = h;                       // lw·lh = 게임 좌표(논리 px) 크기
+    return c;
+  }
+  function makeHi(name, era, flip, armored) {
+    const key = 'hi|' + name + '|' + era + '|' + (flip ? 1 : 0) + '|' + (armored ? 1 : 0);
+    if (cache[key]) return cache[key];
+    const pal = Object.assign({}, PAL[era], FIXED[name] || {});
+    return (cache[key] = hires(make(name, era, flip, armored), pal.k));
+  }
+  function villageHi(era) {
+    const key = 'vhi|' + era;
+    return cache[key] || (cache[key] = hires(village(era), null));
+  }
+
+  VD.sprites = { PAL, MAP, make, village, makeHi, villageHi, HS };
 })(window);

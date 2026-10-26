@@ -24,12 +24,14 @@
 
   // ---------- 메뉴 ----------
   function drawMenuArt() {
-    const g = $('menu-art').getContext('2d'); g.imageSmoothingEnabled = false;
+    const S = SP.HS, cv = $('menu-art'); cv.width = 192 * S; cv.height = 64 * S;
+    const g = cv.getContext('2d'); g.imageSmoothingEnabled = false; g.setTransform(S, 0, 0, S, 0, 0);
     const sky = ['#7ec4ee', '#f0c088', '#8aa0b8', '#241450'], gr = ['#6fae4a', '#b8955a', '#6a7d5a', '#3a4560'];
     for (let e = 0; e < 4; e++) {
-      g.fillStyle = sky[e]; g.fillRect(e * 48, 0, 48, 64); g.fillStyle = gr[e]; g.fillRect(e * 48, 56, 48, 8);
-      g.drawImage(SP.village(e), e * 48, 56 - 26 + 1);
-      const en = SP.make('boar', e, false, e > 0); g.drawImage(en, e * 48 + 31, 56 - en.height + 1);
+      const lg = g.createLinearGradient(0, 0, 0, 56); lg.addColorStop(0, sky[e]); lg.addColorStop(1, ['#cdeaf8', '#fde4b0', '#b6c4d2', '#43207a'][e]);
+      g.fillStyle = lg; g.fillRect(e * 48, 0, 48, 64); g.fillStyle = gr[e]; g.fillRect(e * 48, 56, 48, 8);
+      const v = SP.villageHi(e); g.drawImage(v, e * 48, 56 - 26 + 1, v.lw, v.lh);
+      const en = SP.makeHi('boar', e, false, e > 0); g.drawImage(en, e * 48 + 31, 56 - en.lh + 1, en.lw, en.lh);
     }
   }
   function renderMenu() {
@@ -81,8 +83,8 @@
     const box = $('worlds'); box.innerHTML = '';
     VD.WORLDS.forEach(w => {
       const el = document.createElement('div'); el.className = 'world w' + w.era;
-      const cv = document.createElement('canvas'); cv.width = 48; cv.height = 48; const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
-      g.fillStyle = ['#7ec4ee', '#f0c088', '#8aa0b8', '#241450'][w.era]; g.fillRect(0, 0, 48, 48); g.drawImage(SP.village(w.era), 0, 22);
+      const cv = document.createElement('canvas'); cv.width = 48 * SP.HS; cv.height = 48 * SP.HS; const g = cv.getContext('2d'); g.imageSmoothingEnabled = false; g.setTransform(SP.HS, 0, 0, SP.HS, 0, 0);
+      g.fillStyle = ['#7ec4ee', '#f0c088', '#8aa0b8', '#241450'][w.era]; g.fillRect(0, 0, 48, 48); const vh = SP.villageHi(w.era); g.drawImage(vh, 0, 22, vh.lw, vh.lh);
       const head = document.createElement('div'); head.className = 'world-head'; head.appendChild(cv);
       head.insertAdjacentHTML('beforeend', `<div><h2>월드 ${w.id} · ${esc(w.name)}</h2><p>${esc(w.topic)} · ${esc(w.weapon)}</p></div>`);
       const grid = document.createElement('div'); grid.className = 'stage-grid';
@@ -121,7 +123,7 @@
   }
 
   // ---------- 플레이 ----------
-  const heart = () => { const c = SP.make('heart', 0); const k = document.createElement('canvas'); k.width = c.width; k.height = c.height; k.getContext('2d').drawImage(c, 0, 0); return k; };
+  const heart = () => { const c = SP.makeHi('heart', 0); const k = document.createElement('canvas'); k.width = c.width; k.height = c.height; k.getContext('2d').drawImage(c, 0, 0); return k; };
   function infoLine(s) {
     const e = s.env, parts = [`중력 g = <b>${e.g}</b> m/s²`];
     if (s.body) parts[0] = { moon: '달', mars: '화성', jupiter: '목성' }[s.body] + ' · ' + parts[0];
@@ -131,11 +133,27 @@
     if (s.preview.mode === 'vacuum') parts.push('흰 점선 = 공기저항 없는 이론 궤적');
     return parts.join(' · ') + '<span id="lastshot"></span>';
   }
+  // 스테이지 상자를 화면에 맞춘다: 데스크톱·가로 화면에서는 높이가 허락하는 한 크게, 세로 폰은 폭 가득
+  function fitStage() {
+    const box = $('cv').parentElement, pg = box.parentElement, panel = document.querySelector('.panel');
+    if (!$('scr-play').classList.contains('active')) return;
+    const row = getComputedStyle(pg).flexDirection === 'row', dpr = window.devicePixelRatio || 1;
+    let w = pg.clientWidth;
+    if (row) {
+      const availW = pg.clientWidth - panel.offsetWidth - 10, top = box.getBoundingClientRect().top + window.scrollY, availH = window.innerHeight - top - 12;
+      w = Math.max(320, Math.min(availW, availH * 16 / 9));
+      const k = w * dpr / (C.CW * SP.HS), n = Math.round(k), cap = Math.min(availW, availH * 16 / 9 * 1.03);   // 정수 배율에 가까우면 맞춰서 도트 크기를 고르게
+      if (n >= 1 && Math.abs(k - n) < 0.1 * n && n * C.CW * SP.HS / dpr <= cap) w = n * C.CW * SP.HS / dpr;
+    }
+    box.style.width = Math.floor(w) + 'px'; box.style.flex = 'none'; box.style.setProperty('--sw', Math.floor(w) + 'px');
+    $('cv').classList.toggle('smooth', w * dpr < C.CW * SP.HS);                // 줄여 보일 때는 부드럽게, 키워 볼 때는 칸이 보이게
+  }
+  window.addEventListener('resize', fitStage); window.addEventListener('orientationchange', () => setTimeout(fitStage, 150));
   function play(stage) {
     cur = stage;
     const w = VD.WORLDS[stage.world - 1], m = VD.MISSIONS[stage.id], note = Notes.get(stage.id);
     const doMission = !!m && !(note && note.missionDone);
-    show('scr-play');
+    show('scr-play'); fitStage();
     $('hud-name').textContent = stage.id + ' ' + stage.name;
     $('infoline').innerHTML = infoLine(stage);
     $('hintbox').classList.remove('on');

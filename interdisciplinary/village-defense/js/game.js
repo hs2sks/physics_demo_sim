@@ -5,129 +5,14 @@
   const PX = C.PXM, GY = C.GROUND_PX;
   const toPx = x => x * PX, toPy = y => GY - y * PX;
 
-  // 3×5 숫자 글꼴(거리 눈금용)
-  const DIG = { 0: '111101101101111', 1: '010110010010111', 2: '111001111100111', 3: '111001111001111', 4: '101101111001001',
-    5: '111100111001111', 6: '111100111101111', 7: '111001001001001', 8: '111101111101111', 9: '111101111001111' };
-  function drawNum(g, str, x, y, col) {
-    g.fillStyle = col;
-    for (const ch of String(str)) {
-      const m = DIG[ch];
-      if (m) for (let i = 0; i < 15; i++) if (m[i] === '1') g.fillRect(x + (i % 3), y + (i / 3 | 0), 1, 1);
-      x += 4;
-    }
-  }
-  function rnd(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-  const rect = (g, x, y, w, h, c) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), w, h); };
-
-  // ---------- 배경 (스테이지마다 한 번 그려 둔다) ----------
-  const LOOK = {
-    era0: { sky: ['#7ec4ee', '#bfe3f6'], mtn: ['#8fb0c8', '#6f9a86'], gnd: '#6fae4a', gnd2: '#4f8a34', edge: '#8fce5c' },
-    era1: { sky: ['#e9a468', '#fbe0b0'], mtn: ['#b98a6a', '#8a6a4a'], gnd: '#b8955a', gnd2: '#96763e', edge: '#d4b074' },
-    era2: { sky: ['#6f869e', '#b6c4d2'], mtn: ['#7a8896', '#566472'], gnd: '#6a7d5a', gnd2: '#4e5f42', edge: '#86996f' },
-    era3: { sky: ['#0e0828', '#3a1d6a'], mtn: ['#2a2058', '#1c1640'], gnd: '#3a4560', gnd2: '#27304a', edge: '#25e0d0' },
-    moon: { sky: ['#03040a', '#0a0c18'], mtn: ['#5a5a66', '#42424c'], gnd: '#8a8a92', gnd2: '#6e6e78', edge: '#b4b4be' },
-    mars: { sky: ['#c9794a', '#f0c294'], mtn: ['#a8503a', '#7e3a2a'], gnd: '#b4573a', gnd2: '#8f4230', edge: '#cf7450' },
-    jupiter: { sky: ['#a8582e', '#e6c496'], mtn: ['#9a5a3a', '#7a4630'], gnd: '#d4a070', gnd2: '#b07a4e', edge: '#ecc496' },
-  };
-  function makeBackground(stage, era) {
-    const key = stage.body || 'era' + era, L = LOOK[key];
-    const cv = document.createElement('canvas'); cv.width = C.CW; cv.height = C.CH;
-    const g = cv.getContext('2d'), R = rnd(stage.id.charCodeAt(0) * 31 + stage.id.charCodeAt(2));
-    // 하늘: 가로 띠(도트 느낌)
-    const bands = 12;
-    for (let i = 0; i < bands; i++) {
-      const t = i / (bands - 1), a = L.sky[0], b = L.sky[1];
-      const mix = k => Math.round(parseInt(a.substr(k, 2), 16) * (1 - t) + parseInt(b.substr(k, 2), 16) * t);
-      rect(g, 0, i * (GY / bands), C.CW, Math.ceil(GY / bands), '#' + [1, 3, 5].map(k => mix(k).toString(16).padStart(2, '0')).join(''));
-    }
-    if (key === 'moon' || key === 'era3') {                  // 별
-      for (let i = 0; i < 70; i++) rect(g, R() * C.CW | 0, R() * 120 | 0, 1, 1, R() < 0.2 ? '#ffffff' : '#8a90b8');
-    }
-    if (key === 'moon') {                                    // 지구
-      rect(g, 300, 24, 22, 22, '#2c6fd0'); rect(g, 302, 22, 18, 26, '#2c6fd0'); rect(g, 298, 28, 26, 14, '#2c6fd0');
-      rect(g, 304, 28, 6, 5, '#4aa860'); rect(g, 312, 36, 5, 4, '#4aa860'); rect(g, 306, 24, 10, 2, '#e8f0ff');
-    }
-    if (key === 'mars') { rect(g, 60, 34, 7, 7, '#d8c8b0'); rect(g, 300, 56, 4, 4, '#b8a890'); }
-    if (key === 'jupiter') {                                 // 거대한 띠무늬 행성
-      const cx = 290, cy = 78, r = 62;
-      for (let y = -r; y <= r; y++) { const hw = Math.round(Math.sqrt(r * r - y * y)); const bandc = ['#c8905a', '#e8c89a', '#a86a3e', '#d8ae80'][(Math.floor((y + r) / 9)) % 4]; rect(g, cx - hw, cy + y, hw * 2, 1, bandc); }
-      rect(g, cx - 18, cy + 14, 14, 8, '#a8402a');
-    }
-    if (key === 'era0' || key === 'era1') {                  // 구름
-      for (let i = 0; i < 5; i++) { const x = 20 + R() * 330 | 0, y = 14 + R() * 60 | 0, w = 14 + R() * 18 | 0; rect(g, x, y, w, 3, '#fff'); rect(g, x + 3, y - 2, w - 7, 2, '#fff'); }
-    }
-    // 먼 산(두 겹)
-    [0, 1].forEach(layer => {
-      let h = 20 + layer * 6, v = 0;
-      g.fillStyle = L.mtn[layer];
-      for (let x = 0; x < C.CW; x += 2) {
-        v += (R() - 0.5) * 3; v *= 0.93; h = Math.max(10, Math.min(52, h + v + (layer ? 0.1 : -0.05)));
-        const top = GY - 10 - h - (layer ? 0 : 22) | 0;
-        g.fillRect(x, top, 2, GY - top);
-      }
-    });
-    if (key === 'era3') {                                    // 도시 스카이라인
-      for (let x = 0; x < C.CW; x += 9) { const hh = 14 + R() * 38 | 0; rect(g, x, GY - hh - 6, 8, hh, '#161036'); for (let k = 0; k < hh / 6; k++) if (R() < 0.5) rect(g, x + 2 + (R() * 3 | 0), GY - hh - 3 + k * 6, 1, 2, R() < 0.5 ? '#25e0d0' : '#ff5ab4'); }
-    }
-    // 땅
-    rect(g, 0, GY, C.CW, C.CH - GY, L.gnd); rect(g, 0, GY, C.CW, 2, L.edge);
-    for (let i = 0; i < 160; i++) rect(g, R() * C.CW | 0, GY + 3 + (R() * (C.CH - GY - 4) | 0), 2, 1, L.gnd2);
-    if (key === 'moon') for (let i = 0; i < 9; i++) { const x = 20 + R() * 340 | 0, w = 8 + R() * 10 | 0; rect(g, x, GY + 5 + (R() * 10 | 0), w, 2, L.gnd2); }
-    if (key === 'era3') for (let x = 0; x < C.CW; x += 16) rect(g, x, GY + 2, 1, C.CH - GY, '#1c2438');
-    // 거리 눈금: 대포에서 10 m 간격 (계산할 때 쓰는 자)
-    for (let d = 10; d <= 50; d += 10) {
-      const px = toPx(C.CANNON_X + d);
-      rect(g, px, GY, 1, 5, '#ffffffcc'); drawNum(g, d, px - (String(d).length * 2 - 1), GY + 7, '#ffffffdd');
-    }
-    // 높이 눈금(오른쪽 끝, 10 m 간격)
-    for (let hgt = 10; hgt <= 30; hgt += 10) {
-      const py = toPy(hgt); for (let x = 0; x < C.CW; x += 6) rect(g, x, py, 2, 1, '#ffffff33');
-      drawNum(g, hgt, C.CW - 12, py - 6, '#ffffffaa');
-    }
-    return cv;
-  }
-
-  // ---------- 무기(시대별) ----------
-  function line(g, x0, y0, ang, len, th, col) {
-    g.fillStyle = col;
-    for (let i = 0; i <= len; i++) g.fillRect(Math.round(x0 + Math.cos(ang) * i - th / 2), Math.round(y0 - Math.sin(ang) * i - th / 2), th, th);
-  }
-  function drawWeapon(g, era, angDeg, qSign) {
-    const ox = toPx(C.CANNON_X), oy = toPy(C.MUZZLE_Y), a = angDeg * Math.PI / 180;
-    // 받침
-    if (era === 0) { rect(g, ox - 8, oy + 1, 16, 2, '#6a4524'); rect(g, ox - 6, oy + 3, 2, 8, '#6a4524'); rect(g, ox + 4, oy + 3, 2, 8, '#6a4524'); rect(g, ox - 8, oy + 3, 2, 8, '#8a5a30'); }
-    else if (era === 1) { rect(g, ox - 7, oy + 1, 14, 2, '#9a6b3a'); rect(g, ox - 5, oy + 3, 2, 8, '#6a4524'); rect(g, ox + 3, oy + 3, 2, 8, '#6a4524'); }
-    else if (era === 2) { rect(g, ox - 9, oy + 3, 14, 3, '#6a4524'); [ox - 6, ox + 4].forEach(wx => { rect(g, wx - 3, oy + 3, 7, 8, '#4a3018'); rect(g, wx - 2, oy + 4, 5, 6, '#8a5a30'); rect(g, wx, oy + 6, 1, 2, '#2c2f36'); }); }
-    else { rect(g, ox - 8, oy + 3, 16, 8, '#364458'); rect(g, ox - 8, oy + 3, 16, 1, '#8a98b0'); rect(g, ox - 4, oy + 6, 8, 2, '#25e0d0'); }
-    // 포신
-    if (era === 0) {
-      line(g, ox, oy, a, 12, 2, '#6a4524'); const tx = ox + Math.cos(a) * 12, ty = oy - Math.sin(a) * 12;
-      rect(g, tx - 2, ty - 2, 4, 4, '#9a9a8c'); rect(g, tx - 1, ty - 1, 2, 2, '#c8c8b8');
-    } else if (era === 1) {
-      line(g, ox, oy, a, 11, 1, '#9a6b3a');
-      const mx = ox + Math.cos(a) * 7, my = oy - Math.sin(a) * 7, pa = a + Math.PI / 2;
-      line(g, mx, my, pa, 5, 1, '#d89a3a'); line(g, mx, my, pa + Math.PI, 5, 1, '#d89a3a');
-      const e1x = mx + Math.cos(pa) * 5, e1y = my - Math.sin(pa) * 5, e2x = mx - Math.cos(pa) * 5, e2y = my + Math.sin(pa) * 5;
-      g.strokeStyle = '#f0e8d0'; g.lineWidth = 1; g.beginPath(); g.moveTo(e1x + .5, e1y + .5); g.lineTo(ox - Math.cos(a) * 2 + .5, oy + Math.sin(a) * 2 + .5); g.lineTo(e2x + .5, e2y + .5); g.stroke();
-      line(g, ox, oy, a, 12, 1, '#f4ecd8'); rect(g, ox + Math.cos(a) * 12 - 1, oy - Math.sin(a) * 12 - 1, 2, 2, '#d89a3a');
-    } else if (era === 2) {
-      line(g, ox, oy, a, 13, 4, '#2c2f36'); line(g, ox, oy, a, 13, 2, '#454a54');
-      const tx = ox + Math.cos(a) * 12, ty = oy - Math.sin(a) * 12; rect(g, tx - 2, ty - 2, 4, 4, '#aab4c2');
-      rect(g, ox - 2, oy - 2, 4, 4, '#aab4c2');
-    } else {
-      line(g, ox, oy, a, 14, 3, '#aab8d0');
-      for (let i = 2; i < 13; i += 4) line(g, ox + Math.cos(a) * i, oy - Math.sin(a) * i, a, 1, 3, '#25e0d0');
-      const tx = ox + Math.cos(a) * 14, ty = oy - Math.sin(a) * 14; rect(g, tx - 1, ty - 1, 3, 3, qSign < 0 ? '#4aa8ff' : '#ff5a6a');
-    }
-    // 사수
-    const pe = SP.make('person', era, false, true);
-    g.drawImage(pe, Math.round(ox - 20), GY - pe.height);
-  }
+  const S = SP.HS;                                          // 그림 해상도 배율: 캔버스는 (논리 크기 × S) 장치 픽셀
+  const q = v => Math.round(v * S) / S;
+  const rect = (g, x, y, w, h, c) => { g.fillStyle = c; g.fillRect(q(x), q(y), w, h); };
 
   // ---------- 게임 본체 ----------
   class Game {
     constructor(canvas, hooks) {
-      this.cv = canvas; this.g = canvas.getContext('2d'); this.g.imageSmoothingEnabled = false;
+      this.cv = canvas; canvas.width = C.CW * S; canvas.height = C.CH * S; this.g = canvas.getContext('2d'); this.g.imageSmoothingEnabled = false;
       this.hooks = hooks || {}; this.running = false; this.acc = 0; this.last = 0;
       this.aim = { angle: 45, speed: 15, sign: 1 };
       canvas.addEventListener('pointerdown', e => this._drag(e, true));
@@ -142,7 +27,7 @@
         phase: mission ? 'mission' : 'combat', mShots: 0 });
       if (mission) for (const t of mission.targets) this.enemies.push({ id: ++this.uid, type: 'dummy', kind: t.kind, x: t.x, cy: t.cy, w: t.w, h: t.h, armor: !!t.armor, hp: 1e9, maxhp: 1, speed: 0, age: 0, flash: 0 });
       this.total = stage.spawns.length;
-      this.bg = makeBackground(stage, this.era);
+      this.bg = VD.art.makeBackground(stage, this.era);
       this.aim = { angle: stage.lockAngle || stage.angle.init, speed: stage.lockSpeed || stage.v.init, sign: 1 };
       this.running = true; this.last = performance.now(); this.acc = 0;
       this.hooks.hud && this.hooks.hud(this);
@@ -310,53 +195,31 @@
     // ---------- 그리기 ----------
     render(time) {
       const g = this.g, era = this.era;
+      g.setTransform(S, 0, 0, S, 0, 0); g.imageSmoothingEnabled = false;
       g.save();
-      if (this.shake > 0) g.translate(Math.round((Math.random() - 0.5) * 3), Math.round((Math.random() - 0.5) * 3));
-      g.drawImage(this.bg, 0, 0);
+      if (this.shake > 0) g.translate(Math.round((Math.random() - 0.5) * 3 * S) / S, Math.round((Math.random() - 0.5) * 3 * S) / S);
+      g.drawImage(this.bg, 0, 0, C.CW, C.CH);
       this.drawField(g, time);
       this.drawWind(g, time);
-      const v = SP.village(era); g.drawImage(v, 0, GY - v.height + 1);
-      drawWeapon(g, era, this.aim.angle, this.aim.sign);
+      const v = SP.villageHi(era); g.drawImage(v, 0, GY - v.lh + 1, v.lw, v.lh);
+      VD.art.drawWeapon(g, era, this.aim.angle, this.aim.sign);
       this.drawPreview(g);
-      if (this.ghost) { g.fillStyle = 'rgba(255,255,255,0.35)'; this.ghost.forEach(([x, y], i) => { if (i % 2 === 0) g.fillRect(Math.round(toPx(x)), Math.round(toPy(y)), 1, 1); }); }
-      for (const e of this.enemies) (e.type === 'dummy' ? this.drawDummy(g, e) : this.drawEnemy(g, e, time));
-      for (const b of this.balls) this.drawBall(g, b);
-      for (const q of this.parts) { g.fillStyle = q.col; g.fillRect(Math.round(q.x), Math.round(q.y), 2, 2); }
+      if (this.ghost) { g.fillStyle = 'rgba(255,255,255,0.35)'; this.ghost.forEach(([x, y], i) => { if (i % 2 === 0) g.fillRect(q(toPx(x)), q(toPy(y)), 1, 1); }); }
+      for (const e of this.enemies) (e.type === 'dummy' ? VD.art.drawDummy(g, e, era) : this.drawEnemy(g, e, time));
+      for (const b of this.balls) VD.art.drawBall(g, b, era);
+      for (const q2 of this.parts) { g.fillStyle = q2.col; g.fillRect(q(q2.x), q(q2.y), 1.5, 1.5); }
       g.restore();
     }
 
-    drawDummy(g, e) {
-      const x = Math.round(toPx(e.x)), y = Math.round(toPy(e.cy)), A = SP.PAL[this.era].A;
-      if (e.kind === 'balloon') {
-        const r = Math.round(e.w * PX / 2);
-        rect(g, x, y + r, 1, 14, '#e8e0c8');
-        for (let dy = -r; dy <= r; dy++) { const hw = Math.round(Math.sqrt(r * r - dy * dy)); rect(g, x - hw, y + dy, hw * 2 + 1, 1, e.flash > 0 ? '#fff' : (dy < -r / 3 ? '#ff6a7a' : '#e8334a')); }
-        rect(g, x - r / 2, y - r / 2, 2, 2, '#ffd0d6'); return;
-      }
-      const hs = Math.round(e.h * PX / 2), half = hs;
-      rect(g, x - 1, y + hs - 1, 3, GY - (y + hs) + 1, '#6a4524');               // 받침대
-      rect(g, x - half, y - half, half * 2, half * 2, e.armor ? (SP.PAL[this.era].A) : '#8a5a30');
-      const ring = [['#fff', 0.8], ['#e8334a', 0.62], ['#fff', 0.44], ['#e8334a', 0.26], ['#fff', 0.1]];
-      ring.forEach(([c, k]) => { const h = Math.max(1, Math.round(half * k)); rect(g, x - h, y - h, h * 2, h * 2, e.flash > 0 ? '#ffe08a' : c); });
-      if (e.armor) { [[-half, -half], [half - 2, -half], [-half, half - 2], [half - 2, half - 2]].forEach(([dx, dy]) => rect(g, x + dx, y + dy, 2, 2, '#2c2f36')); }
-    }
     drawEnemy(g, e, time) {
       const d = VD.ENEMY[e.type], c = this.enemyBox(e);
       const name = e.type === 'eagle' ? 'eagle' + (Math.floor(time * 5) % 2) : e.type;
-      const sp = SP.make(name, this.era, false, e.armor);
-      const bob = e.type === 'eagle' ? 0 : Math.floor(e.age * 6) % 2;
-      const x = Math.round(toPx(e.x) - sp.width / 2), y = e.type === 'eagle' ? Math.round(toPy(c.y) - sp.height / 2) : GY - sp.height - bob + 1;
-      g.drawImage(sp, x, y);
-      if (e.maxhp > 1) for (let i = 0; i < e.maxhp; i++) { g.fillStyle = i < e.hp ? '#e8334a' : '#444'; g.fillRect(x + sp.width / 2 - e.maxhp * 2 + i * 4, y - 4, 3, 2); }
-    }
-    drawBall(g, b) {
-      const p = b.p, x = toPx(p.x), y = toPy(p.y), era = this.era;
-      if (era === 3) { g.fillStyle = 'rgba(255,255,255,0.25)'; b.trail.forEach(([tx, ty], i) => g.fillRect(Math.round(toPx(tx)), Math.round(toPy(ty)), 1, 1)); }
-      else { g.fillStyle = 'rgba(255,255,255,0.4)'; b.trail.forEach(([tx, ty]) => g.fillRect(Math.round(toPx(tx)), Math.round(toPy(ty)), 1, 1)); }
-      if (era === 0) { rect(g, x - 1, y - 1, 3, 3, '#9a9a8c'); rect(g, x, y, 1, 1, '#d8d8c8'); }
-      else if (era === 1) { const a = Math.atan2(p.vy, p.vx); line(g, x - Math.cos(a) * 3, y + Math.sin(a) * 3, a, 6, 1, '#f4ecd8'); rect(g, x + Math.cos(a) * 3, y - Math.sin(a) * 3, 1, 1, '#d89a3a'); }
-      else if (era === 2) { rect(g, x - 2, y - 1, 4, 3, '#2c2f36'); rect(g, x - 1, y - 2, 2, 5, '#2c2f36'); rect(g, x - 1, y - 1, 1, 1, '#aab4c2'); }
-      else { const col = b.sign < 0 ? '#4aa8ff' : '#ff5a6a'; g.fillStyle = col + '55'; g.fillRect(Math.round(x - 3), Math.round(y - 3), 6, 6); rect(g, x - 1, y - 1, 3, 3, col); rect(g, x, y, 1, 1, '#fff'); }
+      const sp = SP.makeHi(name, this.era, false, e.armor);
+      const bob = e.type === 'eagle' ? 0 : (Math.floor(e.age * 6) % 2) * 0.5;
+      const x = q(toPx(e.x) - sp.lw / 2), y = e.type === 'eagle' ? q(toPy(c.y) - sp.lh / 2) : GY - sp.lh - bob + 1;
+      if (e.type !== 'eagle') { g.fillStyle = 'rgba(0,0,0,0.22)'; g.fillRect(q(x + 1), GY, sp.lw - 2, 1); }                    // 그림자
+      g.drawImage(sp, x, y, sp.lw, sp.lh);
+      if (e.maxhp > 1) for (let i = 0; i < e.maxhp; i++) { g.fillStyle = '#10162c'; g.fillRect(q(x + sp.lw / 2 - e.maxhp * 2 + i * 4 - 0.5), y - 4.5, 4, 3); g.fillStyle = i < e.hp ? '#e8334a' : '#444'; g.fillRect(q(x + sp.lw / 2 - e.maxhp * 2 + i * 4), y - 4, 3, 2); }
     }
     drawPreview(g) {
       const pv = this.stage.preview; if (!pv || pv.mode === 'none' || this.over) return;

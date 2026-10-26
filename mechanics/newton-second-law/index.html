@@ -1,1010 +1,1034 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>뉴턴 제2법칙 가상 실험실 (F = ma)</title>
-  
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Font Awesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- KaTeX for formulas -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>뉴턴 제2법칙 가상 실험실</title>
+<style>
+  :root {
+    --bg: #f4f6fa; --panel: #ffffff; --ink: #1c2733; --sub: #5a6b7d;
+    --accent: #1f6fd6; --accent2: #d64545; --ok: #1e8f4e;
+    --border: #d7dee8; --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+  body {
+    font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+    background: var(--bg); color: var(--ink);
+    padding: 12px; font-size: 15px;
+  }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  header h1 { font-size: 1.25em; }
+  header .spacer { flex: 1; }
+  a.home { text-decoration:none; color:var(--sub); border:1px solid var(--border); padding:6px 12px; border-radius:8px; font-size:0.9em; white-space:nowrap; }
 
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
-    body {
-      font-family: 'Pretendard', sans-serif;
-    }
-    .font-mono {
-      font-family: 'JetBrains Mono', monospace;
-    }
-    /* Custom Scrollbar */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #f1f5f9;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
-      border-radius: 4px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #94a3b8;
-    }
-  </style>
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .tabs button { flex: 0 0 auto; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 1em; }
+  .tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .layout { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .sim-col { flex: 2 1 480px; display: flex; flex-direction: column; gap: 12px; }
+  .side-col { flex: 1 1 320px; display: flex; flex-direction: column; gap: 12px; }
+
+  #sceneWrap { position: relative; width: 100%; aspect-ratio: 4/3; border-radius: 8px; overflow: hidden; background: radial-gradient(circle at 50% 30%, #16233a, #060a12 75%); }
+  #sceneWrap canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #hoverHint { position:absolute; left:8px; bottom:8px; color:#9fb3d9; font-size:0.78em; background:rgba(6,10,18,0.55); padding:4px 8px; border-radius:6px; pointer-events:none; }
+  #hoverHint:empty { display: none; }
+  #simError { position:absolute; left:8px; right:8px; top:8px; color:#fff; background:rgba(214,69,69,0.92); padding:6px 10px; border-radius:6px; font-size:0.82em; white-space:pre-wrap; }
+
+  .scenario-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .scenario-picker button { flex: 1 1 30%; min-width: 120px; padding: 8px 6px; font-size: 0.86em; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  .scenario-picker button.active { background: #eaf1fd; border-color: var(--accent); color: var(--accent); font-weight: 700; }
+
+  .param { margin-bottom: 10px; }
+  .param label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 4px; font-size: 0.92em; }
+  .param label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .param input[type=range] { width: 100%; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .hint { color: var(--sub); font-size: 0.83em; margin-top: 2px; line-height: 1.5; }
+
+  button { font-size: 1em; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.warn { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .controls-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.82em; color: var(--sub); margin-top: 8px; }
+  .legend:empty { display: none; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .swatch { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .swatch.bar { border-radius: 2px; }
+
+  table.readout { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+  table.readout td { padding: 4px 2px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  table.readout td:first-child { color: var(--sub); }
+  table.readout td:last-child { text-align: right; font-weight: 700; }
+
+  details { margin-top: 6px; }
+  summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+  .formula-body { padding: 8px 2px; line-height: 1.8; font-size: 0.92em; }
+  .formula-body .eq { font-size: 1.08em; text-align: center; margin: 6px 0; font-family: Georgia, serif; }
+  .note { border-left: 3px solid var(--accent); background: #eef4fd; padding: 8px 10px; border-radius: 6px; font-size: 0.86em; margin-top: 8px; line-height: 1.6; }
+  .note:empty { display: none; }
+  .misconception { border-left: 3px solid var(--accent2); background: #fdeeee; padding: 8px 10px; border-radius: 6px; font-size: 0.86em; margin-top: 8px; line-height: 1.6; }
+
+  canvas.chart { width: 100%; background: #fff; border: 1px solid var(--border); border-radius: 6px; }
+
+  body.projector { font-size: 19px; }
+  body.projector button { padding: 12px 18px; }
+  body.projector .scenario-picker button { font-size: 1em; padding: 12px 8px; }
+
+  @media (max-width: 720px) {
+    body { font-size: 16px; padding: 8px; }
+    .layout { flex-direction: column; }
+    .sim-col, .side-col { flex: 1 1 100%; }
+    button { padding: 11px 14px; }
+    input[type=range] { height: 26px; }
+  }
+/* ---- 레시피 입력 extra_css ---- */
+.lb-proc{border:1px solid var(--border);border-radius:8px;padding:6px 10px;margin-bottom:8px;background:#f8fafc}.lb-proc summary{cursor:pointer;font-weight:700}.lb-proc ol{margin:6px 0 2px 18px;padding:0;font-size:13px;line-height:1.5}.lb-note{font-size:13px;color:var(--sub);margin-bottom:8px}.lb-bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}.lb-btn{padding:8px 12px;border:1px solid var(--ok);border-radius:8px;background:#e8f6ee;color:var(--ink);cursor:pointer;font:inherit;font-weight:600}.lb-btn.alt{border-color:var(--accent);background:#eaf2ff}.lb-btn.warn{border-color:var(--accent2);background:#fde8e8}.lb-btn:disabled{opacity:.45;cursor:not-allowed}.lb-warn{color:var(--accent2);margin:6px 0;font-weight:600}.lb-stat{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}.lb-badge{padding:4px 10px;border-radius:999px;border:1px solid var(--border);color:var(--sub);font-size:13px}.lb-badge.on{border-color:var(--ok);color:var(--ok);font-weight:700}.lb-tbl{width:100%;border-collapse:collapse;font-size:13px;color:var(--ink)}.lb-tbl th,.lb-tbl td{border:1px solid var(--border);padding:5px 7px;text-align:right}.lb-tbl.wide th,.lb-tbl.wide td{text-align:left;vertical-align:top;line-height:1.45}.lb-tbl td.k{font-weight:700;color:var(--accent);white-space:nowrap}.lb-tbl th{background:#eef2f8}
+</style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
-<a href="../../index.html" title="홈으로" style="position:fixed;left:12px;bottom:12px;z-index:99999;background:rgba(255,255,255,.94);color:#1c2733;text-decoration:none;padding:8px 13px;border-radius:9px;font:600 14px/1 'Segoe UI','Malgun Gothic',sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.22);border:1px solid rgba(0,0,0,.12)">🏠 홈</a>
+<body>
 
-  <!-- Header -->
-  <header class="bg-slate-800/80 backdrop-blur border-b border-slate-700 px-6 py-4 sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
-      <div class="flex items-center space-x-3">
-        <div class="bg-indigo-600 p-2.5 rounded-xl text-white shadow-lg shadow-indigo-500/30">
-          <i class="fa-solid fa-atom text-xl"></i>
-        </div>
-        <div>
-          <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-            뉴턴 제2법칙 실험 시뮬레이션
-            <span class="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-500/30">F = ma</span>
-          </h1>
-          <p class="text-xs text-slate-400">힘($F$), 질량($m$), 가속도($a$) 사이의 상호 관계 탐구 및 그래프 해석</p>
-        </div>
-      </div>
+<header>
+  <a class="home" href="../../index.html">🏠 홈</a>
+  <h1>🛷 뉴턴 제2법칙 가상 실험실</h1>
+  <span class="spacer"></span>
+  <button id="projectorBtn" title="프로젝터용 큰 글씨 모드">🖥 큰 글씨 모드</button>
+</header>
 
-      <!-- Experiment Presets -->
-      <div class="flex items-center gap-2 bg-slate-900/60 p-1.5 rounded-xl border border-slate-700/60">
-        <button id="tabMode1" onclick="setExperimentMode('force')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all bg-indigo-600 text-white shadow">
-          실험 1: 질량 일정 ($F \text{ vs } a$)
-        </button>
-        <button id="tabMode2" onclick="setExperimentMode('mass')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-400 hover:text-white">
-          실험 2: 힘 일정 ($m \text{ vs } a$)
-        </button>
-        <button id="tabMode3" onclick="setExperimentMode('free')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-400 hover:text-white">
-          자유 탐구 모드
-        </button>
+<div class="tabs" id="tabs"></div>
+
+<div class="layout">
+
+  <div class="sim-col">
+    <div class="panel">
+      <div id="sceneWrap">
+        <div id="hoverHint"></div>
+        <div id="simError" hidden></div>
       </div>
+      <div class="legend" id="legend"></div>
     </div>
-  </header>
 
-  <!-- Main Content Layout -->
-  <main class="max-w-7xl mx-auto p-4 md:p-6 w-full grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
-    
-    <!-- LEFT PANEL: Simulation & Controls (7 Cols) -->
-    <section class="lg:col-span-7 flex flex-col gap-5">
-      
-      <!-- Simulation Canvas Box -->
-      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-xl flex flex-col gap-3">
-        <div class="flex justify-between items-center border-b border-slate-700/60 pb-2.5">
-          <div class="flex items-center gap-2 text-sm font-semibold text-slate-200">
-            <i class="fa-solid fa-gauge-high text-indigo-400"></i>
-            <span>실시간 운동 트랙 (마찰 없음 가정)</span>
-          </div>
-          <div class="flex items-center gap-4 text-xs font-mono">
-            <span class="text-slate-400">시간: <strong id="valTime" class="text-indigo-400 text-sm">0.00</strong>s</span>
-            <span class="text-slate-400">이동거리: <strong id="valDistance" class="text-emerald-400 text-sm">0.00</strong>m</span>
-            <span class="text-slate-400">속도: <strong id="valVelocity" class="text-amber-400 text-sm">0.00</strong>m/s</span>
-          </div>
-        </div>
-
-        <!-- Canvas Container -->
-        <div class="relative w-full aspect-[2.4/1] bg-gradient-to-b from-slate-950 to-slate-900 rounded-xl overflow-hidden border border-slate-800 shadow-inner">
-          <canvas id="simCanvas" class="w-full h-full block"></canvas>
-          
-          <!-- End-of-track Flag -->
-          <div class="absolute right-3 top-2 text-[11px] bg-slate-800/90 text-slate-300 px-2 py-1 rounded border border-slate-700 font-mono">
-            결승선 (10.0 m)
-          </div>
-        </div>
-
-        <!-- Real-time Dashboard Gauges -->
-        <div class="grid grid-cols-3 gap-3">
-          <div class="bg-slate-900/80 border border-slate-700/50 p-3 rounded-xl flex items-center justify-between">
-            <div>
-              <div class="text-[11px] font-medium text-slate-400">작용하는 알짜힘 ($F$)</div>
-              <div class="text-xl font-bold font-mono text-cyan-400" id="dashForce">2.0 <span class="text-xs font-normal">N</span></div>
-            </div>
-            <div class="w-9 h-9 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center font-bold">
-              F
-            </div>
-          </div>
-          
-          <div class="bg-slate-900/80 border border-slate-700/50 p-3 rounded-xl flex items-center justify-between">
-            <div>
-              <div class="text-[11px] font-medium text-slate-400">수레의 총 질량 ($m$)</div>
-              <div class="text-xl font-bold font-mono text-amber-400" id="dashMass">1.0 <span class="text-xs font-normal">kg</span></div>
-            </div>
-            <div class="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold">
-              m
-            </div>
-          </div>
-
-          <div class="bg-slate-900/80 border border-indigo-500/30 p-3 rounded-xl flex items-center justify-between ring-1 ring-indigo-500/20">
-            <div>
-              <div class="text-[11px] font-medium text-indigo-300">계산된 가속도 ($a = F/m$)</div>
-              <div class="text-xl font-bold font-mono text-indigo-400" id="dashAcc">2.00 <span class="text-xs font-normal">m/s²</span></div>
-            </div>
-            <div class="w-9 h-9 rounded-lg bg-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold">
-              a
-            </div>
-          </div>
-        </div>
-
-        <!-- Controls: Simulation Playback -->
-        <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
-          <div class="flex items-center gap-2">
-            <button id="btnPlay" onclick="togglePlay()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-semibold rounded-xl text-sm transition-all flex items-center gap-2 shadow-lg shadow-indigo-600/30">
-              <i class="fa-solid fa-play" id="playIcon"></i>
-              <span id="playText">실험 시작</span>
-            </button>
-            <button onclick="resetSim()" class="px-4 py-2.5 bg-slate-700 hover:bg-slate-600 active:scale-95 text-slate-200 font-medium rounded-xl text-sm transition-all flex items-center gap-1.5">
-              <i class="fa-solid fa-rotate-left"></i>
-              <span>초기화</span>
-            </button>
-          </div>
-
-          <div class="flex items-center gap-2">
-            <button onclick="recordDataPoint()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-semibold rounded-xl text-sm transition-all flex items-center gap-2 shadow-lg shadow-emerald-600/30">
-              <i class="fa-solid fa-circle-plus"></i>
-              <span>현재 측정값 기록</span>
-            </button>
-            <button onclick="autoGenerateSampleSeries()" title="질량이나 힘을 변경하며 5회 자동 연속 측정" class="px-3.5 py-2.5 bg-slate-700/80 hover:bg-slate-600 text-slate-300 hover:text-white rounded-xl text-sm transition-all flex items-center gap-1.5">
-              <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i>
-              <span class="hidden sm:inline">5회 자동측정</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Slider Controls Panel -->
-      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl flex flex-col gap-5">
-        <div class="flex items-center justify-between border-b border-slate-700/70 pb-3">
-          <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
-            <i class="fa-solid fa-sliders text-indigo-400"></i>
-            <span>실험 변인 조절 장치</span>
-          </h2>
-          <span id="modeDescription" class="text-xs text-indigo-300 bg-indigo-950/60 px-2.5 py-1 rounded-full border border-indigo-800/60">
-            질량($m$)을 1.0kg으로 고정하고 힘($F$)을 변화시킵니다.
-          </span>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <!-- Force Slider -->
-          <div class="flex flex-col gap-2.5 bg-slate-900/60 p-4 rounded-xl border border-slate-700/50" id="forceControlBox">
-            <div class="flex justify-between items-center">
-              <label for="sliderForce" class="text-xs font-semibold text-cyan-300 flex items-center gap-1.5">
-                <i class="fa-solid fa-arrow-right-long text-cyan-400"></i>
-                당기는 힘 ($F$)
-              </label>
-              <div class="font-mono font-bold text-cyan-300 text-sm bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800/60">
-                <span id="labelForce">2.0</span> N
-              </div>
-            </div>
-            <input type="range" id="sliderForce" min="0.5" max="10.0" step="0.5" value="2.0" oninput="onParamChange()" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-400">
-            <div class="flex justify-between text-[10px] text-slate-400 font-mono">
-              <span>0.5 N</span>
-              <span>5.0 N</span>
-              <span>10.0 N</span>
-            </div>
-          </div>
-
-          <!-- Mass Slider -->
-          <div class="flex flex-col gap-2.5 bg-slate-900/60 p-4 rounded-xl border border-slate-700/50" id="massControlBox">
-            <div class="flex justify-between items-center">
-              <label for="sliderMass" class="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
-                <i class="fa-solid fa-weight-hanging text-amber-400"></i>
-                수레 질량 ($m$)
-              </label>
-              <div class="font-mono font-bold text-amber-300 text-sm bg-amber-950/80 px-2 py-0.5 rounded border border-amber-800/60">
-                <span id="labelMass">1.0</span> kg
-              </div>
-            </div>
-            <input type="range" id="sliderMass" min="0.5" max="5.0" step="0.5" value="1.0" oninput="onParamChange()" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-400">
-            <div class="flex justify-between text-[10px] text-slate-400 font-mono">
-              <span>0.5 kg</span>
-              <span>2.5 kg</span>
-              <span>5.0 kg</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Educational Hint Note -->
-        <div class="bg-indigo-950/30 border border-indigo-800/40 rounded-xl p-3.5 flex items-start gap-3 text-xs text-slate-300">
-          <i class="fa-solid fa-lightbulb text-indigo-400 text-base mt-0.5"></i>
-          <div class="leading-relaxed" id="conceptHint">
-            <strong>탐구 포인트:</strong> 질량이 일정할 때 당기는 힘($F$)을 2배, 3배로 증가시키면 가속도($a$)는 어떻게 변화할까요? 값을 변경하며 측정값을 기록해보세요.
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- RIGHT PANEL: Data Table & Interactive Graph (5 Cols) -->
-    <section class="lg:col-span-5 flex flex-col gap-5">
-      
-      <!-- Graph View & Analysis Card -->
-      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
-        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-700/70 pb-3">
-          <div class="flex items-center gap-2">
-            <i class="fa-solid fa-chart-line text-emerald-400"></i>
-            <h2 class="text-sm font-bold text-slate-200">실험 데이터 그래프 분석</h2>
-          </div>
-          
-          <!-- Axis Selector Switch -->
-          <div class="flex bg-slate-900 p-1 rounded-lg border border-slate-700 text-xs">
-            <button id="btnGraphFA" onclick="switchGraphType('F-a')" class="px-2.5 py-1 rounded-md font-semibold bg-emerald-600 text-white transition-all">
-              F - a
-            </button>
-            <button id="btnGraphMA" onclick="switchGraphType('m-a')" class="px-2.5 py-1 rounded-md font-semibold text-slate-400 hover:text-white transition-all">
-              m - a
-            </button>
-            <button id="btnGraphInvMA" onclick="switchGraphType('invM-a')" class="px-2.5 py-1 rounded-md font-semibold text-slate-400 hover:text-white transition-all">
-              (1/m) - a
-            </button>
-          </div>
-        </div>
-
-        <!-- Chart Container -->
-        <div class="relative w-full h-64 bg-slate-900/90 rounded-xl p-2 border border-slate-700/60">
-          <canvas id="analysisChart"></canvas>
-        </div>
-
-        <!-- Trendline / Regression Info Box -->
-        <div id="regressionAnalysisBox" class="bg-slate-900/90 border border-emerald-500/30 rounded-xl p-3.5 flex flex-col gap-1.5 text-xs">
-          <div class="flex items-center justify-between text-emerald-400 font-semibold">
-            <span class="flex items-center gap-1.5">
-              <i class="fa-solid fa-square-root-variable"></i>
-              그래프 해석 및 비례식 유도
-            </span>
-            <span id="trendlineEq" class="font-mono text-white bg-slate-800 px-2 py-0.5 rounded border border-slate-700">a = 1.000 × F</span>
-          </div>
-          <p id="trendlineDesc" class="text-slate-300 text-[11px] leading-relaxed">
-            데이터가 원점을 지나는 직선을 이룹니다. 즉, <strong>가속도($a$)는 알짜힘($F$)에 정비례</strong>합니다. (기울기 $= \frac{1}{m} = 1.0\text{ kg}^{-1}$)
-          </p>
-        </div>
-      </div>
-
-      <!-- Data Record Table -->
-      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl flex flex-col gap-3">
-        <div class="flex items-center justify-between border-b border-slate-700/70 pb-3">
-          <div class="flex items-center gap-2">
-            <i class="fa-solid fa-table-list text-indigo-400"></i>
-            <h3 class="text-sm font-bold text-slate-200">측정 데이터 목록</h3>
-            <span id="dataCountBadge" class="text-[11px] font-mono bg-indigo-900/60 text-indigo-300 px-2 py-0.2 rounded-full border border-indigo-700/50">0개 기록됨</span>
-          </div>
-          <button onclick="clearDataTable()" class="text-xs text-rose-400 hover:text-rose-300 transition-colors flex items-center gap-1">
-            <i class="fa-regular fa-trash-can"></i> 전체 삭제
-          </button>
-        </div>
-
-        <!-- Table View with Scroll -->
-        <div class="overflow-x-auto max-h-52 overflow-y-auto rounded-lg border border-slate-700">
-          <table class="w-full text-left text-xs text-slate-300 font-mono">
-            <thead class="bg-slate-900/90 text-slate-400 uppercase text-[10px] sticky top-0 border-b border-slate-700">
-              <tr>
-                <th class="py-2.5 px-3">회차</th>
-                <th class="py-2.5 px-3 text-cyan-400">힘 F (N)</th>
-                <th class="py-2.5 px-3 text-amber-400">질량 m (kg)</th>
-                <th class="py-2.5 px-3 text-purple-400">1/m (kg⁻¹)</th>
-                <th class="py-2.5 px-3 text-indigo-400">가속도 a (m/s²)</th>
-                <th class="py-2.5 px-2 text-center">삭제</th>
-              </tr>
-            </thead>
-            <tbody id="dataTableBody" class="divide-y divide-slate-700/60 bg-slate-800/40">
-              <!-- Dynamically populated rows -->
-            </tbody>
-          </table>
-          <div id="tableEmptyState" class="py-8 text-center text-slate-500 text-xs">
-            <i class="fa-solid fa-flask-vial text-2xl mb-2 text-slate-600 block"></i>
-            '현재 측정값 기록' 버튼을 눌러 데이터를 누적하세요.
-          </div>
-        </div>
-      </div>
-
-    </section>
-  </main>
-
-  <!-- Notification Toast -->
-  <div id="toastBox" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-indigo-600 text-white px-4 py-2.5 rounded-xl shadow-2xl text-xs flex items-center gap-2 border border-indigo-400/40">
-    <i class="fa-solid fa-circle-check"></i>
-    <span id="toastMsg">알림 메시지</span>
+    <div class="panel" id="graphPanel" hidden>
+      <canvas id="chartCanvas" class="chart" width="440" height="220"></canvas>
+      <div class="hint" id="chartHint"></div>
+    </div>
   </div>
 
-  <!-- JavaScript Logic -->
-  <script>
-    /* ============================================================
-       1. Global State & Variables
-    ============================================================ */
-    const TRACK_LENGTH = 10.0; // Total track length in meters
-    let simState = {
-      force: 2.0,        // Newtons (F)
-      mass: 1.0,         // Kilograms (m)
-      time: 0.0,         // Seconds
-      distance: 0.0,     // Meters (s)
-      velocity: 0.0,     // m/s (v)
-      acceleration: 2.0, // m/s² (a = F/m)
-      running: false,
-      lastTimestamp: null,
-      mode: 'force'      // 'force' (F-a focus), 'mass' (m-a focus), 'free'
-    };
+  <div class="side-col">
 
-    let dataset = []; // Stores { id, force, mass, invMass, acc }
-    let graphType = 'F-a'; // 'F-a', 'm-a', 'invM-a'
-    let chartInstance = null;
+    <div class="panel" id="scenarioPanel">
+      <div class="scenario-picker" id="scenarioPicker"></div>
+      <div id="scenarioBody"></div>
+      <div id="customPanel"></div>
+    </div>
 
-    // Canvas Elements
-    const canvas = document.getElementById('simCanvas');
-    const ctx = canvas.getContext('2d');
+    <div class="panel" id="readoutPanel">
+      <b id="readoutTitle"></b>
+      <table class="readout" id="readout"></table>
+      <div class="note" id="readoutNote"></div>
+    </div>
 
-    /* ============================================================
-       2. Initialization
-    ============================================================ */
-    window.addEventListener('DOMContentLoaded', () => {
-      resizeCanvas();
-      window.addEventListener('resize', resizeCanvas);
-      
-      initChart();
-      updateDashboard();
-      drawSimulation();
-      
-      // Auto-load 4 default sample measurements for quick first impression
-      preloadIntroData();
+    <div class="panel">
+      <details id="formulaDetails">
+        <summary>📐 관련 공식 보기</summary>
+        <div class="formula-body" id="formulaBody"></div>
+      </details>
+    </div>
+
+    <div class="panel" id="misconceptionPanel"></div>
+
+  </div>
+</div>
+
+
+<script>
+const WS_CONFIG = {
+ "title": "뉴턴 제2법칙 가상 실험실",
+ "renderer": "canvas2d",
+ "scene": {},
+ "legend": [],
+ "tabs": [
+  {
+   "id": "exp",
+   "label": "① 실험"
+  },
+  {
+   "id": "ana",
+   "label": "② 자료 분석"
+  }
+ ],
+ "scenarios": [
+  {
+   "id": "A",
+   "tab": "exp",
+   "name": "A. 힘만 바꾸기 (총질량 고정)",
+   "section": "실험 조건",
+   "animated": true,
+   "desc": "수레 위 추를 걸이로 옮겨 힘 F = m g 만 바꾼다. 수레 쪽 + 걸이 질량의 합은 600 g 로 일정하다.",
+   "params": [
+    {
+     "key": "mhA",
+     "label": "걸이추 질량 m",
+     "min": 10,
+     "max": 100,
+     "step": 10,
+     "value": 50,
+     "unit": "g"
+    }
+   ],
+   "choices": [
+    {
+     "key": "tilt",
+     "label": "트랙 마찰 보정",
+     "options": [
+      {
+       "value": "none",
+       "label": "보정 없음 (수평)"
+      },
+      {
+       "value": "ok",
+       "label": "알맞게 기울여 보정"
+      },
+      {
+       "value": "over",
+       "label": "너무 기울임 (과보정)"
+      }
+     ],
+     "value": "none"
+    },
+    {
+     "key": "timer",
+     "label": "시간 재는 방법",
+     "options": [
+      {
+       "value": "hand",
+       "label": "손 스톱워치 (반응 오차 ±0.06 s)"
+      },
+      {
+       "value": "gate",
+       "label": "광전 게이트 (±0.002 s)"
+      }
+     ],
+     "value": "hand"
+    },
+    {
+     "key": "vec",
+     "label": "힘 화살표",
+     "options": [
+      {
+       "value": "on",
+       "label": "보이기"
+      },
+      {
+       "value": "off",
+       "label": "숨기기"
+      }
+     ],
+     "value": "on"
+    }
+   ],
+   "formula": [
+    {
+     "eq_html": "(M + m) a = m g − f",
+     "text_html": "수레와 걸이추는 줄로 묶여 같은 가속도 a 로 움직인다. 끌려가는 것은 수레만이 아니라 (수레 + 걸이추) 전체다."
+    },
+    {
+     "eq_html": "a = (m g − f)/(M + m)",
+     "text_html": "M + m 이 일정하면 a 는 F = m g 에 비례(마찰 f 가 없거나 보정되었을 때)."
+    }
+   ],
+   "misconception_title": "줄의 장력은 m g 가 아니다",
+   "misconception": "걸이추가 가속하며 내려가므로 T = m(g − a) < m g 다. 수레를 당기는 힘은 m g 가 아니라 T 이고, 수레만 보면 T − f = M a. 두 식을 합쳐야 (M + m) a = m g − f."
+  },
+  {
+   "id": "B",
+   "tab": "exp",
+   "name": "B. 질량만 바꾸기 (힘 고정)",
+   "section": "실험 조건",
+   "animated": true,
+   "desc": "걸이추를 50 g 으로 고정하고 수레에 추를 더해 질량만 바꾼다. 힘 F = 0.49 N 은 일정하다.",
+   "params": [
+    {
+     "key": "load",
+     "label": "수레에 얹는 추",
+     "min": 0,
+     "max": 1000,
+     "step": 100,
+     "value": 0,
+     "unit": "g"
+    }
+   ],
+   "choices": [
+    {
+     "key": "tilt",
+     "label": "트랙 마찰 보정",
+     "options": [
+      {
+       "value": "none",
+       "label": "보정 없음 (수평)"
+      },
+      {
+       "value": "ok",
+       "label": "알맞게 기울여 보정"
+      },
+      {
+       "value": "over",
+       "label": "너무 기울임 (과보정)"
+      }
+     ],
+     "value": "none"
+    },
+    {
+     "key": "timer",
+     "label": "시간 재는 방법",
+     "options": [
+      {
+       "value": "hand",
+       "label": "손 스톱워치 (반응 오차 ±0.06 s)"
+      },
+      {
+       "value": "gate",
+       "label": "광전 게이트 (±0.002 s)"
+      }
+     ],
+     "value": "hand"
+    },
+    {
+     "key": "vec",
+     "label": "힘 화살표",
+     "options": [
+      {
+       "value": "on",
+       "label": "보이기"
+      },
+      {
+       "value": "off",
+       "label": "숨기기"
+      }
+     ],
+     "value": "on"
+    }
+   ],
+   "formula": [
+    {
+     "eq_html": "a = (m g − f)/(M + m)",
+     "text_html": "힘 m g 가 일정할 때 계 질량 M + m 이 커지면 a 는 작아진다."
+    },
+    {
+     "eq_html": "a ∝ 1/(M + m)",
+     "text_html": "a 를 1/(M + m) 에 대해 그리면 직선, 기울기가 힘이다."
+    }
+   ],
+   "misconception_title": "질량이 2배면 a 는 정확히 절반일까?",
+   "misconception": "수레 질량만이 아니라 걸이추(50 g)도 끌려가는 질량에 들어간다. 반비례는 계 전체 질량 M + m 에 대해 성립한다."
+  },
+  {
+   "id": "C",
+   "tab": "exp",
+   "name": "C. 걸이추만 늘리기 (변인 둘이 함께 변함)",
+   "section": "실험 조건",
+   "animated": true,
+   "desc": "수레 쪽을 500 g 로 두고 걸이추만 늘린다. 힘도 커지지만 끌려가는 질량도 함께 커진다.",
+   "params": [
+    {
+     "key": "mhC",
+     "label": "걸이추 질량 m",
+     "min": 10,
+     "max": 200,
+     "step": 10,
+     "value": 50,
+     "unit": "g"
+    }
+   ],
+   "choices": [
+    {
+     "key": "tilt",
+     "label": "트랙 마찰 보정",
+     "options": [
+      {
+       "value": "none",
+       "label": "보정 없음 (수평)"
+      },
+      {
+       "value": "ok",
+       "label": "알맞게 기울여 보정"
+      },
+      {
+       "value": "over",
+       "label": "너무 기울임 (과보정)"
+      }
+     ],
+     "value": "none"
+    },
+    {
+     "key": "timer",
+     "label": "시간 재는 방법",
+     "options": [
+      {
+       "value": "hand",
+       "label": "손 스톱워치 (반응 오차 ±0.06 s)"
+      },
+      {
+       "value": "gate",
+       "label": "광전 게이트 (±0.002 s)"
+      }
+     ],
+     "value": "hand"
+    },
+    {
+     "key": "vec",
+     "label": "힘 화살표",
+     "options": [
+      {
+       "value": "on",
+       "label": "보이기"
+      },
+      {
+       "value": "off",
+       "label": "숨기기"
+      }
+     ],
+     "value": "on"
+    }
+   ],
+   "formula": [
+    {
+     "eq_html": "a = m g/(M + m)",
+     "text_html": "m 이 커지면 분모도 커져, a 는 m 에 정비례하지 않고 점점 완만해진다. 최대 a &lt; g."
+    }
+   ],
+   "misconception_title": "힘을 2배로 하면 가속도도 2배?",
+   "misconception": "질량이 일정할 때만 그렇다. 걸이추를 늘리면 질량이 함께 늘어 가속도는 2배가 되지 않는다. 그래서 실험 A 처럼 추를 옮겨 총질량을 맞춘다."
+  },
+  {
+   "id": "ana",
+   "tab": "ana",
+   "name": "자료 분석",
+   "section": "그래프",
+   "animated": false,
+   "desc": "① 실험에서 기록한 점을 그래프로 그리고 직선으로 맞춘다. 세로축은 늘 가속도 a.",
+   "choices": [
+    {
+     "key": "exp",
+     "label": "어느 실험의 자료?",
+     "options": [
+      {
+       "value": "A",
+       "label": "A. 힘만 바꾸기"
+      },
+      {
+       "value": "B",
+       "label": "B. 질량만 바꾸기"
+      },
+      {
+       "value": "C",
+       "label": "C. 걸이추만 늘리기"
+      }
+     ],
+     "value": "A"
+    },
+    {
+     "key": "xk",
+     "label": "가로축",
+     "options": [
+      {
+       "value": "F",
+       "label": "F = m g"
+      },
+      {
+       "value": "M",
+       "label": "계 전체 질량 M"
+      },
+      {
+       "value": "invM",
+       "label": "1/M"
+      }
+     ],
+     "value": "F"
+    },
+    {
+     "key": "theory",
+     "label": "이상적 예측선",
+     "options": [
+      {
+       "value": "off",
+       "label": "숨기기"
+      },
+      {
+       "value": "on",
+       "label": "보이기 (마찰 없음)"
+      }
+     ],
+     "value": "off"
+    }
+   ],
+   "formula": [
+    {
+     "eq_html": "a = F/M",
+     "text_html": "F–a 는 기울기 1/M, a–(1/M) 는 기울기 F 인 직선이다."
+    }
+   ],
+   "misconception_title": "절편이 0이 아니면 실험이 틀린 것?",
+   "misconception": "F–a 직선이 F 축과 만나는 점 F₀ 가 양수이면 마찰이 힘의 일부를 상쇄한 것이다. 오차가 아니라 물리적 정보다 — 트랙을 기울여 줄일 수 있다."
+  }
+ ],
+ "common_params": null,
+ "readout_title": "측정·계산"
+};
+</script>
+<script>
+/* ============================ 시뮬레이션 코드 (레시피 입력 sim_js) ============================ */
+/* 뉴턴 제2법칙: 수레 + 도르래 + 걸이추. 측정값은 실제로 달린 시간(노이즈 포함)에서 a = 2d/t² 로 구한다. */
+const G = 9.8, D = 1.0, MC = 500, MU = 0.02, F0 = 0.004, TOT_A = 600, MH_B = 50;
+const TILTK = { none: 0, ok: 1, over: 1.6 }, TILTN = { none: '보정 없음', ok: '보정함', over: '과보정' }, TIMN = { hand: '손 스톱워치', gate: '광전 게이트' };
+const f1 = x => (+x).toFixed(1), f2 = x => (+x).toFixed(2), f3 = x => (+x).toFixed(3), pc = x => (100 * x).toFixed(1) + ' %';
+const COL = { bg: '#0f1a33', text: '#e3ecff', dim: '#9db0d8', ok: '#5eead4', bad: '#ff5d73', a: '#7fd6ff', b: '#ffb454', c: '#b48cff', grid: 'rgba(160,190,255,.18)' };
+const W0 = 1000, H0 = 625, TAU = Math.PI * 2;
+const NAME = { A: 'A. 힘만 바꾸기', B: 'B. 질량만 바꾸기', C: 'C. 걸이추만 늘리기' };
+const S = { key: '', trials: [], anim: null, pos: 0, stuck: false, rows: { A: [], B: [], C: [] } };
+
+function rnd() { let u = 0; while (u === 0) u = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * Math.random()); }
+function cond(id, P) {
+  let mh, mc;
+  if (id === 'A') { mh = +P.mhA; mc = TOT_A - mh; } else if (id === 'B') { mh = MH_B; mc = MC + +P.load; } else { mh = +P.mhC; mc = MC; }
+  const k = TILTK[P.tilt] === undefined ? 0 : TILTK[P.tilt], mt = mh + mc, F = mh / 1000 * G;
+  const fc = MU * mc / 1000 * G * (1 - k) + F0, Fnet = F - fc;
+  return { id, mh, mc, mt, F, fc, Fnet, moves: Fnet > 0, a: Fnet > 0 ? Fnet / (mt / 1000) : 0 };
+}
+function oneTrial(c, timer) {
+  if (!c.moves) return null;
+  const a = c.a * (1 + 0.015 * rnd()), t = Math.sqrt(2 * D / a), gate = timer === 'gate', sg = gate ? 0.002 : 0.06, q = gate ? 1000 : 100;
+  return { t, tm: Math.max(1 / q, Math.round((t + sg * rnd()) * q) / q) };
+}
+function stats(v) { const n = v.length, m = v.reduce((a, b) => a + b, 0) / n, s = n > 1 ? Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / (n - 1)) : NaN; return { n, m, s }; }
+function linfit(xs, ys) {
+  const n = xs.length, sx = xs.reduce((a, b) => a + b, 0), sy = ys.reduce((a, b) => a + b, 0), sxx = xs.reduce((a, b) => a + b * b, 0), sxy = xs.reduce((a, x, i) => a + x * ys[i], 0), syy = ys.reduce((a, b) => a + b * b, 0);
+  const den = n * sxx - sx * sx; if (!(n >= 2) || Math.abs(den) < 1e-12) return null;
+  const b = (n * sxy - sx * sy) / den, a = (sy - b * sx) / n, r = (n * sxy - sx * sy) / Math.sqrt(den * (n * syy - sy * sy));
+  return { a, b, r2: r * r };
+}
+const xval = (r, xk) => xk === 'F' ? r.F : xk === 'M' ? r.mt / 1000 : 1000 / r.mt;
+const XLAB = { F: 'F = m g  (N)', M: '계 전체 질량 M (kg)', invM: '1/M (kg⁻¹)' };
+
+/* ---------- 그리기 ---------- */
+function begin(api) { const { ctx, width: w, height: h } = api; ctx.fillStyle = COL.bg; ctx.fillRect(0, 0, w, h); const k = Math.min(w / W0, h / H0); ctx.save(); ctx.translate((w - W0 * k) / 2, (h - H0 * k) / 2); ctx.scale(k, k); return ctx; }
+function txt(ctx, s, x, y, col, px, wt, al) { ctx.font = `${wt || 600} ${px || 16}px sans-serif`; ctx.fillStyle = col || COL.text; ctx.textAlign = al || 'left'; ctx.fillText(s, x, y); ctx.textAlign = 'left'; }
+function rr(ctx, x, y, w, h, r, fill, stroke) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1.5; ctx.stroke(); } }
+function arrow(ctx, x0, y0, x1, y1, col, lw = 3) {
+  const len = Math.hypot(x1 - x0, y1 - y0); if (len < 4) return; const a = Math.atan2(y1 - y0, x1 - x0), hd = Math.min(13, len * .5);
+  ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - Math.cos(a) * hd * .7, y1 - Math.sin(a) * hd * .7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - hd * Math.cos(a - .45), y1 - hd * Math.sin(a - .45)); ctx.lineTo(x1 - hd * Math.cos(a + .45), y1 - hd * Math.sin(a + .45)); ctx.closePath(); ctx.fill();
+}
+const X0 = 90, KX = 560, CW = 95, PUX = 860, KF = 90;
+function drawRig(api, c) {
+  const P = api.P, ctx = begin(api), id = c.id, mv = !!S.anim, pos = S.pos, gate = P.timer === 'gate';
+  txt(ctx, `${NAME[id]} — 수레 + 도르래 + 걸이추 (옆에서 본 모습, 직접 그린 도식)`, 24, 34, COL.dim, 16);
+  const left = X0 + pos * KX, front = left + CW, gx = X0 + D * KX + CW;
+  rr(ctx, X0 - 20, 172, PUX - X0 + 10, 10, 3, '#3b4a73'); ctx.strokeStyle = 'rgba(160,190,255,.35)'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 10; i++) { const x = X0 + CW + i * KX / 10; ctx.beginPath(); ctx.moveTo(x, 182); ctx.lineTo(x, i % 5 ? 190 : 197); ctx.stroke(); if (i % 5 === 0) txt(ctx, `${(i / 10).toFixed(1)} m`, x, 214, COL.dim, 12, 500, 'center'); }
+  ctx.setLineDash([5, 5]); ctx.strokeStyle = COL.ok; ctx.beginPath(); ctx.moveTo(X0 + CW, 110); ctx.lineTo(X0 + CW, 180); ctx.stroke(); ctx.setLineDash([]); txt(ctx, '출발선', X0 + CW, 100, COL.ok, 13, 600, 'center');
+  ctx.strokeStyle = COL.b; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(gx, 172); ctx.lineTo(gx, gate ? 100 : 130); ctx.stroke();
+  txt(ctx, gate ? '광전 게이트 (1.00 m)' : '도착 표지 (1.00 m) — 눈으로 보고 스톱워치 정지', gx, gate ? 90 : 120, COL.b, 13, 600, 'center');
+  rr(ctx, left, 130, CW, 40, 6, '#2a4a9a', COL.a);
+  const nb = id === 'A' ? Math.round((TOT_A - MC - c.mh) / 10) : id === 'B' ? Math.round((c.mc - MC) / 100) : 0;
+  for (let i = 0; i < Math.min(nb, 10); i++) rr(ctx, left + 6 + i * 8.5, 120, 7, 10, 1, '#8fb6ff');
+  txt(ctx, `수레 쪽 ${c.mc} g`, left + CW / 2, 155, COL.text, 12, 600, 'center');
+  [18, CW - 18].forEach(dx => { ctx.fillStyle = '#9db0d8'; ctx.beginPath(); ctx.arc(left + dx, 174, 7, 0, TAU); ctx.fill(); });
+  const hy = 215 + pos * KX * 0.45, nbk = Math.min(20, c.mh / 10), hx = PUX + 14;
+  ctx.strokeStyle = '#cfd9f5'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(front, 150); ctx.lineTo(PUX, 150); ctx.stroke(); ctx.beginPath(); ctx.moveTo(hx, 164); ctx.lineTo(hx, hy); ctx.stroke();
+  ctx.fillStyle = '#5b6a96'; ctx.beginPath(); ctx.arc(PUX, 164, 14, 0, TAU); ctx.fill(); ctx.fillStyle = COL.bg; ctx.beginPath(); ctx.arc(PUX, 164, 4, 0, TAU); ctx.fill();
+  rr(ctx, hx - 20, hy, 40, 8, 2, '#c9d4f0'); for (let i = 0; i < nbk; i++) rr(ctx, hx - 17, hy + 10 + i * 5.5, 34, 4.5, 1, '#ffb454');
+  txt(ctx, `걸이추 ${c.mh} g`, hx - 28, hy + 8 + nbk * 5.5 + 26, COL.b, 13, 600, 'right');
+  if (P.vec !== 'off') {
+    const acc = mv ? c.a : 0, T = c.F - c.mh / 1000 * acc, fe = c.fc;
+    arrow(ctx, hx + 26, hy + 30, hx + 26, hy + 30 + c.F * KF, COL.bad, 4); txt(ctx, 'm g', hx + 34, hy + 30 + c.F * KF, COL.bad, 13);
+    arrow(ctx, hx + 26, hy + 30, hx + 26, hy + 30 - T * KF, COL.a, 4); txt(ctx, 'T', hx + 34, hy + 30 - T * KF + 4, COL.a, 13);
+    arrow(ctx, front, 150, front + T * KF, 150, COL.a, 4); txt(ctx, 'T', front + T * KF - 4, 142, COL.a, 13);
+    arrow(ctx, left, 150, left - fe * KF, 150, COL.b, 4); txt(ctx, fe >= 0 ? '마찰·저항 f' : '기울기 성분(과보정)', left - fe * KF - 6, 142, COL.b, 13, 600, 'right');
+    txt(ctx, '낙하 거리는 비례를 줄여 그렸다', 24, 600, COL.dim, 12, 500);
+  }
+  txt(ctx, S.anim ? '측정 중…' : S.trials.length ? `최근 측정 t = ${f2(S.trials[S.trials.length - 1].tm)} s` : '▶ 아래 패널에서 "1회 측정"', 24, 70, COL.text, 17, 700);
+  ctx.restore();
+}
+function plotV(ctx, o) {
+  const l = 100, r = 950, t = 90, b = 530, X = v => l + (v - o.xmin) / (o.xmax - o.xmin) * (r - l), Y = v => b - (v - o.ymin) / (o.ymax - o.ymin) * (b - t);
+  ctx.strokeStyle = COL.grid; ctx.lineWidth = 1; ctx.font = '13px sans-serif'; ctx.fillStyle = COL.dim;
+  o.xt.forEach(v => { ctx.beginPath(); ctx.moveTo(X(v), t); ctx.lineTo(X(v), b); ctx.stroke(); ctx.fillText(String(v), X(v) - 10, b + 18); });
+  o.yt.forEach(v => { ctx.beginPath(); ctx.moveTo(l, Y(v)); ctx.lineTo(r, Y(v)); ctx.stroke(); ctx.fillText(String(v), 52, Y(v) + 4); });
+  ctx.strokeStyle = '#cfd9f5'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(X(Math.max(o.xmin, 0)), t); ctx.lineTo(X(Math.max(o.xmin, 0)), b); ctx.moveTo(l, Y(Math.max(o.ymin, 0))); ctx.lineTo(r, Y(Math.max(o.ymin, 0))); ctx.stroke();
+  txt(ctx, o.xl, r, b + 44, COL.text, 15, 600, 'right'); txt(ctx, o.yl, l - 50, t - 14, COL.text, 15, 600);
+  (o.curves || []).forEach(cv => { ctx.strokeStyle = cv.col; ctx.lineWidth = 2.5; ctx.setLineDash(cv.dash ? [7, 6] : []); ctx.beginPath(); let st = true; for (let i = 0; i <= 200; i++) { const x = o.xmin + (o.xmax - o.xmin) * i / 200, y = cv.fn(x); if (!Number.isFinite(y) || y < o.ymin - 1e-9 || y > o.ymax + 1e-9) { st = true; continue; } st ? ctx.moveTo(X(x), Y(y)) : ctx.lineTo(X(x), Y(y)); st = false; } ctx.stroke(); ctx.setLineDash([]); });
+  (o.pts || []).forEach(p => { ctx.fillStyle = COL.ok; ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), 6.5, 0, TAU); ctx.fill(); });
+}
+const nice = (lo, hi, n = 5) => { const span = (hi - lo) || 1, raw = span / n, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p, st = (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p, a = Math.floor(lo / st + 1e-9) * st, b = Math.ceil(hi / st - 1e-9) * st, t = []; for (let v = a; v <= b + st / 1e6; v += st) t.push(+v.toPrecision(6)); return { min: a, max: b, t }; };
+
+/* 이상적(마찰 없는) 예측선 — 실험별로 x 축에 따라 */
+function ideal(exp, xk) {
+  if (exp === 'A' && xk === 'F') return x => x / (TOT_A / 1000);
+  if (exp === 'B' && xk === 'M') return x => (MH_B / 1000 * G) / x;
+  if (exp === 'B' && xk === 'invM') return x => (MH_B / 1000 * G) * x;
+  if (exp === 'C' && xk === 'F') return x => x / (MC / 1000 + x / G);
+  if (exp === 'C' && xk === 'M') return x => (x - MC / 1000) * G / x;
+  if (exp === 'C' && xk === 'invM') return x => G * (1 - MC / 1000 * x);
+  return null;
+}
+function explain(exp, xk, fit, pts) {
+  const out = [], b = fit.b, a0 = fit.a;
+  if (exp === 'A' && xk === 'F') {
+    out.push(`기울기 ${f2(b)} kg⁻¹ → 1/기울기 = ${f3(1 / b)} kg. 계 전체 질량(수레 쪽 + 걸이추)은 늘 ${TOT_A / 1000} kg이다 — 추를 옮기기만 해서 질량을 일정하게 둔 설계가 이 직선을 만든다.`);
+    const F0 = -a0 / b;
+    out.push(F0 > 0.03 ? `a = 0 이 되는 힘 F₀ = ${f3(F0)} N > 0: 마찰이 힘의 일부를 막는다. 그래서 F–a 직선이 원점을 지나지 못한다 → 트랙을 기울여 마찰을 보정한다.` : F0 < -0.03 ? `F₀ = ${f3(F0)} N < 0: 힘이 0이어도 가속된다. 트랙을 너무 기울인 과보정이다.` : `F₀ = ${f3(F0)} N ≈ 0: 원점을 지난다 → a ∝ F. 마찰 보정이 잘 되었다.`);
+  } else if (exp === 'A') out.push('이 실험은 계 전체 질량이 일정해서 M 쪽 값이 모두 같다. F–a 축으로 바꿔서 보자.');
+  else if (exp === 'B' && xk === 'invM') {
+    out.push(`기울기 ${f3(b)} N: 걸이추 ${MH_B} g의 무게 m g = ${f3(MH_B / 1000 * G)} N 와 비교한다. a = F/M 이므로 a–(1/M) 그래프의 기울기가 힘이다.`);
+    out.push(Math.abs(a0) > 0.06 ? `절편 ${f3(a0)} m/s² 가 0이 아니다 → 마찰의 영향이 남았다.` : '절편이 거의 0 → 원점을 지나는 정비례다.');
+  } else if (exp === 'B' && xk === 'M') {
+    const ok = pts.every(p => p.x > 0 && p.y > 0), p = ok ? linfit(pts.map(q => Math.log(q.x)), pts.map(q => Math.log(q.y))) : null;
+    out.push('a–M 은 곡선이다. 곡선 모양만 보고는 어떤 함수인지 알기 어렵다.' + (p ? ` 로그–로그 기울기(지수) p = ${f2(p.b)} → a ∝ M^${f2(p.b)} (반비례면 −1).` : ''));
+    out.push('가로축을 1/M 로 바꾸면 직선이 된다 — "곡선을 직선으로 펴서 읽는" 변환이다.');
+  } else if (exp === 'B') out.push('이 실험은 힘이 일정해서 점이 세로로 늘어선다. 가로축을 M 이나 1/M 로 바꾸어 본다.');
+  else if (exp === 'C' && xk === 'F') {
+    out.push(`걸이추만 늘리면 F 가 커질 뿐 아니라 끌려가는 질량도 함께 커진다(M = 수레 쪽 + 걸이추). 그래서 a/F = 1/M 이 계속 줄어 F–a 가 위로 휘지 않고 아래로 굽는다(R² = ${f3(fit.r2)}).`);
+    out.push('이 곡선을 직선 가정으로 그려 "비례한다"고 쓰면 틀린다 — 정비례는 질량이 일정할 때만 성립한다. 실험 A 처럼 추를 옮겨 총질량을 맞추어야 한다.');
+  } else out.push('이 실험은 힘과 질량이 함께 바뀐다. 가로축을 F 로 하여 직선이 아님을 확인한다.');
+  return out;
+}
+function drawAna(api) {
+  const P = api.P, exp = P.exp, xk = P.xk, rows = S.rows[exp], ctx = begin(api);
+  txt(ctx, `자료 분석 — ${NAME[exp]}  (세로축 가속도 a = 2d/t̄²)`, 24, 34, COL.dim, 16);
+  if (rows.length < 2) { txt(ctx, rows.length ? '점이 하나뿐이다. 조건을 바꾸어 더 기록하자.' : `${NAME[exp]}의 기록이 없다. 먼저 '① 실험' 탭에서 측정하고 기록하자.`, 500, 300, COL.bad, 22, 700, 'center'); ctx.restore(); api.setReadout([['기록한 점', rows.length + '개']]); api.setNote('자료는 이 페이지에서만 유지된다(새로고침하면 지워진다). 각 실험마다 5점 이상 모으면 해석이 또렷하다.'); return; }
+  const pts = rows.map(r => ({ x: xval(r, xk), y: r.a })), fit = linfit(pts.map(p => p.x), pts.map(p => p.y));
+  const id = ideal(exp, xk), xs = pts.map(p => p.x), xr = nice(Math.min(0, ...xs), Math.max(...xs) * 1.05), ymax = Math.max(...pts.map(p => p.y), 0.1) * 1.1, ylo = Math.min(0, ...pts.map(p => p.y), fit ? fit.a : 0) * 1.2, yr = nice(ylo, ymax);
+  const curves = []; if (P.theory === 'on' && id) curves.push({ fn: id, col: COL.c, dash: true });
+  if (fit) curves.push({ fn: x => fit.a + fit.b * x, col: COL.text });
+  plotV(ctx, { xmin: xr.min, xmax: xr.max, ymin: yr.min, ymax: yr.max, xt: xr.t, yt: yr.t, xl: XLAB[xk], yl: 'a (m/s²)', pts, curves });
+  txt(ctx, '● 내 데이터   ─ 최소제곱 직선' + (P.theory === 'on' && id ? '   ┄ 이상적 예측(마찰 없음)' : ''), 300, 66, COL.dim, 14, 500);
+  ctx.restore();
+  const mix = new Set(rows.map(r => r.tilt + '/' + r.timer)).size > 1;
+  const ro = [['기록한 점', rows.length + '개'], ['직선 기울기', fit ? f3(fit.b) : '—'], ['a축 절편', fit ? f3(fit.a) + ' m/s²' : '—'], ['R²', fit ? f3(fit.r2) : '—']];
+  if (fit && xk === 'F') ro.push(['a=0 이 되는 F₀', f3(-fit.a / fit.b) + ' N']);
+  api.setReadout(ro);
+  api.setNote((fit ? explain(exp, xk, fit, pts).join(' ') : '점의 x 값이 모두 같아 직선을 그을 수 없다.') + (mix ? ' ※ 기록 중에 트랙 보정·시간 측정 방법이 섞여 있다 — 비교하려면 표를 비우고 같은 조건으로 다시 모은다.' : ''));
+}
+
+/* ---------- 패널 ---------- */
+function el(tag, cls, t) { const n = document.createElement(tag); if (cls) n.className = cls; if (t !== undefined) n.textContent = t; return n; }
+function keyOf(api) { const P = api.P, id = api.scenario.id; return [id, P.mhA, P.load, P.mhC, P.tilt, P.timer].join('|'); }
+function sync(api) { const k = keyOf(api); if (k !== S.key) { S.key = k; S.trials = []; S.anim = null; S.pos = 0; S.stuck = false; } }
+function commit(api, tr) { S.trials.push(tr); }
+function startTrial(api) {
+  const c = cond(api.scenario.id, api.P), tr = oneTrial(c, api.P.timer);
+  if (!tr) { S.stuck = true; S.pos = 0; return; }
+  S.stuck = false; S.pos = 0; S.anim = { t: 0, T: tr.t, rate: Math.max(1, tr.t / 3.5), tr };
+}
+function quick(api, n) {
+  const c = cond(api.scenario.id, api.P); S.pos = D;
+  for (let i = 0; i < n; i++) { const tr = oneTrial(c, api.P.timer); if (!tr) { S.stuck = true; S.pos = 0; return; } S.stuck = false; commit(api, tr); }
+}
+function record(api) {
+  const id = api.scenario.id, c = cond(id, api.P), st = stats(S.trials.map(t => t.tm)); if (!st.n) return;
+  S.rows[id].push({ mh: c.mh, mc: c.mc, mt: c.mt, F: c.F, n: st.n, t: st.m, s: st.s, a: 2 * D / (st.m * st.m), tilt: TILTN[api.P.tilt], timer: TIMN[api.P.timer] });
+  S.trials = [];
+}
+function renderExp(api) {
+  const root = api.custom; if (!root) return; sync(api); root.innerHTML = '';
+  const id = api.scenario.id, running = !!S.anim, st = stats(S.trials.map(t => t.tm));
+  const pr = el('details', 'lb-proc'); pr.appendChild(el('summary', '', '실제 실험 절차'));
+  const ol = el('ol'); ['트랙에 수레를 놓고, 줄을 도르래에 걸어 걸이추를 매단다. 수레를 출발선에 세운다.', '(필요하면) 트랙 한쪽을 조금 기울여, 걸이추 없이 수레를 살짝 밀었을 때 일정한 속도로 가도록 마찰을 보정한다.', '수레를 놓아 출발선에서 1.00 m 지점까지 걸리는 시간 t 를 잰다. 같은 조건을 여러 번 재어 평균 t̄ 를 낸다.', 'a = 2d/t̄² (d = 1.00 m, 처음 속도 0) 로 가속도를 구해 기록한다.', '변인(힘 또는 질량)만 바꾸어 위를 반복한다. 모은 점은 "② 자료 분석" 탭에서 그래프로 해석한다.'].forEach(s => ol.appendChild(el('li', '', s))); pr.appendChild(ol); root.appendChild(pr);
+  const bar = el('div', 'lb-bar'), act = (label, fn, cls, dis) => { const b = el('button', 'lb-btn' + (cls ? ' ' + cls : ''), label); b.onclick = () => { fn(); renderExp(api); api.refresh(); }; if (dis) b.disabled = true; bar.appendChild(b); };
+  act('▶ 1회 측정', () => startTrial(api), '', running); act('5회 연속 측정', () => quick(api, 5), 'alt', running); act('수레 되돌리기', () => { S.pos = 0; S.anim = null; }, 'alt', running);
+  root.appendChild(bar);
+  if (S.stuck) root.appendChild(el('div', 'lb-warn', '수레가 움직이지 않는다. 걸이추의 힘이 마찰과 같거나 작다 — 걸이추를 늘리거나, 트랙을 기울여 마찰을 보정해 보자.'));
+  root.appendChild(el('div', 'lb-note', S.trials.length ? `이번 조건의 측정 시간(s): ${S.trials.map(t => f2(t.tm)).join(', ')}  →  평균 ${f3(st.m)} s` + (st.n > 1 ? `, 표준편차 ${f3(st.s)} s` : '') : '이 조건에서 아직 재지 않았다. 조건(슬라이더·선택)을 바꾸면 이 측정값은 비워진다.'));
+  const bar2 = el('div', 'lb-bar'), b2 = el('button', 'lb-btn', '이 조건의 평균을 표에 기록'); b2.disabled = !st.n || running; b2.onclick = () => { record(api); renderExp(api); api.refresh(); }; bar2.appendChild(b2);
+  const b3 = el('button', 'lb-btn warn', '표 지우기'); b3.onclick = () => { S.rows[id] = []; renderExp(api); api.refresh(); }; bar2.appendChild(b3); root.appendChild(bar2);
+  const tb = el('table', 'lb-tbl'), hd = el('tr'); ['걸이추(g)', '계 질량(g)', 'F(N)', '횟수', 't̄(s)', 's(s)', 'a(m/s²)'].forEach(h => hd.appendChild(el('th', '', h))); tb.appendChild(hd);
+  S.rows[id].slice(-12).forEach(r => { const tr = el('tr'); [r.mh, r.mt, f3(r.F), r.n, f3(r.t), isNaN(r.s) ? '—' : f3(r.s), f3(r.a)].forEach(v => tr.appendChild(el('td', '', String(v)))); tb.appendChild(tr); });
+  if (!S.rows[id].length) { const tr = el('tr'), td = el('td', '', '아직 기록이 없습니다.'); td.colSpan = 7; tr.appendChild(td); tb.appendChild(tr); }
+  root.appendChild(tb);
+}
+function readoutExp(api) {
+  const c = cond(api.scenario.id, api.P), st = stats(S.trials.map(t => t.tm)), ro = [['걸이추 m', c.mh + ' g'], ['계 전체 질량 M', c.mt + ' g'], ['힘 F = m g', f3(c.F) + ' N'], ['측정 횟수', st.n + '회']];
+  if (st.n) { const a = 2 * D / (st.m * st.m); ro.push(['평균 t̄', f3(st.m) + ' s'], ['a = 2d/t̄²', f3(a) + ' m/s²']); if (st.n > 1) ro.push(['a 의 불확실도 ≈ 2s/(t̄√n)', pc(2 * st.s / (st.m * Math.sqrt(st.n)))]); }
+  api.setReadout(ro);
+  api.setNote(api.scenario.id === 'A' ? '추를 수레에서 걸이로 옮기면 힘만 바뀌고 계의 총질량(600 g)은 그대로다. 마찰이 있으면 작은 힘일수록 영향이 크다.' : api.scenario.id === 'B' ? '걸이추를 50 g 으로 두고 수레에 추를 더하면 힘은 같고 질량만 바뀐다.' : '걸이추를 늘리면 힘이 커지지만 끌려가는 질량도 함께 커진다. 변인이 둘이 동시에 바뀌는 설계다.');
+  api.setStatus(S.anim ? '측정 중…' : S.trials.length ? `측정 ${S.trials.length}회` : '대기');
+}
+
+const SIM = {
+  enter(api) { S.key = ''; if (api.scenario.id !== 'ana') { sync(api); api.setPlaying && api.setPlaying(true); renderExp(api); } else if (api.setPlaying) api.setPlaying(false); },
+  reset(api) { S.anim = null; S.pos = 0; S.trials = []; S.stuck = false; S.key = keyOf(api); api.refresh(); },
+  update(api) { const id = api.scenario.id; if (id === 'ana') { drawAna(api); return; } sync(api); renderExp(api); readoutExp(api); drawRig(api, cond(id, api.P)); },
+  frame(api, dt) {
+    const id = api.scenario.id; if (id === 'ana') return; const pl = typeof api.playing === 'function' ? api.playing() : api.playing; if (pl === false) return;
+    if (S.anim) { S.anim.t += Math.min(dt, 1 / 20) * S.anim.rate; const u = Math.min(1, S.anim.t / S.anim.T); S.pos = D * u * u; if (u >= 1) { commit(api, S.anim.tr); S.anim = null; S.pos = D; renderExp(api); readoutExp(api); } }
+    drawRig(api, cond(id, api.P));
+  },
+  tests() {
+    const out = [], base = { tilt: 'none', timer: 'gate', mhA: 50, load: 0, mhC: 50 };
+    const cA = cond('A', { ...base, tilt: 'ok' }), ideal50 = 0.05 * G / 0.6;
+    out.push(['a = (m g − f)/M 계산', Math.abs(cA.a - (0.05 * G - (MU * 0.55 * G * 0 + F0)) / 0.6) < 1e-9, `a=${f3(cA.a)}`]);
+    out.push(['보정하면 이상값에 근접', Math.abs(cA.a - ideal50) / ideal50 < 0.05, `이상 ${f3(ideal50)}, 실제 ${f3(cA.a)}`]);
+    out.push(['실험 A 총질량 일정', [10, 40, 100].every(m => cond('A', { ...base, mhA: m }).mt === 600), '600 g']);
+    out.push(['실험 C 총질량 증가', cond('C', { ...base, mhC: 200 }).mt === 700, '500+200']);
+    out.push(['마찰 > 힘이면 움직이지 않음', !cond('A', { ...base, mhA: 10 }).moves && oneTrial(cond('A', { ...base, mhA: 10 }), 'gate') === null, '보정 없음, 10 g']);
+    const cg = cond('A', { ...base, tilt: 'ok', mhA: 50 }); let v = []; for (let i = 0; i < 400; i++) v.push(oneTrial(cg, 'gate').tm); const sg = stats(v), t0 = Math.sqrt(2 * D / cg.a);
+    out.push(['게이트 평균 ≈ 참값(1.5 %)', Math.abs(sg.m - t0) / t0 < 0.015, `평균 ${f3(sg.m)} vs ${f3(t0)}`]);
+    v = []; for (let i = 0; i < 400; i++) v.push(oneTrial(cg, 'hand').tm); const sh = stats(v);
+    out.push(['손 스톱워치 퍼짐이 게이트보다 큼', sh.s > 3 * sg.s, `${f3(sh.s)} vs ${f3(sg.s)}`]);
+    const f = linfit([0, 1, 2, 3], [1, 3, 5, 7]); out.push(['linfit 정확성', Math.abs(f.b - 2) < 1e-9 && Math.abs(f.a - 1) < 1e-9, '기울기 2, 절편 1']);
+    const rowsA = [10, 20, 40, 60, 80, 100].map(m => { const c = cond('A', { ...base, tilt: 'ok', mhA: m }); return { F: c.F, mt: c.mt, a: c.a }; }), fa = linfit(rowsA.map(r => r.F), rowsA.map(r => r.a));
+    out.push(['A 직선 기울기 = 1/M (보정 시)', Math.abs(fa.b - 1 / 0.6) / (1 / 0.6) < 0.05, `기울기 ${f3(fa.b)} vs ${f3(1 / 0.6)}`]);
+    const rowsN = [10, 20, 40, 60, 80, 100].map(m => { const c = cond('A', { ...base, tilt: 'none', mhA: m }); return { F: c.F, a: c.a }; }).filter(r => r.a > 0), fn = linfit(rowsN.map(r => r.F), rowsN.map(r => r.a));
+    out.push(['보정 없으면 F축 절편이 양수', -fn.a / fn.b > 0.03, `F₀ = ${f3(-fn.a / fn.b)} N`]);
+    const rowsC = [20, 60, 100, 150, 200].map(m => { const c = cond('C', { ...base, tilt: 'ok', mhC: m }); return { F: c.F, a: c.a }; }), fc = linfit(rowsC.map(r => r.F), rowsC.map(r => r.a));
+    out.push(['C 는 직선이 아님(R² < 0.999)', fc.r2 < 0.999 && ideal('C', 'F')(1.96) < 1.96 / 0.5, `R² ${f3(fc.r2)}`]);
+    const cb = [0, 500, 1000].map(l => cond('B', { ...base, tilt: 'ok', load: l }).a); out.push(['B: 질량 늘면 a 감소(반비례에 근접)', cb[0] > cb[1] && cb[1] > cb[2] && Math.abs(cb[0] / cb[2] - 1550 / 550) / (1550 / 550) < 0.05, `${cb.map(f3).join(' / ')}`]);
+    return out;
+  },
+};
+
+</script>
+<script>
+"use strict";
+/* ============================ 공용 UI 프레임워크 (템플릿) ============================ */
+(function () {
+  const C = WS_CONFIG;
+  const $ = (id) => document.getElementById(id);
+  const P = {};
+  const ui = { tab: C.tabs[0].id, scenarioId: null, playing: false };
+  const lastScenarioOfTab = {};
+
+  function addDefaults(params) { (params || []).forEach(p => { if (!(p.key in P)) P[p.key] = p.value; }); }
+  C.scenarios.forEach(s => { addDefaults(s.params); addDefaults(s.choices); });
+  if (C.common_params) addDefaults(C.common_params.params);
+
+  function current() { return C.scenarios.find(s => s.id === ui.scenarioId); }
+  function scenariosOfTab(tab) { return C.scenarios.filter(s => s.tab === tab); }
+  function fmtVal(v, unit) {
+    if (!unit) return String(v);
+    return /^[°%′″]/.test(unit) ? v + unit : v + " " + unit;
+  }
+
+  function showError(where, e) {
+    const box = $("simError");
+    box.hidden = false;
+    box.textContent = "시뮬레이션 오류 (" + where + "): " + (e && e.message ? e.message : e);
+    console.error(e);
+  }
+  const SIMOBJ = (typeof SIM !== "undefined") ? SIM : null;
+  function call(hook, ...args) {
+    if (!SIMOBJ || typeof SIMOBJ[hook] !== "function") return undefined;
+    try { return SIMOBJ[hook](api, ...args); } catch (e) { showError(hook, e); return undefined; }
+  }
+
+  /* ---------- 렌더러 ---------- */
+  const wrap = $("sceneWrap");
+  const api = {
+    config: C, P,
+    get scenario() { return current(); },
+    get tab() { return ui.tab; },
+    get playing() { return ui.playing; },
+    setPlaying(b) { ui.playing = !!b; updatePlayButton(); },
+    boxHalf: (C.scene && C.scene.box_half) || 16,
+    sceneEl: wrap,
+    THREE: window.THREE || null,
+    scene: null, camera: null, renderer: null, controls: null,
+    canvas: null, ctx: null, width: 0, height: 0,
+    custom: $("customPanel"),
+    chart: {
+      canvas: $("chartCanvas"),
+      ctx: $("chartCanvas").getContext("2d"),
+      setHint(html) { $("chartHint").innerHTML = html; },
+    },
+    setReadout(rows) {
+      const tbl = $("readout");
+      tbl.innerHTML = "";
+      (rows || []).forEach(r => {
+        const tr = document.createElement("tr");
+        const a = document.createElement("td"); a.textContent = r[0];
+        const b = document.createElement("td"); b.textContent = r[1];
+        tr.append(a, b); tbl.appendChild(tr);
+      });
+    },
+    setNote(text) { $("readoutNote").textContent = text || ""; },
+    setStatus(text) { const el = $("wsStatus"); if (el) el.textContent = text || ""; },
+    setParam(key, v) {
+      P[key] = v;
+      const el = $("p_" + key); if (el) el.value = v;
+      const vEl = $("p_" + key + "_val"); if (vEl) vEl.textContent = fmtVal(v, vEl.dataset.unit);
+    },
+    refresh() { call("update"); },
+  };
+
+  function initRenderer() {
+    const sc = C.scene || {};
+    if (C.renderer === "three") {
+      if (!window.THREE) { showError("init", "Three.js를 불러오지 못했습니다 (인터넷 연결 확인)"); return false; }
+      const T = window.THREE;
+      api.scene = new T.Scene();
+      api.camera = new T.PerspectiveCamera(45, wrap.clientWidth / wrap.clientHeight, 0.1, 500);
+      const cp = sc.camera || [26, 20, 30];
+      api.camera.position.set(cp[0], cp[1], cp[2]);
+      api.renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
+      api.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      wrap.insertBefore(api.renderer.domElement, wrap.firstChild);
+      api.controls = new T.OrbitControls(api.camera, api.renderer.domElement);
+      api.controls.enableDamping = true;
+      api.controls.dampingFactor = 0.08;
+      api.controls.target.set(0, 0, 0);
+      api.scene.add(new T.AmbientLight(0xffffff, 0.55));
+      const dl = new T.DirectionalLight(0xffffff, 0.9);
+      dl.position.set(20, 30, 15);
+      api.scene.add(dl);
+      if (sc.grid !== false) api.scene.add(new T.GridHelper(api.boxHalf * 2, 16, 0x3a5a8a, 0x1f3352));
+      if (sc.axes !== false) api.scene.add(new T.AxesHelper(api.boxHalf * 0.6));
+    } else {
+      api.canvas = document.createElement("canvas");
+      wrap.insertBefore(api.canvas, wrap.firstChild);
+      api.ctx = api.canvas.getContext("2d");
+    }
+    window.addEventListener("resize", onResize);
+    onResize();
+    return true;
+  }
+
+  function onResize() {
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    api.width = w; api.height = h;
+    if (api.renderer) {
+      api.camera.aspect = w / h;
+      api.camera.updateProjectionMatrix();
+      api.renderer.setSize(w, h);
+    } else if (api.canvas) {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      api.canvas.width = Math.round(w * dpr);
+      api.canvas.height = Math.round(h * dpr);
+      api.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (ui.scenarioId) call("update");
+    }
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    if (api.controls) api.controls.update();
+    call("frame", 1 / 60);
+    if (api.renderer) api.renderer.render(api.scene, api.camera);
+  }
+
+  /* ---------- UI ---------- */
+  function renderTabs() {
+    const box = $("tabs");
+    box.innerHTML = "";
+    box.hidden = C.tabs.length < 2;
+    C.tabs.forEach(t => {
+      const b = document.createElement("button");
+      b.textContent = t.label;
+      b.className = t.id === ui.tab ? "active" : "";
+      b.addEventListener("click", () => switchTab(t.id));
+      box.appendChild(b);
     });
+  }
 
-    function resizeCanvas() {
-      const rect = canvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      ctx.resetTransform();
-      ctx.scale(dpr, dpr);
-      drawSimulation();
-    }
+  function renderPicker() {
+    const box = $("scenarioPicker");
+    const list = scenariosOfTab(ui.tab);
+    box.innerHTML = "";
+    box.hidden = list.length < 2;
+    list.forEach(s => {
+      const b = document.createElement("button");
+      b.textContent = s.name;
+      b.className = s.id === ui.scenarioId ? "active" : "";
+      b.addEventListener("click", () => selectScenario(s.id));
+      box.appendChild(b);
+    });
+  }
 
-    /* ============================================================
-       3. Physics & Animation Engine
-    ============================================================ */
-    function computeAcceleration() {
-      return simState.force / simState.mass;
-    }
+  function sliderEl(p) {
+    const div = document.createElement("div");
+    div.className = "param";
+    const label = document.createElement("label");
+    label.textContent = p.label + " ";
+    const val = document.createElement("span");
+    val.className = "val"; val.id = "p_" + p.key + "_val"; val.dataset.unit = p.unit || "";
+    val.textContent = fmtVal(P[p.key], p.unit);
+    label.appendChild(val);
+    const inp = document.createElement("input");
+    inp.type = "range"; inp.id = "p_" + p.key;
+    inp.min = p.min; inp.max = p.max; inp.step = p.step; inp.value = P[p.key];
+    inp.addEventListener("input", () => {
+      const v = parseFloat(inp.value);
+      P[p.key] = v;
+      val.textContent = fmtVal(v, p.unit);
+      call("update");
+    });
+    div.append(label, inp);
+    return div;
+  }
 
-    function togglePlay() {
-      if (simState.distance >= TRACK_LENGTH) {
-        resetSim();
-      }
-      
-      simState.running = !simState.running;
-      const playBtn = document.getElementById('btnPlay');
-      const playIcon = document.getElementById('playIcon');
-      const playText = document.getElementById('playText');
-
-      if (simState.running) {
-        playBtn.classList.replace('bg-indigo-600', 'bg-rose-600');
-        playBtn.classList.replace('hover:bg-indigo-500', 'hover:bg-rose-500');
-        playIcon.classList.replace('fa-play', 'fa-pause');
-        playText.textContent = '일시 정지';
-        simState.lastTimestamp = performance.now();
-        requestAnimationFrame(animLoop);
-      } else {
-        playBtn.classList.replace('bg-rose-600', 'bg-indigo-600');
-        playBtn.classList.replace('hover:bg-rose-500', 'hover:bg-indigo-500');
-        playIcon.classList.replace('fa-pause', 'fa-play');
-        playText.textContent = '계속 진행';
-      }
-    }
-
-    function resetSim() {
-      simState.running = false;
-      simState.time = 0.0;
-      simState.distance = 0.0;
-      simState.velocity = 0.0;
-      simState.lastTimestamp = null;
-      
-      const playBtn = document.getElementById('btnPlay');
-      const playIcon = document.getElementById('playIcon');
-      const playText = document.getElementById('playText');
-      playBtn.classList.replace('bg-rose-600', 'bg-indigo-600');
-      playBtn.classList.replace('hover:bg-rose-500', 'hover:bg-indigo-500');
-      playIcon.className = 'fa-solid fa-play';
-      playText.textContent = '실험 시작';
-
-      updateDashboard();
-      drawSimulation();
-    }
-
-    function animLoop(timestamp) {
-      if (!simState.running) return;
-
-      const dt = Math.min((timestamp - simState.lastTimestamp) / 1000, 0.05); // cap delta time
-      simState.lastTimestamp = timestamp;
-
-      // Kinematic update: s = v*dt + 0.5*a*dt^2, v = v + a*dt
-      simState.acceleration = computeAcceleration();
-      simState.velocity += simState.acceleration * dt;
-      simState.distance += simState.velocity * dt;
-      simState.time += dt;
-
-      if (simState.distance >= TRACK_LENGTH) {
-        simState.distance = TRACK_LENGTH;
-        simState.running = false;
-        
-        const playBtn = document.getElementById('btnPlay');
-        const playIcon = document.getElementById('playIcon');
-        const playText = document.getElementById('playText');
-        playBtn.classList.replace('bg-rose-600', 'bg-indigo-600');
-        playIcon.className = 'fa-solid fa-rotate-left';
-        playText.textContent = '다시 실행';
-        
-        showToast('결승선에 도달했습니다! 측정값을 기록해보세요.');
-      }
-
-      updateDashboard();
-      drawSimulation();
-
-      if (simState.running) {
-        requestAnimationFrame(animLoop);
-      }
-    }
-
-    /* ============================================================
-       4. Visual Rendering (HTML5 Canvas)
-    ============================================================ */
-    function drawSimulation() {
-      const w = canvas.getBoundingClientRect().width;
-      const h = canvas.getBoundingClientRect().height;
-      ctx.clearRect(0, 0, w, h);
-
-      // Coordinates setup
-      const trackPadding = 45;
-      const trackWidth = w - trackPadding * 2;
-      const trackY = h * 0.72;
-      const trackHeight = 12;
-
-      // 1. Draw Track & Rulers
-      ctx.fillStyle = '#334155';
-      ctx.fillRect(trackPadding, trackY, trackWidth, trackHeight);
-
-      // Track surface line
-      ctx.strokeStyle = '#64748b';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(trackPadding, trackY);
-      ctx.lineTo(trackPadding + trackWidth, trackY);
-      ctx.stroke();
-
-      // 2. Draw Distance Tick Marks (0m to 10m)
-      ctx.font = '10px "JetBrains Mono", monospace';
-      ctx.textAlign = 'center';
-      for (let m = 0; m <= 10; m++) {
-        const xPos = trackPadding + (m / 10) * trackWidth;
-        const isMajor = m % 2 === 0;
-        
-        ctx.strokeStyle = isMajor ? '#94a3b8' : '#475569';
-        ctx.lineWidth = isMajor ? 1.5 : 1;
-        ctx.beginPath();
-        ctx.moveTo(xPos, trackY + trackHeight);
-        ctx.lineTo(xPos, trackY + trackHeight + (isMajor ? 8 : 4));
-        ctx.stroke();
-
-        if (isMajor) {
-          ctx.fillStyle = '#94a3b8';
-          ctx.fillText(`${m}m`, xPos, trackY + trackHeight + 20);
-        }
-      }
-
-      // 3. Cart Position Calculation
-      const cartFraction = Math.min(simState.distance / TRACK_LENGTH, 1.0);
-      const cartWidth = 64;
-      const cartHeight = 32;
-      const cartX = trackPadding + cartFraction * (trackWidth - cartWidth);
-      const cartY = trackY - cartHeight;
-
-      // 4. Draw Motion Trails if moving
-      if (simState.velocity > 0.2) {
-        ctx.save();
-        ctx.strokeStyle = 'rgba(99, 102, 241, 0.25)';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.moveTo(trackPadding, cartY + cartHeight / 2);
-        ctx.lineTo(cartX, cartY + cartHeight / 2);
-        ctx.stroke();
-        ctx.restore();
-      }
-
-      // 5. Draw Dynamic Cart Body
-      ctx.fillStyle = '#4f46e5'; // Indigo body
-      ctx.beginPath();
-      ctx.roundRect(cartX, cartY, cartWidth, cartHeight, 6);
-      ctx.fill();
-      ctx.strokeStyle = '#818cf8';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Cart Windows/Pattern
-      ctx.fillStyle = '#1e1b4b';
-      ctx.fillRect(cartX + 8, cartY + 6, cartWidth - 16, 10);
-
-      // Stacking Mass Blocks on Cart
-      const massCount = Math.round(simState.mass * 2); // 0.5kg increments
-      const blockWidth = 14;
-      const blockHeight = 8;
-      const blocksPerRow = 3;
-      
-      for (let i = 0; i < massCount; i++) {
-        const row = Math.floor(i / blocksPerRow);
-        const col = i % blocksPerRow;
-        const bx = cartX + 11 + col * (blockWidth + 3);
-        const by = cartY - 4 - (row + 1) * (blockHeight + 2);
-
-        ctx.fillStyle = '#f59e0b'; // Amber weights
-        ctx.fillRect(bx, by, blockWidth, blockHeight);
-        ctx.strokeStyle = '#d97706';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(bx, by, blockWidth, blockHeight);
-      }
-
-      // Cart Wheels
-      const wheelRadius = 6;
-      ctx.fillStyle = '#1e293b';
-      ctx.strokeStyle = '#94a3b8';
-      ctx.lineWidth = 2;
-
-      // Left wheel
-      ctx.beginPath();
-      ctx.arc(cartX + 14, trackY, wheelRadius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      // Right wheel
-      ctx.beginPath();
-      ctx.arc(cartX + cartWidth - 14, trackY, wheelRadius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      // 6. Draw Force Vector Arrow (Pulling Force F)
-      const arrowStartX = cartX + cartWidth;
-      const arrowY = cartY + cartHeight / 2;
-      const arrowLength = Math.max(25, (simState.force / 10.0) * (w * 0.22)); // visual scale
-
-      ctx.strokeStyle = '#22d3ee'; // Cyan Force Vector
-      ctx.fillStyle = '#22d3ee';
-      ctx.lineWidth = 3;
-
-      ctx.beginPath();
-      ctx.moveTo(arrowStartX, arrowY);
-      ctx.lineTo(arrowStartX + arrowLength, arrowY);
-      ctx.stroke();
-
-      // Arrow head
-      ctx.beginPath();
-      ctx.moveTo(arrowStartX + arrowLength, arrowY);
-      ctx.lineTo(arrowStartX + arrowLength - 8, arrowY - 5);
-      ctx.lineTo(arrowStartX + arrowLength - 8, arrowY + 5);
-      ctx.closePath();
-      ctx.fill();
-
-      // Force Label above arrow
-      ctx.font = 'bold 11px "JetBrains Mono", monospace';
-      ctx.fillStyle = '#67e8f9';
-      ctx.textAlign = 'center';
-      ctx.fillText(`F = ${simState.force.toFixed(1)}N`, arrowStartX + arrowLength / 2, arrowY - 8);
-
-      // Mass Label under Cart
-      ctx.fillStyle = '#fcd34d';
-      ctx.font = '10px "JetBrains Mono", monospace';
-      ctx.fillText(`m=${simState.mass.toFixed(1)}kg`, cartX + cartWidth / 2, cartY + cartHeight - 4);
-    }
-
-    /* ============================================================
-       5. Dashboard & UI Sync
-    ============================================================ */
-    function updateDashboard() {
-      simState.acceleration = computeAcceleration();
-
-      document.getElementById('valTime').textContent = simState.time.toFixed(2);
-      document.getElementById('valDistance').textContent = simState.distance.toFixed(2);
-      document.getElementById('valVelocity').textContent = simState.velocity.toFixed(2);
-
-      document.getElementById('dashForce').innerHTML = `${simState.force.toFixed(1)} <span class="text-xs font-normal">N</span>`;
-      document.getElementById('dashMass').innerHTML = `${simState.mass.toFixed(1)} <span class="text-xs font-normal">kg</span>`;
-      document.getElementById('dashAcc').innerHTML = `${simState.acceleration.toFixed(2)} <span class="text-xs font-normal">m/s²</span>`;
-
-      document.getElementById('labelForce').textContent = simState.force.toFixed(1);
-      document.getElementById('labelMass').textContent = simState.mass.toFixed(1);
-    }
-
-    function onParamChange() {
-      simState.force = parseFloat(document.getElementById('sliderForce').value);
-      simState.mass = parseFloat(document.getElementById('sliderMass').value);
-      updateDashboard();
-      drawSimulation();
-    }
-
-    function setExperimentMode(mode) {
-      simState.mode = mode;
-      
-      const tab1 = document.getElementById('tabMode1');
-      const tab2 = document.getElementById('tabMode2');
-      const tab3 = document.getElementById('tabMode3');
-      const modeDesc = document.getElementById('modeDescription');
-      const conceptHint = document.getElementById('conceptHint');
-      const sliderForce = document.getElementById('sliderForce');
-      const sliderMass = document.getElementById('sliderMass');
-
-      // Reset tab styling
-      [tab1, tab2, tab3].forEach(t => {
-        t.className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-400 hover:text-white";
+  function choiceEl(c) {
+    const row = document.createElement("div");
+    row.className = "row"; row.style.marginBottom = "8px";
+    if (c.label) { const l = document.createElement("b"); l.style.fontSize = "0.9em"; l.textContent = c.label; row.appendChild(l); }
+    c.options.forEach(o => {
+      const b = document.createElement("button");
+      b.textContent = o.label;
+      b.className = P[c.key] === o.value ? "primary" : "";
+      b.addEventListener("click", () => {
+        P[c.key] = o.value;
+        row.querySelectorAll("button").forEach(x => x.className = "");
+        b.className = "primary";
+        call("update");
       });
+      row.appendChild(b);
+    });
+    return row;
+  }
 
-      if (mode === 'force') {
-        tab1.className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all bg-indigo-600 text-white shadow";
-        modeDesc.textContent = "질량(m=1.0kg) 고정 ➔ 힘(F)에 따른 가속도(a) 관계 분석";
-        conceptHint.innerHTML = "<strong>탐구 포인트:</strong> 물체의 질량이 일정할 때, 작용하는 <strong>알짜힘($F$)이 커질수록 가속도($a$)는 정비례($a \\propto F$)</strong>하여 커집니다.";
-        
-        sliderMass.value = "1.0";
-        sliderMass.disabled = true;
-        sliderForce.disabled = false;
-        document.getElementById('massControlBox').classList.add('opacity-50');
-        document.getElementById('forceControlBox').classList.remove('opacity-50');
-        
-        switchGraphType('F-a');
-      } else if (mode === 'mass') {
-        tab2.className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all bg-indigo-600 text-white shadow";
-        modeDesc.textContent = "힘(F=2.0N) 고정 ➔ 질량(m)에 따른 가속도(a) 관계 분석";
-        conceptHint.innerHTML = "<strong>탐구 포인트:</strong> 가해진 힘이 일정할 때, 물체의 <strong>질량($m$)이 커질수록 가속도($a$)는 반비례($a \\propto \\frac{1}{m}$)</strong>합니다.";
-        
-        sliderForce.value = "2.0";
-        sliderForce.disabled = true;
-        sliderMass.disabled = false;
-        document.getElementById('forceControlBox').classList.add('opacity-50');
-        document.getElementById('massControlBox').classList.remove('opacity-50');
-        
-        switchGraphType('m-a');
-      } else {
-        tab3.className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all bg-indigo-600 text-white shadow";
-        modeDesc.textContent = "힘(F)과 질량(m)을 자유롭게 조절하여 탐구합니다.";
-        conceptHint.innerHTML = "<strong>자유 탐구:</strong> 원하는 임의의 $F$와 $m$을 설정하고 $a = \\frac{F}{m}$ 관계가 그래프에 어떻게 반영되는지 검증해보세요.";
-        
-        sliderForce.disabled = false;
-        sliderMass.disabled = false;
-        document.getElementById('forceControlBox').classList.remove('opacity-50');
-        document.getElementById('massControlBox').classList.remove('opacity-50');
-      }
-
-      onParamChange();
-      resetSim();
+  function renderControls() {
+    const s = current();
+    const body = $("scenarioBody");
+    body.innerHTML = "";
+    if (s.desc || s.section) {
+      const p = document.createElement("p");
+      p.className = "hint"; p.style.marginBottom = "10px";
+      if (s.section) { const b = document.createElement("b"); b.textContent = s.section; p.appendChild(b); if (s.desc) p.appendChild(document.createTextNode(" — ")); }
+      if (s.desc) p.appendChild(document.createTextNode(s.desc));
+      body.appendChild(p);
     }
-
-    /* ============================================================
-       6. Data Recording & Table Management
-    ============================================================ */
-    function recordDataPoint() {
-      const f = simState.force;
-      const m = simState.mass;
-      const invM = parseFloat((1 / m).toFixed(3));
-      const a = parseFloat((f / m).toFixed(3));
-
-      // Prevent exact identical duplicates in a row
-      const isDuplicate = dataset.some(d => Math.abs(d.force - f) < 0.01 && Math.abs(d.mass - m) < 0.01);
-      if (isDuplicate) {
-        showToast('이미 동일한 F와 m 조건의 측정값이 기록되어 있습니다.');
-        return;
-      }
-
-      dataset.push({
-        id: dataset.length + 1,
-        force: f,
-        mass: m,
-        invMass: invM,
-        acc: a
-      });
-
-      renderTable();
-      updateChartData();
-      showToast(`측정 기록 완료: F=${f}N, m=${m}kg ➔ a=${a}m/s²`);
+    (s.choices || []).forEach(c => body.appendChild(choiceEl(c)));
+    (s.params || []).forEach(p => body.appendChild(sliderEl(p)));
+    if (s.animated) {
+      const st = document.createElement("div");
+      st.className = "hint"; st.id = "wsStatus";
+      st.textContent = s.status_hint || "";
+      body.appendChild(st);
+      const row = document.createElement("div");
+      row.className = "controls-row";
+      const play = document.createElement("button");
+      play.id = "playBtn"; play.className = "primary";
+      play.addEventListener("click", () => { ui.playing = !ui.playing; updatePlayButton(); });
+      const reset = document.createElement("button");
+      reset.textContent = "↺ 리셋";
+      reset.addEventListener("click", () => { ui.playing = false; updatePlayButton(); call("reset"); call("update"); });
+      row.append(play, reset);
+      body.appendChild(row);
+      updatePlayButton();
     }
-
-    function removeDataRow(index) {
-      dataset.splice(index, 1);
-      // Re-index
-      dataset.forEach((item, idx) => item.id = idx + 1);
-      renderTable();
-      updateChartData();
+    const cp = C.common_params;
+    if (cp && s.use_common !== false) {
+      const hr = document.createElement("hr");
+      hr.style.cssText = "margin:10px 0;border:none;border-top:1px solid var(--border)";
+      body.appendChild(hr);
+      if (cp.title) { const b = document.createElement("b"); b.style.fontSize = "0.9em"; b.textContent = cp.title; body.appendChild(b); }
+      cp.params.forEach(p => body.appendChild(sliderEl(p)));
     }
+  }
 
-    function clearDataTable() {
-      dataset = [];
-      renderTable();
-      updateChartData();
-      showToast('측정 데이터가 초기화되었습니다.');
+  function updatePlayButton() {
+    const b = $("playBtn");
+    if (b) b.textContent = ui.playing ? "⏸ 일시정지" : "▶ 재생";
+  }
+
+  function renderFormula() {
+    const s = current();
+    const body = $("formulaBody");
+    body.innerHTML = (s.formula || []).map(f =>
+      (f.eq_html ? `<div class="eq">${f.eq_html}</div>` : "") + (f.text_html || "")
+    ).join("");
+  }
+
+  function renderMisconception() {
+    const s = current();
+    const panel = $("misconceptionPanel");
+    panel.innerHTML = "";
+    panel.hidden = !s.misconception;
+    if (!s.misconception) return;
+    const box = document.createElement("div");
+    box.className = "misconception";
+    const b = document.createElement("b");
+    b.textContent = s.misconception_title || "💡 흔한 오개념";
+    box.append(b, document.createElement("br"), document.createTextNode(s.misconception));
+    panel.appendChild(box);
+  }
+
+  function enterScenario() {
+    ui.playing = false;
+    const s = current();
+    $("graphPanel").hidden = !s.chart;
+    $("chartHint").innerHTML = "";
+    api.custom.innerHTML = "";
+    api.setReadout([]); api.setNote("");
+    renderPicker(); renderControls(); renderFormula(); renderMisconception();
+    call("enter");
+    call("update");
+  }
+
+  function selectScenario(id) {
+    ui.scenarioId = id;
+    lastScenarioOfTab[ui.tab] = id;
+    enterScenario();
+  }
+
+  function switchTab(tab) {
+    ui.tab = tab;
+    renderTabs();
+    selectScenario(lastScenarioOfTab[tab] || scenariosOfTab(tab)[0].id);
+  }
+
+  function renderLegend() {
+    const box = $("legend");
+    (C.legend || []).forEach(l => {
+      const span = document.createElement("span");
+      const sw = document.createElement("i");
+      sw.className = "swatch" + (l.shape === "bar" ? " bar" : "");
+      sw.style.background = l.color;
+      span.append(sw, document.createTextNode(l.label));
+      box.appendChild(span);
+    });
+  }
+
+  function runSelfTests() {
+    if (!SIMOBJ || typeof SIMOBJ.tests !== "function") { console.log("물리 검증 항목 없음"); return; }
+    let results = [];
+    try { results = SIMOBJ.tests() || []; } catch (e) { showError("tests", e); return; }
+    console.log("=== " + C.title + " 물리 검증 ===");
+    let pass = 0;
+    for (const [name, ok, detail] of results) {
+      console.log(`[${ok ? "PASS" : "FAIL"}] ${name}${detail ? " — " + detail : ""}`);
+      if (ok) pass++;
     }
+    console.log(pass === results.length ? "모든 검증 통과" : "일부 검증 실패 — 콘솔 확인 필요");
+    window.__wsSelfTest = { pass, total: results.length };
+  }
 
-    function renderTable() {
-      const tbody = document.getElementById('dataTableBody');
-      const emptyState = document.getElementById('tableEmptyState');
-      const badge = document.getElementById('dataCountBadge');
+  /* ---------- 시작 ---------- */
+  $("readoutTitle").textContent = C.readout_title || "측정값";
+  $("hoverHint").textContent = (C.scene && C.scene.hint != null) ? C.scene.hint
+    : (C.renderer === "three" ? "마우스 드래그: 회전 · 휠: 확대/축소" : "");
+  $("projectorBtn").addEventListener("click", () => document.body.classList.toggle("projector"));
+  renderLegend();
+  if (!SIMOBJ) showError("load", "sim_js에 SIM 객체가 정의되지 않았습니다");
+  if (initRenderer()) {
+    call("init");
+    renderTabs();
+    switchTab(ui.tab);
+    animate();
+  }
+  runSelfTests();
+})();
+</script>
 
-      tbody.innerHTML = '';
-      badge.textContent = `${dataset.length}개 기록됨`;
-
-      if (dataset.length === 0) {
-        emptyState.style.display = 'block';
-        return;
-      }
-      emptyState.style.display = 'none';
-
-      dataset.forEach((row, idx) => {
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-slate-700/50 transition-colors";
-        tr.innerHTML = `
-          <td class="py-2.5 px-3 font-semibold text-slate-400">#${row.id}</td>
-          <td class="py-2.5 px-3 text-cyan-300 font-bold">${row.force.toFixed(1)}</td>
-          <td class="py-2.5 px-3 text-amber-300">${row.mass.toFixed(1)}</td>
-          <td class="py-2.5 px-3 text-purple-300">${row.invMass.toFixed(2)}</td>
-          <td class="py-2.5 px-3 text-indigo-300 font-bold">${row.acc.toFixed(2)}</td>
-          <td class="py-2.5 px-2 text-center">
-            <button onclick="removeDataRow(${idx})" class="text-slate-500 hover:text-rose-400 transition-colors p-1">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    function autoGenerateSampleSeries() {
-      if (simState.mode === 'force') {
-        const forces = [1.0, 2.0, 4.0, 6.0, 8.0];
-        forces.forEach(f => {
-          dataset.push({
-            id: dataset.length + 1,
-            force: f,
-            mass: 1.0,
-            invMass: 1.0,
-            acc: parseFloat((f / 1.0).toFixed(2))
-          });
-        });
-      } else if (simState.mode === 'mass') {
-        const masses = [0.5, 1.0, 2.0, 2.5, 4.0];
-        masses.forEach(m => {
-          dataset.push({
-            id: dataset.length + 1,
-            force: 2.0,
-            mass: m,
-            invMass: parseFloat((1 / m).toFixed(3)),
-            acc: parseFloat((2.0 / m).toFixed(2))
-          });
-        });
-      } else {
-        const samples = [
-          { f: 2.0, m: 1.0 },
-          { f: 4.0, m: 1.0 },
-          { f: 4.0, m: 2.0 },
-          { f: 6.0, m: 2.0 },
-          { f: 8.0, m: 2.0 }
-        ];
-        samples.forEach(s => {
-          dataset.push({
-            id: dataset.length + 1,
-            force: s.f,
-            mass: s.m,
-            invMass: parseFloat((1 / s.m).toFixed(3)),
-            acc: parseFloat((s.f / s.m).toFixed(2))
-          });
-        });
-      }
-      renderTable();
-      updateChartData();
-      showToast('5개의 자동 실험 데이터가 추가되었습니다.');
-    }
-
-    function preloadIntroData() {
-      // Default dataset for F-a exploration
-      const initialForces = [1.0, 2.0, 3.0, 4.0, 5.0];
-      initialForces.forEach((f, i) => {
-        dataset.push({
-          id: i + 1,
-          force: f,
-          mass: 1.0,
-          invMass: 1.0,
-          acc: f
-        });
-      });
-      renderTable();
-      updateChartData();
-    }
-
-    /* ============================================================
-       7. Chart.js Graphs & Regression Fitting
-    ============================================================ */
-    function initChart() {
-      const ctxChart = document.getElementById('analysisChart').getContext('2d');
-      chartInstance = new Chart(ctxChart, {
-        type: 'scatter',
-        data: {
-          datasets: [
-            {
-              label: '측정 데이터 점 (Experimental Data)',
-              data: [],
-              backgroundColor: '#10b981',
-              borderColor: '#059669',
-              pointRadius: 6,
-              pointHoverRadius: 8,
-              borderWidth: 2
-            },
-            {
-              label: '이론적 관계선 / 회귀 추세선 (Trendline)',
-              data: [],
-              type: 'line',
-              borderColor: 'rgba(99, 102, 241, 0.85)',
-              borderWidth: 2,
-              borderDash: [6, 4],
-              pointRadius: 0,
-              fill: false,
-              tension: 0.1
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          animation: { duration: 400 },
-          scales: {
-            x: {
-              title: {
-                display: true,
-                text: '힘 F (N)',
-                color: '#94a3b8',
-                font: { size: 12, weight: 'bold', family: 'Pretendard' }
-              },
-              grid: { color: 'rgba(51, 65, 85, 0.5)' },
-              ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono' } }
-            },
-            y: {
-              title: {
-                display: true,
-                text: '가속도 a (m/s²)',
-                color: '#94a3b8',
-                font: { size: 12, weight: 'bold', family: 'Pretendard' }
-              },
-              grid: { color: 'rgba(51, 65, 85, 0.5)' },
-              ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono' } },
-              beginAtZero: true
-            }
-          },
-          plugins: {
-            legend: {
-              labels: {
-                color: '#cbd5e1',
-                font: { size: 11, family: 'Pretendard' }
-              }
-            },
-            tooltip: {
-              backgroundColor: 'rgba(15, 23, 42, 0.95)',
-              titleColor: '#e2e8f0',
-              bodyColor: '#cbd5e1',
-              padding: 10,
-              borderColor: '#334155',
-              borderWidth: 1
-            }
-          }
-        }
-      });
-    }
-
-    function switchGraphType(type) {
-      graphType = type;
-      
-      const btnFA = document.getElementById('btnGraphFA');
-      const btnMA = document.getElementById('btnGraphMA');
-      const btnInvMA = document.getElementById('btnGraphInvMA');
-
-      [btnFA, btnMA, btnInvMA].forEach(b => {
-        b.className = "px-2.5 py-1 rounded-md font-semibold text-slate-400 hover:text-white transition-all";
-      });
-
-      if (type === 'F-a') {
-        btnFA.className = "px-2.5 py-1 rounded-md font-semibold bg-emerald-600 text-white transition-all";
-        chartInstance.options.scales.x.title.text = '힘 F (N)';
-      } else if (type === 'm-a') {
-        btnMA.className = "px-2.5 py-1 rounded-md font-semibold bg-emerald-600 text-white transition-all";
-        chartInstance.options.scales.x.title.text = '질량 m (kg)';
-      } else if (type === 'invM-a') {
-        btnInvMA.className = "px-2.5 py-1 rounded-md font-semibold bg-emerald-600 text-white transition-all";
-        chartInstance.options.scales.x.title.text = '질량의 역수 1/m (kg⁻¹)';
-      }
-
-      updateChartData();
-    }
-
-    function updateChartData() {
-      if (!chartInstance) return;
-
-      let scatterPoints = [];
-      let trendlinePoints = [];
-      const eqElem = document.getElementById('trendlineEq');
-      const descElem = document.getElementById('trendlineDesc');
-
-      if (graphType === 'F-a') {
-        scatterPoints = dataset.map(d => ({ x: d.force, y: d.acc }));
-        
-        // Linear fit: a = k * F (where k ≈ 1/m)
-        if (dataset.length > 0) {
-          const maxF = Math.max(...dataset.map(d => d.force), 10);
-          // Calculate average slope (1/m)
-          const avgInvM = dataset.reduce((sum, d) => sum + (d.acc / d.force), 0) / dataset.length;
-          trendlinePoints = [
-            { x: 0, y: 0 },
-            { x: maxF * 1.05, y: avgInvM * (maxF * 1.05) }
-          ];
-
-          eqElem.textContent = `a = ${avgInvM.toFixed(3)} × F`;
-          descElem.innerHTML = `그래프가 원점을 지나는 직선입니다. 즉, <strong>가속도($a$)는 알짜힘($F$)에 비례</strong>합니다. (기울기 $k = \\frac{1}{m} \\approx ${avgInvM.toFixed(2)}\\text{ kg}^{-1}$)`;
-        }
-      } else if (graphType === 'm-a') {
-        scatterPoints = dataset.map(d => ({ x: d.mass, y: d.acc }));
-        
-        // Inverse curve fit: a = F / m
-        if (dataset.length > 0) {
-          const avgF = dataset.reduce((sum, d) => sum + (d.acc * d.mass), 0) / dataset.length;
-          const minM = Math.min(...dataset.map(d => d.mass), 0.5);
-          const maxM = Math.max(...dataset.map(d => d.mass), 5.0);
-          
-          for (let m = 0.4; m <= maxM + 0.5; m += 0.2) {
-            trendlinePoints.push({ x: parseFloat(m.toFixed(1)), y: avgF / m });
-          }
-
-          eqElem.textContent = `a = ${avgF.toFixed(2)} / m`;
-          descElem.innerHTML = `그래프가 직각쌍곡선 형태를 보입니다. 즉, <strong>가속도($a$)는 질량($m$)에 반비례($a \\propto \\frac{1}{m}$)</strong>합니다. (일정한 힘 $F \\approx ${avgF.toFixed(2)}\\text{ N}$)`;
-        }
-      } else if (graphType === 'invM-a') {
-        scatterPoints = dataset.map(d => ({ x: d.invMass, y: d.acc }));
-        
-        // Linear fit in 1/m space: a = F * (1/m)
-        if (dataset.length > 0) {
-          const maxInvM = Math.max(...dataset.map(d => d.invMass), 2.0);
-          const avgF = dataset.reduce((sum, d) => sum + (d.acc / d.invMass), 0) / dataset.length;
-          
-          trendlinePoints = [
-            { x: 0, y: 0 },
-            { x: maxInvM * 1.1, y: avgF * (maxInvM * 1.1) }
-          ];
-
-          eqElem.textContent = `a = ${avgF.toFixed(3)} × (1/m)`;
-          descElem.innerHTML = `질량의 역수($\\frac{1}{m}$)를 가로축으로 설정하면 <strong>직선 관계</strong>로 변환됩니다. 직선의 기울기는 작용한 <strong>알짜힘($F \\approx ${avgF.toFixed(2)}\\text{ N}$)</strong>을 의미합니다.`;
-        }
-      }
-
-      chartInstance.data.datasets[0].data = scatterPoints;
-      chartInstance.data.datasets[1].data = trendlinePoints;
-      chartInstance.update();
-    }
-
-    /* ============================================================
-       8. Toast Notification Utility
-    ============================================================ */
-    let toastTimeout = null;
-    function showToast(msg) {
-      const toast = document.getElementById('toastBox');
-      const toastMsg = document.getElementById('toastMsg');
-      toastMsg.textContent = msg;
-
-      toast.classList.remove('translate-y-20', 'opacity-0');
-      toast.classList.add('translate-y-0', 'opacity-100');
-
-      if (toastTimeout) clearTimeout(toastTimeout);
-      toastTimeout = setTimeout(() => {
-        toast.classList.remove('translate-y-0', 'opacity-100');
-        toast.classList.add('translate-y-20', 'opacity-0');
-      }, 2600);
-    }
-  </script>
 </body>
 </html>
+<!--claude-meta
+category: 역학
+slug: newton-second-law
+icon: 🛷
+title: 뉴턴 제2법칙 가상 실험실
+desc: 수레와 걸이추로 직접 시간을 재어 가속도를 구하고, 힘·질량과의 관계를 설계·분석한다.
+-->

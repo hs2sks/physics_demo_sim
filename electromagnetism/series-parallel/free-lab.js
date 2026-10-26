@@ -234,7 +234,11 @@
     .fl-pop input{width:84px;font:inherit;padding:2px 4px}.fl-pop select{font:inherit}
     .fl-sim{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;font-size:.9em}.fl-sim button,.fl-sim select{font:inherit;padding:4px 8px}#fl-t{font-variant-numeric:tabular-nums;min-width:70px}
     .fl-ch{width:100%;height:auto;background:#fff;border:1px solid var(--border);border-radius:8px;margin-top:8px}
-    .fl-side select#fl-exsel{width:100%;font:inherit;padding:5px}.fl-side .errc{font-weight:700}.fl-sep{font-size:.75em;color:var(--sub);margin:6px 0 0}
+    .fl-side select#fl-exsel{width:100%;font:inherit;padding:5px}.fl-side .errc{font-weight:700}.fl-gd{position:fixed;inset:0;background:rgba(15,25,40,.55);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px}
+    .fl-gd[hidden]{display:none}.fl-gb{background:#fff;border-radius:14px;max-width:860px;width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+    .fl-gh{display:flex;gap:8px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border)}.fl-gh b{flex:1;font-size:1.05em}.fl-gh button{padding:6px 12px}.fl-gh button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .fl-gc{overflow:auto;padding:6px 20px 18px;line-height:1.65;font-size:.93em}.fl-gc h3{margin:16px 0 4px;font-size:1.02em;color:#1d4a85}.fl-gc table{border-collapse:collapse;width:100%;margin:6px 0;font-size:.95em}.fl-gc th,.fl-gc td{border:1px solid var(--border);padding:4px 8px;text-align:left;vertical-align:top}.fl-gc th{background:#f2f5fa}.fl-gc ul,.fl-gc ol{margin:4px 0 4px 20px;padding:0}.fl-gc kbd{border:1px solid #bbb;border-bottom-width:2px;border-radius:4px;padding:0 5px;background:#f7f7f7;font-size:.9em}
+    .fl-sep{font-size:.75em;color:var(--sub);margin:6px 0 0}
     .fl-trash{margin-top:10px;border:2px dashed #c9d3e0;border-radius:8px;padding:10px 6px;text-align:center;font-size:.8em;color:var(--sub)}
     .fl-trash.hot{border-color:#d64545;color:#d64545;background:#fff1f1}
     .fl-bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;font-size:.88em}
@@ -257,7 +261,7 @@
     host.innerHTML = `<div class="fl-wrap">
       <div class="fl-tray"><b>🧰 부품 상자</b><div class="fl-hint">끌어서 보드에 놓거나, 눌러서 추가하세요.</div><div class="fl-items" id="fl-items"></div>
         <div class="fl-trash" id="fl-trash">🗑 부품을 여기로 끌면 삭제</div></div>
-      <div class="fl-mid"><div class="fl-bar">
+      <div class="fl-mid"><div class="fl-bar"><button id="fl-guide" class="primary">📖 사용 안내 · Guide</button>
           <button id="fl-rot" title="선택한 부품 회전 (R 키)">⟳ 회전</button><button id="fl-del">선택 삭제</button><button id="fl-clear">모두 지우기</button>
           <button id="fl-schem" class="primary">🔌 회로도 보기</button><label><input type="checkbox" id="fl-hide"> 저항 값 가리기(색띠로 읽기)</label>
           <label><input type="checkbox" id="fl-theory"> 이론값 보기(교사용)</label></div>
@@ -270,7 +274,7 @@
       <div class="fl-side">
         <div><b>📟 계기</b><table id="fl-meters"></table></div>
         <div><b>📝 측정 기록</b><table id="fl-rec"></table><div class="fl-btns"><button id="fl-addrow" class="primary">지금 값 기록</button><button id="fl-copy">📋 보고서 복사</button><button id="fl-clrrows">표 지우기</button><button id="fl-link">🔗 회로 링크 복사</button><button id="fl-load">📥 링크로 불러오기</button></div></div>
-        <details open><summary>❓ 사용법</summary><ol>
+        <details open><summary>❓ 사용법 · Quick start (<a href="#" id="fl-guide2">전체 안내 / full guide</a>)</summary><ol>
           <li>부품 상자에서 <b>건전지·스위치·저항·계기</b>를 보드로 끌어다 놓습니다.</li>
           <li>부품 끝의 <b>동그란 단자</b>를 끌어 다른 단자에 놓으면 도선이 이어집니다. (또는 두 단자를 차례로 탭)</li>
           <li><b>전류계</b>는 재려는 곳과 <b>직렬</b>, <b>전압계</b>는 재려는 곳과 <b>병렬</b>. 계기의 <b>(+)는 전지 (+)쪽</b>에 이어요.</li>
@@ -1132,6 +1136,76 @@
       }
       requestAnimationFrame(loop);
     })(last);
+
+
+    /* ---------- 사용 안내 (한국어 / English) ---------- */
+    const GUIDE = {
+      ko: `<h3>1. 시작하기</h3><ol><li>왼쪽 <b>부품 상자</b>에서 부품을 보드로 끌어다 놓습니다(누르면 자동 배치). 저항·축전기·코일 등은 <b>값을 먼저 고른 뒤</b> 놓습니다.</li>
+<li>부품 끝의 <b>동그란 단자</b>를 끌어 다른 단자에 놓으면 <b>도선</b>이 이어집니다(두 단자를 차례로 탭해도 됩니다). 전지(+)는 빨강, (−)는 검정으로 칠해집니다.</li>
+<li><b>스위치를 닫으면</b>(레버 클릭) 전류가 흐릅니다. 전류계는 재려는 곳과 <b>직렬</b>, 전압계는 <b>병렬</b>로 연결하고, 계기의 (+)는 전지 (+)쪽에 둡니다.</li>
+<li>값은 계기에서 읽고, 오른쪽 <b>측정 기록</b> 표에 적습니다. 막막하면 교사용 도구의 <b>예시 회로</b>를 불러 보세요.</li></ol>
+<h3>2. 부품 조작</h3><ul><li><b>이동</b>: 부품 끌기 · <b>회전</b>: 선택 후 <kbd>R</kbd> 또는 ⟳ 회전 · <b>삭제</b>: 선택 후 <kbd>Delete</kbd>, 선택 삭제 단추, 또는 부품 상자 쪽으로 끌어 놓기 · 도선은 눌러서 선택 후 삭제.</li>
+<li><b>값 바꾸기</b>: 부품을 누르면 옆에 편집 창이 뜹니다. 목록에서 고르거나 숫자를 직접 입력합니다(저항 1 Ω~1 MΩ, 축전기, 코일, 교류전원, 전구·LED 종류, 가변저항 손잡이).</li></ul>
+<h3>3. 부품 설명</h3><table><tr><th>부품</th><th>설명</th></tr>
+<tr><td>건전지</td><td>1.5 V 건전지를 1~6개(− / + 단추). 내부 저항이 있어 전류가 클수록 단자 전압이 내려갑니다.</td></tr>
+<tr><td>교류전원</td><td>최댓값(V)과 진동수(Hz) 설정. 실효값 = 최댓값/√2.</td></tr>
+<tr><td>스위치</td><td>단투(열림/닫힘), 쌍투(레버로 ①↔② 전환).</td></tr>
+<tr><td>저항</td><td>색띠로 값을 읽을 수 있습니다(위 막대의 "저항 값 가리기"). 오차 ±5 %, 정격 ¼ W — 넘으면 🔥 경고.</td></tr>
+<tr><td>가변저항</td><td>손잡이 슬라이더로 위치 조절. 가운데 단자까지 쓰면 분압, 한쪽 끝에 이으면 가변저항.</td></tr>
+<tr><td>전구</td><td>정격(예: 2.5 V 0.3 A) 안에서 밝기가 전력에 비례합니다. 정격의 2배 전력이면 끊어집니다(눌러서 교체).</td></tr>
+<tr><td>축전기·코일</td><td>직류에서는 충전·전류 증가가 서서히 일어납니다(시간 변화). 코일에는 권선 저항 10 Ω가 있고 0.5 A를 넘으면 경고.</td></tr>
+<tr><td>다이오드·LED</td><td>A(+)에서 K(−) 방향으로만 전류가 흐릅니다. LED는 보호 저항 없이 쓰면 타 버립니다.</td></tr></table>
+<h3>4. 계기 읽기</h3><ul><li><b>범위</b> 단추로 눈금을 바꿉니다(전류계 30 mA / 300 mA / 3 A, 전압계 3 V / 15 V). 범위를 넘으면 경고가 뜨고, 바늘이 반대로 가면 (+)(−)를 바꿔 연결하세요.</li>
+<li><b>DC / AC</b>: 교류 회로에서 DC는 평균값(거의 0), AC는 실효값을 보여 줍니다.</li>
+<li>계기도 회로에 영향을 줍니다(전류계 내부 저항, 전압계 입력 저항).</li></ul>
+<h3>5. 시간 변화와 스코프</h3><ul><li>축전기·코일·교류전원이 있으면 시간이 흐르고, 아래에 <b>시간 그래프</b>(전압계·전류계·교류전원 파형)가 나옵니다.</li>
+<li><b>속도</b>(1/100배~100배), <b>화면 시간</b>(5 ms~5 s), ⏸ 멈춤, ↺ 방전·처음으로(축전기 방전, 시간 0)를 사용합니다.</li></ul>
+<h3>6. 회로도 보기</h3><p>"🔌 회로도 보기"는 연결된 회로를 교과서 모양(전지 왼쪽, 부품 위쪽 가로줄, 병렬은 사다리)으로 자동 정리합니다. 브리지 회로처럼 직·병렬로 나눌 수 없으면 보드 배치 그대로 그리고 이유를 알려 줍니다.</p>
+<h3>7. 기록과 제출</h3><ul><li><b>지금 값 기록</b>: 계기마다 한 줄씩 추가됩니다. 아날로그 계기는 눈금을 읽어 직접 적으세요(단위를 생략하면 계기 단위로 봅니다).</li>
+<li>교사용 <b>이론값 보기</b>를 켜면 이론값과 오차(%)가 나옵니다(이상적인 계기·공칭 저항 기준, 시간 변화 회로는 제외).</li>
+<li><b>회로 링크 복사</b>: 내 회로가 담긴 링크를 만들어 제출·공유합니다. <b>링크로 불러오기</b>로 열 수 있고, <b>보고서 복사</b>는 링크와 표를 함께 복사합니다.</li></ul>
+<h3>8. 문제가 생기면</h3><ul><li>전류가 0: 스위치가 열렸거나 전지에서 나간 도선이 전지로 돌아오지 않은 것입니다.</li><li>"합선" 경고: 전류계를 병렬로 이었거나 도선이 전지 양쪽을 바로 이은 경우입니다. 스위치를 열고 확인하세요.</li><li>작업은 브라우저에 자동 저장됩니다. "모두 지우기"로 초기화.</li></ul>`,
+      en: `<h3>1. Getting started</h3><ol><li>Drag parts from the <b>parts box</b> (left) onto the board (or tap one to auto-place it). For resistors, capacitors, coils etc., <b>pick the value first</b>, then place.</li>
+<li>Drag a part's <b>round terminal</b> onto another terminal to make a <b>wire</b> (or tap two terminals in turn). Battery (+) wires are red, (−) wires are black.</li>
+<li><b>Close the switch</b> (click the lever) and current flows. Connect an ammeter <b>in series</b> and a voltmeter <b>in parallel</b> with what you measure; connect each meter's (+) toward the battery (+).</li>
+<li>Read the meters and write values in the <b>Measurement record</b> table. Stuck? Load an <b>example circuit</b> from the teacher tools.</li></ol>
+<h3>2. Handling parts</h3><ul><li><b>Move</b>: drag · <b>Rotate</b>: select, then <kbd>R</kbd> or ⟳ · <b>Delete</b>: select then <kbd>Delete</kbd>, the delete button, or drag the part back out of the board. Click a wire to select and delete it.</li>
+<li><b>Change a value</b>: click a part and an editor pops up next to it. Choose from the list or type a number (resistor 1 Ω–1 MΩ, capacitor, coil, AC source, bulb/LED type, rheostat knob).</li></ul>
+<h3>3. Parts</h3><table><tr><th>Part</th><th>Notes</th></tr>
+<tr><td>Battery</td><td>1–6 cells of 1.5 V (− / + buttons). It has internal resistance, so terminal voltage drops at high current.</td></tr>
+<tr><td>AC source</td><td>Set peak voltage (V) and frequency (Hz). RMS = peak/√2.</td></tr>
+<tr><td>Switch</td><td>SPST (open/closed) or SPDT (click the lever to toggle ①↔②).</td></tr>
+<tr><td>Resistor</td><td>Read the value from the colour bands (tick "hide resistor values" above). ±5 % tolerance, ¼ W rating — beyond that you get a 🔥 warning.</td></tr>
+<tr><td>Rheostat / potentiometer</td><td>Move the knob slider. Using the middle terminal makes a voltage divider; wiring only one end makes a variable resistor.</td></tr>
+<tr><td>Bulb</td><td>Brightness follows power within its rating (e.g. 2.5 V 0.3 A). At twice the rated power it burns out (click it to replace).</td></tr>
+<tr><td>Capacitor, coil</td><td>With DC, charging and current growth happen gradually over time. The coil has 10 Ω winding resistance and warns above 0.5 A.</td></tr>
+<tr><td>Diode, LED</td><td>Current flows only from A (anode) to K (cathode). An LED without a series resistor burns out.</td></tr></table>
+<h3>4. Reading meters</h3><ul><li>Use the <b>range</b> button (ammeter 30 mA / 300 mA / 3 A, voltmeter 3 V / 15 V). Over-range gives a warning; if the needle goes backwards, swap the (+)/(−) connections.</li>
+<li><b>DC / AC</b>: in an AC circuit, DC shows the average (≈0) and AC shows the RMS value.</li>
+<li>Meters affect the circuit too (ammeter resistance, voltmeter input resistance).</li></ul>
+<h3>5. Time behaviour and the scope</h3><ul><li>With a capacitor, coil or AC source, time runs and a <b>time graph</b> (voltmeters, ammeters, AC source waveform) appears below the board.</li>
+<li>Use <b>speed</b> (1/100× – 100×), <b>time window</b> (5 ms – 5 s), ⏸ pause, and ↺ discharge/restart (discharges capacitors, resets time to 0).</li></ul>
+<h3>6. Circuit diagram</h3><p>"🔌 Circuit diagram" redraws your circuit in textbook style (source at left, parts along the top, parallel branches as a ladder). If it cannot be reduced to series/parallel (e.g. a bridge) it keeps your board layout and says why.</p>
+<h3>7. Recording and submitting</h3><ul><li><b>Record values</b> adds one row per meter. For analogue meters, read the scale and type the value (if you omit the unit, the meter's unit is assumed).</li>
+<li>With the teacher option <b>show theory</b>, you also get the theoretical value and the % error (ideal meters and nominal resistances; not for time-varying circuits).</li>
+<li><b>Copy circuit link</b> creates a link that contains your circuit, for submitting or sharing; <b>load from link</b> opens it again. <b>Copy report</b> copies the link plus the table.</li></ul>
+<h3>8. Troubleshooting</h3><ul><li>Zero current: the switch is open, or the wire leaving the battery never returns to it.</li><li>"Short circuit" warning: an ammeter is connected in parallel, or a wire joins both battery terminals. Open the switch and check.</li><li>Your work is saved automatically in the browser. "Clear all" resets it.</li></ul>
+<p style="color:#6b7a8c;font-size:.9em">Note: the lab's buttons and labels are in Korean; this guide explains each of them.</p>`
+    };
+    const gd = document.createElement('div'); gd.className = 'fl-gd'; gd.hidden = true;
+    gd.innerHTML = '<div class="fl-gb" role="dialog" aria-modal="true"><div class="fl-gh"><b id="fl-gt"></b><button data-l="ko">한국어</button><button data-l="en">English</button><button id="fl-gx">✕</button></div><div class="fl-gc" id="fl-gc"></div></div>';
+    host.appendChild(gd);
+    let glang = 'ko'; try { glang = localStorage.getItem('freeLab-lang') || 'ko'; } catch (e) { }
+    function showGuide(l) {
+      if (l) { glang = l; try { localStorage.setItem('freeLab-lang', l); } catch (e) { } }
+      gd.hidden = false; $('fl-gc').innerHTML = GUIDE[glang]; $('fl-gc').scrollTop = 0;
+      $('fl-gt').textContent = glang === 'ko' ? '📖 자유 조립 실험실 사용 안내' : '📖 Free-assembly lab: user guide';
+      gd.querySelectorAll('[data-l]').forEach(b => b.classList.toggle('on', b.dataset.l === glang));
+    }
+    gd.addEventListener('click', e => { if (e.target === gd || e.target.id === 'fl-gx') gd.hidden = true; else if (e.target.dataset && e.target.dataset.l) showGuide(e.target.dataset.l); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !gd.hidden) gd.hidden = true; });
+    $('fl-guide').addEventListener('click', () => showGuide());
+    host.querySelector('#fl-guide2').addEventListener('click', e => { e.preventDefault(); showGuide(); });
 
     /* ---------- 탭 연결 ---------- */
     let active = false;

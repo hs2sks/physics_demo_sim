@@ -1,0 +1,921 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>엔트로피와 열역학 제2법칙 수업 덱</title>
+<!-- entropy-second-law · 비상교육 고등 역학과 에너지 72~75쪽을 바탕으로, 잉크의 확산·브라운 운동·맥스웰의 도깨비·엔트로피의 역사를 곁들인 시뮬레이션 수업 덱 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap">
+<style>
+:root{
+  --bg:#dfe5f0; --slide:#f5f7fc; --panel:#ffffff; --ink:#14203a; --muted:#54617b; --line:#c9d2e4;
+  --blue:#1f5fd1; --onblue:#ffffff; --amber:#b45f00; --green:#0c7a58; --red:#b8321f;
+  --blue-soft:#dce8fb; --amber-soft:#fbe8cf;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+    --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+    --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+  --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+  --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;overflow:hidden}
+#viewport{position:relative;width:100%;height:100%;overflow:hidden}
+#deck{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center center;background:var(--slide);box-shadow:0 12px 70px rgba(0,0,0,.28);overflow:hidden}
+.slide{position:absolute;inset:0;display:none;flex-direction:column;padding:84px 88px 52px;gap:24px;background:var(--slide);font-size:32px;line-height:1.4}
+.slide.active{display:flex}
+.hd{display:flex;align-items:baseline;justify-content:space-between;gap:24px;flex:none}
+.hd h2{font-size:58px;line-height:1.15;margin:0;font-weight:800;letter-spacing:-.01em}
+.hd .src{font-size:26px;color:var(--muted);white-space:nowrap}
+.body{flex:1;min-height:0;display:grid;gap:36px}
+.mg-box{position:relative;aspect-ratio:16/9;border-radius:16px;overflow:hidden;background:#06142a;align-self:start}
+.mg-box.mg-full{height:100%;max-width:100%;justify-self:center}
+.mg-box iframe{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none}
+.mg-re{position:absolute;right:14px;bottom:14px;font:inherit;font-size:24px;padding:8px 18px;border-radius:10px;border:1px solid rgba(255,255,255,.4);background:rgba(0,0,0,.55);color:#fff;cursor:pointer;opacity:.75}
+.mg-re:hover,.mg-re:focus-visible{opacity:1}
+.side{display:flex;flex-direction:column;gap:18px;min-height:0}
+canvas{display:block;border-radius:16px;background:#0a1330}
+.box{background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:20px 26px}
+.box h3{margin:0 0 8px;font-size:30px}
+.sm{font-size:26px;color:var(--muted)}
+.lead{font-size:40px;line-height:1.35}
+.k{color:var(--amber);font-weight:700}.p{color:var(--blue);font-weight:700}.ok{color:var(--green);font-weight:700}.bad{color:var(--red);font-weight:700}
+/* math */
+.m{font-family:'STIX Two Text','Times New Roman',serif;font-style:italic;font-size:1.1em;white-space:nowrap}
+.m .u,.u{font-style:normal}
+.m sub,.m sup{font-size:.68em;line-height:0;font-style:normal}
+.fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.15;margin:0 .12em;font-size:.95em}
+.fr>span:first-child{padding:0 .2em .06em;border-bottom:.07em solid currentColor}
+.fr>span:last-child{padding-top:.06em}
+.sq{white-space:nowrap}.sq .rad{border-top:.07em solid currentColor;padding:0 .15em;margin-left:-.04em}
+.eq{font-size:44px;text-align:center;padding:6px 0}
+/* controls */
+.ctl{display:flex;flex-direction:column;gap:4px}
+.ctl .row{display:flex;justify-content:space-between;align-items:baseline;font-size:27px;gap:12px}
+.ctl .val{font-weight:700;font-variant-numeric:tabular-nums}
+.rangew{position:relative}
+input[type=range]{width:100%;height:44px;-webkit-appearance:none;appearance:none;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:38px;height:38px;border-radius:50%;background:var(--blue);margin-top:-13px;border:4px solid var(--panel);box-shadow:0 1px 6px rgba(0,0,0,.35)}
+input[type=range]::-moz-range-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;background:var(--blue);border:4px solid var(--panel)}
+input[type=range]:focus-visible{outline:3px solid var(--blue);outline-offset:4px;border-radius:8px}
+.marks{position:relative;height:60px;font-size:22px;color:var(--muted)}
+.marks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.btns{display:flex;gap:12px;flex-wrap:wrap}
+.btn,.chip{font:inherit;font-size:27px;font-weight:700;padding:10px 24px;border-radius:12px;border:2px solid var(--blue);background:var(--panel);color:var(--blue);cursor:pointer;line-height:1.25}
+.btn.pri{background:var(--blue);color:var(--onblue)}
+.chip{padding:8px 18px;font-size:26px;border-color:var(--line);color:var(--ink);font-weight:500}
+.chip.on{border-color:var(--blue);background:var(--blue-soft);font-weight:700}
+.btn:focus-visible,.chip:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.chips{display:flex;gap:10px;flex-wrap:wrap}
+/* step reveal */
+.st{display:grid;grid-template-columns:46px 1fr;gap:14px;padding:8px 14px;border-radius:14px;opacity:0;transform:translateY(10px);transition:opacity .35s,transform .35s;border:2px solid transparent}
+.st.on{opacity:.55;transform:none}
+.st.cur{opacity:1;background:var(--panel);border-color:var(--blue)}
+.st .n{width:42px;height:42px;border-radius:50%;background:var(--blue);color:var(--onblue);display:grid;place-items:center;font-weight:800;font-size:24px;margin-top:2px}
+.st .tl{display:flex;flex-wrap:wrap;gap:2px 14px;align-items:baseline}
+.st .t{font-size:23px;color:var(--muted);line-height:1.3}
+.st b{font-size:27px}
+.st .eq{font-size:35px;line-height:1.1;text-align:left;padding:2px 0}
+/* cover */
+.cover{flex-direction:row;align-items:center;gap:56px}
+.cover.active{display:flex}
+.cv-l{flex:1;display:flex;flex-direction:column;gap:28px}
+.cv-l h1{font-size:200px;line-height:1;margin:0;font-weight:800;letter-spacing:-.04em}
+.cv-l h1.long{font-size:92px;line-height:1.22;letter-spacing:-.02em;text-wrap:balance;word-break:keep-all}
+.cv-tag{font-size:30px;color:var(--muted)}
+.q{border-left:8px solid var(--blue);border-radius:6px;padding:8px 0 8px 28px;font-size:36px;line-height:1.45}
+/* table */
+table.t{border-collapse:collapse;width:100%;font-size:27px}
+table.t th,table.t td{padding:10px 14px;border-bottom:2px solid var(--line);text-align:right;white-space:nowrap}
+table.t th:first-child,table.t td:first-child,table.t th:last-child,table.t td:last-child{text-align:left}
+table.t th{font-size:24px;color:var(--muted);font-weight:500}
+table.t tbody tr{cursor:pointer}
+table.t tbody tr.on{background:var(--blue-soft);font-weight:700}
+/* HUD / notes */
+#hud{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:10px;align-items:center;background:rgba(10,19,48,.86);color:#e9effd;padding:8px 14px;border-radius:14px;font-size:18px;opacity:0;transition:opacity .3s;z-index:20}
+#hud.show{opacity:1}
+#hud button{font:inherit;font-size:18px;color:#e9effd;background:transparent;border:1.5px solid rgba(233,239,253,.5);border-radius:8px;padding:4px 12px;cursor:pointer}
+#notes{position:absolute;left:0;right:0;bottom:0;background:rgba(10,19,48,.94);color:#eaf0ff;padding:26px 88px 34px;font-size:30px;line-height:1.5;display:none;z-index:15}
+#notes.on{display:block}
+#notes b{color:#ffb454}
+
+.ko{font-family:'Noto Sans KR',sans-serif;font-style:normal;font-size:.8em}
+#bar{position:absolute;top:14px;left:88px;right:88px;height:54px;display:flex;justify-content:space-between;align-items:center;z-index:12}
+#bar .bl{font-size:26px;font-weight:800}
+#bar .br{display:flex;gap:10px}
+.tb{font:inherit;font-size:24px;font-weight:700;padding:7px 18px;border-radius:12px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;line-height:1.2}
+.tb:hover{border-color:var(--blue)}.tb.on{border-color:var(--blue);background:var(--blue-soft)}
+.tb:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+#help{position:absolute;inset:0;background:rgba(6,11,30,.82);display:none;align-items:center;justify-content:center;z-index:30}
+#help.on{display:flex}
+.hp{background:var(--panel);color:var(--ink);border-radius:22px;padding:36px 52px 40px;width:1320px;max-height:960px;overflow:auto;font-size:27px;line-height:1.5;border:2px solid var(--line)}
+.hp h3{font-size:40px;margin:0 0 14px}.hp h4{font-size:29px;margin:18px 0 6px;color:var(--blue)}
+.hp .g{display:grid;grid-template-columns:230px 1fr;gap:6px 22px}
+.hp kbd{font:inherit;font-size:24px;font-weight:700;background:var(--blue-soft);border:2px solid var(--line);border-radius:8px;padding:1px 10px;margin-right:4px}
+#ask{position:absolute;inset:0;background:rgba(6,11,30,.6);display:none;align-items:center;justify-content:center;z-index:25;cursor:pointer}
+#ask.on{display:flex}
+#ask .ak{background:var(--panel);color:var(--ink);border-radius:24px;border-left:16px solid var(--blue);padding:44px 72px 40px 60px;width:1500px;box-shadow:0 20px 80px rgba(0,0,0,.45)}
+#ask .ah{font-size:30px;color:var(--blue);font-weight:800;margin-bottom:18px}
+#ask .aq{font-size:54px;line-height:1.4;font-weight:700;margin:10px 0;letter-spacing:-.01em}
+#ask .aq span{color:var(--blue);margin-right:14px}
+#ask .af{font-size:24px;color:var(--muted);margin-top:22px}
+#notes .nh{font-size:24px;color:#9db0d8;margin-bottom:6px}
+#notes .nq{margin:4px 0 10px;font-size:29px}
+#notes .ni{margin:6px 0;font-size:27px;line-height:1.45}
+#notes .nx{color:#ff9d9d;font-weight:700}#notes .nv{color:#5eead4;font-weight:700}
+@media (prefers-reduced-motion: reduce){.st{transition:none}}
+#simError{position:absolute;left:88px;right:88px;top:76px;z-index:40;background:rgba(184,50,31,.95);color:#fff;font-size:22px;line-height:1.4;padding:10px 18px;border-radius:12px;white-space:pre-wrap;display:none}
+#simError.on{display:block}
+/* ---- 반응형(reflow): 폭 1100px 미만(폰·태블릿)에서는 1920 스케일 대신 세로로 흐르는 레이아웃 ---- */
+html.rf #deck{left:0;top:0;transform-origin:top left;box-shadow:none}
+html.rf .slide{padding:104px 22px 100px;gap:18px;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;font-size:30px}
+html.rf .body{display:flex !important;flex-direction:column;gap:22px;flex:none;min-height:auto}
+html.rf .side{min-height:auto}
+html.rf .hd{flex-direction:column;align-items:flex-start;gap:6px}
+html.rf .hd h2{font-size:44px}
+html.rf .hd .src{font-size:23px;white-space:normal}
+html.rf canvas{width:100% !important;height:auto !important;max-width:100%}
+html.rf .mg-box.mg-full{height:auto;width:100%}
+html.rf img,html.rf svg,html.rf video{max-width:100%;height:auto}
+html.rf .cover{flex-direction:column;align-items:stretch;gap:26px}
+html.rf .cv-l h1{font-size:112px}
+html.rf .cv-l h1.long{font-size:52px}
+html.rf .cv-tag{font-size:26px}
+html.rf .q{font-size:30px}
+html.rf .lead{font-size:34px}
+html.rf .eq{font-size:36px;overflow-x:auto}
+html.rf table.t{display:block;overflow-x:auto;font-size:24px}
+html.rf .btn,html.rf .chip{min-height:52px}
+html.rf #bar{left:14px;right:14px;top:12px;height:auto;flex-wrap:wrap;gap:8px}
+html.rf #bar .bl{display:none}
+html.rf #bar .br{flex-wrap:wrap;justify-content:flex-end;width:100%}
+html.rf .tb{font-size:20px;padding:8px 12px}
+html.rf .hp{width:92%;max-height:88%;padding:24px 22px 28px;font-size:23px}
+html.rf .hp h3{font-size:32px}
+html.rf .hp .g{grid-template-columns:1fr;gap:2px 0}
+html.rf #ask .ak{width:92%;padding:26px 24px 24px 28px;border-left-width:10px}
+html.rf #ask .aq{font-size:34px}
+html.rf #notes{padding:18px 20px 26px;font-size:23px;max-height:62%;overflow:auto}
+html.rf #notes .nq{font-size:25px}
+html.rf #notes .ni{font-size:23px}
+html.rf #simError{left:14px;right:14px;top:96px}
+html.rf #hud{padding:8px 16px;width:max-content;max-width:96%}
+html.rf #hud #h-pg{white-space:nowrap;font-size:22px}
+html.rf .st:not(.on){display:none}
+html.rf #hud button{font-size:22px;padding:6px 16px;min-height:44px}
+/* ---- extra_css ---- */
+.btn.pri{outline:2px solid currentColor}.body>.box{min-width:0}.body>.box .t{width:100%;table-layout:fixed;font-size:26px}.body>.box .t td,.body>.box .t th{word-break:keep-all;overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<div id="viewport">
+<div id="deck">
+
+<!-- cover -->
+<section class="slide cover" id="cover">
+  <div class="cv-l"><div class="cv-tag">열과 에너지 · 열역학 제2법칙</div>
+    <h1 class="long">엔트로피와 열역학 제2법칙</h1>
+    <p class="lead" style="margin:0">물에 떨어뜨린 잉크는 번져 가지만, 번진 잉크가 다시 한 방울로 모이는 일은 없다. 에너지는 보존되는데, 자연은 왜 한쪽 방향으로만 흐를까?</p>
+    <div class="q">잉크는 왜 다시 모이지 않을까? 그 까닭은 눈에 보이지 않는 분자 세계에 있다.</div>
+    <div class="sm">비상교육 고등 역학과 에너지 72~75쪽(그림 Ⅱ-20 잉크의 확산) · 대학물리(Halliday 20장, Schroeder 2~3장) 참고</div></div>
+  <canvas id="cv-cover"></canvas>
+</section>
+
+<!-- rv -->
+<section class="slide" id="rv">
+  <header class="hd"><h2>비가역 현상: 한쪽으로만 일어나는 일</h2><span class="src">교과서 72쪽 · 그림 Ⅱ-20 잉크의 확산 · 도입 영상 TED-Ed</span></header>
+<div class="body" style="grid-template-columns:1000px 1fr">
+<div class="side" style="gap:8px"><canvas id="rv-cv"></canvas><div class="btns"><button class="btn pri rv-b" data-m="play">▶ 재생</button><button class="btn rv-b" data-m="back">⏪ 되감기</button><button class="btn rv-b" data-m="reset">↺ 처음부터</button></div></div><div class="side"><div class="box"><h3>비가역 현상의 예 (교과서)</h3><ul><li><b class="p">잉크가 물에 골고루 확산된다</b> (그림 Ⅱ-20)</li><li>열은 고온 → 저온으로만, 진자는 결국 멈춘다</li></ul><p>한쪽 방향으로만 일어나는 현상 = <b class="k">비가역 현상</b>, 그 방향성 = <b class="p">열역학 제2법칙</b>.</p></div><div class="box"><h3>🎬 TED-Ed · What is entropy? (5:20)</h3><div style="position:relative;width:100%;max-width:520px;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#000"><iframe src="https://www.youtube.com/embed/YM-uykVfq_E?rel=0" title="What is entropy? - Jeff Phillips, TED-Ed" style="position:absolute;inset:0;width:100%;height:100%;border:0" loading="lazy" allow="accelerometer; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div><p class="sm">추천 구간 1:01~4:30 · 영어 음성, 자막 켜기 · 인터넷 필요</p></div></div>
+</div>
+</section>
+
+<!-- br -->
+<section class="slide" id="br">
+  <header class="hd"><h2>잉크는 왜 퍼질까? 브라운 운동</h2><span class="src">교과서 밖 심화 · 1827 브라운(꽃가루) · 1905 아인슈타인 · 1908 페랭 · 대학물리 확산·평균 자유 경로 단원</span></header>
+<div class="body" style="grid-template-columns:1000px 1fr">
+<div class="side" style="gap:8px"><canvas id="br-cv"></canvas><div class="btns"><button class="btn pri" id="br-re">↺ 다시 시작</button><button class="btn" id="br-sm">물 분자 숨기기</button></div></div><div class="side"><div class="box"><h3>눈에 보이지 않는 충돌</h3><p>물 속의 잉크 알갱이는 <b class="k">사방의 물 분자</b>에게 쉴 새 없이 부딪힌다. 어느 순간 충돌이 한쪽으로 조금 더 많으면 알갱이는 그쪽으로 밀린다.</p><p>결과는 <b class="p">지그재그 무작위 운동</b>(브라운 운동). 잉크 알갱이가 많이 모여 있으면 서로 부딪혀 바깥으로 퍼지는 쪽이 더 흔하다.</p></div><div class="box"><h3>⟨r²⟩ ∝ t</h3><p>무작위 운동은 시간이 지날수록 <b class="ok">출발점에서 멀어지지만</b> 평균 제곱 변위는 시간에 비례한다(확산).</p><p class="sm">모형: 큰 입자(질량 5) 1개와 작은 분자 250개의 탄성 충돌. 작은 분자끼리 충돌과 물의 점성은 생략한 단순 모형.</p></div></div>
+</div>
+</section>
+
+<!-- bx -->
+<section class="slide" id="bx">
+  <header class="hd"><h2>상자 속 구슬의 분포 관찰하기</h2><span class="src">교과서 73쪽 · 해 보기 활동 (구슬 20개, 상자 2개)</span></header>
+<div class="body" style="grid-template-columns:1000px 1fr">
+<canvas id="bx-cv"></canvas><div class="side"><div class="box"><h3>활동 규칙 (모형)</h3><p>상자를 흔들면 구슬 하나가 무작위로 골라져 반대쪽 상자로 옮겨 간다고 본 모형이다.</p><p class="sm">구슬 20개를 모두 A에 넣은 채 시작한다. 막대는 관찰 비율, 붉은 선은 <span class="m"><span class="fr"><span>W</span><span>2<sup>N</sup></span></span></span>로 계산한 확률이다.</p></div><div class="box"><div class="ctl"><div class="row"><span>구슬 수 N</span><span class="val" id="bx-Nv"></span></div><input type="range" id="bx-N" min="4" max="40" value="20" step="1"></div><div class="ctl"><div class="row"><span>흔드는 속도</span><span class="val" id="bx-rv"></span></div><input type="range" id="bx-r" min="1" max="60" value="8" step="1"></div><div class="btns"><button class="btn pri" id="bx-pause">⏸ 멈춤</button><button class="btn" id="bx-reset">↺ 모두 A에 넣기</button></div></div></div>
+</div>
+</section>
+
+<!-- st -->
+<section class="slide" id="st" data-steps="5">
+  <header class="hd"><h2>분자 수가 늘면 상태의 수와 확률</h2><span class="src">교과서 75쪽 · 그림 Ⅱ-23 두 공간으로 분리된 용기 내부의 기체</span></header>
+<div class="body" style="grid-template-columns:1000px 1fr">
+<div class="side" style="gap:8px"><canvas id="st-cv"></canvas><div class="box"><div class="ctl"><div class="row"><span>분자 수 N</span><span class="val" id="st-Nv"></span></div><input type="range" id="st-N" min="1" max="100" value="10" step="1"></div></div></div>
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>분자 1개</b><span class="t">A 또는 B → 상태 2가지</span></div><div class="eq"><span class="m">W = 2</span></div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>분자 N개</b><span class="t">각 분자가 A, B 중 하나</span></div><div class="eq"><span class="m">W = 2<sup>N</sup></span></div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>A에만 몰린 배열 (빨강)</b><span class="t">가짓수 1가지뿐</span></div><div class="eq"><span class="m">P = <span class="fr"><span>1</span><span>2<sup>N</sup></span></span></span></div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>고르게 퍼진 배열 (초록 영역)</b><span class="t">가짓수가 압도적으로 많다</span></div><div class="eq"><span class="m">P ≈ 1</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">N을 키우며 초록 영역의 확률을 읽어 보자.</div></div></div>
+<div class="st" data-i="5"><div class="n">5</div><div><div class="tl"><b>결론</b><span class="t">확률이 큰 쪽으로 변한다</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4"><b class="k">기체가 빈 공간으로 확산</b>하는 것은 상태의 수가 큰 쪽으로 변하기 때문이다. → 엔트로피 증가</div></div></div></div>
+</div>
+</section>
+
+<!-- bz -->
+<section class="slide" id="bz" data-steps="4">
+  <header class="hd"><h2>볼츠만의 엔트로피 S = k ln W</h2><span class="src">교과서 73쪽 볼츠만 정의 · 75쪽 · 대학물리 Halliday 20-4 (624쪽), Schroeder 2.6절 (교과서 밖 심화 포함)</span></header>
+<div class="body" style="grid-template-columns:1000px 1fr">
+<div class="side" style="gap:8px"><canvas id="bz-cv"></canvas><div class="box"><div class="ctl"><div class="row"><span>분자 수 N</span><span class="val" id="bz-Nv"></span></div><input type="range" id="bz-N" min="10" max="200" value="40" step="1"></div><div class="ctl"><div class="row"><span>A에 있는 분자 수 n</span><span class="val" id="bz-nv"></span></div><input type="range" id="bz-n" min="0" max="40" value="0" step="1"></div></div></div>
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>볼츠만의 정의</b><span class="t">W: 분자들이 배열될 수 있는 상태의 수</span></div><div class="eq"><span class="m">S = k&thinsp;<span class="ko">ln</span>&thinsp;W</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">k = 1.38×10⁻²³ J/K (볼츠만 상수)</div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>모두 A에 있을 때 (n=0)</b><span class="t">W = 1</span></div><div class="eq"><span class="m">S = k&thinsp;<span class="ko">ln</span>&thinsp;1 = 0</span></div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>칸막이를 열어 모든 배열이 가능해지면</b><span class="t">W = 2^N (교과서 75쪽)</span></div><div class="eq"><span class="m">Δ S = k&thinsp;<span class="ko">ln</span>&thinsp;2<sup>N</sup> = N k&thinsp;<span class="ko">ln</span>&thinsp;2 > 0</span></div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>1몰의 기체라면 (교과서 밖 심화)</b><span class="t">N k = R</span></div><div class="eq"><span class="m">Δ S = R&thinsp;<span class="ko">ln</span>&thinsp;2 ≈ 5.8&nbsp;<span class="ko">J/K</span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">대학물리의 자유 팽창 ΔS = nR ln(V_f/V_i) 와 같은 결과이다.</div></div></div></div>
+</div>
+</section>
+
+<!-- cl -->
+<section class="slide" id="cl" data-steps="6">
+  <header class="hd"><h2>클라우지우스: 열의 이동과 엔트로피</h2><span class="src">교과서 73~74쪽 · 그림 Ⅱ-21, Ⅱ-22 · Schroeder 3.2절 그림 3.4 (PDF 106쪽)</span></header>
+<div class="body" style="grid-template-columns:1000px 1fr">
+<div class="side" style="gap:8px"><canvas id="cl-cv"></canvas><div class="box"><div class="ctl"><div class="row"><span>고열원 T_H</span><span class="val" id="cl-thv"></span></div><input type="range" id="cl-th" min="400" max="800" value="500" step="10"></div><div class="ctl"><div class="row"><span>저열원 T_L</span><span class="val" id="cl-tlv"></span></div><input type="range" id="cl-tl" min="200" max="400" value="300" step="10"></div><div class="ctl"><div class="row"><span>이동하는 열 Q</span><span class="val" id="cl-qv"></span></div><input type="range" id="cl-q" min="100" max="3000" value="1500" step="100"></div><div class="chips"><button class="chip on cl-dir" data-d="fwd">고온 → 저온</button><button class="chip cl-dir" data-d="rev">저온 → 고온</button></div></div></div>
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>클라우지우스의 정의</b><span class="t">온도 T인 계가 열 Q를 흡수할 때</span></div><div class="eq"><span class="m">Δ S = <span class="fr"><span>Q</span><span>T</span></span></span></div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>고열원은 열을 방출</b><span class="t">온도는 일정하다고 본다</span></div><div class="eq"><span class="m">Δ S<sub>1</sub> = -<span class="fr"><span>Q</span><span>T<sub>H</sub></span></span></span></div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>저열원은 열을 흡수</b></div><div class="eq"><span class="m">Δ S<sub>2</sub> = +<span class="fr"><span>Q</span><span>T<sub>L</sub></span></span></span></div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>합</b><span class="t">T_H > T_L 이므로 괄호 안이 양수</span></div><div class="eq"><span class="m">Δ S = Q(<span class="fr"><span>1</span><span>T<sub>L</sub></span></span> - <span class="fr"><span>1</span><span>T<sub>H</sub></span></span>) > 0</span></div></div></div>
+<div class="st" data-i="5"><div class="n">5</div><div><div class="tl"><b>예: 500 K → 300 K, 1500 J</b><span class="t">Schroeder 그림 3.4와 같은 값</span></div><div class="eq"><span class="m">-3 + 5 = +2&nbsp;<span class="ko">J/K</span></span></div></div></div>
+<div class="st" data-i="6"><div class="n">6</div><div><div class="tl"><b>반대로 이동하면</b><span class="t">저온 → 고온 버튼으로 확인</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">합이 <b class="bad">음수</b> → 고립계에서는 일어나지 않는다. 열의 이동은 방향성이 있고 비가역적이다.</div></div></div></div>
+</div>
+</section>
+
+<!-- hi -->
+<section class="slide" id="hi" data-steps="7">
+  <header class="hd"><h2>엔트로피의 역사: 클라우지우스와 볼츠만</h2><span class="src">교과서 73쪽(두 정의 소개) · 연도·인물은 물리학사 일반 서술 — 수업 전 교재로 한 번 더 확인</span></header>
+<div class="body" style="grid-template-columns:900px 1fr">
+<div class="side"><div class="box"><h3>🔥 거시적 정의 — 클라우지우스</h3><p class="eq"><span class="m">Δ S = <span class="fr"><span>Q</span><span>T</span></span></span></p><p>열의 이동으로 <b class="k">엔트로피 변화</b>를 계산한다. 분자를 몰라도 쓸 수 있다.</p></div><div class="box"><h3>⚛️ 미시적 정의 — 볼츠만</h3><p class="eq"><span class="m">S = k&thinsp;<span class="ko">ln</span>&thinsp;W</span></p><p>분자가 배열될 수 있는 <b class="p">상태의 수</b>로 엔트로피를 정의한다.</p></div></div>
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>1824 카르노</b><span class="t">열기관의 효율에는 한계가 있다</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">열이 고온에서 저온으로 흐르는 동안에만 일을 얻을 수 있다는 생각의 출발.</div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>1850 클라우지우스</b><span class="t">열은 저절로 저온 → 고온으로 가지 않는다</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">열역학 제2법칙의 첫 표현 중 하나. 그림 Ⅱ-21처럼 열의 이동에 방향이 있다는 사실.</div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>1865 클라우지우스, "엔트로피"</b><span class="t">그리스어 "변환(τροπή)"에서 이름을 따옴</span></div><div class="eq"><span class="m">Δ S = <span class="fr"><span>Q</span><span>T</span></span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">열이 이동하면 계의 상태가 바뀌는 정도를 하나의 양으로 나타냈다.</div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>1872~1877 볼츠만</b><span class="t">기체 분자의 운동과 확률로 설명</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">엔트로피가 커지는 것은 <b class="k">분자 배열의 가짓수</b>가 많은 쪽(확률이 큰 쪽)으로 변하기 때문. 당시에는 원자의 존재를 두고 논쟁이 컸다.</div></div></div>
+<div class="st" data-i="5"><div class="n">5</div><div><div class="tl"><b>1900경 플랑크, S = k ln W</b><span class="t">k를 "볼츠만 상수"로 도입한 형태</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">이 식은 볼츠만의 묘비에도 새겨져 있다고 전한다. k = 1.38×10⁻²³ J/K</div></div></div>
+<div class="st" data-i="6"><div class="n">6</div><div><div class="tl"><b>1905~1908 아인슈타인과 페랭</b><span class="t">브라운 운동 → 분자의 실재 확인</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">무작위 충돌로 잉크 알갱이가 움직이는 것을 정량적으로 설명하고 실험으로 확인했다.</div></div></div>
+<div class="st" data-i="7"><div class="n">7</div><div><div class="tl"><b>두 정의가 만나다</b><span class="t">기체의 부피를 2배로 (등온·가역)</span></div><div class="eq"><span class="m"><span class="fr"><span>Q</span><span>T</span></span> = nR&thinsp;<span class="ko">ln</span>&thinsp;2 = N k&thinsp;<span class="ko">ln</span>&thinsp;2 = k&thinsp;<span class="ko">ln</span>&thinsp;2<sup>N</sup></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">R = N_A k 이므로 열로 계산한 값과 상태의 수로 계산한 값이 <b class="ok">일치</b>한다.</div></div></div></div>
+</div>
+</section>
+
+<!-- hx -->
+<section class="slide" id="hx">
+  <header class="hd"><h2>온도가 같아지는 동안의 ΔS</h2><span class="src">교과서 74쪽 열평형 · 대학물리 Halliday 20-1 (609쪽) 개념을 시뮬레이션으로 (교과서 밖 심화, 열용량·시간 눈금은 예시)</span></header>
+<div class="body" style="grid-template-columns:1000px 1fr">
+<canvas id="hx-cv"></canvas><div class="side"><div class="box"><div class="ctl"><div class="row"><span>물체 1의 처음 온도</span><span class="val" id="hx-av"></span></div><input type="range" id="hx-a" min="400" max="800" value="500" step="10"></div><div class="ctl"><div class="row"><span>물체 2의 처음 온도</span><span class="val" id="hx-bv"></span></div><input type="range" id="hx-b" min="200" max="400" value="300" step="10"></div><div class="btns"><button class="btn pri" id="hx-re">↺ 다시 시작</button></div></div><div class="box"><h3>읽는 법</h3><p>열용량 <span class="m">C</span>가 같은 두 물체를 접촉시키면 온도가 <b class="k">평균</b>으로 모인다.</p><p><span class="m">Δ S = C&thinsp;<span class="ko">ln</span><span class="fr"><span>T<sub>f</sub></span><span>T<sub>1</sub></span></span> + C&thinsp;<span class="ko">ln</span><span class="fr"><span>T<sub>f</sub></span><span>T<sub>2</sub></span></span></span></p><p class="sm">ΔS는 계속 늘다가 <b>열평형에서 멈춘다</b>. 온도 차가 없으면 더 늘 수 없다.</p></div></div>
+</div>
+</section>
+
+<!-- dm -->
+<section class="slide" id="dm" data-steps="5">
+  <header class="hd"><h2>맥스웰의 도깨비</h2><span class="src">교과서 밖 심화 · 맥스웰 1867 사고 실험(톰슨이 "도깨비"로 명명) · 질라르드 1929 · 란다우어 1961 · 베넷 1982 · 온도 눈금은 예시</span></header>
+<div class="body" style="grid-template-columns:1000px 1fr">
+<div class="side" style="gap:8px"><canvas id="dm-cv"></canvas><div class="chips"><button class="chip on dm-m" data-m="off">도깨비 끔</button><button class="chip dm-m" data-m="on">도깨비 켬</button></div><div class="btns"><button class="btn pri" id="dm-re">↺ 다시 시작</button></div></div>
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>상자와 작은 문</b><span class="t">양쪽 기체의 온도는 같다 (300 K)</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">가운데 칸막이에 작은 문이 있다. 도깨비 없이는 분자가 오가도 <b class="k">양쪽 온도 차는 생기지 않는다</b>.</div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>도깨비의 규칙</b><span class="t">분자의 속력을 보고 문을 여닫는다</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">왼쪽의 <b class="bad">빠른</b> 분자는 오른쪽으로, 오른쪽의 <b class="p">느린</b> 분자는 왼쪽으로만 보낸다. 일은 하지 않는다.</div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>결과</b><span class="t">'도깨비 켬'으로 확인</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">오른쪽은 뜨거워지고 왼쪽은 차가워진다 → 열이 저온에서 고온으로 이동했다. <b class="bad">ΔS &lt; 0 ?</b> 제2법칙이 깨진 것처럼 보인다.</div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>도깨비도 정보를 쓴다</b><span class="t">속력을 측정하고 기억해야 한다</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">판단한 정보를 저장한 기억 장치는 가득 차므로 결국 <b class="k">지워야</b> 한다.</div></div></div>
+<div class="st" data-i="5"><div class="n">5</div><div><div class="tl"><b>정보를 지우는 비용 (란다우어)</b><span class="t">1비트를 지울 때 최소</span></div><div class="eq"><span class="m">Δ S<sub><span class="ko">환경</span></sub> ≥ k&thinsp;<span class="ko">ln</span>&thinsp;2</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">이 증가를 합하면 전체 엔트로피는 줄지 않는다. <b class="ok">제2법칙은 유지된다</b>. (대학 이상 내용)</div></div></div></div>
+</div>
+</section>
+
+<!-- en -->
+<section class="slide" id="en" data-steps="5">
+  <header class="hd"><h2>열기관의 효율 한계도 제2법칙에서</h2><span class="src">교과서 밖 심화 · 대학물리 Halliday 20-2 (616쪽) · 앞 시간의 열기관 덱과 연결 · Q_H = 1000 J은 예시</span></header>
+<div class="body" style="grid-template-columns:1000px 1fr">
+<div class="side" style="gap:8px"><canvas id="en-cv"></canvas><div class="box"><div class="ctl"><div class="row"><span>고열원 T_H</span><span class="val" id="en-thv"></span></div><input type="range" id="en-th" min="400" max="900" value="600" step="10"></div><div class="ctl"><div class="row"><span>저열원 T_L</span><span class="val" id="en-tlv"></span></div><input type="range" id="en-tl" min="250" max="400" value="300" step="10"></div><div class="ctl"><div class="row"><span>기관의 효율</span><span class="val" id="en-fv"></span></div><input type="range" id="en-f" min="0" max="110" value="80" step="1"></div></div></div>
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>기관은 한 바퀴 돌면 처음 상태</b><span class="t">기관 자체의 ΔS = 0</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">엔트로피가 변하는 것은 <b class="k">두 열원</b>이다.</div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>열원의 엔트로피 변화 합</b><span class="t">고열원 Q_H 방출, 저열원 Q_L 흡수</span></div><div class="eq"><span class="m">Δ S = -<span class="fr"><span>Q<sub>H</sub></span><span>T<sub>H</sub></span></span> + <span class="fr"><span>Q<sub>L</sub></span><span>T<sub>L</sub></span></span> ≥ 0</span></div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>정리하면</b></div><div class="eq"><span class="m"><span class="fr"><span>Q<sub>L</sub></span><span>Q<sub>H</sub></span></span> ≥ <span class="fr"><span>T<sub>L</sub></span><span>T<sub>H</sub></span></span></span></div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>효율의 상한</b><span class="t">등호가 카르노 기관(가역)</span></div><div class="eq"><span class="m">e = 1 - <span class="fr"><span>Q<sub>L</sub></span><span>Q<sub>H</sub></span></span> ≤ 1 - <span class="fr"><span>T<sub>L</sub></span><span>T<sub>H</sub></span></span></span></div></div></div>
+<div class="st" data-i="5"><div class="n">5</div><div><div class="tl"><b>효율 100 %가 불가능한 까닭</b></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">Q_L = 0 이면 ΔS = −Q_H/T_H &lt; 0 → <b class="bad">제2법칙 위반</b>. 슬라이더를 110 %로 올려 확인하자.</div></div></div></div>
+</div>
+</section>
+
+<!-- fz -->
+<section class="slide" id="fz">
+  <header class="hd"><h2>엔트로피가 줄어드는 일도 있다?</h2><span class="src">교과서 밖 심화 · 대학물리 Halliday 20장 개념 · 응고열 약 334 kJ/kg는 예시 값</span></header>
+<div class="body" style="grid-template-columns:1fr 1fr">
+<div class="side"><div class="box"><h3>물 1 kg이 얼음이 될 때 (0 °C)</h3><p class="sm">제2법칙은 <b>고립계</b>의 법칙이다. 물만 보면 엔트로피가 줄지만 열을 받은 주변까지 합쳐 보자.</p><div class="ctl"><div class="row"><span>주변(냉동실) 온도</span><span class="val" id="fz-tv"></span></div><input type="range" id="fz-t" min="-30" max="10" value="-10" step="1"></div><table class="t" id="fz-tab"></table><p id="fz-res"></p></div></div><div class="side"><div class="box"><h3>생각해 보기</h3><ul><li><b>냉장고</b>: 안은 식지만 뒤쪽으로 더 많은 열을 내보낸다.</li><li><b>생명체</b>: 질서 있는 몸을 유지하는 대신 열과 폐기물을 내보낸다.</li><li>그러므로 어느 한 곳의 엔트로피가 줄어도 <b class="ok">계 전체 + 주변</b>의 엔트로피는 증가한다.</li></ul></div><div class="box"><h3>정리</h3><p>제2법칙: 고립계에서 자발적인 현상의 <span class="m">Δ S ≥ 0</span>.</p><p class="sm">여기서 고립계는 계와 주변을 합친 것으로 생각해야 한다.</p></div></div>
+</div>
+</section>
+
+<!-- qz -->
+<section class="slide" id="qz">
+  <header class="hd"><h2>확인 문제</h2><span class="src">교과서 74쪽 확인 · 75쪽 활동 · 계산 문제는 직접 만든 예시</span></header>
+<div class="body" style="grid-template-columns:1fr 1fr 1fr">
+<div class="box"><h3>① 교과서 74쪽 확인</h3><p>고립계에서 열은 항상 ( 고온 / 저온 )의 물체에서 ( 고온 / 저온 )의 물체로 이동한다.</p><button class="btn qz-b" data-a="qa1">정답 보기</button><p id="qa1" style="display:none"><b class="ok">고온, 저온</b></p></div><div class="box"><h3>② 계산</h3><p>600 K의 열원에서 300 K의 열원으로 열 1200 J이 이동했다. 두 열원의 <span class="m">Δ S</span> 합은?</p><button class="btn qz-b" data-a="qa2">정답 보기</button><p id="qa2" style="display:none"><span class="m">-<span class="fr"><span>1200</span><span>600</span></span>+<span class="fr"><span>1200</span><span>300</span></span> = </span><b class="ok">+2 J/K</b> (증가)</p></div><div class="box"><h3>③ 확률</h3><p>분자 10개를 칸막이가 있던 용기 A에 모았다가 칸막이를 열었다. 10개가 모두 다시 A에 모여 있을 확률은?</p><button class="btn qz-b" data-a="qa3">정답 보기</button><p id="qa3" style="display:none"><span class="m"><span class="fr"><span>1</span><span>2<sup>10</sup></span></span> = <span class="fr"><span>1</span><span>1024</span></span> ≈</span> <b class="ok">0.1 %</b></p></div>
+</div>
+</section>
+
+<!-- sum -->
+<section class="slide" id="sum">
+  <header class="hd"><h2>정리와 활동</h2><span class="src">교과서 73~75쪽 · 75쪽 활동</span></header>
+<div class="body" style="grid-template-columns:1fr 1fr">
+<div class="box"><h3>한 장 요약</h3><ul><li><b class="k">비가역 현상</b>: 한쪽으로만 일어나는 자연 현상</li><li><b class="p">엔트로피</b> 클라우지우스 <span class="m">Δ S = Q/T</span>, 볼츠만 <span class="m">S = k&thinsp;<span class="ko">ln</span>&thinsp;W</span></li><li><b class="ok">제2법칙</b>: 고립계에서 자발적 변화는 <span class="m">Δ S &gt; 0</span></li><li>열은 고온 → 저온, 기체는 퍼지는 쪽(상태의 수가 큰 쪽)으로</li><li>부분의 엔트로피는 줄 수 있어도 계+주변 전체는 증가</li></ul></div><div class="box"><h3>75쪽 활동 과제</h3><p>우리 주변에서 볼 수 있는 비가역 현상(예: 디퓨저의 향이 퍼짐)을 찾아 <b>엔트로피를 이용해</b> 설명하는 자료를 만들어 보자.</p><p class="sm">조건: ① 어떤 방향으로만 일어나는가 ② 반대 방향이 일어날 확률이 작은 까닭 ③ 엔트로피(상태의 수 또는 ΔS=Q/T)로 설명</p></div>
+</div>
+</section>
+
+<div id="notes"></div>
+<div id="bar"><div class="bl">🌡️ 엔트로피와 열역학 제2법칙 <span class="sm">· 잉크의 확산 · 브라운 운동 · 상태의 수 · 클라우지우스와 볼츠만 · 맥스웰의 도깨비 · 열기관 한계</span></div><div class="br"><button class="tb" id="b-help">❓ 조작법</button><button class="tb" id="b-ask">💬 발문 띄우기</button><button class="tb" id="b-notes">📝 오개념 교정 노트</button><button class="tb" id="b-theme">🌙 다크 전환</button></div></div>
+<div id="ask" role="dialog" aria-label="발문"></div>
+<div id="help" role="dialog" aria-label="조작법 설명"><div class="hp">
+<h3>조작법</h3>
+<h4>키보드</h4>
+<div class="g"><div><kbd>→</kbd><kbd>Space</kbd></div><div>다음 (단계가 있는 슬라이드는 단계부터 진행)</div>
+<div><kbd>←</kbd></div><div>이전 (단계도 거꾸로)</div>
+<div><kbd>Home</kbd><kbd>End</kbd></div><div>처음 / 마지막 슬라이드</div>
+<div><kbd>F</kbd></div><div>전체 화면</div>
+<div><kbd>Q</kbd></div><div>이 슬라이드의 <b>발문(학생용 질문)</b>을 화면 위에 크게 띄우기 / 닫기 (아무 곳이나 클릭해도 닫힘)</div>
+<div><kbd>N</kbd></div><div>오개념 교정 노트 열기/닫기 (교사용)</div>
+<div><kbd>T</kbd></div><div>다크 / 라이트 전환</div>
+<div><kbd>?</kbd><kbd>Esc</kbd></div><div>조작법 열기 / 닫기</div></div>
+<h4>화면 조작</h4>
+<div class="g"><div>슬라이더</div><div>값을 바꿔 ΔS·확률 변화 관찰</div>
+<div>▶ ⏪ ↺</div><div>잉크 확산 재생·되감기·처음부터(2번)</div>
+<div>정답 보기</div><div>확인 문제 슬라이드에서 답 펼치기</div>
+<div>슬라이더 키보드</div><div>슬라이더를 클릭해 초점이 있는 동안에는 ← → 가 값 조절에 쓰입니다. 마우스로 놓으면 자동 해제</div></div>
+<h4>수업 진행 팁</h4>
+<div>→ 키로 단계 유도를 한 줄씩 보며 시뮬레이션과 대응시켜 보세요.</div>
+<div class="btns" style="margin-top:22px"><button class="btn pri" id="help-x">닫기 (Esc)</button></div>
+</div></div>
+<div id="simError"></div>
+</div>
+<div id="hud"><button id="h-prev" aria-label="이전">◀</button><span id="h-pg">1 / 1</span><button id="h-next" aria-label="다음">▶</button><button id="h-fs" aria-label="전체화면">⛶</button></div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   공통 유틸 / 그리기 도우미 (템플릿 제공)
+   ===================================================================== */
+const DECK = {"title":"엔트로피와 열역학 제2법칙","notes":{"cover":{"q":"물에 잉크를 한 방울 떨어뜨리면 어떻게 되나요? 반대로 퍼진 잉크가 저절로 한 방울로 모일 수 있나요? 에너지는 어디로 갔나요?","m":[["에너지가 보존되면 어떤 변화든 반대 방향도 일어난다","❌ → ✅ 에너지 보존(제1법칙)만으로는 방향을 정할 수 없다. 방향은 제2법칙(엔트로피 증가)이 정한다."]]},"rv":{"q":"[영상 전] 차가운 얼음과 미지근한 물 중 더 \"흐트러져\" 보이는 것과 엔트로피가 더 큰 것은? 엔트로피를 \"어지러운 정도\"로만 봐도 될까? [영상 후] 재생 후 되감기를 눌러 보자. 어느 쪽이 자연스러운가요? 왜 그렇게 판단했나요? 잉크 입자 하나만 따라가 보면 되감기가 어색한가요?","m":[["영상: 결합 6개일 때 열이 거꾸로 갈 확률이 8 %나 된다 (Gemini 분석, 3분 부근, 수치 확인 필요)","❌ → ✅ 입자가 극히 적은 모형의 값이다. 입자가 많아지면 거의 0(영상 3:51 이후). 에너지를 \"양자\"(작은 덩어리)로 센다는 가정은 미리 설명한다."],["되감기 영상이 이상한 것은 뉴턴 법칙을 어기기 때문이다","❌ → ✅ 입자 하나의 운동은 되감아도 법칙에 맞는다. 입자가 매우 많을 때 \"모두 한 곳으로 모일 확률\"이 극히 작아 이상해 보이는 것이다(통계적 이유)."],["이 영상의 되감기는 실제 물리적 시간 역전이다","❌ → ✅ 저장한 화면을 거꾸로 재생한 것일 뿐이다. 실제로 이런 일이 저절로 일어난다는 뜻이 아니다."]]},"br":{"q":"물 분자를 숨기면 알갱이가 왜 움직이는 것처럼 보이나요? 알갱이를 더 무겁게 하면 어떻게 될까요? 왜 한 방향으로 계속 가지 않나요?","m":[["잉크가 퍼지는 것은 물이 흘러서(대류) 섞이기 때문이다","❌ → ✅ 가만히 둔 물에서도 분자 충돌의 무작위 운동만으로 퍼진다. 대류는 이를 더 빠르게 할 뿐이다."],["브라운 운동은 알갱이가 스스로 움직이는 것이다","❌ → ✅ 보이지 않는 물 분자의 충돌 때문이다. 아인슈타인(1905)이 이를 설명하고 페랭(1908)이 실험으로 확인해 분자의 존재를 뒷받침했다."],["무작위 운동이면 한 곳에 모이는 일도 자주 일어난다","❌ → ✅ 입자 수가 매우 많으면 한 곳에 모일 확률은 극히 작다(상태의 수)."]]},"bx":{"q":"구슬이 고르게 분포하는 것은 구슬이 서로 밀어서인가요, 확률 때문인가요? N을 4로 줄이면 모두 한쪽에 모이는 일이 보이나요? N을 40으로 키우면요?","m":[["구슬이 \"골고루 퍼지려는 힘\"을 받는다","❌ → ✅ 구슬은 무작위로 옮겨 갈 뿐이다. 고른 배열의 가짓수가 압도적으로 많아 그쪽에서 오래 머무르는 것이다."],["N이 작아도 항상 고르게 분포한다","❌ → ✅ N이 작으면 한쪽에 몰리는 일이 자주 보인다. N이 클수록 확률이 극히 작아진다."]]},"st":{"q":"N=1일 때 한쪽에 몰릴 확률은? N=10, N=100은? 1몰(약 6×10²³개)이면 어떨까요?","m":[["확률이 낮은 배열은 \"절대\" 일어나지 않는다","❌ → ✅ 불가능이 아니라 확률이 극히 작다. N이 작으면 자주 일어난다. 거시적 N에서 사실상 관찰되지 않는다."],["고른 배열이 가장 좋은 상태라서 선택된다","❌ → ✅ 좋고 나쁨이 아니라 상태의 수(확률)의 문제이다."]]},"bz":{"q":"S는 W가 커지면 어떻게 되나요? 왜 W가 아니라 ln W를 쓸까요(두 계를 합치면 W는 곱, S는 합)? 어떤 n에서 S가 최대인가요?","m":[["엔트로피는 곧 무질서이다","❌ → ✅ 교과서 정의는 \"배열될 수 있는 상태의 수\". 무질서는 비유일 뿐 일부 상황에서 틀린다(예: 결정화로 엔트로피가 늘 수 있음)."],["슬라이더의 S 값이 실제 기체의 엔트로피이다","❌ → ✅ 분자 수가 적은 모형의 값이다. 실제 기체는 N이 10²³ 정도라 훨씬 크다."]]},"cl":{"q":"T_H와 T_L이 같아지면 ΔS는? 같은 Q라도 T_L이 작을수록 ΔS가 어떻게 되나요? 저온 → 고온 버튼에서 에너지 보존은 지켜지나요?","m":[["저온에서 고온으로 열이 이동하면 에너지가 보존되지 않는다","❌ → ✅ 에너지는 보존된다. 문제는 엔트로피 합이 감소한다는 것(제2법칙)이다."],["엔트로피 변화 ΔS = Q/T 는 모든 과정에 그대로 쓴다","❌ → ✅ 열원의 온도가 일정할 때의 식이다. 온도가 변하면 미소 열 dQ/T를 적분한다(대학물리)."]]},"hi":{"q":"클라우지우스는 분자를 몰라도 엔트로피를 정의했다. 볼츠만은 무엇을 알아야 했을까? 두 계산이 같은 값을 주는 것이 왜 중요한가요?","m":[["클라우지우스와 볼츠만은 같은 연구를 했다","❌ → ✅ 클라우지우스는 열기관·열의 이동(거시), 볼츠만은 분자 운동·확률(미시)에서 출발했다. 시간이 지나 같은 양임이 밝혀졌다."],["볼츠만이 S=k ln W 식을 지금 형태로 처음 적었다","❌ → ✅ 볼츠만은 엔트로피와 확률의 관계를 밝혔고, 지금의 식 꼴과 상수 k는 플랑크가 정리했다고 알려져 있다(교재로 확인 필요)."]]},"hx":{"q":"ΔS 그래프가 언제 멈추나요? 열평형이 되면 열이 더 이동하나요? 처음 온도 차를 키우면 최종 ΔS는?","m":[["열평형에서도 열은 계속 한쪽으로 흐른다","❌ → ✅ 순수한 열 이동은 멈춘다(미시적으로 교환은 계속되지만 평균으로는 0)."],["한 물체의 엔트로피는 항상 늘어난다","❌ → ✅ 뜨거운 물체의 엔트로피는 줄고 차가운 물체는 더 많이 는다. 합이 증가한다."]]},"dm":{"q":"도깨비를 끄면 온도가 어떻게 되나요? 켜면요? 도깨비가 분자 속력을 알려면 무엇이 필요한가요?","m":[["도깨비 때문에 제2법칙이 틀렸다","❌ → ✅ 도깨비의 측정·기억·지우기까지 합쳐 계산하면 엔트로피는 줄지 않는다(란다우어, 베넷)."],["문을 여닫는 데 에너지가 드니까 제2법칙이 지켜진다","❌ → ✅ 문을 아주 가볍게 만들 수 있다고 가정해도 정보를 지우는 비용이 남는다는 것이 핵심이다."],["시뮬레이션의 온도 눈금은 실제 값이다","❌ → ✅ 2차원 입자 모형을 300 K 기준으로 환산한 예시이다. 분자 수가 적어 요동이 크다."]]},"en":{"q":"효율을 카르노 효율의 100 %로 올리면 ΔS는? 110 %는? T_L을 낮추면 최대 효율은? 실제 기관은 왜 100 %에 못 미치나요?","m":[["효율 100 %가 불가능한 것은 마찰 때문이다","❌ → ✅ 마찰이 없는 이상적 기관도 T_L이 절대 영도가 아니면 100 %가 안 된다. 열을 저열원에 버려야 ΔS 합이 0 이상이 된다."],["카르노 기관은 실제로 만들 수 있다","❌ → ✅ 가역 과정은 극한의 이상이다. 현실의 기관은 모두 ΔS &gt; 0이다."]]},"fz":{"q":"주변을 0 °C보다 따뜻하게 하면 합 ΔS는? 냉장고를 끄면 왜 안이 다시 따뜻해지나요? 생명체는 제2법칙을 어기나요?","m":[["생명은 엔트로피가 감소하므로 제2법칙에 어긋난다","❌ → ✅ 열린계라서 지역적 감소가 가능하다. 주변 엔트로피가 더 크게 늘어 합은 증가한다."],["엔트로피는 어디에서도 줄어들 수 없다","❌ → ✅ 고립계 전체에서 줄지 않는다는 뜻이다. 부분은 줄 수 있다."]]},"qz":{"q":"①~③을 먼저 풀어 본 뒤 정답을 확인하자. ②에서 부호를 반대로 쓰면 어떤 뜻이 되나요?","m":[["엔트로피가 증가하면 에너지가 늘어난다","❌ → ✅ 에너지(총량)는 보존된다. 늘어나는 것은 엔트로피(상태의 수)이다."]]},"sum":{"q":"오늘 배운 두 정의(Q/T, k ln W)가 같은 말이라는 근거를 구슬 활동과 열 이동 두 장면에서 각각 말해 보자.","m":[["엔트로피를 줄이는 방법은 없다","❌ → ✅ 일부는 줄일 수 있지만, 그만큼 주변의 엔트로피가 더 늘어난다."]]}},"ask":{"rv":["잉크가 퍼지는 장면은 자연스러운데, 되감기가 이상하게 느껴지는 까닭은 무엇일까? 입자 하나하나는 무작위로 움직일 뿐인데도?"],"bx":["구슬 20개를 한쪽 상자에 모아 놓고 오래 흔들면 어떻게 될까? 한참 흔든 뒤 다시 20개가 모두 한쪽에 모일 수 있을까?"],"cl":["뜨거운 물과 차가운 물을 섞으면 중간 온도가 된다. 에너지는 보존되는데 반대로 중간 온도의 물이 다시 뜨거운 쪽과 차가운 쪽으로 나뉘는 일은 왜 없을까? 먼저 예측해 보자."],"dm":["도깨비가 문을 열고 닫기만 하면 정말 일 없이 온도 차를 만들 수 있을까? 어디에 비용이 숨어 있을까?"]}};
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const TAU = Math.PI * 2, DPR = 2;
+const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const C = { bg: '#0a1330', grid: 'rgba(160,190,255,.22)', text: '#e3ecff', dim: '#9db0d8', KE: '#ffb454', PE: '#7fb2ff', E: '#ffffff', ok: '#5eead4', bad: '#ff9d9d' };
+const font = (px, w = 500, it = false) => `${it ? 'italic ' : ''}${w} ${px}px 'Noto Sans KR',sans-serif`;
+const mathFont = px => `italic 400 ${px}px 'STIX Two Text','Times New Roman',serif`;
+function setupCanvas(cv, W, H) { cv.width = W * DPR; cv.height = H * DPR; cv.style.width = W + 'px'; cv.style.height = H + 'px'; const c = cv.getContext('2d'); c.setTransform(DPR, 0, 0, DPR, 0, 0); return c; }
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function makeStars(W, H, n, seed) { const r = mulberry(seed); return Array.from({ length: n }, () => [r() * W, r() * H, .25 + r() * .55, r() < .12 ? 3 : 2]); }
+function drawStars(ctx, stars) { stars.forEach(([x, y, a, s]) => { ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(x, y, s, s); }); }
+function arrow(ctx, x0, y0, x1, y1, color, lw = 4, head = 15) {
+  const a = Math.atan2(y1 - y0, x1 - x0); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - Math.cos(a) * head * .6, y1 - Math.sin(a) * head * .6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - head * Math.cos(a - .45), y1 - head * Math.sin(a - .45)); ctx.lineTo(x1 - head * Math.cos(a + .45), y1 - head * Math.sin(a + .45)); ctx.closePath(); ctx.fill();
+}
+function mathRun(ctx, x, y, parts) { let cx = x; parts.forEach(q => { ctx.font = q.f; ctx.fillStyle = q.c; ctx.fillText(q.t, cx, y + (q.dy || 0)); cx += ctx.measureText(q.t).width; }); return cx; }
+function bindRange(id, cb) { const el = $('#' + id); el.addEventListener('input', () => cb(parseFloat(el.value))); el.addEventListener('change', () => el.blur()); return el; }
+const fmt = (x, d = 2) => (x < 0 ? '−' : '') + Math.abs(x).toFixed(d);
+
+/* 오류 표시: 슬라이드 코드 예외를 화면 상단과 window.__wsErrors에 남긴다 (헤드리스 검사용) */
+window.__wsErrors = [];
+function reportError(where, e) {
+  const msg = `${where}: ${e && e.message ? e.message : e}`;
+  if (!window.__wsErrors.includes(msg)) { window.__wsErrors.push(msg); console.error('[슬라이드 오류] ' + msg); }
+  const box = document.getElementById('simError'); box.textContent = window.__wsErrors.slice(-3).join('\n'); box.classList.add('on');
+}
+function safe(where, fn, ...args) { try { return fn && fn(...args); } catch (e) { reportError(where, e); } }
+
+/* =====================================================================
+   shared_js (주제별 물리 계산부·공용 시뮬레이터)
+   ===================================================================== */
+/* ===== 엔트로피 덱 공용 코드: 통계(상태의 수), 입자 확산, 열 이동 계산 ===== */
+const KB=1.380649e-23, RG=8.314;
+const OR='#ff9d4d', BL='#59b4ff', GR='#5eead4', RD='#ff6b6b', YL='#ffe066', PU='#c4a5ff';
+const TT=(id,t)=>{const e=document.getElementById(id);if(e&&e.textContent!==t)e.textContent=t;};
+const HH=(id,h)=>{const e=document.getElementById(id);if(e&&e.innerHTML!==h)e.innerHTML=h;};
+function rng2(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function txt(c,s,x,y,px,col,al,w){c.font=font(px,w||500);c.fillStyle=col;c.textAlign=al||'left';c.fillText(s,x,y);c.textAlign='left';}
+/* ln C(n,k): 큰 수도 다루려고 로그로 계산 */
+function lnC(n,k){if(k<0||k>n)return -Infinity;k=Math.min(k,n-k);let s=0;for(let i=1;i<=k;i++)s+=Math.log((n-k+i)/i);return s;}
+function binP(N,n){return Math.exp(lnC(N,n)-N*Math.LN2);}
+const SUP='⁰¹²³⁴⁵⁶⁷⁸⁹';
+function big(lnx){if(lnx<Math.log(1e6))return Math.round(Math.exp(lnx)).toLocaleString('en-US');
+ const e=lnx/Math.LN10,f=Math.floor(e),m=Math.pow(10,e-f);return m.toFixed(2)+'×10'+String(f).split('').map(ch=>SUP[+ch]).join('');}
+function pct(p){return p>=0.01?(p*100).toFixed(1)+' %':p>=1e-4?(p*100).toFixed(3)+' %':p.toExponential(1).replace('e',' ×10^')+'';}
+/* 열 이동에서 두 열원의 엔트로피 변화 합 (고열원 TH → 저열원 TL, 열 Q) */
+function dSheat(TH,TL,Q){return -Q/TH+Q/TL;}
+/* 열기관: 고열원에서 QH를 받아 효율 eta로 일을 하면 열기관+두 열원의 엔트로피 변화 합 */
+function dSengine(TH,TL,QH,eta){return -QH/TH+QH*(1-eta)/TL;}
+/* 두 물체 접촉(열용량 C 같음): 온도 지수 수렴, 엔트로피 변화는 C ln(T/T0)의 합 */
+function twoBlock(T1,T2,tau,t,C){const Tm=(T1+T2)/2,d=(T1-T2)/2,e=Math.exp(-t/tau);
+ const a=Tm+d*e,b=Tm-d*e;return {a:a,b:b,dS:C*(Math.log(a/T1)+Math.log(b/T2))};}
+/* 입자 확산: 단위 상자 [0,1]², 처음에는 모두 왼쪽 절반, 칸막이를 열면 자유롭게 */
+function mkGas(N,seed){const r=rng2(seed),ps=[];
+ for(let i=0;i<N;i++){const a=r()*TAU,sp=0.16+r()*0.14;ps.push({x:r()*0.5,y:r(),vx:Math.cos(a)*sp,vy:Math.sin(a)*sp});}
+ return ps;}
+function stepGas(ps,dt){for(const p of ps){p.x+=p.vx*dt;p.y+=p.vy*dt;
+ if(p.x<0){p.x=-p.x;p.vx=-p.vx;}if(p.x>1){p.x=2-p.x;p.vx=-p.vx;}
+ if(p.y<0){p.y=-p.y;p.vy=-p.vy;}if(p.y>1){p.y=2-p.y;p.vy=-p.vy;}}}
+function leftCount(ps){let n=0;for(const p of ps)if(p.x<0.5)n++;return n;}
+function Tcol(T,lo,hi){const u=Math.max(0,Math.min(1,(T-lo)/(hi-lo))),a=[89,180,255],b=[255,110,80];return 'rgb('+a.map((x,i)=>Math.round(x+(b[i]-x)*u)).join(',')+')';}
+
+
+/* 잉크 한 방울: 처음엔 가운데에 몰려 있다가 무작위로(브라운 운동처럼) 퍼진다 */
+function mkInk(N,seed){const r=rng2(seed),ps=[];
+ for(let i=0;i<N;i++){const a=r()*TAU,d=Math.sqrt(r())*0.035;ps.push({x:0.5+Math.cos(a)*d,y:0.5+Math.sin(a)*d});}
+ return {ps:ps,r:r};}
+function gauss(r){return Math.sqrt(-2*Math.log(1-r()))*Math.cos(TAU*r());}
+function stepInk(s,sd){for(const p of s.ps){p.x+=gauss(s.r)*sd;p.y+=gauss(s.r)*sd;
+ if(p.x<0)p.x=-p.x;if(p.x>1)p.x=2-p.x;if(p.y<0)p.y=-p.y;if(p.y>1)p.y=2-p.y;}}
+function inkInside(ps,rad){let n=0;for(const p of ps)if(Math.hypot(p.x-0.5,p.y-0.5)<rad)n++;return n;}
+/* 브라운 운동: 큰 입자 1개(질량 M)와 작은 분자들(질량 1)의 탄성 충돌 */
+function mkBrown(Nsm,M,seed){const r=rng2(seed),sm=[];
+ for(let i=0;i<Nsm;i++){const a=r()*TAU,sp=0.45+r()*0.3;let x,y;do{x=r();y=r();}while(Math.hypot(x-0.5,y-0.5)<0.08);
+  sm.push({x:x,y:y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp});}
+ return {big:{x:0.5,y:0.5,vx:0,vy:0,m:M,R:0.04},sm:sm,rs:0.006};}
+function stepBrown(b,dt){const B=b.big;B.x+=B.vx*dt;B.y+=B.vy*dt;
+ if(B.x<B.R){B.x=B.R;B.vx=Math.abs(B.vx);}if(B.x>1-B.R){B.x=1-B.R;B.vx=-Math.abs(B.vx);}
+ if(B.y<B.R){B.y=B.R;B.vy=Math.abs(B.vy);}if(B.y>1-B.R){B.y=1-B.R;B.vy=-Math.abs(B.vy);}
+ for(const p of b.sm){p.x+=p.vx*dt;p.y+=p.vy*dt;
+  if(p.x<0){p.x=-p.x;p.vx=-p.vx;}if(p.x>1){p.x=2-p.x;p.vx=-p.vx;}if(p.y<0){p.y=-p.y;p.vy=-p.vy;}if(p.y>1){p.y=2-p.y;p.vy=-p.vy;}
+  const dx=p.x-B.x,dy=p.y-B.y,d=Math.hypot(dx,dy),R=B.R+b.rs;
+  if(d<R&&d>1e-9){const nx=dx/d,ny=dy/d,vr=(p.vx-B.vx)*nx+(p.vy-B.vy)*ny;
+   if(vr<0){const J=-2*vr/(1+1/B.m);p.vx+=J*nx;p.vy+=J*ny;B.vx-=J/B.m*nx;B.vy-=J/B.m*ny;}
+   p.x=B.x+nx*R;p.y=B.y+ny*R;}}}
+/* 맥스웰의 도깨비: 가운데 칸막이의 작은 문. 도깨비가 켜지면 빠른 분자는 왼→오, 느린 분자는 오→왼만 통과 */
+function mkDemon(N,seed){const r=rng2(seed),ps=[];
+ for(let i=0;i<N;i+=2){const vx=gauss(r)*0.25,vy=gauss(r)*0.25;ps.push({x:r()*0.5,y:r(),vx:vx,vy:vy});ps.push({x:0.5+r()*0.5,y:r(),vx:-vx,vy:-vy});}
+ const ke=ps.reduce((a,p)=>a+(p.vx*p.vx+p.vy*p.vy)/2,0)/N;
+ const sp=ps.map(p=>Math.hypot(p.vx,p.vy)).sort((a,b)=>a-b);
+ return {ps:ps,ke0:ke,vth:sp[Math.floor(N/2)],gap:0.16,bits:0};}
+function stepDemon(d,dt,on){for(const p of d.ps){const ox=p.x;p.x+=p.vx*dt;p.y+=p.vy*dt;
+  if(p.y<0){p.y=-p.y;p.vy=-p.vy;}if(p.y>1){p.y=2-p.y;p.vy=-p.vy;}
+  if(p.x<0){p.x=-p.x;p.vx=-p.vx;}if(p.x>1){p.x=2-p.x;p.vx=-p.vx;}
+  if((ox<0.5)!==(p.x<0.5)){
+   if(Math.abs(p.y-0.5)<d.gap/2){const sp=Math.hypot(p.vx,p.vy);
+    if(!on)continue;
+    d.bits++;const ok=(p.vx>0)?(sp>d.vth):(sp<d.vth);
+    if(ok)continue;}
+   p.x=ox;p.vx=-p.vx;}}}
+function demonT(d){let a=0,b=0,na=0,nb=0;for(const p of d.ps){const k=(p.vx*p.vx+p.vy*p.vy)/2;if(p.x<0.5){a+=k;na++;}else{b+=k;nb++;}}
+ return {L:na?300*a/na/d.ke0:0,R:nb?300*b/nb/d.ke0:0,nL:na,nR:nb};}
+
+function TESTS(){
+ const out=[];const near=(a,b,t)=>Math.abs(a-b)<=t;
+ let s=0;for(let k=0;k<=20;k++)s+=Math.exp(lnC(20,k));
+ out.push(['상태의 수 합',near(s,Math.pow(2,20),1),'ΣC(20,k)=2^20 → '+s.toFixed(0)]);
+ out.push(['C(20,10)',near(Math.exp(lnC(20,10)),184756,0.5),'184756']);
+ out.push(['모두 A에 있을 확률',near(binP(10,0),1/1024,1e-12),'N=10 → 1/1024']);
+ out.push(['확률 합=1',near([...Array(61).keys()].reduce((a,n)=>a+binP(60,n),0),1,1e-9),'N=60']);
+ out.push(['열 이동 ΔS',near(dSheat(500,300,1500),2,1e-9),'−1500/500+1500/300 = +2 J/K']);
+ out.push(['TH=TL이면 ΔS=0',dSheat(400,400,800)===0,'가역 극한']);
+ out.push(['TH>TL이면 ΔS>0',[[600,300],[450,449],[800,200]].every(a=>dSheat(a[0],a[1],1000)>0),'여러 조합']);
+ out.push(['반대 방향은 ΔS<0',dSheat(300,500,1500)<0,'저온→고온이면 부호 반대: '+(-dSheat(500,300,1500))]);
+ {const T1=500,T2=300,C=1000,tau=10;let a=T1,b=T2,S=0,dt=0.001;
+  for(let t=0;t<40;t+=dt){const q=(a-b)/(2*tau)*dt;S+=C*(q/b-q/a);a-=q;b+=q;}
+  const f=twoBlock(T1,T2,tau,200,C);
+  out.push(['두 물체 접촉: 수치 적분 vs 해석식',near(S,f.dS,0.2),'수치 '+S.toFixed(2)+' / 해석 '+f.dS.toFixed(2)+' J/K']);
+  out.push(['최종 온도=평균',near(f.a,400,0.01)&&near(f.b,400,0.01),'400 K']);
+  out.push(['에너지 보존',near(twoBlock(T1,T2,tau,7,C).a+twoBlock(T1,T2,tau,7,C).b,800,1e-9),'T1+T2 일정']);}
+ {const TH=600,TL=300,QH=1000,eC=1-TL/TH;
+  out.push(['카르노 기관 ΔS=0',near(dSengine(TH,TL,QH,eC),0,1e-9),'η=1−TL/TH='+eC]);
+  out.push(['카르노보다 낮은 효율 ΔS>0',dSengine(TH,TL,QH,0.4)>0,'η=0.4']);
+  out.push(['카르노보다 높은 효율 ΔS<0 (불가능)',dSengine(TH,TL,QH,0.6)<0,'η=0.6']);}
+ out.push(['자유 팽창 1몰 ΔS=R ln2',near(RG*Math.LN2,5.76,0.01),(RG*Math.LN2).toFixed(3)+' J/K']);
+ out.push(['W=2^N에서 ΔS=Nk ln2',near(Math.log(Math.pow(2,10)),10*Math.LN2,1e-12),'N=10']);
+ {const Q=334000,Tf=273.15;out.push(['얼음 어는 예: 주변 −10 °C',dSheat(263.15,Tf,0)===0&&(-Q/Tf+Q/263.15)>0,'합 '+(-Q/Tf+Q/263.15).toFixed(1)+' J/K']);
+  out.push(['주변 0 °C이면 ΔS=0',near(-Q/Tf+Q/273.15,0,1e-9),'가역']);
+  out.push(['주변 +5 °C이면 ΔS<0(자발적으로 안 얼음)',(-Q/Tf+Q/278.15)<0,'']);}
+ out.push(['확인문제 계산',near(dSheat(600,300,1200),2,1e-9),'−1200/600+1200/300=+2 J/K']);
+ {const ps=mkGas(80,3);let ok=true;for(let i=0;i<3000;i++){stepGas(ps,1/60);}
+  for(const p of ps)if(p.x<0||p.x>1||p.y<0||p.y>1)ok=false;
+  out.push(['입자가 상자 안에 머묾',ok&&ps.length===80,'80개, 3000스텝']);
+  const f=leftCount(ps)/80;out.push(['확산 후 왼쪽 비율≈1/2',f>0.3&&f<0.7,'왼쪽 '+(f*100).toFixed(0)+' %']);
+  const q=mkGas(80,3);out.push(['처음엔 모두 왼쪽',leftCount(q)===80,'']);}
+ {const r=rng2(5),N=20;let side=Array(N).fill(0),n=N,sum=0,cnt=0;
+  for(let i=0;i<40000;i++){const j=Math.floor(r()*N);side[j]^=1;n+=side[j]?-1:1;if(i>2000){sum+=n;cnt++;}}
+  out.push(['구슬 상자: 평균 왼쪽 수≈N/2',near(sum/cnt,10,0.3),'평균 '+(sum/cnt).toFixed(2)]);}
+ {const ink=mkInk(300,9);const r0=inkInside(ink.ps,0.05);for(let i=0;i<4000;i++)stepInk(ink,0.004);
+  const r1=inkInside(ink.ps,0.05);let ok=ink.ps.every(p=>p.x>=0&&p.x<=1&&p.y>=0&&p.y<=1);
+  out.push(['잉크: 처음 영역 안 입자가 줄어듦',r0===300&&r1<60,r0+' → '+r1+'개 (300개 중)']);out.push(['잉크: 상자 안에 머묾',ok,'']);}
+ {const b=mkBrown(150,15,4);const m0=b.sm.reduce((a,p)=>a+p.vx*p.vx+p.vy*p.vy,0)/2+b.big.m*0;let ok=true;
+  const px0=b.sm.reduce((a,p)=>a+p.vx,0)+b.big.m*b.big.vx;
+  const E0=b.sm.reduce((a,p)=>a+(p.vx*p.vx+p.vy*p.vy)/2,0);
+  for(let i=0;i<20;i++)stepBrown(b,1/240);
+  /* 벽이 없는 짧은 구간에서 충돌 직전·직후 에너지 보존 확인 */
+  const E1=b.sm.reduce((a,p)=>a+(p.vx*p.vx+p.vy*p.vy)/2,0)+b.big.m*(b.big.vx*b.big.vx+b.big.vy*b.big.vy)/2;
+  out.push(['브라운: 충돌 전후 운동 에너지 보존',near(E0,E1,E0*1e-9),'E='+E1.toFixed(3)]);
+  let moved=0;for(let i=0;i<4*240;i++){stepBrown(b,1/240);}moved=Math.hypot(b.big.x-0.5,b.big.y-0.5);
+  out.push(['브라운: 큰 입자가 상자 안에서 움직임',b.big.x>0&&b.big.x<1&&b.big.y>0&&b.big.y<1,'변위 '+moved.toFixed(3)]);}
+ {const d=mkDemon(120,6),d2=mkDemon(120,6);for(let i=0;i<60*120;i++){stepDemon(d,1/120,true);stepDemon(d2,1/120,false);}
+  const t=demonT(d),t2=demonT(d2);
+  out.push(['도깨비 켬: 오른쪽이 더 뜨거워짐',t.R-t.L>30,'T_L '+t.L.toFixed(0)+' / T_R '+t.R.toFixed(0)+' K']);
+  out.push(['도깨비 끔: 온도 차가 켰을 때보다 훨씬 작음(요동만)',Math.abs(t2.R-t2.L)<0.4*(t.R-t.L),'T_L '+t2.L.toFixed(0)+' / T_R '+t2.R.toFixed(0)+' K']);
+  out.push(['분자 수 보존',d.ps.length===120&&t.nL+t.nR===120,'']);}
+ out.push(['R = N_A k',near(6.02214076e23*KB,8.314,0.01),(6.02214076e23*KB).toFixed(4)]);
+ out.push(['등온 팽창 Q/T = nR ln2 (V 두 배)',near(RG*300*Math.LN2/300,RG*Math.LN2,1e-12),'클라우지우스와 볼츠만이 같은 값']);
+ out.push(['란다우어 한계 1비트 k ln2',near(KB*Math.LN2,9.57e-24,1e-26),(KB*Math.LN2).toExponential(2)+' J/K']);
+ return out;}
+
+
+/* =====================================================================
+   슬라이드별 모듈: { start(), stop(), frame(dt), onStep(step) }
+   ===================================================================== */
+const REG = {};
+/* ---- cover ---- */
+REG["cover"] = safe("cover.init", function () {
+const W=900,H=520,ctx=setupCanvas($('#cv-cover'),W,H);let ink,t=0;
+function reset(){ink=mkInk(450,21);t=0;}reset();
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ const s=420,x0=(W-s)/2,y0=30;
+ const g=ctx.createLinearGradient(0,y0,0,y0+s);g.addColorStop(0,'rgba(89,180,255,.28)');g.addColorStop(1,'rgba(89,180,255,.12)');
+ ctx.fillStyle=g;ctx.fillRect(x0,y0,s,s);ctx.strokeStyle=C.dim;ctx.lineWidth=3;ctx.strokeRect(x0,y0,s,s);
+ ctx.fillStyle='rgba(196,165,255,.55)';for(const p of ink.ps){ctx.beginPath();ctx.arc(x0+p.x*s,y0+p.y*s,6,0,TAU);ctx.fill();}
+ txt(ctx,t<1.5?'물에 잉크 한 방울':'잉크가 퍼져 나간다 — 다시 한 방울로 모일까?',W/2,H-24,26,C.text,'center',700);}
+return {start(){reset();},frame(dt){t+=dt;if(t>24)reset();for(let i=0;i<3;i++)stepInk(ink,0.005);draw();}};
+
+});
+
+/* ---- rv ---- */
+REG["rv"] = safe("rv.init", function () {
+const W=1000,H=640,ctx=setupCanvas($('#rv-cv'),W,H);
+const N=300,MAXF=2400,DT=1/60,R0=0.05;let ink,hist,lf,idx,mode='play',acc=0;
+function snap(){const a=new Float32Array(N*2);ink.ps.forEach((p,i)=>{a[2*i]=p.x;a[2*i+1]=p.y;});return a;}
+function loadAt(i){const a=hist[i];ink.ps.forEach((p,k)=>{p.x=a[2*k];p.y=a[2*k+1];});}
+function setMode(m){mode=m;$$('.rv-b').forEach(b=>b.classList.toggle('pri',b.dataset.m===m));}
+function reset(){ink=mkInk(N,11);hist=[snap()];lf=[N];idx=0;acc=0;setMode('play');}
+reset();
+$$('.rv-b').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.m==='reset')reset();else setMode(b.dataset.m);}));
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ const s=370,x0=(W-s)/2,y0=62,a=hist[idx];
+ const g=ctx.createLinearGradient(0,y0,0,y0+s);g.addColorStop(0,'rgba(89,180,255,.28)');g.addColorStop(1,'rgba(89,180,255,.12)');
+ ctx.fillStyle=g;ctx.fillRect(x0,y0,s,s);ctx.strokeStyle=C.dim;ctx.lineWidth=3;ctx.strokeRect(x0,y0,s,s);
+ ctx.setLineDash([6,6]);ctx.strokeStyle=YL;ctx.lineWidth=2;ctx.beginPath();ctx.arc(x0+s/2,y0+s/2,R0*s,0,TAU);ctx.stroke();ctx.setLineDash([]);
+ ctx.fillStyle='rgba(196,165,255,.6)';for(let i=0;i<N;i++){ctx.beginPath();ctx.arc(x0+a[2*i]*s,y0+a[2*i+1]*s,5,0,TAU);ctx.fill();}
+ const n=lf[idx];
+ txt(ctx,mode==='back'?'⏪ 되감는 중 — 자연에서는 일어나지 않는 장면':(idx>=MAXF?'(기록 끝)':'▶ 물에 떨어뜨린 잉크가 퍼진다'),40,40,24,mode==='back'?RD:GR,'left',700);
+ txt(ctx,'노란 원 안의 잉크 입자: '+n+' / '+N+'개',W-40,40,24,C.text,'right',700);
+ const gx=40,gy=470,gw=920,gh=130;ctx.strokeStyle=C.grid;ctx.lineWidth=1;ctx.strokeRect(gx,gy,gw,gh);
+ txt(ctx,'처음 영역(노란 원) 안의 잉크 비율 (1 → 0에 가까워짐)',gx+8,gy+22,18,C.dim);
+ ctx.strokeStyle=PU;ctx.lineWidth=3;ctx.beginPath();
+ for(let i=0;i<=idx;i+=3){const X=gx+i/MAXF*gw,Y=gy+gh-lf[i]/N*gh;i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);}ctx.stroke();
+ ctx.fillStyle=mode==='back'?RD:GR;ctx.beginPath();ctx.arc(gx+idx/MAXF*gw,gy+gh-n/N*gh,6,0,TAU);ctx.fill();}
+return {start(){reset();},frame(dt){acc+=Math.min(dt,0.1);
+ while(acc>=DT){acc-=DT;
+  if(mode==='play'){if(idx<hist.length-1){loadAt(idx);hist.length=idx+1;lf.length=idx+1;}
+   if(idx<MAXF){stepInk(ink,0.004);stepInk(ink,0.004);hist.push(snap());lf.push(inkInside(ink.ps,R0));idx++;}}
+  else if(mode==='back'){if(idx>0)idx--;}}
+ draw();}};
+
+});
+
+/* ---- br ---- */
+REG["br"] = safe("br.init", function () {
+const W=1000,H=640,ctx=setupCanvas($('#br-cv'),W,H);
+let b,tr,acc=0,fr=0,showSm=true;
+function reset(){b=mkBrown(250,5,4);tr=[[b.big.x,b.big.y]];acc=0;fr=0;}reset();
+$('#br-re').addEventListener('click',reset);
+$('#br-sm').addEventListener('click',e=>{showSm=!showSm;e.target.textContent=showSm?'물 분자 숨기기':'물 분자 보이기';});
+function msd(tau){let s=0,n=0;for(let i=0;i+tau<tr.length;i++){s+=(tr[i+tau][0]-tr[i][0])**2+(tr[i+tau][1]-tr[i][1])**2;n++;}return n?s/n:0;}
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ const s=600,x0=20,y0=20;ctx.fillStyle='rgba(89,180,255,.12)';ctx.fillRect(x0,y0,s,s);ctx.strokeStyle=C.dim;ctx.lineWidth=3;ctx.strokeRect(x0,y0,s,s);
+ if(showSm){ctx.fillStyle='rgba(157,176,216,.8)';for(const p of b.sm){ctx.beginPath();ctx.arc(x0+p.x*s,y0+p.y*s,3,0,TAU);ctx.fill();}}
+ ctx.strokeStyle='rgba(255,157,77,.8)';ctx.lineWidth=2.5;ctx.beginPath();tr.forEach((q,i)=>{const X=x0+q[0]*s,Y=y0+q[1]*s;i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);});ctx.stroke();
+ ctx.fillStyle=OR;ctx.beginPath();ctx.arc(x0+b.big.x*s,y0+b.big.y*s,b.big.R*s,0,TAU);ctx.fill();
+ txt(ctx,'잉크 알갱이',x0+b.big.x*s,y0+b.big.y*s+5,15,'#10151f','center',800);
+ const px=660,py=70,pw=310,ph=300;
+ txt(ctx,'평균 제곱 변위 ⟨r²⟩ — 시간 t',px,40,22,C.text,'left',700);
+ ctx.strokeStyle=C.dim;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(px,py+ph);ctx.lineTo(px+pw,py+ph);ctx.stroke();
+ const T=60;
+ if(tr.length>200){const pts=[];for(let k=1;k<=T;k+=1)pts.push([k,msd(k)]);const mx=Math.max(...pts.map(p=>p[1]),1e-6);
+  ctx.strokeStyle=OR;ctx.lineWidth=3;ctx.beginPath();pts.forEach((p,i)=>{const X=px+p[0]/T*pw,Y=py+ph-p[1]/mx*ph;i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);});ctx.stroke();
+  const k0=30,sl=pts[k0-1][1]/k0;ctx.setLineDash([6,6]);ctx.strokeStyle=GR;ctx.beginPath();ctx.moveTo(px,py+ph);ctx.lineTo(px+pw,py+ph-sl*T/mx*ph);ctx.stroke();ctx.setLineDash([]);
+  txt(ctx,'초록 점선: ⟨r²⟩ ∝ t (직선)',px,py+ph+28,18,GR,'left',700);
+  txt(ctx,'주황: 지금까지의 궤적으로 계산',px,py+ph+54,18,OR,'left');}
+ else txt(ctx,'궤적을 모으는 중…',px+pw/2,py+ph/2,22,C.dim,'center');
+ txt(ctx,'시간 t →',px+pw,py+ph+82,18,C.dim,'right');
+ txt(ctx,'작은 점: 물 분자(모형) '+b.sm.length+'개',px,H-34,18,C.dim);
+ txt(ctx,'눈에 보이지 않는 분자들의 충돌이 알갱이를 떠민다',px,H-10,18,C.dim);}
+return {start(){reset();},frame(dt){acc+=Math.min(dt,0.05);const n=Math.floor(acc*60);acc-=n/60;
+ for(let k=0;k<n;k++){for(let i=0;i<4;i++)stepBrown(b,1/240);fr++;if(fr%4===0){tr.push([b.big.x,b.big.y]);if(tr.length>900)tr.shift();}}
+ draw();}};
+
+});
+
+/* ---- bx ---- */
+REG["bx"] = safe("bx.init", function () {
+const W=1000,H=700,ctx=setupCanvas($('#bx-cv'),W,H);
+const BL_={x:40,y:70,w:430,h:300},BR_={x:530,y:70,w:430,h:300};
+let N=20,side,bx,by,tx,ty,hits,total,acc=0,rate=8,paused=false,nL;const R=rng2(2024);
+function place(i,s){const b=s?BR_:BL_;tx[i]=b.x+16+R()*(b.w-32);ty[i]=b.y+16+R()*(b.h-32);}
+function init(){side=Array(N).fill(0);bx=[];by=[];tx=[];ty=[];for(let i=0;i<N;i++){place(i,0);bx[i]=tx[i];by[i]=ty[i];}
+ hits=Array(N+1).fill(0);total=0;nL=N;acc=0;}
+init();
+function tick(){const i=Math.floor(R()*N);side[i]^=1;place(i,side[i]);nL=side.filter(s=>!s).length;hits[nL]++;total++;}
+$('#bx-N').addEventListener('input',e=>{N=+e.target.value;TT('bx-Nv',N+'개');init();});
+$('#bx-r').addEventListener('input',e=>{rate=+e.target.value;TT('bx-rv',rate+'회/초');});
+$('#bx-reset').addEventListener('click',init);
+$('#bx-pause').addEventListener('click',e=>{paused=!paused;e.target.textContent=paused?'▶ 계속':'⏸ 멈춤';});
+TT('bx-Nv',N+'개');TT('bx-rv',rate+'회/초');
+function draw(dt){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ [BL_,BR_].forEach((b,k)=>{ctx.strokeStyle=C.dim;ctx.lineWidth=3;ctx.strokeRect(b.x,b.y,b.w,b.h);txt(ctx,k?'상자 B':'상자 A',b.x+b.w/2,b.y-14,24,C.text,'center',700);});
+ const r=N>30?9:13;
+ for(let i=0;i<N;i++){bx[i]+=(tx[i]-bx[i])*Math.min(1,dt*10);by[i]+=(ty[i]-by[i])*Math.min(1,dt*10);
+  ctx.fillStyle=side[i]?BL:OR;ctx.beginPath();ctx.arc(bx[i],by[i],r,0,TAU);ctx.fill();}
+ txt(ctx,'A '+nL+'개 · B '+(N-nL)+'개   |   이 배열의 상태의 수 W = C('+N+','+nL+') = '+big(lnC(N,nL)),W/2,404,24,YL,'center',700);
+ /* 히스토그램 */
+ const hx=70,hy=440,hw=880,hh=190,ymax=Math.max(binP(N,Math.floor(N/2)),total?Math.max(...hits)/total:0)*1.15;
+ ctx.strokeStyle=C.dim;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(hx,hy);ctx.lineTo(hx,hy+hh);ctx.lineTo(hx+hw,hy+hh);ctx.stroke();
+ const bw=hw/(N+1);
+ for(let n=0;n<=N;n++){const f=total?hits[n]/total:0;ctx.fillStyle=n===nL?YL:'rgba(89,180,255,.75)';
+  const bh=f/ymax*hh;ctx.fillRect(hx+n*bw+1,hy+hh-bh,bw-2,bh);}
+ ctx.strokeStyle=RD;ctx.lineWidth=3;ctx.beginPath();
+ for(let n=0;n<=N;n++){const X=hx+(n+0.5)*bw,Y=hy+hh-binP(N,n)/ymax*hh;n?ctx.lineTo(X,Y):ctx.moveTo(X,Y);}ctx.stroke();
+ txt(ctx,'A에 있던 구슬 수 n 의 관찰 비율 (막대) vs 상태 수로 계산한 확률 (붉은 선)',hx,hy-8,19,C.dim);
+ txt(ctx,'n=0',hx+bw/2,hy+hh+24,18,C.dim,'center');txt(ctx,'n='+N,hx+(N+0.5)*bw,hy+hh+24,18,C.dim,'center');
+ txt(ctx,'관찰 횟수 '+total+'회',hx+hw,hy+hh+48,18,C.dim,'right');}
+return {start(){init();},frame(dt){if(!paused){acc+=dt*rate;while(acc>=1){acc-=1;tick();}}draw(Math.min(dt,0.05));}};
+
+});
+
+/* ---- st ---- */
+REG["st"] = safe("st.init", function () {
+const W=1000,H=640,ctx=setupCanvas($('#st-cv'),W,H);let N=10,step=0;
+$('#st-N').addEventListener('input',e=>{N=+e.target.value;});
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ const x0=70,y0=60,w=900,h=380,bw=w/(N+1);let ymax=binP(N,Math.floor(N/2))*1.12;
+ ctx.strokeStyle=C.dim;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x0,y0+h);ctx.lineTo(x0+w,y0+h);ctx.stroke();
+ const lo=Math.ceil(0.4*N),hi=Math.floor(0.6*N);
+ if(step>=3){ctx.fillStyle='rgba(94,234,212,.15)';ctx.fillRect(x0+lo*bw,y0,(hi-lo+1)*bw,h);}
+ let pmid=0;
+ for(let n=0;n<=N;n++){const p=binP(N,n),bh=p/ymax*h;let col='rgba(89,180,255,.8)';
+  if(step>=2&&(n===0||n===N))col=RD;if(step>=3&&n>=lo&&n<=hi){col=GR;pmid+=p;}
+  ctx.fillStyle=col;ctx.fillRect(x0+n*bw+1,y0+h-Math.max(bh,1.5),bw-2,Math.max(bh,1.5));}
+ txt(ctx,'A에 있는 분자 수 n',x0+w/2,y0+h+34,20,C.dim,'center');
+ txt(ctx,'0',x0+bw/2,y0+h+20,16,C.dim,'center');txt(ctx,String(N),x0+(N+0.5)*bw,y0+h+20,16,C.dim,'center');
+ txt(ctx,'세로: 그 배열이 나타날 확률 = 상태의 수 ÷ 2^N',x0+8,y0+22,19,C.dim);
+ const L=[];L.push(['분자 수 N = '+N+'개 → 전체 상태의 수 2^N = '+big(N*Math.LN2),C.text]);
+ L.push(['A에만 몰린 배열: 상태의 수 1 → 확률 '+pct(binP(N,0)),RD]);
+ L.push(['A·B에 고르게(40~60 %): 확률 '+pct(pmid||(()=>{let s=0;for(let n=lo;n<=hi;n++)s+=binP(N,n);return s;})()),GR]);
+ L.forEach((l,i)=>txt(ctx,l[0],x0,y0+h+78+i*34,24,l[1],'left',700));}
+return {start(){step=0;},stop(){},onStep(s){step=s;},frame(){draw();
+ TT('st-Nv',N+'개');}};
+
+});
+
+/* ---- bz ---- */
+REG["bz"] = safe("bz.init", function () {
+const W=1000,H=560,ctx=setupCanvas($('#bz-cv'),W,H);let N=40,n=0,step=0;
+const sN=$('#bz-N'),sn=$('#bz-n');
+sN.addEventListener('input',e=>{N=+e.target.value;sn.max=N;if(n>N)n=N;sn.value=n;});
+sn.addEventListener('input',e=>{n=+e.target.value;});
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ const x0=80,y0=50,w=880,h=330,mx=N*Math.LN2*1.1;
+ ctx.strokeStyle=C.dim;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x0,y0+h);ctx.lineTo(x0+w,y0+h);ctx.stroke();
+ const X=k=>x0+k/N*w,Y=v=>y0+h-v/mx*h;
+ ctx.strokeStyle=BL;ctx.lineWidth=4;ctx.beginPath();for(let k=0;k<=N;k++){const v=lnC(N,k);k?ctx.lineTo(X(k),Y(v)):ctx.moveTo(X(k),Y(v));}ctx.stroke();
+ txt(ctx,'S/k = ln W  (A에 n개, B에 N−n개 있을 때)',x0+8,y0+22,20,C.dim);
+ txt(ctx,'n = 0',X(0),y0+h+26,18,C.dim,'center');txt(ctx,'n = N',X(N),y0+h+26,18,C.dim,'center');txt(ctx,'n = N/2',X(N/2),y0+h+26,18,C.dim,'center');
+ if(step>=3){ctx.setLineDash([6,6]);ctx.strokeStyle=YL;ctx.beginPath();ctx.moveTo(x0,Y(N*Math.LN2));ctx.lineTo(x0+w,Y(N*Math.LN2));ctx.stroke();ctx.setLineDash([]);
+  txt(ctx,'ln 2^N = N ln2 (칸막이를 열면 접근 가능한 모든 상태)',x0+w,Y(N*Math.LN2)-10,19,YL,'right',700);}
+ const v=lnC(N,n);ctx.fillStyle=OR;ctx.beginPath();ctx.arc(X(n),Y(v),11,0,TAU);ctx.fill();
+ txt(ctx,'n = '+n+' → W = '+big(v)+' → S = k ln W = '+(v*KB).toExponential(2)+' J/K  (S/k = '+v.toFixed(2)+')',x0,y0+h+78,24,OR,'left',700);
+ txt(ctx,'칸막이를 열면 한쪽에 몰린 상태(W=1)에서 W=2^N으로: ΔS = k ln 2^N = N k ln 2 = '+(N*Math.LN2*KB).toExponential(2)+' J/K',x0,y0+h+116,22,C.text);
+ txt(ctx,'1몰이면 N=N_A 이므로 ΔS = R ln 2 ≈ '+(RG*Math.LN2).toFixed(2)+' J/K',x0,y0+h+150,22,C.text);}
+return {start(){step=0;},onStep(s){step=s;},frame(){draw();TT('bz-Nv',N+'개');TT('bz-nv',n+'개');}};
+
+});
+
+/* ---- cl ---- */
+REG["cl"] = safe("cl.init", function () {
+const W=1000,H=530,ctx=setupCanvas($('#cl-cv'),W,H);let TH=500,TL=300,Q=1500,rev=false,step=0,ph=0;
+const g=id=>$(id);
+[['cl-th',v=>TH=v],['cl-tl',v=>TL=v],['cl-q',v=>Q=v]].forEach(a=>g('#'+a[0]).addEventListener('input',e=>a[1](+e.target.value)));
+$$('.cl-dir').forEach(b=>b.addEventListener('click',()=>{rev=b.dataset.d==='rev';$$('.cl-dir').forEach(x=>x.classList.toggle('on',x===b));}));
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ const hotX=70,coldX=640,by=40,bw=290,bh=190;
+ ctx.fillStyle=Tcol(TH,200,800);ctx.fillRect(hotX,by,bw,bh);ctx.fillStyle=Tcol(TL,200,800);ctx.fillRect(coldX,by,bw,bh);
+ txt(ctx,'고열원',hotX+bw/2,by+90,30,'#10151f','center',800);txt(ctx,'T_H = '+TH+' K',hotX+bw/2,by+140,30,'#10151f','center',800);
+ txt(ctx,'저열원',coldX+bw/2,by+90,30,'#10151f','center',800);txt(ctx,'T_L = '+TL+' K',coldX+bw/2,by+140,30,'#10151f','center',800);
+ const aw=4+Q/3000*22,ax0=rev?coldX-10:hotX+bw+10,ax1=rev?hotX+bw+10:coldX-10;
+ arrow(ctx,ax0,by+bh/2,ax1,by+bh/2,rev?RD:GR,aw,aw*2.2);
+ txt(ctx,'열 Q = '+Q+' J',(hotX+bw+coldX)/2,by+bh/2-aw-18,24,rev?RD:GR,'center',700);
+ const d1=rev?Q/TH:-Q/TH,d2=rev?-Q/TL:Q/TL,d=d1+d2;
+ const sc=190/Math.max(Math.abs(d1),Math.abs(d2),0.01),cx=500;
+ [['고열원 ΔS₁ = '+(rev?'+Q/T_H':'−Q/T_H'),d1,OR],['저열원 ΔS₂ = '+(rev?'−Q/T_L':'+Q/T_L'),d2,BL],['합 ΔS',d,d>=0?GR:RD]].forEach((r,i)=>{const y=290+i*58;
+  ctx.fillStyle=r[2];const bwid=r[1]*sc;ctx.fillRect(Math.min(cx,cx+bwid),y,Math.abs(bwid),34);
+  txt(ctx,r[0],cx-210,y+25,22,C.text,'right',600);
+  txt(ctx,(r[1]>=0?'+':'−')+Math.abs(r[1]).toFixed(2)+' J/K',cx+(bwid>=0?bwid+10:10),y+25,22,r[2],'left',700);});
+ ctx.strokeStyle=C.dim;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx,282);ctx.lineTo(cx,282+3*58);ctx.stroke();
+ txt(ctx,d>1e-9?'ΔS > 0 → 자발적으로 일어난다':d<-1e-9?'ΔS < 0 → 고립계에서는 일어나지 않는다 (제2법칙 위반)':'ΔS = 0 → 열평형(가역 극한)',cx,H-14,26,d>=-1e-9?GR:RD,'center',800);}
+return {start(){step=0;},onStep(s){step=s;},frame(){draw();TT('cl-thv',TH+' K');TT('cl-tlv',TL+' K');TT('cl-qv',Q+' J');}};
+
+});
+
+/* ---- hx ---- */
+REG["hx"] = safe("hx.init", function () {
+const W=1000,H=660,ctx=setupCanvas($('#hx-cv'),W,H);
+const C0=1000,TAU_=10,TMAX=40;let T1=500,T2=300,t=0,done=false;
+$('#hx-a').addEventListener('input',e=>{T1=+e.target.value;t=0;});$('#hx-b').addEventListener('input',e=>{T2=+e.target.value;t=0;});
+$('#hx-re').addEventListener('click',()=>{t=0;});
+function plot(x0,y0,w,h,ymin,ymax,f,col,tmax){ctx.strokeStyle=col;ctx.lineWidth=4;ctx.beginPath();let first=true;
+ for(let s=0;s<=t;s+=0.25){const v=f(s);const X=x0+s/TMAX*w,Y=y0+h-(v-ymin)/(ymax-ymin)*h;first?ctx.moveTo(X,Y):ctx.lineTo(X,Y);first=false;}ctx.stroke();}
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ const s=twoBlock(T1,T2,TAU_,t,C0);
+ ctx.fillStyle=Tcol(s.a,200,800);ctx.fillRect(60,40,330,140);ctx.fillStyle=Tcol(s.b,200,800);ctx.fillRect(610,40,330,140);
+ txt(ctx,'물체 1  '+s.a.toFixed(0)+' K',225,125,32,'#10151f','center',800);txt(ctx,'물체 2  '+s.b.toFixed(0)+' K',775,125,32,'#10151f','center',800);
+ arrow(ctx,400,110,600,110,GR,4+Math.abs(s.a-s.b)/20,20);txt(ctx,'열 이동',500,84,22,GR,'center',700);
+ const x0=90,w=860;
+ let y0=250,h=150;ctx.strokeStyle=C.dim;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x0,y0+h);ctx.lineTo(x0+w,y0+h);ctx.stroke();
+ const lo=Math.min(T1,T2)-20,hi=Math.max(T1,T2)+20;
+ plot(x0,y0,w,h,lo,hi,u=>twoBlock(T1,T2,TAU_,u,C0).a,OR);plot(x0,y0,w,h,lo,hi,u=>twoBlock(T1,T2,TAU_,u,C0).b,BL);
+ txt(ctx,'온도 (K)',x0+6,y0-8,19,C.dim);txt(ctx,'→ 같아진다 '+((T1+T2)/2).toFixed(0)+' K',x0+w,y0+h/2+6,20,C.dim,'right');
+ y0=470;h=150;ctx.strokeStyle=C.dim;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x0,y0+h);ctx.lineTo(x0+w,y0+h);ctx.stroke();
+ const fin=twoBlock(T1,T2,TAU_,TMAX*5,C0).dS,top=Math.max(fin*1.15,1);
+ plot(x0,y0,w,h,0,top,u=>twoBlock(T1,T2,TAU_,u,C0).dS,GR);
+ txt(ctx,'두 물체의 엔트로피 변화 합 ΔS (J/K)',x0+6,y0-8,19,C.dim);txt(ctx,'시간 →',x0+w,y0+h+26,19,C.dim,'right');
+ txt(ctx,'ΔS = '+s.dS.toFixed(1)+' J/K',x0+w,y0+h-8-Math.min(h-30,s.dS/top*h),24,GR,'right',800);
+ txt(ctx,'열용량 각 1000 J/K (예시) · 시간 '+t.toFixed(1)+' (임의 단위)',x0,H-12,19,C.dim);}
+return {start(){t=0;},frame(dt){t=Math.min(TMAX,t+dt*3);draw();TT('hx-av',T1+' K');TT('hx-bv',T2+' K');}};
+
+});
+
+/* ---- dm ---- */
+REG["dm"] = safe("dm.init", function () {
+const W=1000,H=620,ctx=setupCanvas($('#dm-cv'),W,H);
+let d,on=false,acc=0;
+function reset(){d=mkDemon(120,6);acc=0;}reset();
+$$('.dm-m').forEach(b=>b.addEventListener('click',()=>{on=b.dataset.m==='on';$$('.dm-m').forEach(x=>x.classList.toggle('on',x===b));reset();}));
+$('#dm-re').addEventListener('click',reset);
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ const s=520,x0=240,y0=30,t=demonT(d);
+ ctx.fillStyle=Tcol(t.L,120,480).replace('rgb','rgba').replace(')',',.18)');ctx.fillRect(x0,y0,s/2,s);
+ ctx.fillStyle=Tcol(t.R,120,480).replace('rgb','rgba').replace(')',',.18)');ctx.fillRect(x0+s/2,y0,s/2,s);
+ ctx.strokeStyle=C.dim;ctx.lineWidth=3;ctx.strokeRect(x0,y0,s,s);
+ const gy=y0+s/2-d.gap/2*s,gh=d.gap*s;ctx.strokeStyle=C.text;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(x0+s/2,y0);ctx.lineTo(x0+s/2,gy);ctx.moveTo(x0+s/2,gy+gh);ctx.lineTo(x0+s/2,y0+s);ctx.stroke();
+ for(const p of d.ps){const sp=Math.hypot(p.vx,p.vy);ctx.fillStyle=sp>d.vth?RD:BL;ctx.beginPath();ctx.arc(x0+p.x*s,y0+p.y*s,6,0,TAU);ctx.fill();}
+ if(on){txt(ctx,'👹',x0+s/2,y0+s/2+10,44,C.text,'center');}
+ txt(ctx,'왼쪽 칸',x0+s/4,y0+s+30,22,C.text,'center',700);txt(ctx,'오른쪽 칸',x0+3*s/4,y0+s+30,22,C.text,'center',700);
+ txt(ctx,t.L.toFixed(0)+' K',x0+s/4,y0+s+62,30,Tcol(t.L,120,480),'center',800);txt(ctx,t.R.toFixed(0)+' K',x0+3*s/4,y0+s+62,30,Tcol(t.R,120,480),'center',800);
+ txt(ctx,'빨강: 빠른 분자',20,70,20,RD,'left',700);txt(ctx,'파랑: 느린 분자',20,100,20,BL,'left',700);
+ txt(ctx,'처음에는 양쪽 모두 300 K',20,140,18,C.dim);
+ txt(ctx,on?'도깨비 켬':'도깨비 끔 (문이 그냥 열려 있음)',20,200,22,on?YL:C.dim,'left',800);
+ if(on){txt(ctx,'판단·기록한 횟수',20,250,18,C.dim);txt(ctx,d.bits+' 비트',20,282,28,YL,'left',800);
+  txt(ctx,'지우는 데 드는 최소 엔트로피',20,330,16,C.dim);txt(ctx,'≥ '+d.bits+' × k ln2',20,358,22,PU,'left',800);
+  txt(ctx,'= '+(d.bits*KB*Math.LN2).toExponential(2)+' J/K',20,386,18,PU);}}
+return {start(){reset();},frame(dt){acc+=Math.min(dt,0.05)*2.5;while(acc>=1/120){acc-=1/120;stepDemon(d,1/120,on);}draw();}};
+
+});
+
+/* ---- en ---- */
+REG["en"] = safe("en.init", function () {
+const W=1000,H=530,ctx=setupCanvas($('#en-cv'),W,H);let TH=600,TL=300,f=80,step=0;const QH=1000;
+[['en-th',v=>TH=v],['en-tl',v=>TL=v],['en-f',v=>f=v]].forEach(a=>$('#'+a[0]).addEventListener('input',e=>a[1](+e.target.value)));
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ const eC=1-TL/TH,eta=f/100*eC,Wk=eta*QH,QC=QH-Wk,d=dSengine(TH,TL,QH,eta),ok=d>=-1e-9;
+ ctx.fillStyle=Tcol(TH,200,900);ctx.fillRect(110,10,380,70);txt(ctx,'고열원 T_H = '+TH+' K',300,55,26,'#10151f','center',800);
+ ctx.fillStyle=Tcol(TL,200,900);ctx.fillRect(110,450,380,70);txt(ctx,'저열원 T_L = '+TL+' K',300,495,26,'#10151f','center',800);
+ ctx.fillStyle=ok?'rgba(89,180,255,.25)':'rgba(255,107,107,.3)';ctx.strokeStyle=ok?BL:RD;ctx.lineWidth=4;ctx.beginPath();ctx.arc(300,265,80,0,TAU);ctx.fill();ctx.stroke();
+ txt(ctx,'열기관',300,258,28,C.text,'center',800);txt(ctx,'η = '+(eta*100).toFixed(1)+' %',300,295,24,ok?GR:RD,'center',800);
+ arrow(ctx,300,82,300,182,OR,3+QH/1000*18,26);txt(ctx,'Q_H = '+QH+' J',312,140,22,OR,'left',700);
+ arrow(ctx,300,348,300,446,BL,3+QC/1000*18,26);txt(ctx,'Q_L = '+QC.toFixed(0)+' J',312,405,22,BL,'left',700);
+ arrow(ctx,383,265,520,265,GR,3+Wk/1000*18,26);txt(ctx,'일 W = '+Wk.toFixed(0)+' J',455,238,22,GR,'center',700);
+ /* 엔트로피 막대 */
+ const dH=-QH/TH,dC=QC/TL,cx=800,sc=200/Math.max(Math.abs(dH),Math.abs(dC),0.01);
+ txt(ctx,'엔트로피 변화 (J/K)',cx,50,22,C.text,'center',700);
+ [['고열원',dH,OR],['저열원',dC,BL],['합',d,ok?GR:RD]].forEach((r,i)=>{const y=75+i*85;
+  ctx.fillStyle=r[2];const bw=r[1]*sc;ctx.fillRect(Math.min(cx,cx+bw),y+30,Math.abs(bw),34);
+  txt(ctx,r[0],cx,y+20,20,C.dim,'center');txt(ctx,(r[1]>=0?'+':'−')+Math.abs(r[1]).toFixed(3),cx+(bw>=0?bw+8:-bw*0+8),y+56,20,r[2],'left',700);});
+ ctx.strokeStyle=C.dim;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx,100);ctx.lineTo(cx,335);ctx.stroke();
+ txt(ctx,ok?(d<1e-6?'ΔS = 0 : 가역 (카르노 기관, 최대 효율)':'ΔS > 0 : 가능 (실제 기관은 이쪽)'):'ΔS < 0 : 불가능! 제2법칙 위반',cx,398,23,ok?GR:RD,'center',800);
+ txt(ctx,'카르노 효율 η_C = 1 − T_L/T_H = '+(eC*100).toFixed(1)+' %',cx,440,21,YL,'center',700);
+ txt(ctx,'Q_H=1000 J은 예시 값',cx,478,18,C.dim,'center');}
+return {start(){step=0;},onStep(s){step=s;},frame(){draw();TT('en-thv',TH+' K');TT('en-tlv',TL+' K');TT('en-fv',f+' % (카르노 효율 대비)');}};
+
+});
+
+/* ---- fz ---- */
+REG["fz"] = safe("fz.init", function () {
+const Q=334000,Tf=273.15;let Tc=-10;
+const sl=$('#fz-t');sl.addEventListener('input',e=>{Tc=+e.target.value;render();});
+function render(){const Te=Tc+273.15,d1=-Q/Tf,d2=Q/Te,d=d1+d2;
+ TT('fz-tv',Tc+' °C ('+Te.toFixed(2)+' K)');
+ HH('fz-tab','<tr><th>대상</th><th>열</th><th>ΔS</th></tr><tr><td>물 1 kg (계)</td><td>−334 kJ</td><td class="p">'+d1.toFixed(0)+' J/K  (감소)</td></tr><tr><td>주변 (냉동실)</td><td>+334 kJ</td><td class="k">+'+d2.toFixed(0)+' J/K</td></tr><tr><td><b>합</b></td><td></td><td class="'+(d>=-1e-6?'ok':'bad')+'"><b>'+(d>=0?'+':'')+d.toFixed(1)+' J/K</b></td></tr>');
+ HH('fz-res',d>1e-6?'<b class="ok">합 ΔS &gt; 0</b> → 물의 엔트로피는 줄어도 <b>주변까지 합치면 증가</b>. 얼음은 자연스럽게 언다.':d>-1e-6?'<b class="p">합 ΔS = 0</b> → 0 °C 주변에서는 얼지도 녹지도 않는 평형.':'<b class="bad">합 ΔS &lt; 0</b> → 주변이 0 °C보다 따뜻하면 물이 저절로 얼 수 없다.');}
+render();
+return {start(){render();}};
+
+});
+
+/* ---- qz ---- */
+REG["qz"] = safe("qz.init", function () {
+$$('.qz-b').forEach(b=>b.addEventListener('click',()=>{const a=document.getElementById(b.dataset.a);a.style.display=a.style.display==='block'?'none':'block';}));
+return {};
+
+});
+
+/* =====================================================================
+   슬라이드 관리자
+   ===================================================================== */
+const slides = $$('.slide'), deck = $('#deck'); let cur = -1, step = 0, activeFrame = null, activeId = '', hudTimer = 0;
+const NOTES = DECK.notes, ASK = DECK.ask, CIRC = ['①', '②', '③', '④', '⑤'];
+function renderNotes(i) {
+  const n = NOTES[slides[i].id]; if (!n) { $('#notes').innerHTML = ''; return; }
+  $('#notes').innerHTML = `<div class="nh">📝 오개념 교정 노트 · 슬라이드 ${i + 1} / ${slides.length}<span style="float:right">발문을 화면에 띄우기: Q 키</span></div>` + (n.q ? `<div class="nq">💬 발문: ${n.q}</div>` : '') +
+    (n.m || []).map(([a, b]) => `<div class="ni"><span class="nx">❌ 오개념</span> ${a}<br><span class="nv">✅ 교정</span> ${b}</div>`).join('');
+}
+function renderAsk(i) {
+  const q = ASK[slides[i].id] || [];
+  $('#ask').innerHTML = `<div class="ak"><div class="ah">💬 생각해 보기 · ${i + 1} / ${slides.length}</div>` + (q.length ? q.map((t, k) => `<div class="aq">${q.length > 1 ? `<span>${CIRC[k] || (k + 1) + '.'}</span>` : ''}${t}</div>`).join('') : '<div class="aq" style="color:var(--muted)">이 슬라이드에는 발문이 없습니다.</div>') + '<div class="af">Q 키 · Esc · 화면 클릭으로 닫기</div></div>';
+}
+function toggleAsk(force) { const on = $('#ask').classList.toggle('on', force); $('#b-ask').classList.toggle('on', on); }
+const maxStep = i => +(slides[i].dataset.steps || 0);
+function fit() {
+  const vp = $('#viewport'), vw = vp.clientWidth, vh = vp.clientHeight, rf = vw < 1100;
+  document.documentElement.classList.toggle('rf', rf);
+  if (rf) { const W = vw < 640 ? 640 : vw, s = vw / W; deck.style.width = W + 'px'; deck.style.height = (vh / s) + 'px'; deck.style.transform = `scale(${s})`; return; }
+  deck.style.width = ''; deck.style.height = '';
+  const s = Math.min(vw / 1920, vh / 1080); deck.style.transform = `translate(-50%,-50%) scale(${s})`;
+}
+function fitSteps() { // 단계 목록이 영역을 넘으면 자동 축소 (실제 렌더링 높이 기준)
+  if (cur < 0) return; const side = $('.side.steps', slides[cur]); if (!side) return;
+  side.style.transform = ''; side.style.width = '';
+  if (side.clientHeight > 0 && side.scrollHeight > side.clientHeight + 1) { const k = side.clientHeight / side.scrollHeight; side.style.transformOrigin = 'top left'; side.style.transform = `scale(${k})`; side.style.width = (100 / k) + '%'; }
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitSteps);
+function applyStep() {
+  $$('.st', slides[cur]).forEach(el => { el.classList.toggle('on', +el.dataset.i <= step); el.classList.toggle('cur', +el.dataset.i === step); });
+  const id = slides[cur].id, r = REG[id]; r && r.onStep && safe(id + '.onStep', () => r.onStep(step));
+}
+const mgSet = (sl, on) => $$('iframe.mg-embed', sl).forEach(f => { f.src = on ? f.dataset.src : 'about:blank'; });
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.mg-re'); if (b) { const f = $('iframe', b.parentElement); f && f.contentWindow && f.contentWindow.postMessage({ mg: 'cmd', cmd: 'restart' }, '*'); b.blur(); } });
+function show(i, st = 0) {
+  i = Math.max(0, Math.min(slides.length - 1, i));
+  if (cur >= 0) { const oid = slides[cur].id, o = REG[oid]; o && o.stop && safe(oid + '.stop', () => o.stop()); slides[cur].classList.remove('active'); mgSet(slides[cur], false); }
+  cur = i; step = Math.min(st, maxStep(i)); slides[i].classList.add('active'); mgSet(slides[i], true);
+  const id = slides[i].id, r = REG[id]; activeFrame = r && r.frame ? (dt => r.frame(dt)) : null; activeId = id;
+  fitSteps(); r && r.start && safe(id + '.start', () => r.start());
+  $('#h-pg').textContent = `${i + 1} / ${slides.length}`; renderNotes(i); renderAsk(i); toggleAsk(false); applyStep();
+  if (DECK.ask_auto !== false && (ASK[id] || []).length && !askSeen[id]) { askSeen[id] = 1; toggleAsk(true); } // 처음 들어오면 발문을 먼저 띄운다(닫기 전까지 시뮬레이션 정지)
+}
+const askSeen = {};
+const next = () => { if ($('#ask').classList.contains('on')) { toggleAsk(false); return; } if (step < maxStep(cur)) { step++; applyStep(); } else if (cur < slides.length - 1) show(cur + 1); };
+const prev = () => { if (step > 0) { step--; applyStep(); } else if (cur > 0) show(cur - 1, maxStep(cur - 1)); };
+function isDark() { const r = document.documentElement; return r.dataset.theme === 'dark' || (!r.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches); }
+function themeBtn() { $('#b-theme').textContent = isDark() ? '☀ 라이트 전환' : '🌙 다크 전환'; }
+function toggleTheme() { document.documentElement.dataset.theme = isDark() ? 'light' : 'dark'; themeBtn(); }
+function toggleNotes() { const on = $('#notes').classList.toggle('on'); $('#b-notes').classList.toggle('on', on); }
+function toggleHelp(force) { const on = $('#help').classList.toggle('on', force); $('#b-help').classList.toggle('on', on); }
+function fullscreen() { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) { } }
+function poke() { $('#hud').classList.add('show'); clearTimeout(hudTimer); hudTimer = setTimeout(() => $('#hud').classList.remove('show'), 2600); }
+document.addEventListener('keydown', e => {
+  const t = e.target; if (t && t.tagName === 'INPUT' && t.type === 'range' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); next(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+  else if (e.key === 'Home') show(0); else if (e.key === 'End') show(slides.length - 1);
+  else if (e.key === 'f' || e.key === 'F') fullscreen(); else if (e.key === 'n' || e.key === 'N') toggleNotes(); else if (e.key === 't' || e.key === 'T') toggleTheme(); else if (e.key === 'q' || e.key === 'Q') toggleAsk(); else if (e.key === '?' || e.key === 'h' || e.key === 'H') toggleHelp(); else if (e.key === 'Escape') { toggleHelp(false); toggleAsk(false); if ($('#notes').classList.contains('on')) toggleNotes(); }
+});
+$('#h-prev').onclick = prev; $('#h-next').onclick = next; $('#h-fs').onclick = fullscreen; $('#b-help').onclick = () => toggleHelp(); $('#b-ask').onclick = () => toggleAsk(); $('#ask').onclick = () => toggleAsk(false); $('#help-x').onclick = () => toggleHelp(false); $('#help').onclick = e => { if (e.target.id === 'help') toggleHelp(false); }; $('#b-notes').onclick = toggleNotes; $('#b-theme').onclick = toggleTheme;
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
+['mousemove', 'touchstart', 'pointerdown'].forEach(ev => document.addEventListener(ev, poke, { passive: true }));
+window.addEventListener('resize', () => { fit(); fitSteps(); }); fit();
+/* 터치: 좌우로 쓸어 넘기기 (슬라이더·캔버스·버튼 위에서 시작한 건 제외) */
+(function () {
+  let x0 = 0, y0 = 0, ok = false;
+  document.addEventListener('touchstart', e => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; ok = !(e.target.closest && e.target.closest('input,canvas,button,table,.eq,#help,#notes')); }, { passive: true });
+  document.addEventListener('touchend', e => { if (!ok) return; const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; if (Math.abs(dx) > 70 && Math.abs(dx) > 2 * Math.abs(dy)) { dx < 0 ? next() : prev(); } }, { passive: true });
+})();
+let lastT = performance.now();
+(function loop(now) {
+  const dt = Math.min(.05, (now - lastT) / 1000); lastT = now;
+  if (activeFrame && !$('#ask').classList.contains('on')) { try { activeFrame(dt); } catch (e) { reportError(activeId + '.frame', e); activeFrame = null; } }
+  requestAnimationFrame(loop);
+})(lastT);
+
+/* 물리 검증: shared_js에 TESTS() → [[이름, 통과여부, 설명], ...] 가 있으면 콘솔에 출력 */
+(function runSelfTests() {
+  if (typeof TESTS !== 'function') { console.log('물리 검증 항목 없음'); return; }
+  let results = [];
+  try { results = TESTS() || []; } catch (e) { reportError('TESTS', e); return; }
+  console.log('=== ' + DECK.title + ' 물리 검증 ==='); let pass = 0;
+  for (const [name, ok, detail] of results) { console.log(`[${ok ? 'PASS' : 'FAIL'}] ${name}${detail ? ' — ' + detail : ''}`); if (ok) pass++; }
+  console.log(pass === results.length ? '모든 검증 통과' : '일부 검증 실패 — 콘솔 확인 필요');
+  window.__wsSelfTest = { pass, total: results.length };
+})();
+
+window.__deck = { show, next, get cur() { return cur; }, get step() { return step; }, count: slides.length, maxStep };
+let startAt = 0; try { const h = parseInt(location.hash.slice(1), 10); if (h >= 1 && h <= slides.length) startAt = h - 1; } catch (e) { }
+themeBtn(); show(startAt); poke();
+</script>
+</body>
+</html>

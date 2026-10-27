@@ -1,0 +1,811 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>축전기와 센서 — 전하를 모아 두는 장치</title>
+<!-- capacitor-sensor · 교과서 82~85쪽 · 평행판·원통형 축전기, 충전과 방전, 실생활 활용(AED·플래시·터치스크린·습도·가속도 센서), 대학 교재 대조 심화 (15장) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap">
+<style>
+:root{
+  --bg:#dfe5f0; --slide:#f5f7fc; --panel:#ffffff; --ink:#14203a; --muted:#54617b; --line:#c9d2e4;
+  --blue:#1f5fd1; --onblue:#ffffff; --amber:#b45f00; --green:#0c7a58; --red:#b8321f;
+  --blue-soft:#dce8fb; --amber-soft:#fbe8cf;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+    --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+    --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+  --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+  --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;overflow:hidden}
+#viewport{position:relative;width:100%;height:100%;overflow:hidden}
+#deck{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center center;background:var(--slide);box-shadow:0 12px 70px rgba(0,0,0,.28);overflow:hidden}
+.slide{position:absolute;inset:0;display:none;flex-direction:column;padding:84px 88px 52px;gap:24px;background:var(--slide);font-size:32px;line-height:1.4}
+.slide.active{display:flex}
+.hd{display:flex;align-items:baseline;justify-content:space-between;gap:24px;flex:none}
+.hd h2{font-size:58px;line-height:1.15;margin:0;font-weight:800;letter-spacing:-.01em}
+.hd .src{font-size:26px;color:var(--muted);white-space:nowrap}
+.body{flex:1;min-height:0;display:grid;gap:36px}
+.mg-box{position:relative;aspect-ratio:16/9;border-radius:16px;overflow:hidden;background:#06142a;align-self:start}
+.mg-box.mg-full{height:100%;max-width:100%;justify-self:center}
+.mg-box iframe{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none}
+.mg-re{position:absolute;right:14px;bottom:14px;font:inherit;font-size:24px;padding:8px 18px;border-radius:10px;border:1px solid rgba(255,255,255,.4);background:rgba(0,0,0,.55);color:#fff;cursor:pointer;opacity:.75}
+.mg-re:hover,.mg-re:focus-visible{opacity:1}
+.side{display:flex;flex-direction:column;gap:18px;min-height:0}
+canvas{display:block;border-radius:16px;background:#0a1330}
+.box{background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:20px 26px}
+.box h3{margin:0 0 8px;font-size:30px}
+.sm{font-size:26px;color:var(--muted)}
+.lead{font-size:40px;line-height:1.35}
+.k{color:var(--amber);font-weight:700}.p{color:var(--blue);font-weight:700}.ok{color:var(--green);font-weight:700}.bad{color:var(--red);font-weight:700}
+/* math */
+.m{font-family:'STIX Two Text','Times New Roman',serif;font-style:italic;font-size:1.1em;white-space:nowrap}
+.m .u,.u{font-style:normal}
+.m sub,.m sup{font-size:.68em;line-height:0;font-style:normal}
+.fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.15;margin:0 .12em;font-size:.95em}
+.fr>span:first-child{padding:0 .2em .06em;border-bottom:.07em solid currentColor}
+.fr>span:last-child{padding-top:.06em}
+.sq{white-space:nowrap}.sq .rad{border-top:.07em solid currentColor;padding:0 .15em;margin-left:-.04em}
+.eq{font-size:44px;text-align:center;padding:6px 0}
+/* controls */
+.ctl{display:flex;flex-direction:column;gap:4px}
+.ctl .row{display:flex;justify-content:space-between;align-items:baseline;font-size:27px;gap:12px}
+.ctl .val{font-weight:700;font-variant-numeric:tabular-nums}
+.rangew{position:relative}
+input[type=range]{width:100%;height:44px;-webkit-appearance:none;appearance:none;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:38px;height:38px;border-radius:50%;background:var(--blue);margin-top:-13px;border:4px solid var(--panel);box-shadow:0 1px 6px rgba(0,0,0,.35)}
+input[type=range]::-moz-range-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;background:var(--blue);border:4px solid var(--panel)}
+input[type=range]:focus-visible{outline:3px solid var(--blue);outline-offset:4px;border-radius:8px}
+.marks{position:relative;height:60px;font-size:22px;color:var(--muted)}
+.marks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.btns{display:flex;gap:12px;flex-wrap:wrap}
+.btn,.chip{font:inherit;font-size:27px;font-weight:700;padding:10px 24px;border-radius:12px;border:2px solid var(--blue);background:var(--panel);color:var(--blue);cursor:pointer;line-height:1.25}
+.btn.pri{background:var(--blue);color:var(--onblue)}
+.chip{padding:8px 18px;font-size:26px;border-color:var(--line);color:var(--ink);font-weight:500}
+.chip.on{border-color:var(--blue);background:var(--blue-soft);font-weight:700}
+.btn:focus-visible,.chip:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.chips{display:flex;gap:10px;flex-wrap:wrap}
+/* step reveal */
+.st{display:grid;grid-template-columns:46px 1fr;gap:14px;padding:8px 14px;border-radius:14px;opacity:0;transform:translateY(10px);transition:opacity .35s,transform .35s;border:2px solid transparent}
+.st.on{opacity:.55;transform:none}
+.st.cur{opacity:1;background:var(--panel);border-color:var(--blue)}
+.st .n{width:42px;height:42px;border-radius:50%;background:var(--blue);color:var(--onblue);display:grid;place-items:center;font-weight:800;font-size:24px;margin-top:2px}
+.st .tl{display:flex;flex-wrap:wrap;gap:2px 14px;align-items:baseline}
+.st .t{font-size:23px;color:var(--muted);line-height:1.3}
+.st b{font-size:27px}
+.st .eq{font-size:35px;line-height:1.1;text-align:left;padding:2px 0}
+/* cover */
+.cover{flex-direction:row;align-items:center;gap:56px}
+.cover.active{display:flex}
+.cv-l{flex:1;display:flex;flex-direction:column;gap:28px}
+.cv-l h1{font-size:200px;line-height:1;margin:0;font-weight:800;letter-spacing:-.04em}
+.cv-l h1.long{font-size:92px;line-height:1.22;letter-spacing:-.02em;text-wrap:balance;word-break:keep-all}
+.cv-tag{font-size:30px;color:var(--muted)}
+.q{border-left:8px solid var(--blue);border-radius:6px;padding:8px 0 8px 28px;font-size:36px;line-height:1.45}
+/* table */
+table.t{border-collapse:collapse;width:100%;font-size:27px}
+table.t th,table.t td{padding:10px 14px;border-bottom:2px solid var(--line);text-align:right;white-space:nowrap}
+table.t th:first-child,table.t td:first-child,table.t th:last-child,table.t td:last-child{text-align:left}
+table.t th{font-size:24px;color:var(--muted);font-weight:500}
+table.t tbody tr{cursor:pointer}
+table.t tbody tr.on{background:var(--blue-soft);font-weight:700}
+/* HUD / notes */
+#hud{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:10px;align-items:center;background:rgba(10,19,48,.86);color:#e9effd;padding:8px 14px;border-radius:14px;font-size:18px;opacity:0;transition:opacity .3s;z-index:20}
+#hud.show{opacity:1}
+#hud button{font:inherit;font-size:18px;color:#e9effd;background:transparent;border:1.5px solid rgba(233,239,253,.5);border-radius:8px;padding:4px 12px;cursor:pointer}
+#notes{position:absolute;left:0;right:0;bottom:0;background:rgba(10,19,48,.94);color:#eaf0ff;padding:26px 88px 34px;font-size:30px;line-height:1.5;display:none;z-index:15}
+#notes.on{display:block}
+#notes b{color:#ffb454}
+
+.ko{font-family:'Noto Sans KR',sans-serif;font-style:normal;font-size:.8em}
+#bar{position:absolute;top:14px;left:88px;right:88px;height:54px;display:flex;justify-content:space-between;align-items:center;z-index:12}
+#bar .bl{font-size:26px;font-weight:800}
+#bar .br{display:flex;gap:10px}
+.tb{font:inherit;font-size:24px;font-weight:700;padding:7px 18px;border-radius:12px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;line-height:1.2}
+.tb:hover{border-color:var(--blue)}.tb.on{border-color:var(--blue);background:var(--blue-soft)}
+.tb:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+#help{position:absolute;inset:0;background:rgba(6,11,30,.82);display:none;align-items:center;justify-content:center;z-index:30}
+#help.on{display:flex}
+.hp{background:var(--panel);color:var(--ink);border-radius:22px;padding:36px 52px 40px;width:1320px;max-height:960px;overflow:auto;font-size:27px;line-height:1.5;border:2px solid var(--line)}
+.hp h3{font-size:40px;margin:0 0 14px}.hp h4{font-size:29px;margin:18px 0 6px;color:var(--blue)}
+.hp .g{display:grid;grid-template-columns:230px 1fr;gap:6px 22px}
+.hp kbd{font:inherit;font-size:24px;font-weight:700;background:var(--blue-soft);border:2px solid var(--line);border-radius:8px;padding:1px 10px;margin-right:4px}
+#ask{position:absolute;inset:0;background:rgba(6,11,30,.6);display:none;align-items:center;justify-content:center;z-index:25;cursor:pointer}
+#ask.on{display:flex}
+#ask .ak{background:var(--panel);color:var(--ink);border-radius:24px;border-left:16px solid var(--blue);padding:44px 72px 40px 60px;width:1500px;box-shadow:0 20px 80px rgba(0,0,0,.45)}
+#ask .ah{font-size:30px;color:var(--blue);font-weight:800;margin-bottom:18px}
+#ask .aq{font-size:54px;line-height:1.4;font-weight:700;margin:10px 0;letter-spacing:-.01em}
+#ask .aq span{color:var(--blue);margin-right:14px}
+#ask .af{font-size:24px;color:var(--muted);margin-top:22px}
+#notes .nh{font-size:24px;color:#9db0d8;margin-bottom:6px}
+#notes .nq{margin:4px 0 10px;font-size:29px}
+#notes .ni{margin:6px 0;font-size:27px;line-height:1.45}
+#notes .nx{color:#ff9d9d;font-weight:700}#notes .nv{color:#5eead4;font-weight:700}
+@media (prefers-reduced-motion: reduce){.st{transition:none}}
+#simError{position:absolute;left:88px;right:88px;top:76px;z-index:40;background:rgba(184,50,31,.95);color:#fff;font-size:22px;line-height:1.4;padding:10px 18px;border-radius:12px;white-space:pre-wrap;display:none}
+#simError.on{display:block}
+/* ---- 반응형(reflow): 폭 1100px 미만(폰·태블릿)에서는 1920 스케일 대신 세로로 흐르는 레이아웃 ---- */
+html.rf #deck{left:0;top:0;transform-origin:top left;box-shadow:none}
+html.rf .slide{padding:104px 22px 100px;gap:18px;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;font-size:30px}
+html.rf .body{display:flex !important;flex-direction:column;gap:22px;flex:none;min-height:auto}
+html.rf .side{min-height:auto}
+html.rf .hd{flex-direction:column;align-items:flex-start;gap:6px}
+html.rf .hd h2{font-size:44px}
+html.rf .hd .src{font-size:23px;white-space:normal}
+html.rf canvas{width:100% !important;height:auto !important;max-width:100%}
+html.rf .mg-box.mg-full{height:auto;width:100%}
+html.rf img,html.rf svg,html.rf video{max-width:100%;height:auto}
+html.rf .cover{flex-direction:column;align-items:stretch;gap:26px}
+html.rf .cv-l h1{font-size:112px}
+html.rf .cv-l h1.long{font-size:52px}
+html.rf .cv-tag{font-size:26px}
+html.rf .q{font-size:30px}
+html.rf .lead{font-size:34px}
+html.rf .eq{font-size:36px;overflow-x:auto}
+html.rf table.t{display:block;overflow-x:auto;font-size:24px}
+html.rf .btn,html.rf .chip{min-height:52px}
+html.rf #bar{left:14px;right:14px;top:12px;height:auto;flex-wrap:wrap;gap:8px}
+html.rf #bar .bl{display:none}
+html.rf #bar .br{flex-wrap:wrap;justify-content:flex-end;width:100%}
+html.rf .tb{font-size:20px;padding:8px 12px}
+html.rf .hp{width:92%;max-height:88%;padding:24px 22px 28px;font-size:23px}
+html.rf .hp h3{font-size:32px}
+html.rf .hp .g{grid-template-columns:1fr;gap:2px 0}
+html.rf #ask .ak{width:92%;padding:26px 24px 24px 28px;border-left-width:10px}
+html.rf #ask .aq{font-size:34px}
+html.rf #notes{padding:18px 20px 26px;font-size:23px;max-height:62%;overflow:auto}
+html.rf #notes .nq{font-size:25px}
+html.rf #notes .ni{font-size:23px}
+html.rf #simError{left:14px;right:14px;top:96px}
+html.rf #hud{padding:8px 16px;width:max-content;max-width:96%}
+html.rf #hud #h-pg{white-space:nowrap;font-size:22px}
+html.rf .st:not(.on){display:none}
+html.rf #hud button{font-size:22px;padding:6px 16px;min-height:44px}
+/* ---- extra_css ---- */
+table.t{table-layout:fixed} table.t th,table.t td{text-align:left !important;vertical-align:middle;white-space:normal}
+</style>
+</head>
+<body>
+<div id="viewport">
+<div id="deck">
+
+<!-- c1 -->
+<section class="slide cover" id="c1">
+  <div class="cv-l"><div class="cv-tag">물리학 Ⅱ. 전기와 자기 · 03 축전기와 센서 (교과서 82~85쪽)</div>
+    <h1>축전기와 센서</h1>
+    <p class="lead" style="margin:0">같은 종류의 전하는 서로 밀어내는데, 어떻게 모아 둘 수 있을까? 모아 둔 전하는 어디에 쓰일까?</p>
+    <div class="q">리모컨을 쥐고 휘두르면 게임기는 내 동작을 어떻게 알아챌까?</div>
+    <div class="sm">축전기의 원리 · 충전과 방전 · 실생활 활용 · 센서<br>→ / Space 로 시작</div></div>
+  <canvas id="c-hero"></canvas>
+</section>
+
+<!-- c2 -->
+<section class="slide" id="c2">
+  <header class="hd"><h2>이 단원에서 배울 것 — 축전기와 센서</h2><span class="src">교과서 82쪽 · 학습 목표</span></header>
+<div class="body" style="grid-template-columns:1fr 1fr;gap:28px;align-content:start"><div class="box" style="color:var(--ink);line-height:1.75"><h3><b class="k">① 축전기의 원리</b></h3>같은 종류의 전하를 모아 전기 에너지를 저장하는 장치.<br>평행판 · 원통형(말린) 구조</div><div class="box" style="color:var(--ink);line-height:1.75"><h3><b class="p">② 충전과 방전</b></h3>전지에 연결하면 전하가 모이고(충전), 도선으로 이으면 전하가 흘러 나간다(방전).</div><div class="box" style="color:var(--ink);line-height:1.75"><h3><b class="ok">③ 실생활 활용</b></h3>자동 심장 충격기 · 카메라 플래시 — 모아 두었다가 한꺼번에 내보낸다.</div><div class="box" style="color:var(--ink);line-height:1.75"><h3><b class="k">④ 센서로 확장</b></h3>터치스크린 · 습도 센서 · 가속도 센서 — 축전기에 물리적 변화가 생기면 모인 전하가 달라지는 것을 신호로 쓴다.</div></div><div class="sm" style="margin-top:24px">▶ 활동: 82쪽 「충전과 방전 관찰하기」(축전기·LED·9 V 전지) → 이 덱에서 컴퓨터로 먼저 예측하고 실험으로 확인</div>
+</section>
+
+<!-- c3 -->
+<section class="slide" id="c3">
+  <header class="hd"><h2>판 하나 vs 마주 본 두 판</h2><span class="src">교과서 83쪽 · 평행판 축전기</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-1"></canvas><div class="side"><div class="ctl"><div class="row"><span>두 판 사이 간격 d</span><span class="val" id="p1-dv">2 mm</span></div><input id="p1-d" type="range" min="1" max="20" step="1" value="2"></div><div class="box" style="color:var(--ink);line-height:1.75">같은 9 V 전지를 연결했을 때<br>모이는 전하(상대)<br>판 하나 : <b class="k">1</b><br>마주 본 두 판 : <b class="p" id="p1-r">0</b> 배</div><div class="box" style="color:var(--ink);line-height:1.75"><b class="k">왜 더 많이 모일까?</b><br>반대 전하가 마주 보면 서로 끌어당겨 <b>전기적 위치 에너지가 낮아지기</b> 때문이다. 판이 가까울수록 효과가 크다.</div></div>
+</div>
+</section>
+
+<!-- c4 -->
+<section class="slide" id="c4">
+  <header class="hd"><h2>평행판 — 넓게, 가깝게</h2><span class="src">교과서 83쪽 · 그림 Ⅱ-9</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-2"></canvas><div class="side"><div class="ctl"><div class="row"><span>금속판 면적 A</span><span class="val" id="p2-Av">0.10 m²</span></div><input id="p2-A" type="range" min="0.05" max="0.4" step="0.01" value="0.1"></div><div class="ctl"><div class="row"><span>판 사이 간격 d</span><span class="val" id="p2-dv">5 mm</span></div><input id="p2-d" type="range" min="1" max="20" step="1" value="5"></div><div class="box" style="color:var(--ink);line-height:1.75">같은 전지로 모이는 전하<br>처음(A=0.10 m², d=5 mm)의 <b class="k" id="p2-r">1.0</b> 배</div><div class="box" style="color:var(--ink);line-height:1.75"><b class="p">정리</b><br>• 간격 d가 좁을수록 ↑<br>• 면적 A가 클수록 ↑<br>→ 모이는 전하 ∝ A / d</div></div>
+</div>
+</section>
+
+<!-- c5 -->
+<section class="slide" id="c5">
+  <header class="hd"><h2>충전 — 전하는 어떻게 모일까?</h2><span class="src">교과서 82~83쪽 · 그림 Ⅱ-10 · 활동 「충전과 방전 관찰하기」</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-ch"></canvas><div class="side"><div class="btns"><button class="btn pri" id="ch-go">충전 시작 (스위치 닫기)</button><button class="btn" id="ch-re">처음으로</button></div><div class="ctl"><div class="row"><span>저항 R</span><span class="val" id="ch-Rv">3.0 kΩ</span></div><input id="ch-R" type="range" min="1" max="6" step="0.5" value="3"></div><div class="box" style="color:var(--ink);line-height:1.75">① 스위치를 닫으면 전자가 도선을 따라 이동<br>② 위 판 +q, 아래 판 −q (알짜 0)<br>③ 전압이 오를수록 전류가 줄어 0이 된다</div></div>
+</div>
+</section>
+
+<!-- c6 -->
+<section class="slide" id="c6">
+  <header class="hd"><h2>방전 — LED는 왜 켜질까?</h2><span class="src">교과서 82쪽 · 활동 2번 · 그림 Ⅱ-10</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-dis"></canvas><div class="side"><div class="btns"><button class="btn pri" id="ds-go">방전 시작 (LED 연결)</button><button class="btn" id="ds-re">다시 충전해 두기</button></div><div class="ctl"><div class="row"><span>저항 R</span><span class="val" id="ds-Rv">3.0 kΩ</span></div><input id="ds-R" type="range" min="1" max="6" step="0.5" value="3"></div><div class="box" style="color:var(--ink);line-height:1.75">① 두 판의 +와 −가 도선·LED를 지나 만난다<br>② LED가 켜진다 (저장된 에너지 → 빛·열)<br>③ 전압·전류가 줄며 서서히 어두워진다</div></div>
+</div>
+</section>
+
+<!-- c7 -->
+<section class="slide" id="c7">
+  <header class="hd"><h2>더 알아보기 ① 충전이 느려지는 까닭</h2><span class="src">PSE 28.4 · College Physics 18.5 · 교과서 밖</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-rc"></canvas><div class="side"><div class="ctl"><div class="row"><span>저항 R</span><span class="val" id="rc-Rv">3.0 kΩ</span></div><input id="rc-R" type="range" min="1" max="6" step="0.5" value="3"></div><div class="ctl"><div class="row"><span>모이는 전하의 척도 C</span><span class="val" id="rc-Cv">470 μF</span></div><input id="rc-C" type="range" min="100" max="1000" step="10" value="470"></div><div class="box" style="color:var(--ink);line-height:1.75"><div class="eq"><span class="m">Q(t)=CV(1-e<sup>-t/RC</sup>)</span></div><div class="sm" style="text-align:center">시간상수 τ = RC = <b class="k" id="rc-tau"></b> s (63 %에 도달하는 시간)</div></div><div class="box" style="color:var(--ink);line-height:1.75"><b class="p">에너지 장부 (충전 한 번)</b><br>전지가 한 일 = CV² = <b class="k" id="rc-W"></b> mJ<br>축전기에 저장 = ½CV² = <b class="ok" id="rc-U"></b> mJ<br>저항에서 열 = ½CV² = <b class="bad" id="rc-H"></b> mJ<div class="sm">R이 달라도 절반은 열이 된다</div></div></div>
+</div>
+</section>
+
+<!-- c8 -->
+<section class="slide" id="c8">
+  <header class="hd"><h2>더 알아보기 ② 에너지는 어디에?</h2><span class="src">Halliday 25-4 (PDF 755쪽) · 교과서 밖</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-fi"></canvas><div class="side"><div class="chips"><button class="chip on" id="fi-m1">전지 분리 (전하 Q 고정)</button><button class="chip" id="fi-m2">전지 연결 (전압 9 V 고정)</button></div><div class="ctl"><div class="row"><span>판 사이 간격 d</span><span class="val" id="fi-dv">5 mm</span></div><input id="fi-d" type="range" min="1" max="20" step="1" value="5"></div><div class="box" style="color:var(--ink);line-height:1.75">전하 Q = <b class="k" id="fi-Q"></b> nC<br>전압 V = <b class="p" id="fi-V"></b> V<br>전기장 E = V/d = <b class="ok" id="fi-E"></b> kV/m<br>저장 에너지 ½QV = <b class="k" id="fi-U"></b> nJ</div><div class="sm">판을 벌리려면 끌어당기는 힘을 이기는 일을 해야 하고, 그 일이 전기장 에너지로 저장된다. (A = 0.5 m²)</div></div>
+</div>
+</section>
+
+<!-- c9 -->
+<section class="slide" id="c9">
+  <header class="hd"><h2>원통형 축전기 — 말아서 작게</h2><span class="src">교과서 83쪽 · 그림 Ⅱ-9 (나) · Halliday 25-2</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-ro"></canvas><div class="side"><div class="ctl"><div class="row"><span>펼침 ↔ 말림</span><span class="val" id="ro-av">100 %</span></div><input id="ro-a" type="range" min="0" max="100" step="1" value="100"></div><div class="box" style="color:var(--ink);line-height:1.75">마주 보는 <b class="k">면적은 그대로</b> 크고, 부피는 <b class="k">작아진다</b>.<br>띠 길이 <b id="ro-L"></b> → 말린 지름 <b class="p" id="ro-D"></b> (같은 단위)</div><div class="box" style="border:2px solid #ff9d9d;color:var(--ink)"><b class="bad">⚠ 이름이 같다</b> 대학 교재의 <i>cylindrical capacitor</i>는 <b>동축 원통</b>(오른쪽 아래 그림)으로 다른 구조다.</div></div>
+</div>
+</section>
+
+<!-- c10 -->
+<section class="slide" id="c10">
+  <header class="hd"><h2>활용 ① 모았다가 한꺼번에</h2><span class="src">교과서 84쪽 · 자동 심장 충격기(AED), 카메라 플래시</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-ae"></canvas><div class="side"><div class="chips"><button class="chip on" id="ae-m1">자동 심장 충격기 (약 200 J)</button><button class="chip" id="ae-m2">카메라 플래시 (약 4.5 J)</button></div><div class="ctl"><div class="row"><span>방전 시간</span><span class="val" id="ae-tv">10 ms</span></div><input id="ae-t" type="range" min="1" max="100" step="1" value="10"></div><div class="box" style="color:var(--ink);line-height:1.75">충전(모으는) 시간 <b class="k" id="ae-tc"></b> s<br>방전(내보내는) 시간 <b class="p" id="ae-td"></b> ms<br>순간 전력 P = E/t = <b class="bad" id="ae-P"></b> kW<div class="sm">전기 주전자 1.5 kW의 <b id="ae-x"></b> 배</div></div><div class="sm">에너지·시간은 설명용 어림값(실제 제품마다 다름).</div></div>
+</div>
+</section>
+
+<!-- c11 -->
+<section class="slide" id="c11">
+  <header class="hd"><h2>활용 ② 터치스크린 — 전하 변화 읽기</h2><span class="src">교과서 85쪽 · 그림 Ⅱ-12 · 생활 속 탐구</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-to"></canvas><div class="side"><div class="chips"><button class="chip on" id="to-o1">손가락</button><button class="chip" id="to-o2">바나나</button><button class="chip" id="to-o3">연필(흑연 심)</button><button class="chip" id="to-o4">장갑·플라스틱</button></div><div class="box" style="color:var(--ink);line-height:1.75">신호 세기: <b class="k" id="to-s">0</b><br>스크린이 알아챔: <b class="p" id="to-r">–</b><br>위치: <b class="ok" id="to-p">–</b></div><div class="box" style="color:var(--ink);line-height:1.75"><b class="k">원리</b><br>투명 전극 두 장이 평행판 축전기처럼 전하를 모으고 있다. <b>전도성 물체가 닿으면 그 지점의 전하가 달라지고</b>, 센서가 변화한 위치를 읽는다.</div><div class="sm">캔버스 위에서 마우스·손가락으로 끌어 보세요. 신호 세기 값은 설명용 설정.</div></div>
+</div>
+</section>
+
+<!-- c12 -->
+<section class="slide" id="c12">
+  <header class="hd"><h2>활용 ③ 가속도·습도 센서</h2><span class="src">교과서 82쪽 도입 · 85쪽</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<canvas id="c-se"></canvas><div class="side"><div class="ctl"><div class="row"><span>리모컨 가속도 a</span><span class="val" id="se-av">0 m/s²</span></div><input id="se-a" type="range" min="-20" max="20" step="1" value="0"></div><div class="ctl"><div class="row"><span>공기의 습도</span><span class="val" id="se-hv">50 %</span></div><input id="se-h" type="range" min="0" max="100" step="5" value="50"></div><div class="box" style="color:var(--ink);line-height:1.75"><b class="k">가속도 센서</b><br>움직이는 가운데 판이 쏠리면 한쪽 간격↓(전하↑), 반대쪽 간격↑(전하↓) → 차이가 <b>가속도 신호</b><br>신호 = <b class="p" id="se-s"></b></div><div class="box" style="color:var(--ink);line-height:1.75"><b class="k">습도 센서</b><br>수증기를 머금으면 판 사이 물질이 바뀌어 모이는 전하가 변함<br>모이는 전하 = 건조할 때의 <b class="ok" id="se-c"></b> 배</div></div>
+</div>
+</section>
+
+<!-- c13 -->
+<section class="slide" id="c13" data-steps="4">
+  <header class="hd"><h2>정리와 확인 문제 — 축전기와 센서</h2><span class="src">교과서 82~85쪽 평가 길잡이</span></header>
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>같은 전지에서 평행판 축전기에 더 많은 전하를 모으려면 면적과 간격을 어떻게 해야 할까?</b></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">면적은 크게, 간격은 가깝게 (모이는 전하 ∝ A/d)</div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>충전하는 동안 도선에 흐르는 전류는 시간이 지나면서 어떻게 변하고, 언제 멈출까?</b></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">점점 줄어든다. 축전기 전압이 전지 전압과 같아지면 0이 된다.</div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>충전된 축전기가 가진 알짜 전하량은? 방전하면 전하는 어떻게 될까?</b></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">알짜 전하 0 (한 판 +q, 다른 판 −q). 방전하면 +와 −가 만나 상쇄되고, 저장된 에너지는 빛·열로 바뀐다.</div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>장갑을 낀 손으로 정전식 터치스크린이 안 되는 까닭은?</b></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">장갑이 전도체가 아니어서 접촉 지점의 전하(전기 용량) 변화가 거의 없기 때문.</div></div></div></div>
+<div class="body" style="grid-template-columns:1fr;align-content:start"><div class="box" style="color:var(--ink);line-height:1.75"><b class="k">핵심 정리</b><br>• 축전기: 마주 보는 두 도체에 +, −를 모아 전기 에너지를 저장 (면적↑, 간격↓ → 더 많이 모임)<br>• 충전: 전자가 도선을 따라 이동해 두 판에 ±전하가 쌓임, 전류는 점점 줄어 0 · 방전: ±전하가 도선을 거쳐 만나 상쇄<br>• 활용: ① 충전·방전 기능(AED·플래시) ② 물리적 변화 → 전하 변화(터치·습도·가속도 센서)</div></div>
+</section>
+
+<!-- c14 -->
+<section class="slide" id="c14">
+  <header class="hd"><h2>더 알아보기 ③ 에너지 저장 장치 비교</h2><span class="src">교과서 밖 · 자릿수 비교(제품마다 다름)</span></header>
+<div class="body" style="grid-template-columns:1fr;align-content:start"><table class="t"><thead><tr><th>구분</th><th>저장 에너지(무게당)</th><th>순간 전력(출력)</th><th>충·방전 수명</th><th>용도 예</th></tr></thead><tbody><tr><td><b class="k">일반 축전기</b><br>(필름·전해)</td><td>매우 적다 (대략 0.01 Wh/kg 안팎)</td><td>매우 크다</td><td>매우 길다</td><td>AED, 카메라 플래시, 전원 회로</td></tr><tr><td><b class="p">슈퍼커패시터</b></td><td>중간 (대략 수 Wh/kg)</td><td>크다</td><td>수십만 회 이상</td><td>회생 제동, 순간 정전 대비</td></tr><tr><td><b class="ok">리튬이온 전지</b></td><td>크다 (대략 100~250 Wh/kg)</td><td>보통</td><td>수백~수천 회</td><td>휴대폰, 전기차</td></tr></tbody></table><div class="box" style="margin-top:18px;color:var(--ink);line-height:1.7"><b class="k">한 줄 요약</b> 전지 = 많이 담는 통, 축전기 = 빨리 쏟는 통. 그래서 둘을 함께 쓰는 제품도 많다.<br><span class="sm">또 하나: 전해 축전기는 극성(+, −)이 있어 거꾸로 연결하거나 허용 전압을 넘기면 터질 수 있다 → 82쪽 실험 안전 주의의 이유.</span></div></div>
+</section>
+
+<!-- c15 -->
+<section class="slide" id="c15">
+  <header class="hd"><h2>교과서 ↔ 대학 교재 대응표 (찾아 읽기)</h2><span class="src">PDF 쪽 기준(인쇄된 쪽과 다름)</span></header>
+<div class="body" style="grid-template-columns:1fr;align-content:start"><table class="t"><thead><tr><th>교과서 82~85쪽</th><th>대학 교재에서 찾을 곳</th><th>더 알 수 있는 것</th></tr></thead><tbody><tr><td>평행판·원통형 구조 (83)</td><td>Halliday 25-1, 25-2 (PDF 744~748쪽)<br>Serway·Jewett PSE 26.2 (PDF 816쪽)</td><td>Q=CV, 평행판 C=ε₀A/d, 동축 원통·구형 축전기</td></tr><tr><td>충전·방전 과정 (82~83)</td><td>College Physics 18.5 RC 회로 (PDF 630쪽)<br>PSE 28.4 (PDF 886쪽~)</td><td>시간상수 τ=RC, 지수 함수, 방전 중 에너지</td></tr><tr><td>전기 에너지 저장 (82)</td><td>Halliday 25-4 (PDF 755쪽)</td><td>U=½CV², 에너지가 전기장에 저장</td></tr><tr><td>습도 센서 (84~85)</td><td>Halliday 25-5 유전체 (PDF 757쪽)</td><td>유전 상수 κ로 전기 용량이 κ배</td></tr><tr><td>축전기의 종류 (85 「나만의 축전기 설계」)</td><td>Advanced Electrical and Electronics Materials 15.3 (PDF 552쪽)</td><td>종이·마이카·세라믹·전해 축전기 분류</td></tr></tbody></table><div class="sm" style="margin-top:14px">저작권상 본문은 옮기지 않고 위치만 안내합니다. 교과서는 「전기 용량」 용어를 가르치지 않으므로 이 표는 교사·심화 학생용입니다.</div></div>
+</section>
+
+<div id="notes"></div>
+<div id="bar"><div class="bl">🔋 축전기와 센서 — 전하를 모아 두는 장치 <span class="sm">· 물리학 Ⅱ. 전기와 자기 · 교과서 82~85쪽</span></div><div class="br"><button class="tb" id="b-help">❓ 조작법</button><button class="tb" id="b-ask">💬 발문 띄우기</button><button class="tb" id="b-notes">📝 오개념 교정 노트</button><button class="tb" id="b-theme">🌙 다크 전환</button></div></div>
+<div id="ask" role="dialog" aria-label="발문"></div>
+<div id="help" role="dialog" aria-label="조작법 설명"><div class="hp">
+<h3>조작법</h3>
+<h4>키보드</h4>
+<div class="g"><div><kbd>→</kbd><kbd>Space</kbd></div><div>다음 (단계가 있는 슬라이드는 단계부터 진행)</div>
+<div><kbd>←</kbd></div><div>이전 (단계도 거꾸로)</div>
+<div><kbd>Home</kbd><kbd>End</kbd></div><div>처음 / 마지막 슬라이드</div>
+<div><kbd>F</kbd></div><div>전체 화면</div>
+<div><kbd>Q</kbd></div><div>이 슬라이드의 <b>발문(학생용 질문)</b>을 화면 위에 크게 띄우기 / 닫기 (아무 곳이나 클릭해도 닫힘)</div>
+<div><kbd>N</kbd></div><div>오개념 교정 노트 열기/닫기 (교사용)</div>
+<div><kbd>T</kbd></div><div>다크 / 라이트 전환</div>
+<div><kbd>?</kbd><kbd>Esc</kbd></div><div>조작법 열기 / 닫기</div></div>
+<h4>화면 조작</h4>
+<div class="g"><div>슬라이더·칩</div><div>값 바꾸기·선택 (터치 가능)</div>
+<div>버튼</div><div>충전·방전 시작</div>
+<div>→ / Space</div><div>단계 공개·다음 슬라이드</div>
+<div>❓ / 📝</div><div>조작법 / 오개념 교정 노트</div>
+<div>슬라이더 키보드</div><div>슬라이더를 클릭해 초점이 있는 동안에는 ← → 가 값 조절에 쓰입니다. 마우스로 놓으면 자동 해제</div></div>
+<h4>수업 진행 팁</h4>
+<div>① 학생에게 결과를 <b>먼저 예측</b>하게 하고 → ② 슬라이더로 확인하고 → ③ 식으로 정리하면 오개념이 잘 교정됩니다.</div>
+<div class="btns" style="margin-top:22px"><button class="btn pri" id="help-x">닫기 (Esc)</button></div>
+</div></div>
+<div id="simError"></div>
+</div>
+<div id="hud"><button id="h-prev" aria-label="이전">◀</button><span id="h-pg">1 / 1</span><button id="h-next" aria-label="다음">▶</button><button id="h-fs" aria-label="전체화면">⛶</button></div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   공통 유틸 / 그리기 도우미 (템플릿 제공)
+   ===================================================================== */
+const DECK = {"title":"축전기와 센서 — 전하를 모아 두는 장치","notes":{"c1":{"q":"교과서 82쪽 도입 질문(리모컨의 동작 인식)을 마지막 센서 슬라이드에서 회수합니다. 이 덱은 교과서 82~85쪽 순서(원리 → 충전·방전 → 활용·센서)를 따르고, 「더 알아보기」 표시가 붙은 슬라이드는 교과서 밖 심화입니다.","m":[["축전기는 전지처럼 전기를 만들어 낸다.","축전기는 에너지를 만들지 않고 전지 등이 준 에너지를 저장했다가 내놓는다."]]},"c2":{"q":"82쪽 활동(실험)과 이 덱의 시뮬레이션을 연결합니다. 실험 안전: 축전기에 적힌 허용 전압보다 낮은 전압의 전지를 쓰고, 전해 축전기는 긴 다리(+)·짧은 다리(−) 극성을 맞춥니다. 맨손으로 다리를 만지지 않습니다.","m":[["축전기와 전지는 같은 것이다.","전지는 화학 반응으로 전압을 오래 유지하고, 축전기는 전하를 쌓아 두었다가 빠르게 내놓는다(방전하면 전압이 계속 내려간다)."]]},"c3":{"q":"「판 하나에는 척력 때문에 조금밖에 못 모으지만, 반대 전하가 마주 보면 인력이 척력을 덜어 준다」가 83쪽의 논리입니다. 오른쪽 숫자는 같은 전지(전압)에서 모이는 전하의 비입니다. 고립된 판은 반지름 18 cm 구로 어림했고(Halliday 25-2, C=4πε₀R), 두 판은 면적 0.1 m²입니다.","m":[["두 판이 서로 끌어당기니까 전하가 판에 달라붙어 있는 것이다(전하가 이동하지 못한다).","전하가 끌려서 고정되는 것이 아니라, 반대 전하가 가까이 있어 같은 전압에서 더 많이 모일 수 있는 것이다."],["판이 클수록 척력이 작아서 더 많이 모인다.","면적이 크면 같은 전하를 넓게 퍼뜨려 전하 밀도가 낮아진다. 정확히는 같은 전압에서 모이는 양이 면적에 비례한다."]]},"c4":{"q":"같은 전지에 연결했다는 조건을 꼭 말합니다. 교과서는 「전기 용량」이라는 용어를 쓰지 않도록 안내하므로 학생에게는 「모이는 전하의 양」으로 말하고, 심화(더 알아보기)에서 Q=CV, C=ε₀A/d를 소개합니다.","m":[["면적이 클수록 판의 전하가 서로 더 많이 밀어낸다.","같은 양의 전하라면 면적이 클수록 전하 밀도가 낮아 밀어냄이 줄고, 같은 전압에서 더 많이 모인다."],["판을 두껍게 만들면 더 많이 모인다.","판의 두께는 거의 영향이 없다. 마주 보는 면적과 간격이 결정한다."]]},"c5":{"q":"82쪽 활동에서 LED가 켜지는 까닭을 묻기 전에, 먼저 충전 과정을 봅니다. 두 가지를 반드시 짚습니다: (1) 전하는 극판 사이를 건너지 않는다(점이 극판 끝에서 사라지는 이유). (2) 충전이 끝나면 전류가 0이다. 그래프의 점선은 시간상수 τ=RC 에서 63 %에 도달한다는 표시입니다.","m":[["전지에서 나온 전하가 축전기의 두 판 사이를 지나간다.","전하는 절연체(공기)를 지나지 않는다. 한쪽 판에서 빠져나간 전자는 전지를 거쳐 다른 판에 쌓인다."],["충전된 축전기는 전하를 +q 만큼 더 가지고 있다.","알짜 전하는 0이다. 한 판에 +q, 다른 판에 −q가 있다(Halliday 25-1)."],["충전 중 전류는 일정하다.","처음엔 크고, 전압 차가 줄수록 지수적으로 감소해 0이 된다."]]},"c6":{"q":"교과서 82쪽 해 보기 질문의 답: 충전된 축전기에 LED를 연결하면 저장된 전하가 LED를 지나며 불이 켜진다. 교과서 해설은 「순간적으로」라고 쓰지만 실제로는 지수적으로 서서히 어두워진다(R이 크면 더 오래). 실제 LED는 약 1.8 V 아래에서는 거의 꺼지므로 실험에서는 전압이 남아 있어도 LED는 일찍 꺼진다(이 화면은 이상적인 LED로 단순화).","m":[["방전하면 전하가 사라진다.","전하가 사라지지 않는다. +와 −가 만나 상쇄되어 알짜 전하는 그대로 0이고, 저장되었던 에너지는 빛·열로 바뀐다."],["LED는 켜지는 순간 가장 밝고 곧 꺼진다고 봐도 된다.","전류는 지수 함수로 줄어들며 R과 모인 전하가 클수록 오래 켜져 있다."]]},"c7":{"q":"교과서가 다루지 않는 내용이므로 「더 알아보기」로 분리했습니다. 두 가지를 말합니다. ① 충전이 느려지는 까닭은 전압 차가 줄어 전류가 줄기 때문이고, R이나 C가 클수록 오래 걸린다(τ=RC). ② 전지가 낸 에너지 CV² 의 절반만 저장되고 나머지 절반은 저항의 열이 된다 — R의 크기와 무관하다(이 덱의 TESTS가 수치 적분으로 확인). 학생용 본 수업에서는 C라는 용어를 쓰지 않았으므로 이 슬라이드는 심화 학생·교사용입니다.","m":[["R을 작게 하면 열 손실이 줄어 저장 효율이 올라간다.","R이 작으면 빨리 충전되지만 열은 여전히 ½CV²로 같다(전류가 커서 시간이 짧을 뿐)."],["축전기의 에너지는 ½CV 이다.","½CV² = ½QV = Q²/2C. 전압의 제곱에 비례한다."]]},"c8":{"q":"교과서는 「전기적 위치 에너지」라고만 쓰지만 대학에서는 에너지가 두 판 사이의 전기장에 저장된다고 봅니다(Halliday 25-4: the potential energy may be viewed as stored in the electric field). 전지를 뗀 뒤 간격을 3배로 하면 전하와 전기장은 그대로, 전압과 에너지는 3배가 됩니다(TESTS로 검산). 전지를 연결한 채라면 전압이 고정이므로 전하가 줄고 전기장이 약해집니다.","m":[["에너지는 전하 알갱이 하나하나에 저장되어 있다.","전하 배치가 만든 전기장이 있는 공간(판 사이)에 저장된다고 본다. 에너지 밀도는 ½ε₀E²."],["판 사이가 멀어지면 전기장도 약해진다.","전지를 뗀 상태(Q 고정)에서는 판 사이 전기장은 변하지 않는다(E=Q/ε₀A). 약해지는 것은 전지가 연결된 경우다(E=V/d)."]]},"c9":{"q":"교과서 그림 Ⅱ-9 (나)의 원통형은 금속박과 절연체를 겹쳐 둥글게 만 구조(권취형)입니다. 같은 이름이지만 대학 교재(Halliday 25-2)의 cylindrical capacitor는 안쪽 반지름 a, 바깥쪽 반지름 b의 동축 원통이고 C=2πε₀L/ln(b/a)입니다. 두 구조는 「마주 보는 두 도체 사이에 전하를 모은다」는 원리는 같지만 모양이 다르다는 점만 짚으면 충분합니다. 슬라이더의 간격은 보이게 하려고 과장했습니다.","m":[["말면 면적이 줄어 많이 모이지 않는다.","말아도 펼친 면적 그대로다. 감기만 했을 뿐 마주 보는 면적이 유지되므로 부피만 작아진다."],["원통형 축전기는 동축 원통(대학 교재 그림)과 같은 구조다.","교과서의 원통형은 말린 평행판. 동축 원통은 별개의 모양이다."]]},"c10":{"q":"교과서 84쪽: 충전 용량이 큰 축전기에 작은 공간에 많은 에너지를 저장하고 방전 시 빠르게 방출. 전지는 에너지는 많이 담지만 한꺼번에 내놓는 전력(출력)에 한계가 있고, 축전기는 모으는 시간은 길어도 내놓는 시간을 짧게 할 수 있어 순간 전력이 매우 크다. 숫자(AED 약 200 J, 플래시 약 4.5 J)는 대표값 어림이며 제품에 따라 다릅니다. 전력 P=E/t 는 앞 시간의 전력 개념(76쪽)과 연결됩니다.","m":[["축전기가 전지보다 에너지를 더 많이 저장한다.","같은 크기라면 전지가 훨씬 많이 저장한다. 축전기의 강점은 짧은 시간에 내놓는 순간 전력이다."],["AED가 환자에게 주는 에너지는 충전한 전하가 아니라 전압을 높인 만큼이다.","저장된 전기 에너지를 짧은 펄스로 내보내는 것이다. 환자에게 전달되는 에너지는 장치마다 정해져 있다."]]},"c11":{"q":"교과서 85쪽: 터치스크린의 두 투명 전극이 평행판 축전기 역할 → 전도성 물체(손가락)가 닿으면 접촉 지점의 전하량이 변하고 센서가 위치를 알아낸다. 활동은 바나나·연필로 작동시켜 「전도성」이라는 특징을 찾게 하는 것입니다. 정전식 터치패널은 격자 교차점마다 전하 변화를 읽어 가장 크게 변한 곳(무게중심)을 위치로 합니다. 신호 세기 숫자(1.0, 0.8, 0.5, 0.02)는 설명용 값입니다.","m":[["터치스크린은 누르는 압력을 읽는다.","정전식은 압력이 아니라 전도성 물체가 가까이 와서 생기는 전하·전기 용량의 변화를 읽는다. (압력식은 별개)"],["전기가 흐르는 물체만 반응한다.","전도체여야 하고 크기·접촉 면적도 영향이 있다. 같은 이유로 일반 장갑은 반응하지 않고 전도성 실이 든 장갑은 반응한다."]]},"c12":{"q":"82쪽 도입의 답: 리모컨의 가속도 센서가 움직임·기울기를 전기 신호로 바꾸어 적외선으로 전송한다. 가속도 센서(MEMS)는 움직이는 가운데 판이 두 고정판 사이에서 쏠리고, 두 쪽 축전기의 전하 차이를 읽는다. 기울여도 중력 가속도 성분(g sinθ)이 달라져 같은 신호가 나오므로 기울기도 알 수 있다. 습도 센서는 물을 흡수하면 판 사이 절연 물질의 성질이 바뀌어 모이는 전하가 변한다(유전체 효과, Halliday 25-5). 식·수치는 설명용 단순화입니다.","m":[["센서는 전지처럼 스스로 전기를 만들어 낸다.","센서는 외부 환경 변화를 축전기의 전하(전기 신호) 변화로 바꿔 읽는 장치이며 전원이 필요하다."],["가속도 센서는 속도를 직접 잰다.","일정한 속도에서는 신호가 0이다. 속도가 바뀔 때(가속도)나 기울어질 때 신호가 생긴다."]]},"c13":{"q":"답은 steps로 한 줄씩 공개합니다. 교과서 평가 길잡이: [지식] 충전·방전 원리 설명 [탐구] LED 실험 [탐색] 활용 예 조사. 생성형 AI로 조사한 활용 예는 다시 검색해 믿을 수 있는지 확인하게 하라는 교과서 안내(84쪽)를 학생에게 상기시킵니다.","m":[["방전하면 축전기가 전하를 잃어 충전 전의 상태가 다르다.","방전 후 두 판은 처음처럼 중성(알짜 0)으로 돌아간다."]]},"c14":{"q":"수치는 자릿수를 비교하기 위한 대표값입니다(자료마다 다름 — 출처를 정해 인용할 때는 확인 필요). 핵심은 「에너지 밀도는 전지가 훨씬 크고, 출력(빨리 내놓는 능력)과 수명은 축전기가 크다」입니다. 전해 축전기는 Advanced Electrical and Electronics Materials 15장에서 가장 높은 CV 값을 갖는 종류로 설명됩니다(극성 있음).","m":[["슈퍼커패시터는 전지의 완전한 대체재다.","에너지 밀도가 아직 전지보다 훨씬 작다. 순간 출력·수명이 필요한 곳에 쓴다."]]},"c15":{"q":"교과서 밖 확장 안내용입니다. Halliday는 충전된 축전기의 「알짜 전하는 0, q는 한 판 전하의 크기」라고 명시(25-1)하며 이는 오개념 교정에 그대로 쓸 수 있습니다. 스캔본이 아닌 텍스트 PDF에서 확인했으나 수식은 쪽에서 직접 대조하세요.","m":[["교과서에 나온 식·용어만 알면 충분하다.","수업에서 말하지 않는 C, τ, ½CV² 는 심화 슬라이드에서 소개하되 교과서 용어와 구분해 말한다."]]}},"ask":{"c3":["같은 종류의 전하는 서로 밀어낸다. 그런데도 두 판은 왜 훨씬 많은 전하를 모을 수 있을까?"],"c5":["전지를 연결했는데 전류는 왜 계속 흐르지 않고 점점 줄어들까?"],"c6":["LED에 불이 켜지는 까닭은? 시간이 지나면 밝기는 어떻게 될까?"],"c10":["같은 에너지라도 짧은 시간에 내보내면 무엇이 달라질까?"],"c11":["장갑을 낀 손으로는 터치스크린이 잘 안 되는 까닭은?"],"c12":["리모컨을 흔들 때 게임기는 어떻게 동작을 인식할까? (교과서 82쪽 도입 질문)"]}};
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const TAU = Math.PI * 2, DPR = 2;
+const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const C = { bg: '#0a1330', grid: 'rgba(160,190,255,.22)', text: '#e3ecff', dim: '#9db0d8', KE: '#ffb454', PE: '#7fb2ff', E: '#ffffff', ok: '#5eead4', bad: '#ff9d9d' };
+const font = (px, w = 500, it = false) => `${it ? 'italic ' : ''}${w} ${px}px 'Noto Sans KR',sans-serif`;
+const mathFont = px => `italic 400 ${px}px 'STIX Two Text','Times New Roman',serif`;
+function setupCanvas(cv, W, H) { cv.width = W * DPR; cv.height = H * DPR; cv.style.width = W + 'px'; cv.style.height = H + 'px'; const c = cv.getContext('2d'); c.setTransform(DPR, 0, 0, DPR, 0, 0); return c; }
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function makeStars(W, H, n, seed) { const r = mulberry(seed); return Array.from({ length: n }, () => [r() * W, r() * H, .25 + r() * .55, r() < .12 ? 3 : 2]); }
+function drawStars(ctx, stars) { stars.forEach(([x, y, a, s]) => { ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(x, y, s, s); }); }
+function arrow(ctx, x0, y0, x1, y1, color, lw = 4, head = 15) {
+  const a = Math.atan2(y1 - y0, x1 - x0); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - Math.cos(a) * head * .6, y1 - Math.sin(a) * head * .6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - head * Math.cos(a - .45), y1 - head * Math.sin(a - .45)); ctx.lineTo(x1 - head * Math.cos(a + .45), y1 - head * Math.sin(a + .45)); ctx.closePath(); ctx.fill();
+}
+function mathRun(ctx, x, y, parts) { let cx = x; parts.forEach(q => { ctx.font = q.f; ctx.fillStyle = q.c; ctx.fillText(q.t, cx, y + (q.dy || 0)); cx += ctx.measureText(q.t).width; }); return cx; }
+function bindRange(id, cb) { const el = $('#' + id); el.addEventListener('input', () => cb(parseFloat(el.value))); el.addEventListener('change', () => el.blur()); return el; }
+const fmt = (x, d = 2) => (x < 0 ? '−' : '') + Math.abs(x).toFixed(d);
+
+/* 오류 표시: 슬라이드 코드 예외를 화면 상단과 window.__wsErrors에 남긴다 (헤드리스 검사용) */
+window.__wsErrors = [];
+function reportError(where, e) {
+  const msg = `${where}: ${e && e.message ? e.message : e}`;
+  if (!window.__wsErrors.includes(msg)) { window.__wsErrors.push(msg); console.error('[슬라이드 오류] ' + msg); }
+  const box = document.getElementById('simError'); box.textContent = window.__wsErrors.slice(-3).join('\n'); box.classList.add('on');
+}
+function safe(where, fn, ...args) { try { return fn && fn(...args); } catch (e) { reportError(where, e); } }
+
+/* =====================================================================
+   shared_js (주제별 물리 계산부·공용 시뮬레이터)
+   ===================================================================== */
+
+const BLUE='#7fb2ff',ORG='#ffb86b',PINK='#ff9d9d',GRN='#7ee08a',YEL='#ffd166',WIRE='#9fb3d9';
+function setT(id,s){$('#'+id).textContent=s;}
+function hTxt(ctx,s,x,y,size,color,align,w){ctx.font=font(size,w||400);ctx.fillStyle=color;ctx.textAlign=align||'left';ctx.fillText(s,x,y);ctx.textAlign='left';}
+function bindChips(ids,cb){ids.forEach((id,i)=>{$('#'+id).addEventListener('click',()=>{ids.forEach(j=>$('#'+j).classList.remove('on'));$('#'+id).classList.add('on');cb(i);});});}
+function sl(id,unit,dec,cb){const g=v=>(+v).toFixed(dec)+unit;setT(id+'v',g($('#'+id).value));bindRange(id,v=>{setT(id+'v',g(v));cb(+v);});}
+function seg(ctx,pts,col,w){ctx.strokeStyle=col||WIRE;ctx.lineWidth=w||5;ctx.lineJoin='round';ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();}
+function plen(p){let s=0;for(let i=0;i<p.length-1;i++)s+=Math.hypot(p[i+1][0]-p[i][0],p[i+1][1]-p[i][1]);return s;}
+function ppos(p,s){for(let i=0;i<p.length-1;i++){const dx=p[i+1][0]-p[i][0],dy=p[i+1][1]-p[i][1],d=Math.hypot(dx,dy);if(s<=d)return[p[i][0]+dx*s/d,p[i][1]+dy*s/d];s-=d;}return p[p.length-1];}
+const E0=8.854e-12;
+const CAP={
+  Cpp:(A,d)=>E0*A/d,                                   // 평행판
+  Ciso:R=>4*Math.PI*E0*R,                              // 고립된 구
+  Ccyl:(L,a,b)=>2*Math.PI*E0*L/Math.log(b/a),          // 동축 원통
+  q:(q0,Vs,R,C,t)=>C*Vs+(q0-C*Vs)*Math.exp(-t/(R*C)),  // 충전(Vs=전지)·방전(Vs=0)
+  U:(C,V)=>0.5*C*V*V
+};
+// 판 두 장과 전하·전기장 그림. n=전하 기호 수, fa=전기장 세기(0~1)
+function plates(ctx,cx,cy,w,gap,n,fa,th){
+  th=th||10;const yt=cy-gap/2,yb=cy+gap/2;
+  ctx.fillStyle='#cbd5e1';ctx.fillRect(cx-w/2,yt-th,w,th);ctx.fillRect(cx-w/2,yb,w,th);
+  ctx.font=font(26,700);ctx.textAlign='center';
+  for(let i=0;i<n;i++){const x=cx-w/2+w*(i+1)/(n+1);ctx.fillStyle=PINK;ctx.fillText('+',x,yt+24);ctx.fillStyle=BLUE;ctx.fillText('−',x,yb-4);}
+  ctx.textAlign='left';
+  if(fa>0.02&&gap>70){for(let i=0;i<5;i++){const x=cx-w/2+w*(i+0.5)/5;const a=`rgba(255,209,102,${0.25+0.75*fa})`;
+    ctx.strokeStyle=a;ctx.fillStyle=a;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x,yt+34);ctx.lineTo(x,yb-30);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x,yb-22);ctx.lineTo(x-7,yb-36);ctx.lineTo(x+7,yb-36);ctx.fill();}}
+}
+// 충전·방전 회로 (슬라이드 5·6 공용)
+function createRC(cv,o){
+  const W=1100,H=800,ctx=setupCanvas(cv,W,H);
+  const Vb=9,Cc=470e-6;let R=3000,q=o.q0?Cc*Vb:0,sw=0,t=0,cur=0,ph=0,vs=o.q0?Vb:0,hist=[],v0=q/Cc;
+  const CX=600,CY=265,PW=220,GAP=80,yt=CY-GAP/2,yb=CY+GAP/2,px=CX+PW/2;
+  const p1=[[CX,yt],[CX,110],[130,110],[130,430],[CX,430],[CX,yb]];
+  const p2=[[px,yb],[940,yb],[940,CY+30],[940,CY-30],[940,yt],[px,yt]];
+  function swc(a,b,y,closed){ctx.fillStyle=C.bg;ctx.fillRect(a-4,y-30,b-a+8,60);
+    ctx.fillStyle=WIRE;ctx.beginPath();ctx.arc(a,y,7,0,TAU);ctx.arc(b,y,7,0,TAU);ctx.fill();
+    ctx.strokeStyle=YEL;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(a,y);if(closed)ctx.lineTo(b,y);else ctx.lineTo(a+(b-a)*0.82,y-44);ctx.stroke();}
+  function resis(cx,cy,len){const n=6,amp=17;ctx.fillStyle=C.bg;ctx.fillRect(cx-len/2-3,cy-amp-8,len+6,2*amp+16);
+    ctx.strokeStyle=ORG;ctx.lineWidth=6;ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(cx-len/2,cy);
+    for(let i=0;i<n;i++)ctx.lineTo(cx-len/2+len*(i+.5)/n,i%2?cy+amp:cy-amp);ctx.lineTo(cx+len/2,cy);ctx.stroke();}
+  function dots(p){const n=14,L=plen(p);for(let i=0;i<n;i++){const s=((ph+i*L/n)%L+L)%L,a=Math.max(0,Math.min(1,Math.min(s,L-s)/45)),pp=ppos(p,s);
+    ctx.fillStyle=`rgba(97,165,255,${a})`;ctx.beginPath();ctx.arc(pp[0],pp[1],7,0,TAU);ctx.fill();}}
+  function graph(x,y,w,h,title,idx,ymax,volt){ctx.fillStyle='#111c33';ctx.fillRect(x,y,w,h);ctx.strokeStyle='#334155';ctx.lineWidth=2;ctx.strokeRect(x,y,w,h);
+    hTxt(ctx,title,x,y-10,22,C.dim);hTxt(ctx,ymax.toFixed(1),x-8,y+14,18,C.dim,'right');hTxt(ctx,'0',x-8,y+h,18,C.dim,'right');
+    const WIN=8,t0=Math.max(0,t-WIN),tau=R*Cc;
+    const lv=(sw===1&&v0<0.2)?(volt?0.632:0.368):(sw===2&&v0>Vb*0.95)?0.368:-1;
+    if(lv>0){const ly=y+h-h*lv;ctx.strokeStyle='#475569';ctx.lineWidth=1.5;ctx.setLineDash([8,6]);ctx.beginPath();ctx.moveTo(x,ly);ctx.lineTo(x+w,ly);
+      const tx=x+(tau-t0)/WIN*w;if(tx>x&&tx<x+w){ctx.moveTo(tx,y);ctx.lineTo(tx,y+h);}ctx.stroke();ctx.setLineDash([]);
+      hTxt(ctx,Math.round(lv*100)+'%',x+w-6,ly-6,18,C.dim,'right');if(tx>x&&tx<x+w)hTxt(ctx,'τ=RC',tx+5,y+h-6,18,C.dim);}
+    ctx.strokeStyle=volt?YEL:GRN;ctx.lineWidth=4;ctx.beginPath();let f=false;
+    for(const k of hist){if(k[0]<t0)continue;const v=idx===1?k[1]:k[2]*1000,X=x+(k[0]-t0)/WIN*w,Y=y+h-Math.min(1.05,v/ymax)*h;f?ctx.lineTo(X,Y):ctx.moveTo(X,Y);f=true;}ctx.stroke();
+    hTxt(ctx,'시간 →',x+w,y+h+24,18,C.dim,'right');}
+  function draw(){const V=q/Cc,fa=Math.min(1,V/Vb),n=Math.round(q/(Cc*Vb)*9);
+    ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+    seg(ctx,p1);seg(ctx,p2);
+    ctx.fillStyle=C.bg;ctx.fillRect(100,190,60,120);ctx.strokeStyle=PINK;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(105,210);ctx.lineTo(155,210);ctx.stroke();
+    ctx.strokeStyle=BLUE;ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(115,250);ctx.lineTo(145,250);ctx.stroke();
+    hTxt(ctx,'+',170,222,30,PINK,'left',700);hTxt(ctx,'−',170,264,30,BLUE,'left',700);hTxt(ctx,'전지 9 V',190,318,26,C.text,'left',700);
+    resis(330,110,130);hTxt(ctx,'R = '+(R/1000).toFixed(1)+' kΩ',330,70,26,ORG,'center',700);
+    swc(300,420,430,sw===1);swc(780,860,yt,sw===2);
+    plates(ctx,CX,CY,PW,GAP,n,fa,10);
+    hTxt(ctx,'전기장',CX,yb+62,24,YEL,'center',700);
+    const br=sw===2?Math.min(1,cur/0.0018):0;ctx.fillStyle='rgba(255,230,80,'+(0.15*br)+')';ctx.beginPath();ctx.arc(940,CY,30+34*br,0,TAU);ctx.fill();
+    ctx.fillStyle=br>0?`rgb(${Math.round(60+195*br)},${Math.round(70+160*br)},${Math.round(90-30*br)})`:'#334155';ctx.beginPath();ctx.arc(940,CY,30,0,TAU);ctx.fill();ctx.strokeStyle=WIRE;ctx.lineWidth=5;ctx.stroke();
+    hTxt(ctx,'LED',940,CY+78,26,C.text,'center',700);
+    if(sw===1)dots(p1);else if(sw===2)dots(p2);
+    hTxt(ctx,'축전기 전압 V = '+V.toFixed(2)+' V',60,490,28,C.text,'left',700);hTxt(ctx,'전류 I = '+(cur*1000).toFixed(2)+' mA',500,490,28,C.text,'left',700);
+    hTxt(ctx,'파란 점 = 전자 (전류와 반대 방향)',780,490,22,C.dim);
+    graph(120,540,430,200,'축전기 전압 V (V)',1,Vb,true);graph(650,540,430,200,'전류 I (mA)',2,Vb/R*1000,false);}
+  function frame(dt){const tau=R*Cc;
+    if(sw===1){const qf=Cc*Vb;q=qf+(q-qf)*Math.exp(-dt/tau);cur=(Vb-q/Cc)/R;}else if(sw===2){q*=Math.exp(-dt/tau);cur=q/Cc/R;}else cur=0;
+    t+=dt;if(sw){hist.push([t,q/Cc,cur]);if(hist.length>4000)hist.shift();}
+    ph+=260*Math.max(0,Math.min(1.6,cur/0.003))*dt;draw();}
+  return{draw,frame,
+    setSw(m){if(m!==sw){sw=m;hist=[];t=0;v0=q/Cc;}draw();},
+    reset(){q=o.q0?Cc*Vb:0;sw=0;t=0;cur=0;hist=[];v0=q/Cc;draw();},
+    setR(k){R=k*1000;draw();},get state(){return{q,sw,t,cur,R,C:Cc};}};
+}
+function TESTS(){
+  const T=[],C=470e-6,R=3000,tau=R*C,Vb=9;
+  const ok=(n,b,d)=>T.push([n,!!b,d]);
+  const near=(a,b,tol)=>Math.abs(a-b)<=tol*Math.max(Math.abs(b),1e-30);
+  let q=CAP.q(0,Vb,R,C,tau);ok('충전: t=τ 에서 V = 63.2 % (1−1/e)',near(q/(C*Vb),1-Math.exp(-1),1e-9),(q/(C*Vb)*100).toFixed(1)+' %');
+  q=CAP.q(C*Vb,0,R,C,tau);ok('방전: t=τ 에서 V = 36.8 % (1/e)',near(q/(C*Vb),Math.exp(-1),1e-9),(q/(C*Vb)*100).toFixed(1)+' %');
+  {let qq=0,Eh=0,dt=1e-5;for(let t=0;t<12*tau;t+=dt){const I=(Vb-qq/C)/R;Eh+=I*I*R*dt;qq+=I*dt;}
+   ok('충전 에너지: 전지가 낸 CV² 중 절반은 저항의 열 ∫I²R dt = ½CV²',near(Eh,0.5*C*Vb*Vb,2e-3),(Eh*1000).toFixed(3)+' mJ vs '+(0.5*C*Vb*Vb*1000).toFixed(3)+' mJ');}
+  {let qq=C*Vb,Eh=0,dt=1e-5;for(let t=0;t<12*tau;t+=dt){const I=qq/C/R;Eh+=I*I*R*dt;qq-=I*dt;}
+   ok('방전 에너지: 저장된 ½CV² 이 모두 저항·LED에서 열·빛으로',near(Eh,0.5*C*Vb*Vb,2e-3),(Eh*1000).toFixed(3)+' mJ');}
+  ok('평행판 C=ε₀A/d: A=1 m², d=1 mm → 8.854 nF',near(CAP.Cpp(1,1e-3),8.854e-9,1e-3),(CAP.Cpp(1,1e-3)*1e9).toFixed(3)+' nF');
+  ok('동축 원통 C=2πε₀L/ln(b/a) → 간격이 좁으면 평행판 ε₀(2πaL)/(b−a)',near(CAP.Ccyl(1,0.01,0.0101),CAP.Cpp(2*Math.PI*0.01*1,0.0001),6e-3),(CAP.Ccyl(1,0.01,0.0101)*1e12).toFixed(1)+' pF');
+  {const A=0.5,Q=1e-9,E=(d)=>(Q/CAP.Cpp(A,d))/d;ok('전지 분리(Q 고정): 간격을 3배로 해도 전기장 E=Q/(ε₀A) 그대로, V는 3배, 에너지도 3배',near(E(5e-3),E(15e-3),1e-9)&&near(Q/CAP.Cpp(A,15e-3),3*Q/CAP.Cpp(A,5e-3),1e-9)&&near(CAP.U(CAP.Cpp(A,15e-3),Q/CAP.Cpp(A,15e-3)),3*CAP.U(CAP.Cpp(A,5e-3),Q/CAP.Cpp(A,5e-3)),1e-9),'E = '+(E(5e-3)/1e3).toFixed(2)+' kV/m');}
+  ok('전지 연결(V 고정): 모이는 전하는 간격에 반비례 — d를 반으로 하면 Q 2배',near(CAP.Cpp(0.1,5e-3)*Vb*2,CAP.Cpp(0.1,2.5e-3)*Vb,1e-9),'');
+  ok('판 하나(고립 구 R=18 cm)에 비해 마주 본 두 판(A=0.1 m², d=1 mm)은 수십 배',CAP.Cpp(0.1,1e-3)/CAP.Ciso(0.18)>30,(CAP.Cpp(0.1,1e-3)/CAP.Ciso(0.18)).toFixed(0)+' 배');
+  {const S=(x,d)=>1/(d-x)-1/(d+x);ok('가속도 센서: 차동 신호 S(x)는 x에 대해 홀함수, 작은 x에서 2x/d²',near(S(-0.1,1),-S(0.1,1),1e-12)&&near(S(0.01,1),2*0.01,2e-3),'S(0.01)='+S(0.01,1).toFixed(5));}
+  ok('방전 출력 P=E/t: 200 J을 10 ms에 → 20 kW',near(200/0.01,20000,1e-12),'20 kW');
+  return T;
+}
+
+
+/* =====================================================================
+   슬라이드별 모듈: { start(), stop(), frame(dt), onStep(step) }
+   ===================================================================== */
+const REG = {};
+/* ---- c1 ---- */
+REG["c1"] = safe("c1.init", function () {
+
+const W=820,H=820,ctx=setupCanvas($('#c-hero'),W,H);let t=0;
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  const T=t%9;let f=0,lab='';
+  if(T<3.5){f=1-Math.exp(-T/1.1);lab='충전';}else if(T<5){f=1-Math.exp(-3.5/1.1);lab='전하를 모아 둔 상태';}else if(T<8){f=(1-Math.exp(-3.5/1.1))*Math.exp(-(T-5)/0.9);lab='방전';}else{f=0;lab='';}
+  plates(ctx,W/2,380,420,170,Math.round(f*9),f,14);
+  hTxt(ctx,'두 금속판 사이에 전하를 모은다',W/2,90,36,C.text,'center',700);
+  hTxt(ctx,lab,W/2,640,44,lab==='방전'?ORG:lab==='충전'?GRN:YEL,'center',700);
+  const bw=300;ctx.fillStyle='#1e293b';ctx.fillRect(W/2-bw/2,690,bw,24);ctx.fillStyle=YEL;ctx.fillRect(W/2-bw/2,690,bw*f,24);hTxt(ctx,'저장된 에너지',W/2,750,26,C.dim,'center');}
+return {start(){t=0;draw();},stop(){},frame(dt){if(!REDUCED)t+=dt;draw();}};
+
+});
+
+/* ---- c3 ---- */
+REG["c3"] = safe("c3.init", function () {
+
+const W=1100,H=800,ctx=setupCanvas($('#c-1'),W,H);let d=2;
+const A=0.1,R=0.18,Vb=9;
+function ratio(){return CAP.Cpp(A,d*1e-3)/CAP.Ciso(R);}
+function sync(){setT('p1-r',ratio().toFixed(0));}
+function lg(v){return Math.log10(v)/2.2;}   // 1~160배를 막대 높이로
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  hTxt(ctx,'판 하나',250,70,34,C.text,'center',700);hTxt(ctx,'마주 본 두 판',760,70,34,C.text,'center',700);
+  // 왼쪽: 판 하나, 전하가 서로 밀어냄
+  ctx.fillStyle='#cbd5e1';ctx.fillRect(130,300,240,12);
+  for(let i=0;i<4;i++){const x=170+i*54;hTxt(ctx,'+',x,288,34,PINK,'center',700);}
+  arrow(ctx,152,254,112,254,ORG,4,12);arrow(ctx,348,254,388,254,ORG,4,12);hTxt(ctx,'서로 밀어낸다',250,236,24,ORG,'center',700);
+  hTxt(ctx,'전하를 조금만 모아도 밀어내는 힘이 커진다',250,350,24,C.dim,'center');
+  // 오른쪽: 두 판
+  const gp=40+d*8;plates(ctx,760,300,260,gp,5,1,12);
+  hTxt(ctx,'반대 전하가 끌어당겨 척력을 덜어 준다',760,300+gp/2+80,24,C.dim,'center');
+  // 막대 그래프(로그 눈금)
+  const y0=700,h=260,x1=210,x2=700,r=ratio();
+  ctx.strokeStyle=C.grid;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(110,y0);ctx.lineTo(1000,y0);ctx.stroke();
+  [1,10,100].forEach(v=>{const y=y0-lg(v)*h-0;ctx.strokeStyle=C.grid;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(110,y);ctx.lineTo(1000,y);ctx.stroke();hTxt(ctx,'×'+v,100,y+8,22,C.dim,'right');});
+  ctx.fillStyle=ORG;ctx.fillRect(x1,y0-Math.max(6,lg(1)*h+6),120,Math.max(6,lg(1)*h+6));
+  ctx.fillStyle=BLUE;const hh=lg(r)*h+6;ctx.fillRect(x2,y0-hh,120,hh);
+  hTxt(ctx,'×1',x1+60,y0-lg(1)*h-18,28,ORG,'center',700);hTxt(ctx,'×'+r.toFixed(0),x2+60,y0-hh-14,30,BLUE,'center',700);
+  hTxt(ctx,'같은 9 V 전지로 모이는 전하 (눈금은 10배씩)',W/2,y0+46,24,C.dim,'center');}
+sl('p1-d',' mm',0,v=>{d=v;sync();draw();});
+return {start(){sync();draw();},stop(){},frame(){}};
+
+});
+
+/* ---- c4 ---- */
+REG["c4"] = safe("c4.init", function () {
+
+const W=1100,H=800,ctx=setupCanvas($('#c-2'),W,H);let A=0.1,d=5;
+function rel(){return CAP.Cpp(A,d*1e-3)/CAP.Cpp(0.1,5e-3);}
+function sync(){setT('p2-r',rel().toFixed(1));setT('p2-Av',A.toFixed(2)+' m²');}
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  const w=Math.sqrt(A/0.4)*820,gp=18+d*13,r=rel(),n=Math.max(1,Math.min(26,Math.round(7*r)));
+  plates(ctx,W/2,380,w,gp,n,1,14);
+  hTxt(ctx,'금속판 (단면)',W/2-w/2,380-gp/2-40,24,C.dim);
+  hTxt(ctx,'A = '+A.toFixed(2)+' m²',W/2,160,32,GRN,'center',700);hTxt(ctx,'d = '+d+' mm',W/2+w/2+18,384,32,ORG,'left',700);
+  ctx.strokeStyle=ORG;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(W/2+w/2+8,380-gp/2);ctx.lineTo(W/2+w/2+8,380+gp/2);ctx.stroke();
+  hTxt(ctx,'모인 전하(+/− 기호의 수)는 A/d 에 비례',W/2,690,30,YEL,'center',700);
+  hTxt(ctx,'전지 9 V 연결 상태',W/2,740,26,C.dim,'center');}
+sl('p2-A',' m²',2,v=>{A=v;sync();draw();});sl('p2-d',' mm',0,v=>{d=v;sync();draw();});
+return {start(){sync();draw();},stop(){},frame(){}};
+
+});
+
+/* ---- c5 ---- */
+REG["c5"] = safe("c5.init", function () {
+
+const rc=createRC($('#c-ch'),{q0:false});
+$('#ch-go').addEventListener('click',()=>rc.setSw(1));$('#ch-re').addEventListener('click',()=>rc.reset());
+sl('ch-R',' kΩ',1,v=>rc.setR(v));
+return {start(){rc.reset();},stop(){},frame(dt){rc.frame(dt);}};
+
+});
+
+/* ---- c6 ---- */
+REG["c6"] = safe("c6.init", function () {
+
+const rc=createRC($('#c-dis'),{q0:true});
+$('#ds-go').addEventListener('click',()=>rc.setSw(2));$('#ds-re').addEventListener('click',()=>rc.reset());
+sl('ds-R',' kΩ',1,v=>rc.setR(v));
+return {start(){rc.reset();},stop(){},frame(dt){rc.frame(dt);}};
+
+});
+
+/* ---- c7 ---- */
+REG["c7"] = safe("c7.init", function () {
+
+const W=1100,H=760,ctx=setupCanvas($('#c-rc'),W,H);let R=3000,Cu=470e-6;const Vb=9;
+function sync(){const tau=R*Cu;setT('rc-tau',tau.toFixed(2));const U=0.5*Cu*Vb*Vb*1000;setT('rc-W',(2*U).toFixed(1));setT('rc-U',U.toFixed(1));setT('rc-H',U.toFixed(1));}
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  const x0=120,y0=470,w=780,h=360,tau=R*Cu,TW=6;
+  ctx.strokeStyle=C.grid;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x0,y0-h-20);ctx.lineTo(x0,y0);ctx.lineTo(x0+w,y0);ctx.stroke();
+  hTxt(ctx,'축전기 전압 V (V)',x0,y0-h-34,24,C.dim);hTxt(ctx,'시간 (s) →',x0+w,y0+44,24,C.dim,'right');
+  const cols=[[1500,BLUE],[3000,ORG],[6000,PINK]];
+  cols.forEach(([r,c])=>{const ta=r*Cu;ctx.strokeStyle=c;ctx.lineWidth=r===R?7:3;ctx.globalAlpha=r===R?1:0.55;ctx.beginPath();
+    for(let k=0;k<=200;k++){const tt=TW*k/200,V=Vb*(1-Math.exp(-tt/ta));k?ctx.lineTo(x0+tt/TW*w,y0-V/Vb*h):ctx.moveTo(x0,y0);}ctx.stroke();ctx.globalAlpha=1;
+    hTxt(ctx,'R = '+(r/1000)+' kΩ',x0+w+8,y0-h*(1-Math.exp(-TW/ta))-2,22,c,'left',700);});
+  // 현재 R 의 τ 표시
+  ctx.strokeStyle=YEL;ctx.lineWidth=2;ctx.setLineDash([8,6]);const tx=x0+Math.min(tau,TW)/TW*w;ctx.beginPath();ctx.moveTo(tx,y0);ctx.lineTo(tx,y0-h*0.632);ctx.moveTo(x0,y0-h*0.632);ctx.lineTo(tx,y0-h*0.632);ctx.stroke();ctx.setLineDash([]);
+  hTxt(ctx,'τ = '+tau.toFixed(2)+' s → 63 %',tx+10,y0-12,26,YEL,'left',700);
+  // 에너지 막대
+  const U=0.5*Cu*Vb*Vb;const by=590,bw=860;
+  ctx.fillStyle=GRN;ctx.globalAlpha=.4;ctx.fillRect(x0,by,bw,56);ctx.globalAlpha=1;hTxt(ctx,'전지가 한 일 CV² = '+(2*U*1000).toFixed(1)+' mJ',x0+10,by+37,26,C.text,'left',700);
+  ctx.fillStyle=YEL;ctx.fillRect(x0,by+70,bw/2,56);hTxt(ctx,'저장 ½CV² = '+(U*1000).toFixed(1)+' mJ',x0+10,by+107,26,'#0a1330','left',700);
+  ctx.fillStyle=C.bad;ctx.fillRect(x0+bw/2,by+70,bw/2,56);hTxt(ctx,'저항에서 열 ½CV²',x0+bw/2+10,by+107,26,'#fff','left',700);}
+sl('rc-R',' kΩ',1,v=>{R=v*1000;sync();draw();});sl('rc-C',' μF',0,v=>{Cu=v*1e-6;sync();draw();});
+return {start(){sync();draw();},stop(){},frame(){}};
+
+});
+
+/* ---- c8 ---- */
+REG["c8"] = safe("c8.init", function () {
+
+const W=1100,H=800,ctx=setupCanvas($('#c-fi'),W,H);let d=5,mode=0;const A=0.5,Vb=9,Q0=CAP.Cpp(A,5e-3)*Vb;
+function st(){const C=CAP.Cpp(A,d*1e-3);let Q,V;if(mode===0){Q=Q0;V=Q/C;}else{V=Vb;Q=C*V;}return{Q,V,E:V/(d*1e-3),U:0.5*Q*V,C};}
+function sync(){const s=st();setT('fi-Q',(s.Q*1e9).toFixed(2));setT('fi-V',s.V.toFixed(1));setT('fi-E',(s.E/1e3).toFixed(2));setT('fi-U',(s.U*1e9).toFixed(1));}
+function draw(){const s=st();ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  const gp=30+d*14,n=Math.max(1,Math.round(s.Q/Q0*7)),fa=Math.min(1,s.E/(Vb/5e-3)*0.9);
+  plates(ctx,W/2,330,560,gp,Math.min(n,24),fa,14);
+  hTxt(ctx,mode===0?'전지를 떼어 둠 (전하가 갈 곳이 없다)':'전지 9 V에 연결된 상태',W/2,110,32,C.text,'center',700);
+  hTxt(ctx,'d = '+d+' mm',W/2+300,334,28,ORG,'left',700);
+  // 에너지 막대 (기준 대비)
+  const Uref=0.5*Q0*Vb,bw=800;ctx.fillStyle='#1e293b';ctx.fillRect(150,620,bw,50);ctx.fillStyle=YEL;ctx.fillRect(150,620,Math.min(bw,bw*s.U/Uref/4),50);
+  hTxt(ctx,'저장 에너지 (처음 d=5 mm, 전지 연결 때의 값 ×'+(s.U/Uref).toFixed(2)+')',150,602,24,C.dim);
+  hTxt(ctx,mode===0?'전하 일정 · 전기장 일정 · 전압↑ · 에너지↑':'전압 일정 · 전하↓ · 전기장↓ · 에너지↓',W/2,730,30,YEL,'center',700);}
+bindChips(['fi-m1','fi-m2'],i=>{mode=i;sync();draw();});
+sl('fi-d',' mm',0,v=>{d=v;sync();draw();});
+return {start(){sync();draw();},stop(){},frame(){}};
+
+});
+
+/* ---- c9 ---- */
+REG["c9"] = safe("c9.init", function () {
+
+const W=1100,H=800,ctx=setupCanvas($('#c-ro'),W,H);let amt=1;
+const TH=9,PITCH=TH*4,R0=40,LEN=1100,STEP=6,COL=[PINK,YEL,BLUE,YEL];
+function line(a){const sR=a*LEN;let th=0,s=0,p=[R0,0],tan=[0,1],nor=[1,0];const pts=[];
+  while(s<=LEN+0.01){pts.push([p[0],p[1],nor[0],nor[1]]);
+    if(s<sR){let r=R0+PITCH*th/TAU;th+=STEP/r;r=R0+PITCH*th/TAU;p=[Math.cos(th)*r,Math.sin(th)*r];tan=[-Math.sin(th),Math.cos(th)];nor=[Math.cos(th),Math.sin(th)];}
+    else{p=[p[0]+tan[0]*STEP,p[1]+tan[1]*STEP];}
+    s+=STEP;}return pts;}
+function sync(){setT('ro-L',LEN+'');setT('ro-D',(2*Math.sqrt(R0*R0+LEN*PITCH/Math.PI)).toFixed(0));}
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  const pts=line(amt);let xs=[1e9,-1e9],ys=[1e9,-1e9];pts.forEach(q=>{xs=[Math.min(xs[0],q[0]-q[2]*0),Math.max(xs[1],q[0])];ys=[Math.min(ys[0],q[1]),Math.max(ys[1],q[1])];});
+  const bw=xs[1]-xs[0]+PITCH*2,bh=ys[1]-ys[0]+PITCH*2,k=Math.min(2.4,860/bw,520/bh),cx=W/2-(xs[0]+xs[1])/2*k,cy=330-(ys[0]+ys[1])/2*k;
+  for(let L=0;L<4;L++){const a=L*TH,b=a+TH*0.92;ctx.fillStyle=COL[L];ctx.strokeStyle='rgba(10,19,48,0.6)';ctx.lineWidth=1;
+    for(let i=0;i<pts.length-1;i++){const p=pts[i],q=pts[i+1];ctx.beginPath();
+      ctx.moveTo(cx+(p[0]+p[2]*a)*k,cy+(p[1]+p[3]*a)*k);ctx.lineTo(cx+(q[0]+q[2]*a)*k,cy+(q[1]+q[3]*a)*k);ctx.lineTo(cx+(q[0]+q[2]*b)*k,cy+(q[1]+q[3]*b)*k);ctx.lineTo(cx+(p[0]+p[2]*b)*k,cy+(p[1]+p[3]*b)*k);ctx.closePath();ctx.fill();}}
+  hTxt(ctx,'단면 (옆에서 본 모양, 폭은 종이에 수직 방향)',W/2,50,26,C.dim,'center');
+  [['금속박(+)',PINK],['절연체',YEL],['금속박(−)',BLUE]].forEach((l,i)=>{ctx.fillStyle=l[1];ctx.fillRect(50,640+i*46,30,30);hTxt(ctx,l[0],94,664+i*46,26,C.text,'left',700);});
+  hTxt(ctx,'색은 +/− 구분용 (실제 금속박은 은색)',50,790,22,C.dim);
+  // 동축 원통 비교 그림
+  const ox=930,oy=650;ctx.strokeStyle=WIRE;ctx.lineWidth=5;ctx.beginPath();ctx.arc(ox,oy,70,0,TAU);ctx.stroke();ctx.fillStyle=PINK;ctx.beginPath();ctx.arc(ox,oy,30,0,TAU);ctx.fill();
+  ctx.strokeStyle=BLUE;ctx.lineWidth=7;ctx.beginPath();ctx.arc(ox,oy,70,0,TAU);ctx.stroke();
+  hTxt(ctx,'대학 교재의 동축 원통',ox,oy-95,22,C.dim,'center',700);hTxt(ctx,'(다른 구조)',ox,oy+112,22,C.dim,'center');}
+sl('ro-a','%',0,v=>{amt=v/100;sync();draw();});
+return {start(){sync();draw();},stop(){},frame(){}};
+
+});
+
+/* ---- c10 ---- */
+REG["c10"] = safe("c10.init", function () {
+
+const W=1100,H=800,ctx=setupCanvas($('#c-ae'),W,H);let E=200,td=10,tcharge=8,mode=0;
+function sync(){const P=E/(td/1000);setT('ae-tc',tcharge.toFixed(0));setT('ae-td',td.toFixed(0));setT('ae-P',(P/1000).toFixed(1));setT('ae-x',(P/1500).toFixed(0));}
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  hTxt(ctx,'같은 에너지 E = '+E+' J 를 …',W/2,70,34,C.text,'center',700);
+  const x0=100,w=900;
+  // 천천히 모으기
+  ctx.fillStyle='#1e293b';ctx.fillRect(x0,150,w,70);ctx.fillStyle=GRN;ctx.fillRect(x0,150,w,70);hTxt(ctx,'① 천천히 모은다 (충전)  '+tcharge+' s',x0+14,196,30,'#0a1330','left',700);
+  // 짧게 내보내기: 폭은 시간에 비례하지만 가시화를 위해 로그
+  const wd=Math.max(14,w*Math.log10(td*1000)/Math.log10(tcharge*1e6)*0.99);
+  ctx.fillStyle='#1e293b';ctx.fillRect(x0,300,w,70);ctx.fillStyle=ORG;ctx.fillRect(x0,300,wd,70);hTxt(ctx,'② 한꺼번에 (방전) '+td+' ms',wd>420?x0+14:x0+wd+14,346,30,wd>420?'#0a1330':ORG,'left',700);
+  hTxt(ctx,'(막대 길이는 시간의 로그 눈금)',x0,400,22,C.dim);
+  // 전력 비교 막대
+  const P=E/(td/1000),by=480;hTxt(ctx,'순간 전력 비교 (로그 눈금)',x0,by,26,C.dim);
+  const lg=v=>Math.log10(v)/5.2;const bars=[['전기 주전자',1500,BLUE],[mode?'카메라 플래시':'자동 심장 충격기',P,C.bad],['휴대폰 충전기',20,GRN]];
+  bars.forEach((b,i)=>{const y=by+20+i*76,l=Math.max(8,lg(b[1])*w);ctx.fillStyle=b[2];ctx.fillRect(x0,y,l,52);const tx=b[0]+'  '+(b[1]>=1000?(b[1]/1000).toFixed(1)+' kW':b[1].toFixed(0)+' W');const ins=l>480;hTxt(ctx,tx,ins?x0+14:x0+l+14,y+37,26,ins?'#0a1330':b[2],'left',700);});}
+bindChips(['ae-m1','ae-m2'],i=>{mode=i;E=[200,4.5][i];td=[10,1][i];tcharge=[8,4][i];$('#ae-t').value=td;setT('ae-tv',td+' ms');sync();draw();});
+sl('ae-t',' ms',0,v=>{td=v;sync();draw();});
+return {start(){sync();draw();},stop(){},frame(){}};
+
+});
+
+/* ---- c11 ---- */
+REG["c11"] = safe("c11.init", function () {
+
+const W=1100,H=800,ctx=setupCanvas($('#c-to'),W,H);let fx=550,fy=380,on=true,obj=0;const STR=[1,0.8,0.5,0.02],COLS=8,ROWS=5,x0=140,y0=170,dx=117,dy=108,THR=0.3;
+function sig(){const g=[];let sx=0,sy=0,sw=0,mx=0;for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const x=x0+c*dx,y=y0+r*dy,d2=(x-fx)**2+(y-fy)**2,v=on?STR[obj]*Math.exp(-d2/(2*85*85)):0;g.push([x,y,v]);if(v>0.05){sx+=x*v;sy+=y*v;sw+=v;}mx=Math.max(mx,v);}
+  return{g,mx,pos:sw>0?[sx/sw,sy/sw]:null};}
+function sync(){const s=sig();setT('to-s',s.mx.toFixed(2));const ok=s.mx>=THR;setT('to-r',ok?'예':'아니오');setT('to-p',ok&&s.pos?'x≈'+Math.round((s.pos[0]-x0)/dx*10)/10+', y≈'+Math.round((s.pos[1]-y0)/dy*10)/10:'–');}
+function draw(){const s=sig();ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#0b1226';ctx.fillRect(70,100,960,560);ctx.strokeStyle=C.grid;ctx.lineWidth=3;ctx.strokeRect(70,100,960,560);
+  ctx.strokeStyle='#334155';ctx.lineWidth=3;for(let c=0;c<COLS;c++){ctx.beginPath();ctx.moveTo(x0+c*dx,120);ctx.lineTo(x0+c*dx,640);ctx.stroke();}for(let r=0;r<ROWS;r++){ctx.beginPath();ctx.moveTo(90,y0+r*dy);ctx.lineTo(1010,y0+r*dy);ctx.stroke();}
+  s.g.forEach(([x,y,v])=>{ctx.fillStyle=v>=THR?`rgba(255,209,102,${0.35+0.65*v})`:`rgba(127,178,255,${0.35+0.4*(1-v)})`;ctx.beginPath();ctx.arc(x,y,12+14*v,0,TAU);ctx.fill();});
+  hTxt(ctx,'격자 교차점 = 작은 축전기 (밝을수록 전하 변화가 크다)',W/2,60,28,C.text,'center',700);
+  if(on){ctx.strokeStyle=['#ffd0a6','#ffe066','#9aa4b2','#8892a0'][obj];ctx.lineWidth=3;ctx.fillStyle=['rgba(255,208,166,.25)','rgba(255,224,102,.25)','rgba(154,164,178,.25)','rgba(136,146,160,.15)'][obj];ctx.beginPath();ctx.arc(fx,fy,52,0,TAU);ctx.fill();ctx.stroke();}
+  if(s.mx>=THR&&s.pos){ctx.strokeStyle=C.bad;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(s.pos[0]-24,s.pos[1]);ctx.lineTo(s.pos[0]+24,s.pos[1]);ctx.moveTo(s.pos[0],s.pos[1]-24);ctx.lineTo(s.pos[0],s.pos[1]+24);ctx.stroke();hTxt(ctx,'접촉 위치 인식',s.pos[0],s.pos[1]-84,26,C.bad,'center',700);}
+  else hTxt(ctx,s.mx>0.05?'신호가 약해 인식하지 못함':'',W/2,730,30,ORG,'center',700);
+  hTxt(ctx,['손가락','바나나','연필','장갑·플라스틱'][obj]+' — 전도성 '+['좋음','좋음(수분)','흑연 심만 도체','없음'][obj],W/2,760,26,C.dim,'center');}
+const cv=$('#c-to');function pt(e){const r=cv.getBoundingClientRect();fx=(e.clientX-r.left)/r.width*W;fy=(e.clientY-r.top)/r.height*H;sync();draw();}
+cv.addEventListener('pointerdown',e=>{on=true;cv.setPointerCapture(e.pointerId);pt(e);});cv.addEventListener('pointermove',e=>{if(e.buttons)pt(e);});
+bindChips(['to-o1','to-o2','to-o3','to-o4'],i=>{obj=i;sync();draw();});
+return {start(){sync();draw();},stop(){},frame(){}};
+
+});
+
+/* ---- c12 ---- */
+REG["c12"] = safe("c12.init", function () {
+
+const W=1100,H=800,ctx=setupCanvas($('#c-se'),W,H);let a=0,h=50;const D=1,Xf=0.5;   // 최대 변위 = 간격의 50 %
+function sig(){const x=-a/20*Xf*D;return {x,s:1/(D-x)-1/(D+x)};}
+function eps(){return 3+h/100;}             // 예: 건조 3.0 → 습함 4.0 (설명용)
+function sync(){setT('se-s',(sig().s).toFixed(2));setT('se-c',(eps()/3).toFixed(2));}
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  hTxt(ctx,'가속도 센서 (단면)',60,60,30,C.text,'left',700);
+  const gx=190,gw=720,cx=gx+gw/2,u=gw/2/1.0*0.88,s=sig(),mx=cx+s.x*u,yy=140,hh=180;
+  ctx.fillStyle='#cbd5e1';ctx.fillRect(gx-16,yy,16,hh);ctx.fillRect(gx+gw,yy,16,hh);
+  ctx.fillStyle=ORG;ctx.fillRect(mx-12,yy+16,24,hh-32);
+  ctx.strokeStyle=WIRE;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(gx,yy+hh/2);ctx.lineTo(mx-12,yy+hh/2);ctx.moveTo(mx+12,yy+hh/2);ctx.lineTo(gx+gw,yy+hh/2);ctx.stroke();
+  hTxt(ctx,'고정판',gx-16,yy-14,22,C.dim);hTxt(ctx,'고정판',gx+gw+16,yy-14,22,C.dim,'right');hTxt(ctx,'가운데 판 (질량)',mx,yy-14,22,ORG,'center',700);
+  const ql=1/(D+s.x),qr=1/(D-s.x),by=yy+hh+50;
+  ctx.fillStyle=BLUE;ctx.fillRect(gx,by,Math.min(gw/2,ql*gw/2*0.6),36);ctx.fillStyle=PINK;ctx.fillRect(gx,by+50,Math.min(gw/2,qr*gw/2*0.6),36);
+  hTxt(ctx,'왼쪽 축전기 전하 ×'+ql.toFixed(2),gx+gw/2+60,by+27,24,BLUE,'left',700);hTxt(ctx,'오른쪽 축전기 전하 ×'+qr.toFixed(2),gx+gw/2+60,by+77,24,PINK,'left',700);
+  if(Math.abs(a)>0.5)arrow(ctx,cx,yy+hh+3,cx+Math.sign(a)*70,yy+hh+3,YEL,5,14);
+  hTxt(ctx,'차이(신호) = '+s.s.toFixed(2),gx,by+128,28,YEL,'left',700);
+  // 습도 센서
+  hTxt(ctx,'습도 센서 (단면)',60,570,30,C.text,'left',700);
+  const hx=260,hy=600,hw=400,hg=100;ctx.fillStyle='#cbd5e1';ctx.fillRect(hx,hy,hw,12);ctx.fillRect(hx,hy+hg,hw,12);
+  ctx.fillStyle='rgba(255,209,102,0.35)';ctx.fillRect(hx,hy+12,hw,hg-12);
+  const nW=Math.round(h/100*26),rnd=mulberry(11);for(let i=0;i<nW;i++){const x=hx+20+rnd()*(hw-40),y=hy+22+rnd()*(hg-40);ctx.fillStyle='#7fb2ff';ctx.beginPath();ctx.arc(x,y,6,0,TAU);ctx.fill();}
+  hTxt(ctx,'절연 물질(예: 고분자 막) + 흡수한 물 분자',hx+hw/2,hy+hg+44,22,C.dim,'center');
+  const cr=eps()/3,bw=300;ctx.fillStyle='#1e293b';ctx.fillRect(740,630,bw,40);ctx.fillStyle=GRN;ctx.fillRect(740,630,bw*(cr-0.9)/0.6,40);hTxt(ctx,'모이는 전하 ×'+cr.toFixed(2),740,610,26,GRN,'left',700);}
+sl('se-a',' m/s²',0,v=>{a=v;sync();draw();});sl('se-h',' %',0,v=>{h=v;sync();draw();});
+return {start(){sync();draw();},stop(){},frame(){}};
+
+});
+
+/* =====================================================================
+   슬라이드 관리자
+   ===================================================================== */
+const slides = $$('.slide'), deck = $('#deck'); let cur = -1, step = 0, activeFrame = null, activeId = '', hudTimer = 0;
+const NOTES = DECK.notes, ASK = DECK.ask, CIRC = ['①', '②', '③', '④', '⑤'];
+function renderNotes(i) {
+  const n = NOTES[slides[i].id]; if (!n) { $('#notes').innerHTML = ''; return; }
+  $('#notes').innerHTML = `<div class="nh">📝 오개념 교정 노트 · 슬라이드 ${i + 1} / ${slides.length}<span style="float:right">발문을 화면에 띄우기: Q 키</span></div>` + (n.q ? `<div class="nq">💬 발문: ${n.q}</div>` : '') +
+    (n.m || []).map(([a, b]) => `<div class="ni"><span class="nx">❌ 오개념</span> ${a}<br><span class="nv">✅ 교정</span> ${b}</div>`).join('');
+}
+function renderAsk(i) {
+  const q = ASK[slides[i].id] || [];
+  $('#ask').innerHTML = `<div class="ak"><div class="ah">💬 생각해 보기 · ${i + 1} / ${slides.length}</div>` + (q.length ? q.map((t, k) => `<div class="aq">${q.length > 1 ? `<span>${CIRC[k] || (k + 1) + '.'}</span>` : ''}${t}</div>`).join('') : '<div class="aq" style="color:var(--muted)">이 슬라이드에는 발문이 없습니다.</div>') + '<div class="af">Q 키 · Esc · 화면 클릭으로 닫기</div></div>';
+}
+function toggleAsk(force) { const on = $('#ask').classList.toggle('on', force); $('#b-ask').classList.toggle('on', on); }
+const maxStep = i => +(slides[i].dataset.steps || 0);
+function fit() {
+  const vp = $('#viewport'), vw = vp.clientWidth, vh = vp.clientHeight, rf = vw < 1100;
+  document.documentElement.classList.toggle('rf', rf);
+  if (rf) { const W = vw < 640 ? 640 : vw, s = vw / W; deck.style.width = W + 'px'; deck.style.height = (vh / s) + 'px'; deck.style.transform = `scale(${s})`; return; }
+  deck.style.width = ''; deck.style.height = '';
+  const s = Math.min(vw / 1920, vh / 1080); deck.style.transform = `translate(-50%,-50%) scale(${s})`;
+}
+function fitSteps() { // 단계 목록이 영역을 넘으면 자동 축소 (실제 렌더링 높이 기준)
+  if (cur < 0) return; const side = $('.side.steps', slides[cur]); if (!side) return;
+  side.style.transform = ''; side.style.width = '';
+  if (side.clientHeight > 0 && side.scrollHeight > side.clientHeight + 1) { const k = side.clientHeight / side.scrollHeight; side.style.transformOrigin = 'top left'; side.style.transform = `scale(${k})`; side.style.width = (100 / k) + '%'; }
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitSteps);
+function applyStep() {
+  $$('.st', slides[cur]).forEach(el => { el.classList.toggle('on', +el.dataset.i <= step); el.classList.toggle('cur', +el.dataset.i === step); });
+  const id = slides[cur].id, r = REG[id]; r && r.onStep && safe(id + '.onStep', () => r.onStep(step));
+}
+const mgSet = (sl, on) => $$('iframe.mg-embed', sl).forEach(f => { f.src = on ? f.dataset.src : 'about:blank'; });
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.mg-re'); if (b) { const f = $('iframe', b.parentElement); f && f.contentWindow && f.contentWindow.postMessage({ mg: 'cmd', cmd: 'restart' }, '*'); b.blur(); } });
+function show(i, st = 0) {
+  i = Math.max(0, Math.min(slides.length - 1, i));
+  if (cur >= 0) { const oid = slides[cur].id, o = REG[oid]; o && o.stop && safe(oid + '.stop', () => o.stop()); slides[cur].classList.remove('active'); mgSet(slides[cur], false); }
+  cur = i; step = Math.min(st, maxStep(i)); slides[i].classList.add('active'); mgSet(slides[i], true);
+  const id = slides[i].id, r = REG[id]; activeFrame = r && r.frame ? (dt => r.frame(dt)) : null; activeId = id;
+  fitSteps(); r && r.start && safe(id + '.start', () => r.start());
+  $('#h-pg').textContent = `${i + 1} / ${slides.length}`; renderNotes(i); renderAsk(i); toggleAsk(false); applyStep();
+  if (DECK.ask_auto !== false && (ASK[id] || []).length && !askSeen[id]) { askSeen[id] = 1; toggleAsk(true); } // 처음 들어오면 발문을 먼저 띄운다(닫기 전까지 시뮬레이션 정지)
+}
+const askSeen = {};
+const next = () => { if ($('#ask').classList.contains('on')) { toggleAsk(false); return; } if (step < maxStep(cur)) { step++; applyStep(); } else if (cur < slides.length - 1) show(cur + 1); };
+const prev = () => { if (step > 0) { step--; applyStep(); } else if (cur > 0) show(cur - 1, maxStep(cur - 1)); };
+function isDark() { const r = document.documentElement; return r.dataset.theme === 'dark' || (!r.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches); }
+function themeBtn() { $('#b-theme').textContent = isDark() ? '☀ 라이트 전환' : '🌙 다크 전환'; }
+function toggleTheme() { document.documentElement.dataset.theme = isDark() ? 'light' : 'dark'; themeBtn(); }
+function toggleNotes() { const on = $('#notes').classList.toggle('on'); $('#b-notes').classList.toggle('on', on); }
+function toggleHelp(force) { const on = $('#help').classList.toggle('on', force); $('#b-help').classList.toggle('on', on); }
+function fullscreen() { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) { } }
+function poke() { $('#hud').classList.add('show'); clearTimeout(hudTimer); hudTimer = setTimeout(() => $('#hud').classList.remove('show'), 2600); }
+document.addEventListener('keydown', e => {
+  const t = e.target; if (t && t.tagName === 'INPUT' && t.type === 'range' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); next(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+  else if (e.key === 'Home') show(0); else if (e.key === 'End') show(slides.length - 1);
+  else if (e.key === 'f' || e.key === 'F') fullscreen(); else if (e.key === 'n' || e.key === 'N') toggleNotes(); else if (e.key === 't' || e.key === 'T') toggleTheme(); else if (e.key === 'q' || e.key === 'Q') toggleAsk(); else if (e.key === '?' || e.key === 'h' || e.key === 'H') toggleHelp(); else if (e.key === 'Escape') { toggleHelp(false); toggleAsk(false); if ($('#notes').classList.contains('on')) toggleNotes(); }
+});
+$('#h-prev').onclick = prev; $('#h-next').onclick = next; $('#h-fs').onclick = fullscreen; $('#b-help').onclick = () => toggleHelp(); $('#b-ask').onclick = () => toggleAsk(); $('#ask').onclick = () => toggleAsk(false); $('#help-x').onclick = () => toggleHelp(false); $('#help').onclick = e => { if (e.target.id === 'help') toggleHelp(false); }; $('#b-notes').onclick = toggleNotes; $('#b-theme').onclick = toggleTheme;
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
+['mousemove', 'touchstart', 'pointerdown'].forEach(ev => document.addEventListener(ev, poke, { passive: true }));
+window.addEventListener('resize', () => { fit(); fitSteps(); }); fit();
+/* 터치: 좌우로 쓸어 넘기기 (슬라이더·캔버스·버튼 위에서 시작한 건 제외) */
+(function () {
+  let x0 = 0, y0 = 0, ok = false;
+  document.addEventListener('touchstart', e => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; ok = !(e.target.closest && e.target.closest('input,canvas,button,table,.eq,#help,#notes')); }, { passive: true });
+  document.addEventListener('touchend', e => { if (!ok) return; const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; if (Math.abs(dx) > 70 && Math.abs(dx) > 2 * Math.abs(dy)) { dx < 0 ? next() : prev(); } }, { passive: true });
+})();
+let lastT = performance.now();
+(function loop(now) {
+  const dt = Math.min(.05, (now - lastT) / 1000); lastT = now;
+  if (activeFrame && !$('#ask').classList.contains('on')) { try { activeFrame(dt); } catch (e) { reportError(activeId + '.frame', e); activeFrame = null; } }
+  requestAnimationFrame(loop);
+})(lastT);
+
+/* 물리 검증: shared_js에 TESTS() → [[이름, 통과여부, 설명], ...] 가 있으면 콘솔에 출력 */
+(function runSelfTests() {
+  if (typeof TESTS !== 'function') { console.log('물리 검증 항목 없음'); return; }
+  let results = [];
+  try { results = TESTS() || []; } catch (e) { reportError('TESTS', e); return; }
+  console.log('=== ' + DECK.title + ' 물리 검증 ==='); let pass = 0;
+  for (const [name, ok, detail] of results) { console.log(`[${ok ? 'PASS' : 'FAIL'}] ${name}${detail ? ' — ' + detail : ''}`); if (ok) pass++; }
+  console.log(pass === results.length ? '모든 검증 통과' : '일부 검증 실패 — 콘솔 확인 필요');
+  window.__wsSelfTest = { pass, total: results.length };
+})();
+
+window.__deck = { show, next, get cur() { return cur; }, get step() { return step; }, count: slides.length, maxStep };
+let startAt = 0; try { const h = parseInt(location.hash.slice(1), 10); if (h >= 1 && h <= slides.length) startAt = h - 1; } catch (e) { }
+themeBtn(); show(startAt); poke();
+</script>
+</body>
+</html>

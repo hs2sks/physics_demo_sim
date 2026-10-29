@@ -47,7 +47,8 @@ interdisciplinary/             융합
 modern-physics/                현대물리
 └── photoelectric-effect/      💡 광전효과        ✔ 완료
 tools/                         분석 도구
-└── stroboscope/              📸 스트로보스코프(운동 영상 분석)  ✔ 완료
+├── stroboscope/              📸 스트로보스코프(운동 영상 분석)  ✔ 완료
+└── camera-lab/               📷 카메라 실험실(스마트폰 노출·ISO·WB·초점 수동 조절, 예시값)  ✔ 완료
 lectures/                      📚 수업 자료 (수업용 프레젠테이션 · 복습용)
 ├── index.html                 수업 자료 허브 (과목·단원별 목록, 검색)
 └── index.json                 자료 목록

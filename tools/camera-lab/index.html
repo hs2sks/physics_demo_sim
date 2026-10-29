@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>카메라 실험실 — 수동 촬영 조절기</title>
+<style>
+  :root {
+    --bg: #f4f6fa; --panel: #ffffff; --ink: #1c2733; --sub: #5a6b7d;
+    --accent: #1f6fd6; --accent2: #d64545; --ok: #1e8f4e; --warn: #c07c00;
+    --border: #d7dee8; --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", "Malgun Gothic", sans-serif; background: var(--bg); color: var(--ink); padding: 12px; font-size: 15px; line-height: 1.5; }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; max-width: 1000px; margin-left: auto; margin-right: auto; }
+  header h1 { font-size: 1.25em; }
+  .layout { display: flex; flex-direction: column; gap: 12px; max-width: 1000px; margin: 0 auto; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+  .stepTitle { font-weight: 700; font-size: 1.05em; margin-bottom: 8px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .hint { color: var(--sub); font-size: 0.85em; margin-top: 4px; }
+  button { font-size: 1em; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  select, input[type=number] { font-size: 1em; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+  .view { position: relative; background: #000; border-radius: var(--radius); overflow: hidden; }
+  video { display: block; width: 100%; max-height: 55vh; object-fit: contain; background: #000; }
+  .osd { position: absolute; left: 8px; bottom: 8px; right: 8px; color: #fff; font: 12px/1.4 monospace; text-shadow: 0 0 3px #000; pointer-events: none; }
+  .ctl { display: grid; grid-template-columns: 7.5em 1fr 8em; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .ctl:last-child { border-bottom: 0; }
+  .ctl label { font-weight: 600; }
+  .ctl input[type=range] { width: 100%; }
+  .ctl .val { font-family: monospace; text-align: right; }
+  .ctl.off { opacity: .45; }
+  .ctl .sub { grid-column: 1 / -1; color: var(--sub); font-size: 0.82em; }
+  .badge { font-size: .75em; padding: 1px 7px; border-radius: 10px; background: #fdf0d5; color: var(--warn); margin-left: 6px; font-weight: 400; }
+  .presets { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }
+  .preset { text-align: left; padding: 10px; }
+  .preset b { display: block; }
+  .preset span { color: var(--sub); font-size: .82em; }
+  .note { background: #eef5ff; border-left: 4px solid var(--accent); padding: 10px 12px; border-radius: 6px; font-size: .9em; margin-top: 10px; display: none; }
+  .shots { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .shots figure { width: 150px; }
+  .shots img { width: 100%; border-radius: 6px; border: 1px solid var(--border); }
+  .shots figcaption { font-size: .72em; color: var(--sub); word-break: keep-all; }
+  .ev { font-size: 1.1em; }
+  table { border-collapse: collapse; width: 100%; font-size: .88em; }
+  th, td { border: 1px solid var(--border); padding: 5px 8px; text-align: left; }
+  th { background: #f0f3f8; }
+  @media (max-width: 560px) { .ctl { grid-template-columns: 6em 1fr 6.5em; } }
+</style>
+</head>
+<body>
+<header>
+  <a href="../../index.html" style="text-decoration:none;color:var(--sub);border:1px solid var(--border);padding:6px 12px;border-radius:8px;font-size:0.9em;white-space:nowrap">🏠 홈</a>
+  <a href="../index.html" style="text-decoration:none;color:var(--sub);font-size:0.9em">← 분석 도구</a>
+  <h1>📷 카메라 실험실 <small style="font-weight:400;color:var(--sub)">수동 촬영 조절기</small></h1>
+</header>
+
+<div class="layout">
+
+  <div class="panel">
+    <div class="row" style="margin-bottom:8px">
+      <button class="primary" id="btnStart">카메라 켜기</button>
+      <select id="selCam" title="카메라 선택"></select>
+      <button id="btnShot" disabled>📸 촬영</button>
+      <button id="btnReset" disabled>자동으로 되돌리기</button>
+    </div>
+    <div class="view"><video id="vid" playsinline muted autoplay></video><div class="osd" id="osd"></div></div>
+    <div class="hint" id="status">안드로이드 크롬에서 가장 잘 동작합니다. 카메라 권한을 허용해야 하며, 사진은 기기 안에서만 처리되고 서버로 전송되지 않습니다.</div>
+  </div>
+
+  <div class="panel">
+    <div class="stepTitle">① 상황별 예시값</div>
+    <div class="presets" id="presets"></div>
+    <div class="note" id="presetNote"></div>
+  </div>
+
+  <div class="panel">
+    <div class="stepTitle">② 직접 조절</div>
+    <div id="controls"></div>
+    <div class="hint">회색으로 흐린 항목은 이 기기·브라우저가 제어를 허용하지 않는 것입니다(아이폰 사파리는 대부분 미지원).</div>
+  </div>
+
+  <div class="panel">
+    <div class="stepTitle">③ 노출값(EV)으로 비교하기</div>
+    <div class="row">
+      <label>조리개(고정) f/<input type="number" id="fnum" value="1.8" step="0.1" min="1" max="8" style="width:5em"></label>
+      <span class="ev" id="evOut">—</span>
+    </div>
+    <div class="hint">스마트폰 렌즈의 조리개는 고정이라 바꿀 수 없습니다(기기 사양표의 f값을 입력). 노출값 EV = log₂(N²/t) − log₂(ISO/100). 같은 EV끼리는 같은 밝기의 사진이 되는 조합입니다(예: 노출시간을 2배로 늘리면 ISO를 절반으로).</div>
+    <table style="margin-top:10px">
+      <tr><th>바꾼 것</th><th>사진에 생기는 변화</th></tr>
+      <tr><td>노출시간 ↑ (느린 셔터)</td><td>밝아짐 · 움직인 물체가 흐려짐(궤적) · 손떨림에 취약</td></tr>
+      <tr><td>노출시간 ↓ (빠른 셔터)</td><td>어두워짐 · 움직임 정지 · 형광등/LED 깜빡임 줄무늬가 보일 수 있음</td></tr>
+      <tr><td>ISO ↑</td><td>밝아짐 · 잡음(노이즈) 증가</td></tr>
+      <tr><td>조리개 f값 ↓(구멍 큼)</td><td>밝아짐 · 초점 맞는 범위(피사계 심도) 얕아짐 — 폰은 고정</td></tr>
+      <tr><td>색온도 K ↓ (3000K)</td><td>"백열등에 맞춤" → 사진이 푸르게 / K ↑ (6500K) → 따뜻하게</td></tr>
+    </table>
+  </div>
+
+  <div class="panel">
+    <div class="stepTitle">촬영한 사진 <small style="font-weight:400;color:var(--sub)">(이 창을 닫으면 사라집니다. 눌러서 저장)</small></div>
+    <div class="shots" id="shots"></div>
+  </div>
+
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const vid = $('vid'), osd = $('osd'), status = $('status');
+  let timer = 0, stream = null, track = null, caps = {}, imageCapture = null, shotN = 0;
+
+  // 슬라이더 정의. unit: 화면 값 → 제약 값 변환. log: 로그 눈금.
+  // exposureTime 제약은 100 µs 단위(W3C 명세). 실제 기기에서 화면 값(OSD)과 비교해 확인할 것.
+  const ET_UNIT = 1e-4;
+  const DEF = [
+    { key: 'exposureTime', label: '노출시간 (셔터 속도)', mode: 'exposureMode', manual: 'manual', auto: 'continuous', log: true,
+      toSec: v => v * ET_UNIT, fmt: v => fmtShutter(v * ET_UNIT),
+      sub: '수동으로 바꾸면 노출 모드가 자동 → 수동이 됩니다.' },
+    { key: 'iso', label: 'ISO 감도', mode: 'exposureMode', manual: 'manual', auto: 'continuous', log: true,
+      fmt: v => 'ISO ' + Math.round(v), sub: '노출시간과 ISO는 같이 수동 모드로 동작합니다.' },
+    { key: 'exposureCompensation', label: '노출 보정', mode: null,
+      fmt: v => (v >= 0 ? '+' : '') + (+v).toFixed(1) + ' EV', sub: '자동 노출 상태에서 전체를 밝게/어둡게 합니다.' },
+    { key: 'colorTemperature', label: '화이트밸런스', mode: 'whiteBalanceMode', manual: 'manual', auto: 'continuous',
+      fmt: v => Math.round(v) + ' K', sub: '촬영 장소 조명의 색온도에 맞춥니다(백열등 ≈3000K, 햇빛 ≈5500K, 흐린 날 ≈6500K).' },
+    { key: 'focusDistance', label: '초점 거리', mode: 'focusMode', manual: 'manual', auto: 'continuous', log: true,
+      fmt: v => (+v).toFixed(2) + ' m', sub: '작을수록 가까운 곳, 최댓값 쪽이 먼 곳(무한대 근처). 기기마다 단위·범위가 다릅니다.' },
+    { key: 'zoom', label: '확대 (줌)', mode: null,
+      fmt: v => '×' + (+v).toFixed(1), sub: '디지털/광학 구분 없이 기기가 허용하는 범위. 확대할수록 손떨림이 커져 빠른 셔터나 삼각대가 필요합니다.' },
+  ];
+
+  function fmtShutter(s) {
+    if (!isFinite(s) || s <= 0) return '—';
+    return s >= 0.5 ? s.toFixed(1) + ' s' : '1/' + Math.round(1 / s) + ' s';
+  }
+
+  // ---- 컨트롤 UI 생성 ----
+  const ctlBox = $('controls');
+  const ui = {};
+  DEF.forEach(d => {
+    const wrap = document.createElement('div');
+    wrap.className = 'ctl off';
+    wrap.innerHTML = `<label>${d.label}</label><input type="range" min="0" max="1000" value="0" disabled><span class="val">—</span>
+      <div class="sub">${d.sub}</div>`;
+    ctlBox.appendChild(wrap);
+    ui[d.key] = { wrap, range: wrap.querySelector('input'), val: wrap.querySelector('.val'), d };
+    ui[d.key].range.addEventListener('input', () => onSlide(d.key));
+  });
+
+  function pos2val(u, p) {
+    const c = caps[u.d.key], t = p / 1000;
+    if (u.d.log && c.min > 0) return c.min * Math.pow(c.max / c.min, t);
+    return c.min + (c.max - c.min) * t;
+  }
+  function val2pos(u, v) {
+    const c = caps[u.d.key];
+    if (c.max === c.min) return 0;
+    const t = (u.d.log && c.min > 0) ? Math.log(v / c.min) / Math.log(c.max / c.min) : (v - c.min) / (c.max - c.min);
+    return Math.round(Math.max(0, Math.min(1, t)) * 1000);
+  }
+  function snap(c, v) {
+    v = Math.max(c.min, Math.min(c.max, v));
+    if (c.step) v = c.min + Math.round((v - c.min) / c.step) * c.step;
+    return v;
+  }
+
+  async function apply(adv) {
+    if (!track) return;
+    try { await track.applyConstraints({ advanced: [adv] }); }
+    catch (e) { status.textContent = '적용 실패: ' + e.message; }
+    readBack();
+  }
+
+  function onSlide(key) {
+    const u = ui[key], d = u.d;
+    const v = snap(caps[key], pos2val(u, +u.range.value));
+    u.val.textContent = d.fmt(v);
+    const adv = { [key]: v };
+    if (d.mode) adv[d.mode] = d.manual;
+    if (key === 'exposureTime' || key === 'iso') adv.exposureMode = 'manual';
+    apply(adv);
+  }
+
+  // ---- 카메라 켜기 ----
+  async function listCams() {
+    const devs = (await navigator.mediaDevices.enumerateDevices()).filter(x => x.kind === 'videoinput');
+    const sel = $('selCam'), cur = sel.value;
+    sel.innerHTML = '';
+    devs.forEach((x, i) => sel.add(new Option(x.label || ('카메라 ' + (i + 1)), x.deviceId)));
+    if (cur) sel.value = cur;
+  }
+
+  async function start() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { status.textContent = '이 브라우저는 카메라 접근을 지원하지 않습니다(https 주소인지 확인).'; return; }
+    stop();
+    try {
+      const id = $('selCam').value;
+      const video = id ? { deviceId: { exact: id }, width: { ideal: 4096 }, height: { ideal: 3072 } }
+                       : { facingMode: { ideal: 'environment' }, width: { ideal: 4096 }, height: { ideal: 3072 } };
+      stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
+    } catch (e) { status.textContent = '카메라를 켤 수 없습니다: ' + e.message; return; }
+    vid.srcObject = stream;
+    track = stream.getVideoTracks()[0];
+    imageCapture = ('ImageCapture' in window) ? new ImageCapture(track) : null;
+    await listCams();
+    $('selCam').value = track.getSettings().deviceId || $('selCam').value;
+    caps = (track.getCapabilities && track.getCapabilities()) || {};
+    DEF.forEach(d => {
+      const u = ui[d.key], c = caps[d.key];
+      const ok = c && typeof c.min === 'number' && c.max > c.min;
+      u.wrap.classList.toggle('off', !ok);
+      u.range.disabled = !ok;
+      if (ok) {
+        const s = track.getSettings()[d.key];
+        u.range.value = s != null ? val2pos(u, s) : 0;
+        u.val.textContent = s != null ? d.fmt(s) : '—';
+      } else { u.val.textContent = '미지원'; }
+    });
+    $('btnShot').disabled = false; $('btnReset').disabled = false;
+    $('btnStart').textContent = '카메라 다시 켜기';
+    const n = DEF.filter(d => !ui[d.key].range.disabled).length;
+    status.textContent = `조절 가능한 항목 ${n}/${DEF.length}개. ` + (n === 0 ? '이 기기에서는 자동 노출만 가능합니다(안드로이드 크롬을 써 보세요).' : '');
+    readBack();
+    if (!timer) timer = setInterval(readBack, 500);
+  }
+  function stop() { if (stream) stream.getTracks().forEach(t => t.stop()); stream = null; track = null; }
+
+  function readBack() {
+    if (!track) return;
+    const s = track.getSettings(), parts = [];
+    if (s.width) parts.push(s.width + '×' + s.height);
+    if (s.exposureTime != null) parts.push('셔터 ' + fmtShutter(s.exposureTime * ET_UNIT));
+    if (s.iso != null) parts.push('ISO ' + Math.round(s.iso));
+    if (s.colorTemperature != null) parts.push(Math.round(s.colorTemperature) + 'K');
+    if (s.focusDistance != null) parts.push('초점 ' + (+s.focusDistance).toFixed(2) + 'm');
+    if (s.zoom != null) parts.push('×' + (+s.zoom).toFixed(1));
+    if (s.exposureMode) parts.push('노출:' + (s.exposureMode === 'manual' ? '수동' : '자동'));
+    osd.textContent = parts.join(' · ');
+    DEF.forEach(d => {                         // 자동 모드에서 기기가 고른 값을 슬라이더에 반영
+      const u = ui[d.key];
+      if (u.range.disabled || s[d.key] == null || document.activeElement === u.range) return;
+      u.range.value = val2pos(u, s[d.key]); u.val.textContent = d.fmt(s[d.key]);
+    });
+    updateEV(s);
+  }
+  function updateEV(s) {
+    const N = +$('fnum').value || 1.8;
+    if (s.exposureTime == null || s.iso == null) { $('evOut').textContent = '이 기기는 노출시간·ISO 값을 알려주지 않아 EV를 계산할 수 없습니다.'; return; }
+    const t = s.exposureTime * ET_UNIT;
+    const ev = Math.log2(N * N / t) - Math.log2(s.iso / 100);
+    $('evOut').textContent = `EV ${ev.toFixed(1)}  (f/${N} · ${fmtShutter(t)} · ISO ${Math.round(s.iso)})`;
+  }
+  $('fnum').addEventListener('input', () => track && updateEV(track.getSettings()));
+
+  // ---- 예시값 ----
+  // 값은 실제 단위(초, ISO, K, m, 배). 기기 범위로 잘라서 적용한다.
+  // focus: 'near'/'far' = 기기가 허용하는 최솟값/최댓값 근처
+  const PRESETS = [
+    { name: '☀️ 맑은 날 야외', brief: 'ISO 100 · 1/500초 · 5500K',
+      v: { et: 1/500, iso: 100, k: 5500, zoom: 1 }, focus: 'auto',
+      note: '햇빛은 매우 밝아서(EV≈15) 낮은 ISO와 빠른 셔터면 충분합니다. "Sunny 16 규칙": f/16에서 노출시간 ≈ 1/ISO. 폰은 조리개가 f/1.8 정도라 같은 밝기를 얻으려면 훨씬 빠른 셔터가 필요합니다.' },
+    { name: '⚡ 움직임 정지', brief: 'ISO 800 · 1/1000초',
+      v: { et: 1/1000, iso: 800, k: null, zoom: 1 }, focus: 'auto',
+      note: '떨어지는 물체, 공 던지기, 흔들리는 추 등을 번짐 없이 찍습니다. 노출시간이 짧아진 만큼 ISO를 올려 밝기를 보충합니다(대신 잡음 증가). 스트로보스코프 영상 분석용 촬영에도 적합합니다.' },
+    { name: '🔍 확대 사진 (먼 물체)', brief: '줌 ×5 · ISO 200 · 1/250초',
+      v: { et: 1/250, iso: 200, k: null, zoom: 5 }, focus: 'auto',
+      note: '확대하면 손떨림도 같이 확대됩니다. 경험칙: 노출시간 ≲ 1/(환산 초점거리). 삼각대나 받침을 쓰고 셔터는 1/250초 이하로 두세요. 광학 줌이 없는 폰의 ×5 이상은 디지털 확대라 화질이 떨어집니다.' },
+    { name: '🌿 가까이서 찍기 (접사)', brief: '초점 가깝게 · ISO 200 · 1/125초',
+      v: { et: 1/125, iso: 200, k: null, zoom: 1 }, focus: 'near',
+      note: '렌즈에서 5~15 cm 안쪽 물체는 초점이 안 맞을 수 있습니다. 초점 슬라이더를 가까운 쪽으로 두고 폰을 앞뒤로 움직여 가장 선명한 위치를 찾으세요. 곤충·결정·눈금자·회절 격자 관찰에 씁니다.' },
+    { name: '🌙 달 촬영', brief: '줌 ×5 · ISO 100 · 1/250초 · 초점 무한대 · 5000K',
+      v: { et: 1/250, iso: 100, k: 5000, zoom: 5 }, focus: 'far',
+      note: '달은 "밤"이지만 햇빛을 받은 밝은 물체입니다(맑은 낮과 비슷한 밝기). 자동 모드는 어두운 하늘에 속아 과다 노출로 하얗게 날립니다. 수동으로 낮은 ISO·빠른 셔터를 주면 표면 무늬가 보입니다.' },
+    { name: '⭐ 야간 별 사진', brief: 'ISO 최대 · 가능한 긴 노출 · 초점 무한대 · 4000K',
+      v: { et: 8, iso: 3200, k: 4000, zoom: 1 }, focus: 'far',
+      note: '삼각대 필수, 폰을 고정하세요. 지구 자전 때문에 노출이 길면 별이 선이 됩니다("500 법칙": 최대 노출(초) ≈ 500 ÷ 환산 초점거리(mm), 광각 24mm면 약 20초). 브라우저가 허용하는 최대 노출시간은 기기마다 짧을 수 있어, 한계가 있으면 기본 카메라의 야간/천체 모드를 병행하세요. 화면을 밝기 낮춤으로 두고 불빛이 없는 곳에서 촬영하세요.' },
+    { name: '💧 빛 궤적 · 흐름', brief: 'ISO 100 · 1/4초',
+      v: { et: 1/4, iso: 100, k: null, zoom: 1 }, focus: 'auto',
+      note: '느린 셔터는 움직임을 한 장에 누적합니다. 도로의 차량 불빛, 돌리는 LED, 흐르는 물의 궤적을 찍을 때 씁니다. 반드시 고정하고, 궤적 길이 ÷ 노출시간으로 속력도 어림할 수 있습니다.' },
+    { name: '💡 조명 깜빡임 관찰', brief: 'ISO 400 · 1/1000초 (비교: 1/60초)',
+      v: { et: 1/1000, iso: 400, k: null, zoom: 1 }, focus: 'auto',
+      note: '형광등·LED 화면은 전원 주파수(국내 60 Hz → 밝기는 120 Hz로 변동)로 깜빡입니다. 빠른 셔터(1/1000)로 찍으면 화면에 줄무늬가 나타나고, 1/60초 근처로 느리게 하면 사라집니다. 줄무늬 간격으로 깜빡임 주파수를 추정해 보세요.' },
+  ];
+
+  const pBox = $('presets'), pNote = $('presetNote');
+  PRESETS.forEach(p => {
+    const b = document.createElement('button');
+    b.className = 'preset';
+    b.innerHTML = `<b>${p.name}</b><span>${p.brief}</span>`;
+    b.addEventListener('click', () => usePreset(p));
+    pBox.appendChild(b);
+  });
+
+  async function usePreset(p) {
+    pNote.style.display = 'block'; pNote.textContent = p.note;
+    if (!track) { status.textContent = '먼저 카메라를 켜세요. (예시값 설명은 위에 표시했습니다)'; return; }
+    const adv = {}, used = [], skip = [];
+    const set = (key, val, extra) => {
+      const c = caps[key];
+      if (c && c.max > c.min) { adv[key] = snap(c, val); Object.assign(adv, extra || {}); used.push(key); }
+      else skip.push(key);
+    };
+    const manualExp = caps.exposureTime && caps.exposureTime.max > caps.exposureTime.min;
+    set('exposureTime', p.v.et / ET_UNIT, { exposureMode: 'manual' });
+    set('iso', p.v.iso, { exposureMode: 'manual' });
+    if (!manualExp) adv.exposureMode = 'continuous';
+    if (p.v.k) set('colorTemperature', p.v.k, { whiteBalanceMode: 'manual' }); else adv.whiteBalanceMode = 'continuous';
+    set('zoom', p.v.zoom);
+    if (p.focus === 'auto') adv.focusMode = 'continuous';
+    else if (caps.focusDistance && caps.focusDistance.max > caps.focusDistance.min) {
+      const c = caps.focusDistance;
+      adv.focusMode = 'manual';
+      adv.focusDistance = p.focus === 'near' ? c.min : c.max;
+      used.push('focusDistance');
+    } else skip.push('focusDistance');
+    await apply(adv);
+    status.textContent = '적용: ' + (used.join(', ') || '없음') + (skip.length ? ' / 이 기기에서 미지원: ' + skip.join(', ') : '') + ' — 실제 적용된 값은 영상 아래쪽 글자와 슬라이더를 확인하세요.';
+  }
+
+  $('btnReset').addEventListener('click', async () => {
+    await apply({ exposureMode: 'continuous', whiteBalanceMode: 'continuous', focusMode: 'continuous', exposureCompensation: 0, zoom: (caps.zoom && caps.zoom.min) || 1 });
+    status.textContent = '자동 모드로 되돌렸습니다.';
+  });
+
+  // ---- 촬영 ----
+  $('btnShot').addEventListener('click', async () => {
+    if (!track) return;
+    const label = osd.textContent;
+    let blob = null;
+    try { if (imageCapture) blob = await imageCapture.takePhoto(); } catch (e) { blob = null; }
+    if (!blob) {
+      const c = document.createElement('canvas'); c.width = vid.videoWidth; c.height = vid.videoHeight;
+      c.getContext('2d').drawImage(vid, 0, 0);
+      blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.95));
+    }
+    const url = URL.createObjectURL(blob);
+    const f = document.createElement('figure');
+    f.innerHTML = `<a href="${url}" download="camera-lab-${++shotN}.jpg"><img src="${url}"></a><figcaption>#${shotN} ${label}</figcaption>`;
+    $('shots').prepend(f);
+  });
+
+  $('btnStart').addEventListener('click', start);
+  $('selCam').addEventListener('change', () => stream && start());
+  window.addEventListener('pagehide', stop);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>소리 실험실 — 스마트폰 소리 측정 앱</title>
+<style>
+  :root {
+    --bg: #f4f6fa; --panel: #ffffff; --ink: #1c2733; --sub: #5a6b7d;
+    --accent: #1f6fd6; --accent2: #d64545; --ok: #1e8f4e; --warn: #c07c00;
+    --border: #d7dee8; --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", "Malgun Gothic", sans-serif; background: var(--bg); color: var(--ink); padding: 12px; font-size: 15px; line-height: 1.5; }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 auto 12px; max-width: 1000px; }
+  header h1 { font-size: 1.25em; }
+  .layout { display: flex; flex-direction: column; gap: 12px; max-width: 1000px; margin: 0 auto; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+  .panel + .panel { margin-top: 12px; }
+  .stepTitle { font-weight: 700; font-size: 1.05em; margin-bottom: 8px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 6px 0; }
+  .hint { color: var(--sub); font-size: 0.85em; margin-top: 4px; }
+  button { font-size: 1em; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.on { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  select, input[type=number] { font-size: 1em; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+  input[type=number] { width: 6.5em; }
+  input[type=range] { flex: 1; min-width: 120px; }
+  canvas { width: 100%; height: 210px; display: block; background: #fff; border: 1px solid var(--border); border-radius: 8px; touch-action: none; }
+  .big { font-size: 1.7em; font-weight: 700; font-family: monospace; }
+  .kv { display: flex; gap: 16px; flex-wrap: wrap; font-family: monospace; }
+  .kv span b { color: var(--accent); }
+  .tabs { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 4px; }
+  .tabs button { white-space: nowrap; border-radius: 8px 8px 0 0; }
+  .tabs button.act { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .tab { display: none; } .tab.act { display: block; }
+  .guide { background: #fff8e6; border: 1px solid #f0d9a0; }
+  .guide ul { margin-left: 1.2em; font-size: .9em; }
+  .note { background: #eef5ff; border-left: 4px solid var(--accent); padding: 8px 12px; border-radius: 6px; font-size: .9em; margin: 8px 0; }
+  .warn { background: #fdecec; border-left: 4px solid var(--accent2); padding: 8px 12px; border-radius: 6px; font-size: .9em; margin: 8px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .88em; margin-top: 6px; }
+  th, td { border: 1px solid var(--border); padding: 4px 8px; text-align: left; }
+  th { background: #f0f3f8; }
+  .notes { display: flex; gap: 6px; flex-wrap: wrap; }
+  .notes button { min-width: 4.4em; padding: 8px 6px; }
+  .notes small { display: block; font-size: .7em; color: var(--sub); }
+  .on small { color: #fff; }
+  details summary { cursor: pointer; font-weight: 600; margin: 6px 0; }
+  label { white-space: nowrap; }
+</style>
+</head>
+<body>
+<header>
+  <a href="../../index.html" style="text-decoration:none;color:var(--sub);border:1px solid var(--border);padding:6px 12px;border-radius:8px;font-size:0.9em;white-space:nowrap">🏠 홈</a>
+  <a href="../index.html" style="text-decoration:none;color:var(--sub);font-size:0.9em">← 분석 도구</a>
+  <h1>🔊 소리 실험실 <small style="font-weight:400;color:var(--sub)">스마트폰 마이크·스피커 측정 앱</small></h1>
+</header>
+
+<div class="layout">
+
+  <div class="panel guide">
+    <div class="stepTitle">📌 사용 전 안내</div>
+    <ul>
+      <li>마이크와 스피커만 쓰므로 <b>안드로이드·아이폰 모두</b> 됩니다(카메라 실험실과 달리 기종 제한이 적음). 처음 한 번 마이크 권한을 허용하세요.</li>
+      <li>이 앱은 마이크의 <b>자동 음량 조절·잡음 제거·에코 제거를 끄도록 요청</b>합니다. 일부 기기는 무시할 수 있습니다.</li>
+      <li>아이폰은 <b>무음 스위치</b>가 켜져 있으면 소리가 나지 않습니다. 스피커 음량은 처음엔 작게 시작하세요.</li>
+      <li>소리를 내는 실험에서는 귀를 보호하세요. 고음(5 kHz 이상)·큰 음량으로 오래 듣지 않습니다.</li>
+      <li>코드는 한 파일(<code>index.html</code>)이고 라이브러리가 없어, 학생이 자기 앱을 만들 때 그대로 참고할 수 있습니다. 구역마다 주석이 있습니다.</li>
+    </ul>
+  </div>
+
+  <div class="panel">
+    <div class="row">
+      <button class="primary" id="btnMic">🎙 마이크 켜기</button>
+      <label>기온 <input type="number" id="temp" value="20" step="1" min="-30" max="50"> ℃</label>
+      <span class="kv"><span>소리 속력 <b id="vOut">343.5</b> m/s</span><span id="srOut"></span></span>
+    </div>
+    <div class="hint" id="micStatus">마이크가 꺼져 있습니다. 소리를 듣는 탭은 먼저 마이크를 켜세요. 소리 속력 v = 331.5 + 0.6·T (m/s).</div>
+  </div>
+
+  <div>
+    <div class="tabs" id="tabs"></div>
+  </div>
+
+  <!-- ===== 1. 주파수 분석기 ===== -->
+  <section class="tab" id="t-ana">
+    <div class="panel">
+      <div class="stepTitle">주파수 분석기 (스펙트럼)</div>
+      <div class="kv"><span>가장 센 주파수 <b id="aPk">—</b> Hz</span><span>세기 <b id="aDb">—</b> dB</span></div>
+      <canvas id="aCv"></canvas>
+      <div class="row"><label>표시 범위 <input type="number" id="aLo" value="0"> ~ <input type="number" id="aHi" value="4000"> Hz</label>
+        <button id="aHold">최댓값 유지: 꺼짐</button></div>
+      <div class="hint">가로: 주파수, 세로: 세기(dB, 0이 최대). 소리굽쇠·휘파람·악기·목소리의 기본음과 배음(정수배)을 찾아보세요.</div>
+    </div>
+  </section>
+
+  <!-- ===== 2. 신호 발생기 ===== -->
+  <section class="tab" id="t-gen">
+    <div class="panel">
+      <div class="stepTitle">신호 발생기</div>
+      <div class="row"><input type="number" id="gF" value="440" min="20" max="20000" style="width:7em"> Hz
+        <select id="gW"><option value="sine">사인파</option><option value="square">사각파</option><option value="sawtooth">톱니파</option><option value="triangle">삼각파</option></select>
+        <div class="big" id="gBig">440 Hz</div></div>
+      <div class="row"><input type="range" id="gFs" min="0" max="1000" value="360"></div>
+      <div class="row"><span class="hint">빠른 선택</span>
+        <button data-g="261.63">도 262</button><button data-g="440">라 440</button><button data-g="1000">1000</button><button data-g="2000">2000</button><button data-g="4000">4000</button></div>
+      <div class="row"><label>음량 <input type="range" id="gV" min="0" max="100" value="15"></label>
+        <button class="primary" id="gGo">▶ 소리 내기</button></div>
+    </div>
+    <div class="panel">
+      <div class="stepTitle">주파수 훑기 (스윕)</div>
+      <div class="row"><label><input type="number" id="gS1" value="200"> Hz →</label><label><input type="number" id="gS2" value="2000"> Hz</label>
+        <label><input type="number" id="gSt" value="20" style="width:4.5em"> 초</label>
+        <label><input type="checkbox" id="gSlog"> 로그</label><button id="gSgo">▶ 훑기 시작</button></div>
+      <div class="hint">스피커에서 낮은 음 → 높은 음으로 연속 변화시킵니다. 공명 탭에서 관의 공명 주파수를 찾을 때 씁니다.</div>
+    </div>
+  </section>
+
+  <!-- ===== 3. 공명 ===== -->
+  <section class="tab" id="t-res">
+    <div class="panel">
+      <div class="stepTitle">① 관(기주)의 공명 주파수 예측</div>
+      <div class="row">
+        <select id="rType"><option value="closed">한쪽 닫힌 관</option><option value="open">양쪽 열린 관</option></select>
+        <label>길이 L <input type="number" id="rL" value="30" step="0.5"> cm</label>
+        <label>반지름 r <input type="number" id="rR" value="1.5" step="0.1"> cm</label>
+      </div>
+      <div class="note" id="rPred">—</div>
+      <div class="hint">열린 끝에서는 소리가 관 밖으로 조금 더 나가므로 길이를 0.6r(끝보정)만큼 더 길게 봅니다. 한쪽 닫힌 관: f = (2n−1)v/4(L+0.6r), 양쪽 열린 관: f = n·v/2(L+1.2r).</div>
+    </div>
+    <div class="panel">
+      <div class="stepTitle">② 마이크로 공명 찾기 — 스펙트럼</div>
+      <div class="kv"><span>가장 센 주파수 <b id="rPk">—</b> Hz</span></div>
+      <canvas id="rCv"></canvas>
+      <div class="hint">점선은 ①의 예측값입니다. 관 입구에서 소리굽쇠를 울리거나 스피커로 소리를 내 보세요.</div>
+    </div>
+    <div class="panel">
+      <div class="stepTitle">③ 스피커로 훑어서 공명 곡선 얻기</div>
+      <div class="row"><label><input type="number" id="rS1" value="200"> Hz →</label><label><input type="number" id="rS2" value="2000"> Hz</label>
+        <label><input type="number" id="rSt" value="40" style="width:4.5em"> 초</label><button class="primary" id="rGo">▶ 훑기 시작</button>
+        <label>음량 <input type="range" id="rV" min="0" max="100" value="15" style="min-width:90px"></label></div>
+      <canvas id="rCv2"></canvas>
+      <div class="note" id="rRes">폰 스피커를 관 입구 가까이에 두고, 마이크는 관 입구 반대편(또는 같은 폰이면 입구 앞)에 둡니다. 곡선의 봉우리가 공명입니다.</div>
+    </div>
+  </section>
+
+  <!-- ===== 4. 맥놀이 ===== -->
+  <section class="tab" id="t-beat">
+    <div class="panel">
+      <div class="stepTitle">맥놀이 (두 소리의 합성)</div>
+      <div class="row"><label>소리 A <input type="number" id="bA" value="440" step="1"> Hz</label>
+        <label>소리 B <input type="number" id="bB" value="444" step="1"> Hz</label></div>
+      <div class="row"><label><input type="checkbox" id="bPA" checked> 이 폰에서 A 재생</label>
+        <label><input type="checkbox" id="bPB" checked> 이 폰에서 B 재생</label>
+        <label>음량 <input type="range" id="bV" min="0" max="100" value="15" style="min-width:90px"></label>
+        <button class="primary" id="bGo">▶ 소리 내기</button></div>
+      <div class="hint">폰 두 대로 하려면 한 대는 A만, 다른 한 대는 B만 체크해 동시에 재생하고, 마이크로 듣는 폰의 그래프를 봅니다.</div>
+      <div class="kv"><span>이론 맥놀이 진동수 |f₁−f₂| <b id="bTh">—</b> Hz</span><span>측정 <b id="bMe">—</b> Hz</span></div>
+    </div>
+    <div class="panel">
+      <div class="stepTitle">두 파동을 더한 모양(이론)</div>
+      <canvas id="bCv1"></canvas>
+      <div class="hint">굵은 선은 합성파의 진폭 변화(포락선) |2cos(π|f₁−f₂|t)|입니다.</div>
+    </div>
+    <div class="panel">
+      <div class="stepTitle">마이크로 잰 소리 크기의 변화 (최근 8초)</div>
+      <canvas id="bCv2"></canvas>
+      <div class="hint">크기가 주기적으로 커졌다 작아지는 횟수를 세어 맥놀이 진동수를 추정합니다. 마이크를 켜야 합니다.</div>
+    </div>
+  </section>
+
+  <!-- ===== 5. 도플러 ===== -->
+  <section class="tab" id="t-dop">
+    <div class="panel">
+      <div class="stepTitle">① 소리 내는 폰 (음원)</div>
+      <div class="row"><label>음원 주파수 f₀ <input type="number" id="dF" value="2000" step="50" style="width:7em"> Hz</label>
+        <label>음량 <input type="range" id="dV" min="0" max="100" value="25" style="min-width:90px"></label>
+        <button class="primary" id="dGo">▶ 소리 내기</button></div>
+      <div class="hint">1000~4000 Hz 사이가 폰 스피커·마이크에서 잘 잡힙니다. 폰 한 대로 하려면 이 버튼을 쓰지 않고 별도의 스피커(또는 다른 폰)를 쓰세요.</div>
+    </div>
+    <div class="panel">
+      <div class="stepTitle">② 측정하는 폰 (관측자)</div>
+      <div class="row">
+        <label>탐색 범위 f₀ ±<input type="number" id="dBand" value="300" step="50" style="width:5em"> Hz</label>
+        <button id="dRef">기준 주파수 재기 (정지 상태에서)</button>
+        <button id="dClr">그래프 지우기</button><button id="dCsv">CSV 저장</button>
+      </div>
+      <div class="kv"><span>측정 주파수 f′ <b id="dObs">—</b> Hz</span><span>기준 f₀ <b id="dRefV">—</b> Hz</span><span>Δf <b id="dDf">—</b> Hz</span><span>f′/f₀ <b id="dRat">—</b></span></div>
+      <canvas id="dCv"></canvas>
+      <div class="hint">가로: 시간(최근 20초), 세로: 측정된 주파수. 소리가 약하면 점이 찍히지 않습니다(잡음 위로 12 dB 이상일 때만 기록).</div>
+    </div>
+    <div class="panel">
+      <div class="stepTitle">③ 이론값과 비교 · 속력 구하기</div>
+      <div class="row"><select id="dMode">
+        <option value="A">관측자만 움직임 (음원 고정) → 관측자 속력 구하기</option>
+        <option value="B">음원만 움직임 (관측자 고정) → 음원 속력 구하기</option>
+        <option value="C1">둘 다 움직임 → 관측자 속력 구하기 (음원 속력 입력)</option>
+        <option value="C2">둘 다 움직임 → 음원 속력 구하기 (관측자 속력 입력)</option></select></div>
+      <div class="row"><label>관측자 속력 vₒ <input type="number" id="dVo" value="0" step="0.1"> m/s</label>
+        <label>음원 속력 vₛ <input type="number" id="dVs" value="0" step="0.1"> m/s</label></div>
+      <div class="hint">부호: 관측자는 음원 <b>쪽으로</b> 가면 +, 음원은 관측자 <b>쪽으로</b> 가면 +. 이때 f′ = f₀ (v + vₒ)/(v − vₛ).</div>
+      <div class="note" id="dCalc">—</div>
+      <details><summary>측정이 잘 안 될 때</summary>
+        <ul class="hint" style="margin-left:1.2em">
+          <li>걷는 속력(≈1.5 m/s)이면 f₀=2000 Hz에서 Δf ≈ 9 Hz 정도로 아주 작습니다. 팔을 휘두르거나 자전거·줄에 매단 폰 돌리기로 속력을 키우세요.</li>
+          <li>벽이 가까우면 반사음이 섞여 두 주파수가 보일 수 있습니다. 넓은 곳에서 하세요.</li>
+          <li>분석 창 길이(0.17초)보다 짧은 순간 변화는 평균 처리됩니다.</li>
+        </ul></details>
+    </div>
+  </section>
+
+  <!-- ===== 6. 소리 속력 ===== -->
+  <section class="tab" id="t-spd">
+    <div class="panel">
+      <div class="stepTitle">① 반사음(메아리)으로 소리 속력 재기</div>
+      <div class="row"><label>벽까지 거리 d <input type="number" id="sD" value="10" step="0.1"> m</label>
+        <button class="primary" id="sGo">● 녹음 시작 (2초)</button>
+        <label>표시 구간 <input type="range" id="sZoom" min="10" max="400" value="120" style="min-width:90px"> <span id="sZoomV">120</span> ms</label></div>
+      <div class="hint">마이크를 켠 뒤 버튼을 누르고, 단단한 벽을 향해 한 번 <b>짝</b> 박수를 치세요(박수 후 조용히). 벽이 멀수록(10 m 이상) 정확합니다. 2d = v·Δt.</div>
+      <canvas id="sCv"></canvas>
+      <div class="hint">그래프를 눌러 파란선(박수)·빨간선(반사음)을 직접 옮길 수 있습니다. 자동 추정은 틀릴 수 있습니다.</div>
+      <div class="note" id="sRes">—</div>
+    </div>
+    <div class="panel">
+      <div class="stepTitle">② 관의 공명으로 소리 속력 구하기</div>
+      <div class="row"><select id="sType"><option value="closed">한쪽 닫힌 관</option><option value="open">양쪽 열린 관</option></select>
+        <label>길이 L <input type="number" id="sL" value="30" step="0.5"> cm</label>
+        <label>반지름 r <input type="number" id="sR" value="1.5" step="0.1"> cm</label></div>
+      <div class="row"><label>측정한 공명 주파수 <input type="number" id="sF" value="270" step="1" style="width:7em"> Hz</label>
+        <label>n(배음 번호) <input type="number" id="sN" value="1" min="1" step="1" style="width:4em"></label></div>
+      <div class="note" id="sRes2">—</div>
+    </div>
+  </section>
+
+  <!-- ===== 7. 튜너·음계 ===== -->
+  <section class="tab" id="t-tun">
+    <div class="panel">
+      <div class="stepTitle">악기 튜너</div>
+      <div class="row"><div class="big" id="tNote">—</div><div class="big" style="color:var(--sub)" id="tKor"></div>
+        <div class="kv"><span><b id="tFreq">—</b> Hz</span><span><b id="tCents">—</b> 센트</span></div></div>
+      <canvas id="tCv" style="height:90px"></canvas>
+      <div class="row"><label>기준음 A4 <input type="number" id="tA4" value="440" step="1"> Hz</label></div>
+      <div class="hint">가운데 선에 오면 정확한 음입니다(100센트 = 반음). 한 음씩 조용한 곳에서 길게 내 보세요. 목소리·피리·기타 같은 단순한 소리에 잘 맞습니다.</div>
+    </div>
+    <div class="panel">
+      <div class="stepTitle">음계 소리 내기 (4옥타브)</div>
+      <div class="row"><label><input type="radio" name="tScale" value="eq" checked> 평균율 (2^(n/12))</label>
+        <label><input type="radio" name="tScale" value="just"> 순정율 (정수비)</label></div>
+      <div class="notes" id="tNotes"></div>
+      <div class="hint" id="tScaleHint"></div>
+    </div>
+  </section>
+
+  <!-- ===== 8. 소음 측정기 ===== -->
+  <section class="tab" id="t-db">
+    <div class="panel">
+      <div class="stepTitle">소음 측정기 (dB)</div>
+      <div class="row"><div class="big" id="nNow">—</div><span class="big" style="font-size:1em">dB</span>
+        <div class="kv"><span>최소 <b id="nMin">—</b></span><span>최대 <b id="nMax">—</b></span><span>평균(Leq) <b id="nAvg">—</b></span></div></div>
+      <canvas id="nCv"></canvas>
+      <div class="row"><label>보정값 <input type="number" id="nOff" value="90" step="1"> dB</label><button id="nRst">최소·최대·평균 초기화</button></div>
+      <div class="warn">⚠ 이 값은 <b>상대값</b>입니다. 폰마다 마이크 감도가 달라 정확한 소음(dB SPL)이 아닙니다. 소음계가 있으면 같은 소리를 재서 <b>보정값</b>을 맞추세요. 거리에 따른 <b>변화량</b>은 보정 없이도 비교할 수 있습니다.</div>
+    </div>
+    <div class="panel">
+      <div class="stepTitle">거리와 소리 크기 (역제곱 법칙)</div>
+      <div class="row"><label>음원까지 거리 <input type="number" id="nDist" value="1" step="0.5" min="0.1"> m</label><button class="primary" id="nAdd">기록 (최근 2초 평균)</button><button id="nClr">표 지우기</button></div>
+      <table><thead><tr><th>거리 (m)</th><th>측정 (dB)</th><th>첫 줄 대비 변화</th><th>이론 −20log(r/r₁)</th></tr></thead><tbody id="nTab"></tbody></table>
+      <div class="hint">점음원이 열린 공간에서 내는 소리의 세기는 거리의 제곱에 반비례하므로, 거리가 2배가 되면 약 6 dB 줄어듭니다. 실내에서는 반사 때문에 덜 줄어듭니다.</div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+/* =====================================================================
+   소리 실험실 — 구성
+   0. 공통 도구 (오디오 켜기, 마이크, 그래프 그리기)
+   1. 신호 발생기용 Tone 클래스
+   2. 탭별 코드: 분석기 / 발생기 / 공명 / 맥놀이 / 도플러 / 속력 / 튜너 / 소음
+   3. 메인 반복(화면 갱신)
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const AC = window.AudioContext || window.webkitAudioContext;
+let ctx = null;          // AudioContext (사용자 터치 뒤에 만든다)
+let mic = null;          // {stream, src, an, time, spec}
+let wantFFT = 8192;      // 탭마다 분석 창 크기(샘플 수)가 다르다
+const now = () => performance.now() / 1000;
+const num = id => parseFloat($(id).value);
+
+/* ---------- 0. 공통 도구 ---------- */
+function vSound() { return 331.5 + 0.6 * num('temp'); }            // 기온에 따른 소리 속력
+function updateV() { $('vOut').textContent = vSound().toFixed(1); }
+$('temp').addEventListener('input', () => { updateV(); tabs[active].onTemp && tabs[active].onTemp(); });
+
+async function ensureCtx() {
+  if (!ctx) ctx = new AC();
+  if (ctx.state === 'suspended') await ctx.resume();
+  $('srOut').textContent = '표본화 ' + ctx.sampleRate + ' Hz';
+  return ctx;
+}
+
+async function startMic() {
+  await ensureCtx();
+  try {
+    // 음량 자동조절·잡음제거·에코제거를 끄면 소리를 있는 그대로 분석할 수 있다
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    const src = ctx.createMediaStreamSource(stream);
+    const an = ctx.createAnalyser();
+    an.smoothingTimeConstant = 0;
+    src.connect(an);                       // 스피커로는 연결하지 않는다(하울링 방지)
+    mic = { stream, src, an };
+    setFFT(wantFFT);
+    $('btnMic').textContent = '🎙 마이크 끄기'; $('btnMic').classList.add('on');
+    $('micStatus').textContent = '마이크 작동 중';
+  } catch (e) { $('micStatus').textContent = '마이크를 켤 수 없습니다: ' + e.message + ' (https 주소·권한 허용 확인)'; }
+}
+function stopMic() {
+  if (!mic) return;
+  mic.stream.getTracks().forEach(t => t.stop()); mic = null;
+  $('btnMic').textContent = '🎙 마이크 켜기'; $('btnMic').classList.remove('on');
+  $('micStatus').textContent = '마이크가 꺼져 있습니다.';
+}
+$('btnMic').addEventListener('click', () => mic ? stopMic() : startMic());
+
+function setFFT(n) {                       // 창이 길면 주파수는 정밀, 시간은 둔해진다
+  wantFFT = n;
+  if (!mic) return;
+  mic.an.fftSize = n;
+  mic.time = new Float32Array(n);
+  mic.spec = new Float32Array(n / 2);
+}
+// 매 프레임: 파형(time)과 스펙트럼(spec, dB)을 읽는다
+function readMic(needSpec) {
+  if (!mic) return false;
+  mic.an.getFloatTimeDomainData(mic.time);
+  if (needSpec) {
+    mic.an.getFloatFrequencyData(mic.spec);
+    for (let i = 0; i < mic.spec.length; i++) if (!isFinite(mic.spec[i])) mic.spec[i] = -200;
+  }
+  return true;
+}
+function rmsDb(n) {                         // 최근 n개 표본의 dBFS
+  const x = mic.time; let s = 0; const m = Math.min(n || x.length, x.length);
+  for (let i = x.length - m; i < x.length; i++) s += x[i] * x[i];
+  return 20 * Math.log10(Math.sqrt(s / m) + 1e-9);
+}
+// 스펙트럼에서 lo~hi Hz 사이 가장 센 봉우리 (포물선 보간으로 빈 간격보다 정밀하게)
+function findPeak(lo, hi) {
+  const s = mic.spec, df = ctx.sampleRate / mic.an.fftSize;
+  const i0 = Math.max(1, Math.floor(lo / df)), i1 = Math.min(s.length - 2, Math.ceil(hi / df));
+  let k = i0;
+  for (let i = i0; i <= i1; i++) if (s[i] > s[k]) k = i;
+  const a = s[k - 1], b = s[k], c = s[k + 1], den = a - 2 * b + c;
+  const d = den ? Math.max(-0.5, Math.min(0.5, 0.5 * (a - c) / den)) : 0;
+  return { f: (k + d) * df, db: b, k };
+}
+function bandMedian(lo, hi) {               // 잡음 바닥 추정
+  const s = mic.spec, df = ctx.sampleRate / mic.an.fftSize;
+  const v = Array.from(s.slice(Math.max(1, Math.floor(lo / df)), Math.ceil(hi / df))).sort((a, b) => a - b);
+  return v.length ? v[v.length >> 1] : -200;
+}
+
+/* 그래프 */
+function cv(c) {                            // 캔버스를 화면 해상도에 맞춘다
+  const r = c.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+  const W = Math.round(r.width * d), H = Math.round(r.height * d);
+  if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+  const g = c.getContext('2d'); g.setTransform(d, 0, 0, d, 0, 0);
+  return { g, w: r.width, h: r.height };
+}
+function niceTicks(a, b, n) {
+  const raw = (b - a) / n, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p;
+  const s = (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p, out = [];
+  for (let v = Math.ceil(a / s) * s; v <= b + 1e-9; v += s) out.push(+v.toFixed(10));
+  return out;
+}
+function frame(canvas, x0, x1, y0, y1, xl, yl) {   // 축·눈금을 그리고 좌표 변환 함수를 돌려준다
+  const { g, w, h } = cv(canvas), P = { l: 46, r: 10, t: 10, b: 28 };
+  g.fillStyle = '#fff'; g.fillRect(0, 0, w, h);
+  const X = x => P.l + (x - x0) / (x1 - x0) * (w - P.l - P.r);
+  const Y = y => h - P.b - (y - y0) / (y1 - y0) * (h - P.t - P.b);
+  g.font = '11px sans-serif'; g.strokeStyle = '#e3e8ef'; g.fillStyle = '#5a6b7d'; g.lineWidth = 1;
+  g.textAlign = 'center';
+  niceTicks(x0, x1, Math.max(3, Math.floor(w / 80))).forEach(v => { g.beginPath(); g.moveTo(X(v), P.t); g.lineTo(X(v), h - P.b); g.stroke(); g.fillText(+v.toPrecision(6), X(v), h - P.b + 13); });
+  g.textAlign = 'right';
+  niceTicks(y0, y1, 4).forEach(v => { g.beginPath(); g.moveTo(P.l, Y(v)); g.lineTo(w - P.r, Y(v)); g.stroke(); g.fillText(+v.toPrecision(6), P.l - 4, Y(v) + 4); });
+  g.textAlign = 'center'; g.fillText(xl || '', (P.l + w - P.r) / 2, h - 2);
+  g.save(); g.translate(11, (P.t + h - P.b) / 2); g.rotate(-Math.PI / 2); g.fillText(yl || '', 0, 0); g.restore();
+  g.strokeStyle = '#9aa7b6'; g.strokeRect(P.l, P.t, w - P.l - P.r, h - P.t - P.b);
+  return { g, w, h, P, X, Y };
+}
+function vline(f, x, label, color, dash) {
+  const { g, P, h } = f; g.save(); g.strokeStyle = color; g.fillStyle = color; g.setLineDash(dash ? [5, 4] : []);
+  g.beginPath(); g.moveTo(x, P.t); g.lineTo(x, h - P.b); g.stroke(); g.setLineDash([]);
+  if (label) { g.font = '11px sans-serif'; g.textAlign = 'left'; g.fillText(label, x + 3, P.t + 11); } g.restore();
+}
+function drawSpectrum(canvas, fmin, fmax, marks, hold) {
+  const f = frame(canvas, fmin, fmax, -110, 0, '주파수 (Hz)', '세기 (dB)'), g = f.g;
+  (marks || []).forEach((m, i) => { if (m >= fmin && m <= fmax) vline(f, f.X(m), (i + 1) + '', '#c07c00', true); });
+  if (!mic) { g.fillStyle = '#5a6b7d'; g.textAlign = 'center'; g.fillText('마이크를 켜세요', f.w / 2, f.h / 2); return f; }
+  const df = ctx.sampleRate / mic.an.fftSize, i0 = Math.max(1, Math.floor(fmin / df)), i1 = Math.min(mic.spec.length - 1, Math.ceil(fmax / df));
+  if (hold) {
+    if (!hold.a || hold.a.length !== mic.spec.length) hold.a = new Float32Array(mic.spec.length).fill(-200);
+    for (let i = 0; i < hold.a.length; i++) hold.a[i] = Math.max(hold.a[i], mic.spec[i]);
+    g.strokeStyle = '#f0b0b0'; g.beginPath();
+    for (let i = i0; i <= i1; i++) { const x = f.X(i * df), y = f.Y(Math.max(-110, hold.a[i])); i === i0 ? g.moveTo(x, y) : g.lineTo(x, y); } g.stroke();
+  }
+  g.strokeStyle = '#1f6fd6'; g.lineWidth = 1.3; g.beginPath();
+  for (let i = i0; i <= i1; i++) { const x = f.X(i * df), y = f.Y(Math.max(-110, mic.spec[i])); i === i0 ? g.moveTo(x, y) : g.lineTo(x, y); }
+  g.stroke(); g.lineWidth = 1;
+  return f;
+}
+function drawSeries(f, xs, ys, color, dots) {     // 선 또는 점으로 자료 그리기
+  const g = f.g; g.strokeStyle = color; g.fillStyle = color; g.beginPath(); let pen = false;
+  for (let i = 0; i < xs.length; i++) {
+    if (ys[i] == null) { pen = false; continue; }
+    const x = f.X(xs[i]), y = f.Y(ys[i]);
+    if (dots) { g.beginPath(); g.arc(x, y, 2.2, 0, 7); g.fill(); } else { pen ? g.lineTo(x, y) : g.moveTo(x, y); pen = true; }
+  }
+  if (!dots) g.stroke();
+}
+function download(name, text) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + text], { type: 'text/csv' })); a.download = name; a.click();
+}
+const fmt = (v, d = 1) => (v == null || !isFinite(v)) ? '—' : v.toFixed(d);
+
+/* ---------- 1. 소리 내기 (Tone) ---------- */
+const tones = [];
+class Tone {
+  constructor() { tones.push(this); this.o = null; this.g = null; this.sw = null; }
+  async start(f, type = 'sine', vol = 0.2) {
+    await ensureCtx(); this.stop();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.value = f; g.gain.value = 0;
+    o.connect(g); g.connect(ctx.destination); o.start();
+    g.gain.setTargetAtTime(vol, ctx.currentTime, 0.02);        // 딸깍 소리 방지: 서서히 켠다
+    this.o = o; this.g = g;
+  }
+  freq(f) { if (this.o) this.o.frequency.setTargetAtTime(f, ctx.currentTime, 0.01); }
+  vol(v) { if (this.g) this.g.gain.setTargetAtTime(v, ctx.currentTime, 0.02); }
+  sweep(f1, f2, sec, log) {
+    const p = this.o.frequency, t = ctx.currentTime;
+    p.cancelScheduledValues(t); p.setValueAtTime(f1, t);
+    log ? p.exponentialRampToValueAtTime(f2, t + sec) : p.linearRampToValueAtTime(f2, t + sec);
+    this.sw = { t0: t, f1, f2, sec, log };
+  }
+  sweepFreq() {                                               // 지금 훑고 있는 주파수(끝나면 null)
+    const s = this.sw; if (!s) return null;
+    const u = (ctx.currentTime - s.t0) / s.sec; if (u > 1) return null;
+    return s.log ? s.f1 * Math.pow(s.f2 / s.f1, u) : s.f1 + (s.f2 - s.f1) * u;
+  }
+  stop() {
+    if (!this.o) return;
+    this.g.gain.setTargetAtTime(0, ctx.currentTime, 0.02); this.o.stop(ctx.currentTime + 0.15);
+    this.o = null; this.g = null; this.sw = null;
+  }
+  get on() { return !!this.o; }
+}
+const stopAllTones = () => tones.forEach(t => t.stop());
+const volOf = id => Math.pow(num(id) / 100, 2) * 0.8;           // 슬라이더를 귀에 맞는 곡선으로
+
+/* ---------- 2. 탭 ---------- */
+const tabs = {};
+let active = 'ana';
+
+/* --- 분석기 --- */
+tabs.ana = {
+  name: '분석기', fft: 16384, smooth: 0.5, spec: true, hold: null,
+  init() {
+    $('aHold').addEventListener('click', () => {
+      this.hold = this.hold ? null : {}; $('aHold').textContent = '최댓값 유지: ' + (this.hold ? '켜짐' : '꺼짐');
+    });
+  },
+  frame() {
+    const lo = num('aLo') || 0, hi = Math.max(lo + 100, num('aHi') || 4000);
+    drawSpectrum($('aCv'), lo, hi, null, this.hold);
+    if (mic) { const p = findPeak(Math.max(20, lo), hi); $('aPk').textContent = fmt(p.f, 1); $('aDb').textContent = fmt(p.db, 0); }
+  }
+};
+
+/* --- 신호 발생기 --- */
+const gen = new Tone();
+const LOG = { lo: 20, hi: 20000 };
+const sl2f = s => LOG.lo * Math.pow(LOG.hi / LOG.lo, s / 1000);
+const f2sl = f => Math.round(1000 * Math.log(f / LOG.lo) / Math.log(LOG.hi / LOG.lo));
+tabs.gen = {
+  name: '신호 발생기', fft: 4096, smooth: 0.5,
+  init() {
+    const setF = f => { f = Math.max(20, Math.min(20000, f)); $('gF').value = +f.toFixed(2); $('gFs').value = f2sl(f); $('gBig').textContent = +f.toFixed(1) + ' Hz'; gen.freq(f); };
+    $('gFs').addEventListener('input', () => setF(sl2f(+$('gFs').value)));
+    $('gF').addEventListener('input', () => setF(num('gF') || 440));
+    document.querySelectorAll('[data-g]').forEach(b => b.addEventListener('click', () => setF(+b.dataset.g)));
+    $('gGo').addEventListener('click', async () => {
+      if (gen.on) { gen.stop(); $('gGo').textContent = '▶ 소리 내기'; $('gGo').classList.remove('on'); return; }
+      await gen.start(num('gF'), $('gW').value, volOf('gV')); $('gGo').textContent = '■ 멈춤'; $('gGo').classList.add('on');
+    });
+    $('gW').addEventListener('change', () => gen.on && (gen.o.type = $('gW').value));
+    $('gV').addEventListener('input', () => gen.vol(volOf('gV')));
+    $('gSgo').addEventListener('click', async () => {
+      if (!gen.on) { await gen.start(num('gS1'), $('gW').value, volOf('gV')); $('gGo').textContent = '■ 멈춤'; $('gGo').classList.add('on'); }
+      gen.sweep(num('gS1'), num('gS2'), num('gSt'), $('gSlog').checked);
+    });
+  },
+  frame() {
+    if (gen.on && gen.sw) { const f = gen.sweepFreq(); if (f != null) { $('gBig').textContent = Math.round(f) + ' Hz (훑는 중)'; } else { $('gBig').textContent = Math.round(num('gS2')) + ' Hz'; $('gF').value = num('gS2'); gen.sw = null; } }
+  },
+  hide() { $('gGo').textContent = '▶ 소리 내기'; $('gGo').classList.remove('on'); }
+};
+
+/* --- 공명 --- */
+const resTone = new Tone();
+tabs.res = {
+  name: '공명', fft: 16384, smooth: 0.4, spec: true, resp: null, running: false,
+  preds() {                                                    // 관의 공명 주파수 목록
+    const v = vSound(), L = num('rL') / 100, r = num('rR') / 100, out = [];
+    for (let n = 1; n <= 6; n++)
+      out.push($('rType').value === 'closed' ? (2 * n - 1) * v / (4 * (L + 0.6 * r)) : n * v / (2 * (L + 1.2 * r)));
+    return out;
+  },
+  update() {
+    const p = this.preds();
+    $('rPred').innerHTML = '예측 공명 주파수: ' + p.map((f, i) => `<b>${i + 1}</b>번째 ${f.toFixed(0)} Hz`).join(' · ');
+  },
+  onTemp() { this.update(); },
+  init() {
+    ['rType', 'rL', 'rR'].forEach(id => $(id).addEventListener('input', () => this.update()));
+    $('rGo').addEventListener('click', async () => {
+      if (this.running) { this.finish(true); return; }
+      if (!mic) { $('rRes').textContent = '마이크를 먼저 켜세요.'; return; }
+      await resTone.start(num('rS1'), 'sine', volOf('rV'));
+      resTone.sweep(num('rS1'), num('rS2'), num('rSt'), false);
+      this.resp = []; this.running = true; $('rGo').textContent = '■ 중단'; $('rGo').classList.add('on');
+      $('rRes').textContent = '훑는 중… 조용히 기다리세요.';
+    });
+    $('rV').addEventListener('input', () => resTone.vol(volOf('rV')));
+    this.update();
+  },
+  finish(aborted) {
+    this.running = false; resTone.stop(); $('rGo').textContent = '▶ 훑기 시작'; $('rGo').classList.remove('on');
+    if (aborted || !this.resp.length) { $('rRes').textContent = '중단했습니다.'; return; }
+    // 이동 평균으로 매끈하게 한 뒤 가장 큰 봉우리 찾기
+    const r = this.resp, k = 5, sm = r.map((_, i) => { let s = 0, n = 0; for (let j = Math.max(0, i - k); j <= Math.min(r.length - 1, i + k); j++) { s += r[j].db; n++; } return s / n; });
+    let m = 0; for (let i = 1; i < sm.length; i++) if (sm[i] > sm[m]) m = i;
+    const f = r[m].f, p = this.preds(); let near = 0;
+    p.forEach((q, i) => { if (Math.abs(q - f) < Math.abs(p[near] - f)) near = i; });
+    $('rRes').innerHTML = `가장 큰 봉우리: <b>${f.toFixed(0)} Hz</b> — 예측 ${near + 1}번째(${p[near].toFixed(0)} Hz)와 ${(100 * (f - p[near]) / p[near]).toFixed(1)}% 차이.<br>여러 봉우리가 보이면 낮은 쪽부터 배음 번호 n = 1, 2, 3…입니다. 이 주파수를 「소리 속력」 탭 ②에 넣으면 v를 구할 수 있습니다.`;
+    $('sF').value = Math.round(f);
+  },
+  frame() {
+    const marks = this.preds();
+    drawSpectrum($('rCv'), 0, Math.max(1500, marks[3] * 1.1), marks);
+    if (mic) $('rPk').textContent = fmt(findPeak(50, 5000).f, 1);
+    // 훑기 중에는 지금 내는 주파수 근처 세기를 곡선으로 모은다
+    let fx = null;
+    if (this.running) {
+      fx = resTone.sweepFreq();
+      if (fx == null) this.finish(false);
+      else { const df = ctx.sampleRate / mic.an.fftSize, c = Math.round(fx / df); let m = -200; for (let i = c - 2; i <= c + 2; i++) m = Math.max(m, mic.spec[i]); this.resp.push({ f: fx, db: m }); }
+    }
+    const f = frame($('rCv2'), num('rS1'), num('rS2'), -110, 0, '주파수 (Hz)', '세기 (dB)');
+    if (this.resp) drawSeries(f, this.resp.map(a => a.f), this.resp.map(a => a.db), '#d64545');
+  },
+  hide() { if (this.running) this.finish(true); }
+};
+
+/* --- 맥놀이 --- */
+const bA = new Tone(), bB = new Tone();
+tabs.beat = {
+  name: '맥놀이', fft: 2048, smooth: 0, hist: [],
+  init() {
+    $('bGo').addEventListener('click', async () => {
+      if (bA.on || bB.on) { bA.stop(); bB.stop(); $('bGo').textContent = '▶ 소리 내기'; $('bGo').classList.remove('on'); return; }
+      if ($('bPA').checked) await bA.start(num('bA'), 'sine', volOf('bV'));
+      if ($('bPB').checked) await bB.start(num('bB'), 'sine', volOf('bV'));
+      $('bGo').textContent = '■ 멈춤'; $('bGo').classList.add('on');
+    });
+    $('bA').addEventListener('input', () => bA.freq(num('bA'))); $('bB').addEventListener('input', () => bB.freq(num('bB')));
+    $('bV').addEventListener('input', () => { bA.vol(volOf('bV')); bB.vol(volOf('bV')); });
+  },
+  estimate() {                                                // 소리 크기가 커지는 횟수 세기
+    const h = this.hist; if (h.length < 30) return null;
+    const v = h.map(p => p.v), k = 3;
+    const sm = v.map((_, i) => { let s = 0, n = 0; for (let j = Math.max(0, i - k); j <= Math.min(v.length - 1, i + k); j++) { s += v[j]; n++; } return s / n; });
+    const mean = sm.reduce((a, b) => a + b) / sm.length, mx = Math.max(...sm), mn = Math.min(...sm);
+    if (mx - mn < 0.25 * mx) return null;                      // 변화가 작으면 맥놀이가 아님
+    const peaks = [];
+    for (let i = 1; i < sm.length - 1; i++)
+      if (sm[i] > sm[i - 1] && sm[i] >= sm[i + 1] && sm[i] > mean && (!peaks.length || h[i].t - h[peaks[peaks.length - 1]].t > 0.1)) peaks.push(i);
+    if (peaks.length < 3) return null;
+    return (peaks.length - 1) / (h[peaks[peaks.length - 1]].t - h[peaks[0]].t);
+  },
+  frame() {
+    const A = num('bA'), B = num('bB'), df = Math.abs(A - B);
+    $('bTh').textContent = fmt(df, 2);
+    // (1) 이론 합성파
+    const T = df > 0.05 ? Math.min(2.2 / df, 6) : 0.5, f1 = frame($('bCv1'), 0, T, -2.4, 2.4, '시간 (s)', '합성 변위');
+    const xs = [], ys = [], N = Math.floor(f1.w * 3);
+    for (let i = 0; i <= N; i++) { const t = T * i / N; xs.push(t); ys.push(Math.sin(2 * Math.PI * A * t) + Math.sin(2 * Math.PI * B * t)); }
+    f1.g.lineWidth = .8; drawSeries(f1, xs, ys, '#1f6fd6');
+    const ex = [], ep = [], en = [];
+    for (let i = 0; i <= 300; i++) { const t = T * i / 300; ex.push(t); ep.push(Math.abs(2 * Math.cos(Math.PI * df * t))); en.push(-Math.abs(2 * Math.cos(Math.PI * df * t))); }
+    f1.g.lineWidth = 2; drawSeries(f1, ex, ep, '#d64545'); drawSeries(f1, ex, en, '#d64545'); f1.g.lineWidth = 1;
+    // (2) 마이크로 잰 크기
+    const t = now();
+    if (mic) { this.hist.push({ t, v: Math.pow(10, rmsDb(2048) / 20) }); while (this.hist[0].t < t - 8) this.hist.shift(); }
+    const f2 = frame($('bCv2'), -8, 0, 0, Math.max(0.01, ...this.hist.map(p => p.v)) * 1.15, '시간 (s, 현재=0)', '소리 크기');
+    drawSeries(f2, this.hist.map(p => p.t - t), this.hist.map(p => p.v), '#1e8f4e');
+    $('bMe').textContent = mic ? fmt(this.estimate(), 2) : '(마이크 꺼짐)';
+  },
+  hide() { bA.stop(); bB.stop(); $('bGo').textContent = '▶ 소리 내기'; $('bGo').classList.remove('on'); this.hist = []; }
+};
+
+/* --- 도플러 --- */
+const dTone = new Tone();
+tabs.dop = {
+  name: '도플러', fft: 8192, smooth: 0, spec: true, data: [], fRef: null, refAcc: null,
+  init() {
+    $('dGo').addEventListener('click', async () => {
+      if (dTone.on) { dTone.stop(); $('dGo').textContent = '▶ 소리 내기'; $('dGo').classList.remove('on'); return; }
+      await dTone.start(num('dF'), 'sine', volOf('dV')); $('dGo').textContent = '■ 멈춤'; $('dGo').classList.add('on');
+    });
+    $('dF').addEventListener('input', () => dTone.freq(num('dF')));
+    $('dV').addEventListener('input', () => dTone.vol(volOf('dV')));
+    $('dRef').addEventListener('click', () => {
+      if (!mic) { $('dRefV').textContent = '마이크를 켜세요'; return; }
+      this.refAcc = { t0: now(), v: [] }; $('dRefV').textContent = '측정 중…';
+    });
+    $('dClr').addEventListener('click', () => { this.data = []; });
+    $('dCsv').addEventListener('click', () => {
+      const t0 = this.data.length ? this.data[0].t : 0;
+      download('doppler.csv', '시간(s),측정 주파수(Hz),기준 주파수(Hz)\n' + this.data.filter(p => p.f != null).map(p => `${(p.t - t0).toFixed(3)},${p.f.toFixed(2)},${this.fRef ? this.fRef.toFixed(2) : ''}`).join('\n'));
+    });
+    ['dMode', 'dVo', 'dVs', 'dF'].forEach(id => $(id).addEventListener('input', () => this.calc()));
+  },
+  last() { const a = this.data.slice(-3).map(p => p.f).filter(x => x != null).sort((a, b) => a - b); return a.length ? a[a.length >> 1] : null; },
+  calc() {                                                    // 이론값·속력 구하기
+    const v = vSound(), mode = $('dMode').value, vo = num('dVo') || 0, vs = num('dVs') || 0;
+    const f0 = this.fRef || num('dF'), obs = this.last(), L = [];
+    const eff = { A: [vo, 0], B: [0, vs], C1: [vo, vs], C2: [vo, vs] }[mode];
+    const pred = f0 * (v + eff[0]) / (v - eff[1]);
+    L.push(`이론: f′ = ${f0.toFixed(1)} × (${v.toFixed(1)}${eff[0] >= 0 ? '+' : '−'}${Math.abs(eff[0]).toFixed(2)}) / (${v.toFixed(1)}${eff[1] > 0 ? '−' : '+'}${Math.abs(eff[1]).toFixed(2)}) = <b>${pred.toFixed(1)} Hz</b> (Δf = ${(pred - f0).toFixed(1)} Hz)`);
+    if (obs != null && this.fRef) {
+      const r = obs / this.fRef; let est, who;
+      if (mode === 'A') { est = v * (r - 1); who = '관측자 속력 vₒ = v(f′/f₀ − 1)'; }
+      else if (mode === 'B') { est = v * (1 - 1 / r); who = '음원 속력 vₛ = v(1 − f₀/f′)'; }
+      else if (mode === 'C1') { est = r * (v - vs) - v; who = '관측자 속력 vₒ = (f′/f₀)(v − vₛ) − v'; }
+      else { est = v - (v + vo) / r; who = '음원 속력 vₛ = v − (v + vₒ)/(f′/f₀)'; }
+      L.push(`측정(f′ = ${obs.toFixed(1)} Hz)으로 구한 ${who} = <b>${est.toFixed(2)} m/s</b> (+는 마주 보고 다가가는 방향)`);
+    } else L.push('기준 주파수를 재고(정지 상태) 움직여 측정하면 속력을 구해 줍니다.');
+    $('dCalc').innerHTML = L.join('<br>');
+  },
+  onTemp() { this.calc(); },
+  frame() {
+    const t = now(), f0 = num('dF'), band = num('dBand') || 300;
+    let obs = null;
+    if (mic) {
+      const lo = (this.fRef || f0) - band, hi = (this.fRef || f0) + band, p = findPeak(lo, hi);
+      if (p.db - bandMedian(lo, hi) > 12 && p.db > -90) obs = p.f;     // 잡음보다 충분히 클 때만 인정
+      this.data.push({ t, f: obs }); while (this.data.length && this.data[0].t < t - 60) this.data.shift();
+    }
+    if (this.refAcc) {
+      if (obs != null) this.refAcc.v.push(obs);
+      if (t - this.refAcc.t0 > 1.5) {
+        const v = this.refAcc.v.sort((a, b) => a - b);
+        if (v.length > 5) { this.fRef = v.reduce((a, b) => a + b) / v.length; $('dRefV').textContent = this.fRef.toFixed(1); }
+        else $('dRefV').textContent = '소리를 못 잡음';
+        this.refAcc = null;
+      }
+    }
+    const cur = this.last(); $('dObs').textContent = fmt(cur, 1);
+    if (this.fRef) { $('dRefV').textContent = this.fRef.toFixed(1); $('dDf').textContent = cur != null ? fmt(cur - this.fRef, 1) : '—'; $('dRat').textContent = cur != null ? (cur / this.fRef).toFixed(5) : '—'; }
+    // 그래프: 최근 20초, 세로 범위는 기준 근처에서 자동
+    const base = this.fRef || f0, vis = this.data.filter(p => p.t > t - 20 && p.f != null), span = Math.max(20, ...vis.map(p => Math.abs(p.f - base)));
+    const f = frame($('dCv'), -20, 0, base - span * 1.2, base + span * 1.2, '시간 (s, 현재=0)', '측정 주파수 (Hz)');
+    f.g.strokeStyle = '#c07c00'; f.g.setLineDash([5, 4]); f.g.beginPath(); f.g.moveTo(f.P.l, f.Y(base)); f.g.lineTo(f.w - f.P.r, f.Y(base)); f.g.stroke(); f.g.setLineDash([]);
+    drawSeries(f, vis.map(p => p.t - t), vis.map(p => p.f), '#1f6fd6', true);
+    if (Math.floor(t * 2) !== this.lastCalc) { this.lastCalc = Math.floor(t * 2); this.calc(); }
+  },
+  hide() { dTone.stop(); $('dGo').textContent = '▶ 소리 내기'; $('dGo').classList.remove('on'); }
+};
+
+/* --- 소리 속력 --- */
+tabs.spd = {
+  name: '소리 속력', fft: 4096, smooth: 0, echo: null,
+  init() {
+    $('sGo').addEventListener('click', () => this.record());
+    $('sZoom').addEventListener('input', () => { $('sZoomV').textContent = $('sZoom').value; this.view(); });
+    ['sType', 'sL', 'sR', 'sF', 'sN', 'sD'].forEach(id => $(id).addEventListener('input', () => { this.pipe(); this.result(); }));
+    const cvEl = $('sCv');
+    cvEl.addEventListener('pointerdown', e => {                 // 눌러서 가까운 표시선 옮기기
+      if (!this.echo || !this.f) return;
+      const r = cvEl.getBoundingClientRect(), x = e.clientX - r.left, t = this.t0 + (x - this.f.P.l) / (this.f.w - this.f.P.l - this.f.P.r) * (this.t1 - this.t0);
+      const E = this.echo, d1 = Math.abs(t - E.i1 / E.sr), d2 = Math.abs(t - E.i2 / E.sr);
+      if (d1 < d2) E.i1 = Math.round(t * E.sr); else E.i2 = Math.round(t * E.sr);
+      this.draw(); this.result();
+    });
+    this.pipe();
+  },
+  record() {                                                    // 2초 동안 원본 표본을 모은다
+    if (!mic) { $('sRes').textContent = '마이크를 먼저 켜세요.'; return; }
+    const sr = ctx.sampleRate, need = sr * 2, chunks = []; let n = 0;
+    const sp = ctx.createScriptProcessor(4096, 1, 1);
+    $('sGo').disabled = true; $('sRes').textContent = '녹음 중… 지금 박수 한 번!';
+    sp.onaudioprocess = e => {
+      chunks.push(new Float32Array(e.inputBuffer.getChannelData(0))); n += 4096;
+      if (n < need) return;
+      mic.src.disconnect(sp); sp.disconnect(); sp.onaudioprocess = null;
+      const x = new Float32Array(n); let o = 0; for (const c of chunks) { x.set(c, o); o += c.length; }
+      $('sGo').disabled = false; this.analyze(x, sr);
+    };
+    mic.src.connect(sp); sp.connect(ctx.destination);           // 출력은 무음이라 스피커로 소리가 나가지 않는다
+  },
+  analyze(x, sr) {
+    const W = Math.max(1, Math.round(sr * 0.0005)), env = new Float32Array(x.length); let acc = 0;
+    for (let i = 0; i < x.length; i++) { acc += Math.abs(x[i]); if (i >= W) acc -= Math.abs(x[i - W]); env[i] = acc / W; }
+    let mx = 0; for (const v of env) mx = Math.max(mx, v);
+    if (mx < 0.01) { $('sRes').textContent = '소리가 너무 작습니다. 더 크게 박수를 치거나 마이크를 가까이 하세요.'; return; }
+    let i1 = 0; while (env[i1] < 0.25 * mx) i1++;                // 박수의 시작
+    // 박수 소리가 잦아드는 지점: 3 ms 평균으로 매끈하게 만든 크기가 최댓값의 3% 아래로 내려갈 때
+    const W2 = Math.round(sr * 0.003), slow = new Float32Array(x.length); acc = 0; let mxs = 0;
+    for (let i = 0; i < x.length; i++) { acc += Math.abs(x[i]); if (i >= W2) acc -= Math.abs(x[i - W2]); slow[i] = acc / W2; mxs = Math.max(mxs, slow[i]); }
+    let j = i1; while (j < x.length && slow[j] > 0.03 * mxs) j++;
+    // 그 뒤 처음으로 다시 커지는 곳이 반사음의 시작
+    let i2 = j; while (i2 < env.length && env[i2] < 0.05 * mx) i2++;
+    if (i2 >= env.length) i2 = i1 + Math.round(sr * 0.05);       // 못 찾으면 임시 위치
+    this.echo = { x, sr, env, i1, i2 };
+    const ms = Math.max(20, Math.min(400, Math.round((i2 - i1) / sr * 1000 * 1.5)));
+    $('sZoom').value = ms; $('sZoomV').textContent = ms;
+    this.view(); this.result();
+  },
+  view() { if (!this.echo) return; const E = this.echo, ms = num('sZoom') / 1000; this.t0 = E.i1 / E.sr - 0.005; this.t1 = this.t0 + ms; this.draw(); },
+  draw() {
+    const E = this.echo, f = frame($('sCv'), this.t0 * 1000, this.t1 * 1000, -1, 1, '시간 (ms)', '소리 파형'); this.f = f;
+    // 한 화소당 최솟값·최댓값 선분으로 그린다
+    const g = f.g, wpx = f.w - f.P.l - f.P.r; g.strokeStyle = '#4a5a6c';
+    for (let px = 0; px < wpx; px++) {
+      const a = Math.floor((this.t0 + (px / wpx) * (this.t1 - this.t0)) * E.sr), b = Math.floor((this.t0 + ((px + 1) / wpx) * (this.t1 - this.t0)) * E.sr);
+      let lo = 1, hi = -1; for (let i = Math.max(0, a); i <= Math.min(E.x.length - 1, Math.max(a, b)); i++) { lo = Math.min(lo, E.x[i]); hi = Math.max(hi, E.x[i]); }
+      if (hi >= lo) { g.beginPath(); g.moveTo(f.P.l + px, f.Y(hi)); g.lineTo(f.P.l + px, f.Y(lo)); g.stroke(); }
+    }
+    vline(f, f.X(E.i1 / E.sr * 1000), '박수', '#1f6fd6'); vline(f, f.X(E.i2 / E.sr * 1000), '반사음', '#d64545');
+  },
+  result() {
+    const E = this.echo; if (!E) return;
+    const dt = (E.i2 - E.i1) / E.sr, d = num('sD'), v = 2 * d / dt, th = vSound();
+    $('sRes').innerHTML = dt > 0 ? `Δt = <b>${(dt * 1000).toFixed(2)} ms</b> → v = 2d/Δt = <b>${v.toFixed(0)} m/s</b> (기온 ${num('temp')}℃의 이론값 ${th.toFixed(1)} m/s, 차이 ${(100 * (v - th) / th).toFixed(1)}%)<br><span class="hint">Δt가 1 ms 어긋나면 d = ${d} m에서 v가 약 ${(100 * 0.001 / dt).toFixed(1)}% 달라집니다.</span>` : '반사음 표시선을 박수보다 뒤에 두세요.';
+  },
+  pipe() {                                                      // 관 공명 → v
+    const L = num('sL') / 100, r = num('sR') / 100, f = num('sF'), n = num('sN') || 1, th = vSound();
+    const v = $('sType').value === 'closed' ? 4 * (L + 0.6 * r) * f / (2 * n - 1) : 2 * (L + 1.2 * r) * f / n;
+    $('sRes2').innerHTML = `v = <b>${v.toFixed(0)} m/s</b> (이론값 ${th.toFixed(1)} m/s, 차이 ${(100 * (v - th) / th).toFixed(1)}%)<br><span class="hint">한쪽 닫힌 관 v = 4(L+0.6r)f/(2n−1), 양쪽 열린 관 v = 2(L+1.2r)f/n. 공명 탭의 「훑기」에서 구한 주파수가 자동으로 들어옵니다.</span>`;
+  },
+  onTemp() { this.pipe(); this.result(); },
+  frame() { if (!this.echo) { const f = frame($('sCv'), 0, 100, -1, 1, '시간 (ms)', '소리 파형'); f.g.fillStyle = '#5a6b7d'; f.g.textAlign = 'center'; f.g.fillText('「녹음 시작」을 누르고 박수를 치세요', f.w / 2, f.h / 2); } }
+};
+
+/* --- 튜너·음계 --- */
+const NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const KOR = ['도', '도#', '레', '레#', '미', '파', '파#', '솔', '솔#', '라', '라#', '시'];
+const JUST = [1, 9 / 8, 5 / 4, 4 / 3, 3 / 2, 5 / 3, 15 / 8, 2], JN = [0, 2, 4, 5, 7, 9, 11, 12];   // 순정율 비율, 반음 번호
+const sTone = new Tone();
+function pitchACF(buf, sr) {                                    // 자기상관(NSDF)으로 기본 진동수 찾기
+  const W = 2048, maxT = Math.floor(sr / 60), minT = Math.floor(sr / 1500), s = buf.length - W - maxT;
+  if (s < 0) return null;
+  const nsdf = new Float32Array(maxT + 1);
+  for (let t = 0; t <= maxT; t++) {
+    let r = 0, m = 0;
+    for (let i = 0; i < W; i++) { const a = buf[s + i], b = buf[s + i + t]; r += a * b; m += a * a + b * b; }
+    nsdf[t] = m ? 2 * r / m : 0;
+  }
+  let i = 0; while (i < maxT && nsdf[i] > 0) i++;               // 처음 0 아래로 내려갈 때까지
+  const peaks = []; let best = -1, bi = 0;
+  for (; i <= maxT; i++) {
+    if (nsdf[i] > 0) { if (nsdf[i] > best) { best = nsdf[i]; bi = i; } }
+    else if (best > 0) { if (bi >= minT) peaks.push([bi, best]); best = -1; }
+  }
+  if (!peaks.length) return null;
+  const mx = Math.max(...peaks.map(p => p[1])); if (mx < 0.5) return null;
+  const pk = peaks.find(p => p[1] >= 0.9 * mx), t = pk[0];       // 가장 낮은 진동수(옥타브 오류 방지)
+  const a = nsdf[t - 1], b = nsdf[t], c = nsdf[t + 1], den = a - 2 * b + c, d = den ? 0.5 * (a - c) / den : 0;
+  return sr / (t + d);
+}
+tabs.tun = {
+  name: '튜너·음계', fft: 4096, smooth: 0, k: 0, cur: 0,
+  freqOf(i) {                                                   // C4부터 i번째 음
+    const a4 = num('tA4') || 440, c4 = a4 * Math.pow(2, -9 / 12);
+    return $('tNotes').dataset.mode === 'just' ? c4 * JUST[i] : c4 * Math.pow(2, JN[i] / 12);
+  },
+  buildNotes() {
+    const mode = document.querySelector('[name=tScale]:checked').value; $('tNotes').dataset.mode = mode;
+    const box = $('tNotes'); box.innerHTML = '';
+    ['도', '레', '미', '파', '솔', '라', '시', '높은 도'].forEach((nm, i) => {
+      const b = document.createElement('button'); b.innerHTML = `${nm}<small>${this.freqOf(i).toFixed(1)} Hz</small>`;
+      b.addEventListener('click', async () => {
+        if (sTone.on && b.classList.contains('on')) { sTone.stop(); b.classList.remove('on'); return; }
+        box.querySelectorAll('button').forEach(x => x.classList.remove('on'));
+        await sTone.start(this.freqOf(i), 'triangle', 0.25); b.classList.add('on');
+      });
+      box.appendChild(b);
+    });
+    $('tScaleHint').textContent = mode === 'eq' ? '평균율: 옥타브(2배)를 12개의 같은 비(2^(1/12) ≈ 1.0595)로 나눕니다. 피아노가 이 방식입니다.'
+      : '순정율: 도를 1로 두고 9/8, 5/4, 4/3, 3/2, 5/3, 15/8, 2 의 정수비로 만듭니다. 화음이 맑게 울리지만 조(調)를 바꾸면 안 맞습니다. 두 방식의 음을 번갈아 들어 보세요.';
+  },
+  init() {
+    document.querySelectorAll('[name=tScale]').forEach(r => r.addEventListener('change', () => { sTone.stop(); this.buildNotes(); }));
+    $('tA4').addEventListener('input', () => this.buildNotes());
+    this.buildNotes();
+  },
+  frame() {
+    const f = cv($('tCv')), g = f.g, w = f.w, h = f.h;
+    g.fillStyle = '#fff'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#d7dee8'; g.fillStyle = '#5a6b7d'; g.font = '11px sans-serif'; g.textAlign = 'center';
+    for (let c = -50; c <= 50; c += 10) { const x = w / 2 + c / 50 * (w / 2 - 20); g.beginPath(); g.moveTo(x, h * .3); g.lineTo(x, c % 50 === 0 || c === 0 ? h * .8 : h * .6); g.stroke(); if (c % 25 === 0 || c === 0) g.fillText(c, x, h - 4); }
+    g.strokeStyle = '#1e8f4e'; g.lineWidth = 3; g.beginPath(); g.moveTo(w / 2, h * .15); g.lineTo(w / 2, h * .85); g.stroke(); g.lineWidth = 1;
+    if (!mic) { g.fillStyle = '#5a6b7d'; g.fillText('마이크를 켜세요', w / 2, h * .2); return; }
+    if ((this.k++ % 3) === 0) {                                  // 계산이 무거워 3프레임에 한 번
+      this.cur = rmsDb(2048) > -50 ? pitchACF(mic.time, ctx.sampleRate) : null;
+    }
+    const fq = this.cur;
+    if (!fq) { $('tNote').textContent = '—'; $('tKor').textContent = ''; $('tFreq').textContent = '—'; $('tCents').textContent = '—'; return; }
+    const midi = 69 + 12 * Math.log2(fq / (num('tA4') || 440)), m = Math.round(midi), cents = (midi - m) * 100, idx = ((m % 12) + 12) % 12;
+    $('tNote').textContent = NAMES[idx] + (Math.floor(m / 12) - 1); $('tKor').textContent = KOR[idx];
+    $('tFreq').textContent = fq.toFixed(1); $('tCents').textContent = (cents >= 0 ? '+' : '') + cents.toFixed(0);
+    const x = w / 2 + Math.max(-50, Math.min(50, cents)) / 50 * (w / 2 - 20);
+    g.fillStyle = Math.abs(cents) < 5 ? '#1e8f4e' : '#d64545'; g.beginPath(); g.moveTo(x, h * .2); g.lineTo(x - 9, h * .1); g.lineTo(x + 9, h * .1); g.fill();
+  },
+  hide() { sTone.stop(); document.querySelectorAll('#tNotes button').forEach(b => b.classList.remove('on')); }
+};
+
+/* --- 소음 측정기 --- */
+tabs.db = {
+  name: '소음 측정기', fft: 2048, smooth: 0, hist: [], sum: 0, cnt: 0, min: null, max: null, cur: null,
+  init() {
+    $('nRst').addEventListener('click', () => { this.sum = 0; this.cnt = 0; this.min = this.max = null; });
+    $('nClr').addEventListener('click', () => { $('nTab').innerHTML = ''; this.rows = []; });
+    this.rows = [];
+    $('nAdd').addEventListener('click', () => {
+      if (!mic) return;
+      const t = now(), v = this.hist.filter(p => p.t > t - 2).map(p => Math.pow(10, p.db / 10));
+      if (!v.length) return;
+      const L = 10 * Math.log10(v.reduce((a, b) => a + b) / v.length);       // 세기 평균 후 dB
+      this.rows.push({ r: num('nDist'), L });
+      const L1 = this.rows[0].L, r1 = this.rows[0].r;
+      $('nTab').innerHTML = this.rows.map(x => `<tr><td>${x.r}</td><td>${x.L.toFixed(1)}</td><td>${(x.L - L1).toFixed(1)}</td><td>${(-20 * Math.log10(x.r / r1)).toFixed(1)}</td></tr>`).join('');
+    });
+  },
+  frame() {
+    const t = now();
+    if (mic) {
+      const db = rmsDb(2048) + num('nOff'); this.cur = this.cur == null ? db : this.cur * 0.7 + db * 0.3;
+      this.hist.push({ t, db: this.cur }); while (this.hist[0].t < t - 30) this.hist.shift();
+      this.sum += Math.pow(10, db / 10); this.cnt++; this.min = this.min == null ? db : Math.min(this.min, db); this.max = this.max == null ? db : Math.max(this.max, db);
+      $('nNow').textContent = this.cur.toFixed(0); $('nMin').textContent = this.min.toFixed(0); $('nMax').textContent = this.max.toFixed(0);
+      $('nAvg').textContent = (10 * Math.log10(this.sum / this.cnt)).toFixed(0);
+    }
+    const f = frame($('nCv'), -30, 0, 20, 110, '시간 (s, 현재=0)', 'dB');
+    [[40, '조용한 방'], [60, '대화'], [85, '소음 주의']].forEach(([y, s]) => { f.g.strokeStyle = '#f0d9a0'; f.g.beginPath(); f.g.moveTo(f.P.l, f.Y(y)); f.g.lineTo(f.w - f.P.r, f.Y(y)); f.g.stroke(); f.g.fillStyle = '#c07c00'; f.g.textAlign = 'left'; f.g.fillText(s, f.P.l + 4, f.Y(y) - 3); });
+    drawSeries(f, this.hist.map(p => p.t - t), this.hist.map(p => p.db), '#1f6fd6');
+  }
+};
+
+/* ---------- 탭 전환 ---------- */
+const ORDER = ['ana', 'gen', 'res', 'beat', 'dop', 'spd', 'tun', 'db'];
+function activate(id) {
+  if (tabs[active] && tabs[active].hide) tabs[active].hide();
+  stopAllTones();
+  active = id;
+  document.querySelectorAll('.tab').forEach(s => s.classList.toggle('act', s.id === 't-' + id));
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('act', b.dataset.t === id));
+  setFFT(tabs[id].fft);
+  if (mic) mic.an.smoothingTimeConstant = tabs[id].smooth || 0;
+  if (tabs[id].onTemp) tabs[id].onTemp();
+}
+ORDER.forEach(id => {
+  const b = document.createElement('button'); b.textContent = tabs[id].name; b.dataset.t = id;
+  b.addEventListener('click', () => activate(id)); $('tabs').appendChild(b);
+  tabs[id].init && tabs[id].init();
+});
+
+/* ---------- 3. 메인 반복 ---------- */
+function loop() {
+  requestAnimationFrame(loop);
+  const t = tabs[active];
+  if (mic) { mic.an.smoothingTimeConstant = t.smooth || 0; readMic(!!t.spec); }
+  try { t.frame && t.frame(); } catch (e) { console.error(e); }
+}
+updateV();
+document.querySelector('#t-ana').classList.add('act');
+activate('ana');
+loop();
+window.addEventListener('pagehide', () => { stopAllTones(); stopMic(); });
+</script>
+</body>
+</html>

@@ -9,7 +9,7 @@
 - 파동의 간섭 (이중슬릿) — `double-slit/` 완료 (경로차·무늬 간격)
 - 뉴턴 링 박막 간섭 — `newton-rings/` 완료 (스마트폰 사진 분석·보고서)
 - 회절
-- 빛 공방 — `light-workshop/` 협력 보드게임(1막 간섭·2막 굴절 완료, 3막 이중성 예정). 서버 API는 board 앱 `light_game.py`, 교사 화면은 `board.crazyray.uk/admin/lightgame`
+- 빛 공방 — `light-workshop/` 협력 보드게임(1막 간섭·2막 굴절·3막 이중성 완료). 서버 API는 board 앱 `light_game.py`, 교사 화면은 `board.crazyray.uk/admin/lightgame`
 - 편광
 - 도플러 효과
 

@@ -22,7 +22,7 @@
   button { font:inherit; background:#21262d; color:var(--text); border:1px solid var(--line); border-radius:10px; padding:11px 18px; cursor:pointer; min-height:46px; }
   button.pri { background:#1f6feb; border-color:#1f6feb; font-weight:700; }
   button:disabled { opacity:.45; cursor:default; }
-  .teamgrid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-top:6px; }
+  .teamgrid { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-top:6px; }
   .teamgrid button { padding:12px 0; font-weight:700; }
   .teamgrid button.on { background:#1f6feb; border-color:#1f6feb; }
   label.f { display:block; margin-top:12px; font-weight:600; }
@@ -36,6 +36,7 @@
   .chip.ok { background:#12351d; color:var(--ok); border-color:#1f6b33; }
   .chip.me { border-color:var(--acc); color:var(--acc); }
   .clue { border:2px solid var(--gold); border-radius:12px; padding:14px; background:#1b1708; margin:10px 0; }
+  .clue.cover { border-style:dashed; }
   .clue .role { display:inline-block; background:var(--gold); color:#111; font-weight:800; border-radius:8px; padding:1px 12px; margin-bottom:8px; }
   .clue .body { font-size:1.08rem; }
   .story { font-size:1.08rem; }
@@ -89,7 +90,7 @@
 
   <div id="vLobby" class="panel hidden">
     <h2>모둠원을 기다리는 중…</h2>
-    <p>선생님이 게임을 시작하면 사건이 열려요. 아래에서 우리 모둠원을 확인하세요.</p>
+    <p>선생님이 게임을 시작하면 사건이 열려요. 아래에서 우리 모둠원을 확인하세요.<br><span class="sub">모둠이 4명이 아니어도 괜찮아요. 적으면 한 사람이 단서를 둘 이상 맡고, 많으면 일부 단서를 함께 봐요.</span></p>
     <div id="lobbyMembers" class="teamline" style="margin-top:8px"></div>
   </div>
 
@@ -104,6 +105,7 @@
     <div class="panel">
       <h2>🔎 내 단서</h2>
       <div class="sub">내 화면에만 보이는 단서예요. 화면을 보여 주지 말고 <b>말로 설명</b>해서 모둠원에게 알려 주세요.</div>
+      <div class="hintbox hidden" id="absentBox" style="border-color:var(--gold);background:#1b1708"></div>
       <div id="clues"></div>
       <div class="sub" style="margin-top:10px">우리 모둠 단서 분담</div>
       <div id="members" class="teamline"></div>
@@ -167,11 +169,11 @@
   }
   const post = (path, data) => call(path, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)});
 
-  let room = '', team = 0, last = null, endAt = 0, viewKey = '', polling = null, anim = null, animTO = null, formVals = {};
+  let room = '', team = 0, last = null, endAt = 0, viewKey = '', polling = null, anim = null, animTO = null, formVals = {}, coverOn = false, clueSig = '';
 
   // ---------- 입장
   const tp = $('teamPick');
-  for (let t = 1; t <= 5; t++) { const b = document.createElement('button'); b.textContent = t; b.type = 'button';
+  for (let t = 1; t <= 6; t++) { const b = document.createElement('button'); b.textContent = t; b.type = 'button';
     b.onclick = () => { team = t; [...tp.children].forEach((x,i) => x.classList.toggle('on', i+1 === t)); }; tp.appendChild(b); }
   function showJoin(msg){ $('sGame').classList.add('hidden'); $('sJoin').classList.remove('hidden'); $('joinErr').textContent = msg || '';
     $('room').value = room || (QS.get('room')||'').toUpperCase(); $('nick').value = store.get('lw_nick') || '';
@@ -194,7 +196,7 @@
     setInterval(tick, 500);
   }
   async function poll(){
-    const res = await call('/api/lw/state?room=' + encodeURIComponent(room) + '&token=' + token());
+    const res = await call('/api/lw/state?room=' + encodeURIComponent(room) + '&token=' + token() + (coverOn ? '&cover=1' : ''));
     if (res.status === 0) return;
     const d = res.data;
     if (!d.ok) {
@@ -237,15 +239,19 @@
       $('caseNo').textContent = '사건 ' + (d.room.case_idx + 1) + ' / ' + d.room.case_count + ' · ' + c.id;
       $('caseTitle').textContent = c.title; $('story').textContent = c.story;
       $('question').textContent = '👉 ' + c.question; $('textbook').textContent = c.textbook;
-      $('clues').innerHTML = '';
-      c.clues.forEach(cl => { const div = document.createElement('div'); div.className = 'clue';
-        div.innerHTML = '<span class="role">' + esc(cl.role) + ' 카드</span><div class="body">' + cl.html + '</div>';
-        if (cl.fig) { const cv = document.createElement('canvas'); cv.height = 90; div.appendChild(cv); requestAnimationFrame(() => drawFig(cv, cl.fig)); }
-        $('clues').appendChild(div); });
       buildForm(c);
       $('subMsg').textContent = '';
     }
-    $('members').innerHTML = chips(d.members.map(x => ({me:x.me, html: '<b>' + esc(x.nick) + '</b> ' + esc(x.roles.join('·')) + (x.me ? ' (나)' : '')})));
+    const sig = c.clues.map(x => x.role + '|' + (x.cover || '')).join(',');
+    if (fresh || sig !== clueSig) { clueSig = sig; buildClues(c.clues); }
+    const ab = $('absentBox');
+    if (d.absent) {
+      ab.classList.remove('hidden');
+      ab.innerHTML = '⚠️ ' + d.absent.map(a => esc(a.nick) + '(' + esc(a.roles.join('·')) + ' 카드)').join(', ') + ' 님이 잠깐 접속이 끊겨 그 단서를 볼 수 없어요. ' +
+        '<button id="coverBtn" style="margin-top:6px">' + (coverOn ? '대신 보기 끄기' : '제가 대신 볼게요') + '</button>';
+      $('coverBtn').onclick = () => { coverOn = !coverOn; poll(); };
+    } else { ab.classList.add('hidden'); coverOn = false; }
+    $('members').innerHTML = chips(d.members.map(x => ({me:x.me, html: '<b>' + esc(x.nick) + '</b> ' + esc(x.roles.join('·')) + (x.me ? ' (나)' : '') + (x.away ? ' 💤' : '')})));
     const solved = m.solved;
     $('answerPanel').classList.toggle('hidden', solved);
     $('winBox').classList.toggle('hidden', !solved);
@@ -270,6 +276,13 @@
     [...$('teamsLine').children].forEach((el, i) => el.classList.toggle('ok', d.teams[i].solved));
   }
 
+  function buildClues(list){
+    $('clues').innerHTML = '';
+    list.forEach(cl => { const div = document.createElement('div'); div.className = 'clue' + (cl.cover ? ' cover' : '');
+      div.innerHTML = '<span class="role">' + esc(cl.role) + ' 카드' + (cl.cover ? ' · ' + esc(cl.cover) + ' 대신 보는 단서' : '') + '</span><div class="body">' + cl.html + '</div>';
+      if (cl.fig) { const cv = document.createElement('canvas'); cv.height = 90; div.appendChild(cv); requestAnimationFrame(() => drawFig(cv, cl.fig)); }
+      $('clues').appendChild(div); });
+  }
   function buildForm(c){
     const f = $('form'); f.innerHTML = '';
     c.inputs.forEach(i => {
@@ -354,8 +367,33 @@
   function startSim(s){
     stopAnim(); const cv = $('simCv'), fr = $('simFrame'); let cap = '';
     const isFrame = s.type === 'iframe' && typeof s.src === 'string' && s.src.indexOf('../') === 0;   // 같은 사이트의 시뮬만
-    cv.classList.toggle('hidden', isFrame); fr.classList.toggle('hidden', !isFrame);
+    cv.classList.toggle('hidden', isFrame || s.type === 'none'); fr.classList.toggle('hidden', !isFrame);
     if (isFrame) { if (fr.getAttribute('src') !== s.src) fr.setAttribute('src', s.src); $('simCap').textContent = '직접 값을 바꿔 보며 확인해 보세요. (슬라이더를 움직일 수 있어요)'; return; }
+    if (s.type === 'none') { $('simCap').textContent = ''; return; }
+    if (s.type === 'scale') {
+      const [c,w,h] = fit(cv); c.fillStyle = '#0d1117'; c.fillRect(0,0,w,h);
+      const pad = 30, x = v => pad + (Math.log10(v) + 2) / 5 * (w - 2*pad), y0 = 150;
+      c.strokeStyle = '#8b949e'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(pad, y0); c.lineTo(w - pad, y0); c.stroke();
+      c.fillStyle = '#8b949e'; c.font = '11px system-ui'; c.textBaseline = 'top';
+      [0.01, 0.1, 1, 10, 100, 1000].forEach(v => { c.fillRect(x(v), y0 - 4, 1, 8); c.fillText(v + ' nm', x(v) - 14, y0 + 10); });
+      s.items.forEach((it, i) => { const px = x(it.val), ty = 28 + i * 34;
+        c.strokeStyle = it.color; c.lineWidth = 2; c.beginPath(); c.moveTo(px, ty + 10); c.lineTo(px, y0); c.stroke();
+        c.fillStyle = it.color; c.beginPath(); c.arc(px, y0, 5, 0, 6.3); c.fill();
+        c.font = '13px system-ui'; c.textBaseline = 'middle'; const tw = c.measureText(it.label).width;
+        c.fillText(it.label, Math.min(Math.max(px - tw/2, 4), w - tw - 4), ty); });
+      $('simCap').textContent = '가로 눈금은 10배씩 커지는 로그 눈금이에요. 파장(파랑)이 구조(초록)보다 왼쪽(짧음)에 있으면 이상적으로 구분돼요.';
+      return;
+    }
+    if (s.type === 'bars') {
+      const [c,w,h] = fit(cv); c.fillStyle = '#0d1117'; c.fillRect(0,0,w,h);
+      const max = Math.max.apply(null, s.items.map(i => i.val)), bw = w - 190, bh = 34;
+      s.items.forEach((it, i) => { const y = 22 + i * (bh + 22);
+        c.fillStyle = '#8b949e'; c.font = '12px system-ui'; c.textBaseline = 'alphabetic'; c.fillText(it.label, 8, y - 6);
+        c.fillStyle = it.color; c.fillRect(8, y, Math.max(2, bw * it.val / max), bh);
+        c.fillStyle = '#e6edf3'; c.font = '14px system-ui'; c.textBaseline = 'middle'; c.fillText(Math.round(it.val * 10) / 10 + '', 14 + bw * it.val / max, y + bh/2); });
+      $('simCap').textContent = '막대 길이는 개수에 비례해요.';
+      return;
+    }
     if (s.type === 'wave2') {
       cap = s.caption || ('두 빛의 경로차 = 파장의 ' + s.ratio + '배 → ' + (Math.abs(s.ratio - Math.round(s.ratio)) < 1e-9 ? '마루와 마루가 만나 보강(밝다)' : '마루와 골이 만나 상쇄(어둡다)'));
       const t0 = performance.now();

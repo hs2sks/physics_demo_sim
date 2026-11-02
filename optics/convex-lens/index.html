@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>볼록 렌즈의 상 — 광선 추적</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root { --bg:#0d1117; --panel:#161b22; --line:#30363d; --text:#e6edf3; --sub:#8b949e; --acc:#58a6ff; --gold:#f0a500; --ok:#3fb950; }
+  body { background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; padding:16px; min-height:100vh; }
+  h1 { text-align:center; font-size:1.35rem; color:var(--acc); margin-bottom:4px; }
+  .subtitle { text-align:center; font-size:.82rem; color:var(--sub); margin-bottom:14px; }
+  .layout { display:flex; gap:14px; align-items:flex-start; max-width:1100px; margin:0 auto; }
+  .main { flex:1; min-width:0; }
+  .side { width:310px; flex-shrink:0; display:flex; flex-direction:column; gap:10px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .ph { padding:7px 12px; background:#1c2128; border-bottom:1px solid var(--line); font-size:.82rem; font-weight:600; }
+  canvas { display:block; width:100%; }
+  .ctl { padding:10px 12px; }
+  .ctl label { display:flex; justify-content:space-between; font-size:.82rem; margin-top:8px; }
+  .ctl label b { color:var(--gold); font-variant-numeric:tabular-nums; }
+  .ctl .chk { justify-content:flex-start; gap:8px; align-items:center; cursor:pointer; }
+  input[type=range] { width:100%; accent-color:var(--acc); margin-top:2px; }
+  .read { padding:10px 12px; font-size:.86rem; line-height:1.8; }
+  .read b { color:var(--gold); font-variant-numeric:tabular-nums; }
+  .tags { display:flex; gap:6px; flex-wrap:wrap; padding:0 12px 10px; }
+  .tag { border-radius:12px; padding:2px 11px; font-size:.82rem; font-weight:700; background:#102a43; color:var(--acc); }
+  .tag.v { background:#3a2c0a; color:var(--gold); }
+  .note { font-size:.74rem; color:var(--sub); padding:0 12px 10px; line-height:1.55; }
+  a.home { position:fixed; left:12px; bottom:12px; background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:20px; padding:8px 14px; font-size:.85rem; text-decoration:none; z-index:10; }
+  body.embed a.home, body.embed h1, body.embed .subtitle { display:none; }
+  body.embed { padding:8px; }
+  @media (max-width:700px) { .layout { flex-direction:column; align-items:stretch; } .side { width:100%; } }
+</style>
+</head>
+<body>
+<h1>볼록 렌즈의 상 — 광선 추적</h1>
+<div class="subtitle">초점거리와 물체 위치를 바꾸며 세 광선이 만나는 곳(상)을 찾아보세요.</div>
+<div class="layout">
+  <div class="main"><div class="panel"><div class="ph">광선 추적 (가로 눈금 cm · 세로는 보기 좋게 늘려 그림)</div><canvas id="cv" height="380"></canvas></div></div>
+  <div class="side">
+    <div class="panel"><div class="ph">조절</div><div class="ctl">
+      <label>렌즈 초점거리 f <b id="fv"></b></label><input id="f" type="range" min="2" max="20" step="0.1" value="10">
+      <label>물체까지 거리 a <b id="av"></b></label><input id="a" type="range" min="1" max="60" step="0.1" value="25">
+      <label>물체 높이 h <b id="hv"></b></label><input id="h" type="range" min="1" max="8" step="0.5" value="3">
+      <label class="chk"><input id="far" type="checkbox"> 아주 먼 물체 (햇빛처럼 평행광)</label>
+    </div></div>
+    <div class="panel"><div class="ph">읽기값</div>
+      <div class="read">상까지 거리 <b id="bv"></b> · 배율 <b id="mv"></b><br>상의 높이 <b id="hiv"></b><br><span id="chk"></span></div>
+      <div class="tags" id="tags"></div>
+      <div class="note">굵은 선: 실제 빛의 길. 점선: 빛이 나온 것처럼 보이는 뒤쪽 연장선(허상). 렌즈를 얇다고 보고 광선은 렌즈 중심면에서 꺾이는 것으로 그렸어요.</div>
+    </div>
+  </div>
+</div>
+<a class="home" href="../../index.html">🏠 홈</a>
+<script>
+(function(){
+  const q = new URLSearchParams(location.search);
+  if (q.get('embed') === '1') document.body.classList.add('embed');
+  const $ = id => document.getElementById(id), el = {f:$('f'), a:$('a'), h:$('h')}, far = $('far');
+  const num = (k, id, lo, hi) => { const v = parseFloat(q.get(k)); if (isFinite(v)) el[id].value = Math.min(hi, Math.max(lo, v)); };
+  num('f','f',2,20); num('a','a',1,60); num('h','h',1,8);
+  if (q.get('far') === '1') far.checked = true;
+
+  function calc(){
+    const f = +el.f.value, a = +el.a.value, h = +el.h.value;
+    if (far.checked) return {f, a: Infinity, h, b: f, m: 0, hi: 0, far: true};
+    if (Math.abs(a - f) < 1e-9) return {f, a, h, b: Infinity, m: Infinity, hi: Infinity, atF: true};
+    const b = 1 / (1/f - 1/a), m = -b / a;
+    return {f, a, h, b, m, hi: m * h};
+  }
+  function fit(cv){ const dpr = window.devicePixelRatio||1, w = cv.clientWidth, h = +cv.getAttribute('height');
+    cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); const c = cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); return [c,w,h]; }
+  const g = (x, n) => (+x).toFixed(n).replace(/\.?0+$/, '');
+
+  function draw(){
+    const S = calc(), {f, a, h} = S;
+    $('fv').textContent = g(f,1)+' cm'; $('av').textContent = far.checked ? '∞' : g(a,1)+' cm'; $('hv').textContent = g(h,1)+' cm';
+    el.a.disabled = far.checked;
+    const tags = [], v = !far.checked && isFinite(S.b) && S.b < 0;
+    if (far.checked) { $('bv').textContent = g(f,1)+' cm (= f)'; $('mv').textContent = '점으로 모임'; $('hiv').textContent = '—'; $('chk').textContent = '평행광은 초점에 모입니다.'; tags.push(['실상 (한 점)', 0]); }
+    else if (S.atF) { $('bv').textContent = '∞'; $('mv').textContent = '—'; $('hiv').textContent = '—'; $('chk').textContent = '물체가 초점에 있으면 렌즈를 지난 빛이 나란히 나가 상이 생기지 않아요.'; tags.push(['상이 생기지 않음', 1]); }
+    else {
+      $('bv').textContent = g(Math.abs(S.b),1)+' cm' + (v ? ' (렌즈 앞쪽)' : ' (렌즈 뒤쪽)');
+      $('mv').textContent = g(Math.abs(S.m),2)+'배'; $('hiv').textContent = g(Math.abs(S.hi),2)+' cm';
+      $('chk').textContent = '검산 1/a + 1/b = ' + g(1/a + 1/S.b, 4) + ' ≈ 1/f = ' + g(1/f, 4);
+      tags.push([v ? '허상' : '실상', v]); tags.push([v ? '바로 선 상' : '거꾸로 선 상', v]);
+      const am = Math.abs(S.m); tags.push([Math.abs(am-1) < .02 ? '같은 크기' : am > 1 ? '확대' : '축소', 0]);
+    }
+    $('tags').innerHTML = tags.map(t => '<span class="tag' + (t[1] ? ' v' : '') + '">' + t[0] + '</span>').join('');
+
+    const [c,W,H] = fit($('cv'));
+    const bAbs = isFinite(S.b) ? Math.abs(S.b) : 100;
+    const X = Math.max(30, Math.min(100, Math.max(far.checked ? 3*f : 1.25*a, Math.min(bAbs, 120)*1.25, 3*f)));
+    const hiAbs = (far.checked || !isFinite(S.hi)) ? 0 : Math.abs(S.hi);
+    const Y = Math.max(h*1.6, Math.min(hiAbs, 30)*1.25, 6);
+    const sx = W/(2*X), sy = (H/2-18)/Y, X0 = W/2, Y0 = H/2;
+    const px = x => X0 + x*sx, py = y => Y0 - y*sy;
+    c.fillStyle = '#0d1117'; c.fillRect(0,0,W,H);
+    c.save(); c.beginPath(); c.rect(0,0,W,H); c.clip();
+    c.strokeStyle = '#30363d'; c.lineWidth = 1; c.beginPath(); c.moveTo(0,Y0); c.lineTo(W,Y0); c.stroke();
+    // 눈금
+    c.fillStyle = '#8b949e'; c.font = '11px system-ui'; c.textBaseline = 'top';
+    const step = X > 60 ? 20 : 10;
+    for (let x = -Math.floor(X/step)*step; x <= X; x += step) { c.fillRect(px(x), Y0-3, 1, 6); if (x) c.fillText(Math.abs(x), px(x)-6, Y0+6); }
+    // 렌즈
+    c.strokeStyle = '#58a6ff'; c.lineWidth = 3; const ly = Y*.92;
+    c.beginPath(); c.moveTo(px(0), py(ly)); c.lineTo(px(0), py(-ly)); c.stroke();
+    c.fillStyle = '#58a6ff'; [[1,ly],[-1,-ly]].forEach(([s,y]) => { c.beginPath(); c.moveTo(px(0), py(y)); c.lineTo(px(0)-6, py(y)-s*(-10)); c.lineTo(px(0)+6, py(y)-s*(-10)); c.fill(); });
+    // 초점
+    c.fillStyle = '#f0a500'; c.textBaseline = 'alphabetic';
+    [[-f,'F'],[f,"F'"]].forEach(([x,t]) => { c.beginPath(); c.arc(px(x), Y0, 4, 0, 6.3); c.fill(); c.fillText(t, px(x)-5, Y0-9); });
+    const line = (x1,y1,x2,y2,col,dash,w) => { c.strokeStyle = col; c.lineWidth = w||1.8; c.setLineDash(dash||[]); c.beginPath(); c.moveTo(px(x1),py(y1)); c.lineTo(px(x2),py(y2)); c.stroke(); c.setLineDash([]); };
+    const arrow = (x, y, col, dash) => { c.strokeStyle = col; c.fillStyle = col; c.lineWidth = 3; c.setLineDash(dash||[]); c.beginPath(); c.moveTo(px(x), py(0)); c.lineTo(px(x), py(y)); c.stroke(); c.setLineDash([]);
+      const s = y >= 0 ? 1 : -1; c.beginPath(); c.moveTo(px(x), py(y)); c.lineTo(px(x)-6, py(y)+s*10); c.lineTo(px(x)+6, py(y)+s*10); c.fill(); };
+    const extend = (x0,y0,x1,y1,xt) => y0 + (y1-y0)/(x1-x0)*(xt-x0);   // 직선 (x0,y0)-(x1,y1) 의 xt 에서의 y
+    const cols = ['#f85149', '#3fb950', '#d2a8ff'];
+
+    if (far.checked) {
+      [-Y*.55, 0, Y*.55].forEach((y,i) => { line(-X, y, 0, y, cols[i]); line(0, y, X, extend(0,y,f,0,X), cols[i]); });
+      c.fillStyle = '#8b949e'; c.fillText('← 아주 먼 곳의 물체에서 온 평행광', 10, 18);
+    } else if (!S.atF) {
+      arrow(-a, h, '#e6edf3');
+      const yl3 = -h*f/(a-f);                       // 광선3이 렌즈에 닿는 높이
+      // 광선1: 축에 평행 → F'를 지남
+      line(-a, h, 0, h, cols[0]); const y1x = extend(0,h,f,0,X); line(0, h, X, y1x, cols[0]);
+      // 광선2: 렌즈 중심 직진
+      const y2 = extend(-a,h,0,0,X); line(-a, h, X, y2, cols[1]);
+      // 광선3: F를 지나 렌즈에 닿고 축에 평행
+      line(-a, h, 0, yl3, cols[2]); line(0, yl3, X, yl3, cols[2]);
+      if (isFinite(S.b)) {
+        if (S.b < 0) { // 허상: 뒤쪽 연장선
+          const xi = S.b, yi = S.hi;
+          line(0, h, xi, extend(0,h,f,0,xi), cols[0], [5,4], 1.4); line(0, 0, xi, extend(-a,h,0,0,xi), cols[1], [5,4], 1.4); line(0, yl3, xi, yl3, cols[2], [5,4], 1.4);
+          arrow(xi, yi, '#f0a500', [6,4]);
+        } else arrow(S.b, S.hi, '#f0a500');
+      }
+    } else { // 물체가 초점에 있는 경우
+      arrow(-a, h, '#e6edf3'); line(-a, h, 0, h, cols[0]); line(0, h, X, extend(0,h,f,0,X), cols[0]);
+      line(-a, h, X, extend(-a,h,0,0,X), cols[1]);
+    }
+    c.restore();
+    c.fillStyle = '#8b949e'; c.font = '12px system-ui'; c.textBaseline = 'top'; c.fillText('렌즈', px(0)+8, 6);
+  }
+  Object.values(el).forEach(e => e.addEventListener('input', draw)); far.addEventListener('input', draw);
+  window.addEventListener('resize', draw); draw();
+  window.__lens = {calc, draw};
+})();
+</script>
+</body>
+</html>

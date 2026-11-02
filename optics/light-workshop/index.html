@@ -53,6 +53,7 @@
   .teamline .chip b { color:var(--text); }
   table { border-collapse:collapse; width:100%; font-size:.95rem; }
   td, th { border-bottom:1px solid var(--line); padding:7px 6px; text-align:left; }
+  iframe { width:100%; height:430px; border:1px solid var(--line); border-radius:8px; margin-top:8px; background:#0d1117; }
   canvas { width:100%; display:block; background:#0d1117; border:1px solid var(--line); border-radius:8px; margin-top:8px; }
   a { color:var(--acc); }
   a.home { position:fixed; left:12px; bottom:12px; background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:20px; padding:8px 14px; font-size:.85rem; text-decoration:none; z-index:10; }
@@ -127,6 +128,7 @@
       <table class="ans" id="rvAns"></table>
       <div style="margin-top:10px" id="rvExplain"></div>
       <canvas id="simCv" height="230"></canvas>
+      <iframe id="simFrame" class="hidden" title="시뮬레이션" loading="lazy"></iframe>
       <div class="sub" id="simCap" style="margin-top:4px"></div>
       <p style="margin-top:10px" id="rvLink"></p>
     </div>
@@ -136,7 +138,7 @@
 
   <div id="vDone" class="hidden">
     <div class="panel">
-      <h2>🏁 1막 종료</h2>
+      <h2 id="doneTitle">🏁 종료</h2>
       <div id="verdict" style="font-size:1.15rem;font-weight:700;margin:6px 0"></div>
       <table id="doneTbl"></table>
       <div class="sub" style="margin-top:8px">점수는 모둠 근거 점수입니다(정답·첫 시도·힌트 도움). 공동 목표는 위험도를 낮게 지키는 것이었어요.</div>
@@ -321,7 +323,7 @@
     [...$('rvTeams').children].forEach((el, i) => el.classList.toggle('ok', d.teams[i].solved));
   }
   function renderDone(d){
-    $('verdict').textContent = d.summary.verdict;
+    $('doneTitle').textContent = '🏁 ' + d.room.act_title + ' 종료'; $('verdict').textContent = d.summary.verdict;
     $('doneTbl').innerHTML = '<tr><th>모둠</th><th>점수</th></tr>' + d.summary.teams.map(t => '<tr><td>' + t.team + '모둠' + (t.team === d.me.team ? ' (우리)' : '') + '</td><td>' + t.points + '점</td></tr>').join('');
   }
 
@@ -350,7 +352,10 @@
   }
   function stopAnim(){ if (anim) cancelAnimationFrame(anim); anim = null; clearTimeout(animTO); animTO = null; }
   function startSim(s){
-    stopAnim(); const cv = $('simCv'); let cap = '';
+    stopAnim(); const cv = $('simCv'), fr = $('simFrame'); let cap = '';
+    const isFrame = s.type === 'iframe' && typeof s.src === 'string' && s.src.indexOf('../') === 0;   // 같은 사이트의 시뮬만
+    cv.classList.toggle('hidden', isFrame); fr.classList.toggle('hidden', !isFrame);
+    if (isFrame) { if (fr.getAttribute('src') !== s.src) fr.setAttribute('src', s.src); $('simCap').textContent = '직접 값을 바꿔 보며 확인해 보세요. (슬라이더를 움직일 수 있어요)'; return; }
     if (s.type === 'wave2') {
       cap = s.caption || ('두 빛의 경로차 = 파장의 ' + s.ratio + '배 → ' + (Math.abs(s.ratio - Math.round(s.ratio)) < 1e-9 ? '마루와 마루가 만나 보강(밝다)' : '마루와 골이 만나 상쇄(어둡다)'));
       const t0 = performance.now();

@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>빛 공방 — 협력 보드게임</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root { --bg:#0d1117; --panel:#161b22; --panel2:#1c2128; --line:#30363d; --text:#e6edf3; --sub:#8b949e; --acc:#58a6ff;
+          --gold:#f0a500; --ok:#3fb950; --bad:#f85149; }
+  html { -webkit-text-size-adjust:100%; }
+  body { background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; font-size:17px; line-height:1.6;
+         min-height:100vh; padding:14px 14px 90px; max-width:880px; margin:0 auto; }
+  h1 { font-size:1.4rem; color:var(--acc); text-align:center; }
+  h2 { font-size:1.15rem; margin-bottom:6px; }
+  .sub { color:var(--sub); font-size:.88rem; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; margin:12px 0; }
+  .hidden { display:none !important; }
+  input[type=text] { width:100%; font:inherit; background:#0d1117; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  input[type=text]:focus, select:focus { outline:2px solid var(--acc); }
+  select { width:100%; font:inherit; background:#0d1117; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  button { font:inherit; background:#21262d; color:var(--text); border:1px solid var(--line); border-radius:10px; padding:11px 18px; cursor:pointer; min-height:46px; }
+  button.pri { background:#1f6feb; border-color:#1f6feb; font-weight:700; }
+  button:disabled { opacity:.45; cursor:default; }
+  .teamgrid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-top:6px; }
+  .teamgrid button { padding:12px 0; font-weight:700; }
+  .teamgrid button.on { background:#1f6feb; border-color:#1f6feb; }
+  label.f { display:block; margin-top:12px; font-weight:600; }
+  .err { color:var(--bad); margin-top:8px; font-size:.92rem; min-height:1.3em; }
+  .bar { height:18px; border-radius:9px; background:#21262d; overflow:hidden; border:1px solid var(--line); }
+  .bar i { display:block; height:100%; background:linear-gradient(90deg,var(--ok),var(--gold),var(--bad)); transition:width .6s; }
+  .top { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+  .timer { font-size:1.9rem; font-weight:800; font-variant-numeric:tabular-nums; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; }
+  .chip { font-size:.8rem; border-radius:12px; padding:2px 10px; background:#21262d; color:var(--sub); border:1px solid var(--line); }
+  .chip.ok { background:#12351d; color:var(--ok); border-color:#1f6b33; }
+  .chip.me { border-color:var(--acc); color:var(--acc); }
+  .clue { border:2px solid var(--gold); border-radius:12px; padding:14px; background:#1b1708; margin:10px 0; }
+  .clue .role { display:inline-block; background:var(--gold); color:#111; font-weight:800; border-radius:8px; padding:1px 12px; margin-bottom:8px; }
+  .clue .body { font-size:1.08rem; }
+  .story { font-size:1.08rem; }
+  .qbox { border-left:4px solid var(--acc); padding:4px 12px; margin:10px 0; }
+  .inrow { margin-top:12px; }
+  .inrow .l { font-weight:600; margin-bottom:4px; }
+  .inrow .num { display:flex; gap:8px; align-items:center; }
+  .opt { display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border:1px solid var(--line); border-radius:10px; margin-top:6px; cursor:pointer; background:#0d1117; }
+  .opt input { margin-top:5px; accent-color:var(--acc); transform:scale(1.25); }
+  .opt.on { border-color:var(--acc); background:#0c2038; }
+  .inrow.wrong .l { color:var(--bad); }
+  .hintbox { border:1px solid var(--ok); background:#0f2616; border-radius:10px; padding:10px 12px; margin:10px 0; }
+  .win { border:2px solid var(--ok); background:#0f2616; border-radius:12px; padding:12px 14px; margin:10px 0; font-weight:700; }
+  .teamline { display:flex; gap:6px; flex-wrap:wrap; }
+  .teamline .chip b { color:var(--text); }
+  table { border-collapse:collapse; width:100%; font-size:.95rem; }
+  td, th { border-bottom:1px solid var(--line); padding:7px 6px; text-align:left; }
+  canvas { width:100%; display:block; background:#0d1117; border:1px solid var(--line); border-radius:8px; margin-top:8px; }
+  a { color:var(--acc); }
+  a.home { position:fixed; left:12px; bottom:12px; background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:20px; padding:8px 14px; font-size:.85rem; text-decoration:none; z-index:10; }
+  .ans td:first-child { color:var(--sub); width:42%; }
+</style>
+</head>
+<body>
+<h1>💡 빛 공방 — 기술 사건 파일</h1>
+<div class="sub" style="text-align:center">반 전체가 한 팀! 단서를 나눠 가진 모둠원이 말로 설명해 사건을 해결해요.</div>
+
+<!-- 입장 -->
+<div id="sJoin" class="panel hidden">
+  <h2>들어가기</h2>
+  <label class="f" for="room">방 코드 (선생님 화면에 있어요)</label>
+  <input id="room" type="text" maxlength="6" autocomplete="off" autocapitalize="characters" placeholder="예: AB3K9">
+  <label class="f" for="nick">닉네임 <span class="sub">(실명·학번은 쓰지 마세요)</span></label>
+  <input id="nick" type="text" maxlength="10" autocomplete="off" placeholder="2~10자">
+  <label class="f">우리 모둠 번호</label>
+  <div class="teamgrid" id="teamPick"></div>
+  <div class="err" id="joinErr"></div>
+  <button class="pri" id="joinBtn" style="width:100%;margin-top:8px">입장하기</button>
+</div>
+
+<!-- 게임 -->
+<div id="sGame" class="hidden">
+  <div class="panel" id="hdr">
+    <div class="top">
+      <div><b id="roomTitle"></b><div class="sub" id="meLine"></div></div>
+      <div class="timer" id="timer"></div>
+    </div>
+    <div style="margin-top:8px"><div class="sub">공방 위험도 <span id="riskTxt"></span></div><div class="bar"><i id="risk" style="width:0"></i></div></div>
+  </div>
+
+  <div id="vLobby" class="panel hidden">
+    <h2>모둠원을 기다리는 중…</h2>
+    <p>선생님이 게임을 시작하면 사건이 열려요. 아래에서 우리 모둠원을 확인하세요.</p>
+    <div id="lobbyMembers" class="teamline" style="margin-top:8px"></div>
+  </div>
+
+  <div id="vCase" class="hidden">
+    <div class="panel">
+      <div class="sub" id="caseNo"></div>
+      <h2 id="caseTitle"></h2>
+      <div class="story" id="story"></div>
+      <div class="qbox" id="question"></div>
+      <div class="sub" id="textbook"></div>
+    </div>
+    <div class="panel">
+      <h2>🔎 내 단서</h2>
+      <div class="sub">내 화면에만 보이는 단서예요. 화면을 보여 주지 말고 <b>말로 설명</b>해서 모둠원에게 알려 주세요.</div>
+      <div id="clues"></div>
+      <div class="sub" style="margin-top:10px">우리 모둠 단서 분담</div>
+      <div id="members" class="teamline"></div>
+    </div>
+    <div class="hintbox hidden" id="hintBox"></div>
+    <div class="panel" id="answerPanel">
+      <h2>✍️ 우리 모둠의 답</h2>
+      <div class="sub">모둠이 함께 의논한 뒤, 한 사람이 대표로 제출하세요.</div>
+      <div id="form"></div>
+      <div class="err" id="subMsg"></div>
+      <button class="pri" id="subBtn" style="width:100%;margin-top:6px">제출하기</button>
+    </div>
+    <div class="win hidden" id="winBox"></div>
+    <div class="panel hidden" id="hintSend"></div>
+    <div class="panel"><b>다른 모둠은?</b><div id="teamsLine" class="teamline" style="margin-top:6px"></div></div>
+  </div>
+
+  <div id="vReview" class="hidden">
+    <div class="panel">
+      <h2 id="rvTitle"></h2>
+      <div id="rvMine"></div>
+      <table class="ans" id="rvAns"></table>
+      <div style="margin-top:10px" id="rvExplain"></div>
+      <canvas id="simCv" height="230"></canvas>
+      <div class="sub" id="simCap" style="margin-top:4px"></div>
+      <p style="margin-top:10px" id="rvLink"></p>
+    </div>
+    <div class="panel"><b>이번 사건 결과</b><div id="rvTeams" class="teamline" style="margin-top:6px"></div>
+      <div class="sub" style="margin-top:8px">선생님이 정리해 주면 다음 사건으로 넘어가요.</div></div>
+  </div>
+
+  <div id="vDone" class="hidden">
+    <div class="panel">
+      <h2>🏁 1막 종료</h2>
+      <div id="verdict" style="font-size:1.15rem;font-weight:700;margin:6px 0"></div>
+      <table id="doneTbl"></table>
+      <div class="sub" style="margin-top:8px">점수는 모둠 근거 점수입니다(정답·첫 시도·힌트 도움). 공동 목표는 위험도를 낮게 지키는 것이었어요.</div>
+    </div>
+  </div>
+</div>
+<a class="home" href="../../index.html">🏠 홈</a>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const LOCAL = ['localhost','127.0.0.1'].includes(location.hostname);
+  const QS = new URLSearchParams(location.search);
+  const API = LOCAL ? (QS.get('api') || 'http://127.0.0.1:5051') : 'https://board.crazyray.uk';
+  const store = {
+    get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+    set(k,v){ try { localStorage.setItem(k,v); } catch(e){} },
+    del(k){ try { localStorage.removeItem(k); } catch(e){} }
+  };
+  function token(){ let t = store.get('lw_token'); if (!/^[0-9a-f]{32}$/.test(t||'')) {
+      t = Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2,'0')).join(''); store.set('lw_token', t); } return t; }
+  async function call(path, opt){
+    try { const r = await fetch(API + path, opt); return {status:r.status, data: await r.json()}; }
+    catch(e){ return {status:0, data:{ok:false, msg:'연결이 불안정해요. 잠시 뒤 다시 시도돼요.'}}; }
+  }
+  const post = (path, data) => call(path, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)});
+
+  let room = '', team = 0, last = null, endAt = 0, viewKey = '', polling = null, anim = null, animTO = null, formVals = {};
+
+  // ---------- 입장
+  const tp = $('teamPick');
+  for (let t = 1; t <= 5; t++) { const b = document.createElement('button'); b.textContent = t; b.type = 'button';
+    b.onclick = () => { team = t; [...tp.children].forEach((x,i) => x.classList.toggle('on', i+1 === t)); }; tp.appendChild(b); }
+  function showJoin(msg){ $('sGame').classList.add('hidden'); $('sJoin').classList.remove('hidden'); $('joinErr').textContent = msg || '';
+    $('room').value = room || (QS.get('room')||'').toUpperCase(); $('nick').value = store.get('lw_nick') || '';
+    const t = +store.get('lw_team'); if (t) tp.children[t-1].click(); }
+  $('joinBtn').onclick = async () => {
+    const r = $('room').value.trim().toUpperCase(), n = $('nick').value.trim();
+    if (!r) return $('joinErr').textContent = '방 코드를 입력하세요.';
+    if (n.length < 2) return $('joinErr').textContent = '닉네임을 2자 이상 쓰세요.';
+    if (!team) return $('joinErr').textContent = '모둠 번호를 고르세요.';
+    $('joinBtn').disabled = true;
+    const res = await post('/api/lw/join', {room:r, nick:n, team, token: token()});
+    $('joinBtn').disabled = false;
+    if (!res.data.ok) return $('joinErr').textContent = res.data.msg || '입장하지 못했어요.';
+    room = r; store.set('lw_room', r); store.set('lw_nick', n); store.set('lw_team', team); start();
+  };
+
+  function start(){
+    $('sJoin').classList.add('hidden'); $('sGame').classList.remove('hidden');
+    viewKey = ''; poll(); clearInterval(polling); polling = setInterval(poll, 2500);
+    setInterval(tick, 500);
+  }
+  async function poll(){
+    const res = await call('/api/lw/state?room=' + encodeURIComponent(room) + '&token=' + token());
+    if (res.status === 0) return;
+    const d = res.data;
+    if (!d.ok) {
+      if (d.error === 'not_joined' || d.error === 'no_room') { clearInterval(polling); store.del('lw_room'); showJoin(d.msg || (d.error === 'no_room' ? '방이 없어졌어요. 새 코드로 들어오세요.' : '')); }
+      return;
+    }
+    last = d; endAt = Date.now() + d.room.remaining_s * 1000; render(d);
+  }
+  function tick(){
+    if (!last || last.room.phase !== 'case') { $('timer').textContent = ''; return; }
+    const s = Math.max(0, Math.round((endAt - Date.now()) / 1000));
+    $('timer').textContent = Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+    $('timer').style.color = s <= 30 ? 'var(--bad)' : '';
+  }
+
+  // ---------- 화면 그리기
+  function chips(list, cls){ return list.map(x => '<span class="chip ' + (cls||'') + (x.me ? ' me' : '') + '">' + x.html + '</span>').join(''); }
+  function render(d){
+    const R = d.room;
+    $('roomTitle').textContent = R.act_title + ' · 방 ' + R.code;
+    $('meLine').textContent = d.me.nick + ' · ' + d.me.team + '모둠';
+    $('risk').style.width = Math.min(100, R.risk / R.risk_max * 100) + '%';
+    $('riskTxt').textContent = R.risk + ' / ' + R.risk_max;
+    ['vLobby','vCase','vReview','vDone'].forEach(id => $(id).classList.add('hidden'));
+    const key = R.phase + ':' + R.case_idx;
+    const fresh = key !== viewKey; viewKey = key;
+    if (R.phase === 'lobby') {
+      $('vLobby').classList.remove('hidden');
+      $('lobbyMembers').innerHTML = chips(d.members.map(m => ({me:m.me, html: esc(m.nick)}))) ;
+      stopAnim();
+    } else if (R.phase === 'case') { $('vCase').classList.remove('hidden'); renderCase(d, fresh); stopAnim(); }
+    else if (R.phase === 'review') { $('vReview').classList.remove('hidden'); renderReview(d, fresh); }
+    else { $('vDone').classList.remove('hidden'); renderDone(d); stopAnim(); }
+  }
+
+  function renderCase(d, fresh){
+    const c = d.case, m = d.mine;
+    if (fresh) {
+      formVals = {};
+      $('caseNo').textContent = '사건 ' + (d.room.case_idx + 1) + ' / ' + d.room.case_count + ' · ' + c.id;
+      $('caseTitle').textContent = c.title; $('story').textContent = c.story;
+      $('question').textContent = '👉 ' + c.question; $('textbook').textContent = c.textbook;
+      $('clues').innerHTML = '';
+      c.clues.forEach(cl => { const div = document.createElement('div'); div.className = 'clue';
+        div.innerHTML = '<span class="role">' + esc(cl.role) + ' 카드</span><div class="body">' + cl.html + '</div>';
+        if (cl.fig) { const cv = document.createElement('canvas'); cv.height = 90; div.appendChild(cv); requestAnimationFrame(() => drawFig(cv, cl.fig)); }
+        $('clues').appendChild(div); });
+      buildForm(c);
+      $('subMsg').textContent = '';
+    }
+    $('members').innerHTML = chips(d.members.map(x => ({me:x.me, html: '<b>' + esc(x.nick) + '</b> ' + esc(x.roles.join('·')) + (x.me ? ' (나)' : '')})));
+    const solved = m.solved;
+    $('answerPanel').classList.toggle('hidden', solved);
+    $('winBox').classList.toggle('hidden', !solved);
+    if (solved) $('winBox').textContent = '🎉 우리 모둠이 해결했어요! (+' + m.points + '점) 다른 모둠이 풀 때까지 기다리거나 힌트를 보내 주세요.';
+    $('hintBox').classList.toggle('hidden', !d.hint);
+    if (d.hint) $('hintBox').innerHTML = '🤝 <b>다른 모둠이 보낸 힌트</b> (이 사건은 점수가 절반이 돼요)<br>' + esc(d.hint);
+    if (!solved && m.last_wrong) {
+      const names = {}; c.inputs.forEach(i => names[i.id] = i.label);
+      $('subMsg').textContent = '아직 틀린 부분이 있어요: ' + Object.keys(m.last_wrong).filter(k => !m.last_wrong[k]).map(k => '「' + names[k] + '」').join(', ');
+      c.inputs.forEach(i => { const el = document.querySelector('[data-in="' + i.id + '"]'); if (el) el.classList.toggle('wrong', !m.last_wrong[i.id]); });
+    }
+    const hs = $('hintSend');
+    if (solved && d.can_hint_to && d.can_hint_to.length) {
+      hs.classList.remove('hidden');
+      hs.innerHTML = '<b>🤝 막힌 모둠에 힌트 보내기</b> <span class="sub">(보내면 우리 모둠 +3점, 받은 모둠은 점수가 절반)</span><div class="teamline" style="margin-top:8px">' +
+        d.can_hint_to.map(t => '<button data-ht="' + t + '">' + t + '모둠에게</button>').join('') + '</div><div class="err" id="hintMsg"></div>';
+      hs.querySelectorAll('button').forEach(b => b.onclick = async () => {
+        b.disabled = true; const r = await post('/api/lw/hint', {room, token: token(), to_team: +b.dataset.ht});
+        if (!r.data.ok) $('hintMsg').textContent = r.data.msg; poll(); });
+    } else hs.classList.add('hidden');
+    $('teamsLine').innerHTML = chips(d.teams.map(t => ({html: t.team + '모둠 ' + (t.solved ? '✅' : '⏳')})));
+    [...$('teamsLine').children].forEach((el, i) => el.classList.toggle('ok', d.teams[i].solved));
+  }
+
+  function buildForm(c){
+    const f = $('form'); f.innerHTML = '';
+    c.inputs.forEach(i => {
+      const row = document.createElement('div'); row.className = 'inrow'; row.dataset.in = i.id;
+      row.innerHTML = '<div class="l">' + esc(i.label) + '</div>';
+      if (i.kind === 'num') {
+        const w = document.createElement('div'); w.className = 'num';
+        w.innerHTML = '<input type="text" inputmode="decimal" autocomplete="off" style="max-width:180px"><span>' + esc(i.unit) + '</span>';
+        w.firstChild.oninput = e => { formVals[i.id] = e.target.value; }; row.appendChild(w);
+      } else {
+        i.options.forEach((o, k) => { const lb = document.createElement('label'); lb.className = 'opt';
+          lb.innerHTML = '<input type="radio" name="in_' + i.id + '"><span>' + esc(o) + '</span>';
+          lb.firstChild.onchange = () => { formVals[i.id] = k; row.querySelectorAll('.opt').forEach(x => x.classList.remove('on')); lb.classList.add('on'); };
+          row.appendChild(lb); });
+      }
+      f.appendChild(row);
+    });
+  }
+  $('subBtn').onclick = async () => {
+    const c = last && last.case; if (!c) return;
+    const ans = {};
+    for (const i of c.inputs) {
+      let v = formVals[i.id];
+      if (v === undefined || v === '') return $('subMsg').textContent = '「' + i.label + '」 칸을 채워 주세요.';
+      if (i.kind === 'num') { v = parseFloat(String(v).replace(',', '.')); if (!isFinite(v)) return $('subMsg').textContent = '숫자로 써 주세요.'; }
+      ans[i.id] = v;
+    }
+    $('subBtn').disabled = true;
+    const r = await post('/api/lw/submit', {room, token: token(), answers: ans});
+    $('subBtn').disabled = false;
+    if (!r.data.ok) { $('subMsg').textContent = r.data.msg || '제출하지 못했어요.'; return; }
+    if (r.data.solved) { $('subMsg').textContent = ''; }
+    else { $('subMsg').textContent = '아쉬워요, 다시 의논해 볼까요? (오답 ' + r.data.wrong + '회)'; }
+    poll();
+  };
+
+  function renderReview(d, fresh){
+    const rv = d.review, m = d.mine, c = d.case;
+    if (fresh) {
+      $('rvTitle').textContent = c.id + ' ' + c.title + ' — 정리';
+      $('rvAns').innerHTML = Object.keys(rv.answers).map(k => {
+        const lab = (c.inputs.find(i => i.id === k) || {}).label || k;
+        return '<tr><td>' + esc(lab) + '</td><td><b>' + esc(rv.answers[k]) + '</b></td></tr>'; }).join('');
+      $('rvExplain').innerHTML = '<b>풀이</b><br>' + rv.explain;
+      $('rvLink').innerHTML = rv.link ? '🔗 <a href="' + esc(rv.link.href) + '" target="_blank" rel="noopener">' + esc(rv.link.label) + '</a>' : '';
+      startSim(rv.sim);
+    }
+    $('rvMine').innerHTML = m.solved ? '<div class="win">🎉 우리 모둠 해결 (+' + m.points + '점)</div>'
+                                     : '<div class="hintbox" style="border-color:var(--bad);background:#2a1212">우리 모둠은 시간 안에 못 풀었어요. 아래 풀이를 읽고 어디서 막혔는지 이야기해 봐요.</div>';
+    $('rvTeams').innerHTML = chips(d.teams.map(t => ({html: t.team + '모둠 ' + (t.solved ? '✅' : '❌') + (t.hinted ? ' 💡' : '')})));
+    [...$('rvTeams').children].forEach((el, i) => el.classList.toggle('ok', d.teams[i].solved));
+  }
+  function renderDone(d){
+    $('verdict').textContent = d.summary.verdict;
+    $('doneTbl').innerHTML = '<tr><th>모둠</th><th>점수</th></tr>' + d.summary.teams.map(t => '<tr><td>' + t.team + '모둠' + (t.team === d.me.team ? ' (우리)' : '') + '</td><td>' + t.points + '점</td></tr>').join('');
+  }
+
+  // ---------- 그림
+  function wlRGB(nm){ let r=0,g=0,b=0;
+    if (nm<440){r=-(nm-440)/60;b=1} else if(nm<490){g=(nm-440)/50;b=1} else if(nm<510){g=1;b=-(nm-510)/20}
+    else if(nm<580){r=(nm-510)/70;g=1} else if(nm<645){r=1;g=-(nm-645)/65} else {r=1}
+    const f = nm<420 ? .3+.7*(nm-400)/20 : nm>700 ? .3+.7*(750-nm)/50 : 1;
+    return [r,g,b].map(c => Math.round(255*Math.pow(Math.max(0,c)*f, .8))); }
+  function fit(cv){ const dpr = window.devicePixelRatio || 1, w = cv.clientWidth || 300, h = +cv.getAttribute('height');
+    cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); const c = cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); return [c,w,h]; }
+  function strip(c, x0, y0, w, h, lam, d, L, spanMm, shift){
+    const [r,g,b] = wlRGB(lam), n = Math.max(2, Math.round(w));
+    for (let i = 0; i < n; i++) {
+      const y = ((i/(n-1))*2-1) * spanMm * 1e-3 + (shift||0) * (lam*1e-9*L/(d*1e-3)),
+            k = Math.pow(Math.cos(Math.PI*d*1e-3*y/(lam*1e-9*L)), 2);
+      c.fillStyle = 'rgb(' + Math.round(r*k) + ',' + Math.round(g*k) + ',' + Math.round(b*k) + ')'; c.fillRect(x0+i*w/n, y0, w/n+1, h);
+    }
+  }
+  function ticks(c, x0, y0, w, spanMm){ c.fillStyle = '#8b949e'; c.font = '11px system-ui'; c.textBaseline = 'alphabetic';
+    for (let m = -spanMm; m <= spanMm; m += spanMm/2) { const x = x0 + (m+spanMm)/(2*spanMm)*w; c.fillRect(x, y0, 1, 5); c.fillText(m.toFixed(0) + ' mm', Math.min(Math.max(x-14, x0), x0+w-36), y0+17); } }
+  function drawFig(cv, f){
+    if (f.type !== 'fringes') return;
+    const [c,w,h] = fit(cv); c.fillStyle = '#0d1117'; c.fillRect(0,0,w,h);
+    strip(c, 0, 4, w, h-26, f.lam, f.d, f.L, f.span_mm); ticks(c, 0, h-20, w, f.span_mm);
+  }
+  function stopAnim(){ if (anim) cancelAnimationFrame(anim); anim = null; clearTimeout(animTO); animTO = null; }
+  function startSim(s){
+    stopAnim(); const cv = $('simCv'); let cap = '';
+    if (s.type === 'wave2') {
+      cap = s.caption || ('두 빛의 경로차 = 파장의 ' + s.ratio + '배 → ' + (Math.abs(s.ratio - Math.round(s.ratio)) < 1e-9 ? '마루와 마루가 만나 보강(밝다)' : '마루와 골이 만나 상쇄(어둡다)'));
+      const t0 = performance.now();
+      const loop = now => {
+        const [c,w,h] = fit(cv), t = (now - t0) / 1000, rows = [['빛 1', 0, '#58a6ff'], ['빛 2 (경로차만큼 뒤처짐)', s.ratio, '#f0a500']];
+        c.fillStyle = '#0d1117'; c.fillRect(0,0,w,h);
+        const band = (h-10)/3, k = 2*Math.PI*3/w;           // 화면 가득 파장 3개
+        const draw = (y0, fn, col, label) => { c.strokeStyle = col; c.lineWidth = 2; c.beginPath();
+          for (let x = 0; x <= w; x++) { const y = y0 - fn(x) * band*.3; x ? c.lineTo(x,y) : c.moveTo(x,y); } c.stroke();
+          c.fillStyle = '#8b949e'; c.font = '12px system-ui'; c.fillText(label, 6, y0 - band*.5 + 4); };
+        rows.forEach((r,i) => draw(band*(i+.55)+4, x => Math.sin(k*x - 2*Math.PI*t*.6 - 2*Math.PI*r[1]), r[2], r[0]));
+        draw(band*2.55+4, x => Math.sin(k*x - 2*Math.PI*t*.6) + Math.sin(k*x - 2*Math.PI*t*.6 - 2*Math.PI*s.ratio), '#3fb950', '합성(겹친 결과)');
+        anim = requestAnimationFrame(loop);
+      }; anim = requestAnimationFrame(loop);
+    } else if (s.type === 'fringes2') {
+      const a = s.before, b = s.after, ya = a.lam*1e-3/a.d*a.L, yb = b.lam*1e-3/b.d*b.L;
+      cap = '위: 바꾸기 전(간격 ' + ya.toFixed(2) + ' mm) · 아래: 바꾼 뒤(간격 ' + yb.toFixed(2) + ' mm). 같은 눈금(±12 mm)에서 비교하세요.';
+      const [c,w,h] = fit(cv); c.fillStyle = '#0d1117'; c.fillRect(0,0,w,h);
+      c.fillStyle = '#e6edf3'; c.font = '12px system-ui'; c.fillText('전', 6, 14); c.fillText('후', 6, 130);
+      strip(c, 24, 4, w-28, 70, a.lam, a.d, a.L, 12); strip(c, 24, 118-8, w-28, 70, b.lam, b.d, b.L, 12);
+      ticks(c, 24, 196, w-28, 12);
+    } else if (s.type === 'shift') {
+      const lam = s.lam, N = s.N, t0 = performance.now(), dur = 3500;
+      cap = '거울을 밀수록 무늬가 한 줄씩 지나가요. 무늬 ' + N + '줄 = 경로차 ' + N + '×λ, 거울 이동은 그 절반.';
+      const loop = now => {
+        const p = Math.min(1, (now - t0) / dur), cnt = N * p, [c,w,h] = fit(cv);
+        c.fillStyle = '#0d1117'; c.fillRect(0,0,w,h);
+        const [r,g,b] = wlRGB(lam), n = Math.round(w);
+        for (let i = 0; i < n; i++) { const k = Math.pow(Math.cos(Math.PI*(i/n*6 - cnt)), 2);
+          c.fillStyle = 'rgb(' + Math.round(r*k) + ',' + Math.round(g*k) + ',' + Math.round(b*k) + ')'; c.fillRect(i, 20, 2, 110); }
+        c.fillStyle = '#f0a500'; c.fillRect(w/2-1, 14, 2, 122);
+        c.fillStyle = '#e6edf3'; c.font = '14px system-ui';
+        c.fillText('지나간 무늬 ' + Math.floor(cnt) + ' / ' + N + '줄', 8, 158);
+        c.fillText('거울 이동 ≈ ' + (cnt*lam/2/1000).toFixed(2) + ' μm', 8, 182);
+        if (p < 1) anim = requestAnimationFrame(loop); else { anim = null; animTO = setTimeout(() => startSim(s), 2500); }
+      }; anim = requestAnimationFrame(loop);
+    }
+    $('simCap').textContent = cap;
+  }
+
+  // ---------- 시작
+  window.__lw = {render, get state(){ return last; }};
+  room = (QS.get('room') || store.get('lw_room') || '').toUpperCase();
+  if (room && store.get('lw_nick') && +store.get('lw_team') && store.get('lw_token')) {
+    // 이전 접속 복구: 같은 토큰이면 그대로 이어서
+    post('/api/lw/join', {room, nick: store.get('lw_nick'), team: +store.get('lw_team'), token: token()}).then(r => {
+      if (r.data.ok) start(); else showJoin(r.data.msg); });
+  } else showJoin();
+})();
+</script>
+</body>
+</html>

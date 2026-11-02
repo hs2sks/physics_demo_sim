@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>이중 슬릿 간섭 시뮬레이션</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root { --bg:#0d1117; --panel:#161b22; --line:#30363d; --text:#e6edf3; --sub:#8b949e; --acc:#58a6ff; --gold:#f0a500; --ok:#3fb950; }
+  body { background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; padding:16px; min-height:100vh; }
+  h1 { text-align:center; font-size:1.35rem; color:var(--acc); margin-bottom:4px; }
+  .subtitle { text-align:center; font-size:.82rem; color:var(--sub); margin-bottom:14px; }
+  .layout { display:flex; gap:14px; align-items:flex-start; max-width:1100px; margin:0 auto; }
+  .main { flex:1; min-width:0; display:flex; flex-direction:column; gap:10px; }
+  .side { width:310px; flex-shrink:0; display:flex; flex-direction:column; gap:10px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .ph { padding:7px 12px; background:#1c2128; border-bottom:1px solid var(--line); font-size:.82rem; font-weight:600; }
+  canvas { display:block; width:100%; }
+  .ctl { padding:10px 12px; }
+  .ctl label { display:flex; justify-content:space-between; font-size:.82rem; margin-top:8px; }
+  .ctl label b { color:var(--gold); font-variant-numeric:tabular-nums; }
+  input[type=range] { width:100%; accent-color:var(--acc); margin-top:2px; }
+  .read { padding:10px 12px; font-size:.85rem; line-height:1.75; }
+  .read b { color:var(--gold); font-variant-numeric:tabular-nums; }
+  .verdict { margin:8px 12px 12px; padding:8px 10px; border-radius:8px; font-weight:700; text-align:center; font-size:.95rem; }
+  .v-b { background:#3a2c0a; color:var(--gold); } .v-d { background:#102a43; color:var(--acc); } .v-m { background:#21262d; color:var(--sub); }
+  .note { font-size:.74rem; color:var(--sub); padding:0 12px 10px; line-height:1.55; }
+  a.home { position:fixed; left:12px; bottom:12px; background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:20px; padding:8px 14px; font-size:.85rem; text-decoration:none; z-index:10; }
+  body.embed a.home, body.embed h1, body.embed .subtitle { display:none; }
+  body.embed { padding:8px; }
+  @media (max-width:820px) { .layout { flex-direction:column; } .side { width:100%; } }
+</style>
+</head>
+<body>
+<h1>이중 슬릿 간섭 시뮬레이션</h1>
+<div class="subtitle">슬릿 간격·파장·스크린 거리를 바꾸고, 스크린 위의 한 점 P에서 경로차를 확인해 보세요.</div>
+<div class="layout">
+  <div class="main">
+    <div class="panel"><div class="ph">위에서 본 장치 (비율은 과장)</div><canvas id="cv-top" height="190"></canvas></div>
+    <div class="panel"><div class="ph">스크린에 나타난 무늬 (가운데 O에서 ±15 mm)</div><canvas id="cv-strip" height="70"></canvas></div>
+    <div class="panel"><div class="ph">밝기 분포</div><canvas id="cv-graph" height="150"></canvas></div>
+  </div>
+  <div class="side">
+    <div class="panel"><div class="ph">조절</div><div class="ctl">
+      <label>파장 λ <b id="lv">532 nm</b></label><input id="lam" type="range" min="400" max="700" step="1" value="532">
+      <label>슬릿 간격 d <b id="dv">0.25 mm</b></label><input id="d" type="range" min="0.10" max="1.00" step="0.01" value="0.25">
+      <label>스크린 거리 L <b id="Lv">1.00 m</b></label><input id="L" type="range" min="0.5" max="3" step="0.05" value="1">
+      <label>관찰 위치 P <b id="yv">0 mm</b></label><input id="y" type="range" min="-15" max="15" step="0.05" value="3">
+    </div></div>
+    <div class="panel"><div class="ph">읽기값</div>
+      <div class="read">
+        이웃한 밝은 줄 사이 간격 Δy = <b id="dy"></b><br>
+        슬릿1→P <b id="r1"></b> · 슬릿2→P <b id="r2"></b><br>
+        경로차 <b id="dl"></b> = 파장의 <b id="dlr"></b>배
+      </div>
+      <div class="verdict" id="verdict"></div>
+      <div class="note">경로차가 파장의 정수배(0, 1, 2…)이면 보강 간섭으로 밝고, 반정수배(0.5, 1.5…)이면 상쇄 간섭으로 어둡습니다. 슬릿 폭은 아주 좁고 두 슬릿 빛의 세기가 같다고 가정한 이상적인 모형입니다.</div>
+    </div>
+  </div>
+</div>
+<a class="home" href="../../index.html">🏠 홈</a>
+<script>
+(function(){
+  const q = new URLSearchParams(location.search);
+  if (q.get('embed') === '1') document.body.classList.add('embed');
+  const $ = id => document.getElementById(id);
+  const el = {lam:$('lam'), d:$('d'), L:$('L'), y:$('y')};
+  function setFromQuery(key, id, lo, hi){ const v = parseFloat(q.get(key)); if (isFinite(v)) el[id].value = Math.min(hi, Math.max(lo, v)); }
+  setFromQuery('lambda','lam',400,700); setFromQuery('d','d',.1,1); setFromQuery('L','L',.5,3); setFromQuery('y','y',-15,15);
+
+  function wlRGB(nm){ // 가시광 근사 색
+    let r=0,g=0,b=0;
+    if (nm<440){r=-(nm-440)/60;b=1} else if(nm<490){g=(nm-440)/50;b=1} else if(nm<510){g=1;b=-(nm-510)/20}
+    else if(nm<580){r=(nm-510)/70;g=1} else if(nm<645){r=1;g=-(nm-645)/65} else {r=1}
+    const f = nm<420 ? .3+.7*(nm-400)/20 : nm>700 ? .3+.7*(750-nm)/50 : 1;
+    return [r,g,b].map(c => Math.round(255*Math.pow(Math.max(0,c)*f, .8)));
+  }
+  function fit(cv){ const dpr = window.devicePixelRatio||1, w = cv.clientWidth, h = +cv.getAttribute('height');
+    cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); const c = cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); return [c,w,h]; }
+  const fmt = (x,n) => x.toFixed(n);
+
+  function state(){
+    const lam = +el.lam.value*1e-9, d = +el.d.value*1e-3, L = +el.L.value, y = +el.y.value*1e-3;
+    const r1 = Math.hypot(L, y + d/2), r2 = Math.hypot(L, y - d/2);   // 화면에서 S1은 위쪽, y는 아래쪽이 +
+    return {lam, d, L, y, r1, r2, dl: Math.abs(r2-r1), dy: lam*L/d};
+  }
+  const I = (S, y) => Math.pow(Math.cos(Math.PI*S.d*y/(S.lam*S.L)), 2);
+
+  function draw(){
+    const S = state(), [rr,gg,bb] = wlRGB(S.lam*1e9);
+    $('lv').textContent = el.lam.value+' nm'; $('dv').textContent = fmt(+el.d.value,2)+' mm';
+    $('Lv').textContent = fmt(S.L,2)+' m'; $('yv').textContent = fmt(+el.y.value,2)+' mm';
+    $('dy').textContent = fmt(S.dy*1e3,2)+' mm';
+    $('r1').textContent = fmt(S.r1,6)+' m'; $('r2').textContent = fmt(S.r2,6)+' m';
+    const ratio = S.dl/S.lam;
+    $('dl').textContent = fmt(S.dl*1e9,0)+' nm'; $('dlr').textContent = fmt(ratio,2);
+    const frac = ratio - Math.floor(ratio), nearInt = Math.min(frac, 1-frac) < .08, nearHalf = Math.abs(frac-.5) < .08;
+    const v = $('verdict');
+    if (nearInt) { v.className='verdict v-b'; v.textContent = '보강 간섭 → 밝다'; }
+    else if (nearHalf) { v.className='verdict v-d'; v.textContent = '상쇄 간섭 → 어둡다'; }
+    else { v.className='verdict v-m'; v.textContent = '중간 밝기 (정수배·반정수배가 아님)'; }
+
+    // 위에서 본 장치
+    let [c,w,h] = fit($('cv-top'));
+    c.fillStyle = '#0d1117'; c.fillRect(0,0,w,h);
+    const xs = 70, xe = w-50, my = h/2, gap = 12 + 36*(S.d-.1)/.9, py = my + (+el.y.value/15)*(h/2-20);
+    c.strokeStyle = '#8b949e'; c.lineWidth = 3;
+    c.beginPath(); c.moveTo(xs,6); c.lineTo(xs,my-gap-3); c.moveTo(xs,my-gap+3); c.lineTo(xs,my+gap-3); c.moveTo(xs,my+gap+3); c.lineTo(xs,h-6); c.stroke();
+    c.strokeStyle = '#444c56'; c.lineWidth = 6; c.beginPath(); c.moveTo(xe,4); c.lineTo(xe,h-4); c.stroke();
+    c.strokeStyle = `rgb(${rr},${gg},${bb})`; c.lineWidth = 1.6;
+    [my-gap, my+gap].forEach(sy => { c.beginPath(); c.moveTo(xs,sy); c.lineTo(xe,py); c.stroke(); });
+    c.fillStyle = '#e6edf3'; c.font = '12px system-ui'; c.textBaseline='middle';
+    c.fillText('S1', xs-26, my-gap); c.fillText('S2', xs-26, my+gap);
+    c.fillStyle = '#f0a500'; c.beginPath(); c.arc(xe, py, 5, 0, 6.3); c.fill(); c.fillText('P', xe+10, py);
+    c.fillStyle = '#8b949e'; c.fillText('O', xe+10, my); c.fillText('스크린', xe-18, 12);
+    c.strokeStyle = '#30363d'; c.setLineDash([4,4]); c.beginPath(); c.moveTo(xs,my); c.lineTo(xe,my); c.stroke(); c.setLineDash([]);
+
+    // 스크린 무늬
+    [c,w,h] = fit($('cv-strip'));
+    const img = c.createImageData(Math.max(1,Math.round(w*(window.devicePixelRatio||1))), 1);
+    const px = img.width;
+    for (let i=0;i<px;i++){ const yy = ((i/(px-1))*2-1)*15e-3, k = I(S,yy);
+      img.data[i*4]=rr*k; img.data[i*4+1]=gg*k; img.data[i*4+2]=bb*k; img.data[i*4+3]=255; }
+    const tmp = document.createElement('canvas'); tmp.width = px; tmp.height = 1; tmp.getContext('2d').putImageData(img,0,0);
+    c.imageSmoothingEnabled = false; c.drawImage(tmp, 0, 0, w, h-14);
+    c.fillStyle = '#8b949e'; c.font='11px system-ui'; c.textBaseline='alphabetic';
+    for (let m=-15;m<=15;m+=5){ const x = (m+15)/30*(w-1); c.fillRect(x,h-14,1,5); c.fillText(m+' mm', Math.min(Math.max(x-14,0),w-36), h-1); }
+    const xp = (+el.y.value+15)/30*(w-1); c.fillStyle='#f0a500'; c.fillRect(xp-1,0,2,h-14);
+
+    // 밝기 그래프
+    [c,w,h] = fit($('cv-graph'));
+    c.fillStyle = '#0d1117'; c.fillRect(0,0,w,h);
+    c.strokeStyle = '#30363d'; c.lineWidth = 1; c.beginPath(); c.moveTo(0,h-22); c.lineTo(w,h-22); c.stroke();
+    c.strokeStyle = `rgb(${rr},${gg},${bb})`; c.lineWidth = 2; c.beginPath();
+    for (let i=0;i<=w;i++){ const yy = ((i/w)*2-1)*15e-3, Y = (h-26) - I(S,yy)*(h-40); i ? c.lineTo(i,Y) : c.moveTo(i,Y); }
+    c.stroke();
+    c.strokeStyle = '#f0a500'; c.beginPath(); c.moveTo(xp,6); c.lineTo(xp,h-22); c.stroke();
+    c.fillStyle = '#8b949e'; c.font='11px system-ui'; c.fillText('가운데 O', w/2-24, h-6); c.fillText('밝기', 6, 14);
+  }
+  Object.values(el).forEach(e => e.addEventListener('input', draw));
+  window.addEventListener('resize', draw);
+  draw();
+  window.__ds = {state, draw};
+})();
+</script>
+</body>
+</html>

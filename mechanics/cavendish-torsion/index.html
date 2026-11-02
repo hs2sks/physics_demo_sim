@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>캐번디시의 비틀림 저울 실험실 — 중력상수 G 재기</title>
+<style>
+  :root { --bg:#0b0d10; --panel:rgba(18,21,26,.9); --ink:#e9e6df; --sub:#a7acb4; --accent:#d9a441; --border:#343b45; --ok:#7fc98a; --warn:#e8896b; --paper:#efe6cf; --paperink:#2a2418; --cav:#6fa8dc; --new:#d9a441; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { height:100%; background:var(--bg); color:var(--ink); font-family:"Segoe UI","Malgun Gothic",sans-serif; overflow:hidden; font-size:14px; }
+  #stage { position:fixed; inset:0; }
+  #stage canvas { display:block; width:100%; height:100%; touch-action:none; }
+  .panel { position:fixed; background:var(--panel); border:1px solid var(--border); border-radius:12px; backdrop-filter:blur(6px); }
+  #lab { left:12px; top:12px; width:350px; max-height:calc(100vh - 250px); overflow:auto; padding:12px 14px; }
+  #lab h1 { font-size:1.02em; color:var(--accent); margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  #labToggle { flex:0 0 auto; padding:3px 10px; border-radius:99px; border:1px solid var(--border); background:#232a33; color:var(--ink); cursor:pointer; font-size:.8em; }
+  #lab.min { overflow:hidden; } #lab.min h1 { margin-bottom:0; } #lab.min > :not(h1) { display:none; }
+  .steps { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px; }
+  .steps button { flex:1 1 30%; padding:6px 4px; border-radius:7px; border:1px solid var(--border); background:#232a33; color:var(--sub); cursor:pointer; font-size:.8em; line-height:1.25; }
+  .steps button.on { border-color:var(--accent); color:var(--ink); background:#3a3320; }
+  .steps button.done::after { content:" ✓"; color:var(--ok); }
+  #stepBody h2 { font-size:.95em; margin-bottom:6px; }
+  #stepBody p, .note { font-size:.86em; line-height:1.5; color:var(--sub); margin:6px 0; }
+  #stepBody b { color:var(--ink); }
+  .btn { display:block; width:100%; margin-top:7px; padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:#27303a; color:var(--ink); cursor:pointer; font-size:.88em; text-align:left; }
+  .btn:hover:not(:disabled) { border-color:var(--accent); }
+  .btn:disabled { opacity:.45; cursor:default; }
+  .btn.primary { background:#5a4720; border-color:var(--accent); }
+  .row { display:flex; gap:6px; flex-wrap:wrap; margin-top:7px; }
+  .row .btn { margin-top:0; flex:1 1 auto; width:auto; text-align:center; padding:7px 6px; }
+  .chip { padding:4px 9px; border-radius:99px; border:1px solid var(--border); background:#232a33; color:var(--ink); cursor:pointer; font-size:.8em; }
+  .chip:hover { border-color:var(--accent); }
+  label.sl { display:block; margin-top:9px; color:var(--sub); font-size:.86em; }
+  label.sl b { float:right; color:var(--ink); }
+  input[type=range] { width:100%; accent-color:var(--accent); }
+  select { background:#232a33; color:var(--ink); border:1px solid var(--border); border-radius:6px; padding:3px 6px; }
+  .live { margin-top:10px; padding:8px 10px; border-radius:8px; background:rgba(0,0,0,.3); font-size:.82em; display:grid; grid-template-columns:auto 1fr; gap:2px 10px; }
+  .live span:nth-child(odd) { color:var(--sub); }
+  .live .st-ok { color:var(--ok); } .live .st-move { color:var(--warn); }
+  .tools { display:flex; justify-content:space-between; align-items:center; margin-top:10px; font-size:.82em; color:var(--sub); gap:8px; }
+  .disc { margin-top:10px; font-size:.72em; line-height:1.45; color:#8a8f97; }
+  .disc a { color:#9bb8d6; }
+  table { width:100%; border-collapse:collapse; font-size:.78em; font-variant-numeric:tabular-nums; }
+  th, td { padding:3px 4px; text-align:right; border-bottom:1px solid #262d36; white-space:nowrap; }
+  th { color:var(--sub); font-weight:600; } td:first-child, th:first-child { text-align:left; }
+  tr.new td { background:rgba(217,164,65,.14); }
+  .result { margin-top:8px; padding:8px 10px; border-radius:8px; background:rgba(127,201,138,.1); border:1px solid rgba(127,201,138,.35); font-size:.84em; line-height:1.55; }
+  .result.bad { background:rgba(232,137,107,.1); border-color:rgba(232,137,107,.35); }
+  /* 관측 패널: 망원경 시야 + 기록지 + 표 */
+  #obs { right:12px; top:12px; width:min(380px, calc(100vw - 24px)); max-height:calc(100vh - 230px); overflow:auto; padding:10px 12px; }
+  #obs h3 { font-size:.9em; color:var(--accent); margin:0 0 6px; display:flex; justify-content:space-between; align-items:center; }
+  #obs canvas { width:100%; height:auto; display:block; border:1px solid var(--border); border-radius:8px; background:#12100c; }
+  #obs .cap { font-size:.72em; color:var(--sub); margin:3px 0 8px; line-height:1.4; }
+  #obs.min { overflow:hidden; } #obs.min > :not(h3) { display:none; }
+  #obsToggle { padding:3px 10px; border-radius:99px; border:1px solid var(--border); background:#232a33; color:var(--ink); cursor:pointer; font-size:.8em; }
+  /* 대화창 */
+  #talk { left:12px; bottom:56px; width:min(560px, calc(100vw - 24px)); max-height:30vh; overflow:auto; padding:10px; display:flex; flex-direction:column; gap:8px; }
+  .turn { display:flex; gap:9px; align-items:flex-start; }
+  .face { flex:0 0 52px; width:52px; height:52px; border-radius:50%; border:2px solid var(--border); background-color:#222; background-repeat:no-repeat; box-shadow:0 3px 10px rgba(0,0,0,.5); }
+  .face.n { border-color:var(--new); background-image:url(newton.jpg); background-size:200px auto; background-position:-84px -24px; }
+  .face.c { border-color:var(--cav); background-image:url(cavendish.jpg); background-size:230px auto; background-position:-76px -27px; }
+  .bub { flex:1; position:relative; background:var(--paper); color:var(--paperink); border-radius:10px; padding:8px 11px; font-size:.84em; line-height:1.55; }
+  .bub::before { content:""; position:absolute; left:-7px; top:16px; border:7px solid transparent; border-left:0; border-right-color:var(--paper); }
+  .bub .who { display:block; font-size:.78em; font-weight:700; margin-bottom:2px; }
+  .turn.n .who { color:#8a5a0a; } .turn.c .who { color:#1f5f9e; }
+  .bub b { color:#6a3b05; }
+  .bub .eq { display:block; margin:5px 0; padding:4px 8px; background:rgba(60,40,10,.09); border-radius:6px; font-family:Georgia,serif; text-align:center; }
+  .tag { position:fixed; pointer-events:none; transform:translate(-50%,-100%); padding:2px 7px; border-radius:5px; background:rgba(14,16,20,.85); border:1px solid var(--accent); color:var(--ink); font-size:.74em; white-space:nowrap; display:none; }
+  .tag::after { content:""; position:absolute; left:50%; bottom:-5px; margin-left:-4px; border:4px solid transparent; border-top-color:var(--accent); border-bottom:0; }
+  a.home { position:fixed; left:12px; bottom:12px; text-decoration:none; color:var(--ink); background:var(--panel); border:1px solid var(--border); padding:7px 12px; border-radius:8px; font-size:.9em; z-index:5; }
+  #exag { position:fixed; right:12px; bottom:12px; font-size:.74em; color:var(--sub); background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:6px 10px; max-width:300px; line-height:1.4; }
+  #toast { position:fixed; left:50%; top:14px; transform:translateX(-50%); background:#5a2a1a; border:1px solid var(--warn); padding:7px 14px; border-radius:8px; font-size:.86em; display:none; z-index:9; max-width:90vw; }
+  #msg { position:fixed; inset:0; display:none; align-items:center; justify-content:center; text-align:center; padding:24px; color:var(--sub); }
+  @media (max-width: 900px) {
+    #lab { width:auto; right:12px; max-height:38vh; }
+    #obs { top:auto; right:12px; left:12px; width:auto; bottom:56px; max-height:34vh; z-index:6; }
+    #obs.min { max-height:none; }
+    #talk { left:12px; right:12px; width:auto; bottom:56px; max-height:26vh; padding:8px; }
+    body.obsOpen #talk { display:none; }
+    body:not(.obsOpen) #talk { bottom:112px; max-height:22vh; }
+    .face { flex-basis:40px; width:40px; height:40px; background-size:150px auto !important; }
+    .face.n { background-position:-62px -19px !important; } .face.c { background-position:-48px -15px !important; }
+    #exag { display:none; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "../../vendor/three-0.186.1/build/three.module.js",
+  "three/addons/": "../../vendor/three-0.186.1/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="stage"></div>
+<div id="msg">이 브라우저에서는 3D(WebGL)를 쓸 수 없습니다.</div>
+
+<div id="lab" class="panel">
+  <h1><span>캐번디시의 비틀림 저울 · 가상 실험실</span><button id="labToggle" aria-expanded="true">접기 ▴</button></h1>
+  <div class="steps" id="steps"></div>
+  <div id="stepBody"></div>
+  <div class="live" id="live"></div>
+  <div class="tools">
+    <span>시간 배속 <select id="speed"><option value="20">×20</option><option value="60" selected>×60</option><option value="240">×240</option></select></span>
+    <span><button class="chip" id="reset">처음부터</button></span>
+  </div>
+  <label class="tools" style="cursor:pointer"><span><input type="checkbox" id="lite"> 저사양 모드 <small style="color:var(--sub)">(그림자·유리 효과 끔, 가볍게)</small></span></label>
+  <p class="disc">※ 뉴턴과 캐번디시는 실제로 만난 적이 없습니다(뉴턴 1643~1727, 캐번디시 1731~1810). 대화와 설명은 수업용 재구성이고, 장치 수치는 알려진 값(팔 6피트, 작은 공 0.73 kg, 큰 공 158 kg, 거리 225 mm, 주기 약 7분)을 바탕으로 한 모델 계산입니다. 도선 상수·표류·읽기 정밀도는 교육용 가정입니다.<br>
+  초상: 뉴턴 — Godfrey Kneller, 1689 (퍼블릭 도메인) / 캐번디시 — W. Alexander 그림을 C. Rosenberg가 새긴 아쿠아틴트, Wellcome Collection (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, 위키미디어 커먼즈)</p>
+</div>
+
+<div id="obs" class="panel">
+  <h3><span>🔭 관측 · 기록</span><button id="obsToggle" aria-expanded="true">접기 ▴</button></h3>
+  <canvas id="scope" width="720" height="240"></canvas>
+  <div class="cap">망원경 시야(팔 끝의 눈금 읽기, 한 칸 = 0.5 mm). 실제 움직임은 1 mm도 안 됩니다.</div>
+  <canvas id="chart" width="720" height="300"></canvas>
+  <div class="cap">시간–위치 기록지. 속 빈 점은 흔들림의 끝(극점), 점선은 세 극점으로 추정한 평형 위치.</div>
+  <div id="dataBody"></div>
+</div>
+
+<div id="talk" class="panel"></div>
+<div id="tags"></div>
+<div id="toast"></div>
+<div id="exag">3D 화면에서는 팔의 회전각을 <b>40배</b> 과장해 그렸습니다. 실제 팔 끝 이동은 1 mm 안팎입니다.</div>
+<a class="home" href="../../index.html">🏠 홈</a>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+/* 길이 단위: cm. 팔 반길이 91.44(6피트의 절반), 작은 공 반지름 2.54, 큰 공 지름 12인치(반지름 15.24), 은도금 구리 도선 약 40인치 */
+const L = 91.44, AY = 30, CASE_H = 52, CASE_HALF = 104, CW = 5.4, IW = 4.2;
+const R_SMALL = 2.54, R_BIG = 15.24, BEAM_Y = 96, WIRE_TOP = 134, EXAG = 40;
+
+const LITE = { on:false };
+try {
+  const v = localStorage.getItem('cavendish-lite');
+  LITE.on = v === null ? (matchMedia('(pointer:coarse)').matches || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4) : v === '1';
+} catch { LITE.on = false; }
+let renderer;
+try { renderer = new THREE.WebGLRenderer({ antialias:!LITE.on, powerPreference:'high-performance' }); }
+catch (e) { document.getElementById('msg').style.display = 'flex'; throw e; }
+const stage = document.getElementById('stage');
+renderer.setPixelRatio(LITE.on ? 1 : Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = !LITE.on; renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new RoomEnvironment();
+const boxMat = new THREE.MeshBasicMaterial({ color:new THREE.Color(14, 13.5, 12.5) });
+for (const x of [-4.2, 4.2]) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.35, 7, 2.4), boxMat); b.position.set(x, 3.2, 1.5); envScene.add(b); }
+scene.environment = pmrem.fromScene(envScene, 0.03).texture; scene.environmentIntensity = 0.6;
+scene.background = new THREE.Color(0x0b0d10);
+
+const camera = new THREE.PerspectiveCamera(32, 1, 1, 3000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.maxPolarAngle = Math.PI * 0.495; controls.minDistance = 20; controls.maxDistance = 900;
+
+/* ---------- 절차적 텍스처 ---------- */
+function rng(seed){ let s = seed>>>0; return () => (s = (s*1664525 + 1013904223)>>>0) / 4294967296; }
+function noise2(w, h, seed, scale){
+  const r = rng(seed), gw = Math.ceil(w/scale)+2, gh = Math.ceil(h/scale)+2, g = new Float32Array(gw*gh);
+  for (let i=0;i<g.length;i++) g[i] = r();
+  return (x, y) => {
+    const gx = x/scale, gy = y/scale, ix = Math.floor(gx), iy = Math.floor(gy), fx = gx-ix, fy = gy-iy;
+    const sx = fx*fx*(3-2*fx), sy = fy*fy*(3-2*fy);
+    const a = g[iy*gw+ix], b = g[iy*gw+ix+1], c = g[(iy+1)*gw+ix], d = g[(iy+1)*gw+ix+1];
+    return a+(b-a)*sx + (c-a)*sy + (a-b-c+d)*sx*sy;
+  };
+}
+function canvasTex(w, h, draw, opt={}) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = opt.linear ? THREE.NoColorSpace : THREE.SRGBColorSpace;
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  if (opt.repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(...opt.repeat); }
+  return t;
+}
+function woodTexture(seed, base=[78,54,36], amp=[52,38,26]) {
+  return canvasTex(1024, 512, (g, w, h) => {
+    const n1 = noise2(w, h, seed, 180), n2 = noise2(w, h, seed+7, 24), n3 = noise2(w, h, seed+13, 5);
+    const img = g.createImageData(w, h);
+    for (let y=0;y<h;y++) for (let x=0;x<w;x++) {
+      const warp = n1(x*0.12, y)*90 + n2(x*0.3, y)*6, ring = Math.sin((y*0.9 + warp)*0.16);
+      const k = 0.3*(0.5+0.5*ring) + 0.45*n3(x*0.1, y)*0.5 + 0.25*n2(x*0.5, y*0.3), i = (y*w+x)*4;
+      img.data[i] = base[0]+amp[0]*k; img.data[i+1] = base[1]+amp[1]*k; img.data[i+2] = base[2]+amp[2]*k; img.data[i+3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+  }, { repeat:[1.5, 1] });
+}
+function noiseRough(seed, base, amp, scaleA=3, repeat=[3,3]) {
+  return canvasTex(256, 256, (g, w, h) => {
+    const n = noise2(w, h, seed, scaleA), m = noise2(w, h, seed+3, 40), img = g.createImageData(w, h);
+    for (let y=0;y<h;y++) for (let x=0;x<w;x++) {
+      const v = Math.max(0, Math.min(255, (base + amp*(n(x*0.12, y)-0.5) + amp*0.6*(m(x,y)-0.5))*255)), i = (y*w+x)*4;
+      img.data[i]=img.data[i+1]=img.data[i+2]=v; img.data[i+3]=255;
+    }
+    g.putImageData(img,0,0);
+  }, { linear:true, repeat });
+}
+function scaleTexture() {       // 눈금띠(상아색, 0.5 mm 칸을 크게 그림)
+  return canvasTex(1024, 128, (g, w, h) => {
+    g.fillStyle = '#e8dcbc'; g.fillRect(0,0,w,h); g.strokeStyle = '#2a1a0a'; g.fillStyle = '#2a1a0a'; g.textAlign = 'center';
+    for (let i=0;i<=64;i++) { const x = i/64*w, big = i%8===0; g.lineWidth = big ? 3 : 1.5; g.beginPath(); g.moveTo(x, h); g.lineTo(x, h*(big?0.3:0.6)); g.stroke(); }
+  });
+}
+
+/* ---------- 재질 ---------- */
+const wood  = new THREE.MeshPhysicalMaterial({ map:woodTexture(5), roughness:0.55, clearcoat:0.3, clearcoatRoughness:0.4 });
+const woodDark = new THREE.MeshStandardMaterial({ map:woodTexture(9,[48,34,24],[38,28,20]), roughness:0.8 });
+const woodPale = new THREE.MeshStandardMaterial({ map:woodTexture(14,[150,118,78],[70,56,40]), roughness:0.6 });
+const brass = new THREE.MeshStandardMaterial({ color:0xc29a45, metalness:1, roughness:0.32, roughnessMap:noiseRough(3, 0.9, 0.5) });
+const brassDark = new THREE.MeshStandardMaterial({ color:0x8c6a2a, metalness:1, roughness:0.45 });
+const iron = new THREE.MeshStandardMaterial({ color:0x4a4d52, metalness:0.9, roughness:0.5 });
+const silver = new THREE.MeshStandardMaterial({ color:0xd8d8dc, metalness:1, roughness:0.2 });
+const lead = new THREE.MeshStandardMaterial({ color:0x6c7075, metalness:1, roughness:0.48, roughnessMap:noiseRough(31, 0.55, 0.5, 4, [2,2]) });
+const ivory = new THREE.MeshPhysicalMaterial({ color:0xe9dfc6, roughness:0.4, clearcoat:0.4 });
+const glassMat = new THREE.MeshPhysicalMaterial({ color:0xeef6f2, metalness:0, roughness:0.03, transmission:1, ior:1.5, thickness:0.4,
+  attenuationColor:0xcfe8dc, attenuationDistance:60, specularIntensity:1, envMapIntensity:1.2, side:THREE.DoubleSide });
+const add = (parent, geo, mat, {cast=true, recv=true}={}) => { const m = new THREE.Mesh(geo, mat); m.castShadow = cast; m.receiveShadow = recv; parent.add(m); return m; };
+const box = (parent, w, h, d, mat, x, y, z, opt) => { const m = add(parent, new THREE.BoxGeometry(w, h, d), mat, opt); m.position.set(x, y, z); return m; };
+
+/* ---------- 방과 실험대 ---------- */
+const bench = new THREE.Group(); scene.add(bench);
+add(bench, new RoundedBoxGeometry(340, 6, 96, 4, 1.2), wood).position.set(0, -3, 0);
+for (const sx of [-1,1]) for (const sz of [-1,1]) add(bench, new RoundedBoxGeometry(8, 84, 8, 3, 0.8), wood).position.set(sx*155, -48, sz*40);
+const floor = add(scene, new THREE.PlaneGeometry(1400, 1000), woodDark, { cast:false }); floor.rotation.x = -Math.PI/2; floor.position.y = -90;
+floor.material = floor.material.clone(); floor.material.map = woodTexture(21,[40,30,22],[30,22,16]); floor.material.map.repeat.set(10, 6);
+box(scene, 1400, 460, 6, woodDark, 0, 140, -230, { cast:false });         // 뒷벽
+box(scene, 6, 460, 1000, woodDark, -520, 140, 0, { cast:false });         // 왼쪽 벽
+
+/* ---------- 나무 상자(두 끝과 앞·윗면은 유리) ---------- */
+const apparatus = new THREE.Group(); scene.add(apparatus);
+box(apparatus, CASE_HALF*2, 1.4, CW*2, wood, 0, 0.7, 0);
+box(apparatus, CASE_HALF*2, CASE_H, 1.3, wood, 0, CASE_H/2, -CW + 0.65);                 // 뒤판
+box(apparatus, 1.3, CASE_H, CW*2, wood, -CASE_HALF + 0.65, CASE_H/2, 0);                // 왼쪽 끝
+const glassEnd = box(apparatus, 0.5, CASE_H - 1.4, CW*2 - 1.4, glassMat, CASE_HALF - 0.25, CASE_H/2 + 0.7, 0, { cast:false });   // 오른쪽 끝 창
+const glassFront = box(apparatus, CASE_HALF*2 - 2, CASE_H - 1.4, 0.5, glassMat, 0, CASE_H/2 + 0.7, CW - 0.25, { cast:false });
+const glassTop = box(apparatus, CASE_HALF*2 - 2, 0.5, CW*2 - 1.4, glassMat, 0, CASE_H - 0.25, 0, { cast:false });
+for (const sx of [-1,1]) for (const sz of [-1,1]) box(apparatus, 1.6, CASE_H, 1.6, wood, sx*(CASE_HALF - 0.8), CASE_H/2, sz*(CW - 0.8));
+box(apparatus, CASE_HALF*2, 1.4, 1.6, wood, 0, CASE_H - 0.7, CW - 0.8);
+
+/* 중앙 유리 굴뚝(도선 보호) */
+const chim = add(apparatus, new THREE.CylinderGeometry(3.6, 3.6, WIRE_TOP - CASE_H + 1, 40, 1, true), glassMat, { cast:false });
+chim.position.y = CASE_H + (WIRE_TOP - CASE_H + 1)/2;
+add(apparatus, new THREE.CylinderGeometry(4.2, 4.2, 1.2, 40), brassDark).position.y = CASE_H + 0.6;
+
+/* 비틀림 머리(맨 위): 황동 원판과 손잡이 */
+const head = new THREE.Group(); head.position.y = WIRE_TOP + 0.5; apparatus.add(head);
+add(head, new THREE.CylinderGeometry(4.4, 4.4, 1.6, 48), brass).position.y = 0.8;
+add(head, new THREE.TorusGeometry(4.4, 0.25, 12, 48), brassDark).rotation.x = Math.PI/2;
+add(head, new THREE.CylinderGeometry(1.2, 1.4, 2.2, 24), brass).position.y = 2.2;
+add(head, new THREE.SphereGeometry(1.4, 24, 14), ivory).position.y = 3.6;
+
+/* ---------- 도선, 팔, 작은 납공 ---------- */
+const wire = add(apparatus, new THREE.CylinderGeometry(0.1, 0.1, WIRE_TOP - (AY + 4), 8), silver, { cast:false });
+wire.position.y = (AY + 4 + WIRE_TOP)/2;
+const arm = new THREE.Group(); arm.position.y = AY + 4; apparatus.add(arm);
+add(arm, new THREE.BoxGeometry(L*2 + 6, 0.9, 1.3), woodPale);
+add(arm, new THREE.CylinderGeometry(0.9, 1.1, 2.2, 20), brass).position.y = 0.9;     // 도선 물림쇠
+for (const s of [-1,1]) {
+  const ball = add(arm, new THREE.SphereGeometry(R_SMALL, 40, 24), lead); ball.position.set(s*L, -4, 0);
+  add(arm, new THREE.CylinderGeometry(0.12, 0.12, 4 - R_SMALL + 1.3, 8), silver).position.set(s*L, -4/2 + 0.6, 0);
+}
+/* 버니어(상아 조각)와 고정 눈금 — 오른쪽 끝(+x) */
+add(arm, new RoundedBoxGeometry(CASE_HALF - L - 2.2, 0.25, 2.6, 2, 0.05), ivory).position.set((L + CASE_HALF - 1.1)/2 + 0.6, 0.1, 0);
+const tip = add(arm, new THREE.ConeGeometry(0.35, 1.5, 4), brassDark); tip.position.set(CASE_HALF - 2.2, 0.25, 0); tip.rotation.z = -Math.PI/2;
+const scaleMat = new THREE.MeshStandardMaterial({ map:scaleTexture(), roughness:0.7 });
+const scaleStrip = add(apparatus, new THREE.BoxGeometry(0.3, 4.5, 8), scaleMat, { cast:false }); scaleStrip.position.set(CASE_HALF - 1.6, AY + 1.8, 0);
+scaleStrip.material = [ivory, ivory, ivory, ivory, scaleMat, ivory];
+
+/* ---------- 큰 납공 틀(상자 위를 돌며 공을 옮김) ---------- */
+const beamG = new THREE.Group(); scene.add(beamG);
+box(beamG, (L + 14)*2, 3.2, 6, wood, 0, BEAM_Y, 0);
+add(beamG, new THREE.CylinderGeometry(6.2, 6.2, 5, 40), brassDark).position.y = BEAM_Y;          // 굴뚝을 감싸는 고리
+const drum = add(beamG, new THREE.CylinderGeometry(8.5, 8.5, 4, 48), brass); drum.position.y = BEAM_Y + 5;
+add(beamG, new THREE.TorusGeometry(8.5, 0.4, 10, 48), brassDark).position.y = BEAM_Y + 7; beamG.children.at(-1).rotation.x = Math.PI/2;
+for (const s of [-1,1]) {
+  const big = add(beamG, new THREE.SphereGeometry(R_BIG, 64, 40), lead); big.position.set(s*L, AY, 0);
+  add(beamG, new THREE.CylinderGeometry(0.45, 0.45, BEAM_Y - AY - R_BIG, 12), iron).position.set(s*L, (BEAM_Y + AY + R_BIG)/2, 0);
+  add(beamG, new THREE.TorusGeometry(1.4, 0.35, 10, 20), iron).position.set(s*L, AY + R_BIG + 1.2, 0);
+  add(beamG, new THREE.CylinderGeometry(2.4, 2.4, 1.2, 20), brassDark).position.set(s*L, BEAM_Y - 1.8, 0);
+}
+
+/* ---------- 망원경과 등불(방 밖에서 눈금을 읽는다) ---------- */
+const tele = new THREE.Group(); tele.position.set(CASE_HALF + 26, 0, 0); scene.add(tele);
+add(tele, new THREE.CylinderGeometry(1.4, 1.8, AY - 2, 16), brassDark).position.y = (AY - 2)/2;
+const tube = add(tele, new THREE.CylinderGeometry(3.2, 3.2, 44, 32), brass); tube.rotation.z = Math.PI/2; tube.position.set(0, AY + 2, 0);
+add(tele, new THREE.CylinderGeometry(4.4, 4.4, 8, 32), brassDark).rotation.z = Math.PI/2;
+tele.children.at(-1).position.set(-20, AY + 2, 0);
+add(tele, new THREE.CylinderGeometry(2.0, 2.0, 9, 24), brass).rotation.z = Math.PI/2; tele.children.at(-1).position.set(26, AY + 2, 0);
+const lamp = new THREE.Group(); lamp.position.set(CASE_HALF + 7, 0, 18); scene.add(lamp);
+add(lamp, new THREE.CylinderGeometry(3, 3.6, 10, 20), brassDark).position.y = 5;
+add(lamp, new THREE.CylinderGeometry(1.5, 2.6, 7, 20, 1, true), glassMat, { cast:false }).position.y = 14;
+const glowTex = canvasTex(128, 128, (g, w, h) => { const gr = g.createRadialGradient(64,64,0,64,64,64); gr.addColorStop(0,'rgba(255,230,160,.95)'); gr.addColorStop(.35,'rgba(255,190,100,.35)'); gr.addColorStop(1,'rgba(255,160,60,0)'); g.fillStyle = gr; g.fillRect(0,0,w,h); });
+const flame = new THREE.Sprite(new THREE.SpriteMaterial({ map:glowTex, blending:THREE.AdditiveBlending, depthWrite:false, transparent:true, opacity:.9 }));
+flame.scale.setScalar(22); flame.position.y = 14; lamp.add(flame);
+const lampLight = new THREE.PointLight(0xffc880, 1500, 120, 2); lampLight.position.set(CASE_HALF + 7, 15, 18); scene.add(lampLight);
+
+/* ---------- 조명 ---------- */
+const key = new THREE.DirectionalLight(0xfff0dc, 2.6); key.position.set(120, 260, 200); key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0004; key.shadow.normalBias = 0.05;
+Object.assign(key.shadow.camera, { left:-190, right:190, top:190, bottom:-190, near:10, far:700 });
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x9db8ff, 1.0); rim.position.set(-200, 120, -120); scene.add(rim);
+scene.add(new THREE.HemisphereLight(0xfff4e0, 0x2a2118, 0.4));
+
+/* ---------- 시점 ---------- */
+const VIEWS = {
+  all:   { pos:[70, 215, 400], at:[0, 45, 0] },
+  plan:  { pos:[0, 440, 2],    at:[0, 30, 0] },
+  head:  { pos:[34, 150, 62],  at:[0, 118, 0] },
+  end:   { pos:[205, 88, 135], at:[100, 30, 0] },
+  balls: { pos:[-40, 78, 230], at:[-30, 30, 0] },
+  hero:  { pos:[150, 105, 330], at:[0, 55, 0] },
+};
+let anim = null;
+function goView(name, instant) {
+  const v = VIEWS[name]; if (!v) return;
+  const p1 = new THREE.Vector3(...v.pos), a1 = new THREE.Vector3(...v.at);
+  if (instant) { anim = null; camera.position.copy(p1); controls.target.copy(a1); return; }
+  anim = { t:0, p0:camera.position.clone(), a0:controls.target.clone(), p1, a1 };
+}
+goView('all', true);
+
+function applyQuality() {
+  const on = LITE.on;
+  renderer.shadowMap.enabled = !on; key.castShadow = !on;
+  renderer.setPixelRatio(on ? 1 : Math.min(devicePixelRatio, 2));
+  glassMat.transmission = on ? 0 : 1; glassMat.transparent = on; glassMat.opacity = on ? 0.18 : 1; glassMat.depthWrite = !on;
+  scene.traverse(o => { if (!o.material) return; for (const m of [].concat(o.material)) { if (m.isMeshPhysicalMaterial && m !== glassMat) { if (m.userData.cc === undefined) m.userData.cc = m.clearcoat; m.clearcoat = on ? 0 : m.userData.cc; } m.needsUpdate = true; } });
+  resize();
+}
+function resize() {
+  const w = innerWidth, h = innerHeight; renderer.setSize(w, h); camera.aspect = w/h;
+  camera.fov = w < h ? 32 * Math.min(1.9, h/w*0.9) : 32; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+/* ---------- 실험실 로직이 쓰는 3D 인터페이스 ---------- */
+const anchors = {
+  head:  () => new THREE.Vector3(0, WIRE_TOP + 8, 0),
+  wire:  () => new THREE.Vector3(0, 82, 0),
+  arm:   () => new THREE.Vector3(-L*0.45, AY + 7, 0).applyAxisAngle(new THREE.Vector3(0,1,0), arm.rotation.y),
+  small: () => new THREE.Vector3(L, AY - 4 + 5, 0).applyAxisAngle(new THREE.Vector3(0,1,0), arm.rotation.y).add(new THREE.Vector3(0, 8, 0)),
+  big:   () => new THREE.Vector3(L, AY + R_BIG + 4, 0).applyAxisAngle(new THREE.Vector3(0,1,0), beamG.rotation.y),
+  scale: () => new THREE.Vector3(CASE_HALF - 1, AY + 8, 0),
+  tele:  () => new THREE.Vector3(CASE_HALF + 26, AY + 8, 0),
+};
+const frameCbs = [];
+window.SCENE = {
+  /** th: 팔의 실제 비틀림각(rad), phi: 큰 공 틀의 각(rad). 팔 각도는 보이도록 EXAG배 과장 */
+  setPose(th, phi) { arm.rotation.y = th * EXAG; head.rotation.y = -th * EXAG * 0.0; beamG.rotation.y = phi; drum.rotation.y = 0; },
+  goView,
+  project(name) { const v = anchors[name]().project(camera); return { x:(v.x*0.5+0.5)*innerWidth, y:(-v.y*0.5+0.5)*innerHeight, ok:v.z < 1 && v.z > -1 }; },
+  get lite() { return LITE.on; },
+  setLite(v) { LITE.on = v; try { localStorage.setItem('cavendish-lite', v ? '1' : '0'); } catch {} applyQuality(); },
+  anchorNames: Object.keys(anchors),
+  onFrame(cb) { frameCbs.push(cb); },
+  EXAG,
+};
+applyQuality();
+
+let last = performance.now();
+renderer.setAnimationLoop((now) => {
+  if (LITE.on && now - last < 30) return;
+  const dt = Math.min(0.05, (now-last)/1000); last = now;
+  if (anim) {
+    anim.t = Math.min(1, anim.t + dt/1.1); const e = anim.t<.5 ? 2*anim.t*anim.t : 1-Math.pow(-2*anim.t+2,2)/2;
+    camera.position.lerpVectors(anim.p0, anim.p1, e); controls.target.lerpVectors(anim.a0, anim.a1, e);
+    if (anim.t>=1) anim = null;
+  }
+  flame.material.opacity = 0.82 + 0.1*Math.sin(now/90) + 0.05*Math.sin(now/37);
+  for (const cb of frameCbs) cb(dt);
+  controls.update(); renderer.render(scene, camera);
+  window.__frames = (window.__frames||0)+1;
+});
+window.__ready = true;
+</script>
+<script>
+(() => {
+  const mk = (panel, btn, key) => {
+    const el = document.getElementById(panel), b = document.getElementById(btn);
+    const set = min => { el.classList.toggle('min', min); b.textContent = min ? '펼치기 ▾' : '접기 ▴'; b.setAttribute('aria-expanded', String(!min));
+      if (panel === 'obs') document.body.classList.toggle('obsOpen', !min); try { localStorage.setItem(key, min ? '1' : '0'); } catch {} };
+    b.onclick = () => set(!el.classList.contains('min'));
+    try { if (localStorage.getItem(key) === '1') set(true); } catch {}
+    if (panel === 'obs' && matchMedia('(max-width: 900px)').matches) set(true);
+    return set;
+  };
+  window.__setLabMin = mk('lab', 'labToggle', 'cavendish-lab-min'); window.__setObsMin = mk('obs', 'obsToggle', 'cavendish-obs-min');
+})();
+</script>
+<script type="module" src="lab.js"></script>
+</body>
+</html>

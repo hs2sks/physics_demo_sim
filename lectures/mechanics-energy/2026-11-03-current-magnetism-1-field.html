@@ -258,15 +258,15 @@ a{color:inherit}
 
 <!-- mo -->
 <section class="slide" id="mo">
-  <header class="hd"><h2>한 줄의 도선이 변신한다 — 직선 → 원형 → 솔레노이드</h2><span class="src">교과서 99쪽 · 비오-사바르 법칙으로 계산한 실제 자기장(3차원 · 드래그로 회전)</span></header>
+  <header class="hd"><h2>도선의 변신 — 직선에서 솔레노이드까지</h2><span class="src">교과서 99쪽 · 2D 단면이 기본, 3D 회전은 선택</span></header>
 <div class="body" style="grid-template-columns:1040px 1fr">
 <canvas id="mo-cv"></canvas>
 <div class="side">
-<div class="ctl"><div class="row">변형 정도<span class="val" id="mo-s-v"></span></div><input type="range" id="mo-s" min="0" max="3" step="0.01" value="0"></div>
 <div class="chips"><div class="chip on" id="mo-c0">① 직선</div><div class="chip" id="mo-c1">② 원형 한 바퀴</div><div class="chip" id="mo-c2">③ 코일</div><div class="chip" id="mo-c3">④ 솔레노이드</div></div>
-<div class="chips"><div class="chip on" id="mo-v0">시점: 정면(단면)</div><div class="chip" id="mo-v1">비스듬히</div><div class="chip" id="mo-v2">위에서(축 방향)</div><div class="chip" id="mo-v3">옆에서</div><div class="chip" id="mo-auto">🔄 자동 회전</div></div>
-<div class="btns"><div class="btn pri" id="mo-play">▶ 변신 재생</div></div>
-<div class="box"><h3 id="mo-t">직선</h3><p id="mo-d"></p></div></div>
+<div class="btns"><div class="btn pri" id="mo-play">▶ 차례로 보기</div><div class="chip" id="mo-sub" style="display:none">조각별 원 보기</div></div>
+<div class="box"><h3 id="mo-t">직선</h3><p id="mo-d"></p></div>
+<div class="chips"><div class="chip on" id="mo-m2">2D 단면</div><div class="chip" id="mo-m3">3D 보기 (드래그 회전)</div></div>
+<div class="chips" id="mo-vw" style="display:none"><div class="chip on" id="mo-v0">정면(단면)</div><div class="chip" id="mo-v1">비스듬히</div><div class="chip" id="mo-v2">위에서</div><div class="chip" id="mo-v3">옆에서</div><div class="chip" id="mo-auto">🔄 자동 회전</div></div></div>
 </div>
 </section>
 
@@ -637,6 +637,10 @@ function sepLines(fn,seeds,ds,maxN,dom,wires,rw,dsep){const c=dsep/2,hash=new Ma
 
 /* 종이에 수직인 무한 직선 도선들이 (px,py)에 만드는 B (단위 μ0/2π · 전류단위/길이단위). I>0 = 종이 밖(⊙), 반시계로 감김 */
 function wpB(ws,px,py){let bx=0,by=0;for(const w of ws){const rx=px-w[0],ry=py-w[1],r2=rx*rx+ry*ry;if(r2<1e-9)continue;bx+=w[2]*(-ry)/r2;by+=w[2]*rx/r2;}return [bx,by];}
+function fluxSeeds(loops,zc,R,n){const m=400,xs=[],ps=[0];let psi=0;for(let i=1;i<=m;i++){const x=R*0.88*i/m,xa=R*0.88*(i-.5)/m,b=coilB(loops,xa,zc)[1];psi+=Math.abs(b)*xa*(R*0.88/m);xs.push(x);ps.push(psi);}
+ const tot=psi,out=[[0.0005,zc]];for(let k=1;k<=n;k++){const tg=tot*k/(n+0.6);let j=0;while(j<m-1&&ps[j+1]<tg)j++;const x=xs[Math.max(0,j-0)];out.push([x,zc],[-x,zc]);}return out;}
+
+
 /* ===== 화면 도우미 ===== */
 const COL={I:'#ffb454',B:'#5eead4',F:'#ff7a7a',N:'#e8453b',S:'#3b82e8',wire:'#e6edff',dim:'#8ea3cf',panel:'rgba(255,255,255,.06)'};
 function tx(ctx,s,x,y,px,col,al,w){ctx.font=(w||500)+' '+px+"px 'Noto Sans KR',sans-serif";ctx.fillStyle=col||C.text;ctx.textAlign=al||'left';ctx.textBaseline='alphabetic';ctx.fillText(s,x,y);}
@@ -848,46 +852,76 @@ return{start(){sync();draw();},frame(dt){ph+=dt*0.5*(out?1:-1);draw();}};
 /* ---- mo ---- */
 REG["mo"] = safe("mo.init", function () {
 
-const cv=$('#mo-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);let s=0,playing=false,pts=null,g1=[],g2=[],auto=false;
+const cv=$('#mo-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);let st=0,prev=0,fade=1,playing=false,timer=0,d3=false,sub=false,pts=null,g1=[],g2=[],auto=false;
+const sc=new CoilScene(W,H,97);
+const CFG=[null,{N:1,L:0,R:1.15},{N:3,L:1.7,R:1.0},{N:12,L:5.0,R:0.9}];
+const cache={};
+function build2d(k){if(cache[k])return cache[k];const c=CFG[k],lp=solLoops(c.N,c.L,c.R,1),wires=[];lp.forEach(L=>{wires.push([L.R,L.z]);wires.push([-L.R,L.z]);});
+ const s2=new CoilScene(W,H,k===3?85:97);
+ if(k===1){const xs=[0.001,0.3,0.6,0.82,1.3,1.8,2.4,3.0],a=[];xs.forEach(x=>{a.push([x,0]);if(x>0.01)a.push([-x,0]);});s2.build((x,z)=>coilB(lp,x,z),a,wires,0.1);}
+ else{const a=fluxSeeds(lp,0,c.R,k===3?6:4);for(let x=c.R+0.15;x<3.4;x+=0.15){a.push([x,0]);a.push([-x,0]);}s2.buildSep((x,z)=>coilB(lp,x,z),a,wires,0.1,0.3);}
+ return cache[k]={lp:lp,sc:s2,c:c};}
+const TXT=[['① 직선 도선 (위에서 본 모습)','도선이 종이에서 <b class="k">나오는 방향(⊙)</b>일 때, 자기장은 도선을 <b class="k">둘러싸는 원</b>이다. 엄지=전류, 감아쥔 손가락=B. 도선에서 멀수록 약하다.'],
+ ['② 원형 도선 한 바퀴 (옆에서 자른 단면)','고리의 위쪽 도선은 ⊙, 아래쪽은 ⊗로 보인다. 각 조각은 직선처럼 <b class="k">작은 원</b>을 만들고(「조각별 원」), 이 원들이 고리 <b class="k">안쪽에서 같은 방향으로 모여</b> 곧게 나아간다.'],
+ ['③ 코일 (고리 3번)','고리를 겹쳐 놓으면 안쪽 자기장이 <b class="k">더해져</b> 세진다. 고리 하나보다 훨씬 곧고 강하다.'],
+ ['④ 솔레노이드 (고리가 촘촘)','안쪽은 <b class="k">축에 나란하고 거의 균일</b>, 바깥은 약하다. 한쪽 끝은 N극, 다른 쪽은 S극 → <b class="p">막대자석과 같은 모양</b>.']];
+function wire0(a){ctx.globalAlpha=a;const cx=520,cy=380;
+ [90,170,250,330].forEach(r=>{ctx.strokeStyle='rgba(94,234,212,'+(0.9-r/500)+')';ctx.lineWidth=3;ctx.beginPath();ctx.arc(cx,cy,r,0,TAU);ctx.stroke();
+  [0.9,2.4,4.0,5.5].forEach(th=>headAt(ctx,cx+r*Math.cos(th),cy-r*Math.sin(th),Math.atan2(-Math.cos(th),-Math.sin(th)),12,'#7ff5e0'));});
+ ctx.fillStyle=COL.I;ctx.beginPath();ctx.arc(cx,cy,26,0,TAU);ctx.fill();ctx.fillStyle=C.bg;ctx.beginPath();ctx.arc(cx,cy,9,0,TAU);ctx.fill();
+ tx(ctx,'전류 ⊙ (종이에서 나오는 방향)',30,50,23,COL.I,'left',700);tx(ctx,'B: 도선을 감아 도는 원 (반시계)',30,84,23,'#7ff5e0','left',700);ctx.globalAlpha=1;}
+function coil2d(k,a){const o=build2d(k);ctx.globalAlpha=a;const s2=o.sc;
+ if(k===1&&sub){s2.drawLines(ctx,'rgba(94,234,212,.28)',2,.3);
+  [[o.c.R,1],[-o.c.R,-1]].forEach(q=>{const x=s2.X(0),y=s2.Y(q[0]);[0.45,0.8].forEach((r,i)=>{ctx.setLineDash([6,6]);ctx.strokeStyle=COL.I;ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(x,y,r*s2.s,0,TAU);ctx.stroke();ctx.setLineDash([]);
+   [0.9,2.4,4.0,5.5].forEach(th=>{const sg=q[1];headAt(ctx,x+r*s2.s*Math.cos(th),y-r*s2.s*Math.sin(th),Math.atan2(-sg*Math.cos(th),-sg*Math.sin(th)),10,COL.I);});});});
+  tx(ctx,'조각마다 작은 원 → 안쪽에서 같은 방향',s2.X(0),H-40,22,COL.I,'center',700);}
+ else s2.drawLines(ctx);
+ s2.drawLoops(ctx,o.lp,o.c.R);
+ tx(ctx,'N',W-60,s2.cy-8,34,COL.N,'center',700);tx(ctx,'S',60,s2.cy-8,34,COL.S,'center',700);
+ if(!(k===1&&sub))tx(ctx,'⊙ 앞으로 나오는 전류   ⊗ 뒤로 들어가는 전류',20,H-18,19,C.dim,'left');
+ tx(ctx,'고리 '+o.c.N+'번',W-20,40,28,'#fff','right',700);ctx.globalAlpha=1;}
+function draw2d(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ if(fade<1)(prev===0?wire0:a=>coil2d(prev,a))(1-fade);(st===0?wire0:a=>coil2d(st,a))(fade<1?fade:1);}
+/* ---- 3D 보기 (선택) ---- */
 const V=new View3(470,360,100);
-const TXT=[['직선 도선','도선을 <b class="k">둘러싸는 원</b>. 도선 오른쪽은 지면 속(⊗), 왼쪽은 지면 밖(⊙). 엄지=전류, 손가락=B. <b class="p">「위에서」 시점에서 동심원이 보인다.</b>'],
- ['원형 도선(한 바퀴)','자기장이 고리 <b class="k">안쪽으로 모인다</b>. 고리 중심에서는 고리면에 수직(축 방향). <b class="p">「비스듬히」로 보면 고리와 화살표의 관계가 보인다.</b>'],
- ['여러 번 감은 코일','고리마다 만든 안쪽 자기장이 <b class="k">겹쳐서</b> 더 세진다. 바깥으로 돌아가는 선도 보인다.'],
- ['솔레노이드','안쪽은 <b class="k">축에 나란하고 거의 균일</b>, 바깥은 약하게 퍼진다. 막대자석과 같은 모양.']];
 const VW=[[0,0],[-0.65,0.5],[0,1.5],[-1.5708,0]];
-const toC=v=>[v[0],v[2],-v[1]];/* 도선 좌표(x,y,z위) → 카메라 좌표 */
-function rebuild(){pts=morphPts(s,1);g1=[];g2=[];
- for(let i=0;i<9;i++)for(let j=0;j<9;j++){const x=-3.2+i*0.8,z=-3.2+j*0.8;if(Math.hypot(x,0)<0.3&&s<0.05)continue;g1.push([[x,0,z],bsPoly(pts,1,[x,0,z])]);}
+const toC=v=>[v[0],v[2],-v[1]];
+function rebuild3(){pts=morphPts(st,1);g1=[];g2=[];
+ for(let i=0;i<9;i++)for(let j=0;j<9;j++){const x=-3.2+i*0.8,z=-3.2+j*0.8;if(Math.hypot(x,0)<0.3&&st<0.05)continue;g1.push([[x,0,z],bsPoly(pts,1,[x,0,z])]);}
  for(let i=0;i<9;i++)for(let j=0;j<9;j++){const x=-3.2+i*0.8,y=-3.2+j*0.8;if(Math.hypot(x,y)<0.5)continue;g2.push([[x,y,0],bsPoly(pts,1,[x,y,0])]);}}
 function hue(f){return 'hsl('+(200-f*170)+',90%,'+(55+f*8)+'%)';}
 function field(g,al,out){const Bref=MU0/2;for(const q of g){const p=toC(q[0]),b=toC(q[1]),mag=Math.hypot(b[0],b[1],b[2]),f=clamp((Math.log10(mag/Bref)+1.2)/1.9,0,1),Lw=(16+36*f)/100,u=[b[0]/mag,b[1]/mag,b[2]/mag];
   const A=[p[0]-u[0]*Lw/2,p[1]-u[1]*Lw/2,p[2]-u[2]*Lw/2],B=[p[0]+u[0]*Lw/2,p[1]+u[1]*Lw/2,p[2]+u[2]*Lw/2],d=V.P(p[0],p[1],p[2])[2];
   out.push({d:d,f:()=>{ctx.globalAlpha=al*clamp(0.75+0.12*d,0.35,1);arrow3(ctx,V,A,B,hue(f),3+f*1.5,10+f*5);ctx.globalAlpha=1;}});}}
-function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+function draw3d(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
  const a2=clamp((Math.abs(V.pitch)+Math.abs(V.yaw))/0.5,0,1);
  poly3(ctx,V,[[-3.25,-3.25,0],[3.25,-3.25,0],[3.25,3.25,0],[-3.25,3.25,0]].map(q=>toC([q[0],0,q[1]])),'rgba(120,160,255,.05)','rgba(160,190,255,.22)',1.5);
  if(a2>0.02)poly3(ctx,V,[[-3,-3,0],[3,-3,0],[3,3,0],[-3,3,0]].map(q=>toC(q)),'rgba(255,200,120,'+(0.04*a2)+')','rgba(255,200,120,'+(0.22*a2)+')',1.5);
  const it=[];field(g1,1-0.85*smooth(Math.abs(V.pitch)/1.2),it);if(a2>0.02)field(g2,a2,it);it.sort((a,b)=>a.d-b.d).forEach(o=>o.f());
- /* 도선 */
  const ps=pts,P=ps.map(p=>V.P(p[0],p[2],-p[1]));ctx.lineWidth=6;ctx.lineCap='round';
  for(let i=0;i<ps.length-1;i++){const d=(P[i][2]+P[i+1][2])/2;ctx.strokeStyle='rgba(255,180,84,'+clamp(0.7+0.3*d,0.3,1)+')';ctx.beginPath();ctx.moveTo(P[i][0],P[i][1]);ctx.lineTo(P[i+1][0],P[i+1][1]);ctx.stroke();}
  for(let i=6;i<ps.length-2;i+=Math.max(6,(ps.length/16)|0)){const dx=P[i+1][0]-P[i][0],dy=P[i+1][1]-P[i][1];if(Math.hypot(dx,dy)>1.2&&P[i][2]>-0.4)headAt(ctx,P[i][0],P[i][1],Math.atan2(dy,dx),10,'#fff');}
- const top=V.P(0,3.5,0);tx(ctx,'전류 I',top[0]+20,top[1],22,COL.I,'left',700);
- const loopy=s>=0.7;panel(ctx,16,16,300,150,'오른손 법칙');
- tx(ctx,loopy?'네 손가락 = 전류(감아쥠)':'엄지 = 전류(나아감)',30,76,22,COL.I,'left',700);tx(ctx,loopy?'엄지 = 자기장 B(N극)':'네 손가락 = 자기장 B(감아쥠)',30,112,22,COL.B,'left',700);
- tx(ctx,loopy?'→ 전류가 돌면 B는 곧게':'→ 전류가 곧으면 B는 돈다',30,148,20,'#ffd166','left',700);
- const st=Math.round(s);tx(ctx,['① 직선','② 원형','③ 코일','④ 솔레노이드'][st],W-250,50,34,'#fff','left',700);
- tx(ctx,'화살표 색: 자기장 세기(파랑 약 → 주황 강)',16,H-40,18,C.dim,'left');tx(ctx,'🖱 드래그하면 3차원으로 돌아간다 · 지면(파란 면)과 수직 면(주황 면)의 자기장을 함께 표시',16,H-14,18,'#ffd166','left',600);}
-function ui(){const st=Math.min(3,Math.max(0,Math.round(s)));$('#mo-s').value=s;$('#mo-s-v').textContent=['직선','원형','코일','솔레노이드'][st];$('#mo-t').textContent=TXT[st][0];$('#mo-d').innerHTML=TXT[st][1];setChips(['mo-c0','mo-c1','mo-c2','mo-c3'],'mo-c'+st);}
-function set(v){s=clamp(v,0,3);rebuild();ui();draw();}
+ tx(ctx,['① 직선','② 원형','③ 코일','④ 솔레노이드'][st],W-250,50,34,'#fff','left',700);
+ tx(ctx,'화살표 색: 자기장 세기(파랑 약 → 주황 강)',16,H-40,18,C.dim,'left');tx(ctx,'🖱 드래그하면 3차원으로 돌아간다 · 지면(파란 면)과 수직 면(주황 면)의 자기장',16,H-14,18,'#ffd166','left',600);}
+function draw(){d3?draw3d():draw2d();}
+function ui(){$('#mo-t').textContent=TXT[st][0];$('#mo-d').innerHTML=TXT[st][1];setChips(['mo-c0','mo-c1','mo-c2','mo-c3'],'mo-c'+st);
+ $('#mo-sub').style.display=(!d3&&st===1)?'':'none';$('#mo-sub').classList.toggle('on',sub);$('#mo-vw').style.display=d3?'':'none';
+ setChips(['mo-m2','mo-m3'],d3?'mo-m3':'mo-m2');}
+function set(k){if(k===st&&fade>=1){draw();return;}prev=st;st=k;fade=d3?1:0;if(d3)rebuild3();ui();draw();}
 function view(k){auto=false;$('#mo-auto').classList.remove('on');V.set(VW[k][0],VW[k][1]);setChips(['mo-v0','mo-v1','mo-v2','mo-v3'],'mo-v'+k);draw();}
-bindRange('mo-s',v=>{playing=false;set(v);});
 [0,1,2,3].forEach(k=>onClick('mo-c'+k,()=>{playing=false;set(k);}));
+onClick('mo-m2',()=>{d3=false;playing=false;ui();draw();});
+onClick('mo-m3',()=>{d3=true;playing=false;rebuild3();if(V.isDefault())V.set(VW[1][0],VW[1][1]);ui();draw();});
+onClick('mo-sub',()=>{sub=!sub;ui();draw();});
 [0,1,2,3].forEach(k=>onClick('mo-v'+k,()=>view(k)));
 onClick('mo-auto',()=>{auto=!auto;$('#mo-auto').classList.toggle('on',auto);if(auto)setChips(['mo-v0','mo-v1','mo-v2','mo-v3'],'');});
-bindDrag(cv,W,V,()=>{auto=false;$('#mo-auto').classList.remove('on');setChips(['mo-v0','mo-v1','mo-v2','mo-v3'],'');draw();});
-onClick('mo-play',()=>{if(s>=2.98)set(0);playing=true;});
-return{start(){playing=false;set(s);},stop(){playing=false;},frame(dt){let ch=false;if(playing){s=Math.min(3,s+dt*0.3);rebuild();ui();ch=true;if(s>=3)playing=false;}if(auto){V.yaw+=dt*0.7;V.ty=V.yaw;ch=true;}if(V.step(dt))ch=true;if(ch)draw();}};
+bindDrag(cv,W,V,()=>{if(!d3)return;auto=false;$('#mo-auto').classList.remove('on');setChips(['mo-v0','mo-v1','mo-v2','mo-v3'],'');draw();});
+onClick('mo-play',()=>{playing=true;timer=0;set(0);});
+return{start(){playing=false;ui();rebuild3();fade=1;draw();},stop(){playing=false;},frame(dt){let ch=false;
+ if(fade<1){fade=Math.min(1,fade+dt*2.2);ch=true;}
+ if(playing&&!d3){timer+=dt;if(timer>3.2&&st<3){timer=0;set(st+1);}else if(timer>3.2&&st>=3)playing=false;}
+ if(d3){if(auto){V.yaw+=dt*0.7;V.ty=V.yaw;ch=true;}if(V.step(dt))ch=true;}
+ if(ch)draw();}};
 
 });
 

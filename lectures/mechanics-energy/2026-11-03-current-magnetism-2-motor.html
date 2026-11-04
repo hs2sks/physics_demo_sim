@@ -353,6 +353,8 @@ a{color:inherit}
 <canvas id="sp-cv"></canvas>
 <div class="side">
 <div class="ctl"><div class="row">신호 진동수 (느린 화면)<span class="val" id="sp-f-v"></span></div><input type="range" id="sp-f" min="0.5" max="3" step="0.1" value="1"></div><div class="ctl"><div class="row">신호 세기<span class="val" id="sp-a-v"></span></div><input type="range" id="sp-a" min="0.2" max="1" step="0.05" value="0.8"></div>
+<div class="chips"><div class="chip on" id="sp-m2">2D 단면</div><div class="chip" id="sp-m3">3D 보기 (드래그 회전)</div></div>
+<div class="chips" id="sp-vw" style="display:none"><div class="chip on" id="sp-v0">비스듬히</div><div class="chip" id="sp-v1">옆에서</div><div class="chip" id="sp-v2">위에서</div><div class="chip" id="sp-v3">앞에서(소리 쪽)</div></div>
 <div class="box"><h3>에너지 전환 (교과서 101쪽)</h3><p>전기 신호의 <b>전기 에너지</b> → 진동판의 <b>운동 에너지</b> → <b>소리 에너지</b></p></div>
 <div class="box"><p class="sm">전류의 방향이 번갈아 바뀌므로 코일이 자석을 <b>밀고 당기고</b>를 되풀이한다. 전동기와 같은 “자기장 속 전류가 받는 힘”이다.</p></div></div>
 </div>
@@ -1022,8 +1024,28 @@ return{start(){reset();sync();draw();},frame(dt){if(!paused){let r=Math.min(dt,0
 /* ---- sp ---- */
 REG["sp"] = safe("sp.init", function () {
 
-const cv=$('#sp-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);let f=1,A=0.8,t=0;
-function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);const i=A*Math.sin(TAU*f*t),d=40*i,cy=290;
+const cv=$('#sp-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);let f=1,A=0.8,t=0,d3=false;const V3=new View3(430,215,88);V3.set(-0.55,0.4);V3.yaw=-0.55;V3.pitch=0.4;const VM=[[-0.55,0.4],[0,0.05],[-0.3,1.3],[-1.5708,0]];
+function ring3(x,r,n){const a=[];for(let k=0;k<n;k++){const p=TAU*k/n;a.push([x,r*Math.cos(p),r*Math.sin(p)]);}return a;}
+function cyl3(x0,x1,r,rgb,n){n=n||28;const q=[];for(let k=0;k<n;k++){const p0=TAU*k/n,p1=TAU*(k+1)/n,pm=(p0+p1)/2,sh=0.55+0.45*Math.max(0,Math.cos(pm-0.9));
+  q.push({pts:[[x0,r*Math.cos(p0),r*Math.sin(p0)],[x1,r*Math.cos(p0),r*Math.sin(p0)],[x1,r*Math.cos(p1),r*Math.sin(p1)],[x0,r*Math.cos(p1),r*Math.sin(p1)]],c:'rgb('+rgb.map(c=>Math.round(c*sh)).join(',')+')'});}
+ q.forEach(o=>o.d=o.pts.reduce((a,p)=>a+V3.P(p[0],p[1],p[2])[2],0));q.sort((a,b)=>a.d-b.d).forEach(o=>poly3(ctx,V3,o.pts,o.c,'rgba(255,255,255,.12)',1));
+ [x0,x1].forEach(x=>poly3(ctx,V3,ring3(x,r,n),'rgba('+rgb.join(',')+',.55)','rgba(255,255,255,.3)',1.2));}
+function scene3d(i,d){ctx.save();ctx.beginPath();ctx.rect(0,0,W,432);ctx.clip();scene3dIn(i,d);ctx.restore();}
+function scene3dIn(i,d){const dx=0.5*i,xc=0.3+dx;
+ cyl3(-3.2,-1.9,0.95,[232,69,59]);cyl3(-1.9,-0.6,0.95,[59,130,232]);
+ const m1=V3.P(-2.55,0,0),m2=V3.P(-1.25,0,0);tx(ctx,'N',m1[0],m1[1]+14,40,'#fff','center',700);tx(ctx,'S',m2[0],m2[1]+14,40,'#fff','center',700);
+ const it=[];
+ for(let k=0;k<6;k++){const x=xc+k*0.16;it.push({d:V3.P(x,0,0)[2],f:()=>{ctx.strokeStyle=COL.I;ctx.lineWidth=4;ctx.beginPath();ring3(x,0.62,40).forEach((p,j)=>{const q=V3.P(p[0],p[1],p[2]);j?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);});ctx.closePath();ctx.stroke();
+   if(Math.abs(i)>0.05){const sg=i>0?1:-1;[0.5,2.6,4.6].forEach(ph=>{const a=ph,p0=[x,0.62*Math.cos(a),0.62*Math.sin(a)],p1=[x,0.62*Math.cos(a+0.2*sg),0.62*Math.sin(a+0.2*sg)],A0=V3.P(p0[0],p0[1],p0[2]),A1=V3.P(p1[0],p1[1],p1[2]);headAt(ctx,A1[0],A1[1],Math.atan2(A1[1]-A0[1],A1[0]-A0[0]),9,'#fff');});}}});}
+ const x0=xc+0.9,x1=x0+2.0,r0=0.62,r1=1.7,nn=36;
+ for(let k=0;k<nn;k++){const p0=TAU*k/nn,p1=TAU*(k+1)/nn,pts=[[x0,r0*Math.cos(p0),r0*Math.sin(p0)],[x1,r1*Math.cos(p0),r1*Math.sin(p0)],[x1,r1*Math.cos(p1),r1*Math.sin(p1)],[x0,r0*Math.cos(p1),r0*Math.sin(p1)]],dd=pts.reduce((a,p)=>a+V3.P(p[0],p[1],p[2])[2],0)/4;
+  it.push({d:dd,f:()=>poly3(ctx,V3,pts,'rgba(190,200,225,'+(0.28+0.2*Math.max(0,Math.cos(p0)))+')','rgba(219,228,255,.35)',1)});}
+ for(let k=0;k<3;k++){const r=((t*1.2+k)%3)*0.9+0.4,al=(1-r/3.4)*Math.min(1,A+0.2);if(al<=0)continue;const x=x1+r*0.9;it.push({d:V3.P(x,0,0)[2]+0.5,f:()=>{ctx.strokeStyle='rgba(94,234,212,'+al+')';ctx.lineWidth=3;ctx.beginPath();ring3(x,0.9+r*0.9,40).forEach((p,j)=>{const q=V3.P(p[0],p[1],p[2]);j?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);});ctx.closePath();ctx.stroke();}});}
+ it.sort((a,b)=>a.d-b.d).forEach(o=>o.f());
+ const fo=Math.abs(i)>0.05?(i>0?'밀어낸다 →':'← 끌어당긴다'):'';if(fo){arrow3(ctx,V3,[xc+0.3,-1.3,0],[xc+0.3+0.9*(i>0?1:-1),-1.3,0],COL.F,5,14);tx(ctx,fo,V3.P(xc+0.3,-1.3,0)[0],V3.P(xc+0.3,-1.3,0)[1]+34,24,COL.F,'center',700);}
+ tx(ctx,'자석(고정)',V3.P(-1.9,0,0)[0],V3.P(-1.9,1.2,0)[1]-8,20,C.dim,'center',600);tx(ctx,'코일 + 진동판',V3.P(xc+1.9,0,0)[0],V3.P(xc+1.9,1.9,0)[1]-12,20,C.dim,'center',600);
+ tx(ctx,Math.abs(i)>0.05?('코일의 전류 '+(i>0?'↻ (한 방향)':'↺ (반대 방향)')):'전류 ≈ 0',16,30,22,COL.I,'left',700);tx(ctx,'🖱 드래그해서 돌려 보기',16,420,17,'#ffd166','left',600);}
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);const i=A*Math.sin(TAU*f*t),d=40*i,cy=290;if(d3)scene3d(i,d);else{
  ctx.fillStyle=COL.N;ctx.fillRect(130,cy-70,100,140);ctx.fillStyle=COL.S;ctx.fillRect(230,cy-70,100,140);tx(ctx,'N',180,cy+16,48,'#fff','center',700);tx(ctx,'S',280,cy+16,48,'#fff','center',700);
  const xc=390+d;for(let k=0;k<6;k++){ctx.strokeStyle=COL.I;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(xc+k*14,cy-58);ctx.lineTo(xc+k*14,cy+58);ctx.stroke();}
  if(Math.abs(i)>0.05){for(let k=0;k<6;k++)headAt(ctx,xc+k*14,cy+(i>0?-14:14),i>0?-Math.PI/2:Math.PI/2,10,'#ffffff');for(let k=0;k<6;k++)headAt(ctx,xc+k*14,cy+(i>0?30:-30),i>0?-Math.PI/2:Math.PI/2,10,'#ffffff');tx(ctx,'코일의 전류 '+(i>0?'↑ (위쪽)':'↓ (아래쪽)'),xc+40,cy-78,22,COL.I,'center',700);}else tx(ctx,'전류 ≈ 0 (방향 바뀌는 순간)',xc+40,cy-78,20,C.dim,'center',600);
@@ -1031,14 +1053,18 @@ function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);const i=A*Math.sin(TAU*
  ctx.strokeStyle='#dbe4ff';ctx.lineWidth=3;ctx.stroke();
  for(let k=0;k<4;k++){const r=((t*1.2+k)%4)*55+20,al=(1-r/240)*Math.min(1,A+0.2);if(al<=0)continue;ctx.strokeStyle='rgba(94,234,212,'+al+')';ctx.lineWidth=3;ctx.beginPath();ctx.arc(xc+300,cy,r,-0.9,0.9);ctx.stroke();}
  const fo=Math.abs(i)>0.05?(i>0?'밀어낸다 →':'← 끌어당긴다'):'';tx(ctx,fo,xc+30,cy+130,28,COL.F,'center',700);
- tx(ctx,'자석(고정)',230,cy-92,22,C.dim,'center',600);tx(ctx,'코일 + 진동판',xc+180,cy-196,22,C.dim,'center',600);tx(ctx,'소리',xc+360,cy+175,26,COL.B,'center',700);
+ tx(ctx,'자석(고정)',230,cy-92,22,C.dim,'center',600);tx(ctx,'코일 + 진동판',xc+180,cy-196,22,C.dim,'center',600);tx(ctx,'소리',xc+360,cy+132,26,COL.B,'center',700);}
  panel(ctx,20,440,620,260,'전기 신호(전류) i(t)');const gx=50,gy=480,gw=560,gh=190;ctx.strokeStyle='rgba(160,190,255,.35)';ctx.lineWidth=1.5;ctx.strokeRect(gx,gy,gw,gh);ctx.beginPath();ctx.moveTo(gx,gy+gh/2);ctx.lineTo(gx+gw,gy+gh/2);ctx.stroke();
  ctx.strokeStyle='#ffb454';ctx.lineWidth=3;ctx.beginPath();for(let k=0;k<=200;k++){const tt=t-2+2*k/200,v=A*Math.sin(TAU*f*tt);const X=gx+gw*k/200,Y=gy+gh/2-gh/2*.9*v;k?ctx.lineTo(X,Y):ctx.moveTo(X,Y);}ctx.stroke();
  ctx.fillStyle='#ffd166';ctx.beginPath();ctx.arc(gx+gw,gy+gh/2-gh/2*.9*i,8,0,TAU);ctx.fill();tx(ctx,'+ 전류 방향',gx+8,gy+20,16,C.dim,'left');tx(ctx,'− 전류 방향',gx+8,gy+gh-8,16,C.dim,'left');
  panel(ctx,660,440,360,260,'에너지 흐름');[['전기 신호',Math.abs(i)],['진동판 운동',Math.abs(i)*.9],['소리',Math.abs(i)*.5]].forEach((q,k)=>{ctx.fillStyle=['#ffd166','#5eead4','#c8a2ff'][k];ctx.globalAlpha=.25+.75*q[1];ctx.fillRect(680,490+k*68,320*q[1]/1+0,34);ctx.globalAlpha=1;tx(ctx,q[0],690,514+k*68,20,'#fff','left',700);});}
 function sync(){$('#sp-f-v').textContent=f.toFixed(1)+' Hz';$('#sp-a-v').textContent=A.toFixed(2);}
+function ui(){setChips(['sp-m2','sp-m3'],d3?'sp-m3':'sp-m2');$('#sp-vw').style.display=d3?'flex':'none';}
+onClick('sp-m2',()=>{d3=false;ui();draw();});onClick('sp-m3',()=>{d3=true;ui();draw();});
+[0,1,2,3].forEach(k=>onClick('sp-v'+k,()=>{V3.set(VM[k][0],VM[k][1]);setChips(['sp-v0','sp-v1','sp-v2','sp-v3'],'sp-v'+k);}));
+bindDrag(cv,W,V3,()=>{setChips(['sp-v0','sp-v1','sp-v2','sp-v3'],'');});
 bindRange('sp-f',v=>{f=v;sync();});bindRange('sp-a',v=>{A=v;sync();});sync();
-return{start(){sync();draw();},frame(dt){t+=dt;draw();}};
+return{start(){sync();ui();draw();},frame(dt){t+=dt;V3.step(dt);draw();}};
 
 });
 

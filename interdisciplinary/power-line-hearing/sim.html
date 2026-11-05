@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>송전선 자기장 계산 시뮬</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="../../site.css?v=8">
+<style>
+  canvas { width:100%; display:block; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); }
+  .ctl { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:4px 16px; }
+  .ctl output { font-weight:700; color:var(--accent); }
+  .read { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; margin-top:10px; }
+  .read .v { font-size:1.35em; font-weight:700; }
+  .read .box { padding:10px 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="home" href="../index.html">← 융합</a>
+  <h1>🧲 송전선 자기장 계산 시뮬</h1>
+  <p class="lead">도선 3개(3상)가 지표 근처에 만드는 60 Hz 자기장의 세기를 거리에 따라 계산합니다. 앙페르 법칙 <b>B = μ₀I/(2πr)</b>을 도선마다 벡터로 더한 값입니다.</p>
+  <nav class="sub"><a href="index.html">수업 안내</a><a class="on" href="sim.html">계산 시뮬</a><a href="sources.html">자료함·근거 노트</a></nav>
+
+  <h2>1. 조건 정하기</h2>
+  <div class="box">
+    <div class="ctl">
+      <div><label>전류 I (한 도선, 실효값) <output id="oI"></output> A</label><input type="range" id="I" min="100" max="3000" step="50" value="1000"></div>
+      <div><label>도선 높이 h <output id="oH"></output> m</label><input type="range" id="H" min="10" max="50" step="1" value="25"></div>
+      <div><label>도선 사이 간격 d <output id="oD"></output> m</label><input type="range" id="D" min="4" max="25" step="1" value="14"></div>
+      <div><label>관측 높이 <output id="oY"></output> m</label><input type="range" id="Y" min="0.5" max="2" step="0.1" value="1"></div>
+      <div><label>배치</label><select id="cfg"><option value="flat">수평 배치 (나란히)</option><option value="tri">정삼각형 배치</option></select></div>
+      <div><label>전류의 위상</label><select id="ph"><option value="3">3상 (120°씩 차이) — 실제</option><option value="0">세 도선이 모두 같은 위상 — 비교용</option></select></div>
+    </div>
+    <p class="small" style="margin-top:8px">※ 실제 765 kV 선로의 전류·높이·간격은 직접 조사해 입력해 보세요(자료함 참고). 한 가닥 도선으로 묶음 도체를 단순화했고, 철탑·대지의 영향과 전기장은 계산하지 않습니다.</p>
+  </div>
+
+  <h2>2. 단면과 순간 자기장</h2>
+  <canvas id="cs" height="300"></canvas>
+  <p class="small">보라색 화살표는 관측 지점의 자기장 벡터(순간값)입니다. 3상이면 방향이 돌면서 크기도 변해 타원을 그립니다. 크기를 정할 때는 한 주기 평균(실효값)을 씁니다.</p>
+
+  <h2>3. 거리에 따른 자기장 세기 (실효값, μT)</h2>
+  <canvas id="gr" height="340"></canvas>
+  <div class="ctl" style="margin-top:8px">
+    <div><label>관측 위치 (선로 중심에서 수평거리) <output id="oX"></output> m — 그래프를 눌러도 됩니다</label><input type="range" id="X" min="-80" max="80" step="1" value="30"></div>
+  </div>
+  <div class="read">
+    <div class="box"><div class="small">이 위치의 B (3개 도선 합성)</div><div class="v" id="rB">-</div></div>
+    <div class="box"><div class="small">가운데 도선 하나만 있다고 본 값</div><div class="v" id="rS">-</div></div>
+    <div class="box"><div class="small">지구 자기장(약 25~65 μT, 지역마다 다름)의 몇 %?</div><div class="v" id="rE">-</div></div>
+    <div class="box"><div class="small">ICNIRP 일반인 기준 83.3 μT의 몇 %?</div><div class="v" id="rG">-</div></div>
+  </div>
+
+  <h2>4. 해 볼 것 (탐구 질문)</h2>
+  <div class="grid">
+    <div class="box"><h3>① 거리 법칙</h3><p>세 도선 합성 곡선이 멀어질수록 <b>1/r</b>보다 빨리 줄어드나요? 위상을 "모두 같은 위상"으로 바꿔 비교해 보세요. 왜 차이가 날까요?</p></div>
+    <div class="box"><h3>② 간격 d를 줄이면?</h3><p>d를 4 m와 25 m로 바꿔 선로 바로 아래와 40 m 떨어진 곳의 값을 적어 보세요. "도선을 가까이 모으는 설계"가 자기장에 주는 효과를 설명해 보세요.</p></div>
+    <div class="box"><h3>③ 전류를 두 배로</h3><p>I를 두 배로 하면 B는? 같은 전력을 더 높은 전압으로 보내면 I가 어떻게 달라지는지(P = VI) 연결해 보세요.</p></div>
+    <div class="box"><h3>④ 내 근거로 쓰기</h3><p>조건(I, h, d, 위치)과 결과값을 <a href="sources.html">근거 노트</a>에 적고, <b>이 계산이 보여 주지 못하는 것</b>(전기장·묶음 도체·철탑·실제 전류 변동)도 함께 적으세요.</p></div>
+  </div>
+</div>
+<script>
+(function(){
+  var MU0_2PI = 2e-7; // μ0/(2π) (T·m/A)
+  var $ = function(id){ return document.getElementById(id); };
+  var ids = ['I','H','D','Y','X'];
+  var cs = $('cs'), gr = $('gr');
+  var st = { t:0 };
+  function css(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+  function wires(){
+    var h = +$('H').value, d = +$('D').value;
+    var w = ($('cfg').value === 'flat')
+      ? [{x:-d,y:h},{x:0,y:h},{x:d,y:h}]
+      : [{x:-d/2,y:h},{x:d/2,y:h},{x:0,y:h+0.866*d}];
+    var three = $('ph').value === '3';
+    var ph = three ? [0, 2*Math.PI/3, 4*Math.PI/3] : [0,0,0];
+    for (var k=0;k<3;k++) w[k].ph = ph[k];
+    w[0].c = '#d9534f'; w[1].c = '#e0a53a'; w[2].c = '#3a7bd5';
+    return w;
+  }
+  // 관측점 X, 높이 yo 에서 복소 위상 합성. 반환: 실효값(T), 복소 성분
+  function field(W, X, yo, I){
+    var bxr=0,bxi=0,byr=0,byi=0;
+    for (var k=0;k<W.length;k++){
+      var dx = X - W[k].x, dy = yo - W[k].y, r2 = dx*dx+dy*dy;
+      var c = MU0_2PI*I/r2;
+      var cr = Math.cos(W[k].ph), ci = -Math.sin(W[k].ph); // I e^{-iφ}
+      bxr += c*(-dy)*cr; bxi += c*(-dy)*ci;
+      byr += c*(dx)*cr;  byi += c*(dx)*ci;
+    }
+    var rms = Math.sqrt(bxr*bxr+bxi*bxi+byr*byr+byi*byi);
+    return {rms:rms, bxr:bxr,bxi:bxi,byr:byr,byi:byi};
+  }
+  function single(W, X, yo, I){
+    var m = W[1]; var dx=X-m.x, dy=yo-m.y;
+    return MU0_2PI*I/Math.sqrt(dx*dx+dy*dy);
+  }
+  function fit(c){
+    var r = window.devicePixelRatio||1, w = c.clientWidth, h = +c.getAttribute('height');
+    if (c.width !== Math.round(w*r)) { c.width = Math.round(w*r); c.height = Math.round(h*r); }
+    var g = c.getContext('2d'); g.setTransform(r,0,0,r,0,0); return {g:g,w:w,h:h};
+  }
+  function drawGraph(W,I,yo,X){
+    var o = fit(gr), g=o.g, w=o.w, h=o.h;
+    var L=52,R=14,T=14,B=34, pw=w-L-R, ph=h-T-B;
+    var xs=[], ys=[], ss=[], i, ymax=5;
+    for (i=-80;i<=80;i+=1){ var f=field(W,i,yo,I).rms*1e6, s=single(W,i,yo,I)*1e6; xs.push(i); ys.push(f); ss.push(s); if (f>ymax) ymax=f; }
+    ymax = Math.ceil(ymax*1.15/5)*5;
+    var X2 = function(x){ return L+(x+80)/160*pw; }, Y2 = function(y){ return T+ph-(y/ymax)*ph; };
+    g.clearRect(0,0,w,h); g.font='12px sans-serif'; g.fillStyle=css('--sub'); g.strokeStyle=css('--border'); g.lineWidth=1;
+    var step = ymax<=20?5:(ymax<=60?10:20);
+    for (var yv=0; yv<=ymax; yv+=step){ g.beginPath(); g.moveTo(L,Y2(yv)); g.lineTo(L+pw,Y2(yv)); g.stroke(); g.fillText(yv, 18, Y2(yv)+4); }
+    g.fillText('μT',4,T+8);
+    for (var xv=-80; xv<=80; xv+=20){ g.fillText(xv, X2(xv)-8, h-16); }
+    g.fillText('수평거리 (m)', L+pw/2-30, h-3);
+    function ref(v,label,col){ if (v<=ymax){ g.strokeStyle=col; g.setLineDash([6,4]); g.beginPath(); g.moveTo(L,Y2(v)); g.lineTo(L+pw,Y2(v)); g.stroke(); g.setLineDash([]); g.fillStyle=col; g.fillText(label, L+pw-190, Y2(v)-4); } }
+    ref(50,'지구 자기장 약 50 μT',css('--ok')); ref(83.3,'기준치 83.3 μT',css('--bad'));
+    if (ymax < 50){ g.fillStyle=css('--sub'); g.fillText('(지구 자기장 약 25~65 μT·기준치 83.3 μT는 이 그래프 범위 위)', L+8, T+14); }
+    g.strokeStyle='#8a97a5'; g.lineWidth=1.5; g.setLineDash([5,4]); g.beginPath();
+    for (i=0;i<xs.length;i++){ var px=X2(xs[i]), py=Y2(Math.min(ss[i],ymax)); i?g.lineTo(px,py):g.moveTo(px,py);} g.stroke(); g.setLineDash([]);
+    g.strokeStyle=css('--accent'); g.lineWidth=2.5; g.beginPath();
+    for (i=0;i<xs.length;i++){ var px2=X2(xs[i]), py2=Y2(ys[i]); i?g.lineTo(px2,py2):g.moveTo(px2,py2);} g.stroke();
+    g.fillStyle=css('--accent'); g.fillText('3개 도선 합성', L+10, T+ph-8-14);
+    g.fillStyle='#8a97a5'; g.fillText('가운데 도선 하나만 (점선)', L+10, T+ph-8);
+    var fx = field(W,X,yo,I).rms*1e6;
+    g.strokeStyle=css('--ink'); g.lineWidth=1; g.beginPath(); g.moveTo(X2(X),T); g.lineTo(X2(X),T+ph); g.stroke();
+    g.fillStyle='#8e44ad'; g.beginPath(); g.arc(X2(X),Y2(fx),5,0,7); g.fill();
+    gr._geom = {L:L,pw:pw};
+  }
+  function drawCross(W,I,yo,X){
+    var o = fit(cs), g=o.g, w=o.w, h=o.h;
+    var worldW = 170, sc = w/worldW, gy = h-36; // 지면 y
+    var X2=function(x){ return w/2+x*sc; }, Y2=function(y){ return gy-y*sc*1.0; };
+    var ymaxW = 0; W.forEach(function(q){ if(q.y>ymaxW) ymaxW=q.y; });
+    var vs = Math.min(sc, (gy-30)/(ymaxW+4)); sc = vs; // 세로가 넘치면 축소
+    X2=function(x){ return w/2+x*sc; }; Y2=function(y){ return gy-y*sc; };
+    g.clearRect(0,0,w,h);
+    g.fillStyle='rgba(120,150,100,.25)'; g.fillRect(0,gy,w,h-gy);
+    g.strokeStyle=css('--border'); g.beginPath(); g.moveTo(0,gy); g.lineTo(w,gy); g.stroke();
+    g.font='12px sans-serif'; g.fillStyle=css('--sub'); g.fillText('지표면', 6, gy+16);
+    // 철탑 단순 표시
+    g.strokeStyle=css('--sub'); g.lineWidth=2; g.beginPath(); g.moveTo(X2(0),gy); g.lineTo(X2(0),Y2(ymaxW-2)); g.stroke(); g.lineWidth=1;
+    W.forEach(function(q,k){
+      g.fillStyle=q.c; g.beginPath(); g.arc(X2(q.x),Y2(q.y),7,0,7); g.fill();
+      g.fillStyle=css('--ink'); g.fillText('ABC'[k], X2(q.x)-4, Y2(q.y)-12);
+    });
+    // 사람 (눈에 보이게 크기를 과장해 그림)
+    var px=X2(X), py=Y2(0), pH=34;
+    g.strokeStyle=css('--ink'); g.lineWidth=2.5; g.beginPath(); g.moveTo(px,py); g.lineTo(px,py-pH+8); g.stroke();
+    g.beginPath(); g.arc(px,py-pH+3,5,0,7); g.stroke(); g.lineWidth=1;
+    g.fillStyle=css('--sub'); g.fillText('관측자 (그림은 과장)', px+10, py-pH+6);
+    // 순간 자기장 화살표
+    var f=field(W,X,yo,I), wt=st.t, c=Math.cos(wt), s=Math.sin(wt), k2=Math.SQRT2;
+    var bx = k2*(f.bxr*c - f.bxi*s), by = k2*(f.byr*c - f.byi*s);
+    var peak = Math.max(f.rms*k2,1e-9), len = 70;
+    var ax = bx/peak*len, ay = by/peak*len, ox = px, oy = py-pH*0.55;
+    g.strokeStyle='#8e44ad'; g.fillStyle='#8e44ad'; g.lineWidth=3; g.beginPath(); g.moveTo(ox,oy); g.lineTo(ox+ax,oy-ay); g.stroke();
+    var ang=Math.atan2(-ay,ax); g.beginPath(); g.moveTo(ox+ax,oy-ay); g.lineTo(ox+ax-9*Math.cos(ang-.4),oy-ay-9*Math.sin(ang-.4)); g.lineTo(ox+ax-9*Math.cos(ang+.4),oy-ay-9*Math.sin(ang+.4)); g.fill(); g.lineWidth=1;
+  }
+  function update(){
+    ids.forEach(function(k){ var el=$('o'+k); if (el) el.textContent=$(k).value; });
+    var W=wires(), I=+$('I').value, yo=+$('Y').value, X=+$('X').value;
+    var f=field(W,X,yo,I).rms*1e6, s=single(W,X,yo,I)*1e6;
+    $('rB').textContent = f.toFixed(2)+' μT'; $('rS').textContent = s.toFixed(2)+' μT';
+    $('rE').textContent = (f/50*100).toFixed(1)+' %  (50 μT 기준)'; $('rG').textContent=(f/83.3*100).toFixed(1)+' %';
+    drawGraph(W,I,yo,X); drawCross(W,I,yo,X);
+  }
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function tick(){ st.t += 0.05; var W=wires(); drawCross(W,+$('I').value,+$('Y').value,+$('X').value); if(!reduce) requestAnimationFrame(tick); }
+  ['I','H','D','Y','X','cfg','ph'].forEach(function(k){ $(k).addEventListener('input',update); });
+  gr.addEventListener('click',function(e){ var r=gr.getBoundingClientRect(), g=gr._geom; if(!g) return; var x=(e.clientX-r.left-g.L)/g.pw*160-80; x=Math.max(-80,Math.min(80,Math.round(x))); $('X').value=x; update(); });
+  window.addEventListener('resize',update);
+  update(); tick();
+})();
+</script>
+<script src="../../site-nav.js?v=8"></script>
+</body>
+</html>

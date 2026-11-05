@@ -1,0 +1,952 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>단진동</title>
+<!-- simple-harmonic-motion · 교과서 88~91쪽 · 성취기준·평가·수업 유의점, 쉬운 말과 비유, 용수철 진자 시뮬레이션(주기 측정·속도 가속도·복원력·원운동 그림자·에너지·목표 주기 맞추기), 왜 중요한가(안정한 평형·진동수 사다리·학문 연결), 파동으로 이어지는 이야기 (16장) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap">
+<style>
+:root{
+  --bg:#dfe5f0; --slide:#f5f7fc; --panel:#ffffff; --ink:#14203a; --muted:#54617b; --line:#c9d2e4;
+  --blue:#1f5fd1; --onblue:#ffffff; --amber:#b45f00; --green:#0c7a58; --red:#b8321f;
+  --blue-soft:#dce8fb; --amber-soft:#fbe8cf;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+    --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+    --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+  --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+  --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;overflow:hidden}
+#viewport{position:relative;width:100%;height:100%;overflow:hidden}
+#deck{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center center;background:var(--slide);box-shadow:0 12px 70px rgba(0,0,0,.28);overflow:hidden}
+.slide{position:absolute;inset:0;display:none;flex-direction:column;padding:84px 88px 52px;gap:24px;background:var(--slide);font-size:32px;line-height:1.4}
+.slide.active{display:flex}
+.hd{display:flex;align-items:baseline;justify-content:space-between;gap:24px;flex:none}
+.hd h2{font-size:58px;line-height:1.15;margin:0;font-weight:800;letter-spacing:-.01em}
+.hd .src{font-size:26px;color:var(--muted);white-space:nowrap}
+.body{flex:1;min-height:0;display:grid;gap:36px}
+.mg-box{position:relative;aspect-ratio:16/9;border-radius:16px;overflow:hidden;background:#06142a;align-self:start}
+.mg-box.mg-full{height:100%;max-width:100%;justify-self:center}
+.mg-box iframe{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none}
+.mg-re{position:absolute;right:14px;bottom:14px;font:inherit;font-size:24px;padding:8px 18px;border-radius:10px;border:1px solid rgba(255,255,255,.4);background:rgba(0,0,0,.55);color:#fff;cursor:pointer;opacity:.75}
+.mg-re:hover,.mg-re:focus-visible{opacity:1}
+.side{display:flex;flex-direction:column;gap:18px;min-height:0}
+canvas{display:block;border-radius:16px;background:#0a1330}
+.box{background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:20px 26px}
+.box h3{margin:0 0 8px;font-size:30px}
+.sm{font-size:26px;color:var(--muted)}
+.lead{font-size:40px;line-height:1.35}
+.k{color:var(--amber);font-weight:700}.p{color:var(--blue);font-weight:700}.ok{color:var(--green);font-weight:700}.bad{color:var(--red);font-weight:700}
+/* math */
+.m{font-family:'STIX Two Text','Times New Roman',serif;font-style:italic;font-size:1.1em;white-space:nowrap}
+.m .u,.u{font-style:normal}
+.m sub,.m sup{font-size:.68em;line-height:0;font-style:normal}
+.fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.15;margin:0 .12em;font-size:.95em}
+.fr>span:first-child{padding:0 .2em .06em;border-bottom:.07em solid currentColor}
+.fr>span:last-child{padding-top:.06em}
+.sq{white-space:nowrap}.sq .rad{border-top:.07em solid currentColor;padding:0 .15em;margin-left:-.04em}
+.eq{font-size:44px;text-align:center;padding:6px 0}
+/* controls */
+.ctl{display:flex;flex-direction:column;gap:4px}
+.ctl .row{display:flex;justify-content:space-between;align-items:baseline;font-size:27px;gap:12px}
+.ctl .val{font-weight:700;font-variant-numeric:tabular-nums}
+.rangew{position:relative}
+input[type=range]{width:100%;height:44px;-webkit-appearance:none;appearance:none;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:38px;height:38px;border-radius:50%;background:var(--blue);margin-top:-13px;border:4px solid var(--panel);box-shadow:0 1px 6px rgba(0,0,0,.35)}
+input[type=range]::-moz-range-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;background:var(--blue);border:4px solid var(--panel)}
+input[type=range]:focus-visible{outline:3px solid var(--blue);outline-offset:4px;border-radius:8px}
+.marks{position:relative;height:60px;font-size:22px;color:var(--muted)}
+.marks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.btns{display:flex;gap:12px;flex-wrap:wrap}
+.btn,.chip{font:inherit;font-size:27px;font-weight:700;padding:10px 24px;border-radius:12px;border:2px solid var(--blue);background:var(--panel);color:var(--blue);cursor:pointer;line-height:1.25}
+.btn.pri{background:var(--blue);color:var(--onblue)}
+.chip{padding:8px 18px;font-size:26px;border-color:var(--line);color:var(--ink);font-weight:500}
+.chip.on{border-color:var(--blue);background:var(--blue-soft);font-weight:700}
+.btn:focus-visible,.chip:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.chips{display:flex;gap:10px;flex-wrap:wrap}
+/* step reveal */
+.st{display:grid;grid-template-columns:46px 1fr;gap:14px;padding:8px 14px;border-radius:14px;opacity:0;transform:translateY(10px);transition:opacity .35s,transform .35s;border:2px solid transparent}
+.st.on{opacity:.55;transform:none}
+.st.cur{opacity:1;background:var(--panel);border-color:var(--blue)}
+.st .n{width:42px;height:42px;border-radius:50%;background:var(--blue);color:var(--onblue);display:grid;place-items:center;font-weight:800;font-size:24px;margin-top:2px}
+.st .tl{display:flex;flex-wrap:wrap;gap:2px 14px;align-items:baseline}
+.st .t{font-size:23px;color:var(--muted);line-height:1.3}
+.st b{font-size:27px}
+.st .eq{font-size:35px;line-height:1.1;text-align:left;padding:2px 0}
+/* cover */
+.cover{flex-direction:row;align-items:center;gap:56px}
+.cover.active{display:flex}
+.cv-l{flex:1;display:flex;flex-direction:column;gap:28px}
+.cv-l h1{font-size:200px;line-height:1;margin:0;font-weight:800;letter-spacing:-.04em}
+.cv-l h1.long{font-size:92px;line-height:1.22;letter-spacing:-.02em;text-wrap:balance;word-break:keep-all}
+.cv-tag{font-size:30px;color:var(--muted)}
+.q{border-left:8px solid var(--blue);border-radius:6px;padding:8px 0 8px 28px;font-size:36px;line-height:1.45}
+/* table */
+table.t{border-collapse:collapse;width:100%;font-size:27px}
+table.t th,table.t td{padding:10px 14px;border-bottom:2px solid var(--line);text-align:right;white-space:nowrap}
+table.t th:first-child,table.t td:first-child,table.t th:last-child,table.t td:last-child{text-align:left}
+table.t th{font-size:24px;color:var(--muted);font-weight:500}
+table.t tbody tr{cursor:pointer}
+table.t tbody tr.on{background:var(--blue-soft);font-weight:700}
+/* HUD / notes */
+#hud{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:10px;align-items:center;background:rgba(10,19,48,.86);color:#e9effd;padding:8px 14px;border-radius:14px;font-size:18px;opacity:0;transition:opacity .3s;z-index:20}
+#hud.show{opacity:1}
+#hud button{font:inherit;font-size:18px;color:#e9effd;background:transparent;border:1.5px solid rgba(233,239,253,.5);border-radius:8px;padding:4px 12px;cursor:pointer}
+#notes{position:absolute;left:0;right:0;bottom:0;background:rgba(10,19,48,.94);color:#eaf0ff;padding:26px 88px 34px;font-size:30px;line-height:1.5;display:none;z-index:15}
+#notes.on{display:block}
+#notes b{color:#ffb454}
+
+.ko{font-family:'Noto Sans KR',sans-serif;font-style:normal;font-size:.8em}
+#bar{position:absolute;top:14px;left:88px;right:88px;height:54px;display:flex;justify-content:space-between;align-items:center;z-index:12}
+#bar .bl{font-size:26px;font-weight:800}
+#bar .br{display:flex;gap:10px}
+.tb{font:inherit;font-size:24px;font-weight:700;padding:7px 18px;border-radius:12px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;line-height:1.2}
+.tb:hover{border-color:var(--blue)}.tb.on{border-color:var(--blue);background:var(--blue-soft)}
+.tb:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+#help{position:absolute;inset:0;background:rgba(6,11,30,.82);display:none;align-items:center;justify-content:center;z-index:30}
+#help.on{display:flex}
+.hp{background:var(--panel);color:var(--ink);border-radius:22px;padding:36px 52px 40px;width:1320px;max-height:960px;overflow:auto;font-size:27px;line-height:1.5;border:2px solid var(--line)}
+.hp h3{font-size:40px;margin:0 0 14px}.hp h4{font-size:29px;margin:18px 0 6px;color:var(--blue)}
+.hp .g{display:grid;grid-template-columns:230px 1fr;gap:6px 22px}
+.hp kbd{font:inherit;font-size:24px;font-weight:700;background:var(--blue-soft);border:2px solid var(--line);border-radius:8px;padding:1px 10px;margin-right:4px}
+#ask{position:absolute;inset:0;background:rgba(6,11,30,.6);display:none;align-items:center;justify-content:center;z-index:25;cursor:pointer}
+#ask.on{display:flex}
+#ask .ak{background:var(--panel);color:var(--ink);border-radius:24px;border-left:16px solid var(--blue);padding:44px 72px 40px 60px;width:1500px;box-shadow:0 20px 80px rgba(0,0,0,.45)}
+#ask .ah{font-size:30px;color:var(--blue);font-weight:800;margin-bottom:18px}
+#ask .aq{font-size:54px;line-height:1.4;font-weight:700;margin:10px 0;letter-spacing:-.01em}
+#ask .aq span{color:var(--blue);margin-right:14px}
+#ask .af{font-size:24px;color:var(--muted);margin-top:22px}
+#notes .nh{font-size:24px;color:#9db0d8;margin-bottom:6px}
+#notes .nq{margin:4px 0 10px;font-size:29px}
+#notes .ni{margin:6px 0;font-size:27px;line-height:1.45}
+#notes .nx{color:#ff9d9d;font-weight:700}#notes .nv{color:#5eead4;font-weight:700}
+@media (prefers-reduced-motion: reduce){.st{transition:none}}
+#simError{position:absolute;left:88px;right:88px;top:76px;z-index:40;background:rgba(184,50,31,.95);color:#fff;font-size:22px;line-height:1.4;padding:10px 18px;border-radius:12px;white-space:pre-wrap;display:none}
+#simError.on{display:block}
+/* ---- 반응형(reflow): 폭 1100px 미만(폰·태블릿)에서는 1920 스케일 대신 세로로 흐르는 레이아웃 ---- */
+html.rf #deck{left:0;top:0;transform-origin:top left;box-shadow:none}
+html.rf .slide{padding:104px 22px 100px;gap:18px;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;font-size:30px}
+html.rf .body{display:flex !important;flex-direction:column;gap:22px;flex:none;min-height:auto}
+html.rf .side{min-height:auto}
+html.rf .hd{flex-direction:column;align-items:flex-start;gap:6px}
+html.rf .hd h2{font-size:44px}
+html.rf .hd .src{font-size:23px;white-space:normal}
+html.rf canvas{width:100% !important;height:auto !important;max-width:100%}
+html.rf .mg-box.mg-full{height:auto;width:100%}
+html.rf img,html.rf svg,html.rf video{max-width:100%;height:auto}
+html.rf .cover{flex-direction:column;align-items:stretch;gap:26px}
+html.rf .cv-l h1{font-size:112px}
+html.rf .cv-l h1.long{font-size:52px}
+html.rf .cv-tag{font-size:26px}
+html.rf .q{font-size:30px}
+html.rf .lead{font-size:34px}
+html.rf .eq{font-size:36px;overflow-x:auto}
+html.rf table.t{display:block;overflow-x:auto;font-size:24px}
+html.rf .btn,html.rf .chip{min-height:52px}
+html.rf #bar{left:14px;right:14px;top:12px;height:auto;flex-wrap:wrap;gap:8px}
+html.rf #bar .bl{display:none}
+html.rf #bar .br{flex-wrap:wrap;justify-content:flex-end;width:100%}
+html.rf .tb{font-size:20px;padding:8px 12px}
+html.rf .hp{width:92%;max-height:88%;padding:24px 22px 28px;font-size:23px}
+html.rf .hp h3{font-size:32px}
+html.rf .hp .g{grid-template-columns:1fr;gap:2px 0}
+html.rf #ask .ak{width:92%;padding:26px 24px 24px 28px;border-left-width:10px}
+html.rf #ask .aq{font-size:34px}
+html.rf #notes{padding:18px 20px 26px;font-size:23px;max-height:62%;overflow:auto}
+html.rf #notes .nq{font-size:25px}
+html.rf #notes .ni{font-size:23px}
+html.rf #simError{left:14px;right:14px;top:96px}
+html.rf #hud{padding:8px 16px;width:max-content;max-width:96%}
+html.rf #hud #h-pg{white-space:nowrap;font-size:22px}
+html.rf .st:not(.on){display:none}
+html.rf #hud button{font-size:22px;padding:6px 16px;min-height:44px}
+/* ---- extra_css ---- */
+.fit p,.fit td,.fit th{font-size:21px !important;line-height:1.42}.fit.b1 p,.fit.b1 td,.fit.b1 th{font-size:24px !important}.fit.b1 h3{font-size:28px !important}.fit.b2 p,.fit.b2 td,.fit.b2 th{font-size:29px !important;line-height:1.5}.fit h3{font-size:25px !important}
+.warn{border-left:6px solid #e0a000;padding:8px 16px;background:rgba(224,160,0,.10);border-radius:6px}
+table.t{width:100%;table-layout:fixed}
+table.t td,table.t th{text-align:left;font-size:22px;vertical-align:top;white-space:normal;word-break:keep-all;overflow-wrap:anywhere}
+details summary{cursor:pointer;color:#e0a000;font-weight:700;margin-top:6px}
+.btns{flex-wrap:wrap}.chips{flex-wrap:wrap}
+label{cursor:pointer}input[type=checkbox]{width:22px;height:22px;margin-right:8px;vertical-align:-3px}
+a{color:inherit}
+</style>
+</head>
+<body>
+<div id="viewport">
+<div id="deck">
+
+<!-- c -->
+<section class="slide cover" id="c">
+  <div class="cv-l"><div class="cv-tag">역학과 에너지 · Ⅲ. 탄성파와 소리 · 단진동</div>
+    <h1 class="long">단진동 — 흔들리는 것들의 공통 규칙</h1>
+    <p class="lead" style="margin:0">그네, 시계추, 용수철, 기타 줄, 건물, 분자까지. 겉모습은 달라도 “멀리 갈수록 세게 되돌아오는” 운동은 모두 같은 규칙을 따른다. 용수철 하나로 그 규칙을 찾아보자.</p>
+    <div class="q">용수철을 이용한 깜짝 선물 상자에서 인형이 더 빨리 튀어나오게 하려면 어떤 용수철을 써야 할까?</div>
+    <div class="sm">교과서 88~91쪽 · [12역학03-01] 용수철 진자와 단진동, 가속도와 변위의 관계</div></div>
+  <canvas id="c-cv"></canvas>
+</section>
+
+<!-- st -->
+<section class="slide" id="st">
+  <header class="hd"><h2>성취기준과 평가 — 오늘 무엇을 알아야 할까</h2><span class="src">교육과정 [12역학03-01] · 교과서 88~91쪽 · 교육과정 4.2 평가</span></header>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+<div class="box fit b1"><h3>성취기준 [12역학03-01]</h3>
+<p>용수철 진자를 통해 <b class="k">단진동</b>을 이해하고, <b class="k">가속도와 변위 사이의 관계</b>를 설명할 수 있다.</p>
+<h3 style="margin-top:10px">위치와 학습 목표</h3>
+<p>‘역학과 에너지’ (3) 탄성파와 소리의 <b>첫 소단원</b>. 이어서 탄성파(03-02) → 도플러 → 간섭 → 정상파. 교과서 88쪽 목표도 같은 문장이다.</p>
+<h3 style="margin-top:10px">평가 방향 (교육과정 4.2)</h3>
+<p>지식·이해 / 과정·기능 / 가치·태도를 <b>균형 있게</b>, <b>지식·이해 중심은 지양</b>. 지필(선택형·서술형·논술형)·관찰·실험실습·보고서·구술·포트폴리오·자기·동료평가 등을 쓰고, 형성평가로 최소 성취수준을 보장한다.</p>
+<p class="warn sm"><b>확인 필요</b> 교육과정 문구는 나무위키 정리본(2026-10-12 수정)에서 옮겼고 고시 원문과는 대조하지 않았다. 03-01에는 별도 ‘성취기준 해설’이 없다. 교사용 교과서 ‘평가 길잡이’ 파일에는 단진동 부분이 없어 확인하지 못했다.</p></div>
+<div class="box fit b1"><h3>교과서 쪽수 지도</h3>
+<table class="t"><tr><th style="width:80px">쪽</th><th>내용</th><th style="width:170px">이 덱</th></tr>
+<tr><td>88</td><td>도입(깜짝 선물 상자), 활동: 용수철 진자의 주기 운동</td><td>⑤ ⑪</td></tr>
+<tr><td>89</td><td>평형 상태, 단진동, 진폭·주기·진동수, 속력이 큰 곳</td><td>④ ⑤ ⑥</td></tr>
+<tr><td>90</td><td><span class="m">x=A<span class="ko">sin</span>ω t</span>, 그림자와 등속 원운동</td><td>⑧ ⑨</td></tr>
+<tr><td>91</td><td>복원력 <span class="m">F=-kx</span>, 속도·가속도, <span class="m">a=-ω<sup>2</sup>x</span></td><td>⑥ ⑦ ⑨</td></tr>
+<tr><td colspan="3" class="sm">교과서 밖 확장: ⑩ 에너지 · ⑫~⑭ 왜 중요한가 · ⑮ 파동으로(92쪽~)</td></tr></table>
+<h3 style="margin-top:10px">오늘의 평가 요소(제안)</h3>
+<p>[지식] a∝−x를 말로 설명 [과정] 주기 측정·그래프 읽기·변인 통제 [태도] 일상 속 진동 찾기·모둠 협력</p>
+<p class="sm">※ 평가 요소는 내가 정리한 제안이다. 배점은 학교 평가 계획에 따른다.</p></div></div>
+</section>
+
+<!-- tc -->
+<section class="slide" id="tc">
+  <header class="hd"><h2>수업 전 점검 — 오개념·수준·유의점(교사용)</h2><span class="src">내가 정리한 점검표 · Serway 15.2 Pitfall · Halliday 15-1 · 교과서 88~91쪽</span></header>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+<div class="box fit"><h3>① 수준 정하기</h3>
+<p>• 03-01은 해설이 없다 → <b>교과서 수준</b>: x는 sin, v는 cos, a=−Aω² sin을 <b>그림자 모형으로 제시</b>, 미분 없음.</p>
+<p>• 삼각함수를 아직 안 배운 학생이 있을 수 있다(수학 이수 과목 확인 필요) → sin은 ‘원 위 점의 높이 비율’로 설명.</p>
+<p>• 파동 방정식은 도입하지 않는다(탄성파 해설) → 단진동은 파동의 ‘한 점의 움직임’으로 이어 준다.</p>
+<h3 style="margin-top:8px">③ 교과서·실험 유의</h3>
+<p>• 교과서 x=A sin ωt는 <b>평형에서 출발</b>, 끝에서 놓으면 <b>cos</b>. 위상만 다르고 모양은 같다.</p>
+<p>• 89쪽 “주기는 늘어난 길이와 무관”은 <b>이상적 조건</b>(마찰 무시, 용수철 한계 안). 실측은 용수철 자체 질량·마찰로 약간 어긋난다.</p>
+<p>• 88쪽 활동: 10회 왕복 시간÷10(반응 시간 오차 감소), 진폭이 너무 크면 옆으로 흔들림, ω는 w처럼 보여도 f와 다름(ω=2πf).</p></div>
+<div class="box fit"><h3>② 자주 나오는 오개념</h3>
+<p>1. 평형 위치는 힘이 0이니 속도도 0 → <b>속력 최대</b>(가속도만 0).</p>
+<p>2. 끝에서 멈추니 힘도 0 → <b>가속도 최대</b>, 방향은 평형 쪽.</p>
+<p>3. 진폭이 크면 주기도 길다 → <b>같다</b>(이상적 용수철).</p>
+<p>4. 가속도가 일정하다 → 계속 변한다. <b>등가속도 공식은 못 쓴다</b>.</p>
+<p>5. 반복 운동은 다 단진동 → <b>복원력∝변위</b>일 때만(심장 박동은 아님).</p>
+<p>6. 수직으로 매달면 중력 때문에 주기가 달라진다 → <b>평형만 mg/k 이동</b>.</p>
+<p>7. 물체가 실제로 원운동을 한다 → 수학적으로 같은 <b>그림자 모형</b>.</p>
+<h3 style="margin-top:8px">④ 평가 아이디어(제안)</h3>
+<p>• 서술형: 진폭이 달라도 주기가 같은 까닭을 a∝−x로 • 그래프: x–t가 주어지고 v–t, a–t 고르기 • 탐구: 한 가지 변인만 바꾸는 설계·오차 원인 • 태도: 생활 속 진동 조사·발표</p></div></div>
+</section>
+
+<!-- wd -->
+<section class="slide" id="wd">
+  <header class="hd"><h2>말부터 쉽게 — 어려운 낱말을 일상 말로</h2><span class="src">교과서 89~91쪽 용어 · 비유는 직접 만든 것</span></header>
+<div class="box fit b2"><table class="t">
+<tr><th style="width:230px">낱말</th><th style="width:560px">쉬운 말</th><th>이렇게 생각해 보자</th></tr>
+<tr><td><b>평형 위치</b></td><td>아무 힘을 안 받고 가만히 있을 수 있는 자리</td><td>가만히 멈춘 그네의 맨 아래</td></tr>
+<tr><td><b>변위 x</b></td><td>평형 위치에서 <b>얼마나, 어느 쪽으로</b> 벗어났나(방향 포함)</td><td>집에서 동쪽으로 3 m (거리가 아니라 방향이 있는 값)</td></tr>
+<tr><td><b>진폭 A</b></td><td>가장 멀리 벗어난 거리</td><td>그네를 얼마나 높이 밀었나</td></tr>
+<tr><td><b>주기 T · 진동수 f</b></td><td>한 번 왕복하는 시간 / 1초에 왕복하는 횟수 (f=1/T)</td><td>운동장 한 바퀴 도는 시간 / 1초에 도는 바퀴 수</td></tr>
+<tr><td><b>복원력</b></td><td>제자리로 되돌리려는 힘</td><td>고무줄에 묶인 공: 멀리 갈수록 더 세게 당긴다</td></tr>
+<tr><td><b>단진동</b></td><td>복원력이 변위에 <b>정비례</b>하는 왕복 운동</td><td>“당긴 만큼 정확히 비례해서 되돌려 보내는” 운동</td></tr>
+<tr><td><b>각진동수 ω</b></td><td>그림자 모형에서 ‘1초에 도는 각도(rad)’, ω=2π/T</td><td>회전목마가 도는 빠르기. 교과서 90쪽의 ‘각속도’</td></tr></table>
+<p class="sm">※ 용어는 교과서 표현을 따르고, 오른쪽 열의 비유는 이해를 돕기 위한 것이다(실제 물리량과 1:1이 아님).</p></div>
+</section>
+
+<!-- sp -->
+<section class="slide" id="sp">
+  <header class="hd"><h2>용수철 진자 — 진폭을 바꾸면 주기는?</h2><span class="src">교과서 88~89쪽 활동 · 값은 모두 시뮬레이션 설정</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="sp-cv"></canvas><div class="side"><div class="chips"><div class="chip on" id="sp-h">수평 (마찰 없는 면)</div><div class="chip" id="sp-vt">수직 (그림 Ⅲ-1)</div></div><div class="ctl"><div class="row">추의 질량 m<span class="val" id="sp-m-v"></span></div><input type="range" id="sp-m" min="0.1" max="1.0" step="0.05" value="0.5"></div><div class="ctl"><div class="row">용수철 세기 k<span class="val" id="sp-k-v"></span></div><input type="range" id="sp-k" min="10" max="100" step="5" value="20"></div><div class="ctl"><div class="row">진폭 A (잡아당긴 거리)<span class="val" id="sp-a-v"></span></div><input type="range" id="sp-a" min="2" max="10" step="1" value="8"></div><div class="ctl"><div class="row">마찰(공기 저항)<span class="val" id="sp-c-v"></span></div><input type="range" id="sp-c" min="0" max="1" step="0.05" value="0"></div><div class="btns"><div class="btn pri" id="sp-rel">▶ 처음부터 놓기</div><div class="btn" id="sp-rec">📋 A, T 기록</div><div class="btn" id="sp-clr">지우기</div></div><div class="box"><p id="sp-msg" class="sm" style="font-size:22px"></p><table class="t" id="sp-tab"></table><p id="sp-cmp" class="sm" style="font-size:22px"></p></div></div>
+</div>
+</section>
+
+<!-- va -->
+<section class="slide" id="va">
+  <header class="hd"><h2>속력과 가속도는 어디서 가장 클까?</h2><span class="src">교과서 89쪽 그림 Ⅲ-2 · 91쪽 · 천천히(0.25배)로 보면 잘 보여요</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="va-cv"></canvas><div class="side"><div class="chips"><div class="chip on" id="va-t1">1×</div><div class="chip" id="va-t2">0.5×</div><div class="chip" id="va-t3">0.25×</div><div class="chip" id="va-t0">⏸</div><div class="chip" id="va-arr">화살표 보기</div></div><div class="box"><p class="sm" style="font-size:23px"><b>Q1 속력이 가장 큰 곳은?</b></p><div class="chips"><div class="chip" id="va-q1a">양 끝</div><div class="chip" id="va-q1b">가운데</div><div class="chip" id="va-q1c">같다</div></div><p class="sm" id="va-f1" style="font-size:21px"></p></div><div class="box"><p class="sm" style="font-size:23px"><b>Q2 가속도(되돌리는 힘)가 가장 큰 곳은?</b></p><div class="chips"><div class="chip" id="va-q2a">양 끝</div><div class="chip" id="va-q2b">가운데</div><div class="chip" id="va-q2c">같다</div></div><p class="sm" id="va-f2" style="font-size:21px"></p></div><div class="box"><p class="sm" style="font-size:21px">그래프의 점이 ‘지금’이에요. <b class="k">x</b>가 최대일 때 <b class="ok">v</b>와 <b class="bad">a</b>는 각각 얼마인지 읽어 보세요.</p></div></div>
+</div>
+</section>
+
+<!-- fr -->
+<section class="slide" id="fr">
+  <header class="hd"><h2>복원력 — 멀리 갈수록 더 세게 되돌린다</h2><span class="src">교과서 91쪽 F=ma=−mω²x=−kx · 추의 질량 0.5 kg</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="fr-cv"></canvas><div class="side"><div class="ctl"><div class="row">용수철 세기 k<span class="val" id="fr-k-v"></span></div><input type="range" id="fr-k" min="10" max="100" step="5" value="20"></div><div class="btns"><div class="btn" id="fr-hold">🖐 붙잡아 두기</div></div><div class="box"><p id="fr-msg" class="sm" style="font-size:24px;line-height:1.6"></p></div><div class="box"><p class="sm" style="font-size:22px"><b>쉽게 말하면</b> 고무줄에 묶인 공을 당길 때처럼, 멀리 당길수록 되돌리는 힘이 <b class="k">정비례</b>로 커져요. 그래서 가속도와 변위의 <b>비(a÷x)</b>는 어디서나 같아요.</p></div></div>
+</div>
+</section>
+
+<!-- cr -->
+<section class="slide" id="cr">
+  <header class="hd"><h2>단진동은 등속 원운동의 그림자</h2><span class="src">교과서 90쪽 그림 Ⅲ-3·4 · 평행 광선으로 비춘 그림자</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="cr-cv"></canvas><div class="side"><div class="ctl"><div class="row">한 바퀴 도는 시간 T<span class="val" id="cr-T-v"></span></div><input type="range" id="cr-T" min="1" max="4" step="0.1" value="3"></div><div class="chips"><div class="chip on" id="cr-n">화살표 없음</div><div class="chip" id="cr-v">속도</div><div class="chip" id="cr-a">가속도</div></div><div class="btns"><div class="btn" id="cr-p">⏸ 멈춤</div><div class="btn" id="cr-rs">↺ 처음</div></div><div class="box"><p id="cr-msg" class="sm" style="font-size:23px;line-height:1.6"></p></div><div class="box"><p class="sm" style="font-size:22px"><b>쉽게 말하면</b> 회전목마를 옆에서 보면 말들이 좌우로만 왔다 갔다 해요. 옆에서 본 모습이 곧 단진동이에요. 그래서 원운동의 식을 그대로 빌려 쓸 수 있어요.</p></div></div>
+</div>
+</section>
+
+<!-- fm -->
+<section class="slide" id="fm" data-steps="6">
+  <header class="hd"><h2>식으로 정리 — 원운동의 그림자에서 a = −ω²x 까지</h2><span class="src">교과서 90~91쪽 · 대학 교재: Halliday 15-1(식 15-3~15-13), Serway 15.2(식 15.5~15.8)</span></header>
+<div class="body" style="grid-template-columns:860px 1fr">
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>① 위치</b><span class="t">원 위 점의 높이 = 반지름 × sin(돌아간 각)</span></div><div class="eq"><span class="m">x = A&thinsp;<span class="ko">sin</span>&thinsp;ω t</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">A는 진폭, ωt는 돌아간 각(교과서 90쪽)</div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>② 속도</b><span class="t">원운동 속력 Aω의 위아래 성분</span></div><div class="eq"><span class="m">v = Aω&thinsp;<span class="ko">cos</span>&thinsp;ω t</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">x=0일 때 cos=1 → 속력 최대, 끝에서 cos=0 → 순간 정지</div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>③ 가속도</b><span class="t">구심 가속도 Aω²의 위아래 성분(중심 쪽이라 −)</span></div><div class="eq"><span class="m">a = -Aω<sup>2</sup>&thinsp;<span class="ko">sin</span>&thinsp;ω t</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">끝에서 크기 최대, 평형에서 0</div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>④ 비교</b><span class="t">②③을 x = A sin ωt 로 묶으면</span></div><div class="eq"><span class="m">a = -ω<sup>2</sup> x</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">가속도는 변위에 비례하고 방향은 반대 ← 성취기준의 핵심 문장</div></div></div>
+<div class="st" data-i="5"><div class="n">5</div><div><div class="tl"><b>⑤ 뉴턴 제2법칙</b><span class="t">F = ma 에 ④를 넣으면</span></div><div class="eq"><span class="m">F = ma = -mω<sup>2</sup> x = -kx</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">그래서 <span class="m"> ω<sup>2</sup> = k/m </span> (복원력 −kx, 91쪽)</div></div></div>
+<div class="st" data-i="6"><div class="n">6</div><div><div class="tl"><b>⑥ 주기</b><span class="t">ω = 2π/T 이므로</span></div><div class="eq"><span class="m">T = <span class="fr"><span>2π</span><span>ω</span></span> = 2π<span class="sq">√<span class="rad"><span class="fr"><span>m</span><span>k</span></span></span></span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">m↑ → 느려짐, k↑ → 빨라짐, A와는 무관. (88~91쪽에는 이 식이 직접 나오지 않는다.)</div></div></div></div>
+<div class="side"><div class="box fit"><h3>원운동 ↔ 단진동 짝짓기</h3><table class="t"><tr><th>원운동 (반지름 A, 각속도 ω)</th><th>그림자(단진동)</th></tr>
+<tr><td>반지름 A</td><td>진폭 A</td></tr><tr><td>한 바퀴 시간</td><td>주기 T</td></tr>
+<tr><td>속력 Aω (일정)</td><td>v = Aω cos ωt (변함)</td></tr><tr><td>구심 가속도 Aω² (일정)</td><td>a = −Aω² sin ωt (변함)</td></tr></table>
+<p class="warn sm">교과서는 평형에서 출발해 <span class="m">x=A<span class="ko">sin</span>ω t</span>. 끝에서 놓으면 <span class="m">x=A<span class="ko">cos</span>ω t</span>. <b>출발 시각만 다르고 모양은 같다.</b></p></div>
+<div class="box fit"><h3>대학 교재에서는</h3><p>같은 결과를 <b>미분</b>으로 얻는다. 뉴턴 제2법칙 <span class="m">m&thinsp;<span class="fr"><span>d<sup>2</sup>x</span><span>dt<sup>2</sup></span></span>=-kx</span> 를 쓰면 <span class="m"><span class="fr"><span>d<sup>2</sup>x</span><span>dt<sup>2</sup></span></span>=-ω<sup>2</sup>x</span> 이고, “두 번 미분해도 모양이 같고 부호만 반대인 함수”가 sin, cos라서 <span class="m">x=A<span class="ko">cos</span>(ω t+φ)</span> 가 해다.</p>
+<p class="sm">Halliday 15-1(PDF 439쪽), Serway 15.2(PDF 488쪽). 고등학교에서는 미분 없이 ‘그림자 모형’으로 같은 식을 만난다. φ(위상 상수)는 시작 위치를 정하는 값.</p></div></div>
+</div>
+</section>
+
+<!-- en -->
+<section class="slide" id="en">
+  <header class="hd"><h2>에너지로 보면 — 위치 에너지와 운동 에너지의 주고받기</h2><span class="src">역학과 에너지 연결(교과서 88~91쪽 밖) · 대학 교재: Halliday 15-2</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="en-cv"></canvas><div class="side"><div class="ctl"><div class="row">용수철 세기 k<span class="val" id="en-k-v"></span></div><input type="range" id="en-k" min="10" max="100" step="5" value="20"></div><div class="ctl"><div class="row">진폭 A<span class="val" id="en-a-v"></span></div><input type="range" id="en-a" min="2" max="10" step="1" value="8"></div><div class="chips"><div class="chip on" id="en-t1">1×</div><div class="chip" id="en-t2">0.25×</div><div class="chip" id="en-t0">⏸</div></div><div class="box"><p id="en-msg" class="sm" style="font-size:23px;line-height:1.6"></p></div><div class="box"><p class="sm" style="font-size:22px"><b>쉽게 말하면</b> 놀이터 미끄럼틀 아래 구슬: 꼭대기에서는 높이(위치 에너지), 바닥에서는 속도(운동 에너지). 이 둘의 <b>합 <span class="m">E=<span class="fr"><span>1</span><span>2</span></span>kA<sup>2</sup></span></b>은 마찰이 없으면 그대로예요. 진폭이 2배면 E는 4배.</p></div></div>
+</div>
+</section>
+
+<!-- tg -->
+<section class="slide" id="tg">
+  <header class="hd"><h2>도전! 목표 주기를 맞춰라 — 선물 상자 인형 문제</h2><span class="src">교과서 88쪽 생각 나누기 · 이상적인 용수철 가정</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="tg-cv"></canvas><div class="side"><div class="ctl"><div class="row">인형(추)의 질량 m<span class="val" id="tg-m-v"></span></div><input type="range" id="tg-m" min="0.1" max="1.0" step="0.05" value="0.5"></div><div class="ctl"><div class="row">용수철 세기 k<span class="val" id="tg-k-v"></span></div><input type="range" id="tg-k" min="10" max="100" step="5" value="20"></div><div class="btns"><div class="btn pri" id="tg-chk">✔ 확인</div><div class="btn" id="tg-new">다음 문제</div></div><div class="box"><p id="tg-msg" class="sm" style="font-size:23px;line-height:1.6"></p></div><div class="box"><p class="sm" style="font-size:22px"><b>생각해 볼 점</b> 눌러 놓은 인형이 제자리까지 오는 시간은 대략 <b>T/4</b>인데, 이 시간은 <b class="k">얼마나 세게 눌렀는지와 상관없어요</b>(이상적인 경우). 대신 튀어나오는 <b>속도</b>가 달라져요.</p></div></div>
+</div>
+</section>
+
+<!-- wl -->
+<section class="slide" id="wl">
+  <header class="hd"><h2>왜 중요할까 ① — 안정한 자리 근처는 거의 모두 단진동</h2><span class="src">내가 만든 설명용 모형(임의 단위) · 대학 교재: Halliday 15장, Griffiths 2.3</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="wl-cv"></canvas><div class="side"><div class="chips"><div class="chip on" id="wl-s">용수철</div><div class="chip" id="wl-m">분자 결합</div><div class="chip" id="wl-p">진자(그네)</div></div><div class="ctl"><div class="row">처음 위치(흔드는 크기)<span class="val" id="wl-a-v"></span></div><input type="range" id="wl-a" min="0.1" max="2.6" step="0.05" value="1.2"></div><div class="ctl"><div class="row">바닥 확대<span class="val" id="wl-z-v"></span></div><input type="range" id="wl-z" min="1" max="8" step="0.5" value="1"></div><div class="btns"><div class="btn pri" id="wl-rel">↺ 다시 놓기</div></div><div class="box"><p id="wl-desc" class="sm" style="font-size:22px"></p></div><div class="box"><p class="sm" style="font-size:22px"><b>핵심</b> 어떤 모양의 ‘그릇’이든 <b>바닥을 충분히 확대하면 포물선(½kx²)</b>처럼 보여요 → 작게 흔들면 모두 단진동. 그래서 단진동은 자연의 ‘기본 부품’이에요.</p></div></div>
+</div>
+</section>
+
+<!-- fl -->
+<section class="slide" id="fl">
+  <header class="hd"><h2>왜 중요할까 ② — 우리 주변 진동의 진동수 사다리</h2><span class="src">진동수는 대략적인 값 · 심장 박동은 주기 운동이지만 단진동이 아님</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="fl-cv"></canvas><div class="side"><div class="chips"><div class="chip on" id="fl-i0">1. 건물</div><div class="chip" id="fl-i1">2. 그네</div><div class="chip" id="fl-i2">3. 심장</div><div class="chip" id="fl-i3">4. 기타 줄</div><div class="chip" id="fl-i4">5. 소리굽쇠</div><div class="chip" id="fl-i5">6. 수정 시계</div><div class="chip" id="fl-i6">7. 초음파</div><div class="chip" id="fl-i7">8. 와이파이</div><div class="chip" id="fl-i8">9. CO₂ 분자</div><div class="chip" id="fl-i9">10. 빛</div></div><div class="box"><p id="fl-card" class="sm" style="font-size:23px;line-height:1.6"></p></div></div>
+</div>
+</section>
+
+<!-- ds -->
+<section class="slide" id="ds">
+  <header class="hd"><h2>왜 중요할까 ③ — 나중에 어디서 다시 만날까</h2><span class="src">학문 연결은 내가 정리한 개요 · 양자 조화 진동자: Griffiths QM 2.3(PDF 57쪽), LC 회로·분자 진동은 일반물리·물리화학 교재</span></header>
+<div class="box fit"><table class="t">
+<tr><th style="width:200px">분야</th><th>단진동이 하는 일</th><th style="width:300px">비유 / 키워드</th><th style="width:170px">만나는 때</th></tr>
+<tr><td><b>파동·소리·빛</b></td><td>매질의 한 점은 단진동, 이웃으로 전달되면 파동(바로 다음 소단원)</td><td>줄넘기 줄, 운동장 파도타기</td><td>이어서 · 물리학</td></tr>
+<tr><td><b>전자기·전자공학</b></td><td>LC 회로의 전하 진동, 교류, 라디오 동조. 식의 모양이 용수철과 같다(m↔L, k↔1/C)</td><td>전하가 왔다 갔다</td><td>전자기와 양자 · 대학</td></tr>
+<tr><td><b>화학·분자과학</b></td><td>원자 결합을 용수철로 모형화 → 분자 진동, 적외선 분광, 온실가스가 적외선을 흡수하는 까닭</td><td>원자 둘을 잇는 스프링</td><td>화학 · 대학 물리화학</td></tr>
+<tr><td><b>고체물리·반도체</b></td><td>결정 속 원자들의 진동(격자 진동)이 열과 소리를 전달하고 열용량을 설명</td><td>스프링으로 이은 구슬 격자</td><td>대학 고체물리</td></tr>
+<tr><td><b>양자역학</b></td><td>양자 조화 진동자: 에너지가 띄엄띄엄(E<sub>n</sub>=(n+½)ħω). 거의 모든 장(場)의 이론의 출발점</td><td>계단처럼 정해진 에너지</td><td>대학 양자역학</td></tr>
+<tr><td><b>건축·토목·기계</b></td><td>고유진동수와 공명, 내진·제진 설계, 자동차 서스펜션, 스마트폰 가속도 센서(미세한 질량-스프링 구조)</td><td>흔들림을 줄이는 추</td><td>공학 · 대학</td></tr>
+<tr><td><b>지구과학·천문</b></td><td>지진파와 지진계, 별의 맥동(변광성), 태양 표면의 진동</td><td>지구도 종처럼 울린다</td><td>지구과학 · 대학</td></tr>
+<tr><td><b>수학</b></td><td>x″ = −ω²x 의 해가 sin·cos. 어떤 진동도 단진동의 합으로 쓰는 푸리에 분석의 출발점</td><td>소리의 ‘재료’ 분해</td><td>미적분 · 대학</td></tr></table>
+<p class="sm">※ 마지막 열은 대략적인 안내이며 학교·대학마다 다르다. 위 표의 양자·반도체·푸리에 관련 내용은 이 덱에서 계산하지 않고 ‘이름만’ 소개한다.</p></div>
+</section>
+
+<!-- ch -->
+<section class="slide" id="ch">
+  <header class="hd"><h2>단진동에서 파동으로 — 이어 붙이면 파동</h2><span class="src">교과서 92~93쪽(탄성파)의 예고 · 이웃과 용수철로 이은 사슬 모형(설명용)</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="ch-cv"></canvas><div class="side"><div class="ctl"><div class="row">흔드는 빠르기<span class="val" id="ch-om-v"></span></div><input type="range" id="ch-om" min="3" max="10" step="0.5" value="6"></div><div class="btns"><div class="btn pri" id="ch-pu">➜ 한 번 흔들기</div><div class="btn" id="ch-co">계속 흔들기</div><div class="btn" id="ch-st">정지·초기화</div></div><div class="box"><p class="sm" style="font-size:22px"><b>쉽게 말하면</b> 줄지어 선 사람들이 옆 사람 손을 잡고 있어요. 한 명이 흔들면 옆 사람이 따라 흔들리고, 흔들림이 전달돼 가요. 사람은 제자리에서 흔들리고 <b>흔들림(에너지)만</b> 이동해요.</p></div><div class="box"><p class="sm" style="font-size:22px">오른쪽 끝이 벽에 고정되어 있어서 <b>반사</b>되어 돌아와요(교과서 92쪽 이후의 반사).</p></div></div>
+</div>
+</section>
+
+<!-- fin -->
+<section class="slide" id="fin">
+  <header class="hd"><h2>정리와 평가 — 처음의 질문으로 돌아가 보자</h2><span class="src">평가 문항·기준은 내가 제안한 예시(학교 평가 계획에 맞게 조정)</span></header>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+<div class="box fit b1"><h3>처음 질문</h3><p>“선물 상자 인형이 빨리 나오게 하려면 어떤 용수철?” → <span class="m">T=2π<span class="sq">√<span class="rad">m/k</span></span></span>: <b>k가 크고(센 용수철) 인형이 가벼울수록</b> 주기가 짧다. 눌린 정도는 도착 시간(≈T/4)을 바꾸지 않는다.</p>
+<h3 style="margin-top:10px">서술형 예시와 채점 기준</h3>
+<p><b>[문항]</b> 용수철 진자의 진폭을 두 배로 했는데 주기가 변하지 않았다. 가속도와 변위의 관계를 이용해 그 까닭을 설명하시오.</p>
+<details><summary>채점 기준 보기</summary><p class="sm" style="font-size:20px">상: a=−ω²x (또는 F=−kx)를 쓰고, 변위가 커지면 복원력·가속도도 비례해서 커져 더 빨리 움직이므로 시간이 같다고 설명 / 중: 힘이 커진다는 점만 설명 / 하: 주기가 같다고만 서술.</p></details>
+<p><b>[문항]</b> 아래 x–t 그래프의 점 P에서 속도와 가속도의 방향을 쓰시오.</p>
+<details><summary>의도</summary><p class="sm" style="font-size:20px">그래프 읽기: x가 양의 최대면 v=0, a는 음수(평형 쪽). 평형을 +방향으로 지나면 v>0, a=0.</p></details></div>
+<div class="box fit b1"><h3>스스로 점검 (눌러 체크)</h3>
+<p><label><input type="checkbox"> 평형 위치·변위·진폭·주기·진동수를 일상 말로 설명할 수 있다.</label></p>
+<p><label><input type="checkbox"> 어디서 속력이 최대이고 어디서 가속도가 최대인지 말할 수 있다.</label></p>
+<p><label><input type="checkbox"> “가속도는 변위에 비례하고 방향은 반대”를 말로 설명할 수 있다.</label></p>
+<p><label><input type="checkbox"> 진폭이 달라도 주기가 같은 까닭을 말할 수 있다.</label></p>
+<p><label><input type="checkbox"> 주기가 m과 k에 어떻게 달라지는지 안다.</label></p>
+<p><label><input type="checkbox"> 단진동이 건물·분자·소리·빛에서 다시 나오는 이유를 한 가지 말할 수 있다.</label></p>
+<h3 style="margin-top:10px">다음 시간</h3><p>한 점의 단진동을 이어 붙이면? → <b>탄성파</b> (교과서 92쪽). 횡파·종파, 파장·진동수·속력.</p></div></div>
+</section>
+
+<div id="notes"></div>
+<div id="bar"><div class="bl">〰️ 단진동 — 흔들리는 것들의 공통 규칙 <span class="sm">· 역학과 에너지 Ⅲ. 탄성파와 소리 · 단진동</span></div><div class="br"><button class="tb" id="b-help">❓ 조작법</button><button class="tb" id="b-ask">💬 발문 띄우기</button><button class="tb" id="b-notes">📝 오개념 교정 노트</button><button class="tb" id="b-theme">🌙 다크 전환</button></div></div>
+<div id="ask" role="dialog" aria-label="발문"></div>
+<div id="help" role="dialog" aria-label="조작법 설명"><div class="hp">
+<h3>조작법</h3>
+<h4>키보드</h4>
+<div class="g"><div><kbd>→</kbd><kbd>Space</kbd></div><div>다음 (단계가 있는 슬라이드는 단계부터 진행)</div>
+<div><kbd>←</kbd></div><div>이전 (단계도 거꾸로)</div>
+<div><kbd>Home</kbd><kbd>End</kbd></div><div>처음 / 마지막 슬라이드</div>
+<div><kbd>F</kbd></div><div>전체 화면</div>
+<div><kbd>Q</kbd></div><div>이 슬라이드의 <b>발문(학생용 질문)</b>을 화면 위에 크게 띄우기 / 닫기 (아무 곳이나 클릭해도 닫힘)</div>
+<div><kbd>N</kbd></div><div>오개념 교정 노트 열기/닫기 (교사용)</div>
+<div><kbd>T</kbd></div><div>다크 / 라이트 전환</div>
+<div><kbd>?</kbd><kbd>Esc</kbd></div><div>조작법 열기 / 닫기</div></div>
+<h4>화면 조작</h4>
+<div class="g"><div>→ / Space</div><div>다음 단계·슬라이드</div>
+<div>Q</div><div>학생 발문 열기</div>
+<div>N</div><div>오개념 노트</div>
+<div>슬라이더·버튼</div><div>각 시뮬레이션 조작</div>
+<div>끌기</div><div>⑦번: 추를 끌어서 놓기</div>
+<div>슬라이더 키보드</div><div>슬라이더를 클릭해 초점이 있는 동안에는 ← → 가 값 조절에 쓰입니다. 마우스로 놓으면 자동 해제</div></div>
+<h4>수업 진행 팁</h4>
+<div>시뮬레이션은 먼저 예측하고 조작해서 확인한다. 속도 화살표는 청록, 가속도 화살표는 빨강, 위치는 주황.</div>
+<div class="btns" style="margin-top:22px"><button class="btn pri" id="help-x">닫기 (Esc)</button></div>
+</div></div>
+<div id="simError"></div>
+</div>
+<div id="hud"><button id="h-prev" aria-label="이전">◀</button><span id="h-pg">1 / 1</span><button id="h-next" aria-label="다음">▶</button><button id="h-fs" aria-label="전체화면">⛶</button></div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   공통 유틸 / 그리기 도우미 (템플릿 제공)
+   ===================================================================== */
+const DECK = {"title":"단진동 — 흔들리는 것들의 공통 규칙","notes":{"c":{"q":"마지막 장에서 이 질문으로 돌아온다. 지금은 학생 생각(“센 용수철?”, “가벼운 인형?”)을 칠판에 적어 두기만 한다.","m":[["용수철이 세면(딱딱하면) 무조건 인형이 더 빨리 나온다","반은 맞다(k가 클수록 주기가 짧다). 인형의 질량도 영향을 준다. 11번 장에서 식으로 확인한다."]]},"st":{"q":"“오늘은 식을 외우는 수업이 아니라, ‘왜 진폭이 달라도 주기가 같을까’를 말로 설명하는 수업”이라고 안내한다.","m":[["단진동 단원은 삼각함수·미분을 계산하는 단원이다","교과서 90~91쪽은 식을 ‘제시’한다. 성취기준은 가속도와 변위의 관계를 설명하는 것이다. 미분은 쓰지 않는다."]]},"tc":{"q":"점검표는 교사용이지만 학생과 함께 보아도 된다. 오개념 4·5·6은 시뮬레이션(⑤⑥⑫)에서 학생이 직접 반박해 보게 한다.","m":[["단진동 = 진자 = 그네","그네는 작은 각도에서만 단진동에 가깝다(⑫). 이 단원의 대표 예는 용수철 진자."]]},"wd":{"q":"“변위와 거리의 차이는?”을 물어본다. 평형에서 왼쪽 3 cm와 오른쪽 3 cm는 거리는 같지만 변위는 다르다(부호).","m":[["변위 = 움직인 총 거리","변위는 평형 위치에서 본 위치(방향 포함)이다. 왕복하면 거리는 계속 늘지만 변위는 오가며 변한다."],["진동수가 크면 진폭도 크다","진동수와 진폭은 별개다. 진동수=1초 동안 몇 번, 진폭=얼마나 멀리."]]},"sp":{"q":"①예측을 손가락으로(길다/짧다/같다) ②진폭을 2, 6, 10 cm로 바꿔 ‘기록’ ③질량, k를 한 번에 하나씩 바꿔 보기(변인 통제) ④수직으로 바꿔 평형 위치 이동 확인 ⑤마찰을 켜면 진폭이 줄어도 주기는 거의 그대로임을 관찰.","m":[["멀리 당길수록 한 번 왕복하는 데 시간이 더 걸린다","멀리 가지만 그만큼 더 센 힘으로 당겨져 더 빨리 달린다. 이상적 용수철에서 주기는 진폭과 무관하다(89쪽)."],["수직으로 매달면 중력 때문에 주기가 달라진다","중력은 평형 위치를 mg/k 만큼 옮길 뿐, 그 평형 위치를 기준으로 한 운동은 같다."],["마찰이 있으면 진동이 멈추니 단진동이 아니다","마찰이 작으면 진폭이 서서히 줄 뿐 주기는 거의 같다. 교과서는 마찰을 무시한 이상적 경우를 다룬다."]]},"va":{"q":"①0.25배로 늦춘 뒤 ‘화살표 숨김’ 상태에서 학생이 Q1, Q2를 먼저 고른다 ②화살표를 켜서 확인 ③세 그래프를 세로로 맞춰 읽기: x가 최대일 때 v=0, a는 최소(음수 최대). v가 최대일 때 x=0, a=0 ④“v와 a의 최대 시점이 다르다”를 말로 정리.","m":[["평형 위치에서는 힘이 없으니 멈춘다","힘이 0이라는 것은 더 이상 가속되지 않는다는 뜻이다. 이미 얻은 속도로 지나가며 속력은 최대다."],["양 끝에서 멈추니까 힘도 0이다","멈춘 것은 속도이고, 방향이 바뀌려면 오히려 가장 센 힘이 필요하다. 그래서 a가 최대다."],["속도와 가속도는 항상 같은 방향이다","a는 늘 평형 위치 쪽이고, v는 가는 방향이다. 평형에서 멀어질 때는 서로 반대다."]]},"fr":{"q":"끌어서 놓는 활동 ①x를 6 cm, 12 cm로 잡고 F를 읽게 한다(2배→2배) ②‘붙잡아 두기’로 멈춘 채 숫자 읽기 ③놓은 뒤 a÷x가 계속 같은 값(−k/m)임을 확인 ④k를 바꾸면 기울기가 달라지는 것 확인.","m":[["복원력은 항상 같은 크기다","크기는 변위에 비례해서 계속 변한다(훅의 법칙). 평형에서 0, 끝에서 최대."],["−부호는 힘이 작아진다는 뜻이다","부호는 방향이다. 변위와 반대, 즉 평형 위치를 향한다."]]},"cr":{"q":"①속도 화살표를 켜고, 공이 맨 위·맨 아래에 올 때 그림자의 속도 성분이 0임을 확인(끝에서 순간 정지) ②가속도 화살표를 켜면 맨 위에서 아래 방향으로 가장 큼 ③공이 가운데 높이를 지날 때 그림자 속도가 최대 ④T를 바꾸면 ω와 a/x 값이 같이 바뀜.","m":[["단진동하는 물체가 실제로 원을 그리며 돈다","원운동은 수학적 모형이다. 두 운동이 ‘같은 식’을 갖는다는 뜻이지 같은 물체라는 뜻이 아니다."],["그림자의 속도도 일정하다","공의 속력은 일정하지만 그림자 속도는 그 위아래 성분이라 계속 변한다."],["ω는 진동수와 같다","ω=2πf. 단위가 rad/s이고 2π배 차이가 난다."]]},"fm":{"q":"“x에 ω²을 곱하고 −를 붙이면 가속도가 된다”를 말로 해 보게 한다. 계산 문제로 몰고 가지 않고, ④의 의미(가속도∝−변위)를 설명하는 데 시간을 쓴다.","m":[["sin ωt 의 ω는 속도다","ω는 각진동수(rad/s)이다. 속도는 v = Aω cos ωt 로 따로 있다."],["주기 식에 진폭 A가 들어간다","T=2π√(m/k)에는 A가 없다. 진폭이 달라도 주기가 같은 이유다."]]},"en":{"q":"“왜 끝에서 멈추지만 다시 돌아올까?”에 에너지로 답하게 한다. 이 장은 교과서 쪽 밖의 확장이므로 시간이 부족하면 건너뛰어도 된다. 아래 ‘우물’ 그림이 ⑫의 준비가 된다.","m":[["끝점에서는 에너지가 0이다","운동 에너지만 0이고 위치 에너지가 최대다(E는 그대로)."],["진폭이 2배면 에너지도 2배","E=½kA²이므로 4배다."]]},"tg":{"q":"모둠별로 목표 주기를 정해 주고 “m과 k 중 무엇을 어떻게 바꿨는가”를 발표하게 한다. 마지막에 T=2π√(m/k)를 보여 주고 학생이 찾은 규칙과 비교한다. 첫 문제 답 예: m=0.5, k=20 → T≈0.99 s.","m":[["빨리 나오게 하려면 세게 누르면 된다","제자리까지 오는 시간(≈T/4)은 눌린 정도와 무관하다. 더 세게 누르면 더 빠르게 튀어나오지만 도착 시간은 같다(이상적)."],["질량이 크면 주기가 짧다","질량이 클수록 관성이 커서 주기가 길어진다(느려진다)."]]},"wl":{"q":"“바닥 확대” 슬라이더를 올리면 실제 곡선(주황)과 포물선(파랑 점선)이 겹쳐지는 것을 보여 준다. 분자 결합에서 큰 진폭일 때 주기가 길어지는 것도 확인한다. 이 모형은 설명용이며 수치는 임의 단위다.","m":[["모든 진동은 단진동이다","작은 진폭에서만 근사적으로 그렇다. 크게 흔들면 주기가 진폭에 따라 달라진다(분자, 진자)."],["분자 결합이 정확히 용수철이다","바닥 근처에서만 용수철처럼 보인다. 실제 곡선은 비대칭이다."]]},"fl":{"q":"번호를 눌러 하나씩 보며 “질량 역할은? 복원력 역할은?”을 학생이 먼저 말해 보게 한다. 3번(심장)이 단진동이 아닌 이유를 꼭 묻는다.","m":[["주기적으로 반복되면 모두 단진동","복원력이 변위에 비례해야 단진동이다. 심장 박동·톱니파는 주기 운동이지만 단진동이 아니다."],["빛이 진동하는 것은 매질이 흔들리는 것이다","빛(전자기파)은 매질 없이 전기장·자기장이 진동한다. 같은 수학이 쓰일 뿐이다."]]},"ds":{"q":"“내 진로(희망 학과)에서 단진동이 어디에 쓰일까?”를 한 줄씩 말해 보게 한다. 학생이 모르는 말(푸리에, 격자 진동 등)은 ‘이름만 소개’하고 넘어간다.","m":[["단진동은 고등학교 물리에서만 쓰이는 개념이다","대학 물리, 화학, 공학, 지구과학에서 반복해서 쓰인다. 한 가지 수학을 여러 분야가 빌려 쓴다."]]},"ch":{"q":"①‘한 번 흔들기’로 펄스가 오른쪽으로 가는 것 관찰 ②주황 점의 그래프가 단진동 모양과 비슷한 것 확인 ③점을 눌러 다른 점으로 바꾸면 시작 시각만 늦어지는 것(위상 지연) ④이어서 교과서 92쪽 빨대 파동 활동으로 연결.","m":[["파동이 지나갈 때 매질도 같이 이동한다","매질은 제자리에서 진동하고, 진동 상태(에너지)가 전달된다."],["이 사슬이 실제 탄성파를 정확히 계산한다","설명용 모형이다. 파동 방정식은 이 단원에서 도입하지 않는다."]]},"fin":{"q":"선물 상자 질문으로 돌아가 학생 처음 생각과 비교한다. 서술형은 개인, 시뮬레이션 설명은 모둠 발표로 평가할 수 있다. 자기 점검은 형성평가로 쓰고 부족한 학생은 ⑤⑥ 장을 다시 해 본다.","m":[["센 용수철이면 인형이 항상 더 빨리 나온다","인형 질량도 영향이 있다. 같은 질량이면 k가 큰 용수철이 주기가 짧다."]]}},"ask":{"sp":["추를 더 멀리 잡아당겼다 놓으면, 한 번 왕복하는 시간(주기)은 길어질까, 짧아질까, 같을까?","추를 무거운 것으로 바꾸면 주기는? 더 센 용수철(k가 큰 것)로 바꾸면?","용수철을 수직으로 매달면 중력 때문에 주기가 달라질까?"],"fr":["추를 2배 멀리 끌면 되돌리는 힘은 몇 배가 될까?","평형 위치를 지날 때 용수철은 추에 힘을 주고 있을까? 힘이 0인데 추는 왜 계속 움직일까?"],"wl":["밥그릇, 놀이터 그네, 분자 속 원자… 모양이 다른 ‘그릇’에서 구슬을 아주 조금만 흔들면 어떻게 움직일까?","크게 흔들면 어떻게 달라질까?"],"ch":["용수철로 이어진 줄에서 한 점을 흔들면 옆 점은 왜 따라 움직일까?","물결이 오른쪽으로 갈 때 점 하나는 어느 방향으로 움직일까?"]}};
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const TAU = Math.PI * 2, DPR = 2;
+const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const C = { bg: '#0a1330', grid: 'rgba(160,190,255,.22)', text: '#e3ecff', dim: '#9db0d8', KE: '#ffb454', PE: '#7fb2ff', E: '#ffffff', ok: '#5eead4', bad: '#ff9d9d' };
+const font = (px, w = 500, it = false) => `${it ? 'italic ' : ''}${w} ${px}px 'Noto Sans KR',sans-serif`;
+const mathFont = px => `italic 400 ${px}px 'STIX Two Text','Times New Roman',serif`;
+function setupCanvas(cv, W, H) { cv.width = W * DPR; cv.height = H * DPR; cv.style.width = W + 'px'; cv.style.height = H + 'px'; const c = cv.getContext('2d'); c.setTransform(DPR, 0, 0, DPR, 0, 0); return c; }
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function makeStars(W, H, n, seed) { const r = mulberry(seed); return Array.from({ length: n }, () => [r() * W, r() * H, .25 + r() * .55, r() < .12 ? 3 : 2]); }
+function drawStars(ctx, stars) { stars.forEach(([x, y, a, s]) => { ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(x, y, s, s); }); }
+function arrow(ctx, x0, y0, x1, y1, color, lw = 4, head = 15) {
+  const a = Math.atan2(y1 - y0, x1 - x0); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - Math.cos(a) * head * .6, y1 - Math.sin(a) * head * .6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - head * Math.cos(a - .45), y1 - head * Math.sin(a - .45)); ctx.lineTo(x1 - head * Math.cos(a + .45), y1 - head * Math.sin(a + .45)); ctx.closePath(); ctx.fill();
+}
+function mathRun(ctx, x, y, parts) { let cx = x; parts.forEach(q => { ctx.font = q.f; ctx.fillStyle = q.c; ctx.fillText(q.t, cx, y + (q.dy || 0)); cx += ctx.measureText(q.t).width; }); return cx; }
+function bindRange(id, cb) { const el = $('#' + id); el.addEventListener('input', () => cb(parseFloat(el.value))); el.addEventListener('change', () => el.blur()); return el; }
+const fmt = (x, d = 2) => (x < 0 ? '−' : '') + Math.abs(x).toFixed(d);
+
+/* 오류 표시: 슬라이드 코드 예외를 화면 상단과 window.__wsErrors에 남긴다 (헤드리스 검사용) */
+window.__wsErrors = [];
+function reportError(where, e) {
+  const msg = `${where}: ${e && e.message ? e.message : e}`;
+  if (!window.__wsErrors.includes(msg)) { window.__wsErrors.push(msg); console.error('[슬라이드 오류] ' + msg); }
+  const box = document.getElementById('simError'); box.textContent = window.__wsErrors.slice(-3).join('\n'); box.classList.add('on');
+}
+function safe(where, fn, ...args) { try { return fn && fn(...args); } catch (e) { reportError(where, e); } }
+
+/* =====================================================================
+   shared_js (주제별 물리 계산부·공용 시뮬레이터)
+   ===================================================================== */
+/* ===== 단진동: 공용 계산 + 그리기 도우미 ===== */
+const COL={x:'#ffb454',v:'#5eead4',a:'#ff7a7a',m:'#7cc4ff',spr:'#cdd9f5',ke:'#5eead4',pe:'#ffb454',e:'#ffe27a',ok:'#7ee787',wall:'#4a5f94'};
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function tx(ctx,s,x,y,px,col,al,w){ctx.font=(w||500)+' '+px+"px 'Noto Sans KR',sans-serif";ctx.fillStyle=col||C.text;ctx.textAlign=al||'left';ctx.textBaseline='alphabetic';ctx.fillText(s,x,y);}
+function g(id){return +document.getElementById(id).value;}
+function setT(id,s){const e=document.getElementById(id);if(e&&e.textContent!==s)e.textContent=s;}
+function setH(id,h){const e=document.getElementById(id);if(e&&e.innerHTML!==h)e.innerHTML=h;}
+function onClick(id,f){const el=document.getElementById(id);if(el)el.addEventListener('click',f);}
+function setChips(ids,on){ids.forEach(i=>{const e=document.getElementById(i);if(e)e.classList.toggle('on',i===on);});}
+function canvasXY(cv,e,W,H){const r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)/r.width*W,y:(e.clientY-r.top)/r.height*H};}
+/* ---- 물리: 용수철 진자(이상적: 정확해, 마찰: 작은 걸음 적분) ---- */
+const PHYS={
+ omega(k,m){return Math.sqrt(k/m);},
+ period(k,m){return TAU*Math.sqrt(m/k);},
+ rot(s,w,dt){const c=Math.cos(w*dt),n=Math.sin(w*dt);const x=s.x*c+s.v/w*n,v=-s.x*w*n+s.v*c;s.x=x;s.v=v;}
+};
+function newOsc(k,m,A){return {k:k,m:m,A:A,x:A,v:0,t:0,c:0,tc:0,Tm:null,peaks:[0],hist:[]};}
+function resetOsc(o,k,m,A){o.k=k;o.m=m;o.A=A;o.x=A;o.v=0;o.t=0;o.tc=0;o.Tm=null;o.peaks=[0];o.hist.length=0;}
+function stepOsc(o,dt){const v0=o.v;
+ if(o.c<=0){PHYS.rot(o,Math.sqrt(o.k/o.m),dt);}
+ else{const n=Math.ceil(dt/0.002),h=dt/n;for(let i=0;i<n;i++){const a=(-o.k*o.x-o.c*o.v)/o.m;o.v+=a*h;o.x+=o.v*h;}}
+ o.t+=dt;
+ if(v0>0&&o.v<=0){const f=v0/(v0-o.v),tc=o.t-dt+f*dt;if(o.tc!==null)o.Tm=tc-o.tc;o.tc=tc;o.peaks.push(tc);if(o.peaks.length>40)o.peaks.shift();}
+ o.hist.push({t:o.t,x:o.x,v:o.v,a:-o.k*o.x/o.m-(o.c>0?o.c*o.v/o.m:0)});if(o.hist.length>1200)o.hist.shift();}
+/* ---- 그리기 ---- */
+function zig(ctx,x0,y0,x1,y1,n,amp,col,lw){const dx=x1-x0,dy=y1-y0,L=Math.hypot(dx,dy)||1,ux=dx/L,uy=dy/L,nx=-uy,ny=ux,lead=Math.min(16,L*0.12);
+ ctx.strokeStyle=col;ctx.lineWidth=lw;ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x0+ux*lead,y0+uy*lead);
+ for(let i=0;i<n*2;i++){const s=lead+(L-2*lead)*(i+0.5)/(n*2),sg=(i%2?-1:1)*amp;ctx.lineTo(x0+ux*s+nx*sg,y0+uy*s+ny*sg);}
+ ctx.lineTo(x1-ux*lead,y1-uy*lead);ctx.lineTo(x1,y1);ctx.stroke();}
+function massBox(ctx,cx,cy,m,col){const w=56+44*Math.sqrt(m),h=60+20*Math.sqrt(m);ctx.fillStyle=col||COL.m;ctx.strokeStyle='#dbe7ff';ctx.lineWidth=2.5;
+ ctx.beginPath();ctx.rect(cx-w/2,cy-h/2,w,h);ctx.fill();ctx.stroke();tx(ctx,'m',cx,cy+9,28,'#0b1630','center',700);return {w:w,h:h};}
+/* 수평 용수철(마찰 없는 면): opt{W,wall,X0,y,S,vec,A} */
+function drawH(ctx,o,opt){const px=opt.X0+o.x*opt.S;const mb=massBox(ctx,px,opt.y,o.m);
+ ctx.fillStyle=COL.wall;ctx.fillRect(opt.wall-14,opt.y-60,14,120);
+ ctx.strokeStyle='#2c3f73';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(opt.wall-14,opt.y+mb.h/2+4);ctx.lineTo(opt.W-20,opt.y+mb.h/2+4);ctx.stroke();
+ zig(ctx,opt.wall,opt.y,px-mb.w/2,opt.y,9,15,COL.spr,3.5);
+ ctx.setLineDash([6,6]);ctx.strokeStyle='rgba(255,255,255,.45)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(opt.X0,opt.y-mb.h/2-26);ctx.lineTo(opt.X0,opt.y+mb.h/2+20);ctx.stroke();
+ if(opt.A){ctx.strokeStyle='rgba(255,180,84,.55)';for(const s of[-1,1]){const xx=opt.X0+s*opt.A*opt.S;ctx.beginPath();ctx.moveTo(xx,opt.y-mb.h/2-14);ctx.lineTo(xx,opt.y+mb.h/2+20);ctx.stroke();}}
+ ctx.setLineDash([]);tx(ctx,'평형 위치',opt.X0,opt.y-mb.h/2-34,22,C.dim,'center',500);
+ if(opt.vec){const w=PHYS.omega(o.k,o.m),A=o.A;const vl=110*o.v/(A*w),al=-110*o.x/A;
+  if(Math.abs(vl)>2)arrow(ctx,px,opt.y-mb.h/2-6,px+vl,opt.y-mb.h/2-6,COL.v,6,12);
+  if(Math.abs(al)>2)arrow(ctx,px,opt.y+mb.h/2+14,px+al,opt.y+mb.h/2+14,COL.a,6,12);
+  tx(ctx,'속도 v',px+(vl>=0?vl+10:vl-10),opt.y-mb.h/2-2,22,COL.v,vl>=0?'left':'right',700);
+  tx(ctx,'가속도 a',px+(al>=0?al+10:al-10),opt.y+mb.h/2+22,22,COL.a,al>=0?'left':'right',700);}
+ return px;}
+/* 시간 그래프: r{x,y,w,h}, amp=세로 눈금 1.0에 해당하는 값 */
+function plotSeries(ctx,r,hist,key,amp,col,label,t,win,opt){opt=opt||{};ctx.save();
+ ctx.fillStyle='rgba(255,255,255,.045)';ctx.fillRect(r.x,r.y,r.w,r.h);
+ const y0=r.y+r.h/2,t0=t-win,hh=r.h/2-8;
+ ctx.strokeStyle=C.grid;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(r.x,y0);ctx.lineTo(r.x+r.w,y0);ctx.stroke();
+ if(opt.peaks){ctx.setLineDash([5,6]);ctx.strokeStyle='rgba(255,226,122,.55)';ctx.lineWidth=2;for(const p of opt.peaks){if(p<t0||p>t)continue;const X=r.x+(p-t0)/win*r.w;ctx.beginPath();ctx.moveTo(X,r.y+4);ctx.lineTo(X,r.y+r.h-4);ctx.stroke();}ctx.setLineDash([]);}
+ ctx.strokeStyle=col;ctx.lineWidth=3.5;ctx.lineJoin='round';ctx.beginPath();let first=true,lx=0,ly=0;
+ for(const p of hist){if(p.t<t0)continue;const X=r.x+(p.t-t0)/win*r.w,Y=y0-clamp(p[key]/amp,-1.15,1.15)*hh;if(first){ctx.moveTo(X,Y);first=false;}else ctx.lineTo(X,Y);lx=X;ly=Y;}ctx.stroke();
+ if(!first){ctx.fillStyle=col;ctx.beginPath();ctx.arc(lx,ly,7,0,TAU);ctx.fill();}
+ tx(ctx,label,r.x+10,r.y+26,22,col,'left',700);
+ if(opt.top)tx(ctx,opt.top,r.x+r.w-8,r.y+22,20,C.dim,'right',500);
+ ctx.restore();}
+/* ---- 퍼텐셜 우물(슬라이드 12용): 무차원 단위, m=0.2 ---- */
+const WELLS={
+ spring:{name:'용수철',U:x=>x*x,dU:x=>2*x,keff:2,x0:-2.8,x1:2.8,ym:8,Amax:2.6},
+ morse:{name:'분자 결합',U:x=>{const e=1-Math.exp(-x);return e*e;},dU:x=>2*(1-Math.exp(-x))*Math.exp(-x),keff:2,x0:-0.9,x1:5.2,ym:1.2,Amax:2.5},
+ pend:{name:'진자',U:x=>2*(1-Math.cos(x)),dU:x=>2*Math.sin(x),keff:2,x0:-3.4,x1:3.4,ym:4.4,Amax:2.8}
+};
+const WM=0.2;
+function newBall(w,A){return {w:w,x:A,v:0,t:0,tc:0,Tm:null,trail:[]};}
+function stepBall(b,dt){const w=b.w,n=Math.ceil(dt/0.002),h=dt/n;
+ for(let i=0;i<n;i++){const v0=b.v;let a=-w.dU(b.x)/WM;b.v+=0.5*h*a;b.x+=h*b.v;a=-w.dU(b.x)/WM;b.v+=0.5*h*a;b.t+=h;
+  if(v0>0&&b.v<=0){const f=v0/(v0-b.v),tc=b.t-h+f*h;b.Tm=tc-b.tc;b.tc=tc;}}}
+function measureBallPeriod(w,A){const b=newBall(w,A);let guard=0;while(b.Tm===null&&guard<2e6){stepBall(b,0.01);guard++;}return b.Tm;}
+/* ---- 사슬(슬라이드 15용) ---- */
+const CH={N:40,w0:14};
+function newChain(){return {y:new Array(CH.N).fill(0),v:new Array(CH.N).fill(0),t:0,mode:'off',hist:[]};}
+function stepChain(c,dt,Om,A){const n=Math.ceil(dt/0.004),h=dt/n;
+ for(let s=0;s<n;s++){
+  for(let i=0;i<CH.N;i++){const l=i===0?drive(c,Om,A):c.y[i-1],r=i===CH.N-1?0:c.y[i+1];c.v[i]+=h*(CH.w0*CH.w0*(l-2*c.y[i]+r)-0.15*c.v[i]);}
+  for(let i=0;i<CH.N;i++)c.y[i]+=h*c.v[i];c.t+=h;}}
+function drive(c,Om,A){if(c.mode==='cont')return A*Math.sin(Om*c.t);if(c.mode==='pulse'){const tp=c.t-c.t0;return (tp>=0&&tp<=TAU/Om)?A*Math.sin(Om*tp):0;}return 0;}
+function TESTS(){const T=[];const rel=(a,b)=>Math.abs(a-b)/Math.max(1e-12,Math.abs(b));
+ for(const [k,m] of [[20,0.5],[50,0.2],[10,1.0],[100,0.1]]){const o=newOsc(k,m,0.08);for(let i=0;i<4000&&o.Tm===null;i++)stepOsc(o,0.001);
+  T.push(['주기 T=2π√(m/k) (k='+k+', m='+m+')',rel(o.Tm,PHYS.period(k,m))<0.002,'측정 '+o.Tm.toFixed(4)+' s, 공식 '+PHYS.period(k,m).toFixed(4)+' s']);}
+ {const a=newOsc(20,0.5,0.02),b=newOsc(20,0.5,0.10);for(let i=0;i<3000&&(a.Tm===null||b.Tm===null);i++){stepOsc(a,0.001);stepOsc(b,0.001);}
+  T.push(['진폭이 5배여도 주기 같음',rel(a.Tm,b.Tm)<0.002,a.Tm.toFixed(4)+' vs '+b.Tm.toFixed(4)]);}
+ {const o=newOsc(30,0.4,0.07);const E0=0.5*o.k*o.x*o.x;let mx=0;for(let i=0;i<3000;i++){stepOsc(o,0.007);mx=Math.max(mx,Math.abs(0.5*o.m*o.v*o.v+0.5*o.k*o.x*o.x-E0)/E0);}
+  T.push(['역학적 에너지 보존(마찰 없음)',mx<1e-9,'최대 상대 오차 '+mx.toExponential(1)]);}
+ {const o=newOsc(30,0.4,0.07);let ok=true;for(let i=0;i<500;i++){stepOsc(o,0.013);const h=o.hist[o.hist.length-1],w2=o.k/o.m;if(Math.abs(h.a+w2*h.x)>1e-9)ok=false;}
+  T.push(['a = −ω²x 가 매 순간 성립',ok,'ω²=k/m']);}
+ {const A=0.1,w=7,h=1e-5;const y=t=>A*Math.sin(w*t);const a=(y(0.3+h)-2*y(0.3)+y(0.3-h))/(h*h);
+  T.push(['원운동 그림자 y=A sin ωt 의 가속도 = −ω²y',rel(a,-w*w*y(0.3))<1e-4,a.toFixed(4)]);}
+ {const o=newOsc(20,0.5,0.08);o.c=0.8;const E0=0.5*o.k*o.A*o.A;for(let i=0;i<2000;i++)stepOsc(o,0.005);const E=0.5*o.m*o.v*o.v+0.5*o.k*o.x*o.x;
+  T.push(['마찰이 있으면 에너지가 줄어듦',E<0.9*E0,(E/E0).toFixed(3)+'배']);}
+ {const k=20,m=0.5,gg=9.8,d=m*gg/k;let y=d+0.06,v=0,t=0,pk=[];const h=1e-4;for(let i=0;i<40000&&pk.length<2;i++){const v0=v;v+=h*(-k*(y-0)/m+gg);y+=h*v;t+=h;if(v0>0&&v<=0)pk.push(t);}
+  const Tm=pk[1]-pk[0];T.push(['수직 용수철: 중력은 평형만 mg/k 옮기고 주기는 그대로',rel(Tm,PHYS.period(k,m))<0.002,'T '+Tm.toFixed(4)+' s, 평형 이동 '+(d*100).toFixed(1)+' cm']);}
+ {const t0=PHYS.period(WELLS.morse.keff,WM),ts=measureBallPeriod(WELLS.morse,0.05),tl=measureBallPeriod(WELLS.morse,2.4);
+  T.push(['분자 결합: 작은 진폭에서는 단진동과 주기 같음',rel(ts,t0)<0.01,ts.toFixed(4)+' vs '+t0.toFixed(4)]);
+  T.push(['분자 결합: 큰 진폭에서는 주기가 길어짐(단진동 아님)',tl>1.3*t0,(tl/t0).toFixed(2)+'배']);
+  const tp=measureBallPeriod(WELLS.pend,0.05);T.push(['진자: 작은 각도에서 단진동 근사',rel(tp,t0)<0.01,tp.toFixed(4)+' vs '+t0.toFixed(4)]);
+  const ty=measureBallPeriod(WELLS.spring,2.2);T.push(['용수철 우물은 큰 진폭에서도 주기 같음',rel(ty,t0)<0.002,ty.toFixed(4)]);}
+ {const c=newChain();c.mode='pulse';c.t0=0;let arr=null;for(let i=0;i<4000;i++){stepChain(c,0.004,6,40);if(arr===null&&Math.abs(c.y[30])>3)arr=c.t;}
+  const exp=29/CH.w0;T.push(['사슬: 펄스가 약 w0 칸/초로 전달',arr!==null&&rel(arr,exp)<0.5,'도착 '+(arr||0).toFixed(2)+' s, 예상 약 '+exp.toFixed(2)+' s']);}
+ return T;}
+
+
+/* =====================================================================
+   슬라이드별 모듈: { start(), stop(), frame(dt), onStep(step) }
+   ===================================================================== */
+const REG = {};
+/* ---- c ---- */
+REG["c"] = safe("c.init", function () {
+const cv=$('#c-cv'),W=720,H=720,ctx=setupCanvas(cv,W,H);const o=newOsc(20,0.5,0.1);
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ tx(ctx,'용수철에 매달린 추의 왕복 운동',W/2,56,30,C.text,'center',700);
+ drawH(ctx,o,{W:W,wall:50,X0:400,y:190,S:1500,A:0.1});
+ plotSeries(ctx,{x:40,y:370,w:640,h:260},o.hist,'x',0.1,COL.x,'위치 x (시간에 따라)',o.t,4.5,{peaks:o.peaks});
+ tx(ctx,'→ 같은 모양이 계속 되풀이된다 = 단진동',W/2,672,26,C.dim,'center',500);}
+return{start(){draw();},frame(dt){stepOsc(o,Math.min(dt,.05));draw();}};
+
+});
+
+/* ---- sp ---- */
+REG["sp"] = safe("sp.init", function () {
+const cv=$('#sp-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);
+const o=newOsc(20,0.5,0.08);let orient='h',rec=[],last='';
+function cur(){return [g('sp-m'),g('sp-k'),g('sp-a')/100,g('sp-c')];}
+function rel(){const q=cur();resetOsc(o,q[1],q[0],q[2]);o.c=q[3];last=q.join();}
+function setOr(s){orient=s;setChips(['sp-h','sp-vt'],s==='h'?'sp-h':'sp-vt');rel();}
+onClick('sp-h',()=>setOr('h'));onClick('sp-vt',()=>setOr('v'));onClick('sp-rel',rel);
+onClick('sp-clr',()=>{rec=[];renderTab();});
+onClick('sp-rec',()=>{if(o.Tm===null||o.c>0)return;rec.push({A:g('sp-a'),T:o.Tm,m:o.m,k:o.k});if(rec.length>5)rec.shift();renderTab();});
+function renderTab(){let h='<tr><th>진폭 A (cm)</th><th>주기 T (s)</th><th>m (kg)</th><th>k (N/m)</th></tr>';
+ for(const r of rec)h+='<tr><td>'+r.A+'</td><td>'+r.T.toFixed(3)+'</td><td>'+r.m.toFixed(2)+'</td><td>'+r.k+'</td></tr>';
+ if(!rec.length)h+='<tr><td colspan="4" class="sm">‘기록’을 눌러 진폭을 바꿔 가며 모아 보세요</td></tr>';
+ setH('sp-tab',h);
+ const same=rec.filter(r=>r.m===rec[rec.length-1].m&&r.k===rec[rec.length-1].k);
+ if(same.length>=2){const Ts=same.map(r=>r.T),As=same.map(r=>r.A);if(Math.max(...As)>Math.min(...As)){const sp=(Math.max(...Ts)-Math.min(...Ts))/Math.min(...Ts)*100;
+  setH('sp-cmp','같은 용수철·같은 추에서 진폭은 <b class="k">'+Math.min(...As)+'~'+Math.max(...As)+' cm</b>로 달랐지만, 주기 차이는 겨우 <b class="k">'+sp.toFixed(1)+'%</b>');return;}}
+ setH('sp-cmp','');}
+function drawVert(){const Y0=370,S=1500,X=200,ceil=50,py=Y0+o.x*S;const mb=massBox(ctx,X,py,o.m);
+ ctx.fillStyle=COL.wall;ctx.fillRect(X-100,ceil-14,200,14);
+ zig(ctx,X,ceil,X,py-mb.h/2,9,15,COL.spr,3.5);
+ ctx.setLineDash([6,6]);ctx.lineWidth=2;ctx.strokeStyle='rgba(255,255,255,.5)';ctx.beginPath();ctx.moveTo(X-140,Y0);ctx.lineTo(X+140,Y0);ctx.stroke();
+ ctx.strokeStyle='rgba(255,180,84,.55)';for(const s of[-1,1]){ctx.beginPath();ctx.moveTo(X-110,Y0+s*o.A*S);ctx.lineTo(X+110,Y0+s*o.A*S);ctx.stroke();}ctx.setLineDash([]);
+ tx(ctx,'평형 위치',X+150,Y0+8,22,C.dim,'left',500);
+ const d=o.m*9.8/o.k,Leq=Y0-40-ceil,yN=Y0-40-d*S;
+ if(d*S<Leq-60){ctx.strokeStyle='#9fb4e8';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(X+60,yN);ctx.lineTo(X+110,yN);ctx.stroke();tx(ctx,'원래 길이',X+118,yN+8,20,'#9fb4e8','left',500);}
+ tx(ctx,'(아래쪽이 +)',X,598,22,C.dim,'center',500);
+ tx(ctx,'중력 때문에 mg/k = '+(d*100).toFixed(1)+' cm',X,630,22,C.text,'center',600);tx(ctx,'늘어난 곳이 새 평형 위치',X,660,22,C.text,'center',600);tx(ctx,'→ 평형 위치만 옮겨질 뿐',X,692,22,C.ok,'center',600);}
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ const T0=PHYS.period(o.k,o.m),win=clamp(3.2*T0,1.5,7),tm=o.Tm;
+ const top=tm!==null?'측정한 주기 T = '+tm.toFixed(2)+' 초':'주기 측정 중…';
+ if(orient==='h'){drawH(ctx,o,{W:W,wall:70,X0:520,y:150,S:2600,A:o.A});
+  const r={x:130,y:290,w:880,h:400};plotSeries(ctx,r,o.hist,'x',o.A,COL.x,'위치 x',o.t,win,{peaks:o.peaks});tx(ctx,top,r.x+r.w,r.y-10,24,COL.e,'right',700);
+  tx(ctx,'+'+(o.A*100).toFixed(0)+' cm',r.x-8,r.y+34,20,C.dim,'right',500);tx(ctx,'−'+(o.A*100).toFixed(0)+' cm',r.x-8,r.y+r.h-14,20,C.dim,'right',500);tx(ctx,'0',r.x-8,r.y+r.h/2+7,20,C.dim,'right',500);
+  tx(ctx,'시간 →',r.x+r.w,r.y+r.h+24,20,C.dim,'right',500);tx(ctx,'주황 점선 = 진폭 A',60,246,20,'#ffb454','left',500);
+  const pk=o.peaks;if(pk.length>=2){const t0=o.t-win,a=pk[pk.length-2],b=pk[pk.length-1];if(a>=t0){const xa=r.x+(a-t0)/win*r.w,xb=r.x+(b-t0)/win*r.w;ctx.strokeStyle=COL.e;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(xa,r.y+r.h-26);ctx.lineTo(xb,r.y+r.h-26);ctx.stroke();tx(ctx,'T',(xa+xb)/2,r.y+r.h-34,24,COL.e,'center',700);}}}
+ else{drawVert();const r={x:430,y:80,w:580,h:580};plotSeries(ctx,r,o.hist,'x',o.A,COL.x,'위치 x (아래쪽 +)',o.t,win,{peaks:o.peaks});tx(ctx,top,r.x+r.w,r.y-10,24,COL.e,'right',700);}}
+return{start(){rel();renderTab();draw();},frame(dt){const q=cur().join();if(q!==last)rel();stepOsc(o,Math.min(dt,.05));
+ setT('sp-m-v',o.m.toFixed(2)+' kg');setT('sp-k-v',o.k+' N/m');setT('sp-a-v',(o.A*100).toFixed(0)+' cm');setT('sp-c-v',o.c.toFixed(2));
+ setH('sp-msg',o.Tm!==null&&o.c===0?'측정한 주기 <b class="k">T = '+o.Tm.toFixed(3)+' s</b> → 진동수 f = 1/T = <b class="k">'+(1/o.Tm).toFixed(2)+' Hz</b>':(o.c>0?'마찰이 있으면 진폭이 줄어들어요(기록은 마찰 0일 때만).':'한 바퀴 도는 중…'));draw();}};
+
+});
+
+/* ---- va ---- */
+REG["va"] = safe("va.init", function () {
+const cv=$('#va-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);
+const o=newOsc(20,0.5,0.08);let ts=1,arrows=false;
+const speeds={'va-t1':1,'va-t2':0.5,'va-t3':0.25,'va-t0':0};
+for(const id in speeds)onClick(id,()=>{ts=speeds[id];setChips(Object.keys(speeds),id);});
+onClick('va-arr',()=>{arrows=!arrows;document.getElementById('va-arr').classList.toggle('on',arrows);});
+onClick('va-rs',()=>{resetOsc(o,20,0.5,0.08);});
+const Q1={a:['양 끝(가장 멀리 간 곳)','다시 보기: 그래프 v가 가장 높은 때 질량이 어디 있나요? 끝에서는 방향이 바뀌는 순간이라 잠깐 멈춰요(교과서 89쪽).'],
+ b:['가운데(평형 위치)','맞아요! 평형 위치를 지날 때 가장 빨라요. 양 끝에서는 순간 멈춰요(교과서 89쪽).'],c:['어디서나 같다','속력이 같다면 그래프 v가 일직선이어야 해요. 그래프를 보세요.']};
+const Q2={a:['양 끝','맞아요! 많이 벗어날수록 되돌리는 힘이 크니까 가속도도 최대예요(방향은 평형 쪽).'],b:['가운데','평형 위치에서는 용수철이 당기지도 밀지도 않아요(힘 0, 가속도 0). 그래서 거기서 속력이 ‘최대’가 돼요.'],c:['어디서나 같다','a 그래프가 일직선이 아니에요. 가속도는 계속 변해요.']};
+function quiz(n,Q,k){for(const x of['a','b','c'])document.getElementById('va-q'+n+x).classList.toggle('on',x===k);setH('va-f'+n,Q[k][1]);}
+for(const x of['a','b','c']){onClick('va-q1'+x,()=>quiz(1,Q1,x));onClick('va-q2'+x,()=>quiz(2,Q2,x));}
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ drawH(ctx,o,{W:W,wall:70,X0:520,y:110,S:2000,A:o.A,vec:arrows});
+ const w=PHYS.omega(o.k,o.m),A=o.A,win=2.4,X=120,Wd=890;
+ plotSeries(ctx,{x:X,y:215,w:Wd,h:150},o.hist,'x',A,COL.x,'x 위치',o.t,win);
+ plotSeries(ctx,{x:X,y:375,w:Wd,h:150},o.hist,'v',A*w,COL.v,'v 속도',o.t,win);
+ plotSeries(ctx,{x:X,y:535,w:Wd,h:150},o.hist,'a',A*w*w,COL.a,'a 가속도',o.t,win);
+ tx(ctx,'시간 →',X+Wd,704,20,C.dim,'right',500);
+ tx(ctx,'(+는 오른쪽)',X-8,240,18,C.dim,'right',500);}
+return{start(){draw();},frame(dt){stepOsc(o,Math.min(dt,.05)*ts);draw();}};
+
+});
+
+/* ---- fr ---- */
+REG["fr"] = safe("fr.init", function () {
+const cv=$('#fr-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);cv.style.touchAction='none';
+const M=0.5,o=newOsc(20,M,0.12);let drag=false,held=false;o.x=0.06;o.v=0;
+const X0=520,S=2600;
+function ptr(e){const p=canvasXY(cv,e,W,H);return clamp((p.x-X0)/S,-0.12,0.12);}
+cv.addEventListener('pointerdown',e=>{drag=true;cv.setPointerCapture(e.pointerId);o.x=ptr(e);o.v=0;o.hist.length=0;});
+cv.addEventListener('pointermove',e=>{if(drag){o.x=ptr(e);o.v=0;}});
+function up(){drag=false;}cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+onClick('fr-hold',()=>{held=!held;document.getElementById('fr-hold').classList.toggle('on',held);document.getElementById('fr-hold').textContent=held?'🖐 붙잡는 중 (다시 누르면 놓음)':'🖐 붙잡아 두기';});
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ const px=drawH(ctx,o,{W:W,wall:70,X0:X0,y:130,S:S,A:0.12});
+ const F=-o.k*o.x,len=F*20;
+ if(Math.abs(len)>3)arrow(ctx,px,215,px+len,215,COL.a,8,15);
+ tx(ctx,'복원력 F = −kx',px+(len>=0?len+12:len-12),224,26,COL.a,len>=0?'left':'right',700);
+ if(!drag&&!held&&Math.abs(o.x)<0.002&&Math.abs(o.v)<0.01)tx(ctx,'☝ 추를 끌어서 놓아 보세요',W/2,50,26,C.dim,'center',600);
+ const P={x:130,y:290,w:860,h:390},Fm=6;ctx.fillStyle='rgba(255,255,255,.045)';ctx.fillRect(P.x,P.y,P.w,P.h);
+ ctx.strokeStyle=C.grid;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(P.x,P.y+P.h/2);ctx.lineTo(P.x+P.w,P.y+P.h/2);ctx.moveTo(P.x+P.w/2,P.y);ctx.lineTo(P.x+P.w/2,P.y+P.h);ctx.stroke();
+ const XX=x=>P.x+P.w*(x+0.12)/0.24,YY=f=>P.y+P.h/2-clamp(f/Fm,-1,1)*(P.h/2-14);
+ ctx.strokeStyle=COL.a;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(XX(-0.12),YY(o.k*0.12));ctx.lineTo(XX(0.12),YY(-o.k*0.12));ctx.stroke();
+ ctx.setLineDash([6,6]);ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(XX(o.x),P.y+P.h/2);ctx.lineTo(XX(o.x),YY(F));ctx.lineTo(P.x+P.w/2,YY(F));ctx.stroke();ctx.setLineDash([]);
+ ctx.fillStyle=COL.x;ctx.beginPath();ctx.arc(XX(o.x),YY(F),11,0,TAU);ctx.fill();
+ tx(ctx,'변위 x (cm) →',P.x+P.w-6,P.y+P.h-8,22,C.dim,'right',500);tx(ctx,'−12',P.x+4,P.y+P.h/2+28,20,C.dim,'left',500);tx(ctx,'+12',P.x+P.w-4,P.y+P.h/2+28,20,C.dim,'right',500);
+ tx(ctx,'힘 F (N)',P.x+P.w/2+10,P.y+24,22,COL.a,'left',700);tx(ctx,'기울기 = −k = −'+o.k+' N/m',P.x+14,P.y+30,24,COL.a,'left',700);}
+return{start(){draw();},frame(dt){o.k=g('fr-k');if(!drag&&!held)stepOsc(o,Math.min(dt,.05));
+ const x=o.x,F=-o.k*x,a=F/M;setT('fr-k-v',o.k+' N/m');
+ setH('fr-msg','변위 x = <b class="k">'+(x*100>=0?'+':'')+(x*100).toFixed(1)+' cm</b> '+(Math.abs(x)<0.002?'':(x>0?'(오른쪽)':'(왼쪽)'))+'<br>복원력 F = −kx = <b class="k">'+(F>=0?'+':'')+F.toFixed(2)+' N</b> '+(Math.abs(F)<0.02?'':(F>0?'(오른쪽으로)':'(왼쪽으로)'))+'<br>가속도 a = F/m = <b class="k">'+(a>=0?'+':'')+a.toFixed(1)+' m/s²</b><br>a ÷ x = <b class="k">'+(Math.abs(x)>0.004?(a/x).toFixed(1):'—')+'</b> (1/s²)');
+ draw();}};
+
+});
+
+/* ---- cr ---- */
+REG["cr"] = safe("cr.init", function () {
+const cv=$('#cr-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);
+const CX=235,CY=400,R=180,XH=520,TOP=50;let th=0,tt=0,mode='n',paused=false,hist=[];
+const ms={'cr-n':'n','cr-v':'v','cr-a':'a'};
+for(const id in ms)onClick(id,()=>{mode=ms[id];setChips(Object.keys(ms),id);});
+onClick('cr-p',()=>{paused=!paused;document.getElementById('cr-p').classList.toggle('on',paused);});
+onClick('cr-rs',()=>{th=0;tt=0;hist=[];});
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ const Tp=g('cr-T'),w=TAU/Tp,bx=CX+R*Math.cos(th),by=CY-R*Math.sin(th),pxs=(W-XH-70)/(2*Tp);
+ ctx.strokeStyle=C.grid;ctx.lineWidth=2;ctx.beginPath();ctx.arc(CX,CY,R,0,TAU);ctx.stroke();
+ ctx.beginPath();ctx.moveTo(CX-R-20,CY);ctx.lineTo(CX+R+20,CY);ctx.moveTo(CX,CY-R-20);ctx.lineTo(CX,CY+R+20);ctx.stroke();
+ ctx.strokeStyle='#2c3f73';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(XH,TOP);ctx.lineTo(XH,H-20);ctx.stroke();
+ ctx.setLineDash([8,7]);ctx.strokeStyle='rgba(255,226,122,.7)';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(XH-30,by);ctx.stroke();ctx.setLineDash([]);
+ tx(ctx,'평행 광선',(bx+XH-30)/2+30,by-10,20,'#ffe27a','center',500);
+ ctx.strokeStyle=C.dim;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(CX,CY);ctx.lineTo(bx,by);ctx.stroke();
+ ctx.fillStyle='rgba(255,180,84,.18)';ctx.beginPath();ctx.moveTo(CX+40,CY);ctx.arc(CX,CY,40,0,-th,true);ctx.closePath();ctx.fill();
+ zig(ctx,XH,TOP,XH,by-18,8,14,COL.spr,3.5);ctx.fillStyle=COL.m;ctx.strokeStyle='#dbe7ff';ctx.lineWidth=2.5;ctx.beginPath();ctx.rect(XH-30,by-18,60,36);ctx.fill();ctx.stroke();
+ ctx.fillStyle=COL.x;ctx.beginPath();ctx.arc(bx,by,17,0,TAU);ctx.fill();
+ ctx.strokeStyle=COL.x;ctx.lineWidth=3.5;ctx.beginPath();let f=true;for(const p of hist){const X=XH+36+(tt-p.t)*pxs;if(X>W-14)continue;const Y=CY-R*Math.sin(p.th);if(f){ctx.moveTo(X,Y);f=false;}else ctx.lineTo(X,Y);}ctx.stroke();
+ tx(ctx,'그림자의 위치를 시간에 따라 그리면',W-14,TOP+8,22,C.dim,'right',500);tx(ctx,'→ 단진동 그래프',W-14,TOP+36,22,C.dim,'right',500);
+ tx(ctx,'등속 원운동 (위에서 보면 반시계)',CX,CY+R+60,24,C.text,'center',700);
+ if(mode==='v'){arrow(ctx,bx,by,bx-100*Math.sin(th),by-100*Math.cos(th),COL.v,6,13);const cy=-100*Math.cos(th);if(Math.abs(cy)>2)arrow(ctx,XH-80,by,XH-80,by+cy,COL.v,7,13);tx(ctx,'속도(그림자)',XH-92,by-26,20,COL.v,'right',700);}
+ if(mode==='a'){arrow(ctx,bx,by,bx-100*Math.cos(th),by+100*Math.sin(th),COL.a,6,13);const cy=100*Math.sin(th);if(Math.abs(cy)>2)arrow(ctx,XH-80,by,XH-80,by+cy,COL.a,7,13);tx(ctx,'가속도(그림자)',XH-92,by-26,20,COL.a,'right',700);}
+ setT('cr-T-v',Tp.toFixed(1)+' s');
+ setH('cr-msg','회전각 ωt = <b class="k">'+(((th*180/Math.PI)%360+360)%360).toFixed(0)+'°</b> · ω = 2π/T = <b class="k">'+w.toFixed(2)+' rad/s</b><br>그림자 높이 x/A = sin ωt = <b class="k">'+Math.sin(th).toFixed(2)+'</b><br>그림자 가속도 ÷ 위치 = <b class="k">−ω² = '+(-w*w).toFixed(2)+'</b> (언제나 같은 값)');}
+return{start(){draw();},frame(dt){if(!paused){dt=Math.min(dt,.05);const w=TAU/g('cr-T');th+=w*dt;tt+=dt;hist.push({t:tt,th:th});const lim=2.2*g('cr-T');while(hist.length&&tt-hist[0].t>lim)hist.shift();}draw();}};
+
+});
+
+/* ---- en ---- */
+REG["en"] = safe("en.init", function () {
+const cv=$('#en-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);
+const o=newOsc(20,0.5,0.08);let ts=1,last='';
+const speeds={'en-t1':1,'en-t2':0.25,'en-t0':0};
+for(const id in speeds)onClick(id,()=>{ts=speeds[id];setChips(Object.keys(speeds),id);});
+function cur(){return g('en-k')+','+g('en-a');}
+function rel(){resetOsc(o,g('en-k'),0.5,g('en-a')/100);last=cur();}
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ drawH(ctx,o,{W:W,wall:70,X0:520,y:100,S:2000,A:o.A});
+ const P={x:100,y:230,w:640,h:440},Em=0.72,XX=x=>P.x+P.w*(x+0.12)/0.24,YY=e=>P.y+P.h-e/Em*P.h;
+ ctx.fillStyle='rgba(255,255,255,.045)';ctx.fillRect(P.x,P.y,P.w,P.h);ctx.strokeStyle=C.grid;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(P.x,P.y+P.h);ctx.lineTo(P.x+P.w,P.y+P.h);ctx.moveTo(P.x+P.w/2,P.y);ctx.lineTo(P.x+P.w/2,P.y+P.h);ctx.stroke();
+ ctx.strokeStyle=COL.pe;ctx.lineWidth=4;ctx.beginPath();for(let i=0;i<=80;i++){const x=-0.12+0.24*i/80;const e=0.5*o.k*x*x;const X=XX(x),Y=YY(Math.min(e,Em));if(i===0)ctx.moveTo(X,Y);else ctx.lineTo(X,Y);}ctx.stroke();
+ const E=0.5*o.k*o.A*o.A,pe=0.5*o.k*o.x*o.x,ke=0.5*o.m*o.v*o.v;
+ ctx.setLineDash([8,7]);ctx.strokeStyle=COL.e;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(P.x,YY(E));ctx.lineTo(P.x+P.w,YY(E));ctx.stroke();ctx.setLineDash([]);
+ const bx=XX(o.x);ctx.strokeStyle=COL.pe;ctx.lineWidth=10;ctx.beginPath();ctx.moveTo(bx,YY(0));ctx.lineTo(bx,YY(pe));ctx.stroke();ctx.strokeStyle=COL.ke;ctx.beginPath();ctx.moveTo(bx,YY(pe));ctx.lineTo(bx,YY(E));ctx.stroke();
+ ctx.fillStyle=COL.m;ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(bx,YY(pe),12,0,TAU);ctx.fill();ctx.stroke();
+ tx(ctx,'역학적 에너지 E',P.x+P.w-8,YY(E)-10,22,COL.e,'right',700);tx(ctx,'위치 x →',P.x+P.w-6,P.y+P.h+24,20,C.dim,'right',500);tx(ctx,'에너지 ↑',P.x+8,P.y+24,20,C.dim,'left',500);
+ tx(ctx,'탄성 위치 에너지 ½kx²',P.x+14,P.y+54,22,COL.pe,'left',700);
+ const BX=830,BW=90;ctx.fillStyle='rgba(255,255,255,.05)';ctx.fillRect(BX-20,P.y,BW+40,P.h);
+ const hP=pe/Em*P.h,hK=ke/Em*P.h;ctx.fillStyle=COL.pe;ctx.fillRect(BX,P.y+P.h-hP,BW,hP);ctx.fillStyle=COL.ke;ctx.fillRect(BX,P.y+P.h-hP-hK,BW,hK);
+ ctx.strokeStyle=COL.e;ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.beginPath();ctx.moveTo(BX-20,YY(E));ctx.lineTo(BX+BW+20,YY(E));ctx.stroke();ctx.setLineDash([]);
+ tx(ctx,'지금의 에너지',BX+BW/2,P.y-10,22,C.text,'center',700);
+ tx(ctx,'운동 '+ke.toFixed(2)+' J',BX+BW/2,P.y+P.h+28,20,COL.ke,'center',700);tx(ctx,'위치 '+pe.toFixed(2)+' J',BX+BW/2,P.y+P.h+52,20,COL.pe,'center',700);}
+return{start(){rel();draw();},frame(dt){if(cur()!==last)rel();stepOsc(o,Math.min(dt,.05)*ts);
+ setT('en-k-v',o.k+' N/m');setT('en-a-v',(o.A*100).toFixed(0)+' cm');
+ const r=Math.abs(o.x)/o.A;setH('en-msg',r>0.93?'지금은 <b class="k">끝 근처</b>: 거의 멈춰 있어서 에너지가 거의 전부 <b class="k">위치 에너지</b>':(r<0.12?'지금은 <b class="k">평형 위치 근처</b>: 용수철이 원래 길이라 에너지가 거의 전부 <b class="k">운동 에너지</b>':'위치 에너지와 운동 에너지가 <b class="k">주고받는 중</b> (합은 그대로)'));draw();}};
+
+});
+
+/* ---- tg ---- */
+REG["tg"] = safe("tg.init", function () {
+const cv=$('#tg-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);
+const o=newOsc(20,0.5,0.06);const targets=[1.0,0.5,1.5,0.8,0.4];let ti=0,last='',res='';
+function cur(){return g('tg-m')+','+g('tg-k');}
+function rel(){resetOsc(o,g('tg-k'),g('tg-m'),0.06);last=cur();res='';}
+onClick('tg-new',()=>{ti=(ti+1)%targets.length;res='';});
+onClick('tg-chk',()=>{const T=PHYS.period(g('tg-k'),g('tg-m')),tg=targets[ti];const err=(T-tg)/tg;
+ if(Math.abs(err)<=0.05)res='<b class="ok">✔ 성공!</b> 내 용수철의 주기는 '+T.toFixed(2)+' s로 목표와 거의 같아요. 질량과 k를 어떻게 바꿨는지 말해 보세요.';
+ else res=(err>0?'주기가 목표보다 <b class="k">길어요</b>(느려요). 추를 가볍게 하거나 더 센 용수철(k↑)을 써 보세요.':'주기가 목표보다 <b class="k">짧아요</b>(빨라요). 추를 무겁게 하거나 더 무른 용수철(k↓)을 써 보세요.');});
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ drawH(ctx,o,{W:W,wall:70,X0:520,y:120,S:2000,A:0.06});
+ const tg=targets[ti];tx(ctx,'목표 주기',60,300,30,C.dim,'left',600);tx(ctx,tg.toFixed(1)+' 초',60,380,84,COL.e,'left',800);
+ const tm=o.Tm;tx(ctx,'내 용수철(측정)',560,300,30,C.dim,'left',600);tx(ctx,tm!==null?tm.toFixed(2)+' 초':'측정 중…',560,380,84,tm!==null&&Math.abs(tm-tg)/tg<=0.05?COL.ok:COL.v,'left',800);
+ const AX={x:80,w:880,y:520},TT=t=>AX.x+t/2.2*AX.w;ctx.strokeStyle=C.grid;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(AX.x,AX.y);ctx.lineTo(AX.x+AX.w,AX.y);ctx.stroke();
+ for(let t=0;t<=2.0001;t+=0.5){ctx.beginPath();ctx.moveTo(TT(t),AX.y-8);ctx.lineTo(TT(t),AX.y+8);ctx.stroke();tx(ctx,t.toFixed(1),TT(t),AX.y+34,22,C.dim,'center',500);}
+ ctx.fillStyle='rgba(126,231,135,.22)';ctx.fillRect(TT(tg*0.95),AX.y-30,TT(tg*1.05)-TT(tg*0.95),60);
+ ctx.fillStyle=COL.e;ctx.beginPath();ctx.moveTo(TT(tg),AX.y-6);ctx.lineTo(TT(tg)-14,AX.y-40);ctx.lineTo(TT(tg)+14,AX.y-40);ctx.fill();tx(ctx,'목표',TT(tg),AX.y-50,22,COL.e,'center',700);
+ if(tm!==null){ctx.fillStyle=COL.v;ctx.beginPath();ctx.moveTo(TT(tm),AX.y+6);ctx.lineTo(TT(tm)-14,AX.y+40);ctx.lineTo(TT(tm)+14,AX.y+40);ctx.fill();}
+ tx(ctx,'주기 (초) →',AX.x+AX.w,AX.y+72,22,C.dim,'right',500);
+ tx(ctx,'초록 띠 = 목표의 ±5 %',AX.x,AX.y+72,22,COL.ok,'left',500);
+ const T4=o.Tm!==null?o.Tm/4:PHYS.period(o.k,o.m)/4;tx(ctx,'눌렀다 놓은 추가 제자리(평형)까지 오는 시간 ≈ T/4 = '+T4.toFixed(2)+' 초',W/2,672,24,C.text,'center',600);}
+return{start(){rel();draw();},frame(dt){if(cur()!==last)rel();stepOsc(o,Math.min(dt,.05));
+ setT('tg-m-v',g('tg-m').toFixed(2)+' kg');setT('tg-k-v',g('tg-k')+' N/m');setH('tg-msg',res||'슬라이더로 맞춘 뒤 ‘확인’을 눌러요. 주기가 측정되려면 한 번 왕복하는 시간이 필요해요.');draw();}};
+
+});
+
+/* ---- wl ---- */
+REG["wl"] = safe("wl.init", function () {
+const cv=$('#wl-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);
+let key='spring',b=newBall(WELLS.spring,1.2),last='';
+const desc={spring:'<b>용수철</b>: 곡선이 처음부터 끝까지 포물선(½kx²)이라 진폭이 달라도 주기가 똑같아요.',
+ morse:'<b>분자 속 원자 사이의 결합</b>(단순화한 모스 모형): 바닥 근처만 포물선과 닮았어요. 크게 흔들수록 곡선이 달라져 주기가 길어져요.',
+ pend:'<b>그네·진자</b>: 작게 흔들 때만 단진동으로 볼 수 있어요. 시계추가 작게 흔들리는 까닭이에요.'};
+function setWell(k){key=k;setChips(['wl-s','wl-m','wl-p'],k==='spring'?'wl-s':(k==='morse'?'wl-m':'wl-p'));const w=WELLS[k],a=document.getElementById('wl-a');a.max=w.Amax;if(+a.value>w.Amax)a.value=w.Amax;rel();setH('wl-desc',desc[k]);}
+function cur(){return key+','+g('wl-a')+','+g('wl-z');}
+function rel(){b=newBall(WELLS[key],g('wl-a'));last=cur();}
+onClick('wl-s',()=>setWell('spring'));onClick('wl-m',()=>setWell('morse'));onClick('wl-p',()=>setWell('pend'));onClick('wl-rel',rel);
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);const w=WELLS[key],z=g('wl-z');
+ const P={x:60,y:70,w:920,h:440},xa=w.x0/z,xb=w.x1/z,ym=w.ym/(z*z);
+ const XX=x=>P.x+P.w*(x-xa)/(xb-xa),YY=u=>P.y+P.h-u/ym*P.h;
+ ctx.save();ctx.beginPath();ctx.rect(P.x,P.y,P.w,P.h);ctx.clip();ctx.fillStyle='rgba(255,255,255,.045)';ctx.fillRect(P.x,P.y,P.w,P.h);
+ ctx.strokeStyle=C.grid;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(XX(0),P.y);ctx.lineTo(XX(0),P.y+P.h);ctx.stroke();
+ ctx.setLineDash([9,7]);ctx.strokeStyle='#7cc4ff';ctx.lineWidth=3.5;ctx.beginPath();for(let i=0;i<=200;i++){const x=xa+(xb-xa)*i/200,u=0.5*w.keff*x*x;const X=XX(x),Y=YY(u);if(i===0)ctx.moveTo(X,Y);else ctx.lineTo(X,Y);}ctx.stroke();ctx.setLineDash([]);
+ ctx.strokeStyle=COL.pe;ctx.lineWidth=5;ctx.beginPath();for(let i=0;i<=300;i++){const x=xa+(xb-xa)*i/300,u=w.U(x);const X=XX(x),Y=YY(u);if(i===0)ctx.moveTo(X,Y);else ctx.lineTo(X,Y);}ctx.stroke();
+ const E=w.U(g('wl-a'));ctx.setLineDash([8,7]);ctx.strokeStyle=COL.e;ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(P.x,YY(E));ctx.lineTo(P.x+P.w,YY(E));ctx.stroke();ctx.setLineDash([]);
+ ctx.fillStyle=COL.x;ctx.strokeStyle='#fff';ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(XX(b.x),YY(w.U(b.x)),14,0,TAU);ctx.fill();ctx.stroke();ctx.restore();
+ tx(ctx,'주황 실선 = 실제 에너지 곡선',P.x+14,P.y+P.h+34,24,COL.pe,'left',700);tx(ctx,'파랑 점선 = 바닥 근처를 포물선으로 본 것(단진동)',P.x+14,P.y+P.h+68,24,'#7cc4ff','left',700);
+ tx(ctx,'위치 →',P.x+P.w-6,P.y+P.h-8,20,C.dim,'right',500);tx(ctx,'에너지 ↑',P.x+8,P.y+24,20,C.dim,'left',500);
+ const T0=PHYS.period(w.keff,WM);tx(ctx,'(단위는 임의 단위)',P.x+P.w-6,P.y+P.h+34,20,C.dim,'right',500);
+ const tm=b.Tm;const rr=tm!==null?tm/T0:null;
+ tx(ctx,'작게 흔들 때 주기 T₀ = '+T0.toFixed(2)+' s',60,650,26,'#7cc4ff','left',700);
+ tx(ctx,'지금 측정한 주기 = '+(tm!==null?tm.toFixed(2)+' s':'측정 중…')+(rr!==null?'  (T₀의 '+rr.toFixed(2)+'배)':''),60,690,26,rr!==null&&Math.abs(rr-1)<0.03?COL.ok:COL.x,'left',700);}
+return{start(){setWell('spring');draw();},frame(dt){if(cur()!==last)rel();stepBall(b,Math.min(dt,.05));setT('wl-a-v',g('wl-a').toFixed(2));setT('wl-z-v','×'+g('wl-z').toFixed(1));draw();}};
+
+});
+
+/* ---- fl ---- */
+REG["fl"] = safe("fl.init", function () {
+const cv=$('#fl-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);
+const ITEMS=[
+ {n:'고층 건물의 흔들림',f:0.2,fs:'약 0.2 Hz',mass:'건물 전체의 질량',rest:'기둥·구조물의 탄성',note:'바람·지진의 흔들림 진동수가 건물의 고유 진동수와 맞으면 크게 흔들려요(공명). 그래서 내진 설계를 하고, 꼭대기에 큰 추를 달아 흔들림을 줄이는 건물도 있어요.'},
+ {n:'그네·진자시계',f:0.4,fs:'약 0.4 Hz',mass:'사람(추)',rest:'중력의 한 성분',note:'작은 각도로 흔들 때만 단진동에 가까워요. (슬라이드 12)'},
+ {n:'심장 박동',f:1.2,fs:'약 1.2 Hz (분당 70회)',mass:'—',rest:'—',note:'<b>주기 운동이지만 단진동은 아니에요.</b> “복원력이 변위에 비례”하는 운동이어야 단진동이에요.'},
+ {n:'기타 5번 줄',f:110,fs:'110 Hz',mass:'줄의 한 조각',rest:'이웃한 줄 조각의 당김',note:'줄 한 점은 단진동하고, 이웃에게 전달되며 파동·정상파가 돼요(곧 배울 내용).'},
+ {n:'소리굽쇠',f:440,fs:'440 Hz',mass:'금속 가지',rest:'금속의 탄성',note:'거의 순수한 단진동이라 맑은 ‘순음’이 나요.'},
+ {n:'수정(석영) 시계',f:32768,fs:'32 768 Hz',mass:'석영 조각',rest:'석영의 탄성',note:'32 768 = 2¹⁵. 15번 반으로 나누면 정확히 1 Hz → 1초마다 초침이 움직여요.'},
+ {n:'초음파 진단',f:5e6,fs:'수 MHz (예: 5×10⁶ Hz)',mass:'몸속 조직의 작은 부분',rest:'조직의 탄성',note:'진동이 이웃으로 전달되는 탄성파예요. 반사되어 돌아온 신호로 태아·장기를 봐요(교과서 92쪽 이후).'},
+ {n:'와이파이 전파',f:2.4e9,fs:'2.4×10⁹ Hz',mass:'(물체가 아니라) 전기장·자기장',rest:'서로를 만들어 내는 관계',note:'용수철과 추가 없어도 “되돌아오려는 성질 + 관성” 구조면 같은 수학이 나와요. 전기 회로(LC)에서도 같아요.'},
+ {n:'CO₂ 분자의 굽힘 진동',f:2e13,fs:'약 2×10¹³ Hz',mass:'원자',rest:'원자 사이의 결합',note:'결합을 용수철로 보는 모형. 이 진동수의 적외선을 흡수해서 온실 효과와 연결돼요.'},
+ {n:'가시광선(초록빛)',f:5.5e14,fs:'약 5.5×10¹⁴ Hz',mass:'—',rest:'—',note:'빛도 전기장·자기장이 진동하는 전자기파예요.'}];
+let sel=0;
+const ids=ITEMS.map((_,i)=>'fl-i'+i);
+ITEMS.forEach((it,i)=>onClick(ids[i],()=>{sel=i;show();}));
+function show(){setChips(ids,ids[sel]);const it=ITEMS[sel];
+ setH('fl-card','<b class="k">'+(sel+1)+'. '+it.n+'</b> · '+it.fs+'<br>질량 역할: <b>'+it.mass+'</b><br>복원력 역할: <b>'+it.rest+'</b><br><span class="sm" style="font-size:22px">'+it.note+'</span>');}
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ const AX={x:50,w:940,y:380},LX=f=>AX.x+(Math.log10(f)+1)/16*AX.w;
+ tx(ctx,'1초에 몇 번 진동? (진동수, 로그 눈금)',W/2,50,30,C.text,'center',700);
+ const band=(f0,f1,col,lab,dy)=>{ctx.fillStyle=col;ctx.fillRect(LX(f0),AX.y+22+dy,LX(f1)-LX(f0),22);tx(ctx,lab,(LX(f0)+LX(f1))/2,AX.y+39+dy,17,'#0b1630','center',700);};
+ band(20,20000,'#5eead4','소리',0);band(3e11,4e14,'#ff9ecf','적외선',0);band(4e14,8e14,'#ffe27a','빛',30);
+ ctx.strokeStyle=C.grid;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(AX.x,AX.y);ctx.lineTo(AX.x+AX.w,AX.y);ctx.stroke();
+ const sup=['⁻¹','⁰','¹','²','³','⁴','⁵','⁶','⁷','⁸','⁹','¹⁰','¹¹','¹²','¹³','¹⁴','¹⁵'];
+ for(let e=-1;e<=15;e+=2){const X=LX(Math.pow(10,e));ctx.beginPath();ctx.moveTo(X,AX.y-10);ctx.lineTo(X,AX.y+10);ctx.stroke();tx(ctx,'10'+sup[e+1],X,AX.y-18,20,C.dim,'center',500);}
+ tx(ctx,'느리다',AX.x,AX.y+120,22,C.dim,'left',500);tx(ctx,'빠르다',AX.x+AX.w,AX.y+120,22,C.dim,'right',500);
+ ITEMS.forEach((it,i)=>{const X=LX(it.f),on=i===sel,y=AX.y-60-(i%3)*0;
+  ctx.strokeStyle=on?COL.x:'rgba(255,255,255,.25)';ctx.lineWidth=on?3:2;ctx.beginPath();ctx.moveTo(X,AX.y);ctx.lineTo(X,AX.y-60);ctx.stroke();
+  ctx.fillStyle=on?COL.x:'#3a4f86';ctx.beginPath();ctx.arc(X,AX.y-70,on?20:16,0,TAU);ctx.fill();tx(ctx,String(i+1),X,AX.y-62,on?24:20,on?'#0b1630':'#fff','center',800);});
+ const it=ITEMS[sel];tx(ctx,sel+1+'. '+it.n,W/2,170,40,COL.x,'center',800);tx(ctx,it.fs,W/2,214,30,C.text,'center',600);
+ tx(ctx,'질량 역할: '+it.mass,W/2,520,26,C.text,'center',600);tx(ctx,'복원력 역할: '+it.rest,W/2,560,26,C.text,'center',600);
+ tx(ctx,'모두 “원래 자리로 되돌리려는 성질 + 관성” 구조 → 같은 수학',W/2,640,26,COL.ok,'center',700);}
+return{start(){show();draw();},frame(dt){draw();}};
+
+});
+
+/* ---- ch ---- */
+REG["ch"] = safe("ch.init", function () {
+const cv=$('#ch-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);cv.style.touchAction='none';
+const c=newChain();let sel=14;const X0=70,DX=900/(CH.N-1),CY=215,SC=3;
+function pickAt(e){const p=canvasXY(cv,e,W,H);if(p.y>400)return;const i=Math.round((p.x-X0)/DX);if(i>=0&&i<CH.N){sel=i;c.hist.length=0;}}
+cv.addEventListener('pointerdown',pickAt);
+onClick('ch-pu',()=>{c.mode='pulse';c.t0=c.t;});onClick('ch-co',()=>{c.mode='cont';});
+onClick('ch-st',()=>{c.mode='off';c.y.fill(0);c.v.fill(0);c.hist.length=0;});
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ const Om=g('ch-om'),A=40,anc=drive(c,Om,A);
+ ctx.setLineDash([6,6]);ctx.strokeStyle='rgba(255,255,255,.25)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(X0-30,CY);ctx.lineTo(X0+900+30,CY);ctx.stroke();ctx.setLineDash([]);
+ ctx.fillStyle=COL.wall;ctx.fillRect(X0+900+DX-6,CY-30,12,60);
+ ctx.fillStyle=COL.m;ctx.fillRect(X0-DX-10,CY-anc*SC-10,20,20);
+ ctx.strokeStyle='#9fb4e8';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(X0-DX,CY-anc*SC);for(let i=0;i<CH.N;i++)ctx.lineTo(X0+i*DX,CY-c.y[i]*SC);ctx.lineTo(X0+CH.N*DX,CY);ctx.stroke();
+ for(let i=0;i<CH.N;i++){const on=i===sel;ctx.fillStyle=on?COL.x:COL.m;ctx.beginPath();ctx.arc(X0+i*DX,CY-c.y[i]*SC,on?11:7,0,TAU);ctx.fill();}
+ tx(ctx,'파동은 오른쪽으로 가지만, 점 하나하나는 제자리에서 위아래로만 흔들려요',W/2,50,26,C.text,'center',700);
+ tx(ctx,'↓ 주황 점(눌러서 바꿀 수 있어요)',X0+sel*DX,CY+100,20,COL.x,'center',600);
+ plotSeries(ctx,{x:90,y:420,w:900,h:250},c.hist,'x',A,COL.x,'주황 점 하나의 위치 (시간에 따라)',c.t,4);
+ tx(ctx,'→ 한 점만 보면 단진동 그래프!',W/2,700,24,COL.ok,'center',700);}
+return{start(){draw();},frame(dt){dt=Math.min(dt,.05);stepChain(c,dt,g('ch-om'),40);c.hist.push({t:c.t,x:c.y[sel]});if(c.hist.length>800)c.hist.shift();setT('ch-om-v',g('ch-om').toFixed(1)+' rad/s');draw();}};
+
+});
+
+/* =====================================================================
+   슬라이드 관리자
+   ===================================================================== */
+const slides = $$('.slide'), deck = $('#deck'); let cur = -1, step = 0, activeFrame = null, activeId = '', hudTimer = 0;
+const NOTES = DECK.notes, ASK = DECK.ask, CIRC = ['①', '②', '③', '④', '⑤'];
+function renderNotes(i) {
+  const n = NOTES[slides[i].id]; if (!n) { $('#notes').innerHTML = ''; return; }
+  $('#notes').innerHTML = `<div class="nh">📝 오개념 교정 노트 · 슬라이드 ${i + 1} / ${slides.length}<span style="float:right">발문을 화면에 띄우기: Q 키</span></div>` + (n.q ? `<div class="nq">💬 발문: ${n.q}</div>` : '') +
+    (n.m || []).map(([a, b]) => `<div class="ni"><span class="nx">❌ 오개념</span> ${a}<br><span class="nv">✅ 교정</span> ${b}</div>`).join('');
+}
+function renderAsk(i) {
+  const q = ASK[slides[i].id] || [];
+  $('#ask').innerHTML = `<div class="ak"><div class="ah">💬 생각해 보기 · ${i + 1} / ${slides.length}</div>` + (q.length ? q.map((t, k) => `<div class="aq">${q.length > 1 ? `<span>${CIRC[k] || (k + 1) + '.'}</span>` : ''}${t}</div>`).join('') : '<div class="aq" style="color:var(--muted)">이 슬라이드에는 발문이 없습니다.</div>') + '<div class="af">Q 키 · Esc · 화면 클릭으로 닫기</div></div>';
+}
+function toggleAsk(force) { const on = $('#ask').classList.toggle('on', force); $('#b-ask').classList.toggle('on', on); }
+const maxStep = i => +(slides[i].dataset.steps || 0);
+function fit() {
+  const vp = $('#viewport'), vw = vp.clientWidth, vh = vp.clientHeight, rf = vw < 1100;
+  document.documentElement.classList.toggle('rf', rf);
+  if (rf) { const W = vw < 640 ? 640 : vw, s = vw / W; deck.style.width = W + 'px'; deck.style.height = (vh / s) + 'px'; deck.style.transform = `scale(${s})`; return; }
+  deck.style.width = ''; deck.style.height = '';
+  const s = Math.min(vw / 1920, vh / 1080); deck.style.transform = `translate(-50%,-50%) scale(${s})`;
+}
+function fitSteps() { // 단계 목록이 영역을 넘으면 자동 축소 (실제 렌더링 높이 기준)
+  if (cur < 0) return; const side = $('.side.steps', slides[cur]); if (!side) return;
+  side.style.transform = ''; side.style.width = '';
+  if (side.clientHeight > 0 && side.scrollHeight > side.clientHeight + 1) { const k = side.clientHeight / side.scrollHeight; side.style.transformOrigin = 'top left'; side.style.transform = `scale(${k})`; side.style.width = (100 / k) + '%'; }
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitSteps);
+function applyStep() {
+  $$('.st', slides[cur]).forEach(el => { el.classList.toggle('on', +el.dataset.i <= step); el.classList.toggle('cur', +el.dataset.i === step); });
+  const id = slides[cur].id, r = REG[id]; r && r.onStep && safe(id + '.onStep', () => r.onStep(step));
+}
+const mgSet = (sl, on) => $$('iframe.mg-embed', sl).forEach(f => { f.src = on ? f.dataset.src : 'about:blank'; });
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.mg-re'); if (b) { const f = $('iframe', b.parentElement); f && f.contentWindow && f.contentWindow.postMessage({ mg: 'cmd', cmd: 'restart' }, '*'); b.blur(); } });
+function show(i, st = 0) {
+  i = Math.max(0, Math.min(slides.length - 1, i));
+  if (cur >= 0) { const oid = slides[cur].id, o = REG[oid]; o && o.stop && safe(oid + '.stop', () => o.stop()); slides[cur].classList.remove('active'); mgSet(slides[cur], false); }
+  cur = i; step = Math.min(st, maxStep(i)); slides[i].classList.add('active'); mgSet(slides[i], true);
+  const id = slides[i].id, r = REG[id]; activeFrame = r && r.frame ? (dt => r.frame(dt)) : null; activeId = id;
+  fitSteps(); r && r.start && safe(id + '.start', () => r.start());
+  $('#h-pg').textContent = `${i + 1} / ${slides.length}`; renderNotes(i); renderAsk(i); toggleAsk(false); applyStep();
+  if (DECK.ask_auto !== false && (ASK[id] || []).length && !askSeen[id]) { askSeen[id] = 1; toggleAsk(true); } // 처음 들어오면 발문을 먼저 띄운다(닫기 전까지 시뮬레이션 정지)
+}
+const askSeen = {};
+const next = () => { if ($('#ask').classList.contains('on')) { toggleAsk(false); return; } if (step < maxStep(cur)) { step++; applyStep(); } else if (cur < slides.length - 1) show(cur + 1); };
+const prev = () => { if (step > 0) { step--; applyStep(); } else if (cur > 0) show(cur - 1, maxStep(cur - 1)); };
+function isDark() { const r = document.documentElement; return r.dataset.theme === 'dark' || (!r.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches); }
+function themeBtn() { $('#b-theme').textContent = isDark() ? '☀ 라이트 전환' : '🌙 다크 전환'; }
+function toggleTheme() { document.documentElement.dataset.theme = isDark() ? 'light' : 'dark'; themeBtn(); }
+function toggleNotes() { const on = $('#notes').classList.toggle('on'); $('#b-notes').classList.toggle('on', on); }
+function toggleHelp(force) { const on = $('#help').classList.toggle('on', force); $('#b-help').classList.toggle('on', on); }
+function fullscreen() { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) { } }
+function poke() { $('#hud').classList.add('show'); clearTimeout(hudTimer); hudTimer = setTimeout(() => $('#hud').classList.remove('show'), 2600); }
+document.addEventListener('keydown', e => {
+  const t = e.target; if (t && t.tagName === 'INPUT' && t.type === 'range' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); next(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+  else if (e.key === 'Home') show(0); else if (e.key === 'End') show(slides.length - 1);
+  else if (e.key === 'f' || e.key === 'F') fullscreen(); else if (e.key === 'n' || e.key === 'N') toggleNotes(); else if (e.key === 't' || e.key === 'T') toggleTheme(); else if (e.key === 'q' || e.key === 'Q') toggleAsk(); else if (e.key === '?' || e.key === 'h' || e.key === 'H') toggleHelp(); else if (e.key === 'Escape') { toggleHelp(false); toggleAsk(false); if ($('#notes').classList.contains('on')) toggleNotes(); }
+});
+$('#h-prev').onclick = prev; $('#h-next').onclick = next; $('#h-fs').onclick = fullscreen; $('#b-help').onclick = () => toggleHelp(); $('#b-ask').onclick = () => toggleAsk(); $('#ask').onclick = () => toggleAsk(false); $('#help-x').onclick = () => toggleHelp(false); $('#help').onclick = e => { if (e.target.id === 'help') toggleHelp(false); }; $('#b-notes').onclick = toggleNotes; $('#b-theme').onclick = toggleTheme;
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
+['mousemove', 'touchstart', 'pointerdown'].forEach(ev => document.addEventListener(ev, poke, { passive: true }));
+window.addEventListener('resize', () => { fit(); fitSteps(); }); fit();
+/* 터치: 좌우로 쓸어 넘기기 (슬라이더·캔버스·버튼 위에서 시작한 건 제외) */
+(function () {
+  let x0 = 0, y0 = 0, ok = false;
+  document.addEventListener('touchstart', e => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; ok = !(e.target.closest && e.target.closest('input,canvas,button,table,.eq,#help,#notes')); }, { passive: true });
+  document.addEventListener('touchend', e => { if (!ok) return; const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; if (Math.abs(dx) > 70 && Math.abs(dx) > 2 * Math.abs(dy)) { dx < 0 ? next() : prev(); } }, { passive: true });
+})();
+let lastT = performance.now();
+(function loop(now) {
+  const dt = Math.min(.05, (now - lastT) / 1000); lastT = now;
+  if (activeFrame && !$('#ask').classList.contains('on')) { try { activeFrame(dt); } catch (e) { reportError(activeId + '.frame', e); activeFrame = null; } }
+  requestAnimationFrame(loop);
+})(lastT);
+
+/* 물리 검증: shared_js에 TESTS() → [[이름, 통과여부, 설명], ...] 가 있으면 콘솔에 출력 */
+(function runSelfTests() {
+  if (typeof TESTS !== 'function') { console.log('물리 검증 항목 없음'); return; }
+  let results = [];
+  try { results = TESTS() || []; } catch (e) { reportError('TESTS', e); return; }
+  console.log('=== ' + DECK.title + ' 물리 검증 ==='); let pass = 0;
+  for (const [name, ok, detail] of results) { console.log(`[${ok ? 'PASS' : 'FAIL'}] ${name}${detail ? ' — ' + detail : ''}`); if (ok) pass++; }
+  console.log(pass === results.length ? '모든 검증 통과' : '일부 검증 실패 — 콘솔 확인 필요');
+  window.__wsSelfTest = { pass, total: results.length };
+})();
+
+window.__deck = { show, next, get cur() { return cur; }, get step() { return step; }, count: slides.length, maxStep };
+let startAt = 0; try { const h = parseInt(location.hash.slice(1), 10); if (h >= 1 && h <= slides.length) startAt = h - 1; } catch (e) { }
+themeBtn(); show(startAt); poke();
+</script>
+</body>
+</html>

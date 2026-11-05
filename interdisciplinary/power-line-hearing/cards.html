@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>입장서와 질문 카드</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="../../site.css?v=8">
+<style>
+  .pick { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+  .pick button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .sheet { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; margin:14px 0; }
+  .sheet h2 { margin:0 0 4px; border:0; font-size:1.25em; }
+  .sheet .meta { display:grid; grid-template-columns:1fr 1fr; gap:6px 14px; margin:8px 0; }
+  .sheet .meta div { border-bottom:1px solid var(--ink); min-height:1.9em; font-size:.85em; color:var(--sub); }
+  .guide { font-size:.84em; color:var(--sub); background:rgba(127,127,127,.08); border-radius:8px; padding:6px 10px; margin:6px 0 8px; }
+  .sheet h3 { margin:12px 0 4px; font-size:.98em; }
+  .sheet textarea { min-height:3.3em; resize:vertical; }
+  .sheet table textarea { min-height:3em; border:0; border-radius:0; width:100%; padding:4px; background:transparent; }
+  .sheet table td { padding:0; }
+  .sheet table th { font-size:.82em; }
+  .qgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px; }
+  .qc { border:2px dashed var(--border); border-radius:10px; padding:10px 12px; background:var(--panel); break-inside:avoid; }
+  .qc .to { font-size:.78em; color:var(--accent); font-weight:700; }
+  .qc .q { font-weight:700; margin:4px 0; font-size:.98em; }
+  .qc .f { font-size:.82em; color:var(--sub); }
+  .qc .ans { border-bottom:1px solid var(--sub); min-height:1.6em; margin-top:6px; }
+  @media print {
+    @page { size:A4; margin:12mm; }
+    .sheet { border:1px solid #000; page-break-after:always; break-inside:avoid; box-shadow:none; }
+    .sheet textarea { border:0; border-bottom:1px solid #999; border-radius:0; resize:none; }
+    .qgrid { grid-template-columns:repeat(2,1fr); gap:6mm; }
+    .qc { border:1.5px dashed #000; }
+    .hide-print, header, nav, .site-foot, .hero, .home, h1, .lead { display:none !important; }
+    body { padding:0; font-size:10.5pt; line-height:1.4; }
+    .sheet { padding:8px 10px; margin:0; }
+    .sheet h2 { font-size:14pt; }
+    .sheet h3 { margin:6px 0 2px; font-size:10pt; }
+    .sheet textarea { min-height:3.4em; }
+    .sheet table textarea { min-height:4.4em; }
+    .guide { font-size:9pt; margin:3px 0 4px; padding:3px 8px; }
+    .sheet .meta div { min-height:1.4em; }
+    .qsec h2 { margin:0 0 6px; }
+    .sheet.hidden, .qsec.hidden { display:none !important; }
+    .guide { background:#eee; color:#000; }
+  }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="home" href="../index.html">← 융합</a>
+  <h1>🖨️ 역할별 입장서와 질문 카드</h1>
+  <p class="lead">입장서는 화면에서 바로 입력해 보고 인쇄하거나, 인쇄한 뒤 손으로 써도 됩니다. 입력한 내용은 저장되지 않으니 인쇄·PDF 저장 전에 닫지 마세요. 질문 카드는 오려서 설명회·공청회에서 씁니다.</p>
+  <nav class="sub"><a href="index.html">수업 안내</a><a href="sim.html">계산 시뮬</a><a href="sources.html">자료함·근거 노트</a><a class="on" href="cards.html">입장서·질문 카드</a></nav>
+
+  <div class="box ok noprint" style="margin-top:14px">
+    <b>받아서 쓰는 방법</b>
+    <ol>
+      <li>내 역할 버튼을 눌러 <b>내 입장서만</b> 보이게 합니다(전체 인쇄는 "전체").</li>
+      <li>입장서를 채우고 <b>인쇄 → 대상: PDF로 저장</b>하면 파일로 제출할 수 있습니다.</li>
+      <li>빈 입장서 PDF가 필요하면 <a href="power-line-hearing-cards.pdf" download>미리 만들어 둔 PDF</a>를 받으세요(입장서 6장 + 질문 카드).</li>
+      <li>수치에는 단위·거리·조건·출처를 함께 적습니다. 출처가 없으면 "미확인"이라고 씁니다.</li>
+    </ol>
+  </div>
+
+  <div class="pick noprint" id="pick"></div>
+
+  <div id="sheets"></div>
+
+  <div class="qsec" id="qsec">
+    <h2>질문 카드 — 오려서 사용</h2>
+    <p class="small hide-print">질문을 받은 쪽은 <b>"그 수치의 출처·조건은?"</b> 꼬리질문에도 답할 수 있게 준비합니다. 아래 칸은 메모용입니다. 빈 카드는 직접 질문을 써서 만듭니다.</p>
+    <div class="qgrid" id="qgrid"></div>
+  </div>
+</div>
+<script>
+(function(){
+  var ROLES = [
+    { k:'한국전력(사업자)', hint:'필요성과 안전성을 설명합니다. "기준 이하니 안전하다"로만 끝내지 말고, 거리·전류 조건과 계산·측정 방법을 밝히세요. 왜 이 노선인지(길이·비용·환경)도 설명할 수 있어야 합니다.',
+      claims:['왜 초고압 송전선로가 필요한가 (P=VI, 열손실 I²R와 연결)','자기장은 거리·설계 조건에서 어느 수준인가 (시뮬·측정값, 출처)','왜 이 노선(A안/B안)인가 (비교 기준)'],
+      gives:'받아들일 수 있는 보완책(예: 거리 확대, 측정·공개, 주민 참여)', wall:'절대 받아들이기 어려운 것과 그 이유' },
+    { k:'주민대책위', hint:'불안을 구체적인 질문으로 바꿔 전달합니다. "무조건 반대"보다 <b>무엇이 확인되면 받아들일 수 있는지</b>를 분명히 하세요. 기준치의 의미와 장기 노출 자료를 직접 찾아 읽습니다.',
+      claims:['우리가 걱정하는 것은 무엇인가 (건강·재산·생활·절차)','"기준 이하"만으로 충분한가 — 어떤 추가 자료가 필요한가','대안(우회·지중화·거리 확대)은 실제로 가능한가'],
+      gives:'받아들일 수 있는 조건(측정 공개, 거리, 보상 등)', wall:'절대 받아들이기 어려운 것과 그 이유' },
+    { k:'물리 전문가', hint:'자기장을 정확히 설명합니다. B=μ₀I/(2πr)와 3상 상쇄를 쓰고, 시뮬 결과(조건·값)와 <b>시뮬의 한계</b>를 반드시 말하세요. 기준 이하/초과의 판단은 건강 전문가·법령 자료와 구분합니다.',
+      claims:['거리·전류에 따라 자기장이 어떻게 변하는가 (시뮬 결과 2개 이상)','3상이라서 어떤 점이 달라지는가 (벡터 합성)','계산이 말해 주지 못하는 것은 무엇인가'],
+      gives:'확인이 필요한 추가 계산·측정 제안', wall:'과학적으로 말할 수 없는 것(단정 금지)' },
+    { k:'보건 전문가', hint:'건강영향 연구가 현재 어디까지 와 있는지 그대로 전합니다. IARC 분류의 뜻, 역학 연구의 한계(상관과 인과), 기준이 정해지는 방식을 출처와 함께 설명하세요. 불안을 키우지도 지우지도 않는 것이 목표입니다.',
+      claims:['현재 연구는 무엇을 보여 주고 무엇을 모르는가','"발암 가능" 같은 분류는 무슨 뜻인가','기준치는 어떤 근거로 정해졌고 어떤 한계가 있는가'],
+      gives:'지속해서 확인할 것(후속 연구, 측정 모니터링)', wall:'지금 자료로는 말할 수 없는 것' },
+    { k:'지방자치단체(사회자)', hint:'누구의 편도 들지 않고 발언 시간과 질문 순서를 지킵니다. 양쪽이 <b>동의하는 것 / 다르게 보는 것</b>을 나눠 정리하고, 입지 선정 절차와 지원 제도를 조사해 합의안 초안을 준비합니다.',
+      claims:['현재 갈등의 핵심 쟁점은 무엇인가 (사실 문제 vs 가치 문제)','절차(입지 선정·주민 참여)는 어떻게 되어 있고 무엇이 빠졌나','합의안에 꼭 들어가야 할 항목 3가지'],
+      gives:'조정할 수 있는 부분(양쪽에 요청할 것)', wall:'지자체가 약속할 수 없는 것' },
+    { k:'지역 언론', hint:'발언을 그대로 옮기지 않고 <b>사실 확인된 것과 주장</b>을 구분해 보도합니다. 수치가 나오면 단위·거리·조건·출처를 되묻고, 한쪽만 다루지 않았는지 점검하세요.',
+      claims:['오늘의 핵심 쟁점은 무엇인가 (한 문장 제목)','확인된 사실 3가지와 아직 주장에 그친 것 3가지','양쪽에 꼭 물어야 할 질문 2개'],
+      gives:'추가 취재가 필요한 것', wall:'기사에 쓰지 않을 것(확인 안 된 수치 등)' }
+  ];
+  var QS = [
+    ['한국전력(사업자)','왜 하필 우리 마을 쪽 노선인가요? 다른 후보와 비교한 기준은 무엇인가요?','비교한 자료의 출처는 무엇인가요?'],
+    ['한국전력(사업자)','주택까지 거리가 얼마일 때 자기장은 어느 정도인가요? 어떤 조건(전류·높이)으로 계산했나요?','최대 전류일 때와 평균일 때 값이 같은가요?'],
+    ['한국전력(사업자)','측정은 누가, 언제, 어디서 했고 결과를 공개할 수 있나요?','측정 높이와 시간대는 어떻게 정했나요?'],
+    ['한국전력(사업자)','왜 더 낮은 전압·여러 가닥 대신 초고압으로 보내나요?','전압을 높이면 전류와 열손실은 어떻게 달라지나요?'],
+    ['주민대책위','어떤 조건이 갖춰지면 건설에 동의할 수 있나요?','그 조건은 누가 어떻게 확인하면 되나요?'],
+    ['주민대책위','가장 걱정하는 것은 건강인가요, 재산인가요, 절차인가요? 그 이유는요?','그 걱정을 뒷받침하는 자료는 무엇인가요?'],
+    ['주민대책위','지중화나 우회 같은 대안이 있다면 비용과 한계도 알고 계신가요?','그 대안으로 자기장은 얼마나 달라지나요?'],
+    ['물리 전문가','선로에서 멀어지면 자기장이 얼마나 빨리 줄어드나요? 도선 하나일 때와 3상일 때는 어떻게 다른가요?','왜 3상이 더 빨리 줄어드나요?'],
+    ['물리 전문가','지구 자기장과 비교하면 어느 정도인가요? 비교가 적절한가요?','지구 자기장은 직류, 송전선은 60 Hz 교류라는 차이는요?'],
+    ['물리 전문가','계산 결과를 그대로 믿어도 되나요? 이 계산에서 빠진 것은 무엇인가요?','전기장과 철탑·대지의 영향은 어떻게 되나요?'],
+    ['물리 전문가','전류가 두 배가 되면 자기장은 몇 배가 되나요? 전력 수요가 늘면 어떻게 되나요?','B∝I의 근거는 무엇인가요?'],
+    ['보건 전문가','"발암 가능성 분류"는 위험하다는 뜻인가요, 증거가 부족하다는 뜻인가요?','분류 용어의 정의 문장은 어디서 확인하나요?'],
+    ['보건 전문가','역학 연구에서 "관련이 있다"와 "원인이다"는 어떻게 다른가요?','이 연구들의 한계는 무엇인가요?'],
+    ['보건 전문가','기준치는 어떤 근거로 정했고, 어린이·임산부에게도 같은 기준인가요?','기준이 바뀐 적이 있나요? 언제, 왜요?'],
+    ['지방자치단체(사회자)','주민 의견은 입지 선정 과정에서 어느 단계에 반영되나요?','반영되지 않으면 어떤 절차가 있나요?'],
+    ['지방자치단체(사회자)','주민 지원·보상은 무엇이고 누가 결정하나요?','건강·안전 우려는 보상으로 해결되나요?'],
+    ['지방자치단체(사회자)','양쪽이 이미 같은 생각인 것은 무엇이고, 다른 것은 무엇인가요?','다른 것 중 자료로 해결할 수 있는 것은 무엇인가요?'],
+    ['지역 언론','방금 나온 수치는 어떤 조건(거리·전류·평균/최대)에서의 값인가요?','원자료를 볼 수 있나요?'],
+    ['지역 언론','오늘 나온 이야기 중 "확인된 사실"과 "주장"을 나눠 주시겠어요?','어느 쪽 자료가 부족했나요?'],
+    ['전체','이 노선이 지나지 않으면 누가 어떤 불이익을 받나요?','그 불이익은 이 노선 말고 다른 방법으로도 해결되나요?'],
+    ['전체','"안전하다"와 "안심할 수 있다"는 같은 말인가요?','안심에는 어떤 정보·절차가 필요한가요?'],
+    ['전체','이 갈등에서 과학이 답할 수 있는 질문과 답할 수 없는 질문을 나눠 보세요.','답할 수 없는 것은 누가 어떻게 정해야 하나요?'],
+    ['전체','합의안에 측정 공개·정기 점검을 넣는다면 어떤 방식이 좋을까요?','비용은 누가 부담하나요?'],
+    ['빈 카드','','']
+  ];
+  function esc(s){return s;}
+  var SH = document.getElementById('sheets');
+  ROLES.forEach(function(r,i){
+    var d=document.createElement('section'); d.className='sheet'; d.setAttribute('data-role',r.k);
+    var h='<h2>입장서 · '+r.k+'</h2>'
+      +'<div class="meta"><div>모둠 / 번호(이름은 쓰지 않아도 됨)</div><div>작성일</div></div>'
+      +'<div class="guide">'+r.hint+'</div>'
+      +'<h3>1. 우리(나)의 입장 — 한 문장</h3><textarea rows="2"></textarea>'
+      +'<h3>2. 핵심 주장과 근거 (출처·연도·조건 필수)</h3>'
+      +'<div class="scroll"><table><tr><th style="width:26%">주장</th><th>근거 (수치에는 단위·거리·조건)</th><th style="width:24%">출처</th></tr>';
+    r.claims.forEach(function(c){ h+='<tr><td><div style="padding:4px;font-size:.84em">'+c+'</div></td><td><textarea></textarea></td><td><textarea></textarea></td></tr>'; });
+    h+='</table></div>'
+      +'<h3>3. 시뮬레이션으로 확인한 것 (조건 → 결과)</h3><textarea rows="2" placeholder="예: I=__A, h=__m, d=__m, 위치 __m → B=__μT"></textarea>'
+      +'<h3>4. 상대에게 할 질문 2개 (질문 카드에서 골라도 좋음)</h3><textarea rows="2"></textarea>'
+      +'<h3>5. 예상되는 질문과 내 답 (한계도 솔직하게)</h3><textarea rows="3"></textarea>'
+      +'<h3>6. '+r.gives+'</h3><textarea rows="2"></textarea>'
+      +'<h3>7. '+r.wall+'</h3><textarea rows="2"></textarea>'
+      +'<p class="small" style="margin-top:8px">☐ 모든 수치에 단위·조건·출처를 적었다 ☐ 원문을 직접 확인했다 ☐ 반대 쪽 자료도 읽었다 ☐ 모르는 것은 "미확인"이라고 썼다</p>';
+    d.innerHTML=h; SH.appendChild(d);
+  });
+  var G=document.getElementById('qgrid');
+  QS.forEach(function(q){
+    var c=document.createElement('div'); c.className='qc';
+    c.innerHTML='<div class="to">질문 대상 · '+q[0]+'</div><div class="q">'+(q[1]||'&nbsp;<br>&nbsp;<br>&nbsp;')+'</div><div class="f">'+(q[2]?'꼬리질문: '+q[2]:'꼬리질문:')+'</div><div class="ans"></div><div class="ans"></div>';
+    G.appendChild(c);
+  });
+  var pick=document.getElementById('pick'), cur='전체';
+  var labels=['전체'].concat(ROLES.map(function(r){return r.k;})).concat(['질문 카드만']);
+  function apply(){
+    document.querySelectorAll('.sheet').forEach(function(s){ var show = cur==='전체' || s.getAttribute('data-role')===cur; s.classList.toggle('hidden',!show); });
+    document.getElementById('qsec').classList.toggle('hidden', !(cur==='전체' || cur==='질문 카드만'));
+    if (cur==='질문 카드만') document.querySelectorAll('.sheet').forEach(function(s){ s.classList.add('hidden'); });
+    pick.querySelectorAll('button').forEach(function(b){ b.classList.toggle('on', b.textContent===cur); });
+  }
+  labels.forEach(function(l){ var b=document.createElement('button'); b.textContent=l; b.onclick=function(){cur=l;apply();}; pick.appendChild(b); });
+  var pb=document.createElement('button'); pb.className='primary'; pb.textContent='인쇄 / PDF 저장'; pb.onclick=function(){window.print();}; pick.appendChild(pb);
+  apply();
+})();
+</script>
+<script src="../../site-nav.js?v=8"></script>
+</body>
+</html>

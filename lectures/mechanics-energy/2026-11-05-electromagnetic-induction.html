@@ -283,7 +283,7 @@ a{color:inherit}
 <section class="slide" id="gn">
   <header class="hd"><h2>발전기 — 도선 고리를 돌려 전기를 만든다</h2><span class="src">교과서 106쪽 · 그림 Ⅱ-28 발전기의 기본 구조와 원리 (교육용 모형, 값은 예시)</span></header>
 <div class="body" style="grid-template-columns:1040px 1fr">
-<canvas id="gn-cv"></canvas><div class="side"><div class="ctl"><div class="row">회전 속도<span class="val" id="gn-w-v"></span></div><input type="range" id="gn-w" min="0.2" max="1.5" step="0.05" value="0.5"></div><div class="ctl"><div class="row">자석의 세기 B<span class="val" id="gn-b-v"></span></div><input type="range" id="gn-b" min="1" max="3" step="0.1" value="2"></div><div class="chips"><div class="chip on" id="gn-f">전자가 받는 힘 보기</div><div class="chip" id="gn-pause">일시 정지</div></div><div class="box"><h3>지금 이 순간</h3><p id="gn-msg"></p></div><div class="box"><p class="sm"><b>핵심</b> 고리가 회전하면 고리를 지나는 자속이 시간에 따라 변한다 → 유도 기전력. 자속이 <b>최대</b>일 때 ε = 0, 자속이 <b>가장 빨리 변할 때</b> ε 최대. 방향이 주기적으로 바뀌므로 <b>교류</b>.<br>입력: 운동 에너지(물·증기·바람) → 출력: 전기 에너지.</p></div></div>
+<canvas id="gn-cv"></canvas><div class="side"><div class="ctl"><div class="row">회전 속도<span class="val" id="gn-w-v"></span></div><input type="range" id="gn-w" min="0.2" max="1.5" step="0.05" value="0.5"></div><div class="ctl"><div class="row">자석의 세기 B<span class="val" id="gn-b-v"></span></div><input type="range" id="gn-b" min="1" max="3" step="0.1" value="2"></div><div class="ctl"><div class="row">회전 각도 ωt (끌면 정지, 천천히 보기)<span class="val" id="gn-ang-v"></span></div><input type="range" id="gn-ang" min="0" max="720" step="1" value="0"></div><div class="chips"><div class="chip on" id="gn-f">전자가 받는 힘 보기</div><div class="chip" id="gn-pause">일시 정지</div></div><div class="box fit"><p id="gn-msg"></p></div><div class="box"><p class="sm"><b>핵심</b> 자속 <b>최대</b>일 때 ε = 0, 자속이 <b>가장 빨리 변할 때</b> ε 최대. 방향이 주기적으로 바뀌는 <b>교류</b>. 운동 에너지 → 전기 에너지.</p></div></div>
 </div>
 </section>
 
@@ -738,7 +738,10 @@ const cv=$('#gn-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);
 let ph=0,u=0,showF=true;const R=120,HY=100,cx=290,cy=300;
 onClick('gn-f',()=>{showF=!showF;document.getElementById('gn-f').classList.toggle('on',showF);});
 onClick('gn-pause',()=>{paused=!paused;document.getElementById('gn-pause').classList.toggle('on',paused);});
-let paused=false;
+let paused=false,drag=false;
+{const el=document.getElementById('gn-ang');const stop=()=>{paused=true;document.getElementById('gn-pause').classList.add('on');};
+ el.addEventListener('input',()=>{stop();ph=(+el.value)*Math.PI/180;});
+ el.addEventListener('pointerdown',()=>{drag=true;});window.addEventListener('pointerup',()=>{drag=false;});}
 function P3(x,y,z){return[cx+x+0.30*z,cy-y+0.22*z];}
 function loopPts(phi){const xa=R*Math.cos(phi),za=R*Math.sin(phi);return{xa,za,A_b:[xa,-HY,za],A_t:[xa,HY,za],B_t:[-xa,HY,-za],B_b:[-xa,-HY,-za]};}
 function perim(L,u){const segs=[[L.A_b,L.A_t,2*HY],[L.A_t,L.B_t,2*R],[L.B_t,L.B_b,2*HY],[L.B_b,L.A_b,2*R]];const P=segs.reduce((s,q)=>s+q[2],0);let d=((u%1)+1)%1*P;
@@ -788,6 +791,8 @@ function draw(dt){
   const a=((ph%(TAU*2))+TAU*2)%(TAU*2),cxp=gx+a/(TAU*2)*gw,v=idx===0?Math.cos(a):Math.sin(a),cyp=gy+gh/2-v*amp*(gh/2-12);
   ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(cxp,gy);ctx.lineTo(cxp,gy+gh);ctx.stroke();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(cxp,cyp,7,0,TAU);ctx.fill();});
  tx(ctx,'회전각 ωt →  (2회전)',gx+gw,500,16,C.dim,'right',500);
+ const angD=((ph*180/Math.PI)%720+720)%720;if(!drag){const el=document.getElementById('gn-ang');if(el)el.value=angD;}
+ setT('gn-ang-v',angD.toFixed(0)+'° (코일 면이 B에 수직일 때 0°)');
  const c2=Math.abs(Math.cos(ph)),s2=Math.abs(Math.sin(ph));
  setT('gn-w-v',f.toFixed(2)+' 회/초');setT('gn-b-v',Bn.toFixed(1)+'배');
  setH('gn-msg',c2>0.97?'<b class="k">자속 Φ 최대</b> — 하지만 Φ가 거의 변하지 않는 순간 → <b class="k">ε = 0</b>':(s2>0.97?'Φ = 0 이지만 <b class="k">Φ가 가장 빨리 변하는 순간</b> → <b class="k">ε 최대</b>':'Φ가 변하는 중 → ε ≠ 0 (방향이 주기적으로 바뀐다: 교류)'));}

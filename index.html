@@ -405,19 +405,19 @@
   function list(j) { return Array.isArray(j) ? j : (j && j.items) || []; }
   function load() {
     if (loading) return loading;
-    var jobs = [fetch('lectures/index.json').then(function (r) { return r.json(); }), fetch('motion-graphic/index.json').then(function (r) { return r.json(); })]
+    var jobs = [fetch('lectures/index.json').then(function (r) { return r.json(); }), fetch('motion-graphic/index.json').then(function (r) { return r.json(); }), fetch('sim-meta.json').then(function (r) { return r.json(); })]
       .concat(HUBS.map(function (h) { return fetch(h[0] + '/index.html').then(function (r) { return r.text(); }); }));
     loading = Promise.all(jobs).then(function (a) {
       var out = [];
       [['수업 자료', 'lectures/', a[0]], ['모션그래픽', 'motion-graphic/', a[1]]].forEach(function (k) {
-        list(k[2]).forEach(function (d) { out.push({ k: k[0], t: d.title, d: d.desc || '', x: [d.subject, d.unit].concat(d.tags || []).join(' '), href: k[1] + d.path, th: d.thumb ? k[1] + d.thumb : '', ic: k[0] === '수업 자료' ? '📚' : '🎬' }); });
+        list(k[2]).forEach(function (d) { out.push({ k: k[0], u: d.subject + ' · ' + d.unit, t: d.title, d: d.desc || '', x: [d.subject, d.unit].concat(d.tags || []).join(' '), href: k[1] + d.path, th: d.thumb ? k[1] + d.thumb : '', ic: k[0] === '수업 자료' ? '📚' : '🎬' }); });
       });
       HUBS.forEach(function (h, i) {
-        var doc = new DOMParser().parseFromString(a[i + 2], 'text/html');
+        var doc = new DOMParser().parseFromString(a[i + 3], 'text/html');
         doc.querySelectorAll('a.card').forEach(function (c) {
           var href = c.getAttribute('href') || ''; if (!href || /^https?:|^\.\./.test(href) || c.classList.contains('disabled')) return;
           var t = c.querySelector('.title'), d = c.querySelector('.desc'), im = c.querySelector('img.thumb'), ic = c.querySelector('.icon');
-          out.push({ k: '시뮬레이션', t: t ? t.textContent.replace(/\s+/g, ' ').trim() : href, d: d ? d.textContent.trim() : '', x: h[1], href: h[0] + '/' + href, th: im ? h[0] + '/' + im.getAttribute('src') : '', ic: ic ? ic.textContent.trim() : '🧪' });
+          var mu = (a[2][h[0] + '/' + href.replace(/\/index\.html$/, '')] || {}).u || ''; out.push({ k: '시뮬레이션', u: mu, t: t ? t.textContent.replace(/\s+/g, ' ').trim() : href, d: d ? d.textContent.trim() : '', x: h[1] + ' ' + mu, href: h[0] + '/' + href, th: im ? h[0] + '/' + im.getAttribute('src') : '', ic: ic ? ic.textContent.trim() : '🧪' });
         });
       });
       DATA = out; return out;

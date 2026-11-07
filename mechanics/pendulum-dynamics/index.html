@@ -3,282 +3,526 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>단진자 운동 시각화</title>
+<title>단진자 — 뉴턴·라그랑주·해밀턴으로 풀어 보기</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&display=swap');
+  :root {
+    --bg: #eef1f8; --panel: #ffffff; --ink: #172033; --sub: #5d6b82;
+    --accent: #4f46e5; --accent2: #e11d48; --ok: #059669; --warn: #d97706; --blue: #2563eb;
+    --border: #e2e7f0; --radius: 16px;
+    --shadow: 0 1px 2px rgba(20,30,60,.05), 0 8px 24px rgba(20,30,60,.06);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { font-family: "Pretendard","Noto Sans KR","Segoe UI","Malgun Gothic",system-ui,sans-serif;
+    background: radial-gradient(1200px 500px at 10% -10%, #dfe4ff 0, transparent 60%), var(--bg);
+    color: var(--ink); font-size: 15px; line-height: 1.6; padding-bottom: 60px; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 14px; }
+  header.top { background: rgba(255,255,255,.82); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+  header.top .wrap { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 10px; padding-bottom: 10px; }
+  header.top h1 { font-size: 1.15em; letter-spacing: -.2px; flex: 1; }
+  .homebtn { text-decoration: none; color: var(--sub); border: 1px solid var(--border); padding: 7px 14px; border-radius: 999px; font-size: .88em; background: #fff; white-space: nowrap; }
+  .links { font-size: .85em; color: var(--sub); }
+  .links a { color: var(--accent); text-decoration: none; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); margin-top: 14px; }
+  .card:first-child { margin-top: 0; }
+  .grid2 { display: grid; grid-template-columns: minmax(0,1.15fr) minmax(0,1fr); gap: 14px; align-items: start; margin-top: 14px; }
+  .grid3 { display: grid; grid-template-columns: repeat(auto-fit,minmax(250px,1fr)); gap: 12px; }
+  canvas { display: block; max-width: 100%; }
+  button { font: inherit; font-size: .93em; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--border); background: #fff; color: var(--ink); cursor: pointer; transition: background .12s, transform .05s; }
+  button:hover { background: #f5f7fd; } button:active { transform: translateY(1px); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; } button.primary:hover { background: #4338ca; }
+  button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btnlink { display: inline-block; text-decoration: none; padding: 9px 20px; border-radius: 999px; border: 1px solid var(--border); background: #fff; color: var(--ink); font-size: .95em; }
+  .btnlink.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  input[type=range] { accent-color: var(--accent); width: 100%; }
+  input[type=number], input[type=text] { font: inherit; padding: 5px 7px; border: 1px solid var(--border); border-radius: 8px; width: 100%; background: #fff; }
+  h3.sec { font-size: .92em; color: var(--sub); margin-bottom: 10px; font-weight: 700; }
+  .hint { color: var(--sub); font-size: .85em; line-height: 1.55; margin-top: 6px; }
+  .param { margin-bottom: 10px; }
+  .param label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 3px; }
+  .param label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+  table { width: 100%; border-collapse: collapse; font-size: .9em; }
+  th, td { border: 1px solid var(--border); padding: 5px 7px; text-align: center; font-variant-numeric: tabular-nums; }
+  th { background: #f1f4fb; } td.l { text-align: left; }
+  .tblwrap { overflow-x: auto; }
 
-:root {
-  --bg: #f8f7f2;
-  --surface: #ffffff;
-  --border: #e2dfd6;
-  --text: #1a1814;
-  --muted: #6b6860;
-  --panel-bg: #f0ede6;
-  --col-T: #c0392b;
-  --col-mg: #2980b9;
-  --col-net: #7b2d8b;
-  --col-restore: #1a1814;
-  --col-E: #1a7a4a;
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+  /* 탭 */
+  .tabs { position: sticky; top: 0; z-index: 30; background: rgba(255,255,255,.93); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  .tabs .wrap { display: flex; gap: 6px; overflow-x: auto; padding-top: 8px; padding-bottom: 8px; scrollbar-width: none; }
+  .tabs button { flex: 1 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-radius: 12px; padding: 9px 14px; white-space: nowrap; font-weight: 600; color: var(--sub); background: transparent; border-color: transparent; }
+  .tabs button i { font-style: normal; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #e4e8f3; font-size: .78em; }
+  .tabs button.active { background: var(--accent); color: #fff; box-shadow: 0 4px 14px rgba(79,70,229,.3); }
+  .tabs button.active i { background: rgba(255,255,255,.25); }
+  .pane { display: none; } .pane.active { display: block; }
+  .pane-head h2 { font-size: 1.35em; letter-spacing: -.3px; margin-bottom: 4px; }
+  .pane-head p { color: var(--sub); margin-bottom: 12px; }
+  .pane-next { display: flex; gap: 10px; justify-content: space-between; flex-wrap: wrap; margin-top: 18px; }
+  .pane-next button { padding: 11px 22px; }
 
-header { background: var(--text); color: #f8f7f2; padding: 11px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-header h1 { font-size: 15px; font-weight: 500; letter-spacing: -.02em; }
-header .sub { font-size: 11px; color: #888; font-family: 'STIX Two Text', serif; flex: 1; }
+  /* 과학자 말풍선 */
+  .guide-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .guide-head b { font-size: 1.02em; }
+  .dots { display: flex; gap: 6px; margin-left: auto; }
+  .dots button { width: 28px; height: 28px; padding: 0; border-radius: 50%; font-size: .82em; font-weight: 700; }
+  .dots button.cur { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .bubble-wrap { display: flex; gap: 10px; align-items: flex-start; }
+  .avatar { flex: none; width: 48px; height: 48px; border-radius: 50%; color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 1.1em; }
+  .bubble { background: #f3f7fd; border: 1px solid var(--border); border-radius: 4px 12px 12px 12px; padding: 10px 13px; line-height: 1.75; flex: 1; }
+  .bubble .who { font-size: .82em; color: var(--sub); margin-bottom: 2px; }
+  .guide-nav { display: flex; gap: 8px; margin-top: 10px; align-items: center; flex-wrap: wrap; }
+  .note { font-size: .78em; color: var(--sub); margin-top: 8px; line-height: 1.55; }
 
-.snap-bar { display: flex; gap: 5px; align-items: center; }
-.snap-label { font-size: 11px; color: #aaa; white-space: nowrap; }
-.snap-btn { padding: 4px 12px; border: 1px solid #444; border-radius: 3px; background: transparent; color: #ccc; font-size: 11px; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; transition: all .15s; }
-.snap-btn:hover { background: #333; }
-.snap-btn.active { background: #f8f7f2; color: #1a1814; border-color: #f8f7f2; font-weight: 700; }
-.play-btn { padding: 4px 13px; border: 1px solid #666; border-radius: 3px; background: transparent; color: #ccc; font-size: 11px; cursor: pointer; transition: all .15s; margin-left: 4px; }
-.play-btn:hover { background: #333; }
+  /* 식 / 단계 */
+  .eq { font-family: Georgia,"Times New Roman",serif; font-size: 1.18em; text-align: center; margin: 6px 0; color: var(--accent); }
+  .eqbox { border: 1px solid var(--border); border-radius: 14px; padding: 10px 14px; background: linear-gradient(180deg,#fbfbff,#f3f5ff); }
+  .eqbox p { font-size: .88em; color: var(--sub); }
+  .step { border-left: 4px solid var(--accent); background: #fafbff; border-radius: 0 10px 10px 0; padding: 8px 12px; margin-top: 8px; }
+  .step small { display: block; color: var(--sub); font-size: .8em; font-weight: 700; margin-bottom: 1px; }
+  .step.b { border-left-color: var(--blue); } .step.g { border-left-color: var(--ok); } .step.r { border-left-color: var(--accent2); } .step.o { border-left-color: var(--warn); }
+  .m { font-family: Georgia,"Times New Roman",serif; white-space: nowrap; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap: 8px; margin-top: 10px; }
+  .kpi { border: 1px solid var(--border); border-radius: 12px; padding: 8px 11px; background: #fbfcff; }
+  .kpi span { font-size: .78em; color: var(--sub); display: block; } .kpi b { font-size: 1.1em; font-variant-numeric: tabular-nums; }
+  .cv { width: 100%; height: auto; background: #fff; border: 1px solid var(--border); border-radius: 10px; }
+  .legend { display: flex; gap: 6px 14px; flex-wrap: wrap; font-size: .82em; color: var(--sub); margin-top: 6px; }
+  .legend i { display: inline-block; width: 18px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
 
-.layout { display: grid; grid-template-columns: 1fr 310px; flex: 1; min-height: 0; }
+  /* 퀴즈 */
+  .quiz h4 { font-size: .92em; margin-bottom: 4px; }
+  .quiz .opt { display: block; width: 100%; text-align: left; margin-top: 5px; padding: 7px 12px; border-radius: 10px; }
+  .quiz .opt.right { background: #e3f4ea; border-color: var(--ok); }
+  .quiz .opt.wrong { background: #fdeaea; border-color: var(--accent2); }
+  .quiz .why { margin-top: 6px; font-size: .9em; line-height: 1.6; }
 
-.canvas-area { display: flex; flex-direction: column; align-items: center; padding: 16px 20px; gap: 9px; }
+  /* 이야기 */
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .chips button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .story { display: grid; grid-template-columns: repeat(auto-fill,minmax(290px,1fr)); gap: 12px; }
+  .scard { border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; background: #fff; box-shadow: var(--shadow); }
+  .scard .tag { display: inline-block; font-size: .72em; padding: 2px 9px; border-radius: 20px; font-weight: 700; margin-bottom: 4px; }
+  .tag.h { background: #fee2e2; color: #b91c1c; } .tag.s { background: #dbeafe; color: #1d4ed8; }
+  .tag.u { background: #dcfce7; color: #15803d; } .tag.a { background: #f3e8ff; color: #7e22ce; }
+  .scard h4 { font-size: .98em; margin-bottom: 2px; } .scard .yr { font-size: .8em; color: var(--sub); }
+  .scard p { font-size: .9em; margin-top: 4px; line-height: 1.65; }
+  .scard .think { margin-top: 6px; font-size: .86em; background: #fff8e6; border: 1px solid #f0d99a; border-radius: 8px; padding: 5px 9px; }
+  .scard.hide { display: none; }
+  .task { background: #fff8e6; border: 1px solid #f0d99a; border-radius: 10px; padding: 8px 12px; line-height: 1.65; font-size: .92em; }
+  ul.list, ol.list { padding-left: 20px; font-size: .92em; line-height: 1.75; }
 
-.canvas-wrap { width: 100%; max-width: 560px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; position: relative; }
-#pendCanvas { display: block; width: 100%; }
+  /* 시뮬레이션 */
+  .sim-layout { display: grid; grid-template-columns: minmax(0,1fr) 320px; gap: 14px; align-items: start; }
+  .snap-bar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+  .snap-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .canvas-wrap { position: relative; }
+  #pendCanvas { width: 100%; height: auto; background: #fff; border: 1px solid var(--border); border-radius: 12px; }
+  #energyCanvas { width: 100%; height: auto; background: #fff; border: 1px solid var(--border); border-radius: 10px; margin-top: 8px; }
+  .pause-badge { position: absolute; top: 9px; left: 9px; background: rgba(23,32,51,.85); color: #fff; font-size: .78em; padding: 3px 10px; border-radius: 999px; display: none; }
+  .pause-badge.show { display: block; }
+  .force-analysis, .pos-desc { display: none; margin-top: 8px; } .force-analysis.show, .pos-desc.show { display: block; }
+  .fa-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; }
+  .fa-card { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 7px 10px; border-top: 3px solid var(--border); }
+  .fa-card.tension { border-top-color: #c0392b; } .fa-card.gravity { border-top-color: #2980b9; } .fa-card.net { border-top-color: #7b2d8b; }
+  .fa-name { font-size: .72em; color: var(--sub); } .fa-val { font-weight: 700; font-variant-numeric: tabular-nums; } .fa-eq { font-size: .72em; color: var(--sub); }
+  .pos-desc-inner { background: #172033; color: #f1f4fb; border-radius: 10px; padding: 9px 14px; font-size: .88em; line-height: 1.75; }
+  .pos-desc-inner strong { color: #ffd580; }
+  .formula-bar { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; background: #172033; color: #fff; border-radius: 10px; padding: 8px 12px; margin-top: 8px; text-align: center; }
+  .fml-label { font-size: .7em; color: #94a3b8; } .fml-val { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .fml-val.ke { color: #4db8ff; } .fml-val.pe { color: #ff9f5a; } .fml-val.te { color: #80e6a8; }
+  .readout-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .readout { background: #fbfcff; border: 1px solid var(--border); border-radius: 10px; padding: 5px 9px; }
+  .readout-label { font-size: .72em; color: var(--sub); } .readout-val { font-weight: 700; font-variant-numeric: tabular-nums; font-size: .95em; }
+  .readout-val.red { color: #c0392b; } .readout-val.purple { color: #7b2d8b; }
+  .ctrl-row { margin-bottom: 8px; } .ctrl-head { display: flex; justify-content: space-between; font-weight: 600; font-size: .92em; } .ctrl-disp { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .vleg-row { display: flex; align-items: center; gap: 7px; font-size: .84em; margin-top: 3px; } .vleg-swatch { width: 22px; height: 3px; border-radius: 1px; flex: none; }
 
-.pause-badge { position: absolute; top: 9px; left: 9px; background: rgba(26,24,20,.82); color: #f8f7f2; font-size: 10px; padding: 3px 9px; border-radius: 3px; display: none; }
-.pause-badge.show { display: block; }
-
-.force-analysis { width: 100%; max-width: 560px; display: none; }
-.force-analysis.show { display: block; }
-.fa-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; }
-.fa-card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 9px 11px; border-top: 3px solid var(--border); }
-.fa-card.tension { border-top-color: var(--col-T); }
-.fa-card.gravity  { border-top-color: var(--col-mg); }
-.fa-card.net      { border-top-color: var(--col-net); }
-.fa-name { font-size: 10px; color: var(--muted); margin-bottom: 2px; text-transform: uppercase; letter-spacing: .04em; }
-.fa-val  { font-family: 'STIX Two Text', serif; font-size: 15px; font-weight: 600; }
-.fa-eq   { font-family: 'STIX Two Text', serif; font-size: 10px; color: var(--muted); margin-top: 2px; }
-
-.pos-desc { width: 100%; max-width: 560px; display: none; }
-.pos-desc.show { display: block; }
-.pos-desc-inner { background: var(--text); color: #f8f7f2; border-radius: 4px; padding: 9px 15px; font-size: 12px; line-height: 1.7; font-family: 'STIX Two Text', serif; }
-.pos-desc-inner strong { color: #ffd580; font-size: 13px; }
-
-.formula-bar { width: 100%; max-width: 560px; background: var(--text); color: #f8f7f2; border-radius: 4px; padding: 9px 16px; display: grid; grid-template-columns: repeat(3,1fr); gap: 5px; }
-.fml-item { text-align: center; }
-.fml-label { font-size: 9px; color: #888; margin-bottom: 1px; text-transform: uppercase; letter-spacing: .04em; }
-.fml-val { font-family: 'STIX Two Text', serif; font-size: 16px; font-weight: 600; }
-.fml-val.ke { color: #4db8ff; } .fml-val.pe { color: #ff9f5a; } .fml-val.te { color: #80e6a8; }
-
-.energy-wrap { width: 100%; max-width: 560px; }
-.energy-title { font-size: 10px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; margin-bottom: 4px; }
-#energyCanvas { display: block; width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
-
-.sidebar { background: var(--panel-bg); border-left: 1px solid var(--border); padding: 16px 15px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; }
-.sidebar-section { display: flex; flex-direction: column; gap: 8px; }
-.sec-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); border-bottom: 1px solid var(--border); padding-bottom: 5px; }
-
-.ctrl-row { display: flex; flex-direction: column; gap: 3px; }
-.ctrl-head { display: flex; justify-content: space-between; align-items: baseline; }
-.ctrl-name { font-size: 13px; color: var(--text); font-family: 'STIX Two Text', serif; font-style: italic; }
-.ctrl-disp { font-size: 13px; font-weight: 700; font-family: 'STIX Two Text', serif; min-width: 58px; text-align: right; }
-input[type=range] { width: 100%; accent-color: var(--text); height: 4px; cursor: pointer; }
-
-.readout-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-.readout { background: var(--surface); border: 1px solid var(--border); border-radius: 3px; padding: 6px 8px; }
-.readout-label { font-size: 10px; color: var(--muted); margin-bottom: 1px; }
-.readout-val { font-size: 13px; font-weight: 700; font-family: 'STIX Two Text', serif; color: var(--text); }
-.readout-val.red { color: var(--col-T); } .readout-val.purple { color: var(--col-net); }
-
-.tab-bar { display: flex; gap: 3px; }
-.tab-btn { flex: 1; padding: 5px 0; font-size: 10px; font-family: 'Noto Sans KR', sans-serif; background: var(--surface); border: 1px solid var(--border); border-radius: 3px; cursor: pointer; color: var(--muted); transition: all .15s; }
-.tab-btn.active { background: var(--text); color: #f8f7f2; border-color: var(--text); }
-.tab-panel { display: none; } .tab-panel.active { display: flex; flex-direction: column; gap: 7px; }
-
-.deriv-step { background: var(--surface); border-left: 3px solid var(--border); padding: 7px 9px; border-radius: 0 3px 3px 0; }
-.deriv-step.hl  { border-left-color: var(--col-T); }
-.deriv-step.hl2 { border-left-color: var(--col-mg); }
-.deriv-step.hl3 { border-left-color: var(--col-E); }
-.deriv-step.hl4 { border-left-color: var(--col-net); }
-.ds-label { font-size: 10px; color: var(--muted); margin-bottom: 2px; text-transform: uppercase; letter-spacing: .04em; }
-.ds-eq { font-family: 'STIX Two Text', serif; font-size: 12px; line-height: 1.55; }
-
-.approx-bar { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: 3px; }
-.approx-fill { height: 100%; background: #c0392b; border-radius: 3px; transition: width .3s; }
-.leg { display: flex; gap: 10px; font-size: 11px; color: var(--muted); margin-top: 3px; }
-.leg-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 3px; vertical-align: middle; }
-
-.vleg-grid { display: flex; flex-direction: column; gap: 5px; }
-.vleg-row { display: flex; align-items: center; gap: 7px; font-size: 11px; }
-.vleg-swatch { width: 22px; height: 3px; border-radius: 1px; flex-shrink: 0; }
-.vleg-name { font-family: 'STIX Two Text', serif; min-width: 60px; }
-.vleg-desc { font-size: 10px; color: var(--muted); }
-
-.btn-row { display: flex; gap: 5px; }
-.btn-sm { flex:1; padding:6px 0; background:transparent; border:1px solid var(--border); border-radius:3px; font-family:'Noto Sans KR',sans-serif; font-size:11px; cursor:pointer; color:var(--muted); transition:all .15s; }
-.btn-sm:hover { background:var(--surface); color:var(--text); border-color:#aaa; }
-@media (max-width: 760px) { .layout { grid-template-columns: minmax(0,1fr); } .sidebar { border-left: none; border-top: 1px solid var(--border); } .canvas-area { padding: 12px; } header { padding: 11px 14px; } }
+  /* 실험 */
+  details.fold { border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px; background: #fbfcff; margin-top: 8px; }
+  details.fold summary { cursor: pointer; font-weight: 700; }
+  details.fold[open] { background: #fff; }
+  .fieldrow { display: grid; grid-template-columns: repeat(auto-fit,minmax(120px,1fr)); gap: 8px; align-items: end; }
+  .fieldrow label { font-size: .82em; color: var(--sub); display: block; margin-bottom: 2px; }
+  .credit { font-size: .8em; color: var(--sub); margin-top: 18px; line-height: 1.6; }
+  body.projector { font-size: 19px; }
+  @media (max-width: 980px) { .grid2, .sim-layout { grid-template-columns: 1fr; } }
+  @media (max-width: 720px) { body { font-size: 16px; } button { padding: 10px 14px; } .fa-grid { grid-template-columns: 1fr; } .pane-head h2 { font-size: 1.15em; } input[type=number], input[type=text] { font-size: 16px; } }
 </style>
 </head>
 <body>
-<a href="../../index.html" title="홈으로" style="position:fixed;left:12px;bottom:12px;z-index:99999;background:rgba(255,255,255,.94);color:#1c2733;text-decoration:none;padding:8px 13px;border-radius:9px;font:600 14px/1 'Segoe UI','Malgun Gothic',sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.22);border:1px solid rgba(0,0,0,.12)">🏠 홈</a>
+<header class="top"><div class="wrap">
+  <a class="homebtn" href="../../index.html">🏠 홈</a>
+  <h1>🕰 단진자 — 뉴턴·라그랑주·해밀턴으로 풀어 보기</h1>
+  <span class="links">관련: <a href="../gravity/pendulum/index.html">단진자로 g 측정</a> · <a href="../double-pendulum/index.html">이중진자(혼돈)</a> · <a href="../../tools/stroboscope/index.html">스트로보스코프</a></span>
+  <button id="projectorBtn" title="프로젝터용 큰 글씨 모드">🖥 큰 글씨</button>
+</div></header>
+<nav class="tabs"><div class="wrap" id="tabs">
+  <button data-tab="story" class="active"><i>1</i>📜 이야기</button>
+  <button data-tab="newton"><i>2</i>🍎 뉴턴</button>
+  <button data-tab="lagrange"><i>3</i>✨ 라그랑주</button>
+  <button data-tab="hamilton"><i>4</i>🌀 해밀턴</button>
+  <button data-tab="approx"><i>5</i>⚖ 해와 근사</button>
+  <button data-tab="sim"><i>6</i>🕹 시뮬레이션</button>
+  <button data-tab="lab"><i>7</i>🧪 실험 준비</button>
+  <button data-tab="report"><i>8</i>📝 보고서</button>
+</div></nav>
 
-<header>
-  <h1>단진자 운동 시각화</h1>
-  <span class="sub">심화 · Simple Pendulum</span>
-  <div class="snap-bar">
-    <span class="snap-label">위치 고정:</span>
-    <button class="snap-btn" id="btn-top"    onclick="snapTo('top')">최고점</button>
-    <button class="snap-btn" id="btn-middle" onclick="snapTo('middle')">중간</button>
-    <button class="snap-btn" id="btn-bottom" onclick="snapTo('bottom')">최저점</button>
-    <button class="play-btn" id="btn-play"   onclick="togglePlay()">▶ 재생</button>
+<div class="wrap">
+
+<!-- ═════════ 1. 이야기 ═════════ -->
+<section class="pane active" id="pane-story">
+  <div class="pane-head">
+    <h2>📜 흔들리는 추 하나에 담긴 이야기</h2>
+    <p>단진자는 400년 넘게 시계, 지도, 우주관, 음악과 소설에 얽혀 왔어요. 역사·과학·인문·예술 네 갈래로 읽고, 카드 아래 ‘생각해 보기’를 친구와 이야기해 보세요.</p>
   </div>
-</header>
-<div style="padding:7px 16px;font-size:13px;background:#eef2f8;color:#334;border-bottom:1px solid #d5dbe6">🔗 단진자 시리즈: <a href="../gravity/pendulum/index.html" style="color:#1f5fbf">기본: 단진자로 g 측정</a> · <a href="../double-pendulum/index.html" style="color:#1f5fbf">심화: 이중진자(카오스)</a></div>
-
-<div class="layout">
-  <div class="canvas-area">
-
-    <div class="canvas-wrap">
-      <canvas id="pendCanvas" width="560" height="430"></canvas>
-      <div class="pause-badge" id="pauseBadge">⏸ 정지</div>
+  <div class="card">
+    <div class="chips" id="storyChips">
+      <button data-f="all" class="active">전체</button><button data-f="h">🏛 역사</button><button data-f="s">🔬 과학</button><button data-f="u">📚 인문</button><button data-f="a">🎨 예술</button>
     </div>
+    <div class="story" id="storyGrid"></div>
+    <p class="note">※ 연도·수치는 널리 알려진 자료를 바탕으로 정리했어요. 일화로 전해지는 이야기는 그렇다고 표시했습니다. 수업에 쓰기 전 교사가 한 번 더 확인하세요.</p>
+  </div>
+  <div class="pane-next"><span></span><button class="primary" data-tab="newton">다음: 🍎 뉴턴의 방법으로 풀어 보기 →</button></div>
+</section>
 
-    <div class="force-analysis" id="forceAnalysis">
-      <div class="fa-grid">
-        <div class="fa-card tension">
-          <div class="fa-name">장력 T</div>
-          <div class="fa-val" id="fa-T" style="color:var(--col-T)">—</div>
-          <div class="fa-eq" id="fa-T-eq">mg cosθ + mlθ̇²</div>
-        </div>
-        <div class="fa-card gravity">
-          <div class="fa-name">중력 mg</div>
-          <div class="fa-val" id="fa-mg" style="color:var(--col-mg)">—</div>
-          <div class="fa-eq" id="fa-mg-eq">연직 하향 · 일정</div>
-        </div>
-        <div class="fa-card net">
-          <div class="fa-name">알짜힘 F<sub>net</sub></div>
-          <div class="fa-val" id="fa-net" style="color:var(--col-net)">—</div>
-          <div class="fa-eq" id="fa-net-eq">접선+구심 합성</div>
-        </div>
+<!-- ═════════ 2. 뉴턴 ═════════ -->
+<section class="pane" id="pane-newton">
+  <div class="pane-head">
+    <h2>🍎 뉴턴의 방법 — 힘을 그리고 ‘F = ma’</h2>
+    <p>추에 작용하는 <b>힘</b>을 하나하나 그리고, 운동 방향(접선)과 줄 방향(반지름)으로 나누어 운동 방정식을 세워요.</p>
+  </div>
+  <div class="card"><div class="guide-head"><b id="g-newton-t"></b><div class="dots" id="g-newton-d"></div></div>
+    <div class="bubble-wrap"><div class="avatar" id="g-newton-a"></div><div class="bubble"><div class="who" id="g-newton-w"></div><div id="g-newton-x"></div></div></div>
+    <div class="guide-nav"><button id="g-newton-p">◀ 이전</button><button id="g-newton-n" class="primary">다음 ▶</button></div>
+    <p class="note">※ 말풍선은 과학사 사실을 바탕으로 쉽게 풀어 쓴 학습용 글이며, 실제 발언이 아닙니다.</p></div>
+  <div class="grid2">
+    <div class="card"><h3 class="sec">🎛 추의 위치를 바꿔 보며 힘 분해하기 (m = 1 kg, l = 1 m)</h3>
+      <canvas class="cv" id="nwCanvas" width="520" height="400"></canvas>
+      <div class="legend"><span><i style="background:#2563eb"></i>중력 mg</span><span><i style="background:#c0392b"></i>장력 T</span><span><i style="background:#111"></i>접선 성분 mg sinθ (복원력)</span><span><i style="background:#888"></i>줄 방향 성분 mg cosθ</span></div>
+      <div class="param" style="margin-top:10px"><label>놓은 각도 (진폭) θ₀ <span class="val" id="nwA-v"></span></label><input type="range" id="nwA" min="10" max="90" value="50"></div>
+      <div class="param"><label>지금 각도 θ <span class="val" id="nwT-v"></span></label><input type="range" id="nwT" min="-50" max="50" value="30"></div>
+      <div class="kpis" id="nwK"></div>
+    </div>
+    <div>
+      <div class="card"><h3 class="sec">📐 유도 — 뉴턴의 순서</h3>
+        <div class="step b"><small>① 힘 찾기</small>중력 <span class="m">mg</span>(아래), 장력 <span class="m">T</span>(줄 방향). 이 둘뿐이에요.</div>
+        <div class="step"><small>② 접선 방향 (운동 방향)</small><div class="eq">−mg sinθ = m·(lθ̈)</div>줄은 접선 방향으로 힘을 못 줘요 → 중력의 접선 성분만 남아 추를 평형점으로 되돌려요.</div>
+        <div class="step g"><small>③ 운동 방정식</small><div class="eq">θ̈ = −(g/l) sinθ</div>질량 m이 약분돼요 → 주기는 질량과 무관!</div>
+        <div class="step r"><small>④ 줄 방향 (반지름)</small><div class="eq">T − mg cosθ = m·lθ̇²</div>장력은 구심력을 만들고 중력의 줄 방향 성분도 받쳐 줘요 → 최저점에서 가장 커요.</div>
+        <div class="step o"><small>⑤ 에너지로 속도 구하기</small><div class="eq">lθ̇² = 2g(cosθ − cosθ₀)</div><div class="eq">T = mg(3cosθ − 2cosθ₀)</div></div>
+        <div class="step"><small>⑥ 소각도 근사 sinθ ≈ θ</small><div class="eq">θ̈ = −(g/l)θ → T₀ = 2π√(l/g)</div></div>
       </div>
+      <div class="card quiz" id="q-newton"></div>
     </div>
+  </div>
+  <div class="pane-next"><button data-tab="story">← 이야기</button><button class="primary" data-tab="lagrange">다음: ✨ 라그랑주의 방법 →</button></div>
+</section>
 
-    <div class="pos-desc" id="posDesc">
-      <div class="pos-desc-inner" id="posDescInner"></div>
+<!-- ═════════ 3. 라그랑주 ═════════ -->
+<section class="pane" id="pane-lagrange">
+  <div class="pane-head">
+    <h2>✨ 라그랑주의 방법 — 힘 대신 에너지로</h2>
+    <p>장력을 따질 필요 없이 <b>운동에너지 T</b>와 <b>퍼텐셜에너지 V</b>만 쓰면 같은 운동 방정식이 나와요. 움직임을 나타낼 좌표를 마음대로 고를 수 있어요(일반화 좌표).</p>
+  </div>
+  <div class="card"><div class="guide-head"><b id="g-lagrange-t"></b><div class="dots" id="g-lagrange-d"></div></div>
+    <div class="bubble-wrap"><div class="avatar" id="g-lagrange-a"></div><div class="bubble"><div class="who" id="g-lagrange-w"></div><div id="g-lagrange-x"></div></div></div>
+    <div class="guide-nav"><button id="g-lagrange-p">◀ 이전</button><button id="g-lagrange-n" class="primary">다음 ▶</button></div>
+    <p class="note">※ 말풍선은 학습용으로 재구성한 글이며 실제 발언이 아닙니다.</p></div>
+  <div class="grid2">
+    <div class="card"><h3 class="sec">📈 퍼텐셜 V(θ)와 근사 포물선 (단위: mgl)</h3>
+      <canvas class="cv" id="lgCanvas" width="520" height="340"></canvas>
+      <div class="legend"><span><i style="background:#2563eb"></i>V = mgl(1−cosθ)</span><span><i style="background:#c0392b"></i>근사 ½mglθ²</span><span><i style="background:#059669"></i>전체 에너지 E</span></div>
+      <div class="param" style="margin-top:10px"><label>진폭 θ₀ <span class="val" id="lgA-v"></span></label><input type="range" id="lgA" min="10" max="170" value="60"></div>
+      <div class="param"><label>지금 각도 θ <span class="val" id="lgT-v"></span></label><input type="range" id="lgT" min="-60" max="60" value="30"></div>
+      <div class="kpis" id="lgK"></div>
     </div>
-
-    <div class="formula-bar">
-      <div class="fml-item"><div class="fml-label">운동에너지 K</div><div class="fml-val ke" id="ke-val">0.0000 J</div></div>
-      <div class="fml-item"><div class="fml-label">위치에너지 U</div><div class="fml-val pe" id="pe-val">0.0000 J</div></div>
-      <div class="fml-item"><div class="fml-label">역학적 에너지 E</div><div class="fml-val te" id="te-val">0.0000 J</div></div>
+    <div>
+      <div class="card"><h3 class="sec">📐 유도 — 라그랑주의 순서</h3>
+        <div class="step b"><small>① 좌표 고르기</small>줄 길이가 일정하다는 조건 덕분에 각도 <span class="m">θ</span> 하나면 충분해요(자유도 1).</div>
+        <div class="step"><small>② 에너지 쓰기</small><div class="eq">T = ½ml²θ̇²,  V = mgl(1 − cosθ)</div></div>
+        <div class="step g"><small>③ 라그랑지안</small><div class="eq">ℒ = T − V = ½ml²θ̇² − mgl(1 − cosθ)</div></div>
+        <div class="step r"><small>④ 오일러–라그랑주 방정식</small><div class="eq">d/dt(∂ℒ/∂θ̇) − ∂ℒ/∂θ = 0</div>∂ℒ/∂θ̇ = ml²θ̇,  ∂ℒ/∂θ = −mgl sinθ</div>
+        <div class="step o"><small>⑤ 결과</small><div class="eq">ml²θ̈ + mgl sinθ = 0 → θ̈ = −(g/l) sinθ</div>뉴턴의 방법과 똑같은 식! 장력은 한 번도 등장하지 않았어요.</div>
+      </div>
+      <div class="card"><h3 class="sec">🔎 왜 굳이 라그랑주?</h3><ul class="list">
+        <li>줄이 하는 일처럼 <b>구속력</b>을 몰라도 돼요.</li>
+        <li>좌표가 각도든 길이든 <b>같은 절차</b>로 풀려요.</li>
+        <li>이중진자·행성계처럼 복잡한 계도 ℒ만 쓰면 시작할 수 있어요.</li>
+        <li>‘θ가 식에 없으면 ∂ℒ/∂θ = 0 → ∂ℒ/∂θ̇는 보존’ 같은 <b>보존량</b>을 대칭에서 찾게 해 줘요.</li></ul></div>
+      <div class="card quiz" id="q-lagrange"></div>
     </div>
+  </div>
+  <div class="pane-next"><button data-tab="newton">← 뉴턴</button><button class="primary" data-tab="hamilton">다음: 🌀 해밀턴의 방법 →</button></div>
+</section>
 
-    <div class="energy-wrap">
-      <div class="energy-title">에너지 이력 · K(파랑) / U(주황) / E(초록 점선) — 보라 수직선: 현재 시각</div>
+<!-- ═════════ 4. 해밀턴 ═════════ -->
+<section class="pane" id="pane-hamilton">
+  <div class="pane-head">
+    <h2>🌀 해밀턴의 방법 — 위치와 운동량의 ‘위상 공간’</h2>
+    <p>위치 θ와 운동량 p를 짝으로 놓고, 전체 에너지 <b>H</b> 하나가 상태의 변화를 모두 결정한다고 보는 방법이에요. 진자의 모든 운동이 한 장의 지도(위상 초상)에 담겨요.</p>
+  </div>
+  <div class="card"><div class="guide-head"><b id="g-hamilton-t"></b><div class="dots" id="g-hamilton-d"></div></div>
+    <div class="bubble-wrap"><div class="avatar" id="g-hamilton-a"></div><div class="bubble"><div class="who" id="g-hamilton-w"></div><div id="g-hamilton-x"></div></div></div>
+    <div class="guide-nav"><button id="g-hamilton-p">◀ 이전</button><button id="g-hamilton-n" class="primary">다음 ▶</button></div>
+    <p class="note">※ 말풍선은 학습용으로 재구성한 글이며 실제 발언이 아닙니다.</p></div>
+  <div class="grid2">
+    <div class="card"><h3 class="sec">🗺 위상 초상 — 가로: 각도 θ, 세로: 각속도 θ̇/ω₀ (p에 비례)</h3>
+      <canvas class="cv" id="hmCanvas" width="560" height="380"></canvas>
+      <div class="legend"><span><i style="background:#cbd5e1"></i>에너지 등고선(가능한 운동)</span><span><i style="background:#e11d48"></i>분리선 (꼭대기에 닿는 경계)</span><span><i style="background:#4f46e5"></i>지금 운동</span><span><i style="background:#f59e0b"></i>근사 운동(원)</span></div>
+      <div class="param" style="margin-top:10px"><label>처음 각도 θ₀ <span class="val" id="hmA-v"></span></label><input type="range" id="hmA" min="0" max="179" value="90"></div>
+      <div class="param"><label>처음 각속도 θ̇₀/ω₀ <span class="val" id="hmW-v"></span></label><input type="range" id="hmW" min="0" max="2.6" step="0.05" value="0"></div>
+      <div class="controls-row"><button id="hmPlay" class="primary">⏸ 정지</button> <label style="font-size:.88em;color:var(--sub)"><input type="checkbox" id="hmApx"> 소각도 근사의 원(타원) 겹쳐 보기</label></div>
+      <div class="kpis" id="hmK"></div>
+    </div>
+    <div>
+      <div class="card"><h3 class="sec">📐 유도 — 해밀턴의 순서</h3>
+        <div class="step b"><small>① 운동량 정의</small><div class="eq">p = ∂ℒ/∂θ̇ = ml²θ̇</div></div>
+        <div class="step"><small>② 해밀토니안 (=전체 에너지)</small><div class="eq">H = pθ̇ − ℒ = p²/(2ml²) + mgl(1 − cosθ)</div></div>
+        <div class="step g"><small>③ 해밀턴 방정식 (1계 방정식 두 개)</small><div class="eq">θ̇ = ∂H/∂p = p/(ml²)<br>ṗ = −∂H/∂θ = −mgl sinθ</div></div>
+        <div class="step o"><small>④ 합치면</small>θ̈ = ṗ/(ml²) = −(g/l) sinθ — 앞의 두 방법과 같은 식이에요.</div>
+        <div class="step r"><small>⑤ 위상 초상 읽기</small><b>H가 일정</b> → 운동은 H = 일정인 곡선 위만 움직여요. 닫힌 곡선=<b>진동</b>, 분리선 바깥의 물결선=<b>계속 돌기</b>, 분리선=꼭대기에서 멈출 듯 넘어가는 경계.</div>
+      </div>
+      <div class="card"><h3 class="sec">🔎 이렇게 생각해 보세요</h3><ul class="list">
+        <li>진폭이 작으면 곡선이 <b>타원(원)</b>에 가까워요 → 단순조화운동.</li>
+        <li>진폭이 커질수록 곡선이 찌그러져 <b>한 바퀴 도는 시간이 늘어요</b>.</li>
+        <li>해밀턴 흐름은 위상 공간의 <b>넓이를 보존</b>해요(리우빌 정리). 통계역학·양자역학으로 이어지는 출발점이에요.</li></ul></div>
+      <div class="card quiz" id="q-hamilton"></div>
+    </div>
+  </div>
+  <div class="pane-next"><button data-tab="lagrange">← 라그랑주</button><button class="primary" data-tab="approx">다음: ⚖ 진짜 해와 근사 해 →</button></div>
+</section>
+
+<!-- ═════════ 5. 해와 근사 ═════════ -->
+<section class="pane" id="pane-approx">
+  <div class="pane-head">
+    <h2>⚖ 진짜 진자의 해 vs 소각도 근사 해</h2>
+    <p>세 방법이 똑같이 도착한 식 θ̈ = −(g/l) sinθ 는 <b>풀기 어려운 비선형 식</b>이에요. sinθ를 θ로 바꾼 근사 해와 실제 해는 얼마나 다를까요? 그리고 교실의 진짜 진자는 또 어떻게 다를까요?</p>
+  </div>
+  <div class="card"><div class="guide-head"><b id="g-approx-t"></b><div class="dots" id="g-approx-d"></div></div>
+    <div class="bubble-wrap"><div class="avatar" id="g-approx-a"></div><div class="bubble"><div class="who" id="g-approx-w"></div><div id="g-approx-x"></div></div></div>
+    <div class="guide-nav"><button id="g-approx-p">◀ 이전</button><button id="g-approx-n" class="primary">다음 ▶</button></div>
+    <p class="note">※ 말풍선은 학습용으로 재구성한 글이며 실제 발언이 아닙니다.</p></div>
+  <div class="grid2">
+    <div class="card"><h3 class="sec">〰 각도–시간 그래프 (시간 단위: 근사 주기 T₀)</h3>
+      <canvas class="cv" id="apCanvas" width="560" height="320"></canvas>
+      <div class="legend"><span><i style="background:#2563eb"></i>근사 해 θ₀cos(ω₀t)</span><span><i style="background:#e11d48"></i>정확한 해(수치 적분)</span><span><i style="background:#059669"></i>실제처럼 감쇠 있는 진자</span></div>
+      <div class="param" style="margin-top:10px"><label>진폭 θ₀ <span class="val" id="apA-v"></span></label><input type="range" id="apA" min="2" max="170" value="60"></div>
+      <div class="param"><label>감쇠 (공기저항·마찰) <span class="val" id="apD-v"></span></label><input type="range" id="apD" min="0" max="0.08" step="0.002" value="0"></div>
+      <div class="kpis" id="apK"></div>
+    </div>
+    <div>
+      <div class="card"><h3 class="sec">📐 정확한 주기</h3>
+        <div class="eq">T = 4√(l/g)·K(sin(θ₀/2))</div>
+        <div class="eq">T ≈ T₀ [1 + θ₀²/16 + 11θ₀⁴/3072 + …]</div>
+        <p class="hint">K는 ‘제1종 완전 타원적분’이에요. 초등함수로는 표현이 안 돼서 수치 계산(또는 급수)을 써요. 아래 그래프에서 진폭이 커질수록 실제 주기가 근사값 T₀ = 2π√(l/g) 보다 길어지는 모습을 보세요.</p>
+        <canvas class="cv" id="apC2" width="520" height="280" style="margin-top:8px"></canvas>
+        <div class="legend"><span><i style="background:#e11d48"></i>정확한 T/T₀</span><span><i style="background:#2563eb"></i>1항 보정 1+θ₀²/16</span><span><i style="background:#94a3b8"></i>근사 T/T₀ = 1</span></div>
+      </div>
+      <div class="card quiz" id="q-approx"></div>
+    </div>
+  </div>
+  <div class="card"><h3 class="sec">📋 진폭에 따른 주기 오차 (정확한 값은 산술-기하 평균 AGM으로 계산)</h3>
+    <div class="tblwrap"><table id="apTbl"></table></div>
+    <p class="hint">‘근사 주기 오차’ = (T₀ − T) / T. 근사 해는 실제보다 항상 주기를 <b>짧게</b> 예측해요. 진폭이 클수록 오차가 급하게 커져요.</p></div>
+  <div class="card"><h3 class="sec">🏫 교실의 진짜 진자는 이상적인 진자와 무엇이 다를까?</h3>
+    <div class="grid3">
+      <div class="eqbox"><b>① 추의 크기</b><p>점이 아니라 반지름 r인 공이면 관성모멘트가 커져 주기가 길어져요. 구: T = T₀√(1 + 2r²/5L²), L은 지지점~공 중심 거리.</p></div>
+      <div class="eqbox"><b>② 줄의 질량·신축</b><p>줄이 무겁거나 늘어나면 L이 달라져요. 가볍고 늘어나지 않는 낚싯줄·실이 좋아요.</p></div>
+      <div class="eqbox"><b>③ 공기저항·마찰</b><p>진폭이 서서히 줄어요(그래프의 초록 선). 주기는 아주 조금만 길어져서 짧은 시간 측정엔 영향이 작아요.</p></div>
+      <div class="eqbox"><b>④ 지지점 흔들림</b><p>스탠드가 흔들리면 에너지가 새고 주기가 변해요. 단단히 고정하고, 실이 미끄러지지 않게 해요.</p></div>
+      <div class="eqbox"><b>⑤ 큰 진폭</b><p>위 표처럼 10° 이하에서는 오차 0.2 % 이하지만 60°에서는 약 7 %예요.</p></div>
+      <div class="eqbox"><b>⑥ 장소에 따른 g</b><p>위도·고도에 따라 g가 0.5 % 정도 달라요(극 9.83, 적도 9.78 m/s²). 푸코 진자의 지구 자전도 아주 미세한 효과예요.</p></div>
+    </div></div>
+  <div class="pane-next"><button data-tab="hamilton">← 해밀턴</button><button class="primary" data-tab="sim">다음: 🕹 시뮬레이션 →</button></div>
+</section>
+
+<!-- ═════════ 6. 시뮬레이션 ═════════ -->
+<section class="pane" id="pane-sim">
+  <div class="pane-head">
+    <h2>🕹 시뮬레이션 — 힘과 에너지를 눈으로 확인</h2>
+    <p>정확한 비선형 식(RK4)으로 움직여요. 최고점·중간·최저점에서 멈추면 힘 분해와 에너지 변환을 볼 수 있어요. 큰 각도로 놓고 ‘주기(측정)’이 ‘주기(근사)’와 얼마나 다른지 확인해 보세요.</p>
+  </div>
+  <div class="sim-layout">
+    <div class="card">
+      <div class="snap-bar">
+        <b style="font-size:.88em">위치 고정:</b>
+        <button class="snap-btn" id="btn-top" onclick="snapTo('top')">최고점</button>
+        <button class="snap-btn" id="btn-middle" onclick="snapTo('middle')">중간</button>
+        <button class="snap-btn" id="btn-bottom" onclick="snapTo('bottom')">최저점</button>
+        <button class="primary" id="btn-play" onclick="togglePlay()">▶ 재생</button>
+        <button onclick="restart()">↺ 재시작</button>
+      </div>
+      <div class="canvas-wrap"><canvas id="pendCanvas" width="560" height="430"></canvas><div class="pause-badge" id="pauseBadge">⏸ 정지</div></div>
+      <div class="force-analysis" id="forceAnalysis"><div class="fa-grid">
+        <div class="fa-card tension"><div class="fa-name">장력 T</div><div class="fa-val" id="fa-T">—</div><div class="fa-eq">mg cosθ + mlθ̇²</div></div>
+        <div class="fa-card gravity"><div class="fa-name">중력 mg</div><div class="fa-val" id="fa-mg">—</div><div class="fa-eq">연직 하향 · 일정</div></div>
+        <div class="fa-card net"><div class="fa-name">알짜힘 F<sub>net</sub></div><div class="fa-val" id="fa-net">—</div><div class="fa-eq">접선+구심 합성</div></div>
+      </div></div>
+      <div class="pos-desc" id="posDesc"><div class="pos-desc-inner" id="posDescInner"></div></div>
+      <div class="formula-bar">
+        <div><div class="fml-label">운동에너지 K</div><div class="fml-val ke" id="ke-val">0.0000 J</div></div>
+        <div><div class="fml-label">위치에너지 U</div><div class="fml-val pe" id="pe-val">0.0000 J</div></div>
+        <div><div class="fml-label">역학적 에너지 E</div><div class="fml-val te" id="te-val">0.0000 J</div></div>
+      </div>
+      <div class="hint" style="margin-top:8px">에너지 이력 · K(파랑) / U(주황) / E(초록 점선) — 보라 수직선: 현재 시각</div>
       <canvas id="energyCanvas" width="560" height="100"></canvas>
     </div>
-
-  </div><!-- canvas-area -->
-
-  <div class="sidebar">
-
-    <div class="sidebar-section">
-      <div class="sec-title">패널</div>
-      <div class="tab-bar">
-        <button class="tab-btn active" onclick="switchTab('ctrl')">제어</button>
-        <button class="tab-btn" onclick="switchTab('derive')">유도</button>
-        <button class="tab-btn" onclick="switchTab('approx')">근사</button>
+    <div>
+      <div class="card"><h3 class="sec">초기 조건</h3>
+        <div class="ctrl-row"><div class="ctrl-head"><span>초기 각도 θ₀</span><span class="ctrl-disp" id="disp-angle">30°</span></div><input type="range" min="5" max="170" value="30" id="sl-angle" oninput="onParamChange()"></div>
+        <div class="ctrl-row"><div class="ctrl-head"><span>실 길이 l</span><span class="ctrl-disp" id="disp-L">1.5 m</span></div><input type="range" min="0.5" max="3.0" step="0.1" value="1.5" id="sl-L" oninput="onParamChange()"></div>
+        <div class="ctrl-row"><div class="ctrl-head"><span>중력가속도 g</span><span class="ctrl-disp" id="disp-g">9.8 m/s²</span></div><input type="range" min="1.0" max="25.0" step="0.1" value="9.8" id="sl-g" oninput="onParamChange()"></div>
+        <div class="ctrl-row"><div class="ctrl-head"><span>질량 m</span><span class="ctrl-disp" id="disp-m">1.0 kg</span></div><input type="range" min="0.2" max="5.0" step="0.1" value="1.0" id="sl-m" oninput="onParamChange()"></div>
+        <div class="ctrl-row"><div class="ctrl-head"><span>감쇠 γ (공기저항·마찰)</span><span class="ctrl-disp" id="disp-damp">0.00 /s</span></div><input type="range" min="0" max="0.5" step="0.01" value="0" id="sl-damp" oninput="onParamChange()"></div>
       </div>
+      <div class="card"><h3 class="sec">실시간 값</h3><div class="readout-grid">
+        <div class="readout"><div class="readout-label">각도 θ</div><div class="readout-val" id="r-theta">—</div></div>
+        <div class="readout"><div class="readout-label">각속도 θ̇</div><div class="readout-val" id="r-omega">—</div></div>
+        <div class="readout"><div class="readout-label">주기 T₀ (근사)</div><div class="readout-val" id="r-T">—</div></div>
+        <div class="readout"><div class="readout-label">주기 T (정확)</div><div class="readout-val" id="r-Tex">—</div></div>
+        <div class="readout"><div class="readout-label">주기 T (측정)</div><div class="readout-val" id="r-Tmeas">—</div></div>
+        <div class="readout"><div class="readout-label">장력 T</div><div class="readout-val red" id="r-tension">—</div></div>
+        <div class="readout"><div class="readout-label">알짜힘 |F<sub>net</sub>|</div><div class="readout-val purple" id="r-net">—</div></div>
+      </div></div>
+      <div class="card"><h3 class="sec">벡터 범례</h3>
+        <div class="vleg-row"><div class="vleg-swatch" style="background:#c0392b"></div>T (빨강) 장력</div>
+        <div class="vleg-row"><div class="vleg-swatch" style="background:#2980b9"></div>mg (파랑) 중력</div>
+        <div class="vleg-row"><div class="vleg-swatch" style="background:#1a1814"></div>mg sinθ 접선 복원력</div>
+        <div class="vleg-row"><div class="vleg-swatch" style="background:#888"></div>mg cosθ 줄 방향 성분 (점선)</div>
+        <div class="vleg-row"><div class="vleg-swatch" style="background:#7b2d8b;height:4px"></div>F<sub>net</sub> (보라) 알짜힘</div>
+      </div>
+      <div class="task"><b>🔬 해보기</b><br>① θ₀를 10° → 60° → 120°로 키우며 ‘측정 주기’를 읽어 보세요.<br>② 감쇠를 켜면 에너지 E(초록 점선)는 어떻게 되나요?<br>③ 최저점에서 장력이 mg보다 큰 까닭은?</div>
     </div>
+  </div>
+  <div class="pane-next"><button data-tab="approx">← 해와 근사</button><button class="primary" data-tab="lab">다음: 🧪 학교 실험 준비 →</button></div>
+</section>
 
-    <!-- 제어 탭 -->
-    <div class="tab-panel active" id="tab-ctrl">
-      <div class="sidebar-section">
-        <div class="sec-title">초기 조건</div>
-        <div class="ctrl-row">
-          <div class="ctrl-head"><span class="ctrl-name">초기 각도 θ₀</span><span class="ctrl-disp" id="disp-angle">30°</span></div>
-          <input type="range" min="5" max="75" value="30" id="sl-angle" oninput="onParamChange()">
-        </div>
-        <div class="ctrl-row">
-          <div class="ctrl-head"><span class="ctrl-name">실 길이 l</span><span class="ctrl-disp" id="disp-L">1.5 m</span></div>
-          <input type="range" min="0.5" max="3.0" step="0.1" value="1.5" id="sl-L" oninput="onParamChange()">
-        </div>
-        <div class="ctrl-row">
-          <div class="ctrl-head"><span class="ctrl-name">중력가속도 g</span><span class="ctrl-disp" id="disp-g">9.8 m/s²</span></div>
-          <input type="range" min="1.0" max="25.0" step="0.5" value="9.8" id="sl-g" oninput="onParamChange()">
-        </div>
-        <div class="ctrl-row">
-          <div class="ctrl-head"><span class="ctrl-name">질량 m</span><span class="ctrl-disp" id="disp-m">1.0 kg</span></div>
-          <input type="range" min="0.2" max="5.0" step="0.1" value="1.0" id="sl-m" oninput="onParamChange()">
-        </div>
-      </div>
+<!-- ═════════ 7. 실험 준비 ═════════ -->
+<section class="pane" id="pane-lab">
+  <div class="pane-head">
+    <h2>🧪 학교에서 하는 단진자 실험 — 준비와 방법</h2>
+    <p>예비 실험으로 도구와 변인을 점검하고, 본 실험에서 <b>T² – l 그래프의 기울기로 중력가속도 g</b>를 구해요. 아래 계산기로 결과를 미리 어림해 볼 수 있어요.</p>
+  </div>
 
-      <div class="sidebar-section">
-        <div class="sec-title">실시간 값</div>
-        <div class="readout-grid">
-          <div class="readout"><div class="readout-label">각도 θ</div><div class="readout-val" id="r-theta">—</div></div>
-          <div class="readout"><div class="readout-label">각속도 θ̇</div><div class="readout-val" id="r-omega">—</div></div>
-          <div class="readout"><div class="readout-label">주기 T (근사)</div><div class="readout-val" id="r-T">—</div></div>
-          <div class="readout"><div class="readout-label">주기 T (측정)</div><div class="readout-val" id="r-Tmeas">—</div></div>
-          <div class="readout"><div class="readout-label">장력 T</div><div class="readout-val red" id="r-tension">—</div></div>
-          <div class="readout"><div class="readout-label">알짜힘 |F<sub>net</sub>|</div><div class="readout-val purple" id="r-net">—</div></div>
-        </div>
-      </div>
+  <div class="card"><h3 class="sec">🎯 실험 흐름 한눈에</h3>
+    <div class="grid3">
+      <div class="eqbox"><b>예비 실험 (한 차시 앞)</b><p>변인 통제를 눈으로 확인하고, 스톱워치 반응시간과 측정 방법을 점검해요.</p></div>
+      <div class="eqbox"><b>본 실험 (1~3)</b><p>진폭·질량·길이를 하나씩 바꿔 주기와의 관계를 찾고 g를 계산해요.</p></div>
+      <div class="eqbox"><b>분석·보고서</b><p>그래프·오차율·개선점을 정리해요. 한글 양식은 8번 탭에서 받아요.</p></div>
+    </div></div>
 
-      <div class="sidebar-section">
-        <div class="sec-title">벡터 범례</div>
-        <div class="vleg-grid">
-          <div class="vleg-row"><div class="vleg-swatch" style="background:var(--col-T)"></div><span class="vleg-name">T (빨강)</span><span class="vleg-desc">장력 · 피벗 방향</span></div>
-          <div class="vleg-row"><div class="vleg-swatch" style="background:var(--col-mg)"></div><span class="vleg-name">mg (파랑)</span><span class="vleg-desc">중력 · 연직 하향</span></div>
-          <div class="vleg-row"><div class="vleg-swatch" style="background:#1a1814"></div><span class="vleg-name">mg sinθ</span><span class="vleg-desc">접선 복원력</span></div>
-          <div class="vleg-row"><div class="vleg-swatch" style="background:#888;height:1px;border-top:1.5px dashed #888"></div><span class="vleg-name">mg cosθ</span><span class="vleg-desc">법선 분력 (점선)</span></div>
-          <div class="vleg-row"><div class="vleg-swatch" style="background:var(--col-net);height:4px"></div><span class="vleg-name">F<sub>net</sub> (보라)</span><span class="vleg-desc">알짜힘 · 굵은 화살표</span></div>
-        </div>
-      </div>
+  <div class="card"><h3 class="sec">🧰 준비물 (모둠 기준)</h3>
+    <div class="tblwrap"><table>
+      <tr><th>품목</th><th>수량</th><th>쓰임 · 대체품</th></tr>
+      <tr><td class="l">스탠드 + 클램프(가로대)</td><td>1세트</td><td class="l">진자 지지점. 책상에 C형 클램프로 고정하면 더 단단해요.</td></tr>
+      <tr><td class="l">무게 같은 실 (낚싯줄·가는 면실)</td><td>약 1.5 m</td><td class="l">잘 늘어나지 않고 가벼운 것. 털실처럼 보풀 있는 건 피해요.</td></tr>
+      <tr><td class="l">추 (쇠구슬·금속 추) 2~3종</td><td>각 1개</td><td class="l">① 크기는 같고 질량이 다른 것 ② 질량은 비슷하고 크기가 다른 것이면 이상적. 없으면 너트·동전 묶음으로 대체.</td></tr>
+      <tr><td class="l">줄자(또는 1 m 자)</td><td>1</td><td class="l">지지점~추 <b>중심</b> 거리 측정 (눈금 1 mm).</td></tr>
+      <tr><td class="l">버니어 캘리퍼스 (없으면 자)</td><td>1</td><td class="l">추의 지름 측정 → 반지름 r로 길이 보정.</td></tr>
+      <tr><td class="l">스톱워치 (스마트폰 가능)</td><td>1</td><td class="l">10주기 이상을 재요. 스마트폰 슬로모션 촬영으로 비교하면 반응시간 오차를 확인할 수 있어요.</td></tr>
+      <tr><td class="l">각도기 · 마스킹테이프</td><td>1 · 1</td><td class="l">처음 각도 표시. 테이프로 θ₀ 위치 표시선과 평형 위치 표시선을 만들어요.</td></tr>
+      <tr><td class="l">전자저울</td><td>1</td><td class="l">추의 질량 측정.</td></tr>
+      <tr><td class="l">(선택) 포토게이트 · 영상 분석 도구</td><td>—</td><td class="l">주기를 자동으로 재면 정밀도가 높아요. <a href="../../tools/stroboscope/index.html">스트로보스코프 도구</a>로 영상 분석도 가능.</td></tr>
+      <tr><td class="l">기록지 · 그래프 용지(또는 스프레드시트)</td><td>모둠당</td><td class="l">8번 탭 한글 양식을 출력하거나 컴퓨터로 작성.</td></tr>
+    </table></div>
+    <p class="hint">⚠ 안전: 추가 날아가지 않게 줄 매듭을 단단히 하고, 진자가 흔들리는 반경 안에 얼굴·물건을 두지 않아요. 스탠드가 넘어지지 않게 무거운 쪽을 책상 안쪽에 두세요.</p></div>
 
-      <div class="btn-row">
-        <button class="btn-sm" onclick="restart()">↺ 재시작</button>
-        <button class="btn-sm" onclick="togglePlay()">⏯ 일시정지</button>
-      </div>
+  <div class="card"><h3 class="sec">🔬 예비 실험 — 본 실험 전에 확인할 것</h3>
+    <details class="fold" open><summary>예비 1. 변인 통제 ‘눈으로’ 확인하기 (10분)</summary>
+      <ol class="list"><li>실 길이 1 m로 고정. 처음 각도 10°로 놓고 <b>왕복 10번</b>이 걸리는 시간을 재요.</li>
+      <li>각도만 30°로 바꿔 다시 재요. (질량·길이는 그대로)</li>
+      <li>이번엔 추를 다른 것으로 바꿔 10°에서 재요. (각도·길이는 그대로)</li>
+      <li>마지막으로 길이만 바꿔 재요 (0.25 m, 1 m).</li></ol>
+      <p class="hint"><b>예측 먼저!</b> 어떤 변인이 시간을 바꿀 것 같나요? 결과가 예측과 달랐다면 왜일까요?</p></details>
+    <details class="fold"><summary>예비 2. 스톱워치 반응시간과 측정 방법 점검</summary>
+      <ol class="list"><li>친구가 자를 잡았다 놓고, 내가 떨어지는 자를 잡아 <b>떨어진 거리 d</b>를 읽어요 (5회 평균).</li>
+      <li>반응시간 t = √(2d/g). 아래 계산기로 구해요. (보통 0.15~0.25 s)</li>
+      <li>같은 주기를 1주기와 10주기로 재면 반응시간 오차가 각각 몇 %인지 비교해요.</li></ol>
+      <div class="fieldrow" style="max-width:420px"><div><label>떨어진 거리 d (cm)</label><input type="number" id="rtD" value="18" step="0.5" min="1"></div><div><label>반응시간 t</label><b id="rtT"></b></div></div>
+      <p class="hint">반응시간 오차 ≈ 0.2 s라면, 주기 2 s를 1주기만 재면 약 10 %, 10주기(20 s)를 재면 약 1 %예요.</p></details>
+    <details class="fold"><summary>예비 3. 길이 재는 법 · 지지점 만들기</summary>
+      <ul class="list"><li>길이 l = (지지점에서 매듭까지) + (추 반지름). 추의 <b>중심</b>까지가 기준이에요.</li>
+      <li>클램프 두 개 사이(또는 반으로 갈라 낀 코르크 사이)에 실을 끼우면 지지점이 일정하고 실이 미끄러지지 않아요.</li>
+      <li>진자를 <b>한 평면 안에서만</b> 흔들리게 놓는 연습을 해요(원뿔 운동 방지).</li></ul></details>
+    <details class="fold"><summary>예비 4. 타이밍 잡는 법</summary>
+      <ul class="list"><li>빠르게 지나가는 <b>평형점(최저점)</b>에 기준선을 두고, 추가 기준선을 같은 방향으로 지나는 순간마다 하나씩 세요.</li>
+      <li>처음 1~2번은 세지 않고 흔들림이 안정된 뒤에 시작 버튼을 눌러요(0부터 센다).</li></ul></details>
+  </div>
+
+  <div class="card"><h3 class="sec">🧭 본 실험 방법</h3>
+    <div class="step b"><small>실험 1 · 주기와 진폭</small>l = 1.00 m, 같은 추. θ₀ = 5°, 10°, 15°, 20°, 30°, 45°에서 각각 10주기 시간을 3회 재요. T = (10주기 시간)/10 → 어느 각도부터 T가 눈에 띄게 늘어나는지 5번 탭 표와 비교.</div>
+    <div class="step g"><small>실험 2 · 주기와 질량</small>l = 1.00 m, θ₀ = 10° 고정. 질량이 다른 추 3개로 T 측정 → 질량이 달라도 T가 같은가? (추 크기가 다르면 보정 필요)</div>
+    <div class="step o"><small>실험 3 · 주기와 길이, 그리고 g</small>θ₀ = 10° 고정. l = 0.30, 0.45, 0.60, 0.75, 0.90, 1.05 m로 바꿔 T 측정 → T² – l 그래프의 기울기 = 4π²/g → <b>g = 4π²/기울기</b>.</div>
+    <div class="task" style="margin-top:10px">💡 그래프를 직선으로 만드는 비밀: T = 2π√(l/g) 의 양변을 제곱하면 <b>T² = (4π²/g)·l</b>. 원점을 지나는 직선이에요. 원점을 안 지나면 길이 측정(중심 위치)에 체계적 오차가 있다는 신호!</div></div>
+
+  <div class="grid2">
+    <div class="card"><h3 class="sec">🧮 내 데이터로 g 구하기</h3>
+      <div class="tblwrap"><table id="gTbl"><tr><th>l (m)</th><th>10주기 시간 (s)</th><th>T (s)</th><th>T² (s²)</th></tr></table></div>
+      <div class="controls-row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button id="gFill">예시(가상) 데이터 채우기</button><button id="gClear">지우기</button></div>
+      <div class="kpis" id="gK"></div>
+      <canvas class="cv" id="gCanvas" width="520" height="300" style="margin-top:8px"></canvas>
+      <p class="hint">l과 10주기 시간을 입력하면 최소제곱 직선을 그려 줘요. 기준값 g = 9.80 m/s²와 비교한 오차율도 계산해요. (예시 데이터는 시뮬레이션 값이며 실제 측정이 아니에요)</p>
     </div>
-
-    <!-- 유도 탭 -->
-    <div class="tab-panel" id="tab-derive">
-      <div class="deriv-step hl"><div class="ds-label">Step 1 · 접선 방향 합력</div><div class="ds-eq">F<sub>tan</sub> = −mg sinθ = m(lθ̈)</div></div>
-      <div class="deriv-step hl2"><div class="ds-label">Step 2 · 운동방정식 (비선형)</div><div class="ds-eq">θ̈ + (g/l) sinθ = 0</div></div>
-      <div class="deriv-step"><div class="ds-label">Step 3 · 소각도 근사</div><div class="ds-eq">sinθ ≈ θ → θ̈ + (g/l)θ = 0<br><span style="font-size:10px;color:#aaa">→ 단순조화운동 SHM</span></div></div>
-      <div class="deriv-step hl3"><div class="ds-label">Step 4 · 해와 주기</div><div class="ds-eq">θ(t) = θ₀ cos(ωt),  ω = √(g/l)<br>T = 2π√(l/g)</div></div>
-      <div class="deriv-step hl4"><div class="ds-label">Step 5 · 에너지 보존</div><div class="ds-eq">E = ½m(lθ̇)² + mgl(1−cosθ) = 일정</div></div>
-      <div class="deriv-step"><div class="ds-label">Step 6 · 장력 (법선 방향)</div><div class="ds-eq">T = mg cosθ + mlθ̇²<br><span style="font-size:10px;color:#aaa">최저점: T = mg + mlθ̇² (최대)</span></div></div>
-    </div>
-
-    <!-- 근사 탭 -->
-    <div class="tab-panel" id="tab-approx">
-      <div class="deriv-step"><div class="ds-label">현재 초기 각도</div><div class="ds-eq" id="approx-theta-line">θ₀ = 30°</div></div>
-      <div class="readout-grid">
-        <div class="readout"><div class="readout-label">sinθ</div><div class="readout-val" id="approx-sin">—</div></div>
-        <div class="readout"><div class="readout-label">θ (rad)</div><div class="readout-val" id="approx-rad">—</div></div>
-        <div class="readout"><div class="readout-label">T (근사)</div><div class="readout-val" style="color:var(--col-E)" id="approx-Ta">—</div></div>
-        <div class="readout"><div class="readout-label">T (보정)</div><div class="readout-val" id="approx-Te">—</div></div>
+    <div class="card"><h3 class="sec">🧮 결과 미리 어림하기 (보정 계산기)</h3>
+      <div class="fieldrow">
+        <div><label>실 길이(지지점~공 윗면) a (m)</label><input type="number" id="cA" value="0.95" step="0.01" min="0.1"></div>
+        <div><label>공 반지름 r (cm)</label><input type="number" id="cR" value="1.2" step="0.1" min="0"></div>
+        <div><label>진폭 θ₀ (°)</label><input type="number" id="cT" value="10" step="1" min="1" max="170"></div>
+        <div><label>g (m/s²)</label><input type="number" id="cG" value="9.80" step="0.01"></div>
       </div>
-      <div class="sidebar-section">
-        <div class="sec-title">sinθ ↔ θ 오차</div>
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>|sinθ − θ| / θ</span><span id="approx-err-pct" style="font-weight:700;color:#c0392b">—</span></div>
-        <div class="approx-bar"><div class="approx-fill" id="approx-err-bar" style="width:0%"></div></div>
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:5px"><span>주기 오차 (근사 vs 보정)</span><span id="approx-period-err" style="font-weight:700;color:#c0392b">—</span></div>
-        <div class="approx-bar"><div class="approx-fill" id="approx-period-err-bar" style="width:0%"></div></div>
-      </div>
-      <canvas id="approxCanvas" width="278" height="150" style="width:100%;background:white;border:1px solid var(--border);border-radius:3px"></canvas>
-      <div class="leg"><span><span class="leg-dot" style="background:#2980b9"></span>sinθ</span><span><span class="leg-dot" style="background:#c0392b"></span>θ (rad)</span></div>
+      <div class="kpis" id="cK"></div>
+      <p class="hint">L = a + r (지지점~공 중심). ① T₀ = 2π√(L/g) ② 공 크기 보정 √(1 + 2r²/5L²) ③ 진폭 보정 1/AGM(1, cos(θ₀/2)). 본 실험의 측정 주기와 비교해 어떤 보정이 큰지 살펴보세요.</p>
     </div>
+  </div>
 
-  </div><!-- sidebar -->
-</div><!-- layout -->
+  <div class="card"><h3 class="sec">🔍 오차는 어디서 올까? (보고서 ‘고찰’에 쓸 거리)</h3>
+    <ul class="list"><li><b>체계적 오차</b>: 길이를 줄 끝까지로 재기, 공 중심 위치, 진폭이 너무 큼, 줄 늘어남, 지지점 이동.</li>
+    <li><b>우연 오차</b>: 반응시간, 주기 세다가 놓침, 평면이 아닌 원뿔 운동.</li>
+    <li><b>줄이는 법</b>: 10주기 이상 측정·반복 평균, 작은 각도, 단단한 지지점, 영상/포토게이트 활용.</li></ul>
+    <p class="hint">더 해볼 거리: 길이를 다르게 해 두 진자를 같이 놓고 위상이 어긋나는 모습 관찰하기 · 진자의 감쇠(진폭이 반으로 줄 때까지 몇 번 흔들리나?) 측정하기 · 푸코 진자가 있는 과학관 찾아가 보기.</p></div>
+  <div class="pane-next"><button data-tab="sim">← 시뮬레이션</button><button class="primary" data-tab="report">다음: 📝 보고서 자료 →</button></div>
+</section>
+
+<!-- ═════════ 8. 보고서 ═════════ -->
+<section class="pane" id="pane-report">
+  <div class="pane-head">
+    <h2>📝 보고서 자료 — 한글(.hwpx) 파일 받기</h2>
+    <p>한컴오피스 한글에서 열어 바로 작성할 수 있는 양식이에요. 예비 실험 활동지는 실험 전에, 보고서 양식은 본 실험 뒤에 써요.</p>
+  </div>
+  <div class="grid2" style="margin-top:0">
+    <div class="card"><h3 class="sec">⬇ 내려받기</h3>
+      <div class="eqbox"><b>① 예비 실험 활동지 (한글)</b><p>예측 → 관찰 → 반응시간 → 측정 방법 점검. 한 차시 앞 예비 실험 때 사용해요.</p>
+        <a class="btnlink primary" href="assets/pendulum-prelab-sheet.hwpx" download="단진자_예비실험_활동지.hwpx">⬇ 예비 실험 활동지 받기</a></div>
+      <div class="eqbox" style="margin-top:10px"><b>② 실험 보고서 양식 (한글)</b><p>탐구 질문 · 가설 · 방법 · 결과표 · 그래프 · 분석 · 오차 · 결론 · 생각 확장. T²–l 그래프로 g를 구하는 본 실험용이에요.</p>
+        <a class="btnlink primary" href="assets/pendulum-report-template.hwpx" download="단진자_실험보고서_양식.hwpx">⬇ 실험 보고서 양식 받기</a></div>
+      <p class="hint">한글 2018 이상에서 열려요. 그래프는 이 페이지 7번 탭의 ‘내 데이터로 g 구하기’ 화면을 캡처하거나, 직접 그린 그래프를 사진으로 붙여 넣어요. 표 작성란은 글을 쓰면 늘어나요.</p></div>
+    <div class="card"><h3 class="sec">✅ 보고서 점검표</h3>
+      <ul class="list"><li>실험 전에 <b>예측(가설)</b>과 그 이유를 썼나요?</li>
+      <li>무엇을 바꾸고(독립변인) 무엇을 재고(종속변인) 무엇을 고정했나요(통제변인)?</li>
+      <li>10주기 시간 등 <b>원자료</b>와 단위가 표에 있나요?</li>
+      <li>T²–l 그래프에 점, 직선, <b>기울기 계산</b>이 있나요?</li>
+      <li>g의 <b>오차율</b>과 오차의 원인(체계/우연)을 구분했나요?</li>
+      <li>진폭이 클 때 근사가 왜 어긋나는지 5번 탭 내용을 사용했나요?</li>
+      <li>결론이 <b>질문에 대한 답</b>으로 끝나나요?</li></ul></div>
+  </div>
+  <div class="card"><h3 class="sec">🧩 생각 확장 (융합 질문)</h3>
+    <ul class="list"><li>세 방법(뉴턴·라그랑주·해밀턴)이 같은 식을 줬다면 왜 세 가지가 모두 필요했을까?</li>
+    <li>1790년 ‘길이의 단위’를 초진자로 정하자는 제안이 있었어요. 지금 보면 어떤 문제가 있었을까? (힌트: g)</li>
+    <li>푸코 진자는 ‘눈에 보이는 증거’로 무엇을 바꿨을까? 과학에서 증거를 <b>보여 주는 일</b>은 왜 중요할까?</li>
+    <li>진자를 소재로 한 소설·음악에서 ‘진자’는 어떤 의미로 쓰였을까? 과학적 의미와 비교해 보자.</li></ul></div>
+  <div class="card"><h3 class="sec">📋 내 시뮬레이션 설정 복사 (보고서에 붙여넣기)</h3>
+    <textarea id="simSummary" rows="5" style="width:100%;font:inherit;padding:8px;border:1px solid var(--border);border-radius:8px" readonly></textarea>
+    <div style="margin-top:8px"><button id="copySum" class="primary">클립보드로 복사</button></div></div>
+  <div class="pane-next"><button data-tab="lab">← 실험 준비</button><button data-tab="story">처음으로 ↺</button></div>
+</section>
+
+<p class="credit">그림은 모두 이 페이지에서 직접 그린 것입니다. 역사·예술 자료는 일반적으로 알려진 사실을 요약한 것으로 별도의 이미지 저작물을 사용하지 않았어요. 단진자 시리즈: <a href="../gravity/pendulum/index.html">기본: 단진자로 g 측정</a> · <a href="../double-pendulum/index.html">심화: 이중진자</a></p>
+</div>
 
 <script>
 // ============================================================
 // State
 // ============================================================
 let theta, dtheta, simTime;
-let L, g_val, mass;
+let L, g_val, mass, gamma = 0, simVisible = false;
 let paused = false;
 let snapMode = null;
 let animId   = null;
@@ -318,6 +562,8 @@ function readParams() {
   document.getElementById('disp-L').textContent = L.toFixed(1) + ' m';
   document.getElementById('disp-g').textContent = g_val.toFixed(1) + ' m/s²';
   document.getElementById('disp-m').textContent = mass.toFixed(1) + ' kg';
+  gamma = parseFloat(document.getElementById('sl-damp').value);
+  document.getElementById('disp-damp').textContent = gamma.toFixed(2) + ' /s';
 }
 
 function onParamChange() {
@@ -337,7 +583,6 @@ function restart() {
   paused = false; snapMode = null;
   clearSnapBtns(); hidePauseUI();
   document.getElementById('btn-play').textContent = '⏸ 정지';
-  updateApproxTab();
   if (animId) cancelAnimationFrame(animId);
   loop();
 }
@@ -419,11 +664,11 @@ function updateForceCards() {
 // Physics – RK4
 // ============================================================
 function rk4(th, dth, dt) {
-  const f = a => -(g_val/L)*Math.sin(a);
-  const k1v=f(th), k1x=dth;
-  const k2v=f(th+.5*dt*k1x), k2x=dth+.5*dt*k1v;
-  const k3v=f(th+.5*dt*k2x), k3x=dth+.5*dt*k2v;
-  const k4v=f(th+dt*k3x),    k4x=dth+dt*k3v;
+  const f = (a, b) => -(g_val/L)*Math.sin(a) - gamma*b;
+  const k1x=dth,            k1v=f(th, dth);
+  const k2x=dth+.5*dt*k1v,  k2v=f(th+.5*dt*k1x, dth+.5*dt*k1v);
+  const k3x=dth+.5*dt*k2v,  k3v=f(th+.5*dt*k2x, dth+.5*dt*k2v);
+  const k4x=dth+dt*k3v,     k4v=f(th+dt*k3x, dth+dt*k3v);
   return { th: th+(dt/6)*(k1x+2*k2x+2*k3x+k4x), dth: dth+(dt/6)*(k1v+2*k2v+2*k3v+k4v) };
 }
 
@@ -431,7 +676,7 @@ function rk4(th, dth, dt) {
 // Main loop
 // ============================================================
 function loop() {
-  if (paused) return;
+  if (paused || !simVisible) return;
   const dt=0.016, STEPS=4;
   for (let i=0;i<STEPS;i++) {
     const r=rk4(theta,dtheta,dt/STEPS);
@@ -469,6 +714,7 @@ function renderFrame() {
   document.getElementById('r-theta').textContent   = (theta*180/Math.PI).toFixed(2)+'°';
   document.getElementById('r-omega').textContent   = dtheta.toFixed(3)+' rad/s';
   document.getElementById('r-T').textContent       = T_approx.toFixed(3)+' s';
+  document.getElementById('r-Tex').textContent     = (T_approx*(1/agm(1,Math.cos(Math.abs(parseFloat(document.getElementById('sl-angle').value))*Math.PI/360)))).toFixed(3)+' s';
   document.getElementById('r-Tmeas').textContent   = measuredPeriod ? measuredPeriod.toFixed(3)+' s' : '—';
   document.getElementById('r-tension').textContent = Tmag.toFixed(3)+' N';
   document.getElementById('r-net').textContent     = Fnet.toFixed(3)+' N';
@@ -701,81 +947,404 @@ function drawEnergyChart() {
   ctx.textAlign='right'; ctx.fillText((eMax*.87).toFixed(2),pad.l-2,yp(eMax*.87)+4);
   ctx.textAlign='left'; ctx.fillText('t(s)',W-pad.r+2,H-5);
 }
-
+</script>
+<script>
 // ============================================================
-// Approx Tab
+// 공통
 // ============================================================
-function updateApproxTab() {
-  readParams();
-  const deg=parseFloat(document.getElementById('sl-angle').value);
-  const rad=deg*Math.PI/180, sinV=Math.sin(rad);
-  const Ta=2*Math.PI*Math.sqrt(L/g_val);
-  const Te=Ta*(1+rad*rad/16+11*rad*rad*rad*rad/3072);
-  const sinErr=Math.abs(sinV-rad)/Math.abs(rad)*100;
-  const pErr=Math.abs(Te-Ta)/Te*100;
+const $ = id => document.getElementById(id);
+const D2R = Math.PI / 180;
+function agm(a, b) { for (let i = 0; i < 40; i++) { const c = (a + b) / 2; b = Math.sqrt(a * b); a = c; } return a; }
+// 정확한 주기 / 근사 주기 (θ0: rad)
+const ratioExact = th0 => 1 / agm(1, Math.cos(th0 / 2));
+const ratioSeries1 = th0 => 1 + th0 * th0 / 16;
+const ratioSeries2 = th0 => 1 + th0 * th0 / 16 + 11 * Math.pow(th0, 4) / 3072;
+const f1 = (x, n = 1) => (isFinite(x) ? x.toFixed(n) : '—');
+function kpi(label, val, small) { return `<div class="kpi"><span>${label}</span><b>${val}</b>${small ? '<span>' + small + '</span>' : ''}</div>`; }
 
-  document.getElementById('approx-theta-line').innerHTML='θ₀ = '+deg+'° = '+rad.toFixed(4)+' rad';
-  document.getElementById('approx-sin').textContent=sinV.toFixed(5);
-  document.getElementById('approx-rad').textContent=rad.toFixed(5);
-  document.getElementById('approx-Ta').textContent=Ta.toFixed(4)+' s';
-  document.getElementById('approx-Te').textContent=Te.toFixed(4)+' s';
-  document.getElementById('approx-err-pct').textContent=sinErr.toFixed(3)+'%';
-  document.getElementById('approx-err-bar').style.width=Math.min(sinErr*3,100)+'%';
-  document.getElementById('approx-period-err').textContent=pErr.toFixed(3)+'%';
-  document.getElementById('approx-period-err-bar').style.width=Math.min(pErr*10,100)+'%';
-  drawApproxGraph(deg);
+function setupCanvas(cv) { return cv.getContext('2d'); }
+function arrow(ctx, x1, y1, dx, dy, color, lw, dashed, hs) {
+  const len = Math.hypot(dx, dy); if (len < 2) return;
+  hs = hs || 8;
+  ctx.save(); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw;
+  if (dashed) ctx.setLineDash([5, 4]);
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 + dx - dx / len * hs * .6, y1 + dy - dy / len * hs * .6); ctx.stroke();
+  ctx.setLineDash([]);
+  const ux = dx / len, uy = dy / len, hw = hs * .55;
+  ctx.beginPath(); ctx.moveTo(x1 + dx, y1 + dy);
+  ctx.lineTo(x1 + dx - ux * hs + uy * hw, y1 + dy - uy * hs - ux * hw);
+  ctx.lineTo(x1 + dx - ux * hs - uy * hw, y1 + dy - uy * hs + ux * hw);
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+function txt(ctx, s, x, y, color, size, align, bold) {
+  ctx.fillStyle = color || '#172033'; ctx.font = (bold ? 'bold ' : '') + (size || 13) + 'px "Noto Sans KR",sans-serif'; ctx.textAlign = align || 'left'; ctx.fillText(s, x, y);
+}
+function plotFrame(ctx, W, H, pad, xmin, xmax, ymin, ymax, xt, yt, xl, yl) {
+  ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  const xp = x => pad.l + (x - xmin) / (xmax - xmin) * (W - pad.l - pad.r);
+  const yp = y => H - pad.b - (y - ymin) / (ymax - ymin) * (H - pad.t - pad.b);
+  ctx.strokeStyle = '#eef1f6'; ctx.lineWidth = 1; ctx.fillStyle = '#8a96aa'; ctx.font = '11px sans-serif';
+  xt.forEach(v => { ctx.beginPath(); ctx.moveTo(xp(v[0]), pad.t); ctx.lineTo(xp(v[0]), H - pad.b); ctx.stroke(); ctx.textAlign = 'center'; ctx.fillText(v[1], xp(v[0]), H - pad.b + 14); });
+  yt.forEach(v => { ctx.beginPath(); ctx.moveTo(pad.l, yp(v[0])); ctx.lineTo(W - pad.r, yp(v[0])); ctx.stroke(); ctx.textAlign = 'right'; ctx.fillText(v[1], pad.l - 5, yp(v[0]) + 4); });
+  ctx.strokeStyle = '#9aa6bb'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, H - pad.b); ctx.lineTo(W - pad.r, H - pad.b); ctx.stroke();
+  if (xl) txt(ctx, xl, W - pad.r, H - 4, '#5d6b82', 12, 'right');
+  if (yl) txt(ctx, yl, pad.l + 4, pad.t + 10, '#5d6b82', 12, 'left');
+  return { xp, yp };
+}
+function line(ctx, pts, color, lw, dash) {
+  ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = lw || 2; if (dash) ctx.setLineDash(dash);
+  ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke(); ctx.restore();
 }
 
-function drawApproxGraph(markDeg) {
-  const cv=document.getElementById('approxCanvas');
-  const ctx=cv.getContext('2d');
-  const W=cv.width,H=cv.height;
-  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
-  const pad={l:28,r:10,t:12,b:26};
-  const xM=Math.PI;
-  const xp=x=>pad.l+x/xM*(W-pad.l-pad.r);
-  const yp=y=>H-pad.b-y/1.2*(H-pad.t-pad.b);
-
-  ctx.strokeStyle='#eee'; ctx.lineWidth=.5;
-  [.4,.8,1.2].forEach(v=>{ ctx.beginPath(); ctx.moveTo(pad.l,yp(v)); ctx.lineTo(W-pad.r,yp(v)); ctx.stroke(); });
-  ctx.strokeStyle='#ddd'; ctx.lineWidth=.5;
-  ctx.beginPath(); ctx.moveTo(pad.l,H-pad.b); ctx.lineTo(W-pad.r,H-pad.b); ctx.stroke();
-
-  ctx.strokeStyle='#2980b9'; ctx.lineWidth=2; ctx.beginPath();
-  for(let i=0;i<=200;i++){const x=i/200*xM,y=Math.sin(x); i===0?ctx.moveTo(xp(x),yp(y)):ctx.lineTo(xp(x),yp(y));} ctx.stroke();
-
-  ctx.strokeStyle='#c0392b'; ctx.lineWidth=2; ctx.setLineDash([5,4]); ctx.beginPath();
-  for(let i=0;i<=200;i++){const x=i/200*xM; i===0?ctx.moveTo(xp(x),yp(x)):ctx.lineTo(xp(x),yp(x));} ctx.stroke(); ctx.setLineDash([]);
-
-  if(markDeg){
-    const r=markDeg*Math.PI/180;
-    ctx.fillStyle='#e74c3c'; ctx.beginPath(); ctx.arc(xp(r),yp(Math.sin(r)),4,0,Math.PI*2); ctx.fill();
-    ctx.fillStyle='#333'; ctx.font='10px serif'; ctx.textAlign='left';
-    ctx.fillText(markDeg+'°',xp(r)+6,yp(Math.sin(r))+4);
+// ============================================================
+// 과학자 말풍선
+// ============================================================
+const GUIDES = {
+  newton: { title: '🍎 아이작 뉴턴이 안내해요', steps: [
+    { who: '아이작 뉴턴 (1643–1727)', av: 'N', c: '#7c3aed', t: '안녕하세요, 뉴턴이에요. 저는 문제를 만나면 먼저 <b>“추에 어떤 힘이 작용하지?”</b> 하고 물어요. 진자에서는 아래로 당기는 <b>중력 mg</b>와 줄이 당기는 <b>장력 T</b>, 딱 두 힘뿐이에요. 오른쪽 그림의 슬라이더로 추를 움직이며 화살표를 살펴보세요.' },
+    { who: '아이작 뉴턴', av: 'N', c: '#7c3aed', t: '이제 중력을 <b>줄 방향</b>과 <b>운동 방향(접선)</b>으로 나눠요. 줄은 옆으로 끌지 못하니, 추를 되돌리는 힘은 접선 성분 <b>mg sinθ</b> 하나예요. 제2법칙 F = ma에 넣으면 m이 약분돼서 <b>무겁든 가볍든 같은 박자</b>가 돼요.' },
+    { who: '아이작 뉴턴', av: 'N', c: '#7c3aed', t: '제 책 『프린키피아』(1687)에도 진자가 나와요. 금·은·나무 같은 재료를 같은 상자에 담아 진자로 매달아 보고, 재료가 달라도 주기가 같음을 확인했어요. <b>무게와 관성이 비례한다</b>는 증거였죠. 실험으로 확인하는 습관이 중요해요.' },
+    { who: '아이작 뉴턴', av: 'N', c: '#7c3aed', t: '식에는 아직 sinθ가 남아 있죠? 각도가 작으면 sinθ ≈ θ로 바꿔 쉽게 풀 수 있어요. 하지만 이 방법은 장력 같은 <b>구속력을 일일이 따져야</b> 해서 계가 복잡해지면 힘들어요. 그래서 다음 세대가 에너지로 푸는 길을 열었죠. 👉 다음 탭!' }
+  ] },
+  lagrange: { title: '✨ 조제프 루이 라그랑주가 안내해요', steps: [
+    { who: '조제프 루이 라그랑주 (1736–1813)', av: 'L', c: '#0891b2', t: '라그랑주예요. 1788년 『해석역학』에서 저는 <b>도형 없이 식만으로</b> 역학을 쓰겠다고 했어요(책에 그림이 없다는 점을 서문에서 자랑했답니다). 힘의 화살표 대신 <b>에너지</b>로 시작해요.' },
+    { who: '조제프 루이 라그랑주', av: 'L', c: '#0891b2', t: '진자는 줄 길이가 일정하니 각도 θ <b>하나</b>면 위치가 정해져요. 운동에너지 T = ½ml²θ̇², 퍼텐셜에너지 V = mgl(1 − cosθ). 그리고 <b>ℒ = T − V</b>를 만들어요. 왜 빼느냐고요? 이 차이를 시간에 따라 쌓은 값(작용)이 가장 덜 변하는 경로를 자연이 고른다고 보기 때문이에요.' },
+    { who: '조제프 루이 라그랑주', av: 'L', c: '#0891b2', t: '오일러–라그랑주 식 d/dt(∂ℒ/∂θ̇) − ∂ℒ/∂θ = 0에 넣어 보세요. 뉴턴과 <b>똑같은 식</b>이 나오죠? 게다가 장력은 한 번도 등장하지 않았어요. 이중진자나 행성계처럼 복잡한 계에서 이 방법이 빛나요. (<a href="../double-pendulum/index.html">이중진자 시뮬</a>이 바로 이 방법으로 만들어졌어요.)' }
+  ] },
+  hamilton: { title: '🌀 윌리엄 로언 해밀턴이 안내해요', steps: [
+    { who: '윌리엄 로언 해밀턴 (1805–1865)', av: 'H', c: '#db2777', t: '해밀턴이에요. 저는 원래 빛이 지나가는 길(광학)을 연구하다가, 같은 수학이 역학에도 통한다는 걸 알았어요(1830년대). 라그랑주의 2계 방정식을 <b>1계 방정식 두 개</b>로 바꾸는 방법이에요. 주인공은 위치 θ와 <b>운동량 p</b>, 이 둘의 짝이에요.' },
+    { who: '윌리엄 로언 해밀턴', av: 'H', c: '#db2777', t: '전체 에너지를 θ와 p로 쓴 것이 <b>H</b>예요. 그러면 θ̇ = ∂H/∂p, ṗ = −∂H/∂θ. 상태 (θ, p)는 지도 위의 <b>점 하나</b>이고, 시간이 흐르면 H가 일정한 곡선 위를 움직여요. 오른쪽 지도에서 처음 각도와 속도를 바꿔 보세요.' },
+    { who: '윌리엄 로언 해밀턴', av: 'H', c: '#db2777', t: '진폭이 작으면 곡선은 <b>타원(원)</b>이에요. 커지면 찌그러지고, <b>분리선</b>을 넘으면 추는 꼭대기를 넘어 <b>계속 돌아요</b>. 이 한 장의 그림에 진자의 모든 운동이 들어 있죠. 이 관점은 양자역학·통계역학·혼돈 연구로 이어졌어요.' }
+  ] },
+  approx: { title: '⚖ 갈릴레이 · 하위헌스 · 푸코가 안내해요', steps: [
+    { who: '갈릴레오 갈릴레이 (1564–1642)', av: 'G', c: '#b45309', t: '갈릴레이예요. 성당 램프 이야기는 전설이라는 이야기가 많아요. 확실한 건 제가 진자를 여러 번 재 보고 <b>무게와 상관없고, 진폭이 작을 땐 거의 같은 시간</b>이 걸린다고 정리한 거예요(등시성). 이 말에는 ‘작을 때’라는 조건이 숨어 있었죠. 💬 (재구성)' },
+    { who: '크리스티안 하위헌스 (1629–1695)', av: 'C', c: '#047857', t: '하위헌스예요. 1656년 진자시계를 만들어 보니 진폭이 커질수록 시계가 <b>느려졌어요</b>. 즉 큰 진폭에서 주기는 길어져요! 그래서 줄이 감기는 곡선 판을 달아 <b>사이클로이드</b> 궤도로 진자를 움직이게 해 주기를 같게 하려 했어요. 완전한 등시성은 원이 아닌 사이클로이드에서만 성립해요. 💬 (재구성)' },
+    { who: '수학자의 한마디', av: 'K', c: '#4f46e5', t: '그럼 ‘정확한 주기’는? 식 θ̈ = −(g/l)sinθ의 해는 초등함수로 쓸 수 없고 <b>타원적분 K</b>가 필요해요. 대신 T ≈ T₀(1 + θ₀²/16 + …)처럼 급수로 어림하죠. 왼쪽 그래프에서 진폭을 키워 보며 파란 근사 해가 빨간 정확한 해보다 앞서 가는 모습을 확인해요.' },
+    { who: '레옹 푸코 (1819–1868)', av: 'F', c: '#be123c', t: '푸코예요. 1851년 파리 판테옹의 돔에 <b>67 m 줄과 약 28 kg 추</b>를 매달았어요. 줄이 길고 추가 무거울수록 진폭이 천천히 줄어서 오래 관찰할 수 있거든요. 진동면이 천천히 돌아가는 것은 <b>지구가 자전</b>한다는 눈에 보이는 증거예요. 서울(위도 약 37.5°)에서는 한 바퀴에 24 ÷ sin 37.5° ≈ 39시간이 걸려요. 💬 (재구성)' }
+  ] }
+};
+function mkGuide(key) {
+  const g = GUIDES[key]; let i = 0;
+  $('g-' + key + '-t').textContent = g.title;
+  const dots = $('g-' + key + '-d');
+  g.steps.forEach((_, k) => { const b = document.createElement('button'); b.textContent = k + 1; b.onclick = () => { i = k; r(); }; dots.appendChild(b); });
+  function r() {
+    const s = g.steps[i];
+    $('g-' + key + '-a').textContent = s.av; $('g-' + key + '-a').style.background = s.c;
+    $('g-' + key + '-w').textContent = s.who; $('g-' + key + '-x').innerHTML = s.t;
+    [...dots.children].forEach((b, k) => b.classList.toggle('cur', k === i));
+    $('g-' + key + '-p').disabled = i === 0; $('g-' + key + '-n').disabled = i === g.steps.length - 1;
   }
-  ctx.fillStyle='#aaa'; ctx.font='9px serif'; ctx.textAlign='center';
-  ['0','π/4','π/2','3π/4','π'].forEach((l,i)=>ctx.fillText(l,xp(i*Math.PI/4),H-8));
+  $('g-' + key + '-p').onclick = () => { i = Math.max(0, i - 1); r(); };
+  $('g-' + key + '-n').onclick = () => { i = Math.min(g.steps.length - 1, i + 1); r(); };
+  r();
 }
+['newton', 'lagrange', 'hamilton', 'approx'].forEach(mkGuide);
 
-// ============================================================
-// Tab switching
-// ============================================================
-function switchTab(name) {
-  const ns=['ctrl','derive','approx'];
-  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',ns[i]===name));
-  document.querySelectorAll('.tab-panel').forEach((p,i)=>p.classList.toggle('active',ns[i]===name));
-  if(name==='approx') updateApproxTab();
-}
-
-document.getElementById('sl-angle').addEventListener('input',()=>{
-  document.getElementById('disp-angle').textContent=document.getElementById('sl-angle').value+'°';
-  if(document.getElementById('tab-approx').classList.contains('active')) updateApproxTab();
+// 퀴즈
+const QUIZ = {
+  newton: { q: '❓ 확인: 진자가 최저점을 지날 때 장력이 mg보다 큰 까닭은?', o: ['중력이 그 순간 더 커지기 때문', '추가 원 궤도를 돌므로 구심력 mlθ̇²을 줄이 더 당겨 줘야 해서', '줄이 늘어나기 때문'], a: 1, why: '최저점에서 T − mg = mlθ̇²(구심력). 속력이 0인 최고점에서는 T = mg cosθ₀ < mg 예요.' },
+  lagrange: { q: '❓ 확인: 진자의 라그랑지안 ℒ은?', o: ['T + V', 'T − V', 'T × V'], a: 1, why: 'ℒ = T − V. T + V는 역학적 에너지(해밀토니안 H)예요. 둘의 차이를 헷갈리지 마세요!' },
+  hamilton: { q: '❓ 확인: 위상 초상에서 분리선보다 바깥(에너지가 더 큰) 곡선은 어떤 운동일까?', o: ['꼭대기에서 멈춘다', '한 방향으로 계속 돌아간다', '작게 진동한다'], a: 1, why: '분리선은 꼭대기에 겨우 닿는 경계예요. 그보다 에너지가 크면 꼭대기를 넘어 계속 돌아요(회전 운동).' },
+  approx: { q: '❓ 확인: 진폭을 10°에서 60°로 키우면 실제 주기는 T₀ = 2π√(l/g)에 비해?', o: ['변함없다', '길어진다 (약 7 %)', '짧아진다'], a: 1, why: '큰 진폭에서는 복원력이 θ에 비례하지 않고 sinθ로 약해져서 주기가 길어져요. 60°에서는 약 7 % 길고(T/T₀ ≈ 1.073), 10°에서는 약 0.2 %예요.' }
+};
+Object.keys(QUIZ).forEach(k => {
+  const q = QUIZ[k], el = $('q-' + k);
+  el.innerHTML = `<h4>${q.q}</h4>` + q.o.map((o, i) => `<button class="opt" data-i="${i}">${'①②③'[i]} ${o}</button>`).join('') + '<div class="why"></div>';
+  el.querySelectorAll('.opt').forEach(b => b.onclick = () => {
+    const i = +b.dataset.i; el.querySelectorAll('.opt').forEach(x => x.classList.remove('right', 'wrong'));
+    b.classList.add(i === q.a ? 'right' : 'wrong');
+    el.querySelector('.why').innerHTML = (i === q.a ? '✅ 정답! ' : '다시 생각해 보세요. ') + (i === q.a ? q.why : '');
+  });
 });
 
 // ============================================================
-// Init
+// 1. 이야기
 // ============================================================
-restart();
+const STORY = [
+  { f: 'h', yr: '1602 (일화는 1583)', ti: '갈릴레이와 성당의 램프', tx: '전기 작가 비비아니는 젊은 갈릴레이가 피사 대성당의 흔들리는 램프의 왕복 시간을 자기 맥박으로 쟀다고 전해요. 이 일화는 사실인지 논란이 있고(그 램프가 그때 걸려 있었는지 의문), 확실한 기록은 1602년경 편지에서 진자의 주기가 진폭과 거의 상관없다고 적은 것이에요.', th: '맥박으로 시간을 재면 어떤 한계가 있을까? 일화가 전설이 되기 쉬운 이유는?' },
+  { f: 'h', yr: '1656 ~ 1673', ti: '하위헌스의 진자시계', tx: '1656년 하위헌스가 진자시계를 만들어 하루 오차를 수 분 수준에서 수십 초 이내로 줄였어요. 1673년 『진자시계(Horologium Oscillatorium)』에서 진자를 수학으로 정리하며, 큰 진폭의 원 진자는 등시적이지 않다는 점과 사이클로이드를 다뤘어요.', th: '시계가 정확해지면 과학 측정은 무엇이 달라질까?' },
+  { f: 'h', yr: '1672', ti: '리셰의 카옌 관측', tx: '프랑스 천문학자 리셰는 적도 가까운 카옌에서 파리에서 맞춘 진자시계가 하루 2분 남짓 느려지는 것을 발견했어요. 같은 진자라도 장소에 따라 g가 다르다는 단서였고, 뉴턴은 지구가 적도 쪽으로 부푼 모양이라는 증거로 해석했어요.', th: '진자의 주기가 g에 따라 달라지는 것을 거꾸로 이용하면 무엇을 알아낼 수 있을까?' },
+  { f: 'h', yr: '1790 ~ 1791', ti: '길이의 단위를 진자로?', tx: '프랑스 혁명 직후 새 단위를 정할 때 ‘왕복 반 주기가 1초인 초진자의 길이(약 0.994 m)’가 후보로 제안됐어요. 그러나 g가 장소마다 달라 기준이 흔들린다는 이유 등으로, 1791년 지구 자오선 길이의 1천만분의 1이 채택됐어요.', th: '좋은 측정 기준이 갖춰야 할 조건은? 오늘날 1 m는 무엇으로 정의될까?' },
+  { f: 'h', yr: '1851', ti: '푸코의 진자', tx: '푸코는 1851년 파리 판테옹의 돔에 67 m 줄과 약 28 kg 추를 매달아 진동면이 천천히 도는 모습을 공개했어요. 서울(위도 약 37.5°)에서는 진동면이 한 바퀴 도는 데 약 39시간(24시간 ÷ sin위도)이 걸려요.', th: '북극과 적도에서는 푸코 진자가 어떻게 움직일까?' },
+  { f: 'h', yr: '1434', ti: '장영실의 자격루', tx: '조선의 장영실이 1434년 만든 자격루는 물의 흐름으로 시간을 재고 종·북·징이 스스로 시간을 알리는 물시계예요. 진자시계와는 다른 방법으로 ‘시간을 정확히 재는 일’에 도전한 기록이에요.', th: '물시계와 진자시계의 정밀도를 가르는 핵심 요인은 무엇일까?' },
+  { f: 's', yr: '1818', ti: '가역진자로 g를 정밀하게', tx: '영국의 케이터는 지지점을 둘로 바꿔 거는 가역진자로, 막대 안 질량 분포를 몰라도 g를 정밀하게 쟀어요. 진자를 이용한 중력 측정은 지구 모양과 지하 구조를 연구하는 데도 쓰였어요.', th: '우리 실험에서도 ‘모르는 양’을 없애는 방법이 있을까?' },
+  { f: 's', yr: '1665', ti: '두 시계가 저절로 박자를 맞춘다', tx: '하위헌스는 같은 벽에 걸린 두 진자시계가 시간이 지나면 서로 반대 방향으로 같은 박자로 흔들리는 것을 발견했어요. 약한 결합으로 인한 동기화 현상이며, 반딧불이의 점멸·심장 세포·전력망 연구와도 이어져요.', th: '두 진자를 같은 줄에 매달면 어떤 일이 생길까?' },
+  { f: 's', yr: '1951', ti: '거꾸로 선 진자 (카피차 진자)', tx: '지지점을 위아래로 빠르게 흔들면 거꾸로 선 진자도 쓰러지지 않고 서 있어요(카피차, 1951). 로봇 제어나 이온 가둠 장치의 원리와도 닮은 현상이에요.', th: '막대를 손바닥에 세워 균형 잡는 것과 무엇이 같고 다를까?' },
+  { f: 's', yr: '혼돈', ti: '추 하나를 더 달면?', tx: '진자에 추를 하나 더 달면 운동은 예측하기 매우 어려워져요(혼돈). 같은 라그랑주·해밀턴 방법으로 방정식을 세울 수 있지만 해는 초기 조건에 민감하게 달라져요. 이 사이트의 <a href="../double-pendulum/index.html">이중진자 시뮬</a>에서 확인해 보세요.', th: '‘법칙이 정해져 있다’와 ‘미래를 알 수 있다’는 같은 말일까?' },
+  { f: 'u', yr: '17~19세기', ti: '시간의 표준화', tx: '정확한 시계가 퍼지며 도시·공장·철도가 같은 시간표로 움직이게 됐어요. 시간이 자연의 흐름이 아니라 ‘함께 정해서 지키는 약속’으로 바뀌는 계기라는 해석이 있어요.', th: '정확한 시계는 사람들의 일하는 방식과 삶을 어떻게 바꿨을까?' },
+  { f: 'u', yr: '17~18세기', ti: '바다 위의 경도 문제', tx: '바다에서 경도를 알려면 기준 항구의 시각을 알아야 했어요. 흔들리는 배 위에서는 진자시계가 제대로 맞지 않았고, 문제는 18세기 해리슨의 스프링 해상시계로 풀렸어요.', th: '왜 진자는 배 위에서 쓸모가 없었을까? (힌트: 지지점의 움직임)' },
+  { f: 'u', yr: '1851 이후', ti: '눈으로 보는 지구의 자전', tx: '‘지구가 돈다’는 주장은 갈릴레이 재판(1633) 이후에도 오랫동안 눈으로 보이지 않는 이야기였어요. 푸코 진자는 건물 안에서 누구나 눈으로 확인할 수 있게 해, 과학적 증거를 ‘보여 주는 일’의 힘을 보여 줬어요.', th: '증거를 눈에 보이게 만드는 일은 과학과 사회의 관계에서 왜 중요할까?' },
+  { f: 'u', yr: '언어와 비유', ti: '‘진자’라는 비유', tx: '“정치가 좌우로 진자처럼 흔들린다”, “감정의 진자” 같은 표현은 두 극단을 오가는 변화를 말해요. 물리의 진자는 평형점을 중심으로 돌아오지만, 비유 속 진자도 늘 중심으로 돌아올까요?', th: '비유 속 진자에게도 ‘복원력’과 ‘감쇠’가 있을까?' },
+  { f: 'a', yr: '1842', ti: '에드거 앨런 포 「구덩이와 진자」', tx: '초승달 모양 날이 달린 진자가 포로 위로 점점 내려오는 공포를 그린 단편이에요. 규칙적이고 멈추지 않는 진자의 움직임이 공포를 키우는 장치가 됐어요.', th: '같은 움직임이 어떤 때는 안정감을, 어떤 때는 공포를 주는 까닭은?' },
+  { f: 'a', yr: '1988', ti: '움베르토 에코 『푸코의 진자』', tx: '소설은 파리 공예원에 매달린 푸코 진자 앞에서 시작해요. 움직이지 않는 한 점과 돌아가는 세계라는 이미지를 음모와 해석의 이야기에 엮었어요.', th: '과학적 상징이 문학에서 새로운 의미를 얻는 방식을 찾아보자.' },
+  { f: 'a', yr: '1968', ti: '스티브 라이히 〈Pendulum Music〉', tx: '마이크 여러 개를 줄에 매달아 스피커 위에서 흔들면 지날 때마다 ‘삑’ 하는 되먹임 소리가 나고, 진자들이 멈추면서 소리가 이어진 하나의 음으로 변해요. 진자의 감쇠가 곡의 형식이 되는 작품이에요.', th: '진폭이 줄어들면 소리는 어떻게 달라질까? 왜?' },
+  { f: 'a', yr: '1962', ti: '리게티 〈Poème symphonique〉 — 메트로놈 100개', tx: '100개의 메트로놈을 동시에 틀고 하나씩 멈출 때까지 연주하는 작품이에요. 메트로놈은 거꾸로 선 진자에 추를 달아 추의 위치로 박자를 조절하는 기구예요.', th: '메트로놈 추를 위로 올리면 박자가 빨라질까 느려질까? 왜일까?' },
+  { f: 'a', yr: '19세기 중반', ti: '하모노그래프 — 진자로 그리는 그림', tx: '진자 두 개의 진동을 합쳐 펜으로 그림을 그리는 장치예요. 진동수 비가 간단한 정수비일수록 아름다운 리사주 곡선이 나오고, 감쇠 때문에 선이 안쪽으로 감기는 무늬가 만들어져요.', th: '두 진동의 합이 만드는 무늬를 직접 만들어 볼 수 있을까?' }
+];
+const TAGN = { h: '🏛 역사', s: '🔬 과학', u: '📚 인문', a: '🎨 예술' };
+$('storyGrid').innerHTML = STORY.map(s => `<div class="scard" data-f="${s.f}"><span class="tag ${s.f}">${TAGN[s.f]}</span><div class="yr">${s.yr}</div><h4>${s.ti}</h4><p>${s.tx}</p><div class="think">💭 생각해 보기: ${s.th}</div></div>`).join('');
+$('storyChips').querySelectorAll('button').forEach(b => b.onclick = () => {
+  $('storyChips').querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+  document.querySelectorAll('.scard').forEach(c => c.classList.toggle('hide', b.dataset.f !== 'all' && c.dataset.f !== b.dataset.f));
+});
+
+// ============================================================
+// 2. 뉴턴 — 힘 분해
+// ============================================================
+function drawNewton() {
+  const A = +$('nwA').value, tSl = $('nwT');
+  tSl.min = -A; tSl.max = A;
+  let thd = Math.max(-A, Math.min(A, +tSl.value)); tSl.value = thd;
+  $('nwA-v').textContent = A + '°'; $('nwT-v').textContent = thd + '°';
+  const th = thd * D2R, th0 = A * D2R, g = 9.8, m = 1, l = 1;
+  const cv = $('nwCanvas'), ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#d9dee8'; ctx.fillRect(0, 0, W, 26);
+  const ox = W / 2, oy = 26, R = 250, px = ox + R * Math.sin(th), py = oy + R * Math.cos(th);
+  ctx.save(); ctx.setLineDash([6, 5]); ctx.strokeStyle = '#cbd5e1'; ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(ox, oy + R + 30); ctx.stroke();
+  ctx.beginPath(); ctx.arc(ox, oy, R, Math.PI / 2 - th0, Math.PI / 2 + th0); ctx.stroke(); ctx.restore();
+  ctx.strokeStyle = '#334155'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(px, py); ctx.stroke();
+  const S = 4.5;
+  const cos = Math.cos(th), sin = Math.sin(th);
+  const v2 = 2 * g / l * (Math.cos(th) - Math.cos(th0));           // (lθ̇)² ... l=1
+  const Tn = m * g * (3 * cos - 2 * Math.cos(th0));
+  // 성분
+  arrow(ctx, px, py, sin * m * g * cos * S, cos * m * g * cos * S, '#94a3b8', 2, true, 7);        // mg cosθ (줄 방향 바깥)
+  arrow(ctx, px, py, -sin * cos * m * g * S, sin * sin * m * g * S, '#111827', 2.6, false, 8);
+  arrow(ctx, px, py, 0, m * g * S, '#2563eb', 3, false, 9);                                       // mg
+  arrow(ctx, px, py, (ox - px) / R * Tn * S, (oy - py) / R * Tn * S, '#c0392b', 3, false, 9);    // T
+  ctx.fillStyle = '#94a3b8'; ctx.strokeStyle = '#64748b'; ctx.beginPath(); ctx.arc(ox, oy, 5, 0, 7); ctx.fill();
+  const gr = ctx.createRadialGradient(px - 5, py - 5, 2, px, py, 17); gr.addColorStop(0, '#eee'); gr.addColorStop(.6, '#9aa5b5'); gr.addColorStop(1, '#5b6678');
+  ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(px, py, 16, 0, 7); ctx.fill();
+  // 라벨
+  txt(ctx, 'mg', px + 10, py + m * g * S * .55, '#2563eb', 14, 'left', true);
+  txt(ctx, 'T', px + (ox - px) / R * Tn * S * .5 + 10, py + (oy - py) / R * Tn * S * .5, '#c0392b', 14, 'left', true);
+  if (Math.abs(thd) > 4) { txt(ctx, 'mg sinθ', px - Math.sign(thd) * (sin * cos * m * g * S) / 2 - Math.sign(thd) * 46, py + 14 + (sin * sin * m * g * S) / 2, '#111827', 12, 'center'); txt(ctx, 'mg cosθ', px + sin * cos * m * g * S * .5 + 44, py + cos * cos * m * g * S * .5 - 14, '#64748b', 12, 'center'); }
+  if (Math.abs(thd) > 3) { ctx.strokeStyle = '#334155'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(ox, oy, 46, Math.PI / 2 - th, Math.PI / 2, th < 0); ctx.stroke(); txt(ctx, 'θ', ox + Math.sign(th) * 24, oy + 74, '#334155', 14, 'center'); }
+  $('nwK').innerHTML = kpi('접선 가속도 aₜ = −g sinθ', f1(-g * sin, 2) + ' m/s²') + kpi('복원력 −mg sinθ', f1(-m * g * sin, 2) + ' N') + kpi('장력 T = mg(3cosθ−2cosθ₀)', f1(Tn, 2) + ' N') + kpi('구심력 mlθ̇²', f1(m * v2, 2) + ' N', 'T − mg cosθ 와 같음') + kpi('속력 v = lθ̇', f1(Math.sqrt(Math.max(v2, 0)), 2) + ' m/s');
+}
+['nwA', 'nwT'].forEach(id => $(id).addEventListener('input', drawNewton));
+
+// ============================================================
+// 3. 라그랑주 — 퍼텐셜과 ℒ
+// ============================================================
+function drawLagrange() {
+  const A = +$('lgA').value, tSl = $('lgT');
+  tSl.min = -A; tSl.max = A; const thd = Math.max(-A, Math.min(A, +tSl.value)); tSl.value = thd;
+  $('lgA-v').textContent = A + '°'; $('lgT-v').textContent = thd + '°';
+  const th = thd * D2R, th0 = A * D2R;
+  const cv = $('lgCanvas'), ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
+  const P = plotFrame(ctx, W, H, { l: 46, r: 14, t: 14, b: 32 }, -Math.PI, Math.PI, 0, 2.2,
+    [[-Math.PI, '−180°'], [-Math.PI / 2, '−90°'], [0, '0'], [Math.PI / 2, '90°'], [Math.PI, '180°']], [[0, '0'], [1, '1'], [2, '2']], 'θ', 'V / (mgl)');
+  const pts = [], pts2 = [];
+  for (let x = -Math.PI; x <= Math.PI + 1e-9; x += .02) { pts.push([P.xp(x), P.yp(1 - Math.cos(x))]); const q = x * x / 2; if (q <= 2.2) pts2.push([P.xp(x), P.yp(q)]); }
+  line(ctx, pts2, '#c0392b', 2, [6, 4]); line(ctx, pts, '#2563eb', 2.6);
+  const E = 1 - Math.cos(th0);
+  line(ctx, [[P.xp(-Math.PI), P.yp(E)], [P.xp(Math.PI), P.yp(E)]], '#059669', 1.6, [5, 4]);
+  txt(ctx, 'E', P.xp(Math.PI) - 4, P.yp(E) - 5, '#059669', 12, 'right', true);
+  [-th0, th0].forEach(x => line(ctx, [[P.xp(x), P.yp(0)], [P.xp(x), P.yp(E)]], '#c7d2fe', 1, [3, 3]));
+  const V = 1 - Math.cos(th);
+  line(ctx, [[P.xp(th), P.yp(V)], [P.xp(th), P.yp(E)]], '#f59e0b', 5);
+  txt(ctx, 'T (운동에너지)', P.xp(th) + 8, (P.yp(V) + P.yp(E)) / 2 + 4, '#b45309', 12, 'left', true);
+  ctx.fillStyle = '#4f46e5'; ctx.beginPath(); ctx.arc(P.xp(th), P.yp(V), 7, 0, 7); ctx.fill();
+  txt(ctx, 'V', P.xp(th) + 10, P.yp(V) + 16, '#4f46e5', 12, 'left', true);
+  const Tk = Math.cos(th) - Math.cos(th0), Lg = Tk - V, w = Math.sqrt(Math.max(0, 2 * Tk));
+  const g = 9.8, l = 1, ddN = -g / l * Math.sin(th), ddL = (-g * l * Math.sin(th)) / (l * l), ddH = (-g * l * Math.sin(th)) / (l * l);
+  $('lgK').innerHTML = kpi('T = ½ml²θ̇² (÷mgl)', f1(Tk, 3)) + kpi('V = mgl(1−cosθ) (÷mgl)', f1(V, 3)) + kpi('ℒ = T − V (÷mgl)', f1(Lg, 3)) + kpi('E = T + V (÷mgl)', f1(Tk + V, 3), '진자 내내 일정') +
+    kpi('θ̈ 뉴턴 (−g/l·sinθ)', f1(ddN, 2) + ' rad/s²', 'l=1 m') + kpi('θ̈ 라그랑주 ((∂ℒ/∂θ)/ml²)', f1(ddL, 2) + ' rad/s²', 'd/dt(∂ℒ/∂θ̇)=∂ℒ/∂θ') + kpi('θ̈ 해밀턴 (ṗ/ml²)', f1(ddH, 2) + ' rad/s²', 'ṗ = −∂H/∂θ');
+}
+['lgA', 'lgT'].forEach(id => $(id).addEventListener('input', drawLagrange));
+
+// ============================================================
+// 4. 해밀턴 — 위상 초상
+// ============================================================
+let hmTh = 0, hmW = 0, hmTau = 0, hmTrail = [], hmRun = false, hmPlaying = true, hmRaf = 0, hmTh0 = 0, hmW0 = 0;
+function hmReset() {
+  hmTh0 = +$('hmA').value * D2R; hmW0 = +$('hmW').value; hmTh = hmTh0; hmW = hmW0; hmTau = 0; hmTrail = [];
+  $('hmA-v').textContent = $('hmA').value + '°'; $('hmW-v').textContent = (+$('hmW').value).toFixed(2);
+}
+function wrapPi(x) { x = (x + Math.PI) % (2 * Math.PI); if (x < 0) x += 2 * Math.PI; return x - Math.PI; }
+function drawHamilton() {
+  const cv = $('hmCanvas'), ctx = cv.getContext('2d'), W = cv.width, H = cv.height, YM = 2.7;
+  const P = plotFrame(ctx, W, H, { l: 46, r: 14, t: 14, b: 32 }, -Math.PI, Math.PI, -YM, YM,
+    [[-Math.PI, '−180°'], [-Math.PI / 2, '−90°'], [0, '0'], [Math.PI / 2, '90°'], [Math.PI, '180°']], [[-2, '−2'], [-1, '−1'], [0, '0'], [1, '1'], [2, '2']], 'θ', 'θ̇ / ω₀  (p에 비례)');
+  const cont = (eps, color, lw) => {
+    for (const sgn of [1, -1]) {
+      ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.beginPath(); let on = false;
+      for (let x = -Math.PI; x <= Math.PI + 1e-9; x += .01) {
+        const v = 2 * (eps - (1 - Math.cos(x)));
+        if (v < 0) { on = false; continue; }
+        const y = sgn * Math.sqrt(v); if (on) ctx.lineTo(P.xp(x), P.yp(y)); else { ctx.moveTo(P.xp(x), P.yp(y)); on = true; }
+      }
+      ctx.stroke(); ctx.restore();
+    }
+  };
+  [.1, .25, .5, .8, 1.2, 1.6, 2.5, 3.2, 4, 5, 6].forEach(e => cont(e, '#dbe2ee', 1));
+  cont(2, '#e11d48', 2);
+  const eps = .5 * hmW0 * hmW0 + 1 - Math.cos(hmTh0);
+  cont(eps, '#4f46e5', 2.4);
+  // 근사 원
+  const apx = $('hmApx').checked;
+  if (apx) {
+    const r = Math.sqrt(hmTh0 * hmTh0 + hmW0 * hmW0); ctx.save(); ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.beginPath();
+    for (let a = 0; a <= 2 * Math.PI + .05; a += .05) { const x = r * Math.cos(a), y = r * Math.sin(a); a ? ctx.lineTo(P.xp(x), P.yp(y)) : ctx.moveTo(P.xp(x), P.yp(y)); } ctx.stroke(); ctx.restore();
+    const ta = hmTh0 * Math.cos(hmTau) + hmW0 * Math.sin(hmTau), wa = -hmTh0 * Math.sin(hmTau) + hmW0 * Math.cos(hmTau);
+    ctx.fillStyle = '#f59e0b'; ctx.beginPath(); ctx.arc(P.xp(wrapPi(ta)), P.yp(wa), 6, 0, 7); ctx.fill();
+  }
+  // 꼬리
+  hmTrail.forEach((p, i) => { ctx.fillStyle = `rgba(79,70,229,${(i / hmTrail.length * .5).toFixed(2)})`; ctx.beginPath(); ctx.arc(P.xp(p[0]), P.yp(p[1]), 3, 0, 7); ctx.fill(); });
+  ctx.fillStyle = '#4f46e5'; ctx.beginPath(); ctx.arc(P.xp(wrapPi(hmTh)), P.yp(hmW), 7, 0, 7); ctx.fill();
+  txt(ctx, '분리선', P.xp(-Math.PI) + 6, P.yp(2) - 6, '#e11d48', 11, 'left', true);
+  txt(ctx, '진동', P.xp(0), P.yp(.35) , '#64748b', 12, 'center'); txt(ctx, '회전 ↻', P.xp(Math.PI * .55), P.yp(2.45), '#64748b', 12, 'center');
+  let kind = Math.abs(eps - 2) < .02 ? '분리선 (경계)' : eps < 2 ? '진동 (왕복)' : '회전 (계속 돎)';
+  const Eh = .5 * hmW * hmW + 1 - Math.cos(hmTh);
+  let per = '—'; if (eps < 2) { const tm = Math.acos(1 - eps); per = 'T = ' + f1(ratioExact(tm), 3) + ' T₀'; }
+  $('hmK').innerHTML = kpi('운동 종류', kind) + kpi('H / (mgl) = ½(θ̇/ω₀)² + 1 − cosθ', f1(Eh, 3), '재생 중에도 거의 일정') + kpi('지금 θ', f1(wrapPi(hmTh) / D2R, 1) + '°') + kpi('지금 θ̇/ω₀', f1(hmW, 2)) + kpi('한 번 왕복하는 시간', per, '소각도 근사: T₀');
+}
+function hmLoop() {
+  hmRaf = 0; if (!hmRun) return;
+  if (hmPlaying) {
+    const dt = .02;
+    for (let i = 0; i < 3; i++) { hmW -= Math.sin(hmTh) * dt / 2; hmTh += hmW * dt; hmW -= Math.sin(hmTh) * dt / 2; hmTau += dt; }
+    const wt = wrapPi(hmTh); const last = hmTrail[hmTrail.length - 1];
+    if (last && Math.abs(last[0] - wt) > 3) hmTrail = [];
+    hmTrail.push([wt, hmW]); if (hmTrail.length > 140) hmTrail.shift();
+  }
+  drawHamilton(); hmRaf = requestAnimationFrame(hmLoop);
+}
+function hmStart() { if (!hmRaf) hmRaf = requestAnimationFrame(hmLoop); }
+['hmA', 'hmW'].forEach(id => $(id).addEventListener('input', () => { hmReset(); drawHamilton(); }));
+$('hmApx').addEventListener('change', drawHamilton);
+$('hmPlay').onclick = () => { hmPlaying = !hmPlaying; $('hmPlay').textContent = hmPlaying ? '⏸ 정지' : '▶ 재생'; };
+
+// ============================================================
+// 5. 해와 근사
+// ============================================================
+function rk4s(th, w, c, dt) {                // θ'' = −sinθ − cθ'   (τ = ω₀ t)
+  const f = (a, b) => -Math.sin(a) - c * b;
+  const k1a = w, k1b = f(th, w);
+  const k2a = w + .5 * dt * k1b, k2b = f(th + .5 * dt * k1a, w + .5 * dt * k1b);
+  const k3a = w + .5 * dt * k2b, k3b = f(th + .5 * dt * k2a, w + .5 * dt * k2b);
+  const k4a = w + dt * k3b, k4b = f(th + dt * k3a, w + dt * k3b);
+  return [th + dt / 6 * (k1a + 2 * k2a + 2 * k3a + k4a), w + dt / 6 * (k1b + 2 * k2b + 2 * k3b + k4b)];
+}
+function drawApprox() {
+  const A = +$('apA').value, c = +$('apD').value, th0 = A * D2R;
+  $('apA-v').textContent = A + '°'; $('apD-v').textContent = c === 0 ? '없음' : c.toFixed(3);
+  const cv = $('apCanvas'), ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
+  const ym = A * 1.1, ytk = []; const st = A > 90 ? 60 : A > 40 ? 30 : A > 15 ? 10 : A > 6 ? 5 : 2;
+  for (let v = -Math.floor(A / st) * st; v <= A; v += st) ytk.push([v, v + '°']);
+  const P = plotFrame(ctx, W, H, { l: 46, r: 14, t: 14, b: 32 }, 0, 3, -ym, ym, [[0, '0'], [1, 'T₀'], [2, '2T₀'], [3, '3T₀']], ytk, 't', 'θ');
+  const dt = .01, N = Math.round(3 * 2 * Math.PI / dt), ex = [], ap = [], dm = [];
+  let a = th0, b = 0, a2 = th0, b2 = 0;
+  for (let i = 0; i <= N; i++) {
+    const t = i * dt / (2 * Math.PI);
+    if (i % 3 === 0) { ex.push([P.xp(t), P.yp(a / D2R)]); ap.push([P.xp(t), P.yp(A * Math.cos(i * dt))]); if (c > 0) dm.push([P.xp(t), P.yp(a2 / D2R)]); }
+    [a, b] = rk4s(a, b, 0, dt); if (c > 0) [a2, b2] = rk4s(a2, b2, c, dt);
+  }
+  line(ctx, ap, '#2563eb', 2, [6, 4]); line(ctx, ex, '#e11d48', 2.2); if (c > 0) line(ctx, dm, '#059669', 2.2);
+  const R = ratioExact(th0), T0 = 2 * Math.PI * Math.sqrt(1 / 9.8);
+  $('apK').innerHTML = kpi('근사 주기 T₀ = 2π√(l/g)', f1(T0, 3) + ' s', 'l = 1 m, g = 9.8') + kpi('정확한 주기 T', f1(T0 * R, 3) + ' s', 'T/T₀ = ' + f1(R, 4)) + kpi('근사 주기 오차 (T−T₀)/T', f1((R - 1) / R * 100, 2) + ' %') + kpi('3주기 뒤 어긋남', f1(3 * (R - 1) * T0, 2) + ' s', '근사 해가 이만큼 앞서요');
+}
+function drawRatio() {
+  const cv = $('apC2'), ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
+  const P = plotFrame(ctx, W, H, { l: 46, r: 14, t: 14, b: 32 }, 0, 170, 1, 2.3, [0, 30, 60, 90, 120, 150].map(v => [v, v + '°']), [[1, '1'], [1.5, '1.5'], [2, '2']], 'θ₀', 'T / T₀');
+  const e = [], s1 = [];
+  for (let d = 0; d <= 170; d += 1) { e.push([P.xp(d), P.yp(ratioExact(d * D2R))]); const v = ratioSeries1(d * D2R); if (v < 2.3) s1.push([P.xp(d), P.yp(v)]); }
+  line(ctx, [[P.xp(0), P.yp(1)], [P.xp(170), P.yp(1)]], '#94a3b8', 1.6, [5, 4]); line(ctx, s1, '#2563eb', 2, [6, 3]); line(ctx, e, '#e11d48', 2.6);
+  const A = +$('apA').value; ctx.fillStyle = '#4f46e5'; ctx.beginPath(); ctx.arc(P.xp(A), P.yp(ratioExact(A * D2R)), 6, 0, 7); ctx.fill();
+}
+function buildApproxTable() {
+  const rows = [5, 10, 15, 20, 30, 45, 60, 90, 120, 150, 170];
+  $('apTbl').innerHTML = '<tr><th>θ₀</th><th>정확한 T/T₀</th><th>정확한 T (l=1 m)</th><th>근사 주기 오차 (T−T₀)/T</th><th>1항 보정 T/T₀</th><th>1항 보정의 오차</th></tr>' + rows.map(d => {
+    const th = d * D2R, R = ratioExact(th), s = ratioSeries1(th), T0 = 2 * Math.PI * Math.sqrt(1 / 9.8);
+    return `<tr><td>${d}°</td><td>${R.toFixed(4)}</td><td>${(T0 * R).toFixed(3)} s</td><td>${((R - 1) / R * 100).toFixed(2)} %</td><td>${s.toFixed(4)}</td><td>${((s - R) / R * 100).toFixed(2).replace('-0.00','0.00')} %</td></tr>`;
+  }).join('');
+}
+['apA', 'apD'].forEach(id => $(id).addEventListener('input', () => { drawApprox(); drawRatio(); }));
+
+// ============================================================
+// 7. 실험 준비
+// ============================================================
+function calcRT() { const d = +$('rtD').value; $('rtT').textContent = d > 0 ? Math.sqrt(2 * d / 980).toFixed(3) + ' s' : '—'; }
+$('rtD').addEventListener('input', calcRT);
+const gRows = 6;
+$('gTbl').insertAdjacentHTML('beforeend', Array.from({ length: gRows }, (_, i) => `<tr data-i="${i}"><td><input type="number" step="0.01" class="gl"></td><td><input type="number" step="0.01" class="gt"></td><td class="gT">—</td><td class="gT2">—</td></tr>`).join(''));
+function calcG() {
+  const xs = [], ys = [];
+  document.querySelectorAll('#gTbl tr[data-i]').forEach(tr => {
+    const l = parseFloat(tr.querySelector('.gl').value), t10 = parseFloat(tr.querySelector('.gt').value);
+    if (l > 0 && t10 > 0) { const T = t10 / 10; tr.querySelector('.gT').textContent = T.toFixed(3); tr.querySelector('.gT2').textContent = (T * T).toFixed(3); xs.push(l); ys.push(T * T); }
+    else { tr.querySelector('.gT').textContent = '—'; tr.querySelector('.gT2').textContent = '—'; }
+  });
+  const cv = $('gCanvas'), ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
+  const n = xs.length, xM = Math.max(1.2, ...xs) * 1.05, yM = Math.max(4.4, ...ys) * 1.05;
+  const P = plotFrame(ctx, W, H, { l: 50, r: 14, t: 14, b: 32 }, 0, xM, 0, yM, [0, .3, .6, .9, 1.2].map(v => [v, v.toFixed(1)]), [0, 1, 2, 3, 4].map(v => [v, v + '']), 'l (m)', 'T² (s²)');
+  xs.forEach((x, i) => { ctx.fillStyle = '#4f46e5'; ctx.beginPath(); ctx.arc(P.xp(x), P.yp(ys[i]), 5, 0, 7); ctx.fill(); });
+  if (n < 2) { $('gK').innerHTML = kpi('입력된 점', n + '개', '2개 이상 필요'); return; }
+  const mx = xs.reduce((a, b) => a + b) / n, my = ys.reduce((a, b) => a + b) / n;
+  const sxx = xs.reduce((a, x) => a + (x - mx) ** 2, 0), sxy = xs.reduce((a, x, i) => a + (x - mx) * (ys[i] - my), 0), syy = ys.reduce((a, y) => a + (y - my) ** 2, 0);
+  if (sxx === 0) return;
+  const k = sxy / sxx, b0 = my - k * mx, r2 = syy ? sxy * sxy / (sxx * syy) : 1, g = 4 * Math.PI ** 2 / k;
+  line(ctx, [[P.xp(0), P.yp(b0)], [P.xp(xM), P.yp(b0 + k * xM)]], '#e11d48', 2);
+  $('gK').innerHTML = kpi('기울기 k = 4π²/g', f1(k, 3) + ' s²/m') + kpi('g = 4π²/k', f1(g, 2) + ' m/s²') + kpi('기준 9.80과의 오차율', f1(Math.abs(g - 9.8) / 9.8 * 100, 1) + ' %') + kpi('절편 (0에 가까울수록 좋음)', f1(b0, 3) + ' s²') + kpi('결정계수 R²', f1(r2, 4));
+}
+document.querySelectorAll('#gTbl input').forEach(i => i.addEventListener('input', calcG));
+$('gFill').onclick = () => {
+  const ls = [.30, .45, .60, .75, .90, 1.05], nz = [.003, -.004, .002, -.002, .005, -.003];
+  document.querySelectorAll('#gTbl tr[data-i]').forEach((tr, i) => { tr.querySelector('.gl').value = ls[i].toFixed(2); tr.querySelector('.gt').value = (10 * 2 * Math.PI * Math.sqrt(ls[i] / 9.78) * (1 + nz[i])).toFixed(2); });
+  calcG();
+};
+$('gClear').onclick = () => { document.querySelectorAll('#gTbl input').forEach(i => i.value = ''); calcG(); };
+function calcCorr() {
+  const a = +$('cA').value, r = +$('cR').value / 100, th = +$('cT').value * D2R, g = +$('cG').value;
+  const L = a + r; if (!(L > 0 && g > 0)) return;
+  const T0 = 2 * Math.PI * Math.sqrt(L / g), fs = Math.sqrt(1 + 2 * r * r / (5 * L * L)), fa = ratioExact(th), Tp = T0 * fs * fa;
+  $('cK').innerHTML = kpi('진자 길이 L = a + r', f1(L, 3) + ' m') + kpi('① 근사 주기 T₀', f1(T0, 4) + ' s') + kpi('② 공 크기 보정', '+' + f1((fs - 1) * 100, 3) + ' %') + kpi('③ 진폭 보정', '+' + f1((fa - 1) * 100, 3) + ' %') + kpi('예상 주기 T', f1(Tp, 4) + ' s') + kpi('10주기 시간', f1(Tp * 10, 2) + ' s', '스톱워치 예상값');
+}
+['cA', 'cR', 'cT', 'cG'].forEach(id => $(id).addEventListener('input', calcCorr));
+
+// ============================================================
+// 8. 보고서 — 시뮬 설정 요약
+// ============================================================
+function buildSummary() {
+  readParams();
+  const th0 = +$('sl-angle').value, T0 = 2 * Math.PI * Math.sqrt(L / g_val), R = ratioExact(th0 * D2R);
+  const damp = +$('sl-damp').value;
+  $('simSummary').value = `[시뮬레이션 설정] 실 길이 l = ${L.toFixed(1)} m, 중력가속도 g = ${g_val.toFixed(1)} m/s², 질량 m = ${mass.toFixed(1)} kg, 처음 각도 θ₀ = ${th0}°, 감쇠 γ = ${damp.toFixed(2)} /s\n` +
+    `근사 주기 T₀ = ${T0.toFixed(3)} s, 정확한 주기 T = ${(T0 * R).toFixed(3)} s (T/T₀ = ${R.toFixed(4)}, 근사 오차 ${((R - 1) / R * 100).toFixed(2)} %)\n` +
+    `측정 주기(시뮬레이션) = ${measuredPeriod ? measuredPeriod.toFixed(3) + ' s' : '아직 측정 전'}${damp > 0 ? ' (감쇠가 있으면 정확한 주기와 조금 다를 수 있음)' : ''}`;
+}
+$('copySum').onclick = () => { buildSummary(); const t = $('simSummary'); t.select(); try { navigator.clipboard.writeText(t.value); $('copySum').textContent = '복사됨 ✓'; setTimeout(() => $('copySum').textContent = '클립보드로 복사', 1500); } catch (e) { document.execCommand('copy'); } };
+
+// ============================================================
+// 탭
+// ============================================================
+const TABS = ['story', 'newton', 'lagrange', 'hamilton', 'approx', 'sim', 'lab', 'report'];
+function showTab(n, push) {
+  if (!TABS.includes(n)) n = 'story';
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === n));
+  TABS.forEach(t => $('pane-' + t).classList.toggle('active', t === n));
+  hmRun = n === 'hamilton'; simVisible = n === 'sim';
+  if (n === 'newton') drawNewton();
+  if (n === 'lagrange') drawLagrange();
+  if (n === 'hamilton') { drawHamilton(); hmStart(); }
+  if (n === 'approx') { drawApprox(); drawRatio(); }
+  if (n === 'lab') { calcRT(); calcG(); calcCorr(); }
+  if (n === 'report') buildSummary();
+  if (n === 'sim') { if (animId) cancelAnimationFrame(animId); if (!paused) animId = requestAnimationFrame(loop); else renderFrame(); }
+  if (push !== false) { try { history.replaceState(null, '', '#' + n); } catch (e) { } }
+  window.scrollTo({ top: 0 });
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-tab]'); if (b) showTab(b.dataset.tab);
+});
+$('projectorBtn').onclick = () => document.body.classList.toggle('projector');
+buildApproxTable(); hmReset(); restart();
+showTab((location.hash || '').slice(1), false);
+
 </script>
 </body>
 </html>

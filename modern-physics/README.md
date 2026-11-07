@@ -4,7 +4,7 @@
 
 ## 하위 주제
 
-- [광전효과 (photoelectric-effect)](./photoelectric-effect/) — 진동수·세기·문턱진동수와 광전자 방출 ✔ 완료
+- [광전효과 (photoelectric-effect)](./photoelectric-effect/) — 진동수·세기·문턱진동수와 광전자 방출, 6단계 학습 가이드(과학자 해설)·실험보고서 ✔ 완료
 
 ## 계획 중인 주제
 

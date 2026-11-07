@@ -1,0 +1,879 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>트랜지스터 ② 증폭기</title>
+<!-- transistor-2-amplifier · 동작점과 바이어스 · 부하선 · 이미터 접지 증폭기(가상 오실로스코프) · 설계 계산기 · 이미터 폴로어 · 주파수 응답 · 제작 실험 (12장) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap">
+<style>
+:root{
+  --bg:#dfe5f0; --slide:#f5f7fc; --panel:#ffffff; --ink:#14203a; --muted:#54617b; --line:#c9d2e4;
+  --blue:#1f5fd1; --onblue:#ffffff; --amber:#b45f00; --green:#0c7a58; --red:#b8321f;
+  --blue-soft:#dce8fb; --amber-soft:#fbe8cf;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+    --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+    --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+  --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+  --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;overflow:hidden}
+#viewport{position:relative;width:100%;height:100%;overflow:hidden}
+#deck{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center center;background:var(--slide);box-shadow:0 12px 70px rgba(0,0,0,.28);overflow:hidden}
+.slide{position:absolute;inset:0;display:none;flex-direction:column;padding:84px 88px 52px;gap:24px;background:var(--slide);font-size:32px;line-height:1.4}
+.slide.active{display:flex}
+.hd{display:flex;align-items:baseline;justify-content:space-between;gap:24px;flex:none}
+.hd h2{font-size:58px;line-height:1.15;margin:0;font-weight:800;letter-spacing:-.01em}
+.hd .src{font-size:26px;color:var(--muted);white-space:nowrap}
+.body{flex:1;min-height:0;display:grid;gap:36px}
+.mg-box{position:relative;aspect-ratio:16/9;border-radius:16px;overflow:hidden;background:#06142a;align-self:start}
+.mg-box.mg-full{height:100%;max-width:100%;justify-self:center}
+.mg-box iframe{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none}
+.mg-re{position:absolute;right:14px;bottom:14px;font:inherit;font-size:24px;padding:8px 18px;border-radius:10px;border:1px solid rgba(255,255,255,.4);background:rgba(0,0,0,.55);color:#fff;cursor:pointer;opacity:.75}
+.mg-re:hover,.mg-re:focus-visible{opacity:1}
+.side{display:flex;flex-direction:column;gap:18px;min-height:0}
+canvas{display:block;border-radius:16px;background:#0a1330}
+.box{background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:20px 26px}
+.box h3{margin:0 0 8px;font-size:30px}
+.sm{font-size:26px;color:var(--muted)}
+.lead{font-size:40px;line-height:1.35}
+.k{color:var(--amber);font-weight:700}.p{color:var(--blue);font-weight:700}.ok{color:var(--green);font-weight:700}.bad{color:var(--red);font-weight:700}
+/* math */
+.m{font-family:'STIX Two Text','Times New Roman',serif;font-style:italic;font-size:1.1em;white-space:nowrap}
+.m .u,.u{font-style:normal}
+.m sub,.m sup{font-size:.68em;line-height:0;font-style:normal}
+.fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.15;margin:0 .12em;font-size:.95em}
+.fr>span:first-child{padding:0 .2em .06em;border-bottom:.07em solid currentColor}
+.fr>span:last-child{padding-top:.06em}
+.sq{white-space:nowrap}.sq .rad{border-top:.07em solid currentColor;padding:0 .15em;margin-left:-.04em}
+.eq{font-size:44px;text-align:center;padding:6px 0}
+/* controls */
+.ctl{display:flex;flex-direction:column;gap:4px}
+.ctl .row{display:flex;justify-content:space-between;align-items:baseline;font-size:27px;gap:12px}
+.ctl .val{font-weight:700;font-variant-numeric:tabular-nums}
+.rangew{position:relative}
+input[type=range]{width:100%;height:44px;-webkit-appearance:none;appearance:none;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:38px;height:38px;border-radius:50%;background:var(--blue);margin-top:-13px;border:4px solid var(--panel);box-shadow:0 1px 6px rgba(0,0,0,.35)}
+input[type=range]::-moz-range-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;background:var(--blue);border:4px solid var(--panel)}
+input[type=range]:focus-visible{outline:3px solid var(--blue);outline-offset:4px;border-radius:8px}
+.marks{position:relative;height:60px;font-size:22px;color:var(--muted)}
+.marks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.btns{display:flex;gap:12px;flex-wrap:wrap}
+.btn,.chip{font:inherit;font-size:27px;font-weight:700;padding:10px 24px;border-radius:12px;border:2px solid var(--blue);background:var(--panel);color:var(--blue);cursor:pointer;line-height:1.25}
+.btn.pri{background:var(--blue);color:var(--onblue)}
+.chip{padding:8px 18px;font-size:26px;border-color:var(--line);color:var(--ink);font-weight:500}
+.chip.on{border-color:var(--blue);background:var(--blue-soft);font-weight:700}
+.btn:focus-visible,.chip:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.chips{display:flex;gap:10px;flex-wrap:wrap}
+/* step reveal */
+.st{display:grid;grid-template-columns:46px 1fr;gap:14px;padding:8px 14px;border-radius:14px;opacity:0;transform:translateY(10px);transition:opacity .35s,transform .35s;border:2px solid transparent}
+.st.on{opacity:.55;transform:none}
+.st.cur{opacity:1;background:var(--panel);border-color:var(--blue)}
+.st .n{width:42px;height:42px;border-radius:50%;background:var(--blue);color:var(--onblue);display:grid;place-items:center;font-weight:800;font-size:24px;margin-top:2px}
+.st .tl{display:flex;flex-wrap:wrap;gap:2px 14px;align-items:baseline}
+.st .t{font-size:23px;color:var(--muted);line-height:1.3}
+.st b{font-size:27px}
+.st .eq{font-size:35px;line-height:1.1;text-align:left;padding:2px 0}
+/* cover */
+.cover{flex-direction:row;align-items:center;gap:56px}
+.cover.active{display:flex}
+.cv-l{flex:1;display:flex;flex-direction:column;gap:28px}
+.cv-l h1{font-size:200px;line-height:1;margin:0;font-weight:800;letter-spacing:-.04em}
+.cv-l h1.long{font-size:92px;line-height:1.22;letter-spacing:-.02em;text-wrap:balance;word-break:keep-all}
+.cv-tag{font-size:30px;color:var(--muted)}
+.q{border-left:8px solid var(--blue);border-radius:6px;padding:8px 0 8px 28px;font-size:36px;line-height:1.45}
+/* table */
+table.t{border-collapse:collapse;width:100%;font-size:27px}
+table.t th,table.t td{padding:10px 14px;border-bottom:2px solid var(--line);text-align:right;white-space:nowrap}
+table.t th:first-child,table.t td:first-child,table.t th:last-child,table.t td:last-child{text-align:left}
+table.t th{font-size:24px;color:var(--muted);font-weight:500}
+table.t tbody tr{cursor:pointer}
+table.t tbody tr.on{background:var(--blue-soft);font-weight:700}
+/* HUD / notes */
+#hud{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:10px;align-items:center;background:rgba(10,19,48,.86);color:#e9effd;padding:8px 14px;border-radius:14px;font-size:18px;opacity:0;transition:opacity .3s;z-index:20}
+#hud.show{opacity:1}
+#hud button{font:inherit;font-size:18px;color:#e9effd;background:transparent;border:1.5px solid rgba(233,239,253,.5);border-radius:8px;padding:4px 12px;cursor:pointer}
+#notes{position:absolute;left:0;right:0;bottom:0;background:rgba(10,19,48,.94);color:#eaf0ff;padding:26px 88px 34px;font-size:30px;line-height:1.5;display:none;z-index:15}
+#notes.on{display:block}
+#notes b{color:#ffb454}
+
+.ko{font-family:'Noto Sans KR',sans-serif;font-style:normal;font-size:.8em}
+#bar{position:absolute;top:14px;left:88px;right:88px;height:54px;display:flex;justify-content:space-between;align-items:center;z-index:12}
+#bar .bl{font-size:26px;font-weight:800}
+#bar .br{display:flex;gap:10px}
+.tb{font:inherit;font-size:24px;font-weight:700;padding:7px 18px;border-radius:12px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;line-height:1.2}
+.tb:hover{border-color:var(--blue)}.tb.on{border-color:var(--blue);background:var(--blue-soft)}
+.tb:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+#help{position:absolute;inset:0;background:rgba(6,11,30,.82);display:none;align-items:center;justify-content:center;z-index:30}
+#help.on{display:flex}
+.hp{background:var(--panel);color:var(--ink);border-radius:22px;padding:36px 52px 40px;width:1320px;max-height:960px;overflow:auto;font-size:27px;line-height:1.5;border:2px solid var(--line)}
+.hp h3{font-size:40px;margin:0 0 14px}.hp h4{font-size:29px;margin:18px 0 6px;color:var(--blue)}
+.hp .g{display:grid;grid-template-columns:230px 1fr;gap:6px 22px}
+.hp kbd{font:inherit;font-size:24px;font-weight:700;background:var(--blue-soft);border:2px solid var(--line);border-radius:8px;padding:1px 10px;margin-right:4px}
+#ask{position:absolute;inset:0;background:rgba(6,11,30,.6);display:none;align-items:center;justify-content:center;z-index:25;cursor:pointer}
+#ask.on{display:flex}
+#ask .ak{background:var(--panel);color:var(--ink);border-radius:24px;border-left:16px solid var(--blue);padding:44px 72px 40px 60px;width:1500px;box-shadow:0 20px 80px rgba(0,0,0,.45)}
+#ask .ah{font-size:30px;color:var(--blue);font-weight:800;margin-bottom:18px}
+#ask .aq{font-size:54px;line-height:1.4;font-weight:700;margin:10px 0;letter-spacing:-.01em}
+#ask .aq span{color:var(--blue);margin-right:14px}
+#ask .af{font-size:24px;color:var(--muted);margin-top:22px}
+#notes .nh{font-size:24px;color:#9db0d8;margin-bottom:6px}
+#notes .nq{margin:4px 0 10px;font-size:29px}
+#notes .ni{margin:6px 0;font-size:27px;line-height:1.45}
+#notes .nx{color:#ff9d9d;font-weight:700}#notes .nv{color:#5eead4;font-weight:700}
+@media (prefers-reduced-motion: reduce){.st{transition:none}}
+#simError{position:absolute;left:88px;right:88px;top:76px;z-index:40;background:rgba(184,50,31,.95);color:#fff;font-size:22px;line-height:1.4;padding:10px 18px;border-radius:12px;white-space:pre-wrap;display:none}
+#simError.on{display:block}
+/* ---- 반응형(reflow): 폭 1100px 미만(폰·태블릿)에서는 1920 스케일 대신 세로로 흐르는 레이아웃 ---- */
+html.rf #deck{left:0;top:0;transform-origin:top left;box-shadow:none}
+html.rf .slide{padding:104px 22px 100px;gap:18px;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;font-size:30px}
+html.rf .body{display:flex !important;flex-direction:column;gap:22px;flex:none;min-height:auto}
+html.rf .side{min-height:auto}
+html.rf .hd{flex-direction:column;align-items:flex-start;gap:6px}
+html.rf .hd h2{font-size:44px}
+html.rf .hd .src{font-size:23px;white-space:normal}
+html.rf canvas{width:100% !important;height:auto !important;max-width:100%}
+html.rf .mg-box.mg-full{height:auto;width:100%}
+html.rf img,html.rf svg,html.rf video{max-width:100%;height:auto}
+html.rf .cover{flex-direction:column;align-items:stretch;gap:26px}
+html.rf .cv-l h1{font-size:112px}
+html.rf .cv-l h1.long{font-size:52px}
+html.rf .cv-tag{font-size:26px}
+html.rf .q{font-size:30px}
+html.rf .lead{font-size:34px}
+html.rf .eq{font-size:36px;overflow-x:auto}
+html.rf table.t{display:block;overflow-x:auto;font-size:24px}
+html.rf .btn,html.rf .chip{min-height:52px}
+html.rf #bar{left:14px;right:14px;top:12px;height:auto;flex-wrap:wrap;gap:8px}
+html.rf #bar .bl{display:none}
+html.rf #bar .br{flex-wrap:wrap;justify-content:flex-end;width:100%}
+html.rf .tb{font-size:20px;padding:8px 12px}
+html.rf .hp{width:92%;max-height:88%;padding:24px 22px 28px;font-size:23px}
+html.rf .hp h3{font-size:32px}
+html.rf .hp .g{grid-template-columns:1fr;gap:2px 0}
+html.rf #ask .ak{width:92%;padding:26px 24px 24px 28px;border-left-width:10px}
+html.rf #ask .aq{font-size:34px}
+html.rf #notes{padding:18px 20px 26px;font-size:23px;max-height:62%;overflow:auto}
+html.rf #notes .nq{font-size:25px}
+html.rf #notes .ni{font-size:23px}
+html.rf #simError{left:14px;right:14px;top:96px}
+html.rf #hud{padding:8px 16px;width:max-content;max-width:96%}
+html.rf #hud #h-pg{white-space:nowrap;font-size:22px}
+html.rf .st:not(.on){display:none}
+html.rf #hud button{font-size:22px;padding:6px 16px;min-height:44px}
+/* ---- extra_css ---- */
+.fit p,.fit td,.fit th{font-size:21px !important;line-height:1.4}.fit h3{font-size:25px !important}
+.warn{border-left:6px solid #e0a000;padding:8px 16px;background:rgba(224,160,0,.10);border-radius:6px}
+table.t{width:100%;table-layout:fixed}
+table.t td,table.t th{text-align:left;font-size:21px;vertical-align:top;white-space:normal;word-break:keep-all;overflow-wrap:anywhere}
+details summary{cursor:pointer;color:#e0a000;font-weight:700;margin-top:6px}
+.btns{flex-wrap:wrap}
+a{color:inherit}
+.side .chips{flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div id="viewport">
+<div id="deck">
+
+<!-- c -->
+<section class="slide cover" id="c">
+  <div class="cv-l"><div class="cv-tag">전자 과학 · 트랜지스터 ② 증폭기</div>
+    <h1 class="long">트랜지스터로 약한 신호를 키운다</h1>
+    <p class="lead" style="margin:0">마이크의 약한 신호는 그대로는 스피커를 울리지 못한다. 트랜지스터에 알맞은 직류 전압(바이어스)을 주고, 신호를 얹어 증폭하는 이미터 접지 증폭기를 가상 오실로스코프로 관찰하고 설계해 본다.</p>
+    <div class="q">증폭기는 왜 직류 전압을 먼저 걸어 줄까? 출력은 왜 입력과 위상이 반대일까?</div>
+    <div class="sm">「고등학교 전자과학」 Ⅳ-2 트랜지스터 증폭기 129~147쪽 · 트랜지스터 ①을 알고 있다고 가정</div></div>
+  <canvas id="c-cv"></canvas>
+</section>
+
+<!-- dc -->
+<section class="slide" id="dc">
+  <header class="hd"><h2>직류와 교류를 나누어 생각한다</h2><span class="src">교재 129쪽 표기법 · 138쪽 중첩 원리</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="dc-cv"></canvas><div class="side"><div class="ctl"><div class="row"><span>직류 V<sub>BE</sub></span><span class="val" id="dc-vdc-v"></span></div><input type="range" id="dc-vdc" min="0.55" max="0.75" step="0.01" value="0.65"></div><div class="ctl"><div class="row"><span>교류 진폭 v<sub>be</sub></span><span class="val" id="dc-vac-v"></span></div><input type="range" id="dc-vac" min="0" max="0.03" step="0.001" value="0.01"></div><div class="box"><p id="dc-msg" style="font-size:20px"></p></div></div>
+</div>
+</section>
+
+<!-- q -->
+<section class="slide" id="q">
+  <header class="hd"><h2>동작점(바이어스)이 왜 필요한가</h2><span class="src">교재 136~137쪽 · 그림 4-13 · 값은 모형</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="q-cv"></canvas><div class="side"><div class="ctl"><div class="row"><span>동작점 V<sub>BEQ</sub></span><span class="val" id="q-vq-v"></span></div><input type="range" id="q-vq" min="0.58" max="0.72" step="0.005" value="0.65"></div><div class="ctl"><div class="row"><span>입력 진폭 v<sub>be</sub></span><span class="val" id="q-va-v"></span></div><input type="range" id="q-va" min="0" max="60" step="1" value="15"></div><div class="box"><p id="q-msg" style="font-size:20px"></p></div></div>
+</div>
+</section>
+
+<!-- bi -->
+<section class="slide" id="bi">
+  <header class="hd"><h2>바이어스 회로 — 세 가지 방식의 안정성</h2><span class="src">교재 137~138쪽 · 그림 4-14~4-16 · 모형</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="bi-cv"></canvas><div class="side"><div class="chips"><div class="chip" id="bi-k-fixed">고정</div><div class="chip" id="bi-k-self">자체</div><div class="chip on" id="bi-k-cf">전류 되먹임</div></div><div class="ctl"><div class="row"><span>온도</span><span class="val" id="bi-t-v"></span></div><input type="range" id="bi-t" min="0" max="80" step="1" value="25"></div><div class="box"><p id="bi-msg" style="font-size:20px"></p></div></div>
+</div>
+</section>
+
+<!-- ld -->
+<section class="slide" id="ld">
+  <header class="hd"><h2>부하선과 동작점</h2><span class="src">교재 136~137쪽 · 그림 4-12</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="ld-cv"></canvas><div class="side"><div class="ctl"><div class="row"><span>전원 V<sub>CC</sub></span><span class="val" id="ld-vcc-v"></span></div><input type="range" id="ld-vcc" min="6" max="20" step="1" value="12"></div><div class="ctl"><div class="row"><span>부하 저항 R<sub>C</sub></span><span class="val" id="ld-rc-v"></span></div><input type="range" id="ld-rc" min="500" max="4000" step="10" value="1740"></div><div class="ctl"><div class="row"><span>베이스 바이어스 I<sub>B</sub></span><span class="val" id="ld-ib-v"></span></div><input type="range" id="ld-ib" min="0" max="140" step="2" value="18"></div><div class="ctl"><div class="row"><span>신호 진폭 i<sub>b</sub></span><span class="val" id="ld-ia-v"></span></div><input type="range" id="ld-ia" min="0" max="60" step="1" value="8"></div><div class="box"><p id="ld-msg" style="font-size:20px"></p></div></div>
+</div>
+</section>
+
+<!-- am -->
+<section class="slide" id="am">
+  <header class="hd"><h2>이미터 접지 증폭기 — 입력과 출력 보기</h2><span class="src">교재 138~141쪽 · 그림 4-18, 4-19 · 모형</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="am-cv"></canvas><div class="side"><div class="chips"><div class="chip on" id="am-bp">바이패스 C_E 연결</div><div class="chip on" id="am-nl">부하 없음</div></div><div class="ctl"><div class="row"><span>입력 진폭</span><span class="val" id="am-vi-v"></span></div><input type="range" id="am-vi" min="1" max="150" step="1" value="10"></div><div class="ctl"><div class="row"><span>부하 R_L(로그)</span><span class="val" id="am-rl-v"></span></div><input type="range" id="am-rl" min="3" max="5" step="0.05" value="3.7"></div><div class="box"><p id="am-msg" style="font-size:20px"></p></div></div>
+</div>
+</section>
+
+<!-- ds -->
+<section class="slide" id="ds">
+  <header class="hd"><h2>설계해 보기 — 교재 탐구 1</h2><span class="src">교재 142~143쪽 · 식 4-20~4-25 · E 계열 반올림 생략</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="ds-cv"></canvas><div class="side"><div class="ctl"><div class="row"><span>전원 V<sub>CC</sub></span><span class="val" id="ds-vcc-v"></span></div><input type="range" id="ds-vcc" min="6" max="24" step="1" value="12"></div><div class="ctl"><div class="row"><span>목표 증폭도 A<sub>v</sub></span><span class="val" id="ds-av-v"></span></div><input type="range" id="ds-av" min="20" max="200" step="5" value="100"></div><div class="ctl"><div class="row"><span>트랜지스터 β</span><span class="val" id="ds-b-v"></span></div><input type="range" id="ds-b" min="100" max="300" step="10" value="200"></div><div class="box"><p id="ds-msg" style="font-size:19px"></p></div></div>
+</div>
+</section>
+
+<!-- ef -->
+<section class="slide" id="ef">
+  <header class="hd"><h2>이미터 폴로어 — 이득은 1, 하지만 쓸모가 있다</h2><span class="src">교재 145~146쪽 · 그림 4-23 · 모형</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="ef-cv"></canvas><div class="side"><div class="chips"><div class="chip on" id="ef-use">이미터 폴로어 사용</div><div class="chip" id="ef-dir">직접 연결</div></div><div class="ctl"><div class="row"><span>신호원 저항 R_S(로그)</span><span class="val" id="ef-rs-v"></span></div><input type="range" id="ef-rs" min="3" max="5" step="0.05" value="4"></div><div class="ctl"><div class="row"><span>부하 R_L(로그)</span><span class="val" id="ef-rl-v"></span></div><input type="range" id="ef-rl" min="1.7" max="4" step="0.05" value="2"></div><div class="box"><p id="ef-msg" style="font-size:19px"></p></div></div>
+</div>
+</section>
+
+<!-- fq -->
+<section class="slide" id="fq">
+  <header class="hd"><h2>콘덴서와 주파수 응답</h2><span class="src">교재 141쪽 · 식 4-31~4-34 · 모형</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="fq-cv"></canvas><div class="side"><div class="ctl"><div class="row"><span>결합 콘덴서 C<sub>1</sub>(로그)</span><span class="val" id="fq-c1-v"></span></div><input type="range" id="fq-c1" min="-1" max="1.5" step="0.05" value="0"></div><div class="ctl"><div class="row"><span>바이패스 C<sub>E</sub>(로그, 왼쪽 끝=없음)</span><span class="val" id="fq-ce-v"></span></div><input type="range" id="fq-ce" min="0.5" max="3" step="0.05" value="2.3"></div><div class="ctl"><div class="row"><span>주파수 f(로그)</span><span class="val" id="fq-f-v"></span></div><input type="range" id="fq-f" min="1" max="6" step="0.05" value="3"></div><div class="box"><p id="fq-msg" style="font-size:19px"></p></div></div>
+</div>
+</section>
+
+<!-- lab -->
+<section class="slide" id="lab">
+  <header class="hd"><h2>실험 — 이미터 접지 증폭기 만들고 측정하기</h2><span class="src">교재 143~144쪽 탐구 취지 · 저전압 회로, 스코프 접지 주의</span></header>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+<div class="box fit"><h3>준비 · 과정</h3>
+<p>준비: 2SC1815 또는 2N3904, 저항 R1 59 kΩ·R2 16.5 kΩ·R<sub>C</sub> 1.74 kΩ·R<sub>E</sub> 604 Ω(가까운 표준값), 콘덴서 C1·C2 1 µF, C<sub>E</sub> 100 µF(극성 주의), 함수 발생기, 오실로스코프, 12 V 전원(건전지·어댑터)</p>
+<p>① <b>직류만</b> 연결(입력 없이)해 V<sub>B</sub>, V<sub>E</sub>, V<sub>C</sub>를 잰다 → V<sub>BE</sub> ≈ 0.67 V, V<sub>CE</sub> ≈ 5 V인지 확인한다.</p>
+<p>② 함수 발생기 1 kHz, 10 mV(p-p)를 C1 앞에 넣고, CH1 = 입력, CH2 = 출력(AC 결합)으로 본다.</p>
+<p>③ 출력 p-p ÷ 입력 p-p로 증폭도를 구하고 위상이 반대인지 확인한다.</p>
+<p>④ C<sub>E</sub>를 떼고 다시 측정한다. 입력을 키워 잘림이 생기는 크기를 찾는다.</p></div>
+<div class="box fit"><div class="warn"><b>⚠ 주의</b>
+<p>· 전해 콘덴서는 + / − 극성을 지킨다(반대로 연결하면 터질 수 있다).</p>
+<p>· 프로브 접지 클립은 두 채널 모두 <b>회로의 접지</b>에 연결한다. 다른 점에 물리면 단락된다.</p>
+<p>· 콘센트 전원은 사용하지 않고 12 V 이하 전원만 쓴다.</p></div>
+<h3 style="margin-top:10px">확인 포인트</h3><p>· ①의 직류 값이 설계와 맞는가<br>· 증폭도 약 100배(오차 ±30 %), 위상 반대<br>· C<sub>E</sub> 제거 시 이득 ≈ R<sub>C</sub>/R<sub>E</sub> ≈ 3<br>· 입력이 큰 경우 클리핑 위치(위/아래)</p></div></div>
+</section>
+
+<!-- qz -->
+<section class="slide" id="qz">
+  <header class="hd"><h2>확인 문제 — 계산으로 확인하기</h2><span class="src">교재 문제 방식 · 모범답안은 직접 계산</span></header>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+<div class="box fit"><h3>문제 1 (부하선)</h3><p>V<sub>CC</sub> = 15 V, R<sub>C</sub> = 5 kΩ. 부하선의 양 끝점과, 중앙 동작점의 V<sub>CE</sub>, I<sub>C</sub>는?</p>
+<details><summary>답 보기</summary><p>포화점 I<sub>C</sub> = 15/5k = <b>3 mA</b>(V<sub>CE</sub>=0), 차단점 V<sub>CE</sub> = <b>15 V</b>. 중앙: V<sub>CE</sub> = <b>7.5 V</b>, I<sub>C</sub> = <b>1.5 mA</b>.</p></details>
+<h3 style="margin-top:12px">문제 2 (증폭도)</h3><p>β = 200, h<sub>ie</sub> = 3.5 kΩ, R<sub>C</sub> = 1.74 kΩ. C<sub>E</sub>가 있을 때 A<sub>v</sub>는? 입력 10 mV이면 출력은?</p>
+<details><summary>답 보기</summary><p>A<sub>v</sub> = −βR<sub>C</sub>/h<sub>ie</sub> = −200×1740/3500 ≈ <b>−99</b>. 출력 ≈ <b>0.99 V</b>(위상 반전).</p></details>
+<h3 style="margin-top:12px">문제 3 (C<sub>E</sub> 제거)</h3><p>위 회로에서 C<sub>E</sub>를 떼면(R<sub>E</sub> = 604 Ω) 증폭도는?</p>
+<details><summary>답 보기</summary><p>A<sub>v</sub> ≈ −βR<sub>C</sub>/(h<sub>ie</sub>+(1+β)R<sub>E</sub>) = −348000/(3500+121404) ≈ <b>−2.8</b>.</p></details></div>
+<div class="box fit"><h3>문제 4 (저역 차단)</h3><p>R<sub>in</sub> = 2.75 kΩ, C<sub>1</sub> = 1 µF의 f<sub>L</sub>은?</p>
+<details><summary>답 보기</summary><p>f<sub>L</sub> = 1/(2π C<sub>1</sub> R<sub>in</sub>) = 1/(2π×10<sup>−6</sup>×2750) ≈ <b>58 Hz</b>.</p></details>
+<h3 style="margin-top:12px">서술형</h3><p><b>Q5.</b> 전류 되먹임 바이어스가 안정한 까닭은?</p>
+<details><summary>답안 예시</summary><p>I<sub>C</sub>가 늘면 R<sub>E</sub> 전압이 올라 V<sub>BE</sub>가 줄어 I<sub>C</sub>를 다시 줄이기 때문이다(음의 되먹임).</p></details>
+<p style="margin-top:8px"><b>Q6.</b> 이미터 폴로어의 쓸모는?</p>
+<details><summary>답안 예시</summary><p>전압 이득은 약 1이지만 입력 저항이 크고 출력 저항이 작아, 큰 내부 저항의 신호원을 작은 부하에 전달하는 임피던스 변환기로 쓴다.</p></details></div></div>
+</section>
+
+<!-- as -->
+<section class="slide" id="as">
+  <header class="hd"><h2>정리 — 처음 질문으로 돌아가 보자</h2><span class="src">교재 129~147쪽 요약 · 참고</span></header>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+<div class="box fit"><h3>오늘의 큰 그림</h3>
+<p>① <b class="k">동작점</b>: 직류 바이어스로 V<sub>BE</sub>≈0.67 V, 부하선 중앙에 Q를 잡는다.</p>
+<p>② <b class="k">바이어스 회로</b>: 전류 되먹임(R<sub>E</sub>)이 온도에 가장 안정.</p>
+<p>③ <b class="k">이미터 접지</b>: A<sub>v</sub> = −βR<sub>C</sub>/h<sub>ie</sub>, 위상 반전. C<sub>E</sub>는 교류적으로 R<sub>E</sub>를 단락.</p>
+<p>④ <b class="k">콘덴서</b>: C<sub>1</sub>, C<sub>E</sub>가 저역 차단 주파수를 정한다.</p>
+<p>⑤ <b class="k">이미터 폴로어</b>: A<sub>v</sub>≈1, 입력 저항 큼·출력 저항 작음.</p>
+<h3 style="margin-top:10px">처음 질문의 답</h3><p>직류 바이어스로 동작점을 중앙에 잡아야 신호가 잘리지 않는다. 입력이 올라가면 I<sub>C</sub>가 늘어 R<sub>C</sub> 전압 강하가 커지고 V<sub>CE</sub>가 내려가므로 위상이 반대이다.</p></div>
+<div class="box fit"><h3>교재 쪽 대응</h3>
+<table class="t"><tr><th style="width:130px">쪽(PDF)</th><th>내용</th></tr>
+<tr><td>129~133(143~147)</td><td>표기, h 상수, 등가 회로</td></tr><tr><td>134~137(148~151)</td><td>정특성, 동특성, 부하선</td></tr><tr><td>137~143(151~157)</td><td>바이어스, 증폭기 설계</td></tr><tr><td>145~146(159~160)</td><td>이미터 폴로어</td></tr></table>
+<p class="sm" style="font-size:19px;margin-top:10px">다음: 전기장 효과 트랜지스터(FET), 연산 증폭기(교재 152~172쪽). 시뮬레이션은 모형(실리콘, β=200)이며 교재 본문은 요약, 그림은 직접 제작.</p></div></div>
+</section>
+
+<div id="notes"></div>
+<div id="bar"><div class="bl">📢 트랜지스터 ② — 증폭기 <span class="sm">· 전자 과학 · 증폭기 · 바이어스·부하선·이미터 접지·이미터 폴로어</span></div><div class="br"><button class="tb" id="b-help">❓ 조작법</button><button class="tb" id="b-ask">💬 발문 띄우기</button><button class="tb" id="b-notes">📝 오개념 교정 노트</button><button class="tb" id="b-theme">🌙 다크 전환</button></div></div>
+<div id="ask" role="dialog" aria-label="발문"></div>
+<div id="help" role="dialog" aria-label="조작법 설명"><div class="hp">
+<h3>조작법</h3>
+<h4>키보드</h4>
+<div class="g"><div><kbd>→</kbd><kbd>Space</kbd></div><div>다음 (단계가 있는 슬라이드는 단계부터 진행)</div>
+<div><kbd>←</kbd></div><div>이전 (단계도 거꾸로)</div>
+<div><kbd>Home</kbd><kbd>End</kbd></div><div>처음 / 마지막 슬라이드</div>
+<div><kbd>F</kbd></div><div>전체 화면</div>
+<div><kbd>Q</kbd></div><div>이 슬라이드의 <b>발문(학생용 질문)</b>을 화면 위에 크게 띄우기 / 닫기 (아무 곳이나 클릭해도 닫힘)</div>
+<div><kbd>N</kbd></div><div>오개념 교정 노트 열기/닫기 (교사용)</div>
+<div><kbd>T</kbd></div><div>다크 / 라이트 전환</div>
+<div><kbd>?</kbd><kbd>Esc</kbd></div><div>조작법 열기 / 닫기</div></div>
+<h4>화면 조작</h4>
+<div class="g"><div>→ / Space</div><div>다음 단계·슬라이드</div>
+<div>Q</div><div>학생 발문 열기</div>
+<div>N</div><div>오개념 노트</div>
+<div>슬라이더·칩</div><div>가상 증폭기 조작</div>
+<div>답 보기</div><div>확인 문제 풀이</div>
+<div>슬라이더 키보드</div><div>슬라이더를 클릭해 초점이 있는 동안에는 ← → 가 값 조절에 쓰입니다. 마우스로 놓으면 자동 해제</div></div>
+<h4>수업 진행 팁</h4>
+<div>증폭기 장에서는 위쪽 노랑 파형이 입력, 아래 청록 파형이 출력이다. 입력을 키워 파형이 잘리는 순간을 찾아보자.</div>
+<div class="btns" style="margin-top:22px"><button class="btn pri" id="help-x">닫기 (Esc)</button></div>
+</div></div>
+<div id="simError"></div>
+</div>
+<div id="hud"><button id="h-prev" aria-label="이전">◀</button><span id="h-pg">1 / 1</span><button id="h-next" aria-label="다음">▶</button><button id="h-fs" aria-label="전체화면">⛶</button></div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   공통 유틸 / 그리기 도우미 (템플릿 제공)
+   ===================================================================== */
+const DECK = {"title":"트랜지스터 ② — 증폭기","notes":{"c":{"q":"노랑이 입력(약 10 mV), 청록이 출력이다. 둘이 반대 방향으로 움직이는 것(위상 반전)과 크기 차이를 먼저 관찰한다. 오늘의 질문은 끝에서 답한다. 가상 스코프 사용법은 오실로스코프 덱을 따른다.","m":[["증폭기는 입력 신호의 에너지를 키운다","신호는 전원 에너지를 이용해 모양만 닮은 큰 신호로 다시 만들어 내는 것이다."]]},"dc":{"q":"전자 회로의 신호는 직류 성분 위에 교류 성분이 얹힌 형태이다. 대문자 I, V = 전체(직류 포함), 소문자 i, v = 미소 변화(교류)(교재 129쪽). 선형으로 근사하면 중첩 원리로 직류 해석(동작점)과 교류 해석(증폭도)을 따로 한다.","m":[["직류 성분은 증폭된다","증폭 대상은 변화하는 교류 성분이다. 직류는 동작점을 정하는 역할이다."]]},"q":{"q":"V_BEQ가 너무 낮으면 음의 반주기에 I_C가 0이 되어(차단) 아래가 잘리고, 너무 높거나 입력이 크면 위쪽이 잘린다(포화). 따라서 신호를 위해 알맞은 직류 V_BE를 미리 주는 것이 바이어스이다. 교재: 입력이 0일 때 V_BE가 0.6~0.7 V 범위에서 일정해야 한다.","m":[["바이어스 없이 신호만 넣어도 증폭된다","신호의 음의 반주기에서 V_BE가 0.6 V보다 낮아 전류가 0이 되어 잘린다."]]},"bi":{"q":"세 회로를 25 ℃에서 같은 I_C(약 2.9 mA)로 설계한 뒤 온도(β 증가 포함)를 올린다. 고정 바이어스는 I_C가 크게 늘어 포화되고, 자체 바이어스는 완화, 전류 되먹임이 가장 안정(교재 137쪽). 이 모형은 β가 0.6 %/℃ 늘어난다고 가정했다. 콘덴서 C1(결합), C_E(바이패스)의 역할은 다음 장 이후에서 확인한다.","m":[["I_C가 늘면 증폭기가 더 잘 동작한다","동작점이 움직여 포화되면 신호가 잘린다. 안정성이 중요하다."]]},"ld":{"q":"부하선: V_CE = V_CC − I_C R_C. 점 A(V_CE=0, I_C=V_CC/R_C), 점 B(I_C=0, V_CE=V_CC)를 잇는다(교재 136쪽). 동작점 Q는 I_B 곡선과 부하선의 교점이고, 신호가 더해지면 점이 부하선 위에서 움직인다. 큰 신호를 일그러짐 없이 증폭하려면 Q를 부하선 중앙 가까이에. 교재 문제: V_CC 15 V, R_C 5 kΩ일 때 부하선과 중앙 동작점.","m":[["부하선은 트랜지스터의 특성 곡선이다","부하선은 외부 회로(V_CC, R_C)가 정하는 제약이다. 특성 곡선과의 교점이 동작점이다."]]},"am":{"q":"①입력 10 mV → 출력 약 1 V, 위상 반전. ②C_E를 떼면 R_E가 교류 신호도 줄여(부귀환) 이득이 −β R_C/(h_ie+(1+β)R_E) ≈ −R_C/R_E로 줄지만 안정적이고 일그러짐이 적다. ③부하 R_L을 달면 교류 부하 R_C‖R_L로 줄어 이득이 감소. ④입력이 크면 파형이 잘림(클리핑). 교재 식 4-26~4-30의 A_v = −β R_C/h_ie. 입력 저항 R_in = R1‖R2‖h_ie.","m":[["출력이 입력보다 늦는다","시간 지연이 아니라 위상이 180° 반대(반전)인 것이다. 지연은 아주 짧다."],["부하를 연결해도 이득은 그대로다","교류 부하 저항이 R_C‖R_L로 작아져 이득이 줄어든다."]]},"ds":{"q":"설계 순서(교재 탐구 1): ①R_C = A_v h_ie/β ②전압 분배 V_CC : V_CE : V_RC : V_RE = 2.35 : 1 : 1 : 0.35 → I_C 결정 ③R_E ④R_2 = (V_E+0.67)/(10 I_B) ⑤R_1 = (V_CC−V_B)/(11 I_B) ⑥C_1, C_E는 저역 차단 주파수로 정한다. h_ie는 교재의 3.5 kΩ을 쓴다. 모형 검증값은 실제 소자의 편차 때문에 다소 다를 수 있다.","m":[["계산 값 그대로의 저항을 살 수 있다","저항은 E 계열 표준값만 있다. 가까운 값을 고르고 검증한다."]]},"ef":{"q":"신호원 저항이 크고(10 kΩ) 부하가 작을(100 Ω) 때, 직접 연결하면 거의 전달되지 않고(분압), 이미터 폴로어를 끼우면 입력 저항이 크고 출력 저항이 작아 대부분이 전달된다. 전압 증폭도는 약 1이지만 전류가 약 (1+β)배로 증폭된다(교재 식 4-35~4-38). 임피던스 변환기로 쓰인다. 오늘날은 연산 증폭기 전압 폴로어로 대체되는 경우가 많다.","m":[["이득이 1이면 아무 일도 하지 않는 회로다","전압은 같아도 전류가 크게 증폭되고 임피던스를 변환한다."]]},"fq":{"q":"결합 콘덴서 C1과 입력 저항 R_in이 고역 통과 필터를 만든다. 차단 주파수 f_L1 = 1/(2π C1 R_in)(교재 식 4-31). 바이패스 콘덴서 C_E도 낮은 주파수에서 R_E를 짧게 만들지 못해 이득이 줄어든다. 오른쪽(고역)의 감소는 트랜지스터 자체의 특성(약 300 kHz로 가정). 오디오(20 Hz~20 kHz) 증폭기라면 f_L이 20 Hz보다 낮도록 C를 고른다. 그래프는 이득 선도(dB)로, 20 dB = 10배.","m":[["콘덴서가 클수록 항상 좋다","저역 특성은 좋아지지만 크기·가격·돌입 전류가 커진다."]]},"lab":{"q":"직류 점검(①)을 건너뛰면 원인 찾기가 어렵다. V_E ≈ 1.8 V, V_B ≈ 2.5 V, V_C ≈ 7 V 정도가 설계 목표이다. 학생에게 어디서부터 확인할지 순서를 말하게 한다. 가상 증폭기 슬라이드와 결과를 비교한다.","m":[["출력이 안 나오면 입력부터 의심한다","직류 동작점(①)부터 확인한다. 전원·바이어스 문제가 가장 많다."]]},"qz":{"q":"문제 2·3은 가상 증폭기(C_E 칩)로 확인할 수 있다. 교재 값(h_ie 3.5 kΩ)을 쓴다.","m":[["A_v가 음수면 이득이 작다는 뜻이다","부호는 위상 반전을 나타낸다. 크기는 절댓값으로 본다."]]},"as":{"q":"“왜 직류를 먼저 주는가, 왜 위상이 반대인가”를 모둠이 자기 말로 설명하게 한다. 다음 시간은 FET와 연산 증폭기.","m":[["증폭기는 모든 주파수를 똑같이 증폭한다","콘덴서와 소자 특성 때문에 저역·고역에서 이득이 줄어든다."]]}},"ask":{"q":["동작점을 0.58 V 근처로 낮추면 출력 파형은 어떻게 변할까? 예측한 뒤 확인해 보자."],"am":["C_E를 떼어 내면 출력 크기는 어떻게 될까? 이유를 R_E의 역할과 연결해 말해 보자.","입력을 키우면 출력 파형은 어떻게 일그러지는가? 위쪽과 아래쪽 중 어디가 먼저 잘릴까?"]}};
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const TAU = Math.PI * 2, DPR = 2;
+const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const C = { bg: '#0a1330', grid: 'rgba(160,190,255,.22)', text: '#e3ecff', dim: '#9db0d8', KE: '#ffb454', PE: '#7fb2ff', E: '#ffffff', ok: '#5eead4', bad: '#ff9d9d' };
+const font = (px, w = 500, it = false) => `${it ? 'italic ' : ''}${w} ${px}px 'Noto Sans KR',sans-serif`;
+const mathFont = px => `italic 400 ${px}px 'STIX Two Text','Times New Roman',serif`;
+function setupCanvas(cv, W, H) { cv.width = W * DPR; cv.height = H * DPR; cv.style.width = W + 'px'; cv.style.height = H + 'px'; const c = cv.getContext('2d'); c.setTransform(DPR, 0, 0, DPR, 0, 0); return c; }
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function makeStars(W, H, n, seed) { const r = mulberry(seed); return Array.from({ length: n }, () => [r() * W, r() * H, .25 + r() * .55, r() < .12 ? 3 : 2]); }
+function drawStars(ctx, stars) { stars.forEach(([x, y, a, s]) => { ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(x, y, s, s); }); }
+function arrow(ctx, x0, y0, x1, y1, color, lw = 4, head = 15) {
+  const a = Math.atan2(y1 - y0, x1 - x0); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - Math.cos(a) * head * .6, y1 - Math.sin(a) * head * .6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - head * Math.cos(a - .45), y1 - head * Math.sin(a - .45)); ctx.lineTo(x1 - head * Math.cos(a + .45), y1 - head * Math.sin(a + .45)); ctx.closePath(); ctx.fill();
+}
+function mathRun(ctx, x, y, parts) { let cx = x; parts.forEach(q => { ctx.font = q.f; ctx.fillStyle = q.c; ctx.fillText(q.t, cx, y + (q.dy || 0)); cx += ctx.measureText(q.t).width; }); return cx; }
+function bindRange(id, cb) { const el = $('#' + id); el.addEventListener('input', () => cb(parseFloat(el.value))); el.addEventListener('change', () => el.blur()); return el; }
+const fmt = (x, d = 2) => (x < 0 ? '−' : '') + Math.abs(x).toFixed(d);
+
+/* 오류 표시: 슬라이드 코드 예외를 화면 상단과 window.__wsErrors에 남긴다 (헤드리스 검사용) */
+window.__wsErrors = [];
+function reportError(where, e) {
+  const msg = `${where}: ${e && e.message ? e.message : e}`;
+  if (!window.__wsErrors.includes(msg)) { window.__wsErrors.push(msg); console.error('[슬라이드 오류] ' + msg); }
+  const box = document.getElementById('simError'); box.textContent = window.__wsErrors.slice(-3).join('\n'); box.classList.add('on');
+}
+function safe(where, fn, ...args) { try { return fn && fn(...args); } catch (e) { reportError(where, e); } }
+
+/* =====================================================================
+   shared_js (주제별 물리 계산부·공용 시뮬레이터)
+   ===================================================================== */
+/* ===== 오실로스코프 가상 장비: 공용 엔진(DOM 거의 없음) ===== */
+const SCC={ch1:'#ffe27a',ch2:'#5eead4',grid:'rgba(120,220,170,.20)',axis:'rgba(120,220,170,.45)',scr:'#06130f',dim:'#8ea3cf',trig:'#ff9ecf',cur:'#ffb454'};
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function g(id){return +document.getElementById(id).value;}
+function setT(id,s){const e=document.getElementById(id);if(e&&e.textContent!==s)e.textContent=s;}
+function setH(id,s){const e=document.getElementById(id);if(e&&e.innerHTML!==s)e.innerHTML=s;}
+function tx(ctx,s,x,y,px,col,al,w){ctx.font=(w||500)+' '+px+"px 'Noto Sans KR',sans-serif";ctx.fillStyle=col||C.text;ctx.textAlign=al||'left';ctx.textBaseline='alphabetic';ctx.fillText(s,x,y);}
+function onClick(id,f){const el=document.getElementById(id);if(el)el.addEventListener('click',f);}
+function setChips(ids,on){ids.forEach(i=>{const e=document.getElementById(i);if(e)e.classList.toggle('on',i===on);});}
+/* 1-2-5 사다리 */
+function scLadder(e0,e1){const a=[];for(let e=e0;e<=e1;e++)for(const m of[1,2,5])a.push(+(m*Math.pow(10,e)).toPrecision(6));return a;}
+const SC_V=scLadder(-3,0).concat([10]);          /* 1 mV ~ 10 V /칸 */
+const SC_T=scLadder(-9,-1).concat([1]);           /* 1 ns ~ 1 s /칸 */
+function scNum(x){return String(+x.toPrecision(3));}
+function scFmtV(v){const a=Math.abs(v);return a>=1?scNum(v)+' V':a>=1e-3?scNum(v*1e3)+' mV':scNum(v*1e6)+' µV';}
+function scFmtT(t){const a=Math.abs(t);return a>=1?scNum(t)+' s':a>=1e-3?scNum(t*1e3)+' ms':a>=1e-6?scNum(t*1e6)+' µs':scNum(t*1e9)+' ns';}
+function scFmtF(f){return f>=1e6?scNum(f/1e6)+' MHz':f>=1e3?scNum(f/1e3)+' kHz':scNum(f)+' Hz';}
+/* 파형 */
+function scWave(type,t,f,A,ph,comp){const p=TAU*f*t+(ph||0)*Math.PI/180;
+ if(type==='square'){let s=Math.sin(p)>=0?1:-1;
+  if(comp){const u=((p/Math.PI)%1+1)%1*0.5;return A*s*(1+comp*0.4*Math.exp(-u/0.04));}
+  return A*s;}
+ if(type==='tri')return A*(2/Math.PI)*Math.asin(Math.sin(p));
+ if(type==='saw'){const u=p/TAU;return A*2*(u-Math.floor(u+.5));}
+ return A*Math.sin(p);}
+/* 채널 신호(프로브 끝 전압) → 스코프 입력 전압. cpl: DC/AC/GND, att: 프로브 감쇠비 */
+function scVolt(c,t){if(c.cpl==='GND')return 0;
+ let raw;
+ if(c.tbl){const N=c.tbl.length,u=(((c.f*t+(c.ph||0)/360)%1)+1)%1*N,i=Math.floor(u),fr=u-i;raw=c.tbl[i%N]*(1-fr)+c.tbl[(i+1)%N]*fr;return ((c.cpl==='AC'?raw-(c.tmean||0):raw+c.off)/c.att);}
+ else if(c.bw){/* 대역폭 한계(1차 저역통과): 사인은 이득·위상, 사각은 홀수 고조파 합 */
+  const p0=TAU*c.f*t+(c.ph||0)*Math.PI/180;
+  if(c.wave==='square'){raw=0;for(let k=1;k<=79;k+=2){const gk=rcGain(k*c.f,c.bw),pk=rcPhase(k*c.f,c.bw)*Math.PI/180;raw+=c.A*4/(Math.PI*k)*gk*Math.sin(k*p0+pk);}}
+  else raw=c.A*rcGain(c.f,c.bw)*Math.sin(p0+rcPhase(c.f,c.bw)*Math.PI/180);}
+ else raw=scWave(c.wave,t,c.f,c.A,c.ph,c.comp);
+ if(c.hum)raw+=c.hum*Math.sin(TAU*60*t+1);
+ return (c.cpl==='AC'?raw:raw+c.off)/c.att;}
+function scDiv(c,t){return scVolt(c,t)/c.vdiv+c.pos;}     /* 화면 칸(중앙 0, 위 +) */
+function scChan(o){return Object.assign({on:1,wave:'sine',f:1000,A:1,off:0,ph:0,att:1,cpl:'DC',vdiv:0.5,pos:0,comp:0},o||{});}
+function newScope(o){o=o||{};const s={ch1:scChan(o.ch1),ch2:scChan(Object.assign({on:0},o.ch2)),tdiv:o.tdiv||2e-4,hpos:o.hpos||0,
+ trig:Object.assign({src:1,lvl:0,slope:1,mode:'auto'},o.trig),xy:!!o.xy,xyspan:o.xyspan||1e-3,dots:!!o.dots,cur:null,last:null};return s;}
+/* 트리거 시각: 원하는 기울기로 레벨을 지나는 첫 시각(없으면 null) */
+function scTrigTime(sc){const c=sc['ch'+sc.trig.src];if(!c.on||c.cpl==='GND')return null;
+ const T=1/c.f,N=1800,dt=T*1.3/N,L=sc.trig.lvl,sl=sc.trig.slope;let p=scDiv(c,0);
+ for(let i=1;i<=N;i++){const t=i*dt,q=scDiv(c,t);
+  if(sl>0?(p<L&&q>=L):(p>L&&q<=L)){return t-dt*(q-L)/(q-p||1);}p=q;}return null;}
+/* 한 번의 소인(sweep)을 t0부터 그린 점 목록 */
+function scTrace(c,sc,t0,w,step){const pts=[],dtd=sc.tdiv;for(let px=0;px<=w;px+=step){const xd=px/w*10,t=t0+(xd-sc.hpos)*dtd;pts.push([px,scDiv(c,t)]);}return pts;}
+/* 그리기: 화면(x,y,w,h) 10×8칸 */
+function scDraw(ctx,sc,tn,o){o=o||{};const X=o.x==null?70:o.x,Y=o.y==null?20:o.y,Wd=o.w||900,Ht=o.h||640,dx=Wd/10,dy=Ht/8;
+ ctx.fillStyle=SCC.scr;ctx.fillRect(X-10,Y-10,Wd+20,Ht+20);
+ ctx.strokeStyle='#2a3a52';ctx.lineWidth=4;ctx.strokeRect(X-10,Y-10,Wd+20,Ht+20);
+ ctx.save();ctx.beginPath();ctx.rect(X,Y,Wd,Ht);ctx.clip();
+ ctx.lineWidth=1;ctx.strokeStyle=SCC.grid;ctx.beginPath();
+ for(let i=0;i<=10;i++){ctx.moveTo(X+i*dx,Y);ctx.lineTo(X+i*dx,Y+Ht);}for(let j=0;j<=8;j++){ctx.moveTo(X,Y+j*dy);ctx.lineTo(X+Wd,Y+j*dy);}ctx.stroke();
+ ctx.strokeStyle=SCC.axis;ctx.beginPath();ctx.moveTo(X+5*dx,Y);ctx.lineTo(X+5*dx,Y+Ht);ctx.moveTo(X,Y+4*dy);ctx.lineTo(X+Wd,Y+4*dy);
+ for(let i=0;i<50;i++){const x=X+i*dx/5;ctx.moveTo(x,Y+4*dy-5);ctx.lineTo(x,Y+4*dy+5);}for(let j=0;j<40;j++){const y=Y+j*dy/5;ctx.moveTo(X+5*dx-5,y);ctx.lineTo(X+5*dx+5,y);}ctx.stroke();
+ let status='';
+ const drawPts=(pts,col,al,dots)=>{ctx.globalAlpha=al;ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=2.6;ctx.shadowColor=col;ctx.shadowBlur=al>.5?8:0;
+  if(dots){if(sc.joined){ctx.globalAlpha=al*.5;ctx.lineWidth=1.6;ctx.beginPath();pts.forEach((p,i)=>{const px=X+p[0],py=Y+Ht/2-clamp(p[1],-6,6)*dy;i?ctx.lineTo(px,py):ctx.moveTo(px,py);});ctx.stroke();ctx.globalAlpha=al;}pts.forEach(p=>{ctx.beginPath();ctx.arc(X+p[0],Y+Ht/2-clamp(p[1],-6,6)*dy,4,0,TAU);ctx.fill();});}
+  else{ctx.beginPath();pts.forEach((p,i)=>{const px=X+p[0],py=Y+Ht/2-clamp(p[1],-6,6)*dy;i?ctx.lineTo(px,py):ctx.moveTo(px,py);});ctx.stroke();}
+  ctx.shadowBlur=0;ctx.globalAlpha=1;};
+ if(sc.xy){const c1=sc.ch1,c2=sc.ch2,n=1600,pts=[];for(let i=0;i<=n;i++){const t=i/n*sc.xyspan;pts.push([X+Wd/2+scVolt(c1,t)/c1.vdiv*dx+c1.pos*dx,scDiv(c2,t)]);}
+  ctx.strokeStyle=SCC.ch2;ctx.shadowColor=SCC.ch2;ctx.shadowBlur=8;ctx.lineWidth=2.6;ctx.beginPath();pts.forEach((p,i)=>{const py=Y+Ht/2-clamp(p[1],-6,6)*dy;i?ctx.lineTo(p[0],py):ctx.moveTo(p[0],py);});ctx.stroke();ctx.shadowBlur=0;status='XY';}
+ else{
+  const step=sc.dots?Math.max(6,Wd/sc.dots):1.5;let tt=scTrigTime(sc),free=sc.trig.mode==='free'||(tt===null&&sc.trig.mode==='auto');
+  const span=10*sc.tdiv;
+  const chs=[sc.ch1,sc.ch2].filter(c=>c.on);
+  if(free){status=sc.trig.mode==='free'?'TRIG OFF':'AUTO';for(let k=4;k>=0;k--){const n=Math.floor(tn*14)-k,t0=n*span*1.137+sc.hpos*sc.tdiv;chs.forEach(c=>drawPts(scTrace(c,sc,t0,Wd,step),c===sc.ch1?SCC.ch1:SCC.ch2,.18+.2*(4-k)/4+(k===0?.45:0),sc.dots));}}
+  else if(tt===null){status='NO TRIG';}
+  else{status='TRIG\'D';chs.forEach(c=>drawPts(scTrace(c,sc,tt,Wd,step),c===sc.ch1?SCC.ch1:SCC.ch2,1,sc.dots));}
+  if(o.cur){ctx.setLineDash([8,6]);ctx.lineWidth=2;ctx.strokeStyle=SCC.cur;ctx.beginPath();(o.cur.v||[]).forEach(v=>{const y=Y+Ht/2-v*dy;ctx.moveTo(X,y);ctx.lineTo(X+Wd,y);});(o.cur.t||[]).forEach(t=>{const x=X+t*dx;ctx.moveTo(x,Y);ctx.lineTo(x,Y+Ht);});ctx.stroke();ctx.setLineDash([]);}
+ }
+ ctx.restore();
+ if(!sc.xy){
+  [[sc.ch1,'1',SCC.ch1],[sc.ch2,'2',SCC.ch2]].forEach(a=>{const c=a[0];if(!c.on)return;const y=Y+Ht/2-c.pos*dy;ctx.fillStyle=a[2];ctx.beginPath();ctx.moveTo(X-9,y);ctx.lineTo(X-24,y-9);ctx.lineTo(X-24,y+9);ctx.closePath();ctx.fill();tx(ctx,a[1],X-37,y+6,17,a[2],'right',700);});
+  const tc=sc['ch'+sc.trig.src],ty=Y+Ht/2-(sc.trig.lvl)*dy;if(sc.trig.mode!=='free'){ctx.fillStyle=SCC.trig;ctx.beginPath();ctx.moveTo(X+Wd+9,ty);ctx.lineTo(X+Wd+24,ty-9);ctx.lineTo(X+Wd+24,ty+9);ctx.closePath();ctx.fill();}
+  const hx=X+sc.hpos*dx;if(sc.hpos>=0&&sc.hpos<=10){ctx.fillStyle=SCC.trig;ctx.beginPath();ctx.moveTo(hx,Y-3);ctx.lineTo(hx-8,Y-16);ctx.lineTo(hx+8,Y-16);ctx.closePath();ctx.fill();}}
+ /* 화면 아래 글자(디지털 스코프 방식) */
+ const yb=Y+Ht+38;let x=X;
+ [[sc.ch1,'CH1',SCC.ch1],[sc.ch2,'CH2',SCC.ch2]].forEach(a=>{const c=a[0];if(!c.on||sc.xy&&false)return;tx(ctx,a[1]+' '+scFmtV(c.vdiv)+(c.cpl==='AC'?' ~':c.cpl==='GND'?' ⏚':'')+(c.att===10?' ×10':''),x,yb,22,a[2],'left',700);x+=250;});
+ if(!sc.xy)tx(ctx,'M '+scFmtT(sc.tdiv),x,yb,22,'#d8e3ff','left',700);
+ tx(ctx,status+(sc.trig.mode!=='free'&&!sc.xy?'  ('+(sc.trig.slope>0?'↗':'↘')+' CH'+sc.trig.src+')':''),X+Wd,yb,22,status==='NO TRIG'?'#ff7a7a':SCC.trig,'right',700);
+ return status;}
+/* 조작 바인딩: id 규칙 `${p}-vi1`(V/div 슬라이더), ti, pos1, pos2, lvl, hpos, lf1(log f), a1, o1, ph2, lf2, a2 + 칩 `${p}-cpl1-DC` 등 */
+function scBind(p,sc,on){const E=id=>document.getElementById(p+'-'+id);
+ const R={vi1:[i=>sc.ch1.vdiv=SC_V[i|0],()=>SC_V.indexOf(sc.ch1.vdiv),i=>scFmtV(SC_V[i|0])+'/칸'],vi2:[i=>sc.ch2.vdiv=SC_V[i|0],()=>SC_V.indexOf(sc.ch2.vdiv),i=>scFmtV(SC_V[i|0])+'/칸'],
+  ti:[i=>sc.tdiv=SC_T[i|0],()=>SC_T.indexOf(sc.tdiv),i=>scFmtT(SC_T[i|0])+'/칸'],
+  pos1:[v=>sc.ch1.pos=v,()=>sc.ch1.pos,v=>v.toFixed(1)+'칸'],pos2:[v=>sc.ch2.pos=v,()=>sc.ch2.pos,v=>v.toFixed(1)+'칸'],
+  lvl:[v=>sc.trig.lvl=v,()=>sc.trig.lvl,v=>v.toFixed(2)+'칸'],hpos:[v=>sc.hpos=v,()=>sc.hpos,v=>v.toFixed(1)+'칸'],
+  lf1:[v=>sc.ch1.f=Math.pow(10,v),()=>Math.log10(sc.ch1.f),v=>scFmtF(Math.pow(10,v))],lf2:[v=>sc.ch2.f=Math.pow(10,v),()=>Math.log10(sc.ch2.f),v=>scFmtF(Math.pow(10,v))],
+  a1:[v=>sc.ch1.A=v,()=>sc.ch1.A,v=>scFmtV(v)],a2:[v=>sc.ch2.A=v,()=>sc.ch2.A,v=>scFmtV(v)],o1:[v=>sc.ch1.off=v,()=>sc.ch1.off,v=>scFmtV(v)],ph2:[v=>sc.ch2.ph=v,()=>sc.ch2.ph,v=>Math.round(v)+'°']};
+ const Gp={cpl1:[['DC','AC','GND'],v=>sc.ch1.cpl=v,()=>sc.ch1.cpl],cpl2:[['DC','AC','GND'],v=>sc.ch2.cpl=v,()=>sc.ch2.cpl],slp:[['up','dn'],v=>sc.trig.slope=v==='up'?1:-1,()=>sc.trig.slope>0?'up':'dn'],
+  md:[['auto','norm','free'],v=>sc.trig.mode=v==='norm'?'normal':v,()=>sc.trig.mode==='normal'?'norm':sc.trig.mode],src:[['1','2'],v=>sc.trig.src=+v,()=>String(sc.trig.src)],
+  w1:[['sine','square','tri'],v=>sc.ch1.wave=v,()=>sc.ch1.wave],at1:[['1','10'],v=>sc.ch1.att=+v,()=>String(sc.ch1.att)]};
+ function sync(){for(const k in R){const e=E(k);if(!e)continue;const v=R[k][1]();e.value=v;const l=E(k+'-v');if(l)l.textContent=R[k][2](v);}
+  for(const k in Gp){Gp[k][0].forEach(v=>{const e=E(k+'-'+v);if(e)e.classList.toggle('on',Gp[k][2]()===v);});}}
+ for(const k in R){const e=E(k);if(e)e.addEventListener('input',()=>{R[k][0](+e.value);const l=E(k+'-v');if(l)l.textContent=R[k][2](+e.value);on&&on(k);});}
+ for(const k in Gp)Gp[k][0].forEach(v=>{const e=E(k+'-'+v);if(e)e.addEventListener('click',()=>{Gp[k][1](v);sync();on&&on(k);});});
+ sync();return{sync};}
+/* 읽기 도우미(검산용): 눈금 칸 수 → 값 */
+function scReadV(nDiv,vdiv,att){return nDiv*vdiv*att;}
+function scPeriod(nDiv,tdiv){return nDiv*tdiv;}
+/* 물리 */
+function rcGain(f,fc){return 1/Math.sqrt(1+(f/fc)*(f/fc));}
+function rcPhase(f,fc){return -Math.atan(f/fc)*180/Math.PI;}
+function aliasF(f,fs){return Math.abs(f-Math.round(f/fs)*fs);}
+/* ===== 다이오드 ②: 정류·평활·정전압 (스코프 엔진 위에 추가) ===== */
+function rectSim(kind,Vp,R,C,Vd,fin){const N=1000,T=1/fin,dt=T/N;let vc=0;const out=new Float64Array(N),cond=new Uint8Array(N);const vdrop=kind==='bridge'?2*Vd:Vd;
+ for(let cyc=0;cyc<14;cyc++)for(let i=0;i<N;i++){const vin=Vp*Math.sin(TAU*i/N);const src=kind==='half'?Math.max(vin,0):Math.abs(vin);const drv=Math.max(src-vdrop,0);let v,cd=0;
+  if(!C||C<=0){v=drv;cd=drv>0?1:0;}else{if(drv>vc){vc=drv;cd=1;}else vc=vc*Math.exp(-dt/(R*C));v=vc;}
+  if(cyc===13){out[i]=v;cond[i]=cd;}}
+ return{tbl:out,cond:cond};}
+function tblStats(t){const N=t.length;let s=0,mx=-1e9,mn=1e9;for(let i=0;i<N;i++){s+=t[i];mx=Math.max(mx,t[i]);mn=Math.min(mn,t[i]);}const m=s/N;let q=0;for(let i=0;i<N;i++)q+=(t[i]-m)*(t[i]-m);const ac=Math.sqrt(q/N);return{dc:m,acrms:ac,r:ac/Math.max(m,1e-9),pp:mx-mn,max:mx,min:mn};}
+function rippleFormula(kind,f,R,C){return kind==='half'?1/(2*Math.sqrt(3)*f*R*C):1/(4*Math.sqrt(3)*f*R*C);}
+function zenerOut(Vin,Rs,RL,Vz){const open=Vin*RL/(Rs+RL);if(open>Vz){return{vo:Vz,iz:(Vin-Vz)/Rs-Vz/RL,reg:true};}return{vo:open,iz:0,reg:false};}
+function sLine(ctx,pts,col,lw){ctx.strokeStyle=col||'#e6edff';ctx.lineWidth=lw||3;ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();}
+function sDiodeV(ctx,x1,y1,x2,y2,on,lab){const mx=(x1+x2)/2,my=(y1+y2)/2,a=Math.atan2(y2-y1,x2-x1),s=17;const col=on?'#ffd166':'#8ea3cf';
+ ctx.save();ctx.translate(mx,my);ctx.rotate(a);ctx.fillStyle=on?'rgba(255,209,102,.35)':'rgba(255,255,255,.05)';ctx.strokeStyle=col;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-s,-s);ctx.lineTo(-s,s);ctx.lineTo(s,0);ctx.closePath();ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(s,-s);ctx.lineTo(s,s);ctx.stroke();ctx.restore();
+ if(lab)tx(ctx,lab,mx+(y1===y2?0:-22),my-(y1===y2?26:10),17,col,'center',700);}
+function sRes(ctx,x,y1,y2,lab){ctx.strokeStyle='#e6edff';ctx.lineWidth=3;ctx.fillStyle='rgba(255,255,255,.05)';ctx.beginPath();ctx.rect(x-12,y1,24,y2-y1);ctx.fill();ctx.stroke();if(lab)tx(ctx,lab,x+22,(y1+y2)/2+6,18,'#e6edff','left',700);}
+function sCap(ctx,x,y,lab){ctx.strokeStyle='#e6edff';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x-22,y-7);ctx.lineTo(x+22,y-7);ctx.moveTo(x-22,y+7);ctx.lineTo(x+22,y+7);ctx.stroke();if(lab)tx(ctx,lab,x+30,y+6,18,'#e6edff','left',700);}
+function sSrc(ctx,x,y,lab){ctx.strokeStyle='#e6edff';ctx.lineWidth=3;ctx.fillStyle='rgba(255,255,255,.05)';ctx.beginPath();ctx.arc(x,y,26,0,TAU);ctx.fill();ctx.stroke();ctx.beginPath();for(let i=0;i<=20;i++){const px=x-14+i*1.4,py=y-Math.sin(i/20*TAU)*8;i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.stroke();if(lab)tx(ctx,lab,x-40,y+6,17,C.dim,'right',500);}
+function pathDots(ctx,pts,t,n,col){let L=[],tot=0;for(let i=1;i<pts.length;i++){const d=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);L.push(d);tot+=d;}
+ ctx.fillStyle=col||'#ffd166';for(let k=0;k<n;k++){let d=((t*0.35+k/n)%1)*tot,i=0;while(i<L.length-1&&d>L[i]){d-=L[i];i++;}const f=d/(L[i]||1);ctx.beginPath();ctx.arc(pts[i][0]+(pts[i+1][0]-pts[i][0])*f,pts[i][1]+(pts[i+1][1]-pts[i][1])*f,5,0,TAU);ctx.fill();}}
+/* 정류 회로 도식. kind: half | ct | bridge, ph: 입력 위상(rad), cap: 콘덴서 유무, conduct: 도통 중인지 */
+function drawRect(ctx,kind,ph,cap,conduct,tn){const pos=Math.sin(ph)>=0,col='#e6edff';
+ if(kind==='half'){sSrc(ctx,80,130,'v₁');sLine(ctx,[[80,104],[80,60],[190,60]]);sDiodeV(ctx,175,60,235,60,conduct&&pos,'D');sLine(ctx,[[235,60],[420,60],[420,98]]);sRes(ctx,420,98,164,'R');sLine(ctx,[[420,164],[420,200],[80,200],[80,156]]);
+  if(cap){sLine(ctx,[[330,60],[330,116]]);sCap(ctx,330,123,'C');sLine(ctx,[[330,130],[330,200]]);}
+  if(conduct&&pos)pathDots(ctx,[[80,104],[80,60],[235,60],[420,60],[420,98],[420,164],[420,200],[80,200],[80,156]],tn,10);else if(cap&&Math.abs(Math.sin(ph))>=0)pathDots(ctx,[[420,60],[420,98],[420,164],[420,200]],tn,4);
+  tx(ctx,'교류 전원 → D → R',250,28,19,C.dim,'center',500);}
+ else if(kind==='ct'){sSrc(ctx,90,90,'');sSrc(ctx,90,170,'');tx(ctx,'중간 탭',40,150,17,C.dim,'right',500);sLine(ctx,[[90,64],[90,50],[170,50]]);sLine(ctx,[[90,196],[90,210],[170,210]]);sLine(ctx,[[90,116],[90,144]]);sLine(ctx,[[90,130],[40,130],[40,250],[440,250],[440,164]]);
+  sDiodeV(ctx,170,50,230,50,conduct&&pos,'D₁');sDiodeV(ctx,170,210,230,210,conduct&&!pos,'D₂');sLine(ctx,[[230,50],[300,50],[300,130],[380,130],[380,98],[440,98]]);sLine(ctx,[[230,210],[300,210],[300,130]]);sRes(ctx,440,98,164,'R');
+  if(cap){sLine(ctx,[[380,98],[380,116]]);sCap(ctx,380,123,'C');sLine(ctx,[[380,130],[380,250]]);}
+  tx(ctx,pos?'위쪽 반(D₁)이 도통':'아래쪽 반(D₂)이 도통',250,28,19,'#ffd166','center',700);
+  if(conduct)pathDots(ctx,pos?[[90,64],[90,50],[230,50],[300,50],[300,130],[380,130],[380,98],[440,98],[440,164],[440,250],[40,250],[40,130],[90,130]]:[[90,196],[90,210],[230,210],[300,210],[300,130],[380,130],[380,98],[440,98],[440,164],[440,250],[40,250],[40,130],[90,130]],tn,12);}
+ else{sSrc(ctx,80,130,'v₁');sLine(ctx,[[80,104],[80,60],[340,60]]);sLine(ctx,[[80,156],[80,200],[340,200]]);
+  sDiodeV(ctx,340,60,470,130,conduct&&pos,'D₁');sDiodeV(ctx,340,200,470,130,conduct&&!pos,'D₂');sDiodeV(ctx,210,130,340,60,conduct&&!pos,'D₃');sDiodeV(ctx,210,130,340,200,conduct&&pos,'D₄');
+  sLine(ctx,[[470,130],[540,130],[540,98],[600,98]]);sRes(ctx,600,98,164,'R');sLine(ctx,[[600,164],[600,250],[150,250],[150,130],[210,130]]);
+  if(cap){sLine(ctx,[[540,98],[540,116]]);sCap(ctx,540,123,'C');sLine(ctx,[[540,130],[540,250]]);}
+  tx(ctx,pos?'D₁·D₄ 도통':'D₂·D₃ 도통',340,28,19,'#ffd166','center',700);
+  if(conduct)pathDots(ctx,pos?[[80,104],[80,60],[340,60],[470,130],[540,130],[540,98],[600,98],[600,164],[600,250],[150,250],[150,130],[210,130],[340,200],[80,200],[80,156]]:[[80,156],[80,200],[340,200],[470,130],[540,130],[540,98],[600,98],[600,164],[600,250],[150,250],[150,130],[210,130],[340,60],[80,60],[80,104]],tn,14);}}
+
+/* ===== 트랜지스터(BJT) 모형 ===== */
+const KB=8.617e-5;
+function vtOf(T){return KB*(T+273.15);}
+function isOf(T){const t=T+273.15;return 1e-14*Math.pow(t/300,3)*Math.exp(1.12/KB*(1/300-1/t));}
+/* 능동 영역 컬렉터 전류(Vbe → Ic) */
+function icOfVbe(vbe,T){return isOf(T)*(Math.exp(Math.min(vbe/vtOf(T),70))-1);}
+function vbeOfIc(ic,T){return vtOf(T)*Math.log(ic/isOf(T)+1);}
+/* 출력 특성: Ib, Vce → Ic (어얼리 효과·포화 포함) */
+function icChar(ib,vce,beta,early){const va=early?80:1e9;return beta*ib*(1+Math.max(vce,0)/va)*(1-Math.exp(-Math.max(vce,0)/0.12));}
+/* 바이어스 해석. kind: fixed | self | cf. P: {Vcc,Rc,Re,Rb(고정·자체)|R1,R2(전류 되먹임),beta,T} */
+function biasSolve(kind,P){const b=P.beta,T=P.T;let Vth,Rth,Rx;
+ if(kind==='fixed'){Vth=P.Vcc;Rth=P.Rb;Rx=0;}else if(kind==='self'){Vth=P.Vcc;Rth=P.Rb;Rx=P.Rc;}else{Vth=P.Vcc*P.R2/(P.R1+P.R2);Rth=P.R1*P.R2/(P.R1+P.R2);Rx=P.Re;}
+ let lo=0,hi=Vth/(Rth+(b+1)*Rx)+1e-12;
+ for(let k=0;k<60;k++){const m=(lo+hi)/2,f=Vth-m*Rth-vbeOfIc(b*m+1e-30,T)-(b+1)*m*Rx;if(f>0)lo=m;else hi=m;}
+ const ib=(lo+hi)/2;let ic=b*ib,vbe=vbeOfIc(ic+1e-30,T);
+ let vce=kind==='fixed'?P.Vcc-ic*P.Rc:kind==='self'?P.Vcc-(ic+ib)*P.Rc:P.Vcc-ic*P.Rc-(ic+ib)*P.Re;
+ let sat=false;if(vce<0.2){sat=true;vce=0.2;const Rt=kind==='cf'?P.Rc+P.Re:P.Rc;ic=Math.max((P.Vcc-0.2)/Rt,0);}
+ return{ib:ib,ic:ic,vce:vce,vbe:vbe,sat:sat,ve:kind==='cf'?(ic+ib)*P.Re:0};}
+const RBB=1700;
+function hieOf(ic,beta,T){return RBB+beta*vtOf(T)/Math.max(ic,1e-9);}
+/* 이미터 접지 증폭기 파형(1주기 1000점). P: bias 매개변수, A: 입력 최대(V), byp: 바이패스 여부, RL */
+function ceWave(P,A,byp,RL){const q=biasSolve('cf',P),b=P.beta,T=P.T,N=1000;const Rac=RL>0?1/(1/P.Rc+1/RL):P.Rc,Rea=byp?0:P.Re;
+ const veq=(q.ic+q.ib)*P.Re,vbq=veq+q.vbe+q.ib*RBB;const out=new Float64Array(N),vin=new Float64Array(N),icw=new Float64Array(N);let sat=false,cut=false;
+ for(let i=0;i<N;i++){const v=A*Math.sin(TAU*i/N);vin[i]=v;let lo=0,hi=2e-3;
+  for(let k=0;k<50;k++){const m=(lo+hi)/2,h=vbq+v-m*RBB-vbeOfIc(b*m+1e-30,T)-veq-(b+1)*(m-q.ib)*Rea;if(h>0)lo=m;else hi=m;}
+  let ib=(lo+hi)/2;if(v<-0.2&&ib<1e-9)cut=true;let ic=b*ib,vce=q.vce-(ic-q.ic)*Rac-(ic+ib-q.ic-q.ib)*Rea;
+  if(vce<0.2){vce=0.2;sat=true;}icw[i]=ic;out[i]=vce;}
+ let m=0;for(let i=0;i<N;i++)m+=out[i];m/=N;
+ return{vin:vin,vout:out,ic:icw,q:q,sat:sat,cut:cut,mean:m,hie:hieOf(q.ic,b,T),Rac:Rac,Av:-b*Rac/(hieOf(q.ic,b,T)+(b+1)*Rea)};}
+/* 설계(교재 탐구 1): 목표 Av, 전압 분배 Vce:Vrc:Vre = 1:1:γ */
+function ceDesign(Vcc,Av,beta,hie,gam){const vrc=Vcc/(2+gam),Rc=Av*hie/beta,Ic=vrc/Rc,Re=gam*vrc/Ic,Ib=Ic/beta,Vb=gam*vrc+0.67,R2=Vb/(10*Ib),R1=(Vcc-Vb)/(11*Ib);return{Rc:Rc,Ic:Ic,Re:Re,Ib:Ib,R1:R1,R2:R2,Vb:Vb,vrc:vrc};}
+function TESTS(){const o=[];const T=(n,ok,d)=>o.push([n,!!ok,d]);
+ T('Si 트랜지스터는 1 mA에서 Vbe ≈ 0.65 V (0.6~0.7 V)',Math.abs(vbeOfIc(1e-3,25)-0.65)<0.05,'교재 4-4: 0.6 V부터 흐르기 시작');
+ T('Vbe가 60 mV 오르면 Ic는 약 10배',Math.abs(Math.log10(icOfVbe(0.66,25)/icOfVbe(0.60,25))-1)<0.06,'지수 특성');
+ T('온도 20 ℃ 상승 시 Vbe가 약 40 mV 내려감(−2 mV/℃)',(()=>{const d=vbeOfIc(1e-3,25)-vbeOfIc(1e-3,45);return d>0.03&&d<0.05;})(),'');
+ T('능동 영역 Ic = βIb',Math.abs(icChar(20e-6,5,200,false)/(200*20e-6)-1)<0.01,'');
+ T('포화 영역(Vce≈0)에서는 Ic가 0에 가까움',icChar(20e-6,0.05,200,false)<0.4*200*20e-6,'');
+ const P={Vcc:12,Rc:1740,Re:604,R1:59000,R2:16500,beta:200,T:25};const q=biasSolve('cf',P);
+ T('교재 탐구1: 전류 되먹임 바이어스 Ic ≈ 2.9 mA(1~4 mA)',q.ic>2.2e-3&&q.ic<3.6e-3,'Ic='+(q.ic*1000).toFixed(2)+' mA');
+ T('교재 탐구1: Vce ≈ 5 V',q.vce>4&&q.vce<6.5,'Vce='+q.vce.toFixed(2));
+ const d=ceDesign(12,100,200,3500,0.35);T('교재 설계값: Rc≈1.75 kΩ, Re≈604 Ω, R1≈59 kΩ, R2≈16.5 kΩ',Math.abs(d.Rc-1750)<5&&Math.abs(d.Re-610)<12&&Math.abs(d.R1-59300)<2500&&Math.abs(d.R2-16650)<700,'Rc='+d.Rc.toFixed(0)+' Re='+d.Re.toFixed(0)+' R1='+d.R1.toFixed(0)+' R2='+d.R2.toFixed(0));
+ const w=ceWave(P,0.005,true,0);const pp=(a)=>Math.max(...a)-Math.min(...a);
+ T('이미터 접지: 출력은 입력과 위상이 반대',(()=>{let c=0;for(let i=0;i<1000;i++)c+=w.vin[i]*(w.vout[i]-w.mean);return c<0;})(),'');
+ T('소신호 이득 ≈ −β·Rc/hie(오차 15 % 이내)',Math.abs(pp(w.vout)/pp(w.vin)-Math.abs(w.Av))/Math.abs(w.Av)<0.15,'측정 '+(pp(w.vout)/pp(w.vin)).toFixed(1)+' vs 이론 '+Math.abs(w.Av).toFixed(1));
+ const big=ceWave(P,0.15,true,0);T('입력이 너무 크면 출력이 잘림(포화 또는 차단)',big.sat||big.cut,'');
+ const u=ceWave(P,0.005,false,0);T('바이패스 콘덴서를 빼면 이득이 크게 줄어듦',Math.abs(u.Av)<0.2*Math.abs(w.Av),'Av '+u.Av.toFixed(1)+' vs '+w.Av.toFixed(1));
+ const f1=biasSolve('fixed',{Vcc:12,Rc:1740,Rb:600000,beta:200,T:25}),f2=biasSolve('fixed',{Vcc:12,Rc:1740,Rb:600000,beta:240,T:55});
+ const c1=biasSolve('cf',P),c2=biasSolve('cf',Object.assign({},P,{T:55,beta:240}));
+ T('고정 바이어스는 온도(β↑)에 Ic가 크게 변하고 전류 되먹임은 안정',Math.abs(f2.ic/f1.ic-1)>3*Math.abs(c2.ic/c1.ic-1),'고정 '+(f2.ic/f1.ic).toFixed(2)+'배 / 되먹임 '+(c2.ic/c1.ic).toFixed(2)+'배');
+ return o;}
+/* 트랜지스터 기호. 베이스 단자 (x-60s,y), 컬렉터 위 (x+45s,y-80s), 이미터 아래 (x+45s,y+80s) */
+function sBJT(ctx,x,y,npn,col,s,lab){col=col||'#e6edff';s=s||1;ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.strokeStyle=col;ctx.lineWidth=3/s;ctx.fillStyle=col;
+ ctx.beginPath();ctx.moveTo(-60,0);ctx.lineTo(0,0);ctx.moveTo(0,-30);ctx.lineTo(0,30);ctx.moveTo(0,-15);ctx.lineTo(45,-45);ctx.lineTo(45,-80);ctx.moveTo(0,15);ctx.lineTo(45,45);ctx.lineTo(45,80);ctx.stroke();
+ const mx=22,my=30,a=Math.atan2(30,45)*(npn?1:1);ctx.save();ctx.translate(mx,my);ctx.rotate(npn?a:a+Math.PI);ctx.beginPath();ctx.moveTo(10,0);ctx.lineTo(-7,-7);ctx.lineTo(-7,7);ctx.closePath();ctx.fill();ctx.restore();
+ ctx.beginPath();ctx.arc(14,0,66,0,TAU);ctx.lineWidth=1.5/s;ctx.globalAlpha=.35;ctx.stroke();ctx.restore();
+ if(lab){tx(ctx,lab[0],x-60*s-8,y-10*s,18,C.dim,'right',700);tx(ctx,lab[1],x+45*s+14,y-70*s,18,C.dim,'left',700);tx(ctx,lab[2],x+45*s+14,y+78*s,18,C.dim,'left',700);}}
+function nice125(x){if(!(x>0))return 1;const e=Math.floor(Math.log10(x)),m=x/Math.pow(10,e);return (m<=1?1:m<=2?2:m<=5?5:10)*Math.pow(10,e);}
+const BASE={Vcc:12,Rc:1740,Re:604,R1:59000,R2:16500,beta:200,T:25};
+
+
+/* =====================================================================
+   슬라이드별 모듈: { start(), stop(), frame(dt), onStep(step) }
+   ===================================================================== */
+const REG = {};
+/* ---- c ---- */
+REG["c"] = safe("c.init", function () {
+const cv=$('#c-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);
+const sc=newScope({ch1:{wave:'sine',f:1000,A:1,vdiv:0.005,pos:2},ch2:{on:1,wave:'sine',f:1000,A:1,vdiv:0.5,pos:-2},tdiv:5e-4,trig:{lvl:0,slope:1,mode:'auto',src:1}});let tn=0,key='',w=null;
+function draw(){const A=0.005+0.004*Math.sin(tn*0.6);const k=A.toFixed(4);if(k!==key){key=k;w=ceWave(BASE,A,true,0);sc.ch1.tbl=w.vin;sc.ch1.tmean=0;sc.ch2.tbl=w.vout;sc.ch2.tmean=w.mean;sc.ch1.cpl='DC';sc.ch2.cpl='AC';sc.ch2.vdiv=nice125((Math.max(...w.vout)-Math.min(...w.vout))/5);}
+ ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);scDraw(ctx,sc,tn,{x:120,y:60,w:800,h:560});
+ const pi=(Math.max(...w.vin)-Math.min(...w.vin)),po=Math.max(...w.vout)-Math.min(...w.vout);
+ tx(ctx,'노랑 입력 '+(pi*1000).toFixed(1)+' mV(p-p)  →  청록 출력 '+po.toFixed(2)+' V(p-p)  (약 '+(po/pi).toFixed(0)+'배, 위상 반대)',W/2,660,22,C.text,'center',700);
+ tx(ctx,'트랜지스터 증폭기(이미터 접지) · 가상 오실로스코프',W/2,695,18,C.dim,'center',500);}
+return{start(){draw();},frame(dt){tn+=dt;sc.ch1.ph=0;draw();}};
+
+});
+
+/* ---- dc ---- */
+REG["dc"] = safe("dc.init", function () {
+const cv=$('#dc-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);let tn=0;
+function draw(){const vd=g('dc-vdc'),va=g('dc-vac');setT('dc-vdc-v',vd.toFixed(2)+' V');setT('dc-vac-v',(va*1000).toFixed(0)+' mV');
+ ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);const gx=110,gw=860,rows=[['직류 성분 V_BE',200],['교류 성분 v_be',400],['합 (v_BE = V_BE + v_be)',640]];
+ rows.forEach((r,i)=>{ctx.fillStyle='rgba(255,255,255,.05)';ctx.fillRect(gx,r[1]-80,gw,160);ctx.strokeStyle='rgba(160,190,255,.35)';ctx.lineWidth=1;ctx.strokeRect(gx,r[1]-80,gw,160);tx(ctx,r[0],gx,r[1]-88,19,C.text,'left',700);});
+ const yS=v=>v;const cen=0.65,sc=80/0.15;
+ const Y1=v=>200-(v-cen)*sc,Y2=v=>400-v*sc*0.5/0.5,Y3=v=>640-(v-cen)*sc;
+ ctx.strokeStyle='#ffd166';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(gx,Y1(vd));ctx.lineTo(gx+gw,Y1(vd));ctx.stroke();
+ ctx.strokeStyle='#5eead4';ctx.beginPath();for(let i=0;i<=200;i++){const x=gx+i/200*gw,v=va*Math.sin(TAU*(i/200*3-tn*0.3));i?ctx.lineTo(x,Y2(v*3)):ctx.moveTo(x,Y2(v*3));}ctx.stroke();
+ ctx.strokeStyle='#ff9ecf';ctx.beginPath();for(let i=0;i<=200;i++){const x=gx+i/200*gw,v=vd+va*Math.sin(TAU*(i/200*3-tn*0.3));i?ctx.lineTo(x,Y3(v)):ctx.moveTo(x,Y3(v));}ctx.stroke();
+ tx(ctx,vd.toFixed(2)+' V',gx+gw-6,Y1(vd)-8,18,'#ffd166','right',700);tx(ctx,'(교류 성분은 3배로 확대해 그림)',gx+gw,320,16,C.dim,'right',500);
+ const ic=icOfVbe(vd,25);
+ setH('dc-msg','큰 글자 <b>V<sub>BE</sub>, I<sub>C</sub></b> = 직류를 포함한 전체 · 작은 글자 <b>v<sub>be</sub>, i<sub>c</sub></b> = 변화분(교류)<br>직류 성분 V<sub>BE</sub> = '+vd.toFixed(2)+' V → 동작점 I<sub>C</sub> ≈ <b class="k">'+(ic*1000).toFixed(2)+' mA</b>'+(va>0?'<br>교류 '+(va*1000).toFixed(0)+' mV가 더해지면 I<sub>C</sub>는 약 '+(icOfVbe(vd+va,25)*1000).toFixed(2)+' ~ '+(icOfVbe(vd-va,25)*1000).toFixed(2)+' mA로 출렁인다.':'')+'<br><span class="sm">파의 중첩 원리: 직류와 교류를 따로 계산해서 더한다(교재 138쪽).</span>');}
+return{start(){draw();},frame(dt){tn+=dt;draw();}};
+
+});
+
+/* ---- q ---- */
+REG["q"] = safe("q.init", function () {
+const cv=$('#q-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);let tn=0;const IMAX=0.006;
+function ic_of(v){return Math.min(icOfVbe(v,25),IMAX);}
+function draw(){const vq=g('q-vq'),va=g('q-va')/1000;setT('q-vq-v',vq.toFixed(3)+' V');setT('q-va-v',(va*1000).toFixed(0)+' mV');
+ ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);const gx=80,gy=60,gw=420,gh=420,x0=0.56,x1=0.74;const X=v=>gx+(v-x0)/(x1-x0)*gw,Y=i=>gy+gh-i/0.007*gh;
+ ctx.fillStyle='rgba(255,255,255,.05)';ctx.fillRect(gx,gy,gw,gh);ctx.strokeStyle='rgba(160,190,255,.35)';ctx.lineWidth=1;ctx.strokeRect(gx,gy,gw,gh);
+ ctx.strokeStyle='#ffe27a';ctx.lineWidth=3.5;ctx.beginPath();for(let i=0;i<=120;i++){const v=x0+(x1-x0)*i/120;i?ctx.lineTo(X(v),Y(ic_of(v))):ctx.moveTo(X(v),Y(ic_of(v)));}ctx.stroke();
+ tx(ctx,'I_C vs v_BE (6 mA에서 포화로 가정)',gx,gy-12,18,C.text,'left',700);tx(ctx,'v_BE (V)',gx+gw,gy+gh+30,17,C.dim,'right',500);
+ const ph=tn*2;const v=vq+va*Math.sin(ph);ctx.strokeStyle='rgba(255,158,207,.6)';ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(X(v),gy+gh);ctx.lineTo(X(v),Y(ic_of(v)));ctx.lineTo(gx,Y(ic_of(v)));ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#ff9ecf';ctx.beginPath();ctx.arc(X(v),Y(ic_of(v)),8,0,TAU);ctx.fill();
+ ctx.fillStyle='#5eead4';ctx.beginPath();ctx.arc(X(vq),Y(ic_of(vq)),6,0,TAU);ctx.fill();tx(ctx,'Q',X(vq)+10,Y(ic_of(vq))+22,19,'#5eead4','left',700);
+ /* 입력 파형(아래), 출력 전류 파형(오른쪽) */
+ const ox=560,oy=60,ow=420,oh=420;ctx.fillStyle='rgba(255,255,255,.05)';ctx.fillRect(ox,oy,ow,oh);ctx.strokeStyle='rgba(160,190,255,.35)';ctx.strokeRect(ox,oy,ow,oh);
+ ctx.strokeStyle='#ffd166';ctx.lineWidth=2.5;ctx.beginPath();for(let i=0;i<=200;i++){const t=i/200*2,vv=vq+va*Math.sin(TAU*t-ph*0);const c=ic_of(vv);const x=ox+i/200*ow,y=Y(c)-0;i?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.stroke();
+ tx(ctx,'출력 전류 i_C(t) (입력이 사인파일 때)',ox,oy-12,18,C.text,'left',700);
+ const wy=560;ctx.fillStyle='rgba(255,255,255,.05)';ctx.fillRect(ox,wy-60,ow,120);ctx.strokeStyle='#5eead4';ctx.lineWidth=2.5;ctx.beginPath();for(let i=0;i<=200;i++){const t=i/200*2;const x=ox+i/200*ow,y=wy-Math.sin(TAU*t)*50;i?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.stroke();tx(ctx,'입력 신호 (사인파)',ox,wy-68,17,C.dim,'left',500);
+ const iq=ic_of(vq),imx=ic_of(vq+va),imn=ic_of(vq-va),clipU=icOfVbe(vq+va,25)>IMAX,clipD=icOfVbe(vq-va,25)<2e-5;
+ setH('q-msg','동작점 Q: I<sub>CQ</sub> = <b class="k">'+(iq*1000).toFixed(2)+' mA</b><br>출력 전류 범위 '+(imn*1000).toFixed(2)+' ~ '+(imx*1000).toFixed(2)+' mA'+(clipU?'<br><b class="bad">위쪽이 잘림(포화)</b>':'')+(clipD?'<br><b class="bad">아래쪽이 잘림(차단) — 입력이 커지거나 Q가 너무 낮다</b>':'')+(!clipU&&!clipD&&va>0.001?'<br><b class="ok">잘림 없음</b>':'')+'<br><span class="sm">큰 신호를 일그러짐 없이 증폭하려면 Q를 부하선의 거의 중앙에 잡는다(교재 136쪽).</span>');}
+return{start(){draw();},frame(dt){tn+=dt;draw();}};
+
+});
+
+/* ---- bi ---- */
+REG["bi"] = safe("bi.init", function () {
+const cv=$('#bi-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);let kind='cf';
+function setK(k){kind=k;setChips(['bi-k-fixed','bi-k-self','bi-k-cf'],'bi-k-'+k);}
+onClick('bi-k-fixed',()=>setK('fixed'));onClick('bi-k-self',()=>setK('self'));onClick('bi-k-cf',()=>setK('cf'));
+const betaT=T=>200*(1+0.006*(T-25));
+const PF={Vcc:12,Rc:1740,Rb:781000,beta:200,T:25},PS={Vcc:12,Rc:1740,Rb:432000,beta:200,T:25};
+function P(k,T){const b=betaT(T);return k==='fixed'?Object.assign({},PF,{T:T,beta:b}):k==='self'?Object.assign({},PS,{T:T,beta:b}):Object.assign({},BASE,{T:T,beta:b});}
+const KC={fixed:'#ff7a7a',self:'#ffd166',cf:'#5eead4'},KN={fixed:'고정 바이어스',self:'자체 바이어스',cf:'전류 되먹임'};
+function draw(){const T=g('bi-t');setT('bi-t-v',T.toFixed(0)+' ℃');ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ const gx=100,gy=80,gw=500,gh=480,Y=i=>gy+gh-Math.min(i,0.012)/0.012*gh,X=t=>gx+t/80*gw;
+ ctx.fillStyle='rgba(255,255,255,.05)';ctx.fillRect(gx,gy,gw,gh);ctx.strokeStyle='rgba(160,190,255,.35)';ctx.lineWidth=1;ctx.strokeRect(gx,gy,gw,gh);
+ for(let k=0;k<=12;k+=3)tx(ctx,k+' mA',gx-8,Y(k/1000)+5,16,C.dim,'right',500);for(let t=0;t<=80;t+=20)tx(ctx,t+' ℃',X(t),gy+gh+24,16,C.dim,'center',500);
+ ['fixed','self','cf'].forEach(k=>{ctx.strokeStyle=KC[k];ctx.lineWidth=k===kind?4.5:2;ctx.globalAlpha=k===kind?1:.55;ctx.beginPath();for(let t=0;t<=80;t+=2){const q=biasSolve(k,P(k,t));t?ctx.lineTo(X(t),Y(q.ic)):ctx.moveTo(X(t),Y(q.ic));}ctx.stroke();ctx.globalAlpha=1;});
+ const q=biasSolve(kind,P(kind,T)),q0=biasSolve(kind,P(kind,25));ctx.fillStyle='#ff9ecf';ctx.beginPath();ctx.arc(X(T),Y(q.ic),9,0,TAU);ctx.fill();
+ tx(ctx,'온도에 따른 컬렉터 전류 I_C (β도 온도와 함께 커진다고 가정)',gx,gy-14,19,C.text,'left',700);
+ let ly=140;['fixed','self','cf'].forEach(k=>{ctx.fillStyle=KC[k];ctx.fillRect(650,ly-12,24,6);tx(ctx,KN[k],684,ly-4,19,k===kind?KC[k]:C.dim,'left',k===kind?700:500);ly+=34;});
+ /* 회로 간이 도식 */const cx=800,cy=370;sLine(ctx,[[650,260],[960,260]]);tx(ctx,'+12 V',650,252,16,'#ffd166','left',700);
+ sBJT(ctx,cx,cy+60,true,'#e6edff',1.1);sLine(ctx,[[cx+50,cy+60-88],[cx+50,260]]);sLine(ctx,[[cx+50,cy+60+88],[cx+50,610]]);sLine(ctx,[[650,610],[960,610]]);
+ const lab=kind==='fixed'?'R_B 가 전원에서 직접 베이스로':kind==='self'?'R_B 가 컬렉터에서 베이스로 (전압 되먹임)':'R1·R2 분압 + R_E (전류 되먹임)';tx(ctx,lab,650,650,17,KC[kind],'left',700);
+ const d=(q.ic/q0.ic-1)*100;
+ setH('bi-msg','<b style="color:'+KC[kind]+'">'+KN[kind]+'</b> · '+T.toFixed(0)+' ℃<br>I<sub>C</sub> = <b class="k">'+(q.ic*1000).toFixed(2)+' mA</b> (25 ℃ 대비 <b class="'+(Math.abs(d)<10?'ok':'bad')+'">'+(d>=0?'+':'')+d.toFixed(0)+' %</b>)<br>V<sub>CE</sub> = '+q.vce.toFixed(1)+' V'+(q.sat?' <b class="bad">포화!</b>':'')+'<br><span class="sm">'+(kind==='fixed'?'매우 간단하지만 온도·전원 변화에 동작점이 크게 변한다.':kind==='self'?'I_C가 늘면 R_C 전압 강하로 V_CE가 줄어 되돌린다. 비교적 안정.':'I_C가 늘면 R_E 전압이 올라 V_BE가 줄어 I_C를 되돌린다. 가장 안정해서 가장 많이 쓰인다.')+'</span>');}
+return{start(){setK('cf');draw();},frame(){draw();}};
+
+});
+
+/* ---- ld ---- */
+REG["ld"] = safe("ld.init", function () {
+const cv=$('#ld-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);let tn=0;const B=200;
+function qOf(ib,vcc,rc){let lo=0,hi=vcc;for(let k=0;k<50;k++){const m=(lo+hi)/2,f=icChar(ib,m,B,true)-(vcc-m)/rc;if(f>0)lo=m;else hi=m;}const v=(lo+hi)/2;return{vce:v,ic:(vcc-v)/rc};}
+function draw(){const vcc=g('ld-vcc'),rc=g('ld-rc'),ib=g('ld-ib')*1e-6,ia=g('ld-ia')*1e-6;setT('ld-vcc-v',vcc.toFixed(0)+' V');setT('ld-rc-v',rc.toFixed(0)+' Ω');setT('ld-ib-v',(ib*1e6).toFixed(0)+' µA');setT('ld-ia-v',(ia*1e6).toFixed(0)+' µA');
+ ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);const gx=100,gy=60,gw=560,gh=500,xm=20,ym=0.02;const X=v=>gx+v/xm*gw,Y=i=>gy+gh-Math.min(i,ym)/ym*gh;
+ ctx.fillStyle='rgba(255,255,255,.05)';ctx.fillRect(gx,gy,gw,gh);ctx.strokeStyle='rgba(160,190,255,.35)';ctx.lineWidth=1;ctx.strokeRect(gx,gy,gw,gh);
+ for(let k=0;k<=20;k+=5)tx(ctx,k+' mA',gx-8,Y(k/1000)+5,16,C.dim,'right',500);for(let v=0;v<=20;v+=5)tx(ctx,v+'',X(v),gy+gh+24,16,C.dim,'center',500);
+ for(let k=1;k<=7;k++){const i0=k*20e-6;ctx.strokeStyle='#4d5f86';ctx.lineWidth=1.5;ctx.beginPath();for(let j=0;j<=80;j++){const v=xm*j/80,ic=icChar(i0,v,B,true);j?ctx.lineTo(X(v),Y(ic)):ctx.moveTo(X(v),Y(ic));}ctx.stroke();}
+ ctx.strokeStyle='#ff9ecf';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(X(0),Y(vcc/rc));ctx.lineTo(X(vcc),Y(0));ctx.stroke();tx(ctx,'부하선',X(vcc*0.45),Y(vcc/rc*0.55)-10,19,'#ff9ecf','left',700);tx(ctx,'A: V_CC/R_C = '+(vcc/rc*1000).toFixed(1)+' mA(포화점)',X(0)+8,Y(Math.min(vcc/rc,ym))+22,16,'#ff9ecf','left',700);tx(ctx,'B: V_CC = '+vcc+' V(차단점)',X(vcc),Y(0)-10,16,'#ff9ecf','right',700);
+ const q=qOf(ib,vcc,rc);ctx.fillStyle='#5eead4';ctx.beginPath();ctx.arc(X(q.vce),Y(q.ic),9,0,TAU);ctx.fill();tx(ctx,'Q (동작점)',X(q.vce)+12,Y(q.ic)+24,19,'#5eead4','left',700);
+ const s=Math.sin(tn*2),ibt=Math.max(ib+ia*s,0),qt=qOf(ibt,vcc,rc);ctx.fillStyle='#ffd166';ctx.beginPath();ctx.arc(X(qt.vce),Y(qt.ic),7,0,TAU);ctx.fill();
+ tx(ctx,'I_C – V_CE 특성과 부하선 (β=200, 모형)',gx,gy-14,19,C.text,'left',700);tx(ctx,'V_CE (V)',gx+gw,gy+gh+50,18,C.dim,'right',500);
+ /* 파형 */const wx=700,ww=300;[['i_B(t)',130,'#ffd166',t=>ib+ia*Math.sin(t),1e-4],['i_C(t)',300,'#5eead4',t=>qOf(Math.max(ib+ia*Math.sin(t),0),vcc,rc).ic,0.02],['v_CE(t)',470,'#ff9ecf',t=>qOf(Math.max(ib+ia*Math.sin(t),0),vcc,rc).vce,vcc]].forEach(r=>{ctx.fillStyle='rgba(255,255,255,.05)';ctx.fillRect(wx,r[1]-50,ww,100);tx(ctx,r[0],wx,r[1]-56,16,r[2],'left',700);ctx.strokeStyle=r[2];ctx.lineWidth=2.5;ctx.beginPath();for(let i=0;i<=120;i++){const t=i/120*TAU*2,v=r[3](t)/r[4];const x=wx+i/120*ww,y=r[1]+45-v*90;i?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.stroke();});
+ const mid=Math.abs(q.vce-vcc/2)<vcc*0.15;
+ setH('ld-msg','Q: I<sub>C</sub> = <b class="k">'+(q.ic*1000).toFixed(2)+' mA</b>, V<sub>CE</sub> = <b class="k">'+q.vce.toFixed(1)+' V</b><br>'+(mid?'<b class="ok">Q가 부하선 중앙 부근 → 큰 신호도 일그러짐이 적다.</b>':q.vce>vcc/2?'<b class="bad">Q가 차단 쪽으로 치우침</b>':'<b class="bad">Q가 포화 쪽으로 치우침</b>')+'<br>v<sub>CE</sub> 변화 '+((Math.max(qOf(ib+ia,vcc,rc).vce,0)-qOf(Math.max(ib-ia,0),vcc,rc).vce)).toFixed(1)+' V(p-p)');}
+return{start(){draw();},frame(dt){tn+=dt;draw();}};
+
+});
+
+/* ---- am ---- */
+REG["am"] = safe("am.init", function () {
+const cv=$('#am-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);
+const sc=newScope({ch1:{wave:'sine',f:1000,A:1,vdiv:0.01,pos:1.5},ch2:{on:1,wave:'sine',f:1000,A:1,vdiv:1,pos:-1.5},tdiv:5e-4,trig:{lvl:0,slope:1,mode:'auto',src:1}});
+let tn=0,byp=true,nl=true,key='',w=null;
+onClick('am-bp',()=>{byp=!byp;setChips(['am-bp'],byp?'am-bp':'');});onClick('am-nl',()=>{nl=!nl;setChips(['am-nl'],nl?'am-nl':'');});
+function draw(){const A=g('am-vi')/1000,RL=Math.pow(10,g('am-rl'));setT('am-vi-v',(A*1000).toFixed(0)+' mV');setT('am-rl-v',nl?'(부하 없음)':scNum(RL)+' Ω');
+ const k=A+'_'+byp+'_'+nl+'_'+RL;if(k!==key){key=k;w=ceWave(BASE,A,byp,nl?0:RL);sc.ch1.tbl=w.vin;sc.ch1.tmean=0;sc.ch2.tbl=w.vout;sc.ch2.tmean=w.mean;sc.ch1.cpl='DC';sc.ch2.cpl='AC';}
+ const pp=a=>Math.max(...a)-Math.min(...a),pi=pp(w.vin),po=pp(w.vout);sc.ch1.vdiv=nice125(pi/4);sc.ch2.vdiv=nice125(po/5.5);
+ ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ /* 회로 */const q=w.q;const rx=20,ry=18;sLine(ctx,[[20,60],[1020,60]]);tx(ctx,'+12 V',20,52,16,'#ffd166','left',700);
+ sRes(ctx,180,60,100,'');tx(ctx,'R1 59k',200,88,15,C.text,'left',700);sLine(ctx,[[180,100],[180,150]]);sRes(ctx,180,150,190,'');tx(ctx,'R2 16.5k',200,178,15,C.text,'left',700);sLine(ctx,[[180,190],[180,250]]);
+ sRes(ctx,410,60,105,'');tx(ctx,'R_C 1.74k',430,92,15,C.text,'left',700);sLine(ctx,[[410,105],[410,128]]);sBJT(ctx,370,200,true,'#e6edff',0.9);sLine(ctx,[[180,125],[250,125],[250,200],[316,200]]);
+ sLine(ctx,[[410,272],[410,285]]);sRes(ctx,410,285,320,'');tx(ctx,'R_E 604',430,308,15,C.text,'left',700);sLine(ctx,[[410,320],[410,340]]);sLine(ctx,[[180,250],[180,340]]);sLine(ctx,[[180,340],[600,340]]);
+ if(byp){sLine(ctx,[[410,278],[360,278],[360,296]]);sCap(ctx,360,303,'');tx(ctx,'C_E',330,300,15,C.text,'right',700);sLine(ctx,[[360,310],[360,340]]);}
+ tx(ctx,byp?'C_E 연결(교류적으로 R_E 단락)':'C_E 없음(R_E 부귀환)',520,170,17,byp?'#5eead4':'#ff7a7a','left',700);
+ tx(ctx,'V_B ≈ '+(q.ve+q.vbe).toFixed(2)+' V · V_E = '+q.ve.toFixed(2)+' V · V_C = '+(12-q.ic*1740).toFixed(2)+' V · I_C = '+(q.ic*1000).toFixed(2)+' mA',530,100,17,C.dim,'left',500);
+ tx(ctx,'(C1·C2: 결합 콘덴서, 직류 차단)',530,130,17,C.dim,'left',500);
+ scDraw(ctx,sc,tn,{x:130,y:358,w:780,h:300});
+ const gm=po/pi;setH('am-msg','전압 증폭도 |A<sub>v</sub>| = <b class="k">'+gm.toFixed(1)+'</b> (이론 '+Math.abs(w.Av).toFixed(1)+')<br>입력 저항(스코프 입력 제외) ≈ R1‖R2‖h<sub>ie</sub> = '+(1/(1/59000+1/16500+1/w.hie)/1000).toFixed(2)+' kΩ<br>'+(w.sat||w.cut?'<b class="bad">출력이 잘림('+(w.sat?'포화':'차단')+') → 입력을 줄이자</b>':'<b class="ok">일그러짐 없음, 입력과 위상이 반대</b>')+'<br><span class="sm">위: 입력(노랑, DC 결합) 아래: 출력(청록, AC 결합)</span>');}
+return{start(){setChips(['am-bp'],'am-bp');setChips(['am-nl'],'am-nl');draw();},frame(dt){tn+=dt;draw();}};
+
+});
+
+/* ---- ds ---- */
+REG["ds"] = safe("ds.init", function () {
+const cv=$('#ds-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);
+function draw(){const vcc=g('ds-vcc'),av=g('ds-av'),b=g('ds-b');setT('ds-vcc-v',vcc.toFixed(0)+' V');setT('ds-av-v',av.toFixed(0)+'배');setT('ds-b-v',b.toFixed(0));
+ const d=ceDesign(vcc,av,b,3500,0.35);const P={Vcc:vcc,Rc:d.Rc,Re:d.Re,R1:d.R1,R2:d.R2,beta:b,T:25};const q=biasSolve('cf',P);const w=ceWave(P,0.003,true,0);
+ ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);sLine(ctx,[[40,70],[1000,70]]);tx(ctx,'+'+vcc+' V',40,60,20,'#ffd166','left',700);
+ const R=(x,y1,y2,l,v)=>{sRes(ctx,x,y1,y2,'');tx(ctx,l,x+22,(y1+y2)/2-6,19,C.text,'left',700);tx(ctx,v,x+22,(y1+y2)/2+20,22,'#ffe27a','left',700);};
+ const fm=r=>r>=1000?(r/1000).toFixed(r>=10000?1:2)+' kΩ':r.toFixed(0)+' Ω';
+ sLine(ctx,[[200,70],[200,170]]);R(200,170,250,'R1',fm(d.R1));sLine(ctx,[[200,250],[200,300]]);R(200,300,380,'R2',fm(d.R2));sLine(ctx,[[200,380],[200,640]]);
+ sLine(ctx,[[200,275],[368,275],[368,380]]);sBJT(ctx,440,380,true,'#e6edff',1.2);
+ sLine(ctx,[[494,70],[494,170]]);R(494,170,250,'R_C',fm(d.Rc));sLine(ctx,[[494,250],[494,284]]);
+ sLine(ctx,[[494,476],[494,490]]);R(494,490,570,'R_E',fm(d.Re));sLine(ctx,[[494,570],[494,640]]);sLine(ctx,[[200,640],[760,640]]);
+ tx(ctx,'V_CC '+vcc+' V : V_CE : V_RC : V_RE = 1 : 1 : 0.35',40,690,18,C.dim,'left',500);
+ setH('ds-msg','목표 A<sub>v</sub> = '+av+'배, β = '+b+' → 설계 I<sub>C</sub> = <b class="k">'+(d.Ic*1000).toFixed(2)+' mA</b><br>R<sub>C</sub> = A<sub>v</sub>·h<sub>ie</sub>/β, R<sub>E</sub> = 0.35V<sub>RC</sub>/I<sub>C</sub>, R<sub>2</sub> = (V<sub>E</sub>+0.67)/(10I<sub>B</sub>), R<sub>1</sub> = (V<sub>CC</sub>−V<sub>B</sub>)/(11I<sub>B</sub>)<br><b>검증</b> (모형): I<sub>C</sub> = '+(q.ic*1000).toFixed(2)+' mA, V<sub>CE</sub> = '+q.vce.toFixed(1)+' V, |A<sub>v</sub>| = <b class="'+(Math.abs(Math.abs(w.Av)-av)/av<0.2?'ok':'bad')+'">'+Math.abs(w.Av).toFixed(0)+'</b><br><span class="sm">교재 탐구 1(12 V, 100배, β=200, h<sub>ie</sub>=3.5 kΩ)이면 R<sub>C</sub>≈1.75 kΩ, R<sub>E</sub>≈0.6 kΩ, R<sub>1</sub>≈59 kΩ, R<sub>2</sub>≈16.5 kΩ. 실제로는 표준 저항 값(E 계열)을 고른다.</span>');}
+return{start(){draw();},frame(){draw();}};
+
+});
+
+/* ---- ef ---- */
+REG["ef"] = safe("ef.init", function () {
+const cv=$('#ef-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);
+const sc=newScope({ch1:{wave:'sine',f:1000,A:1,vdiv:0.5,pos:1.5},ch2:{on:1,wave:'sine',f:1000,A:1,vdiv:0.5,pos:-1.5},tdiv:5e-4,trig:{lvl:0,slope:1,mode:'auto',src:1}});
+let tn=0,use=true;
+onClick('ef-use',()=>{use=true;setChips(['ef-use','ef-dir'],'ef-use');});onClick('ef-dir',()=>{use=false;setChips(['ef-use','ef-dir'],'ef-dir');});
+const B=200,HIE=3500,RE=10000;
+function draw(){const rs=Math.pow(10,g('ef-rs')),rl=Math.pow(10,g('ef-rl')),vs=1;setT('ef-rs-v',scNum(rs)+' Ω');setT('ef-rl-v',scNum(rl)+' Ω');
+ const rea=1/(1/RE+1/rl),rin=1/(1/59000+1/16500+1/(HIE+(B+1)*rea)),avf=(B+1)*rea/(HIE+(B+1)*rea),vb=vs*rin/(rs+rin),vo_f=vb*avf,vo_d=vs*rl/(rs+rl),rout=1/(1/RE+1/((rs+HIE)/(B+1)));
+ const vo=use?vo_f:vo_d;sc.ch1.A=vs;sc.ch1.vdiv=0.5;sc.ch2.A=Math.max(vo,1e-4);sc.ch2.vdiv=nice125(vo*2/5.5);sc.ch2.cpl='AC';sc.ch1.cpl='AC';
+ ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ sSrc(ctx,70,150,'');tx(ctx,'v_s 1 V',70,100,17,'#ffd166','center',700);sLine(ctx,[[70,124],[70,100],[150,100]]);sLine(ctx,[[70,176],[70,260],[960,260]]);
+ ctx.strokeStyle='#e6edff';ctx.lineWidth=3;ctx.fillStyle='rgba(255,255,255,.05)';ctx.beginPath();ctx.rect(150,86,70,28);ctx.fill();ctx.stroke();tx(ctx,'R_S '+scNum(rs)+'Ω',185,76,17,C.text,'center',700);
+ if(use){sLine(ctx,[[220,100],[300,100],[300,160]]);sBJT(ctx,360,160,true,'#e6edff',0.8);sLine(ctx,[[300,160],[312,160]]);sLine(ctx,[[396,160-64],[396,40],[560,40]]);tx(ctx,'+12 V (컬렉터 접지)',400,30,16,'#ffd166','left',700);  sLine(ctx,[[396,224],[396,236],[560,236]]);sRes(ctx,560,236,260,'');tx(ctx,'R_E',584,254,16,C.text,'left',700);sLine(ctx,[[560,236],[640,236]]);tx(ctx,'출력 v_o',650,242,18,'#5eead4','left',700);}
+ else{sLine(ctx,[[220,100],[640,100]]);tx(ctx,'직접 연결',400,88,18,'#ff7a7a','center',700);sLine(ctx,[[640,100],[640,130]]);tx(ctx,'출력 v_o',650,108,18,'#5eead4','left',700);}
+ ctx.fillStyle='rgba(255,255,255,.05)';ctx.strokeStyle='#e6edff';ctx.beginPath();ctx.rect(760,160,24,80);ctx.fill();ctx.stroke();tx(ctx,'R_L '+scNum(rl)+'Ω',792,206,17,C.text,'left',700);
+ sLine(ctx,[[772,100],[772,160]]);sLine(ctx,[[772,240],[772,260]]);sLine(ctx,[[640,100],[772,100]]);
+ scDraw(ctx,sc,tn,{x:130,y:300,w:780,h:330});
+ tx(ctx,'노랑: 신호원 v_s(1 V)   청록: 부하 양단 v_o ('+(vo*1000).toFixed(0)+' mV, '+(vo/vs*100).toFixed(0)+' %)',W/2,660,19,C.text,'center',700);
+ setH('ef-msg',(use?'<b class="ok">이미터 폴로어</b>':'<b class="bad">직접 연결</b>')+' · 부하에 전달되는 전압 <b class="k">'+(vo*1000).toFixed(0)+' mV</b><br>'+(use?'전압 증폭도 ≈ '+avf.toFixed(3)+' (≈1) · 입력 저항 ≈ '+scNum(rin)+' Ω · 출력 저항 ≈ '+scNum(rout)+' Ω<br>전류 증폭 ≈ '+(B+1)+'배':'신호원 저항 R<sub>S</sub>와 부하 R<sub>L</sub>의 분압 → 큰 손실')+'<br><span class="sm">출력이 이미터 전압을 그대로 따르므로 “follower”. 임피던스 변환기(버퍼)로 쓰인다(교재 145~146쪽).</span>');}
+return{start(){setChips(['ef-use','ef-dir'],'ef-use');use=true;draw();},frame(dt){tn+=dt;draw();}};
+
+});
+
+/* ---- fq ---- */
+REG["fq"] = safe("fq.init", function () {
+const cv=$('#fq-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);
+const B=200,HIE=3500,RC=1740,RE=604,RIN=1/(1/59000+1/16500+1/HIE),FH=300e3;
+function gain(f,c1,ce){const hp=f/Math.hypot(f,1/(2*Math.PI*c1*RIN));const zRe=ce>0?{r:RE/(1+Math.pow(2*Math.PI*f*RE*ce,2)),i:-2*Math.PI*f*RE*RE*ce/(1+Math.pow(2*Math.PI*f*RE*ce,2))}:{r:RE,i:0};
+ const den=Math.hypot(HIE+(B+1)*zRe.r,(B+1)*zRe.i);return B*RC/den*hp/Math.hypot(1,f/FH);}
+function draw(){const c1=Math.pow(10,g('fq-c1'))*1e-6,ce=g('fq-ce')>=1?Math.pow(10,g('fq-ce'))*1e-6:0,f=Math.pow(10,g('fq-f'));setT('fq-c1-v',(c1*1e6).toFixed(2)+' µF');setT('fq-ce-v',ce?(ce*1e6).toFixed(0)+' µF':'없음');setT('fq-f-v',scNum(f)+' Hz');
+ ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);const gx=100,gy=70,gw=860,gh=500,l0=1,l1=6;const X=ff=>gx+(Math.log10(ff)-l0)/(l1-l0)*gw,Yv=a=>gy+gh-(20*Math.log10(Math.max(a,1e-3))+0)/60*gh+ (0)  ;
+ const Y=a=>gy+gh-(20*Math.log10(Math.max(a,1e-2))+20)/80*gh;
+ ctx.fillStyle='rgba(255,255,255,.05)';ctx.fillRect(gx,gy,gw,gh);ctx.strokeStyle='rgba(160,190,255,.35)';ctx.lineWidth=1;ctx.strokeRect(gx,gy,gw,gh);
+ for(let e=1;e<=6;e++){tx(ctx,scNum(Math.pow(10,e))+'Hz',X(Math.pow(10,e)),gy+gh+24,16,C.dim,'center',500);ctx.strokeStyle='rgba(160,190,255,.15)';ctx.beginPath();ctx.moveTo(X(Math.pow(10,e)),gy);ctx.lineTo(X(Math.pow(10,e)),gy+gh);ctx.stroke();}
+ for(let d=-20;d<=60;d+=20){const y=gy+gh-(d+20)/80*gh;tx(ctx,d+' dB',gx-8,y+5,16,C.dim,'right',500);ctx.strokeStyle='rgba(160,190,255,.15)';ctx.beginPath();ctx.moveTo(gx,y);ctx.lineTo(gx+gw,y);ctx.stroke();}
+ const a0=gain(1e4,1e-3,1e-2);const dr=a0*0.7071;ctx.setLineDash([6,6]);ctx.strokeStyle='#8ea3cf';ctx.beginPath();ctx.moveTo(gx,Y(dr));ctx.lineTo(gx+gw,Y(dr));ctx.stroke();ctx.setLineDash([]);tx(ctx,'−3 dB',gx+gw-6,Y(dr)-6,16,'#8ea3cf','right',700);
+ ctx.strokeStyle='#ffe27a';ctx.lineWidth=3.5;ctx.beginPath();for(let i=0;i<=200;i++){const ff=Math.pow(10,l0+(l1-l0)*i/200),a=gain(ff,c1,ce);i?ctx.lineTo(X(ff),Y(a)):ctx.moveTo(X(ff),Y(a));}ctx.stroke();
+ const a=gain(f,c1,ce);ctx.fillStyle='#ff9ecf';ctx.beginPath();ctx.arc(X(f),Y(a),9,0,TAU);ctx.fill();
+ let fl=null;for(let i=0;i<=400;i++){const ff=Math.pow(10,l0+(l1-l0)*i/400);if(gain(ff,c1,ce)>=gain(3e3,c1,ce)*0.7071){fl=ff;break;}}
+ tx(ctx,'전압 증폭도 vs 주파수 (이미터 접지 증폭기, 모형)',gx,gy-14,19,C.text,'left',700);
+ if(fl){ctx.strokeStyle='#5eead4';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(X(fl),gy);ctx.lineTo(X(fl),gy+gh);ctx.stroke();tx(ctx,'f_L ≈ '+scNum(fl)+'Hz',X(fl)+6,gy+22,18,'#5eead4','left',700);}
+ const f1=1/(2*Math.PI*c1*RIN);
+ setH('fq-msg','f = <b>'+scNum(f)+' Hz</b>에서 |A<sub>v</sub>| = <b class="k">'+a.toFixed(1)+'</b> ('+(20*Math.log10(a)).toFixed(0)+' dB)<br>저역 차단 주파수 (−3 dB): <b>'+(fl?scNum(fl)+' Hz':'—')+'</b><br>C<sub>1</sub> 단독: f<sub>L1</sub> = 1/(2πC<sub>1</sub>R<sub>in</sub>) = '+scNum(f1)+' Hz (R<sub>in</sub> = '+(RIN/1000).toFixed(2)+' kΩ, 교재 식 4-31)<br><span class="sm">C<sub>1</sub>·C<sub>E</sub>가 작으면 낮은 소리가 약해진다. C<sub>E</sub>를 빼면 전 대역 이득이 낮고 대신 평탄하다.</span>');}
+return{start(){draw();},frame(){draw();}};
+
+});
+
+/* =====================================================================
+   슬라이드 관리자
+   ===================================================================== */
+const slides = $$('.slide'), deck = $('#deck'); let cur = -1, step = 0, activeFrame = null, activeId = '', hudTimer = 0;
+const NOTES = DECK.notes, ASK = DECK.ask, CIRC = ['①', '②', '③', '④', '⑤'];
+function renderNotes(i) {
+  const n = NOTES[slides[i].id]; if (!n) { $('#notes').innerHTML = ''; return; }
+  $('#notes').innerHTML = `<div class="nh">📝 오개념 교정 노트 · 슬라이드 ${i + 1} / ${slides.length}<span style="float:right">발문을 화면에 띄우기: Q 키</span></div>` + (n.q ? `<div class="nq">💬 발문: ${n.q}</div>` : '') +
+    (n.m || []).map(([a, b]) => `<div class="ni"><span class="nx">❌ 오개념</span> ${a}<br><span class="nv">✅ 교정</span> ${b}</div>`).join('');
+}
+function renderAsk(i) {
+  const q = ASK[slides[i].id] || [];
+  $('#ask').innerHTML = `<div class="ak"><div class="ah">💬 생각해 보기 · ${i + 1} / ${slides.length}</div>` + (q.length ? q.map((t, k) => `<div class="aq">${q.length > 1 ? `<span>${CIRC[k] || (k + 1) + '.'}</span>` : ''}${t}</div>`).join('') : '<div class="aq" style="color:var(--muted)">이 슬라이드에는 발문이 없습니다.</div>') + '<div class="af">Q 키 · Esc · 화면 클릭으로 닫기</div></div>';
+}
+function toggleAsk(force) { const on = $('#ask').classList.toggle('on', force); $('#b-ask').classList.toggle('on', on); }
+const maxStep = i => +(slides[i].dataset.steps || 0);
+function fit() {
+  const vp = $('#viewport'), vw = vp.clientWidth, vh = vp.clientHeight, rf = vw < 1100;
+  document.documentElement.classList.toggle('rf', rf);
+  if (rf) { const W = vw < 640 ? 640 : vw, s = vw / W; deck.style.width = W + 'px'; deck.style.height = (vh / s) + 'px'; deck.style.transform = `scale(${s})`; return; }
+  deck.style.width = ''; deck.style.height = '';
+  const s = Math.min(vw / 1920, vh / 1080); deck.style.transform = `translate(-50%,-50%) scale(${s})`;
+}
+function fitSteps() { // 단계 목록이 영역을 넘으면 자동 축소 (실제 렌더링 높이 기준)
+  if (cur < 0) return; const side = $('.side.steps', slides[cur]); if (!side) return;
+  side.style.transform = ''; side.style.width = '';
+  if (side.clientHeight > 0 && side.scrollHeight > side.clientHeight + 1) { const k = side.clientHeight / side.scrollHeight; side.style.transformOrigin = 'top left'; side.style.transform = `scale(${k})`; side.style.width = (100 / k) + '%'; }
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitSteps);
+function applyStep() {
+  $$('.st', slides[cur]).forEach(el => { el.classList.toggle('on', +el.dataset.i <= step); el.classList.toggle('cur', +el.dataset.i === step); });
+  const id = slides[cur].id, r = REG[id]; r && r.onStep && safe(id + '.onStep', () => r.onStep(step));
+}
+const mgSet = (sl, on) => $$('iframe.mg-embed', sl).forEach(f => { f.src = on ? f.dataset.src : 'about:blank'; });
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.mg-re'); if (b) { const f = $('iframe', b.parentElement); f && f.contentWindow && f.contentWindow.postMessage({ mg: 'cmd', cmd: 'restart' }, '*'); b.blur(); } });
+function show(i, st = 0) {
+  i = Math.max(0, Math.min(slides.length - 1, i));
+  if (cur >= 0) { const oid = slides[cur].id, o = REG[oid]; o && o.stop && safe(oid + '.stop', () => o.stop()); slides[cur].classList.remove('active'); mgSet(slides[cur], false); }
+  cur = i; step = Math.min(st, maxStep(i)); slides[i].classList.add('active'); mgSet(slides[i], true);
+  const id = slides[i].id, r = REG[id]; activeFrame = r && r.frame ? (dt => r.frame(dt)) : null; activeId = id;
+  fitSteps(); r && r.start && safe(id + '.start', () => r.start());
+  $('#h-pg').textContent = `${i + 1} / ${slides.length}`; renderNotes(i); renderAsk(i); toggleAsk(false); applyStep();
+  if (DECK.ask_auto !== false && (ASK[id] || []).length && !askSeen[id]) { askSeen[id] = 1; toggleAsk(true); } // 처음 들어오면 발문을 먼저 띄운다(닫기 전까지 시뮬레이션 정지)
+}
+const askSeen = {};
+const next = () => { if ($('#ask').classList.contains('on')) { toggleAsk(false); return; } if (step < maxStep(cur)) { step++; applyStep(); } else if (cur < slides.length - 1) show(cur + 1); };
+const prev = () => { if (step > 0) { step--; applyStep(); } else if (cur > 0) show(cur - 1, maxStep(cur - 1)); };
+function isDark() { const r = document.documentElement; return r.dataset.theme === 'dark' || (!r.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches); }
+function themeBtn() { $('#b-theme').textContent = isDark() ? '☀ 라이트 전환' : '🌙 다크 전환'; }
+function toggleTheme() { document.documentElement.dataset.theme = isDark() ? 'light' : 'dark'; themeBtn(); }
+function toggleNotes() { const on = $('#notes').classList.toggle('on'); $('#b-notes').classList.toggle('on', on); }
+function toggleHelp(force) { const on = $('#help').classList.toggle('on', force); $('#b-help').classList.toggle('on', on); }
+function fullscreen() { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) { } }
+function poke() { $('#hud').classList.add('show'); clearTimeout(hudTimer); hudTimer = setTimeout(() => $('#hud').classList.remove('show'), 2600); }
+document.addEventListener('keydown', e => {
+  const t = e.target; if (t && t.tagName === 'INPUT' && t.type === 'range' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); next(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+  else if (e.key === 'Home') show(0); else if (e.key === 'End') show(slides.length - 1);
+  else if (e.key === 'f' || e.key === 'F') fullscreen(); else if (e.key === 'n' || e.key === 'N') toggleNotes(); else if (e.key === 't' || e.key === 'T') toggleTheme(); else if (e.key === 'q' || e.key === 'Q') toggleAsk(); else if (e.key === '?' || e.key === 'h' || e.key === 'H') toggleHelp(); else if (e.key === 'Escape') { toggleHelp(false); toggleAsk(false); if ($('#notes').classList.contains('on')) toggleNotes(); }
+});
+$('#h-prev').onclick = prev; $('#h-next').onclick = next; $('#h-fs').onclick = fullscreen; $('#b-help').onclick = () => toggleHelp(); $('#b-ask').onclick = () => toggleAsk(); $('#ask').onclick = () => toggleAsk(false); $('#help-x').onclick = () => toggleHelp(false); $('#help').onclick = e => { if (e.target.id === 'help') toggleHelp(false); }; $('#b-notes').onclick = toggleNotes; $('#b-theme').onclick = toggleTheme;
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
+['mousemove', 'touchstart', 'pointerdown'].forEach(ev => document.addEventListener(ev, poke, { passive: true }));
+window.addEventListener('resize', () => { fit(); fitSteps(); }); fit();
+/* 터치: 좌우로 쓸어 넘기기 (슬라이더·캔버스·버튼 위에서 시작한 건 제외) */
+(function () {
+  let x0 = 0, y0 = 0, ok = false;
+  document.addEventListener('touchstart', e => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; ok = !(e.target.closest && e.target.closest('input,canvas,button,table,.eq,#help,#notes')); }, { passive: true });
+  document.addEventListener('touchend', e => { if (!ok) return; const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; if (Math.abs(dx) > 70 && Math.abs(dx) > 2 * Math.abs(dy)) { dx < 0 ? next() : prev(); } }, { passive: true });
+})();
+let lastT = performance.now();
+(function loop(now) {
+  const dt = Math.min(.05, (now - lastT) / 1000); lastT = now;
+  if (activeFrame && !$('#ask').classList.contains('on')) { try { activeFrame(dt); } catch (e) { reportError(activeId + '.frame', e); activeFrame = null; } }
+  requestAnimationFrame(loop);
+})(lastT);
+
+/* 물리 검증: shared_js에 TESTS() → [[이름, 통과여부, 설명], ...] 가 있으면 콘솔에 출력 */
+(function runSelfTests() {
+  if (typeof TESTS !== 'function') { console.log('물리 검증 항목 없음'); return; }
+  let results = [];
+  try { results = TESTS() || []; } catch (e) { reportError('TESTS', e); return; }
+  console.log('=== ' + DECK.title + ' 물리 검증 ==='); let pass = 0;
+  for (const [name, ok, detail] of results) { console.log(`[${ok ? 'PASS' : 'FAIL'}] ${name}${detail ? ' — ' + detail : ''}`); if (ok) pass++; }
+  console.log(pass === results.length ? '모든 검증 통과' : '일부 검증 실패 — 콘솔 확인 필요');
+  window.__wsSelfTest = { pass, total: results.length };
+})();
+
+window.__deck = { show, next, get cur() { return cur; }, get step() { return step; }, count: slides.length, maxStep };
+let startAt = 0; try { const h = parseInt(location.hash.slice(1), 10); if (h >= 1 && h <= slides.length) startAt = h - 1; } catch (e) { }
+themeBtn(); show(startAt); poke();
+</script>
+</body>
+</html>

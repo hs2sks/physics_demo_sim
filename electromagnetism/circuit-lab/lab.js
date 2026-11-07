@@ -27,6 +27,8 @@
   for (let i = 0; i < 6; i++) UNO_T['A' + i] = { x: 22 + 34 * i, y: 70, d: [0, 1] };
   Object.assign(TERMS, {
     uno: UNO_T, btn: T2, ldr: T2, ntc: T2, buzz: T2,
+    lcd: { '-': { x: -54, y: 70, d: [0, 1] }, '+': { x: -18, y: 70, d: [0, 1] }, sda: { x: 18, y: 70, d: [0, 1] }, scl: { x: 54, y: 70, d: [0, 1] } },
+    dht: { '+': { x: -70, y: -40, d: [-1, 0] }, dt: { x: -70, y: 0, d: [-1, 0] }, '-': { x: -70, y: 40, d: [-1, 0] } },
     servo: { sg: { x: -70, y: -40, d: [-1, 0] }, '+': { x: -70, y: 0, d: [-1, 0] }, '-': { x: -70, y: 40, d: [-1, 0] } },
     sonar: { '+': { x: -54, y: -58, d: [0, -1] }, tr: { x: -18, y: -58, d: [0, -1] }, ec: { x: 18, y: -58, d: [0, -1] }, '-': { x: 54, y: -58, d: [0, -1] } }
   });
@@ -39,7 +41,7 @@
     if (q.pwm !== undefined) return ((t * pwmHz(name)) % 1) < q.pwm ? 5 : 0;
     return q.v ? 5 : 0;
   }
-  const NEWTYPES = new Set(['uno', 'btn', 'ldr', 'ntc', 'buzz', 'servo', 'sonar']);
+  const NEWTYPES = new Set(['uno', 'btn', 'ldr', 'ntc', 'buzz', 'servo', 'sonar', 'lcd', 'dht']);
   const termsOf = p => TERMS[p.type.startsWith('amm') || p.type.startsWith('vm') ? 'mtr' : p.type];
   const isA = p => p.type === 'ammA' || p.type === 'ammD';
   const isV = p => p.type === 'vmA' || p.type === 'vmD';
@@ -136,6 +138,8 @@
         case 'buzz': add(p, nd('a'), nd('b'), 1 / R_BUZZ); break;
         case 'servo': add(p, nd('+'), nd('-'), 1 / R_SERVO); break;
         case 'sonar': add(p, nd('+'), nd('-'), 1 / R_SONAR); break;
+        case 'lcd': add(p, nd('+'), nd('-'), 1 / 250); break;
+        case 'dht': add(p, nd('+'), nd('-'), 1 / 2000); break;
         default: add(p, nd('+'), nd('-'), c.ideal ? (isA(p) ? 1e6 : 1e-12) : 1 / meterR(p));
       }
     });
@@ -312,11 +316,15 @@
     .fl-side th{background:#f2f5fa}.fl-side input[type=text]{width:100%;border:1px solid #cfd8e3;border-radius:5px;padding:3px 5px;font:inherit}
     .fl-side .fl-btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.fl-side .fl-btns button{padding:6px 10px;font-size:.88em}
     .fl-side summary{cursor:pointer;font-weight:700}.fl-side ol{margin:8px 0 0 18px;font-size:.86em;line-height:1.6}
+    .fl-sub .fl-gb{max-width:560px}.fl-sub label{display:block;margin:8px 0 2px;font-size:.9em;font-weight:700}
+    .fl-sub input[type=text],.fl-sub textarea{width:100%;font:inherit;padding:6px 8px;border:1px solid #cfd8e3;border-radius:6px}.fl-sub .row{display:flex;gap:10px}.fl-sub .row>div{flex:1}
+    .fl-sub .opt{font-weight:400;display:inline-flex;gap:4px;margin-right:12px;align-items:center}.fl-sub .st{margin-top:8px;min-height:1.4em;font-size:.92em}.fl-sub .st.bad{color:#b3261e}.fl-sub .st.ok{color:#1e8f4e;font-weight:700}
     .fl-code{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:10px;margin-top:8px}
     .fl-codebar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px;font-size:.9em}.fl-codebar button{padding:5px 10px}
     .fl-ed{display:flex;border:1px solid #cfd8e3;border-radius:6px;overflow:hidden;background:#1e2430}
     .fl-ln{margin:0;padding:8px 6px;text-align:right;color:#6b7a8c;background:#171c26;font:13px/1.5 ui-monospace,Consolas,monospace;user-select:none;min-width:34px;overflow:hidden;white-space:pre}
     .fl-src{flex:1;min-width:0;min-height:260px;height:300px;max-height:520px;border:0;outline:0;resize:vertical;padding:8px;background:#1e2430;color:#e6edf6;font:13px/1.5 ui-monospace,Consolas,monospace;tab-size:2;white-space:pre;overflow:auto}
+    .fl-sin{display:flex;gap:6px;margin-top:6px}.fl-sin input{flex:1;font:13px ui-monospace,Consolas,monospace;padding:5px 8px;border:1px solid #cfd8e3;border-radius:6px}.fl-sin button{padding:5px 12px}
     .fl-skst{font-size:.88em}.fl-skst.bad{color:#b3261e;font-weight:700}.fl-skst.ok{color:#1e8f4e;font-weight:700}
     .fl-ser{margin-top:8px}.fl-ser pre{margin:4px 0 0;background:#0f141c;color:#9be39b;border-radius:6px;padding:8px;height:130px;overflow:auto;font:13px/1.45 ui-monospace,Consolas,monospace;white-space:pre-wrap}
     .fl-pend{animation:flpulse 1s infinite}@keyframes flpulse{0%,100%{stroke-opacity:1}50%{stroke-opacity:.2}}
@@ -330,8 +338,8 @@
       <div class="fl-mid"><div class="fl-bar"><button id="fl-guide" class="primary">📖 사용 안내 · Guide</button>
           <button id="fl-rot" title="선택한 부품 회전 (R 키)">⟳ 회전</button><button id="fl-del">선택 삭제</button><button id="fl-clear">모두 지우기</button>
           <button id="fl-schem" class="primary">🔌 회로도 보기</button><label><input type="checkbox" id="fl-hide"> 저항 값 가리기(색띠로 읽기)</label>
-          <label><input type="checkbox" id="fl-theory"> 이론값 보기(교사용)</label><label><input type="checkbox" id="fl-snd"> 🔊 부저 소리</label>
-          <select id="fl-axsel" title="아두이노 예제 회로"><option value="">🧪 아두이노 예제 회로…</option><option value="ard-blink">① LED 깜빡이기 (Blink)</option><option value="ard-button">② 버튼으로 LED 켜고 끄기</option><option value="ard-ldr">③ 조도센서로 LED 밝기 조절</option><option value="ard-servo">④ 가변저항으로 서보 돌리기</option><option value="ard-sonar">⑤ 초음파 거리계 + 부저</option><option value="ard-ntc">⑥ 서미스터 온도계</option></select></div>
+          <label><input type="checkbox" id="fl-theory"> 이론값 보기(교사용)</label><label><input type="checkbox" id="fl-snd"> 🔊 부저 소리</label><button id="fl-submit" class="primary" title="내 회로(와 코드)를 선생님께 제출">📤 교사에게 제출</button>
+          <select id="fl-axsel" title="아두이노 예제 회로"><option value="">🧪 아두이노 예제 회로…</option><option value="ard-blink">① LED 깜빡이기 (Blink)</option><option value="ard-button">② 버튼으로 LED 켜고 끄기</option><option value="ard-ldr">③ 조도센서로 LED 밝기 조절</option><option value="ard-servo">④ 가변저항으로 서보 돌리기</option><option value="ard-sonar">⑤ 초음파 거리계 + 부저</option><option value="ard-ntc">⑥ 서미스터 온도계</option><option value="ard-dht">⑦ 온습도센서 + LCD</option><option value="ard-serial">⑧ 시리얼로 LED 밝기 조절</option></select></div>
         <div class="fl-board" id="fl-board"></div><div class="fl-sim" id="fl-sim" hidden><b>⏱ 시간</b> <span id="fl-t">0.000 s</span>
           <button id="fl-run">⏸ 멈춤</button><button id="fl-reset">↺ 방전·처음으로</button>
           <label>화면 시간 <select id="fl-win"><option value="0">전체</option><option value="0.005">5 ms</option><option value="0.02">20 ms</option><option value="0.06">60 ms</option><option value="0.2">200 ms</option><option value="1">1 s</option><option value="5">5 s</option></select></label>
@@ -340,7 +348,8 @@
         <div class="fl-code" id="fl-code" hidden>
           <div class="fl-codebar"><b>💻 아두이노 코드</b><button id="fl-up" class="primary">▶ 업로드·실행</button><button id="fl-stop">■ 정지</button><span id="fl-skst" class="fl-skst"></span></div>
           <div class="fl-ed"><pre class="fl-ln" id="fl-ln">1</pre><textarea class="fl-src" id="fl-src" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea></div>
-          <div class="fl-ser"><b>🖥 시리얼 모니터</b> <button id="fl-sclr">지우기</button><pre id="fl-sout"></pre></div></div>
+          <div class="fl-ser"><b>🖥 시리얼 모니터</b> <button id="fl-sclr">지우기</button><pre id="fl-sout"></pre>
+            <div class="fl-sin"><input type="text" id="fl-sin" placeholder="시리얼 입력 (예: 25, on) — Enter로 보내기" autocomplete="off" maxlength="80"><button id="fl-ssend">보내기</button></div></div></div>
         <div class="fl-msgs" id="fl-msgs" aria-live="polite"></div></div>
       <div class="fl-side">
         <div><b>📟 계기</b><table id="fl-meters"></table></div>
@@ -398,7 +407,7 @@
         const x = 170 + (k % 5) * 165 + (big ? 0 : 0), y = (big ? 170 : 130) + Math.floor(k / 5) * 170;
         if (y > BH - 90) break;
         const u = S.parts.find(q => q.type === 'uno'), vert = u && (u.rot || 0) % 180 !== 0;
-        if (u && Math.abs(x - u.x) < (vert ? 140 : 300) && Math.abs(y - u.y) < (vert ? 300 : 120)) continue;
+        if (u && Math.abs(x - u.x) < (vert ? 140 : 300) && Math.abs(y - u.y) < (vert ? 300 : 150)) continue;
         if (!S.parts.some(q => Math.abs(q.x - x) < 120 && Math.abs(q.y - y) < 110)) return { x, y };
       }
       return { x: 120 + Math.random() * 600, y: 120 + Math.random() * 300 };
@@ -417,16 +426,18 @@
       else if (type === 'diode') { p.name = 'D' + nx('D'); }
       else if (type === 'led') { p.col = opt.val || 0; p.name = 'LED' + nx('E'); }
       else if (type === 'sw2') { p.pos = 1; p.name = '스위치(쌍투)'; }
-      else if (type === 'uno') { p.name = 'UNO'; p.rot = 90; p.pins = {}; if (!S.sketch) S.sketch = DEFAULT_SKETCH; }
+      else if (type === 'uno') { p.name = 'UNO'; p.pins = {}; if (!S.sketch) S.sketch = DEFAULT_SKETCH; }
       else if (type === 'btn') { p.down = false; p.name = '버튼' + nx('U'); }
       else if (type === 'ldr') { p.lux = 0.6; p.name = 'LDR' + nx('Q'); }
       else if (type === 'ntc') { p.temp = 25; p.name = '서미스터' + nx('H'); }
       else if (type === 'sonar') { p.dist = 50; p.name = '초음파' + nx('W'); }
       else if (type === 'servo') { p.name = '서보' + nx('M'); p._a = 90; }
       else if (type === 'buzz') { p.name = '부저' + nx('Z'); }
+      else if (type === 'dht') { p.temp = 24; p.hum = 55; p.name = 'DHT' + nx('T'); }
+      else if (type === 'lcd') { p.name = 'LCD'; }
       else if (type === 'bat') { p.cells = 4; p.name = '건전지' + (++S.cnt.B > 1 ? S.cnt.B : ''); }
       else { p.range = 0; p.name = (isA(p) ? 'A' : 'V') + (isA(p) ? ++S.cnt.A : ++S.cnt.V); }
-      const s0 = (x === undefined) ? (type === 'uno' ? { x: 480, y: 360 } : freeSpot(type)) : { x: snap(x), y: snap(y) };
+      const s0 = (x === undefined) ? (type === 'uno' ? { x: 600, y: 330 } : freeSpot(type)) : { x: snap(x), y: snap(y) };
       p.x = Math.max(80, Math.min(BW - 80, s0.x)); p.y = Math.max(80, Math.min(BH - 90, s0.y));
       S.parts.push(p); S.sel = { k: 'part', id: p.id }; update(); return p;
     }
@@ -574,10 +585,13 @@
     const lead = (g, x1, x2) => g.appendChild(h('line', { x1, y1: 0, x2, y2: 0, stroke: '#9aa5b3', 'stroke-width': 5, 'stroke-linecap': 'round' }));
     function drawUno(p, r) {
       const g = h('g'), run = ardOn();
-      g.appendChild(h('rect', { x: -272, y: -34, width: 56, height: 48, rx: 3, fill: '#c9ced6', stroke: '#8d96a3', 'stroke-width': 2 }));
+      g.appendChild(h('rect', { x: -276, y: -58, width: 64, height: 52, rx: 3, fill: '#c9ced6', stroke: '#8d96a3', 'stroke-width': 2 }));      // USB-B
+      g.appendChild(h('rect', { x: -268, y: 14, width: 54, height: 46, rx: 3, fill: '#20242c', stroke: '#0c0e12', 'stroke-width': 2 }));      // DC 전원 잭
       g.appendChild(h('rect', { x: -250, y: -70, width: 500, height: 140, rx: 10, fill: '#0b7a8e', stroke: '#075565', 'stroke-width': 3 }));
       const K = t => { t.setAttribute('data-keep', '1'); return t; };      // 보드와 같이 도는 글자
-      g.appendChild(K(T('USB', -244, -8, 11, '#4a5666', 'middle', 700)));
+      g.appendChild(K(T('USB', -244, -28, 11, '#4a5666', 'middle', 700))); g.appendChild(K(T('DC', -241, 42, 11, '#aab4c3', 'middle', 700)));
+      g.appendChild(h('rect', { x: 200, y: -12, width: 36, height: 12, rx: 2, fill: '#1c1f26' })); g.appendChild(h('rect', { x: 200, y: 4, width: 36, height: 12, rx: 2, fill: '#1c1f26' }));      // ICSP
+      g.appendChild(h('rect', { x: 22, y: -12, width: 26, height: 12, rx: 6, fill: '#cfd6df', stroke: '#8d96a3' }));      // 크리스털
       g.appendChild(K(T('ARDUINO UNO', -70, -6, 24, '#fff', 'middle', 700)));
       g.appendChild(K(T(run ? '● 실행 중' : '○ 대기', -70, 14, 14, run ? '#9bf0b4' : '#bfe3ea', 'middle', 700)));
       g.appendChild(h('rect', { x: 60, y: -14, width: 130, height: 30, rx: 3, fill: '#1c1f26' })); g.appendChild(K(T('ATmega328P', 125, 6, 13, '#aab4c3', 'middle', 700)));
@@ -655,8 +669,30 @@
       g.appendChild(T(p.name + ' · ' + p.dist + ' cm' + (pw ? '' : ' (전원 없음)'), 0, 62, 14, '#333', 'middle', 700));
       return g;
     }
-    const DRAW = { uno: drawUno, btn: drawBtn, ldr: drawLdr, ntc: drawNtc, buzz: drawBuzz, servo: drawServo, sonar: drawSonar, res: drawResistor, cap: drawCap, coil: drawCoil, sw: drawSwitch, bat: drawBattery, bulb: drawBulb, pot: drawPot, diode: drawDiode, led: drawDiode, sw2: drawSw2, acv: drawAcv };
-    const BB = { res: [-78, -34, 156, 68], cap: [-78, -40, 156, 90], coil: [-78, -42, 156, 90], sw: [-84, -30, 168, 70], bat: [-90, -72, 180, 150], acv: [-90, -72, 180, 160], bulb: [-78, -48, 156, 108], pot: [-78, -66, 156, 130], diode: [-78, -44, 156, 100], led: [-78, -44, 156, 100], sw2: [-84, -40, 168, 120], mtr: [-92, -86, 184, 214], uno: [-276, -92, 536, 170], btn: [-78, -48, 156, 108], ldr: [-78, -60, 156, 124], ntc: [-78, -44, 156, 104], buzz: [-78, -52, 156, 108], servo: [-80, -72, 156, 132], sonar: [-80, -78, 160, 160] };
+    function drawDht(p, r) {
+      const g = h('g'), pw = !r || r.V > 3;
+      g.appendChild(h('rect', { x: -54, y: -52, width: 100, height: 104, rx: 6, fill: pw ? '#3b8fd0' : '#5b6b80', stroke: '#16365a', 'stroke-width': 2.5 }));
+      for (let i = 0; i < 6; i++) g.appendChild(h('line', { x1: -30, y1: -34 + i * 11, x2: 26, y2: -34 + i * 11, stroke: '#16365a', 'stroke-width': 3, 'stroke-linecap': 'round', 'stroke-opacity': .6 }));
+      g.appendChild(T('+', -44, -34, 12, '#ffd0d0', 'start', 700)); g.appendChild(T('DATA', -46, 4, 10, '#fff', 'start', 700)); g.appendChild(T('−', -44, 46, 13, '#fff', 'start', 700));
+      g.appendChild(T(`${p.name} · ${p.temp} °C · ${p.hum} %`, -4, -62, 13, '#333', 'middle', 700));
+      return g;
+    }
+    function drawLcd(p, r) {
+      const g = h('g'), pw = !r || r.V > 4, L = lcdView(p), on = pw && L && L.disp !== false;
+      g.appendChild(h('rect', { x: -124, y: -52, width: 248, height: 104, rx: 8, fill: '#1f6b43', stroke: '#0f3d26', 'stroke-width': 3 }));
+      g.appendChild(h('rect', { x: -108, y: -40, width: 216, height: 62, rx: 4, fill: on && L.bl ? '#9be39b' : '#4f6a58', stroke: '#0f3d26', 'stroke-width': 2 }));
+      const flip = (p.rot || 0) % 360 === 180;          // 180° 돌려도 글자 순서는 바르게 읽히도록 칸 위치를 맞바꾼다
+      for (let row = 0; row < 2; row++) for (let c0 = 0; c0 < 16; c0++) {
+        const ch = on && L.buf[row] ? (L.buf[row][c0] || ' ') : ' ', c = flip ? 15 - c0 : c0, rw = flip ? 1 - row : row;
+        g.appendChild(h('rect', { x: -104 + c * 13.3, y: -36 + rw * 29, width: 11.4, height: 25, rx: 1, fill: on && L.bl ? '#7fcf7f' : '#566f60', 'fill-opacity': .55 }));
+        if (ch !== ' ') g.appendChild(h('text', { x: -98.3 + c * 13.3, y: -16 + rw * 29, 'font-size': 20, 'text-anchor': 'middle', fill: '#0b2a14', 'font-family': 'ui-monospace,Consolas,monospace', 'font-weight': 700 }, ch));
+      }
+      [['GND', -54], ['VCC', -18], ['SDA', 18], ['SCL', 54]].forEach(([t, x]) => g.appendChild(T(t, x, 40, 10, '#e6f7ec', 'middle', 700)));
+      g.appendChild(T(p.name + (pw ? '' : ' (전원 없음)'), 0, -62, 13, '#333', 'middle', 700));
+      return g;
+    }
+    const DRAW = { dht: drawDht, lcd: drawLcd, uno: drawUno, btn: drawBtn, ldr: drawLdr, ntc: drawNtc, buzz: drawBuzz, servo: drawServo, sonar: drawSonar, res: drawResistor, cap: drawCap, coil: drawCoil, sw: drawSwitch, bat: drawBattery, bulb: drawBulb, pot: drawPot, diode: drawDiode, led: drawDiode, sw2: drawSw2, acv: drawAcv };
+    const BB = { res: [-78, -34, 156, 68], cap: [-78, -40, 156, 90], coil: [-78, -42, 156, 90], sw: [-84, -30, 168, 70], bat: [-90, -72, 180, 150], acv: [-90, -72, 180, 160], bulb: [-78, -48, 156, 108], pot: [-78, -66, 156, 130], diode: [-78, -44, 156, 100], led: [-78, -44, 156, 100], sw2: [-84, -40, 168, 120], mtr: [-92, -86, 184, 214], uno: [-276, -92, 536, 170], btn: [-78, -48, 156, 108], ldr: [-78, -60, 156, 124], ntc: [-78, -44, 156, 104], buzz: [-78, -52, 156, 108], servo: [-80, -72, 156, 132], sonar: [-80, -78, 160, 160], dht: [-80, -74, 132, 134], lcd: [-130, -72, 260, 156] };
     function dialGeom(frac) { const a = (-50 + 100 * frac) * Math.PI / 180; return { x: 56 * Math.sin(a), y: 30 - 56 * Math.cos(a) }; }
     function drawMeter(p, r) {
       const g = h('g'), A = isA(p), col = A ? '#1b8fb8' : '#7a4fd1', range = rangeOf(p), analog = isAnalog(p);
@@ -1068,6 +1104,8 @@
       else if (type === 'ntc') { s.appendChild(h('line', { x1: -22, y1: 0, x2: 22, y2: 0, stroke: '#9aa5b3', 'stroke-width': 3 })); s.appendChild(h('circle', { r: 8, fill: '#2a5db0', stroke: '#16365a', 'stroke-width': 1.5 })); }
       else if (type === 'sonar') { s.appendChild(h('rect', { x: -20, y: -11, width: 40, height: 22, rx: 3, fill: '#2d7fb8' })); s.appendChild(h('circle', { cx: -8, cy: 2, r: 6, fill: '#cfd6df', stroke: '#5b6b80' })); s.appendChild(h('circle', { cx: 8, cy: 2, r: 6, fill: '#cfd6df', stroke: '#5b6b80' })); }
       else if (type === 'servo') { s.appendChild(h('rect', { x: -16, y: -9, width: 28, height: 18, rx: 2, fill: '#2b6cb0' })); s.appendChild(h('line', { x1: 2, y1: 0, x2: 20, y2: -9, stroke: '#ddd', 'stroke-width': 3, 'stroke-linecap': 'round' })); }
+      else if (type === 'dht') { s.appendChild(h('rect', { x: -12, y: -13, width: 24, height: 26, rx: 2, fill: '#3b8fd0' })); for (let i = 0; i < 3; i++) s.appendChild(h('line', { x1: -7, y1: -7 + i * 6, x2: 7, y2: -7 + i * 6, stroke: '#16365a', 'stroke-width': 1.5 })); }
+      else if (type === 'lcd') { s.appendChild(h('rect', { x: -21, y: -12, width: 42, height: 24, rx: 3, fill: '#2f7f4f' })); s.appendChild(h('rect', { x: -17, y: -8, width: 34, height: 14, fill: '#9be39b' })); }
       else if (type === 'buzz') { s.appendChild(h('line', { x1: -22, y1: 0, x2: 22, y2: 0, stroke: '#9aa5b3', 'stroke-width': 3 })); s.appendChild(h('circle', { r: 11, fill: '#222' })); s.appendChild(h('circle', { r: 3, fill: '#777' })); }
       else if (type === 'sw') { s.appendChild(h('rect', { x: -20, y: 4, width: 40, height: 6, fill: '#4a5666' })); s.appendChild(h('line', { x1: -16, y1: 3, x2: 14, y2: -9, stroke: '#c0861a', 'stroke-width': 3, 'stroke-linecap': 'round' })); }
       else { const A = type.startsWith('amm'), c = A ? '#1b8fb8' : '#7a4fd1'; s.appendChild(h('rect', { x: -15, y: -13, width: 30, height: 26, rx: 4, fill: type.endsWith('A') ? '#f8f7f1' : '#b9d1a0', stroke: c, 'stroke-width': 2 })); s.appendChild(T(A ? 'A' : 'V', 0, 5, 14, c, 'middle', 700)); }
@@ -1076,7 +1114,7 @@
     const fmtF = v => v + ' Hz';
     const ITEMS = ['전원', ['bat', '건전지'], ['acv', '교류전원'], '스위치', ['sw', '스위치 (단투)'], ['sw2', '스위치 (쌍투)'],
       '값을 고른 뒤 놓기 (놓은 뒤에도 바꿀 수 있어요)', ['res', '저항'], ['pot', '가변저항'], ['bulb', '전구'], ['cap', '축전기'], ['coil', '코일'], ['diode', '다이오드'], ['led', 'LED'],
-      '아두이노 · 센서 · 출력', ['uno', '아두이노 UNO'], ['btn', '푸시버튼'], ['ldr', '조도센서 (LDR)'], ['ntc', '온도센서 (서미스터)'], ['sonar', '초음파센서'], ['servo', '서보모터'], ['buzz', '부저'],
+      '아두이노 · 센서 · 출력', ['uno', '아두이노 UNO'], ['btn', '푸시버튼'], ['ldr', '조도센서 (LDR)'], ['ntc', '온도센서 (서미스터)'], ['sonar', '초음파센서'], ['servo', '서보모터'], ['buzz', '부저'], ['dht', '온습도센서 (DHT)'], ['lcd', 'LCD 16×2 (I2C)'],
       '계기', ['ammA', '전류계 (아날로그)'], ['ammD', '전류계 (디지털)'], ['vmA', '전압계 (아날로그)'], ['vmD', '전압계 (디지털)']];
     const OPTS = { res: [E_NOMINAL, fmtOhm, 100], pot: [POT_R, fmtOhm, 470], bulb: [[0, 1, 2], i => BULBS[i].n, 0], cap: [CAP_UF, fmtC, 100], coil: [COIL_MH, fmtL, 100], led: [[0, 1, 2, 3], i => LEDS[i].n, 0], acv: [FREQS, fmtF, 50] };
     const itemsBox = $('fl-items');
@@ -1114,6 +1152,7 @@
     const POPD = {
       ldr: () => [{ key: 'lux', range: true, label: '밝기', min: 0, max: 1, step: 0.01 }],
       ntc: () => [{ key: 'temp', range: true, label: '온도', min: -10, max: 100, step: 1, fmt: v => v + ' °C' }],
+      dht: () => [{ key: 'temp', range: true, label: '온도', min: 0, max: 50, step: 0.5, fmt: v => v + ' °C' }, { key: 'hum', range: true, label: '습도', min: 20, max: 95, step: 1, fmt: v => v + ' %' }],
       sonar: () => [{ key: 'dist', range: true, label: '물체까지', min: 2, max: 400, step: 1, fmt: v => v + ' cm' }],
       res: () => [nF('nom', 'Ω', 1, 1e6, E_NOMINAL, fmtOhm)], cap: () => [nF('c', 'µF', 1, 100000, CAP_UF, fmtC)], coil: () => [nF('l', 'mH', 1, 5000, COIL_MH, fmtL)],
       pot: () => [nF('nom', 'Ω', 10, 1e5, POT_R, fmtOhm), { key: 'pos', range: true, label: '손잡이' }],
@@ -1332,7 +1371,7 @@ void loop() {
   delay(500);
 }
 `;
-    const ARD = { dirty: false, dt: 1e-6, prog: null, run: null, ser: '', serDirty: false, warns: [], servo: {}, errShown: false };
+    const ARD = { inbuf: '', lcd: null, lcdDirty: false, dirty: false, dt: 1e-6, prog: null, run: null, ser: '', serDirty: false, warns: [], servo: {}, errShown: false };
     const uno = () => S.parts.find(p => p.type === 'uno');
     const ardOn = () => !!(ARD.run && !ARD.run.dead);
     const pinName = n => (n >= 2 && n <= 13) ? 'D' + n : (n >= 14 && n <= 19) ? 'A' + (n - 14) : null;
@@ -1370,6 +1409,30 @@ void loop() {
           return lvl ? 2 * so.dist / 0.0343 : 0;          // 왕복 시간(µs): 소리 속력 343 m/s = 0.0343 cm/µs
         },
         servoAttach() { }, servoDetach(n) { delete ARD.servo[n]; }, servoWrite(n, a) { if (pinOf(n)) ARD.servo[n] = a; },
+        lcd(op, a, b) {
+          const L = ARD.lcd || (ARD.lcd = { buf: ['', ''], cx: 0, cy: 0, bl: false, disp: true, cols: 16, rows: 2 });
+          if (op === 'init') { L.cols = a || 16; L.rows = b || 2; L.buf = ['', '']; L.cx = L.cy = 0; }
+          else if (op === 'bl') L.bl = !!a; else if (op === 'disp') L.disp = !!a;
+          else if (op === 'clear') { L.buf = ['', '']; L.cx = L.cy = 0; }
+          else if (op === 'cur') { L.cx = Math.max(0, a | 0); L.cy = Math.max(0, Math.min(1, b | 0)); }
+          else if (op === 'print') {
+            if (!lcdWired()) { warnOnce('LCD가 연결되지 않았어요: VCC·GND와 SDA→A4, SCL→A5를 도선으로 이어야 글자가 나와요.'); return; }
+            for (const ch of String(a)) { if (L.cx < L.cols) { const r = (L.buf[L.cy] || '').padEnd(L.cx, ' '); L.buf[L.cy] = r.slice(0, L.cx) + ch + r.slice(L.cx + 1); } L.cx++; }
+          }
+          ARD.lcdDirty = true;
+        },
+        dht(n) {
+          const q = pinOf(n); if (!q || !R || !R.nid) return null; const net = R.nid(q.u.id + '.' + q.t);
+          const d = S.parts.find(x => x.type === 'dht' && R.nid(x.id + '.dt') === net);
+          if (!d) { warnOnce(`DHT의 DATA 단자가 ${n}번 핀에 연결되어 있지 않아 NaN(값 없음)이 읽혀요.`); return null; }
+          if (!R.res[d.id] || R.res[d.id].V < 3) { warnOnce('DHT에 전원(VCC·GND)이 연결되지 않아 NaN이 읽혀요.'); return null; }
+          return { t: d.temp, h: d.hum };
+        },
+        serialAvail() { return ARD.inbuf.length; },
+        serialRead() { if (!ARD.inbuf) return -1; const c = ARD.inbuf.charCodeAt(0); ARD.inbuf = ARD.inbuf.slice(1); ARD.sinDirty = true; return c; },
+        serialPeek() { return ARD.inbuf ? ARD.inbuf.charCodeAt(0) : -1; },
+        serialNum(fl) { const m = (fl ? /-?\d+(?:\.\d+)?/ : /-?\d+/).exec(ARD.inbuf); if (!m) return 0; ARD.inbuf = ARD.inbuf.slice(m.index + m[0].length); ARD.sinDirty = true; return +m[0]; },
+        serialLine(u) { const i = u < 0 ? -1 : ARD.inbuf.indexOf(String.fromCharCode(u)); const r = i < 0 ? ARD.inbuf : ARD.inbuf.slice(0, i); ARD.inbuf = i < 0 ? '' : ARD.inbuf.slice(i + 1); ARD.sinDirty = true; return r; },
         serial(t) { ARD.ser += t; if (ARD.ser.length > 6000) ARD.ser = ARD.ser.slice(-4000); ARD.serDirty = true; },
         warn: warnOnce
       };
@@ -1383,7 +1446,7 @@ void loop() {
     const setSk = (m, c) => { const e = $('fl-skst'); e.textContent = m; e.className = 'fl-skst ' + (c || ''); };
     function ardStart() {
       const u = uno(); if (!u || !ARD.prog) return;
-      u.pins = {}; ARD.servo = {}; ARD.warns = []; ARD.ser = ''; ARD.serDirty = true; ARD.errShown = false;
+      u.pins = {}; ARD.servo = {}; ARD.warns = []; ARD.ser = ''; ARD.lcd = null; ARD.inbuf = ''; ARD.serDirty = true; ARD.errShown = false;
       ARD.run = ARD.prog.create(ardIO()); ARD.run.clock = S.t * 1e6;
     }
     function ardUpload() {
@@ -1394,16 +1457,29 @@ void loop() {
       if (!c.ok) { ARD.prog = null; ARD.run = null; setSk('✖ ' + c.error, 'bad'); schedule(); return; }
       ARD.prog = c; S.run = true; resetSim(); ardStart(); setSk('✔ 업로드 완료 — 실행 중', 'ok'); update();
     }
-    function ardStop() { ARD.run = null; const u = uno(); if (u) u.pins = {}; ARD.servo = {}; setSk('■ 정지됨', ''); update(); }
+    function ardStop() { ARD.run = null; ARD.lcd = null; const u = uno(); if (u) u.pins = {}; ARD.servo = {}; setSk('■ 정지됨', ''); update(); }
     function ardRestart() { if (ARD.prog) { S.run = true; resetSim(); setSk('↺ 처음부터 다시 실행', 'ok'); update(); } else setSk('먼저 코드를 업로드하세요.', 'bad'); }
     $('fl-up').addEventListener('click', ardUpload);
     $('fl-stop').addEventListener('click', ardStop);
+    function sendSerial() {
+      const i = $('fl-sin'); if (!i.value && !ardOn()) return;
+      if (!ardOn()) { setSk('먼저 코드를 업로드·실행하세요.', 'bad'); return; }
+      ARD.inbuf += i.value + '\n'; if (ARD.inbuf.length > 400) ARD.inbuf = ARD.inbuf.slice(-400); i.value = '';
+    }
+    $('fl-ssend').addEventListener('click', sendSerial);
+    $('fl-sin').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); sendSerial(); } });
     $('fl-sclr').addEventListener('click', () => { ARD.ser = ''; ARD.serDirty = true; schedule(); });
     function ardAdvance(dt) {
       if (!ardOn()) return; ARD.dt = dt || 1e-6;
       ARD.run.advance(S.t * 1e6);
       if (ARD.run.error && !ARD.errShown) { ARD.errShown = true; setSk('✖ 실행 오류: ' + ARD.run.error, 'bad'); }
     }
+    function lcdWired() {           // VCC·GND 전원과 SDA→A4, SCL→A5 연결을 확인한다
+      const u = uno(), l = S.parts.find(x => x.type === 'lcd'); if (!u || !l || !R || !R.nid) return false;
+      const r = R.res[l.id]; if (!r || r.V < 4) return false;
+      return R.nid(l.id + '.sda') === R.nid(u.id + '.A4') && R.nid(l.id + '.scl') === R.nid(u.id + '.A5');
+    }
+    function lcdView(p) { return lcdWired() ? ARD.lcd : null; }
     function netOf(key) { return R && R.nid ? R.nid(key) : -1; }
     function servoTarget(sv) {
       const u = uno(); if (!u) return null; const net = netOf(sv.id + '.sg');
@@ -1443,11 +1519,55 @@ void loop() {
       if (ed._init !== true) { ed._init = true; syncEd(); }
       if (ARD.serDirty) { ARD.serDirty = false; const o = $('fl-sout'), at = o.scrollTop + o.clientHeight >= o.scrollHeight - 6; o.textContent = ARD.ser; if (at) o.scrollTop = o.scrollHeight; }
     }
+    /* ---------- 교사에게 제출 ---------- */
+    const SUBMIT_URL = 'https://board.crazyray.uk/api/cl/submit';
+    const sub = document.createElement('div'); sub.className = 'fl-gd fl-sub'; sub.hidden = true;
+    sub.innerHTML = `<div class="fl-gb" role="dialog" aria-modal="true"><div class="fl-gh"><b>📤 교사에게 제출하기</b><button id="fs-x">✕</button></div>
+      <div class="fl-gc"><p style="margin:8px 0">지금 보드의 <b>회로</b>와 <b id="fs-what"></b>를 선생님께 보냅니다. 이름·반은 선생님만 볼 수 있어요. 비밀번호 같은 개인정보는 적지 마세요.</p>
+      <div class="row"><div><label>이름</label><input type="text" id="fs-name" maxlength="20" autocomplete="off"></div><div><label>반 (예: 2-3)</label><input type="text" id="fs-cls" maxlength="14" autocomplete="off"></div></div>
+      <label>제목</label><input type="text" id="fs-title" maxlength="60" placeholder="예: 어두우면 켜지는 전등">
+      <label>설명 (무엇을 만들었고, 어떻게 동작하나요?)</label><textarea id="fs-note" rows="4" maxlength="1500"></textarea>
+      <label>함께 보낼 그림</label><div><label class="opt"><input type="radio" name="fs-pic" value="board" checked> 보드 그림</label><label class="opt" id="fs-schemopt"><input type="radio" name="fs-pic" value="schem"> 교과서식 회로도</label><label class="opt"><input type="radio" name="fs-pic" value="none"> 그림 없이</label></div>
+      <div class="st" id="fs-st"></div><div class="fl-btns" style="margin-top:8px;display:flex;gap:8px"><button id="fs-go" class="primary">제출하기</button><button id="fs-cancel">닫기</button></div></div></div>`;
+    host.appendChild(sub);
+    const sq = id => sub.querySelector('#' + id);
+    function snapshot(mode) {
+      const keep = { schem: S.schem, sel: S.sel, pend: S.pending }; S.schem = mode === 'schem'; S.sel = null; S.pending = null; render();
+      let out = '';
+      try { const c = svg.cloneNode(true); c.setAttribute('xmlns', NS); c.setAttribute('width', BW); c.setAttribute('height', BH); out = new XMLSerializer().serializeToString(c); } catch (e) { }
+      S.schem = keep.schem; S.sel = keep.sel; S.pending = keep.pend; render(); return out;
+    }
+    function openSubmit() {
+      if (!S.parts.length) { alert('보드에 부품을 놓아 회로를 만든 뒤에 제출하세요.'); return; }
+      const ar = !!uno(), noSchem = S.parts.some(p => NEWTYPES.has(p.type));
+      sq('fs-what').textContent = ar ? '아두이노 코드' : '전기 회로도';
+      sq('fs-schemopt').hidden = noSchem; sub.querySelector('input[value="' + (ar || noSchem ? 'board' : 'schem') + '"]').checked = true;
+      try { sq('fs-name').value = localStorage.getItem('circuitLab-name') || ''; sq('fs-cls').value = localStorage.getItem('circuitLab-cls') || ''; } catch (e) { }
+      sq('fs-st').textContent = ''; sq('fs-st').className = 'st'; sq('fs-go').disabled = false; sub.hidden = false;
+    }
+    async function doSubmit() {
+      const st = sq('fs-st'), say = (m, c) => { st.textContent = m; st.className = 'st ' + (c || ''); };
+      const name = sq('fs-name').value.trim(), cls = sq('fs-cls').value.trim(), title = sq('fs-title').value.trim();
+      if (name.length < 2) return say('이름을 써 주세요.', 'bad'); if (!cls) return say('반을 써 주세요. (예: 2-3)', 'bad'); if (title.length < 2) return say('제목을 써 주세요.', 'bad');
+      const pic = sub.querySelector('input[name="fs-pic"]:checked').value, ar = !!uno();
+      const body = { name, cls, title, note: sq('fs-note').value.trim(), kind: ar ? 'arduino' : 'circuit', circuit: encCircuit(), sketch: ar ? S.sketch : '', svg: pic === 'none' ? '' : snapshot(pic) };
+      try { localStorage.setItem('circuitLab-name', name); localStorage.setItem('circuitLab-cls', cls); } catch (e) { }
+      sq('fs-go').disabled = true; say('보내는 중…');
+      try {
+        const r = await fetch(SUBMIT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const j = await r.json().catch(() => ({}));
+        if (r.ok && j.ok) { say('✔ 제출했어요! (접수 번호 ' + j.id + ') 같은 제목으로 다시 내면 새 제출로 따로 저장돼요.', 'ok'); }
+        else { say('✖ ' + (j.msg || '제출하지 못했어요.'), 'bad'); sq('fs-go').disabled = false; }
+      } catch (e) { say('✖ 제출 서버에 연결하지 못했어요. 인터넷을 확인하고, 계속 안 되면 [회로 링크 복사]를 선생님께 보내세요.', 'bad'); sq('fs-go').disabled = false; }
+    }
+    $('fl-submit').addEventListener('click', openSubmit);
+    sq('fs-go').addEventListener('click', doSubmit);
+    sub.addEventListener('click', e => { if (e.target === sub || e.target.id === 'fs-x' || e.target.id === 'fs-cancel') sub.hidden = true; });
     $('fl-snd').addEventListener('change', e => { S.snd = e.target.checked; if (S.snd && !AU) sound(1); if (!S.snd) sound(0); });
     $('fl-axsel').addEventListener('change', e => { const k = e.target.value; e.target.value = ''; if (!k) return; if (S.parts.length && !confirm('지금 보드를 지우고 예제를 불러올까요?')) return; loadExample(k); });
 
     const SK_BUTTON = `// 버튼을 누를 때마다 LED가 켜졌다 꺼졌다 합니다.
-const int BTN = 2;
+const int BTN = 12;
 const int LED = 8;
 bool on = false;
 
@@ -1555,19 +1675,72 @@ void loop() {
   delay(500);
 }
 `;
-    const ledOut = (pin, y) => ({ parts: [['r', 'res', 780, y, { nom: 220, tol: 0 }], ['d', 'led', 1000, y, { col: 0 }]], wires: [['u.' + pin, 'r.a'], ['r.b', 'd.a'], ['d.k', 'u.GN2']] });
-    const UNO = ['u', 'uno', 480, 360, { rot: 90 }];
+    const SK_DHT = `// 온습도센서(DHT11) 값을 LCD에 표시합니다.
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <DHT.h>
+
+DHT dht(2, DHT11);                       // DATA 단자를 2번 핀에
+LiquidCrystal_I2C lcd(0x27, 16, 2);      // I2C 주소 0x27, 16칸 × 2줄
+
+void setup() {
+  lcd.init();
+  lcd.backlight();
+  dht.begin();
+}
+
+void loop() {
+  float t = dht.readTemperature();       // 섭씨 온도
+  float h = dht.readHumidity();          // 상대 습도(%)
+
+  lcd.setCursor(0, 0);
+  lcd.print("Temp: ");
+  lcd.print(t, 1);
+  lcd.print((char)223);                  // 도(°) 기호
+  lcd.print("C ");
+  lcd.setCursor(0, 1);
+  lcd.print("Humi: ");
+  lcd.print(h, 0);
+  lcd.print(" %  ");
+  delay(1000);
+}
+`;
+    const SK_SERIAL = `// 시리얼 모니터 아래 입력창에 0~255 숫자를 보내 LED 밝기를 조절합니다.
+const int LED = 9;
+
+void setup() {
+  pinMode(LED, OUTPUT);
+  Serial.begin(9600);
+  Serial.println("0~255 숫자를 입력하세요");
+}
+
+void loop() {
+  if (Serial.available() > 0) {
+    int v = Serial.parseInt();           // 입력한 숫자 읽기
+    v = constrain(v, 0, 255);
+    analogWrite(LED, v);
+    Serial.print("밝기 = ");
+    Serial.println(v);
+    while (Serial.available() > 0) Serial.read();   // 남은 줄바꿈 비우기
+  }
+}
+`;
+    const ledOut = (pin, px) => ({ parts: [['r', 'res', px + 60, 130, { nom: 220, tol: 0 }], ['d', 'led', px + 280, 130, { col: 0 }]], wires: [['u.' + pin, 'r.a'], ['r.b', 'd.a'], ['d.k', 'u.GN2']] });
+    const UNO = ['u', 'uno', 600, 330];
+    const divider = (kind, props) => ({ parts: [['q', kind, 480, 570, props], ['rr', 'res', 680, 570, { nom: 10000, tol: 0 }]], wires: [['u.V5', 'q.a'], ['q.b', 'rr.a'], ['rr.a', 'u.A0'], ['rr.b', 'u.GN']] });
+    const L8 = ledOut('D8', 584), L9 = ledOut('D9', 550);
     Object.assign(EX, {
-      'ard-blink': { speed: 1, sketch: DEFAULT_SKETCH, parts: [UNO, ...ledOut('D8', 344).parts], wires: ledOut('D8', 344).wires },
-      'ard-button': { speed: 1, sketch: SK_BUTTON, parts: [UNO, ...ledOut('D8', 344).parts, ['b', 'btn', 800, 570]], wires: [...ledOut('D8', 344).wires, ['u.D2', 'b.a'], ['b.b', 'u.GN2']] },
-      'ard-ldr': { speed: 1, sketch: SK_LDR, parts: [UNO, ...ledOut('D9', 310).parts, ['q', 'ldr', 210, 250, { lux: 0.7 }], ['rr', 'res', 210, 430, { nom: 10000, tol: 0 }]],
-        wires: [...ledOut('D9', 310).wires, ['u.V5', 'q.b'], ['q.a', 'rr.a'], ['rr.a', 'u.A0'], ['rr.b', 'u.GN']] },
-      'ard-servo': { speed: 1, sketch: SK_SERVO, parts: [UNO, ['pt', 'pot', 210, 300, { nom: 10000, pos: 0.5 }], ['sv', 'servo', 900, 330]],
-        wires: [['u.V5', 'pt.b'], ['u.GN', 'pt.a'], ['pt.w', 'u.A0'], ['u.D9', 'sv.sg'], ['u.V5', 'sv.+'], ['u.GN2', 'sv.-']] },
-      'ard-sonar': { speed: 1, sketch: SK_SONAR, parts: [UNO, ['so', 'sonar', 900, 520, { dist: 60 }], ['bz', 'buzz', 800, 300]],
+      'ard-blink': { speed: 1, sketch: DEFAULT_SKETCH, parts: [UNO, ...L8.parts], wires: L8.wires },
+      'ard-button': { speed: 1, sketch: SK_BUTTON, parts: [UNO, ...L8.parts, ['b', 'btn', 290, 150]], wires: [...L8.wires, ['u.D12', 'b.b'], ['b.a', 'u.GN2']] },
+      'ard-ldr': { speed: 1, sketch: SK_LDR, parts: [UNO, ...L9.parts, ...divider('ldr', { lux: 0.7 }).parts], wires: [...L9.wires, ...divider('ldr').wires] },
+      'ard-servo': { speed: 1, sketch: SK_SERVO, parts: [UNO, ['pt', 'pot', 560, 570, { nom: 10000, pos: 0.5 }], ['sv', 'servo', 1000, 570]],
+        wires: [['u.V5', 'pt.a'], ['u.GN', 'pt.b'], ['pt.w', 'u.A0'], ['u.D9', 'sv.sg'], ['u.V5', 'sv.+'], ['u.GN', 'sv.-']] },
+      'ard-sonar': { speed: 1, sketch: SK_SONAR, parts: [UNO, ['so', 'sonar', 1050, 130, { dist: 60 }], ['bz', 'buzz', 800, 130]],
         wires: [['u.V5', 'so.+'], ['u.GN2', 'so.-'], ['u.D7', 'so.tr'], ['u.D6', 'so.ec'], ['u.D8', 'bz.a'], ['bz.b', 'u.GN2']] },
-      'ard-ntc': { speed: 1, sketch: SK_NTC, parts: [UNO, ...ledOut('D8', 344).parts, ['nt', 'ntc', 210, 250, { temp: 25 }], ['rr', 'res', 210, 430, { nom: 10000, tol: 0 }]],
-        wires: [...ledOut('D8', 344).wires, ['u.V5', 'nt.b'], ['nt.a', 'rr.a'], ['rr.a', 'u.A0'], ['rr.b', 'u.GN']] }
+      'ard-ntc': { speed: 1, sketch: SK_NTC, parts: [UNO, ...L8.parts, ...divider('ntc', { temp: 25 }).parts], wires: [...L8.wires, ...divider('ntc').wires] },
+      'ard-dht': { speed: 1, sketch: SK_DHT, parts: [UNO, ['dh', 'dht', 1000, 130], ['lc', 'lcd', 800, 580, { rot: 180 }]],
+        wires: [['u.V5', 'dh.+'], ['u.GN2', 'dh.-'], ['u.D2', 'dh.dt'], ['u.V5', 'lc.+'], ['u.GN', 'lc.-'], ['u.A4', 'lc.sda'], ['u.A5', 'lc.scl']] },
+      'ard-serial': { speed: 1, sketch: SK_SERIAL, parts: [UNO, ...L9.parts], wires: L9.wires }
     });
 
     /* 바늘 애니메이션 */
@@ -1614,7 +1787,9 @@ void loop() {
 <li>코드 창에 스케치(setup/loop)를 쓰고 <b>▶ 업로드·실행</b>을 누르면 가상 아두이노가 코드를 실행합니다. 오류가 있으면 이유가 코드 창 위에 나옵니다. 보드의 빨간 <b>RESET</b> 단추 또는 ↺로 처음부터 다시 실행합니다.</li>
 <li><b>센서·출력 부품</b>: 푸시버튼(<b>누르고 있는 동안</b> 연결), 조도센서 LDR(밝기 슬라이더), 서미스터(온도 슬라이더), 가변저항(분압 → analogRead), 초음파센서 HC-SR04(거리 슬라이더, VCC·GND·TRIG·ECHO 모두 연결), 서보모터(신호·+·−), 부저(🔊를 켜면 소리), LED(보호 저항 필수). 부품을 누르면 슬라이더가 떠요.</li>
 <li>핀 하나는 최대 40 mA(권장 20 mA), 5 V 단자는 약 500 mA까지입니다. 넘으면 경고가 나옵니다. <b>GND를 꼭 이어야</b> 전류가 돌아옵니다. 센서 값은 <b>분압</b>으로 바뀐다는 점(5 V × R₂/(R₁+R₂))을 계기로 확인해 보세요.</li></ol>
-<p>지원하는 코드: 변수·배열·함수·if/for/while/do/switch, pinMode, digitalWrite/Read, analogRead/Write(PWM은 3·5·6·9·10·11번 핀), delay, millis, map, constrain, random, tone/noTone, pulseIn, Servo(attach/write), Serial.print/println. 지원하지 않는 것: 클래스·포인터·구조체·2차원 배열·String 메서드·외부 라이브러리(LCD·DHT 등). 정수 나눗셈은 int 변수에 저장할 때 소수점을 버립니다. 실수는 소수 둘째 자리까지 출력합니다.</p>
+<p><b>제출</b>: 위쪽 <b>📤 교사에게 제출</b>을 누르면 이름·반·제목·설명과 함께 회로(와 아두이노 코드), 회로 그림이 선생님께 전달됩니다. 다른 학생에게는 보이지 않아요.</p>
+<p>추가 부품: <b>LCD 16×2(I2C)</b>는 VCC·GND에 이어 <b>SDA→A4, SCL→A5</b>, <b>온습도센서 DHT</b>는 VCC·GND와 DATA를 디지털 핀에 이어요. 시리얼 모니터 아래 입력창으로 <b>Serial.parseInt()·readString()</b>에 값을 보낼 수 있어요.</p>
+<p>지원하는 코드: 변수·배열·함수·if/for/while/do/switch, pinMode, digitalWrite/Read, analogRead/Write(PWM은 3·5·6·9·10·11번 핀), delay, millis, map, constrain, random, tone/noTone, pulseIn, Servo(attach/write), Serial(print·println·available·read·parseInt·readString), LiquidCrystal_I2C, DHT(readTemperature·readHumidity). 지원하지 않는 것: 클래스·포인터·구조체·2차원 배열·String 메서드·그 밖의 라이브러리(병렬 LiquidCrystal 등). 정수 나눗셈은 int 변수에 저장할 때 소수점을 버립니다. 실수는 소수 둘째 자리까지 출력합니다.</p>
 <h3>9. 문제가 생기면</h3><ul><li>전류가 0: 스위치가 열렸거나 전지에서 나간 도선이 전지로 돌아오지 않은 것입니다.</li><li>"합선" 경고: 전류계를 병렬로 이었거나 도선이 전지 양쪽을 바로 이은 경우입니다. 스위치를 열고 확인하세요.</li><li>작업은 브라우저에 자동 저장됩니다. "모두 지우기"로 초기화.</li></ul>`,
       en: `<h3>1. Getting started</h3><ol><li>Drag parts from the <b>parts box</b> (left) onto the board (or tap one to auto-place it). For resistors, capacitors, coils etc., <b>pick the value first</b>, then place.</li>
 <li>Drag a part's <b>round terminal</b> onto another terminal to make a <b>wire</b> (or tap two terminals in turn). Battery (+) wires are red, (−) wires are black.</li>

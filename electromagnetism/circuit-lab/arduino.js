@@ -25,9 +25,11 @@
     }
     return { text: out, strs };
   }
-  const restore = (t, strs) => t.replace(/\u0001(\d+)\u0002/g, (_, k) => {
+  const restore = (t, strs) => t.replace(/[\u0001\u0003](\d+)\u0002/g, (m, k) => {
     const s = strs[+k];
-    return s[0] === "'" ? JSON.stringify(unescapeC(s.slice(1, -1))) : s;      // 'a' → "a"
+    if (s[0] !== "'") return s;
+    const u = unescapeC(s.slice(1, -1));
+    return (m[0] === '\u0001' && u.length === 1) ? String(u.charCodeAt(0)) : JSON.stringify(u);   // 'a' → 97 (print 안에서는 "a")
   });
   const unescapeC = s => s.replace(/\\(n|t|r|0|\\|'|")/g, (_, c) => ({ n: '\n', t: '\t', r: '\r', 0: '\0' }[c] || c));
 
@@ -63,6 +65,7 @@
   function translate(src) {
     const P = protect(src); let t = P.text;
     const lines = src.split('\n').length;
+    const chars = [...t.matchAll(/\bchar\s+(\w+)\s*(?==|;|,)/g)].map(m => m[1]);          // 선언 바꾸기 전에 char 변수 이름을 모아 둔다
     t = t.replace(/^[ \t]*#\s*include[^\n]*/gm, '');
     t = t.replace(/^[ \t]*#\s*define[ \t]+(\w+)\([^\n]*/gm, (_, n) => { throw new Error('#define 매크로 함수(' + n + ')는 지원하지 않아요. 함수나 const 변수로 바꿔 주세요.'); });
     t = t.replace(/^[ \t]*#\s*define[ \t]+(\w+)[ \t]+([^\n]*)/gm, (_, n, v) => 'let ' + n + ' = ' + v + ';');
@@ -79,6 +82,10 @@
       return pre + 'function* ' + name + '(' + ps + ') {';
     });
 
+    // 라이브러리 객체: LiquidCrystal_I2C lcd(0x27, 16, 2);  DHT dht(2, DHT11);
+    t = t.replace(/\b(LiquidCrystal_I2C|DHT)\s+(\w+)\s*\(([^()]*)\)\s*;/g, (m, cls, name, args) => 'let ' + name + ' = new ' + cls + '(' + args + ');');
+    // print 안의 글자('A')는 그대로 글자로 둔다
+    t = t.replace(/(\.(?:print|println|write)\s*\(\s*)\u0001(\d+)\u0002/g, '$1\u0003$2\u0002');
     // Servo 객체
     t = t.replace(/\bServo\s+(\w+(?:\s*,\s*\w+)*)\s*;/g, (_, names) => 'let ' + names.split(',').map(n => n.trim() + ' = new Servo()').join(', ') + ';');
 
@@ -95,8 +102,10 @@
     t = t.replace(/\blet\s+(\w+)\s*\[([^\]]+)\]\s*;/g, 'let $1 = new Array($2).fill(0);');
     // (int) 형변환은 소수점 버림, (float) 형변환은 없애도 같다
     t = t.replace(/\((?:float|double)\)\s*/g, '');
+    t = t.replace(/\(char\)\s*(\w+)/g, '__ch($1)');
     t = t.replace(/\((?:unsigned\s+)?(?:int|long|short|byte|word|uint\d+_t|int\d+_t)\)\s*(\w+(?:\.\w+)*(?:\([^()]*\))?|\([^()]*\))/g, '__i($1)');
 
+    chars.forEach(n => { t = t.replace(new RegExp('(\\.(?:print|println|write)\\s*\\(\\s*)' + n + '(\\s*[,)])', 'g'), '$1__ch(' + n + ')$2'); });
     // 정수 변수에 대입하는 식에 나눗셈이 있으면 소수점을 버린다 (int x = a / 2; 처럼)
     ints.forEach(n => {
       const re = new RegExp('(\\blet\\s+|[;{}]\\s*|^\\s*)(' + n + ')\\s*=(?!=)', 'gm'); let out = '', last = 0, m;
@@ -134,8 +143,8 @@
   }
 
   /* ---- 실행기 ---- */
-  const API_NAMES = ['pinMode', 'digitalWrite', 'digitalRead', 'analogRead', 'analogWrite', 'analogReference', 'millis', 'micros', 'map', 'constrain', 'min', 'max', 'abs', 'sq', 'sqrt', 'pow', 'sin', 'cos', 'tan', 'atan', 'atan2', 'exp', 'log', 'floor', 'ceil', 'round', 'radians', 'degrees', 'random', 'randomSeed', 'tone', 'noTone', 'pulseIn', 'Serial', 'Servo', 'sizeof', 'bitRead', 'bitWrite', 'lowByte', 'highByte', 'isnan', 'cli', 'sei', '__i', '__ms', '__us'];
-  const CONSTS = { HIGH: 1, LOW: 0, INPUT: 0, OUTPUT: 1, INPUT_PULLUP: 2, LED_BUILTIN: 13, A0: 14, A1: 15, A2: 16, A3: 17, A4: 18, A5: 19, PI: Math.PI, HALF_PI: Math.PI / 2, TWO_PI: Math.PI * 2, DEC: 10, HEX: 16, OCT: 8, BIN: 2, true: true, false: false, NULL: 0, LSBFIRST: 0, MSBFIRST: 1 };
+  const API_NAMES = ['pinMode', 'digitalWrite', 'digitalRead', 'analogRead', 'analogWrite', 'analogReference', 'millis', 'micros', 'map', 'constrain', 'min', 'max', 'abs', 'sq', 'sqrt', 'pow', 'sin', 'cos', 'tan', 'atan', 'atan2', 'exp', 'log', 'floor', 'ceil', 'round', 'radians', 'degrees', 'random', 'randomSeed', 'tone', 'noTone', 'pulseIn', 'Serial', 'Servo', 'sizeof', 'bitRead', 'bitWrite', 'lowByte', 'highByte', 'isnan', 'cli', 'sei', 'Wire', 'LiquidCrystal_I2C', 'DHT', '__ch', '__i', '__ms', '__us'];
+  const CONSTS = { HIGH: 1, LOW: 0, INPUT: 0, OUTPUT: 1, INPUT_PULLUP: 2, LED_BUILTIN: 13, A0: 14, A1: 15, A2: 16, A3: 17, A4: 18, A5: 19, PI: Math.PI, HALF_PI: Math.PI / 2, TWO_PI: Math.PI * 2, DEC: 10, HEX: 16, OCT: 8, BIN: 2, DHT11: 11, DHT22: 22, DHT21: 21, NAN: NaN, true: true, false: false, NULL: 0, LSBFIRST: 0, MSBFIRST: 1 };
   const COST = { digital: 4, analog: 112, other: 2 };
 
   function compile(src) {
@@ -190,8 +199,9 @@
       begin() { }, end() { }, flush() { }, setTimeout() { },
       print(v, a) { serialWrite(fmtNum(v, a)); }, println(v, a) { serialWrite(v === undefined ? '\n' : fmtNum(v, a) + '\n'); },
       write(v) { serialWrite(typeof v === 'number' ? String.fromCharCode(v) : String(v)); },
-      available() { return io.serialAvail ? io.serialAvail() : 0; }, read() { return io.serialRead ? io.serialRead() : -1; },
-      parseInt() { const s = io.serialLine ? io.serialLine() : ''; return parseInt(s, 10) || 0; }, readString() { return io.serialLine ? io.serialLine() : ''; }, readStringUntil() { return io.serialLine ? io.serialLine() : ''; }
+      available() { return io.serialAvail ? io.serialAvail() : 0; }, read() { return io.serialRead ? io.serialRead() : -1; }, peek() { return io.serialPeek ? io.serialPeek() : -1; },
+      parseInt() { return io.serialNum ? io.serialNum(false) : 0; }, parseFloat() { return io.serialNum ? io.serialNum(true) : 0; },
+      readString() { return io.serialLine ? io.serialLine(-1) : ''; }, readStringUntil(c) { return io.serialLine ? io.serialLine(typeof c === 'string' ? c.charCodeAt(0) : c) : ''; }
     };
     function Servo() { this.pin = -1; this.ang = 0; }
     Servo.prototype.attach = function (pin) { this.pin = pin; cost(5); io.servoAttach && io.servoAttach(pin); return 1; };
@@ -201,7 +211,25 @@
     Servo.prototype.read = function () { return Math.round(this.ang); };
     Servo.prototype.attached = function () { return this.pin >= 0; };
 
-    const api = Object.assign({}, CONSTS, {
+    const chText = v => typeof v === 'number' ? (v === 223 ? '°' : String.fromCharCode(v)) : String(v);
+    function LiquidCrystal_I2C(addr, cols, rows) { this.cols = cols || 16; this.rows = rows || 2; cost(1); io.lcd && io.lcd('init', this.cols, this.rows, addr); }
+    const LP = LiquidCrystal_I2C.prototype;
+    LP.init = LP.begin = function () { io.lcd && io.lcd('init', this.cols, this.rows); };
+    LP.backlight = function () { cost(100); io.lcd && io.lcd('bl', 1); }; LP.noBacklight = function () { cost(100); io.lcd && io.lcd('bl', 0); };
+    LP.display = function () { io.lcd && io.lcd('disp', 1); }; LP.noDisplay = function () { io.lcd && io.lcd('disp', 0); };
+    LP.clear = function () { cost(2000); io.lcd && io.lcd('clear'); }; LP.home = function () { cost(2000); io.lcd && io.lcd('cur', 0, 0); };
+    LP.setCursor = function (c, r) { cost(100); io.lcd && io.lcd('cur', c, r); };
+    LP.print = function (v, a) { const s = typeof v === 'number' ? fmtNum(v, a) : String(v); cost(100 * s.length); io.lcd && io.lcd('print', s); return s.length; };
+    LP.println = LP.print; LP.write = function (v) { return this.print(chText(v)); };
+    ['cursor', 'noCursor', 'blink', 'noBlink', 'createChar', 'scrollDisplayLeft', 'scrollDisplayRight', 'autoscroll', 'noAutoscroll', 'leftToRight', 'rightToLeft'].forEach(n => { LP[n] = function () { }; });
+    function DHT(pin, type) { this.pin = pin; this.type = type; }
+    DHT.prototype.begin = function () { cost(10); };
+    DHT.prototype.read = function () { return !!io.dht && !!io.dht(this.pin); };
+    DHT.prototype.readTemperature = function (f) { cost(5000); const r = io.dht ? io.dht(this.pin) : null; if (!r) return NaN; return f ? r.t * 1.8 + 32 : r.t; };
+    DHT.prototype.readHumidity = function () { cost(5000); const r = io.dht ? io.dht(this.pin) : null; return r ? r.h : NaN; };
+    DHT.prototype.computeHeatIndex = function (t, h, f) { const T = f ? t : t * 1.8 + 32; let hi = -42.379 + 2.04901523 * T + 10.14333127 * h - 0.22475541 * T * h - 0.00683783 * T * T - 0.05481717 * h * h + 0.00122874 * T * T * h + 0.00085282 * T * h * h - 0.00000199 * T * T * h * h; return f ? hi : (hi - 32) / 1.8; };
+    const Wire = { begin() { }, setClock() { } };
+    const api = Object.assign({}, CONSTS, { Wire, LiquidCrystal_I2C, DHT, __ch: chText,
       pinMode(p, m) { cost(COST.other); io.pinMode(p | 0, m | 0); },
       digitalWrite(p, v) { cost(COST.digital); io.digitalWrite(p | 0, v ? 1 : 0); },
       digitalRead(p) { cost(COST.digital); return io.digitalRead(p | 0) ? 1 : 0; },

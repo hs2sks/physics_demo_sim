@@ -59,6 +59,11 @@
   .quickbar label { display: flex; align-items: center; gap: 8px; }
   .quickbar input[type=range] { width: 200px; max-width: 40vw; }
   .quickbar b { min-width: 3.6em; font-variant-numeric: tabular-nums; color: #fcd34d; }
+  .quickbar [hidden] { display: none !important; }
+  .quickbar .qmetal { display: flex; align-items: center; gap: 8px; }
+  .quickbar .chips { margin: 0; }
+  .scene-card .quickbar .chips button { padding: 5px 11px; font-size: .84em; }
+  .scene-card .quickbar .chips button.active { background: #fff; color: var(--accent); border-color: #fff; }
   .quickbar .qhint { margin-left: auto; font-size: .8em; color: #94a3b8; }
   .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; font-size: .85em; color: #cbd5e1; }
   .legend b { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #f59e0b; color: #1b1305; font-size: .85em; margin-right: 5px; }
@@ -375,6 +380,7 @@
     <div class="scene-wrap"><canvas id="tubeCanvas"></canvas></div>
     <div class="quickbar">
       <label>💡 수은등 세기 <input type="range" id="intenQ" min="0" max="100" step="5" value="60"> <b id="intenQv">60%</b></label>
+      <span class="qmetal">🔩 금속 <span class="chips" id="metalQ"></span></span>
       <label id="voltQwrap" hidden>⚡ 전압 <input type="range" id="voltQ" min="-6" max="2" step="0.01" value="0"> <b id="voltQv">0.00 V</b></label>
       <span class="qhint">장면의 수은등·전원 장치 손잡이를 직접 돌려도 돼요</span>
     </div>
@@ -1607,7 +1613,13 @@ HG.forEach((h, i) => {
   b.onclick = () => { setFreq(h.f); updateUI(); };
   $("filterChips").appendChild(b);
 });
-function syncChips() { [...$("filterChips").children].forEach((b, i) => b.classList.toggle("active", i === state.filterIdx)); }
+[["2.14", "Cs"], ["2.36", "Na"], ["4.30", "Zn"], ["5.64", "Pt"], ["mystery", "❓ X"]].forEach(([k, nm]) => {
+  const b = document.createElement("button"); b.textContent = nm; b.dataset.k = k; b.title = k === "mystery" ? "미지 금속 X" : `${nm} Φ=${k} eV`;
+  b.onclick = () => document.querySelector(`#presetBox button[data-wf="${k}"]`).click();
+  $("metalQ").appendChild(b);
+});
+function syncChips() {
+  [...$("metalQ").children].forEach(b => b.classList.toggle("active", b.dataset.k === state.wfKey)); [...$("filterChips").children].forEach((b, i) => b.classList.toggle("active", i === state.filterIdx)); }
 document.querySelectorAll("#compare .steps button[data-go]").forEach(b => b.addEventListener("click", () => {
   const g = b.dataset.go;
   if (g === "filter") { setMode("basic"); }

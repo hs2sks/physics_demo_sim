@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>뉴턴 링 — 스마트폰으로 찍고 분석하는 박막 간섭 실험</title>
+<link rel="stylesheet" href="../common/og.css?v=3">
 <style>
   :root {
     --bg: #f4f6fa; --panel: #ffffff; --ink: #1c2733; --sub: #5a6b7d;
@@ -110,7 +111,10 @@
   <button id="projectorBtn" title="프로젝터용 큰 글씨 모드">🖥 큰 글씨 모드</button>
 </header>
 
+<div id="ogPersona"></div>
+<div id="ogHowto"></div>
 <div class="tabs" id="tabs"></div>
+<div id="ogMissions" hidden></div>
 
 <div class="layout">
 
@@ -1500,6 +1504,76 @@ const SIM = {
 })();
 </script>
 
+<script src="../common/og.js?v=3"></script>
+<script>
+/* ogGuide — 과학자 안내·사용 방법·미션·실제 사진 비교 (생성된 시뮬 코드는 건드리지 않고 위에 덧붙인 층) */
+(function () {
+  const LINES = {
+    a: ["저는 <b>아이작 뉴턴</b>입니다. 볼록 렌즈를 평평한 유리판에 올려 놓으면 접촉점 둘레에 <b>동심원 고리</b>가 보입니다. 저는 이 고리의 지름을 정밀하게 재어 《광학》(1704)에 적었습니다. (고리는 로버트 훅도 먼저 관찰했습니다.)",
+        "제가 잰 규칙은 이렇습니다. 어두운 고리 지름의 <b>제곱</b>이 1, 2, 3…번째로 갈수록 <b>같은 만큼씩 늘어납니다</b>(r² ∝ m). 오른쪽 <b>‘위에서 본 동심원’</b>을 눌러 반경 r이 √m로 커지는 것을 확인해 보세요.",
+        "저는 빛을 입자로 보아 ‘쉬운 반사·쉬운 투과의 발작’이라는 설명을 붙였습니다. 이 고리를 <b>파동의 간섭</b>으로 풀어낸 것은 훗날 토머스 영입니다. 공기층 위·아래 면에서 반사된 두 빛의 <b>경로차 2d</b>를 직접 계산해 보세요.",
+        "아래의 <b>실제 사진과 시뮬레이션</b>을 나란히 보세요. 가운데가 <b>어둡고</b>, 바깥으로 갈수록 고리 간격이 <b>좁아지는</b> 것이 같은가요?"],
+    b: ["정밀한 실험은 준비가 절반입니다. 스마트폰으로 찍을 때 <b>거리·줌·화소</b>에 따라 고리가 몇 줄, 몇 픽셀 간격으로 찍히는지 미리 계산해 보세요.",
+        "바깥 고리는 간격이 좁아져 금세 쓸 수 없게 됩니다. 확대(줌)보다 <b>가까이에서 광학적으로</b> 찍는 편이 낫습니다. 슬라이더를 움직여 <b>쓸 수 있는 고리 수</b>가 어떻게 변하는지 보세요."],
+    c: ["저는 <b>토머스 영</b>입니다. 뉴턴이 남긴 고리 지름 자료로 저는 빛깔마다 <b>파장</b>을 어림해 냈습니다. 핵심은 <b>r_m² = mλR</b>. r² 대 m 그래프가 직선이고, 그 <b>기울기 = λR</b>입니다.",
+        "사진에서 반지름을 읽어 직선을 그리면 R(또는 λ)을 구할 수 있습니다. 위 <b>🎯 해 보기</b>의 순서를 따라 하세요. 사진이 없으면 ‘가상 사진’으로 먼저 연습해도 좋습니다.",
+        "주의하세요. 사진의 <b>픽셀은 길이가 아닙니다</b>. 눈금자로 1 mm당 픽셀 수를 먼저 정해야 합니다."],
+    d: ["측정에는 늘 <b>불확도</b>가 있습니다. 숫자 하나로 끝내지 말고, 가설과 비교하고, <b>오차의 원인과 개선책</b>을 적어 보세요. 그것이 실험 보고서의 핵심입니다."]
+  };
+  const WHO = { a: "newton", b: "newton", c: "young", d: "young" };
+  const guide = OG.persona(document.getElementById("ogPersona"), { who: "newton", lines: LINES.a });
+  OG.howto(document.getElementById("ogHowto"), [
+    "<b>① 원리</b>에서 슬라이더를 움직여 공기층 두께·경로차·밝기를 보고, <b>‘위에서 본 동심원’</b>으로 실제 모양을 봅니다.",
+    "<b>② 촬영 설계</b>에서 스마트폰의 거리·줌을 정해 고리가 몇 줄 찍힐지 미리 확인합니다.",
+    "<b>③ 사진 분석</b>에서 사진(또는 가상 사진)을 올려 <b>눈금 → 중심 → 고리 검출</b> 순서로 곡률반경 R을 구합니다.",
+    "<b>④ 보고서</b>에 결과를 정리해 인쇄하거나 PDF로 저장합니다."
+  ], { title: "처음이면 이렇게 사용하세요", open: false });
+
+  /* ① 실제 사진 비교 */
+  const cmpHost = document.createElement("div");
+  document.querySelector(".sim-col").append(cmpHost);
+  const cmp = OG.compare(cmpHost, {
+    photo: "photos/newton-rings-laser", alt: "적색 레이저로 본 뉴턴 링", title: "실제 뉴턴 링 사진과 비교",
+    photoCaption: "<b>실제 사진</b> — 650 nm 적색 레이저, 반사광", simCaption: "<b>시뮬레이션</b> — R = 2.4 m, λ = 650 nm (반사광)", w: 330, h: 300,
+    points: ["<b>중심</b>이 어두운가요? 공기→유리 반사에서만 위상이 π 바뀌기 때문입니다.", "바깥으로 갈수록 고리 간격이 <b>좁아지는</b> 것을 찾아보세요 (r_m = √(mλR)).", "사진의 고리가 완전한 원이 아니라 약간 찌그러진 이유는? (렌즈·유리판 접촉, 압력, 먼지)"],
+    draw: (cv) => { try { const id = renderRings(cv.width, cv.height, { R: 2.4, fov: 9.5, cx: cv.width / 2, cy: cv.height / 2, lam: 650, tint: [1, 0.12, 0.08], dl: 2, ss: 2, vig: .2 }); cv.getContext("2d").putImageData(id, 0, 0); } catch (e) { cv.getContext("2d").fillText("그리기 오류", 10, 20); } }
+  });
+  cmpHost.style.marginTop = "12px";
+
+  /* ③ 미션 */
+  const mHost = document.getElementById("ogMissions");
+  mHost.style.marginBottom = "10px";
+  const mis = OG.missions(mHost, [
+    { id: "img", text: "<b>사진 준비</b> — 내 사진을 불러오거나 ‘가상 사진 만들기’를 누르기", say: "좋습니다. 이제 사진에 <b>눈금자</b>가 같이 찍혀 있다면 길이의 기준이 됩니다." },
+    { id: "scale", text: "<b>눈금 지정</b> — ‘눈금 두 점 클릭’으로 길이를 아는 두 점을 찍고 실제 길이를 입력", say: "배율이 정해졌습니다. 이제부터 <b>픽셀을 mm로</b> 바꿀 수 있습니다." },
+    { id: "center", text: "<b>중심 지정</b> — ‘중심 클릭’으로 가운데 어두운 점을 누르고 ‘자동 보정’", say: "중심이 정확할수록 고리가 동그랗게 겹쳐 <b>오차가 줄어듭니다</b>." },
+    { id: "det", text: "<b>고리 검출·R 계산</b> — 위 ‘③ 고리 검출과 R 계산’ 시나리오로 가서 결과 확인", say: "r²–m 직선의 <b>기울기</b>에서 R을 구했습니다. 이제 ④ 보고서로 가서 가설과 비교해 보세요." }
+  ], { title: "해 보기 (사진 분석)", onDone: (m, all) => guide.say(m.say) });
+  const start = document.createElement("button"); start.type = "button"; start.textContent = "🧪 가상 사진으로 바로 연습하기";
+  start.style.cssText = "margin:6px 0 2px;padding:9px 14px;border-radius:9px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-weight:700;cursor:pointer;min-height:40px";
+  start.onclick = () => { const b = [...document.querySelectorAll("button")].find((x) => x.textContent.includes("가상 사진 만들기")); if (b) b.click(); else guide.say("먼저 <b>‘사진·눈금·중심’</b> 시나리오를 선택해 주세요."); };
+  mHost.firstChild.append(start);
+  setInterval(() => {
+    try {
+      if (typeof S === "undefined") return;
+      if (S.img) mis.done("img"); if (S.img && S.scale) mis.done("scale"); if (S.img && S.center) mis.done("center");
+      if (S.img && S.scale && S.center && S.an) mis.done("det");
+    } catch (e) { }
+  }, 500);
+
+  /* 탭 감지 */
+  const tabs = document.getElementById("tabs"); let cur = "";
+  function sync() {
+    const btns = [...tabs.children]; const i = btns.findIndex((b) => b.classList.contains("active")); if (i < 0) return;
+    const id = "abcd"[i]; if (id === cur) return; cur = id;
+    guide.set(LINES[id], 0, WHO[id]);
+    cmpHost.hidden = id !== "a"; mHost.hidden = id !== "c";
+    if (id === "a") cmp.redraw();
+  }
+  new MutationObserver(sync).observe(tabs, { subtree: true, childList: true, attributes: true, attributeFilter: ["class"] });
+  sync();
+})();
+</script>
 </body>
 </html>
 <!--claude-meta

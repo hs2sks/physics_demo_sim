@@ -26,7 +26,7 @@
   .v-b { background:#3a2c0a; color:var(--gold); } .v-d { background:#102a43; color:var(--acc); } .v-m { background:#21262d; color:var(--sub); }
   .note { font-size:.74rem; color:var(--sub); padding:0 12px 10px; line-height:1.55; }
   a.home { position:fixed; left:12px; bottom:12px; background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:20px; padding:8px 14px; font-size:.85rem; text-decoration:none; z-index:10; }
-  body.embed a.home, body.embed h1, body.embed .subtitle { display:none; }
+  body.embed a.home, body.embed h1, body.embed .subtitle, body.embed .note { display:none; }
   body.embed { padding:8px; }
   @media (max-width:700px) { .layout { flex-direction:column; align-items:stretch; } .side { width:100%; } }
 
@@ -49,6 +49,8 @@
     <div class="panel"><div class="ph">조절</div><div class="ctl">
       <label>파장 λ <b id="lv">532 nm</b></label><input id="lam" type="range" min="400" max="700" step="1" value="532">
       <label>슬릿 간격 d <b id="dv">0.25 mm</b></label><input id="d" type="range" min="0.10" max="1.00" step="0.01" value="0.25">
+      <label>슬릿 폭 a (틈 하나의 너비) <b id="av">0.05 mm</b></label><input id="a" type="range" min="0.02" max="0.20" step="0.01" value="0.05">
+      <label style="align-items:center;justify-content:flex-start;gap:8px"><input id="diff" type="checkbox"> <span>슬릿 폭 반영 (한 틈의 회절까지 보기)</span></label>
       <label>스크린 거리 L <b id="Lv">1.00 m</b></label><input id="L" type="range" min="0.5" max="3" step="0.05" value="1">
       <label>관찰 위치 P <b id="yv">0 mm</b></label><input id="y" type="range" min="-15" max="15" step="0.05" value="3">
     </div></div>
@@ -56,10 +58,12 @@
       <div class="read">
         이웃한 밝은 줄 사이 간격 Δy = <b id="dy"></b><br>
         슬릿1→P <b id="r1"></b> · 슬릿2→P <b id="r2"></b><br>
-        경로차 <b id="dl"></b> = 파장의 <b id="dlr"></b>배
+        경로차 <b id="dl"></b> = 파장의 <b id="dlr"></b>배<br>
+        근사식 d·y/L = <b id="dapp"></b> (정확한 값과 비교)<br>
+        <span id="dwrap">슬릿 간격/폭 d/a = <b id="dar"></b> <span id="dmiss"></span></span>
       </div>
       <div class="verdict" id="verdict"></div>
-      <div class="note">경로차가 파장의 정수배(0, 1, 2…)이면 보강 간섭으로 밝고, 반정수배(0.5, 1.5…)이면 상쇄 간섭으로 어둡습니다. 슬릿 폭은 아주 좁고 두 슬릿 빛의 세기가 같다고 가정한 이상적인 모형입니다.</div>
+      <div class="note">경로차가 파장의 정수배(0, 1, 2…)이면 보강 간섭으로 밝고, 반정수배(0.5, 1.5…)이면 상쇄 간섭으로 어둡습니다. <br>‘슬릿 폭 반영’을 끄면 폭이 아주 좁은 이상적인 모형(밝기가 어디서나 같은 줄무늬), 켜면 한 틈에서 퍼지는 빛(회절)의 밝기 곡선(점선)이 줄무늬의 크기를 정합니다. 슬릿 <b>간격</b> d는 줄무늬의 <b>간격</b>을, 슬릿 <b>폭</b> a는 줄무늬 전체의 <b>폭</b>(바깥 곡선)을 정합니다.</div>
     </div>
   </div>
 </div>
@@ -71,7 +75,8 @@
   const $ = id => document.getElementById(id);
   const el = {lam:$('lam'), d:$('d'), L:$('L'), y:$('y')};
   function setFromQuery(key, id, lo, hi){ const v = parseFloat(q.get(key)); if (isFinite(v)) el[id].value = Math.min(hi, Math.max(lo, v)); }
-  setFromQuery('lambda','lam',400,700); setFromQuery('d','d',.1,1); setFromQuery('L','L',.5,3); setFromQuery('y','y',-15,15);
+  el.a = $('a'); el.diff = $('diff');
+  setFromQuery('lambda','lam',400,700); setFromQuery('a','a',.02,.2); if (q.get('diff') === '1' || q.has('a')) el.diff.checked = true; setFromQuery('d','d',.1,1); setFromQuery('L','L',.5,3); setFromQuery('y','y',-15,15);
 
   function wlRGB(nm){ // 가시광 근사 색
     let r=0,g=0,b=0;
@@ -87,15 +92,21 @@
   function state(){
     const lam = +el.lam.value*1e-9, d = +el.d.value*1e-3, L = +el.L.value, y = +el.y.value*1e-3;
     const r1 = Math.hypot(L, y + d/2), r2 = Math.hypot(L, y - d/2);   // 화면에서 S1은 위쪽, y는 아래쪽이 +
-    return {lam, d, L, y, r1, r2, dl: Math.abs(r2-r1), dy: lam*L/d};
+    const a = Math.min(+el.a.value*1e-3, d*0.95), on = el.diff.checked;
+    return {lam, d, L, y, a, on, r1, r2, dl: Math.abs(r2-r1), dy: lam*L/d};
   }
-  const I = (S, y) => Math.pow(Math.cos(Math.PI*S.d*y/(S.lam*S.L)), 2);
+  const sinc2 = (S, y) => { const x = Math.PI*S.a*y/(S.lam*S.L); return Math.abs(x) < 1e-9 ? 1 : Math.pow(Math.sin(x)/x, 2); };
+  const I = (S, y) => Math.pow(Math.cos(Math.PI*S.d*y/(S.lam*S.L)), 2) * (S.on ? sinc2(S, y) : 1);
 
   function draw(){
     const S = state(), [rr,gg,bb] = wlRGB(S.lam*1e9);
     $('lv').textContent = el.lam.value+' nm'; $('dv').textContent = fmt(+el.d.value,2)+' mm';
     $('Lv').textContent = fmt(S.L,2)+' m'; $('yv').textContent = fmt(+el.y.value,2)+' mm';
     $('dy').textContent = fmt(S.dy*1e3,2)+' mm';
+    $('av').textContent = fmt(+el.a.value,2)+' mm'; $('dapp').textContent = fmt(S.d*S.y/S.L*1e9,0)+' nm';
+    $('dwrap').style.display = S.on ? '' : 'none';
+    { const r = S.d/S.a, nr = Math.round(r); $('dar').textContent = fmt(r,2);
+      $('dmiss').textContent = Math.abs(r-nr) < .02 && nr >= 1 ? '→ '+nr+'번째 밝은 줄이 사라집니다(회절 극소와 겹침)' : '→ 정수가 아니면 모든 밝은 줄이 보입니다'; }
     $('r1').textContent = fmt(S.r1,6)+' m'; $('r2').textContent = fmt(S.r2,6)+' m';
     const ratio = S.dl/S.lam;
     $('dl').textContent = fmt(S.dl*1e9,0)+' nm'; $('dlr').textContent = fmt(ratio,2);
@@ -110,7 +121,8 @@
     c.fillStyle = '#0d1117'; c.fillRect(0,0,w,h);
     const xs = 70, xe = w-50, my = h/2, gap = 12 + 36*(S.d-.1)/.9, py = my + (+el.y.value/15)*(h/2-20);
     c.strokeStyle = '#8b949e'; c.lineWidth = 3;
-    c.beginPath(); c.moveTo(xs,6); c.lineTo(xs,my-gap-3); c.moveTo(xs,my-gap+3); c.lineTo(xs,my+gap-3); c.moveTo(xs,my+gap+3); c.lineTo(xs,h-6); c.stroke();
+    const hv = S.on ? 2 + 6*(S.a*1e3-.02)/.18 : 3;   // 슬릿 개구 반폭(그림)
+    c.beginPath(); c.moveTo(xs,6); c.lineTo(xs,my-gap-hv); c.moveTo(xs,my-gap+hv); c.lineTo(xs,my+gap-hv); c.moveTo(xs,my+gap+hv); c.lineTo(xs,h-6); c.stroke();
     c.strokeStyle = '#444c56'; c.lineWidth = 6; c.beginPath(); c.moveTo(xe,4); c.lineTo(xe,h-4); c.stroke();
     c.strokeStyle = `rgb(${rr},${gg},${bb})`; c.lineWidth = 1.6;
     [my-gap, my+gap].forEach(sy => { c.beginPath(); c.moveTo(xs,sy); c.lineTo(xe,py); c.stroke(); });
@@ -139,13 +151,16 @@
     c.strokeStyle = `rgb(${rr},${gg},${bb})`; c.lineWidth = 2; c.beginPath();
     for (let i=0;i<=w;i++){ const yy = ((i/w)*2-1)*15e-3, Y = (h-26) - I(S,yy)*(h-40); i ? c.lineTo(i,Y) : c.moveTo(i,Y); }
     c.stroke();
+    if (S.on) { c.save(); c.setLineDash([5,4]); c.strokeStyle = '#8b949e'; c.lineWidth = 1.5; c.beginPath();
+      for (let i=0;i<=w;i++){ const yy = ((i/w)*2-1)*15e-3, Y = (h-26) - sinc2(S,yy)*(h-40); i ? c.lineTo(i,Y) : c.moveTo(i,Y); }
+      c.stroke(); c.restore(); c.fillStyle = '#8b949e'; c.font='11px system-ui'; c.fillText('점선: 한 틈의 회절 (줄무늬의 포락선)', w-210, 14); }
     c.strokeStyle = '#f0a500'; c.beginPath(); c.moveTo(xp,6); c.lineTo(xp,h-22); c.stroke();
     c.fillStyle = '#8b949e'; c.font='11px system-ui'; c.fillText('가운데 O', w/2-24, h-6); c.fillText('밝기', 6, 14);
   }
-  Object.values(el).forEach(e => e.addEventListener('input', draw));
+  Object.values(el).forEach(e => e.addEventListener('input', draw)); el.diff.addEventListener('change', draw);
   window.addEventListener('resize', draw);
   draw();
-  window.__ds = {state, draw};
+  window.__ds = {state, draw, I, sinc2};
 })();
 </script>
 </body>

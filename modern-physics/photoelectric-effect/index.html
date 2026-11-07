@@ -55,6 +55,11 @@
   .scene-wrap { overflow-x: auto; border-radius: 12px; -webkit-overflow-scrolling: touch; }
   #tubeCanvas { width: 100%; min-width: 760px; height: auto; aspect-ratio: 1000 / 450; border-radius: 12px; touch-action: pan-y; }
   .scene-hint { font-size: .8em; color: #94a3b8; margin-top: 6px; }
+  .quickbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 22px; margin-top: 10px; padding: 8px 14px; border-radius: 12px; background: rgba(255,255,255,.07); font-size: .92em; }
+  .quickbar label { display: flex; align-items: center; gap: 8px; }
+  .quickbar input[type=range] { width: 200px; max-width: 40vw; }
+  .quickbar b { min-width: 3.6em; font-variant-numeric: tabular-nums; color: #fcd34d; }
+  .quickbar .qhint { margin-left: auto; font-size: .8em; color: #94a3b8; }
   .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; font-size: .85em; color: #cbd5e1; }
   .legend b { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #f59e0b; color: #1b1305; font-size: .85em; margin-right: 5px; }
 
@@ -368,6 +373,11 @@
       <span id="emitStatus" class="chip"></span>
     </div>
     <div class="scene-wrap"><canvas id="tubeCanvas"></canvas></div>
+    <div class="quickbar">
+      <label>💡 수은등 세기 <input type="range" id="intenQ" min="0" max="100" step="5" value="60"> <b id="intenQv">60%</b></label>
+      <label id="voltQwrap" hidden>⚡ 전압 <input type="range" id="voltQ" min="-6" max="2" step="0.01" value="0"> <b id="voltQv">0.00 V</b></label>
+      <span class="qhint">장면의 수은등·전원 장치 손잡이를 직접 돌려도 돼요</span>
+    </div>
     <div class="legend">
       <span><b>1</b>수은등(광원)</span><span><b>2</b>간섭 필터 — 눌러서 선택</span><span><b>3</b>암상자</span><span><b>4</b>광전관</span>
       <span><b>5</b>전원 장치 — 손잡이를 돌려 전압 조절</span><span><b>6</b>전압계</span><span><b>7</b>전류계</span>
@@ -734,6 +744,7 @@ const BOX = { x: 330, y: 140, w: 440, h: 232 };
 const AX = 500;                                              // 양극(고리) x
 const CATH = { cy: 260, half: 52, cx: 668, bow: 22 };         // 광음극(오목한 판)
 const cathX = (y) => CATH.cx - CATH.bow * Math.pow((y - CATH.cy) / CATH.half, 2);
+const LKNOB = { x: 100, y: 290, r: 17, aMin: -135, aMax: 135 };   // 수은등 세기 다이얼
 const KNOB = { x: 100, y: 510, r: 28, aMin: -135, aMax: 135 }; // 전압 조절 손잡이
 const V_MIN = -6, V_MAX = 2;
 state.filterIdx = -1; state.cur = 0; state.flash = 0;
@@ -874,6 +885,21 @@ function drawScene() {
   c.fillStyle = glow; c.beginPath(); c.arc(194, BEAM_Y, 22, 0, 7); c.fill();
   c.fillStyle = I > 0 ? "rgba(240,248,255,.95)" : "#1f2937"; c.beginPath(); c.ellipse(194, BEAM_Y, 5, 22, 0, 0, 7); c.fill();
   c.fillStyle = I > 0 ? "#22c55e" : "#475569"; c.beginPath(); c.arc(60, 308, 3.5, 0, 7); c.fill();               // 전원 LED
+  // 광원 세기 다이얼 (드래그로 조절)
+  for (let v = 0; v <= 100; v += 25) {
+    const a = (LKNOB.aMin + v / 100 * (LKNOB.aMax - LKNOB.aMin) - 90) * Math.PI / 180;
+    c.strokeStyle = "rgba(226,234,246,.55)"; c.lineWidth = 1.5; c.beginPath();
+    c.moveTo(LKNOB.x + Math.cos(a) * (LKNOB.r + 3), LKNOB.y + Math.sin(a) * (LKNOB.r + 3)); c.lineTo(LKNOB.x + Math.cos(a) * (LKNOB.r + 8), LKNOB.y + Math.sin(a) * (LKNOB.r + 8)); c.stroke();
+  }
+  const lg = c.createRadialGradient(LKNOB.x - 5, LKNOB.y - 6, 2, LKNOB.x, LKNOB.y, LKNOB.r);
+  lg.addColorStop(0, "#778297"); lg.addColorStop(1, "#1c2331");
+  c.fillStyle = lg; c.beginPath(); c.arc(LKNOB.x, LKNOB.y, LKNOB.r, 0, 7); c.fill();
+  c.strokeStyle = "rgba(255,255,255,.3)"; c.lineWidth = 1.2; c.stroke();
+  const la = (LKNOB.aMin + state.inten / 100 * (LKNOB.aMax - LKNOB.aMin) - 90) * Math.PI / 180;
+  c.strokeStyle = "#fbbf24"; c.lineWidth = 3; c.lineCap = "round"; c.beginPath();
+  c.moveTo(LKNOB.x + Math.cos(la) * 5, LKNOB.y + Math.sin(la) * 5); c.lineTo(LKNOB.x + Math.cos(la) * (LKNOB.r - 3), LKNOB.y + Math.sin(la) * (LKNOB.r - 3)); c.stroke();
+  c.fillStyle = "rgba(226,234,246,.9)"; c.font = "600 12px 'Noto Sans KR', system-ui, sans-serif"; c.textAlign = "left";
+  c.fillText("세기 " + state.inten + "%", 120, 346);
   label(c, "수은등", 105, 187, "center"); badge(c, "1", 36, 187);
 
   // 필터 홀더
@@ -1013,7 +1039,14 @@ function hexA(h) { const n = parseInt(h.slice(1), 16); return `rgba(${n >> 16},$
 
 /* ── 조작: 필터 클릭, 전압 손잡이 드래그 ── */
 function scenePos(ev) { const r = tube.getBoundingClientRect(); return { x: (ev.clientX - r.left) / r.width * SW, y: (ev.clientY - r.top) / r.height * SH + SY0 }; }
-let knobDrag = false;
+let knobDrag = false, lampDrag = false;
+function lampToInten(p) {
+  let a = Math.atan2(p.y - LKNOB.y, p.x - LKNOB.x) * 180 / Math.PI + 90;
+  if (a > 180) a -= 360;
+  a = Math.max(LKNOB.aMin, Math.min(LKNOB.aMax, a));
+  return Math.round((a - LKNOB.aMin) / (LKNOB.aMax - LKNOB.aMin) * 20) * 5;
+}
+function setInten(v) { state.inten = v; $("intenSlider").value = v; lastChanged = "inten"; updateUI(); }
 function knobToVolt(p) {
   let a = Math.atan2(p.y - KNOB.y, p.x - KNOB.x) * 180 / Math.PI + 90;   // 위쪽이 0°
   if (a > 180) a -= 360;
@@ -1022,6 +1055,7 @@ function knobToVolt(p) {
 }
 tube.addEventListener("pointerdown", (ev) => {
   const p = scenePos(ev);
+  if (Math.hypot(p.x - LKNOB.x, p.y - LKNOB.y) <= LKNOB.r + 10) { lampDrag = true; tube.setPointerCapture(ev.pointerId); setInten(lampToInten(p)); return; }
   for (let i = 0; i < HG.length; i++) {
     const r = FWIN(i);
     if (p.x >= r.x - 4 && p.x <= r.x + r.w + 40 && p.y >= r.y - 3 && p.y <= r.y + r.h + 3) { setFreq(HG[i].f); updateUI(); return; }
@@ -1034,12 +1068,13 @@ tube.addEventListener("pointerdown", (ev) => {
 });
 tube.addEventListener("pointermove", (ev) => {
   const p = scenePos(ev);
+  if (lampDrag) { setInten(lampToInten(p)); return; }
   if (knobDrag) { state.volt_V = knobToVolt(p); $("voltSlider").value = state.volt_V; updateUI(); return; }
   const onF = HG.some((h, i) => { const r = FWIN(i); return p.x >= r.x - 4 && p.x <= r.x + r.w + 40 && p.y >= r.y - 3 && p.y <= r.y + r.h + 3; });
-  tube.style.cursor = (onF || Math.hypot(p.x - KNOB.x, p.y - KNOB.y) <= KNOB.r + 14) ? "pointer" : "default";
+  tube.style.cursor = (onF || Math.hypot(p.x - LKNOB.x, p.y - LKNOB.y) <= LKNOB.r + 10 || Math.hypot(p.x - KNOB.x, p.y - KNOB.y) <= KNOB.r + 14) ? "pointer" : "default";
 });
-tube.addEventListener("pointerup", () => { knobDrag = false; });
-tube.addEventListener("pointercancel", () => { knobDrag = false; });
+tube.addEventListener("pointerup", () => { knobDrag = false; lampDrag = false; });
+tube.addEventListener("pointercancel", () => { knobDrag = false; lampDrag = false; });
 
 /* ════════════════════════ 그래프 ════════════════════════ */
 function drawGraphAxes(ctx, W, H, L, B, T, R, xLabel, yLabel, k) {
@@ -1189,6 +1224,9 @@ function updateUI() {
   drawVfGraph($("cmpGraph"));
   drawKfGraph($("mnKf"));
   syncChips();
+  $("intenQ").value = state.inten; $("intenQv").textContent = state.inten + "%";
+  $("voltQwrap").hidden = state.mode !== "volt";
+  $("voltQ").value = state.volt_V; $("voltQv").textContent = state.volt_V.toFixed(2) + " V";
 }
 
 let lastChanged = "freq";
@@ -1603,6 +1641,8 @@ function setSplit(on) {
 $("splitBtn").addEventListener("click", () => setSplit(!document.body.classList.contains("split")));
 $("splitBtn2").addEventListener("click", () => setSplit(!document.body.classList.contains("split")));
 $("csvBtn2").addEventListener("click", exportCSV);
+$("intenQ").addEventListener("input", (e) => setInten(parseInt(e.target.value, 10)));
+$("voltQ").addEventListener("input", (e) => { state.volt_V = parseFloat(e.target.value); $("voltSlider").value = state.volt_V; updateUI(); });
 window.addEventListener("resize", () => { if (window.innerWidth < SPLIT_MIN && document.body.classList.contains("split")) setSplit(false); });
 showTab((location.hash || "").slice(1) || "theory", true);
 syncFilter(); updateUI();

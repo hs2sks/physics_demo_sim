@@ -67,6 +67,20 @@
 .assignment-buttons a { padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 0.92em; }
 .assignment-buttons a.primary { background: #fff; color: #1f6fd6; }
 .assignment-buttons a.secondary { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.4); }
+  .gsearch { margin: 0 0 22px; }
+  .gsearch input { width: 100%; padding: 13px 16px; font: inherit; font-size: 1.02em; border: 1.5px solid var(--border); border-radius: 12px; background: var(--panel); }
+  .gsearch input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(31,111,214,.15); }
+  .gs-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .gs-chips button { font: inherit; font-size: .86em; padding: 5px 13px; border-radius: 999px; border: 1px solid var(--border); background: var(--panel); color: var(--sub); cursor: pointer; }
+  .gs-chips button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .gs-res { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; margin-top: 12px; }
+  .gs-res .gs-empty { grid-column: 1/-1; color: var(--sub); padding: 14px 4px; }
+  .gs-card { display: block; text-decoration: none; color: inherit; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 10px; transition: transform .1s, box-shadow .1s; }
+  .gs-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.08); border-color: var(--accent); }
+  .gs-card .th { aspect-ratio: 16/10; border-radius: 8px; border: 1px solid var(--border); background: #eef2f7 center/cover; display: grid; place-items: center; font-size: 2em; margin-bottom: 8px; }
+  .gs-card .k { font-size: .72em; color: var(--accent); font-weight: 700; }
+  .gs-card .t { font-weight: 700; font-size: .95em; line-height: 1.35; }
+  .gs-card .d { font-size: .8em; color: var(--sub); margin-top: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 </style>
 
 <link rel="stylesheet" href="site.css?v=10">
@@ -94,6 +108,11 @@
       <a class="primary" href="https://board.crazyray.uk/">💻 코드 제출하기</a>
       <a class="secondary" href="https://board.crazyray.uk/gallery">📋 과제방 (제출 목록)</a>
     </div>
+  </div>
+  <div class="gsearch" id="gsearch">
+    <input type="search" id="gq" placeholder="🔎 시뮬레이션·수업 자료·모션그래픽 찾기 (예: 단진자, 전자기 유도, 열기관)" autocomplete="off" aria-label="통합 검색">
+    <div class="gs-chips" id="gchips" hidden><button data-k="" class="on">전체</button><button data-k="시뮬레이션">시뮬레이션</button><button data-k="수업 자료">수업 자료</button><button data-k="모션그래픽">모션그래픽</button></div>
+    <div class="gs-res" id="gres" hidden></div>
   </div>
   <section class="recent" id="recent" hidden>
     <h2 class="sec"><span>🆕 최근 올라온 것</span><small>수업 자료 · 모션그래픽 새 소식</small></h2>
@@ -376,6 +395,55 @@
     var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }); }, { rootMargin: '0px 0px -40px 0px' });
     document.querySelectorAll('.wrap section, .assignment-banner').forEach(function (el) { el.classList.add('js-reveal'); io.observe(el); });
   })();
+</script>
+<script>
+(function () {
+  var HUBS = [['mechanics','역학'],['electromagnetism','전자기'],['optics','광학'],['modern-physics','현대물리'],['thermodynamics','열역학'],['semiconductor','반도체·첨단'],['interdisciplinary','융합'],['tools','분석 도구']];
+  var inp = document.getElementById('gq'), res = document.getElementById('gres'), chips = document.getElementById('gchips');
+  var DATA = null, loading = null, kind = '';
+  function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function list(j) { return Array.isArray(j) ? j : (j && j.items) || []; }
+  function load() {
+    if (loading) return loading;
+    var jobs = [fetch('lectures/index.json').then(function (r) { return r.json(); }), fetch('motion-graphic/index.json').then(function (r) { return r.json(); })]
+      .concat(HUBS.map(function (h) { return fetch(h[0] + '/index.html').then(function (r) { return r.text(); }); }));
+    loading = Promise.all(jobs).then(function (a) {
+      var out = [];
+      [['수업 자료', 'lectures/', a[0]], ['모션그래픽', 'motion-graphic/', a[1]]].forEach(function (k) {
+        list(k[2]).forEach(function (d) { out.push({ k: k[0], t: d.title, d: d.desc || '', x: [d.subject, d.unit].concat(d.tags || []).join(' '), href: k[1] + d.path, th: d.thumb ? k[1] + d.thumb : '', ic: k[0] === '수업 자료' ? '📚' : '🎬' }); });
+      });
+      HUBS.forEach(function (h, i) {
+        var doc = new DOMParser().parseFromString(a[i + 2], 'text/html');
+        doc.querySelectorAll('a.card').forEach(function (c) {
+          var href = c.getAttribute('href') || ''; if (!href || /^https?:|^\.\./.test(href) || c.classList.contains('disabled')) return;
+          var t = c.querySelector('.title'), d = c.querySelector('.desc'), im = c.querySelector('img.thumb'), ic = c.querySelector('.icon');
+          out.push({ k: '시뮬레이션', t: t ? t.textContent.replace(/\s+/g, ' ').trim() : href, d: d ? d.textContent.trim() : '', x: h[1], href: h[0] + '/' + href, th: im ? h[0] + '/' + im.getAttribute('src') : '', ic: ic ? ic.textContent.trim() : '🧪' });
+        });
+      });
+      DATA = out; return out;
+    });
+    return loading;
+  }
+  function render() {
+    var q = inp.value.trim().toLowerCase(); chips.hidden = res.hidden = !q;
+    if (!q) return;
+    load().then(function (all) {
+      if (inp.value.trim().toLowerCase() !== q) return;
+      var terms = q.split(/\s+/);
+      var hit = all.filter(function (e) {
+        if (kind && e.k !== kind) return false;
+        var hay = (e.t + ' ' + e.d + ' ' + e.x + ' ' + e.k).toLowerCase();
+        return terms.every(function (w) { return hay.indexOf(w) >= 0; });
+      }).sort(function (a, b) { return (b.t.toLowerCase().indexOf(terms[0]) >= 0) - (a.t.toLowerCase().indexOf(terms[0]) >= 0); });
+      res.innerHTML = hit.length ? hit.slice(0, 30).map(function (e) {
+        return '<a class="gs-card" href="' + esc(e.href) + '"><div class="th"' + (e.th ? ' style="background-image:url(\'' + esc(e.th) + '\')"' : '') + '>' + (e.th ? '' : esc(e.ic)) + '</div><div class="k">' + esc(e.k) + '</div><div class="t">' + esc(e.t) + '</div><div class="d">' + esc(e.d) + '</div></a>';
+      }).join('') + (hit.length > 30 ? '<div class="gs-empty">… 외 ' + (hit.length - 30) + '개 — 검색어를 더 구체적으로 써 보세요.</div>' : '') : '<div class="gs-empty">‘' + esc(inp.value.trim()) + '’ 검색 결과가 없어요. 다른 낱말로 찾아보세요.</div>';
+    }).catch(function () { res.innerHTML = '<div class="gs-empty">검색 목록을 불러오지 못했어요.</div>'; });
+  }
+  inp.addEventListener('focus', load); inp.addEventListener('input', render);
+  inp.addEventListener('keydown', function (e) { if (e.key === 'Escape') { inp.value = ''; render(); } });
+  chips.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; kind = b.dataset.k; [].forEach.call(chips.children, function (x) { x.classList.toggle('on', x === b); }); render(); });
+})();
 </script>
 <script src="site-nav.js?v=10"></script>
 </body>

@@ -6,99 +6,137 @@
 <title>광전효과로 플랑크 상수 h 측정</title>
 <style>
   :root {
-    --bg: #f4f6fa; --panel: #ffffff; --ink: #1c2733; --sub: #5a6b7d;
-    --accent: #1f6fd6; --accent2: #d64545; --ok: #1e8f4e; --warn: #c07c00;
-    --border: #d7dee8; --radius: 10px;
+    --bg: #eef1f8; --panel: #ffffff; --ink: #172033; --sub: #5d6b82;
+    --accent: #4f46e5; --accent-soft: #eef0ff; --accent2: #e11d48; --ok: #059669; --warn: #d97706;
+    --border: #e2e7f0; --radius: 16px;
+    --shadow: 0 1px 2px rgba(20,30,60,.05), 0 8px 24px rgba(20,30,60,.06);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
   body {
-    font-family: "Segoe UI", "Malgun Gothic", sans-serif;
-    background: var(--bg); color: var(--ink);
-    padding: 12px; font-size: 15px;
+    font-family: "Pretendard", "Noto Sans KR", "Segoe UI", "Malgun Gothic", system-ui, sans-serif;
+    background: radial-gradient(1200px 500px at 10% -10%, #dfe4ff 0, transparent 60%), var(--bg);
+    color: var(--ink); font-size: 15px; line-height: 1.55; padding: 0 0 40px;
   }
-  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
-  header h1 { font-size: 1.25em; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 0 14px; }
+  header.top { position: sticky; top: 0; z-index: 20; background: rgba(255,255,255,.82); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+  header.top .wrap { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 10px; padding-bottom: 10px; }
+  header.top h1 { font-size: 1.15em; letter-spacing: -.2px; }
   header .spacer { flex: 1; }
-  .layout { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
-  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
-  .sim-col { flex: 1 1 460px; display: flex; flex-direction: column; gap: 12px; }
-  .side-col { flex: 1 1 330px; display: flex; flex-direction: column; gap: 12px; }
+  .homebtn { text-decoration: none; color: var(--sub); border: 1px solid var(--border); padding: 7px 14px; border-radius: 999px; font-size: .88em; white-space: nowrap; background: #fff; }
+  .panel, .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); }
+  .stack { display: flex; flex-direction: column; gap: 14px; }
+  .grid2 { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 14px; align-items: start; margin-top: 14px; }
   canvas { display: block; max-width: 100%; }
-  #tubeCanvas { background: #0c1119; border-radius: 6px; width: 100%; height: auto; }
 
-  .controls-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
-  button {
-    font-size: 1em; padding: 8px 14px; border-radius: 8px;
-    border: 1px solid var(--border); background: #fff; cursor: pointer;
-  }
+  button { font: inherit; font-size: .95em; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--border); background: #fff; color: var(--ink); cursor: pointer; transition: background .12s, box-shadow .12s, transform .05s; }
+  button:hover { background: #f5f7fd; box-shadow: 0 2px 8px rgba(30,40,80,.08); }
+  button:active { transform: translateY(1px); }
   button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  button.danger  { background: var(--accent2); border-color: var(--accent2); color: #fff; }
-  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  button.primary:hover { background: #4338ca; }
+  button:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+  input[type=range] { accent-color: var(--accent); }
+  .controls-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
+  .seg { display: inline-flex; background: #e9edf7; border-radius: 999px; padding: 4px; gap: 2px; }
+  .seg button { border: none; background: transparent; padding: 7px 16px; box-shadow: none; }
+  .seg button.active { background: #fff; color: var(--accent); font-weight: 700; box-shadow: 0 1px 4px rgba(30,40,80,.15); }
   .mode-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
   .mode-tabs button { flex: 1; }
   .mode-tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
-  fieldset { border: none; }
-  h3.sec { font-size: 0.95em; color: var(--sub); margin-bottom: 8px; letter-spacing: .3px; }
+  .scene-card { padding: 12px 12px 14px; background: linear-gradient(180deg, #0f172a, #0b1224); border-color: #1d2a4a; color: #e2e8f0; }
+  .scene-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .scene-bar .chip { margin-left: auto; font-size: .85em; padding: 5px 12px; border-radius: 999px; background: rgba(255,255,255,.08); }
+  .scene-card button:not(.primary) { background: rgba(255,255,255,.08); color: #e2e8f0; border-color: rgba(255,255,255,.14); }
+  .scene-card .seg { background: rgba(255,255,255,.08); }
+  .scene-card .seg button { background: transparent; border: none; }
+  .scene-card .seg button.active { background: #fff; color: var(--accent); }
+  .scene-wrap { overflow-x: auto; border-radius: 12px; -webkit-overflow-scrolling: touch; }
+  #tubeCanvas { width: 100%; min-width: 760px; height: auto; aspect-ratio: 1000 / 450; border-radius: 12px; touch-action: pan-y; }
+  .scene-hint { font-size: .8em; color: #94a3b8; margin-top: 6px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; font-size: .85em; color: #cbd5e1; }
+  .legend b { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #f59e0b; color: #1b1305; font-size: .85em; margin-right: 5px; }
+
+  .ctrl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 12px; margin-top: 14px; }
+  .ctrl-grid .panel { padding: 14px; }
+  h3.sec { font-size: .92em; color: var(--sub); margin-bottom: 10px; letter-spacing: .2px; font-weight: 700; }
   .param { margin-bottom: 10px; }
   .param label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 4px; }
   .param label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
   .param input[type=range] { width: 100%; }
-  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-  .hint { color: var(--sub); font-size: 0.85em; margin-top: 4px; line-height: 1.5; }
-
+  .hint { color: var(--sub); font-size: .85em; margin-top: 4px; line-height: 1.55; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .chips button { padding: 6px 12px; font-size: .86em; }
+  .chips button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .fchip { position: relative; padding-left: 26px !important; }
+  .fchip::before { content: ""; position: absolute; left: 9px; top: 50%; width: 11px; height: 11px; margin-top: -5.5px; border-radius: 50%; background: var(--c); }
   .presets { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
-  .presets button { flex: 1 1 auto; padding: 6px 8px; font-size: 0.9em; }
+  .presets button { flex: 1 1 auto; padding: 6px 10px; font-size: .88em; }
   .presets button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
   .presets button.mystery { border-style: dashed; }
-  .presets button.mystery.active { background: #6b46c1; border-color: #6b46c1; }
+  .presets button.mystery.active { background: #7c3aed; border-color: #7c3aed; }
 
-  /* 계산값 표 */
   .calc-grid { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center; }
-  .calc-grid .k { color: var(--sub); font-size: 0.92em; }
+  .calc-grid .k { color: var(--sub); font-size: .92em; }
   .calc-grid .v { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
   .calc-grid .v.big { color: var(--accent); }
   .calc-grid .v.zero { color: var(--accent2); }
-
-  /* 전류계 */
-  .ammeter { text-align: center; padding: 6px 0 2px; }
-  .ammeter .cur {
-    font-size: 1.8em; font-weight: 700; font-variant-numeric: tabular-nums;
-    color: var(--ok);
-  }
-  .ammeter .cur.zero { color: var(--accent2); }
-  .ammeter .bar { height: 10px; background: #e5ebf3; border-radius: 6px; overflow: hidden; margin-top: 6px; }
-  .ammeter .bar > i { display: block; height: 100%; width: 0; background: var(--ok); transition: width .08s linear; }
-
-  table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+  table { width: 100%; border-collapse: collapse; font-size: .9em; }
   th, td { border: 1px solid var(--border); padding: 5px 6px; text-align: center; font-variant-numeric: tabular-nums; }
-  th { background: #eef3fa; }
-  tfoot td { font-weight: 700; background: #f5f9f2; }
-
-  .graphs { display: flex; gap: 12px; flex-wrap: wrap; }
-  .graphs figure { flex: 1 1 240px; }
-  .graphs figcaption { text-align: center; font-size: 0.9em; color: var(--sub); margin-top: 3px; }
-  .graphs canvas { background: #fff; border: 1px solid var(--border); border-radius: 6px; width: 100%; }
-
+  th { background: #f1f4fb; }
+  .graphs { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .graphs figure { min-width: 0; }
+  .graphs figcaption { text-align: center; font-size: .85em; color: var(--sub); margin-top: 4px; }
+  .graphs canvas { background: #fff; border: 1px solid var(--border); border-radius: 10px; width: 100%; height: auto; }
   details { margin-top: 4px; }
   summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
   .formula-body { padding: 8px 4px; line-height: 1.75; }
   .formula-body .eq { font-size: 1.12em; text-align: center; margin: 8px 0; font-family: Georgia, serif; }
-
-  /* 파동설 vs 입자설 */
   .cmp { display: flex; flex-direction: column; gap: 8px; }
-  .cmp .card { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; transition: border-color .15s, box-shadow .15s; }
-  .cmp .card.on { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(31,111,214,.12); }
-  .cmp .card h4 { font-size: 0.92em; margin-bottom: 4px; }
-  .cmp .theory { font-size: 0.85em; margin-top: 4px; }
-  .cmp .wave { color: var(--sub); }
-  .cmp .wave b { color: var(--accent2); }
-  .cmp .part { color: var(--ink); }
+  .cmp .card { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; box-shadow: none; transition: border-color .15s, box-shadow .15s; }
+  .cmp .card.on { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,70,229,.12); }
+  .cmp .card h4 { font-size: .92em; margin-bottom: 4px; }
+  .cmp .theory { font-size: .86em; margin-top: 4px; }
+  .cmp .wave { color: var(--sub); } .cmp .wave b { color: var(--accent2); }
   .cmp .part b { color: var(--ok); }
+  .badge { display: inline-block; font-size: .72em; padding: 2px 9px; border-radius: 20px; background: #ede9fe; color: #6d28d9; }
+  fieldset { border: none; }
 
-  .badge { display:inline-block; font-size:.72em; padding:2px 8px; border-radius:20px; background:#ede9fe; color:#6b46c1; }
+  /* 실제 장치와 비교 */
+  .cmp-sec h2 { font-size: 1.15em; margin-bottom: 4px; }
+  .cmp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; margin-top: 12px; }
+  .cmp-item { border: 1px solid var(--border); border-radius: 14px; padding: 12px; background: #fbfcff; }
+  .cmp-item h4 { font-size: .95em; margin-bottom: 8px; }
+  .cmp-item figure { position: relative; }
+  .cmp-item img, .cmp-item canvas { width: 100%; height: auto; display: block; border-radius: 10px; border: 1px solid var(--border); background: #fff; }
+  .cmp-item figcaption { font-size: .78em; color: var(--sub); margin-top: 5px; line-height: 1.5; }
+  .pin { position: absolute; width: 24px; height: 24px; margin: -12px 0 0 -12px; border-radius: 50%; background: #f59e0b; color: #1b1305; font-weight: 800; font-size: .8em; display: grid; place-items: center; box-shadow: 0 0 0 3px rgba(255,255,255,.9), 0 2px 8px rgba(0,0,0,.35); }
+  .maplist { list-style: none; margin-top: 8px; font-size: .88em; line-height: 1.7; }
+  .maplist li { display: flex; gap: 8px; }
+  .maplist b { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #f59e0b; color: #1b1305; font-size: .8em; margin-top: 2px; }
+  .steps { counter-reset: s; list-style: none; display: grid; gap: 8px; }
+  .steps li { counter-increment: s; display: flex; gap: 10px; align-items: flex-start; font-size: .92em; line-height: 1.6; }
+  .steps li::before { content: counter(s); flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: .85em; margin-top: 1px; }
+  .steps button { margin-left: auto; flex: none; padding: 4px 12px; font-size: .82em; }
+  .diff { font-size: .9em; line-height: 1.7; padding-left: 18px; }
+  .credit { font-size: .78em; color: var(--sub); margin-top: 12px; line-height: 1.6; }
+  .credit a { color: var(--sub); }
 
+  body.projector { font-size: 19px; }
+  body.projector button { padding: 11px 18px; }
+  @media (max-width: 980px) { .grid2 { grid-template-columns: 1fr; } }
+  @media (max-width: 720px) {
+    header.top { position: static; }
+    header.top .wrap { gap: 6px; }
+    header.top button { padding: 6px 12px; font-size: .85em; }
+    header.top h1 { flex: 1 1 100%; order: 3; }
+    body { font-size: 16px; }
+    button { padding: 11px 16px; }
+    input[type=number], select { font-size: 16px; }
+    th, td { padding: 4px 3px; font-size: .85em; }
+    header.top h1 { font-size: 1em; }
+  }
 
   /* 학습 가이드 */
   .guide { margin-bottom: 12px; }
@@ -141,35 +179,24 @@
   @media (max-width: 860px) { .guide-body { grid-template-columns: 1fr; } }
   @media print {
     body { background: #fff; padding: 0; font-size: 12pt; }
-    header, .guide, .layout, #reportSec { display: none !important; }
+    header.top, .wrap > *:not(#reportPrint) { display: none !important; }
     #reportPrint { display: block !important; }
   }
 
-  body.projector { font-size: 19px; }
-  body.projector .ammeter .cur { font-size: 2.3em; }
-  body.projector button { padding: 11px 16px; }
 
-  @media (max-width: 720px) {
-    body { font-size: 16px; padding: 8px; }
-    .layout { flex-direction: column; }
-    .sim-col, .side-col { flex: 1 1 100%; }
-    button { padding: 11px 15px; }
-    input[type=number], select { font-size: 16px; }
-    th, td { padding: 4px 3px; font-size: 0.85em; }
-  }
 </style>
 </head>
 <body>
-
-<header>
-  <a href="../../index.html" style="text-decoration:none;color:var(--sub);border:1px solid var(--border);padding:6px 12px;border-radius:8px;font-size:0.9em;white-space:nowrap">🏠 홈</a>
+<header class="top"><div class="wrap">
+  <a class="homebtn" href="../../index.html">🏠 홈</a>
   <h1>💡 광전효과로 플랑크 상수 h 측정</h1>
   <span class="spacer"></span>
   <button id="reportJump" title="측정 결과로 실험보고서 쓰기">📝 실험보고서</button>
-  <button id="projectorBtn" title="프로젝터용 큰 글씨 모드">🖥 큰 글씨 모드</button>
-</header>
+  <button id="cmpJump" title="실제 장치와 비교하기">🔍 실제와 비교</button>
+  <button id="projectorBtn" title="프로젝터용 큰 글씨 모드">🖥 큰 글씨</button>
+</div></header>
 
-
+<div class="wrap">
 <!-- ══════════ 단계별 학습 가이드 ══════════ -->
 <details class="panel guide guidebox" id="guide" open>
   <summary style="cursor:pointer;font-weight:700">🧭 단계별로 배우기 — 과학자들과 함께하는 광전효과 <span class="hint" style="font-weight:400">(접었다 펼 수 있어요)</span></summary>
@@ -196,38 +223,76 @@
   </div>
 </details>
 
-<div class="layout">
 
-  <!-- ══════════ 왼쪽: 광전관 장면 ══════════ -->
-  <div class="sim-col">
-    <div class="panel">
-      <div class="mode-tabs">
-        <button id="tabBasic" class="active">💡 기본 — 광전자 방출 관찰</button>
-        <button id="tabVolt">⚡ 저지전압 측정</button>
-      </div>
-      <canvas id="tubeCanvas" width="460" height="330"></canvas>
-      <div class="controls-row">
-        <button id="playBtn" class="primary">⏸ 일시정지</button>
-        <button id="resetBtn">↺ 리셋</button>
-        <span id="emitStatus" class="hint" style="margin-left:auto"></span>
-      </div>
+
+<!-- ══════════ 실험대 ══════════ -->
+<section class="card scene-card">
+  <div class="scene-bar">
+    <div class="seg" id="modeSeg">
+      <button id="tabBasic" class="active">💡 관찰 — 전자가 나오는 모습</button>
+      <button id="tabVolt">⚡ 측정 — 저지전압 찾기</button>
     </div>
+    <button id="playBtn" class="primary">⏸ 일시정지</button>
+    <button id="resetBtn">↺ 리셋</button>
+    <span id="emitStatus" class="chip"></span>
+  </div>
+  <div class="scene-wrap"><canvas id="tubeCanvas"></canvas></div>
+  <div class="legend">
+    <span><b>1</b>수은등(광원)</span><span><b>2</b>간섭 필터 — 눌러서 선택</span><span><b>3</b>암상자</span><span><b>4</b>광전관</span>
+    <span><b>5</b>전원 장치 — 손잡이를 돌려 전압 조절</span><span><b>6</b>전압계</span><span><b>7</b>전류계</span>
+  </div>
+  <p class="scene-hint">※ 폰에서는 장면을 좌우로 밀어 보세요. 실제 장치와의 비교는 <a href="#compare" style="color:#a5b4fc">🔍 실제와 비교</a>에 있어요.</p>
+</section>
 
+<div class="ctrl-grid">
+  <fieldset class="panel">
+    <h3 class="sec">1. 광원 — 필터를 고르거나 진동수를 직접 바꾸기</h3>
+    <div class="chips" id="filterChips"></div>
+    <div class="param">
+      <label for="freqSlider">진동수 f <span class="val"><span id="freqVal">6.50</span> ×10¹⁴ Hz</span></label>
+      <input type="range" id="freqSlider" min="3.5" max="16.0" step="0.05" value="6.5">
+      <div class="hint" id="colorHint" style="margin-top:2px">색: 초록</div>
+    </div>
+    <div class="param">
+      <label for="intenSlider">빛의 세기 <span class="val"><span id="intenVal">60</span> %</span></label>
+      <input type="range" id="intenSlider" min="0" max="100" step="5" value="60">
+    </div>
+  </fieldset>
+
+  <div class="panel">
+    <h3 class="sec">2. 광음극 금속 (일함수 Φ)</h3>
+    <div class="presets" id="presetBox">
+      <button data-wf="2.14" class="active">Cs 2.14</button>
+      <button data-wf="2.36">Na 2.36</button>
+      <button data-wf="4.30">Zn 4.30</button>
+      <button data-wf="5.64">Pt 5.64</button>
+      <button data-wf="mystery" class="mystery">❓ 미지 금속 X</button>
+    </div>
+    <div class="param" id="wfParam">
+      <label for="wfSlider">일함수 Φ <span class="val"><span id="wfVal">2.14</span> eV</span></label>
+      <input type="range" id="wfSlider" min="1.50" max="6.50" step="0.02" value="2.14">
+    </div>
+    <p class="hint" id="mysteryHint" hidden>미지 금속 X의 일함수는 숨겨져 있습니다. 여러 진동수에서 V₀를 측정해 h와 한계진동수 f₀를 구하고 Φ = h·f₀로 정체를 밝혀보세요.
+      <button id="revealBtn" style="font-size:.9em;padding:2px 10px">정답 공개</button></p>
+  </div>
+
+  <div class="panel" id="voltPanel" hidden>
+    <h3 class="sec">3. 외부 전압 (전원 장치 손잡이와 같은 값)</h3>
+    <div class="param">
+      <label for="voltSlider">전압 V <span class="val"><span id="voltVal">0.00</span> V</span></label>
+      <input type="range" id="voltSlider" min="-6.0" max="2.0" step="0.01" value="0">
+      <div class="hint">V &lt; 0 : 역방향(전자를 밀어냄) · V &gt; 0 : 순방향(전자를 끌어당김). 전류계(7)가 <b>0</b>이 되는 순간의 |V|가 저지전압 V₀.</div>
+    </div>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="stack">
     <div class="panel graphs">
-      <figure id="figIV">
-        <canvas id="graphIV" width="280" height="180"></canvas>
-        <figcaption>광전류–전압 (I–V)</figcaption>
-      </figure>
-      <figure id="figKf">
-        <canvas id="graphKf" width="280" height="180"></canvas>
-        <figcaption>최대 운동에너지–진동수 (K<sub>max</sub>–f) · 기울기 h, f축 절편 f₀</figcaption>
-      </figure>
-      <figure id="figVf">
-        <canvas id="graphVf" width="280" height="180"></canvas>
-        <figcaption>저지전압–진동수 (V₀–f) · 기울기로 h 산출</figcaption>
-      </figure>
+      <figure id="figIV"><canvas id="graphIV" width="560" height="360"></canvas><figcaption>광전류–전압 (I–V)</figcaption></figure>
+      <figure id="figKf"><canvas id="graphKf" width="560" height="360"></canvas><figcaption>최대 운동에너지–진동수 (K<sub>max</sub>–f) · 기울기 h, f축 절편 f₀</figcaption></figure>
+      <figure id="figVf"><canvas id="graphVf" width="560" height="360"></canvas><figcaption>저지전압–진동수 (V₀–f) · 기울기로 h 산출</figcaption></figure>
     </div>
-
     <div class="panel">
       <details open>
         <summary>🌊 고전 파동설 vs ⚛️ 아인슈타인 입자설</summary>
@@ -245,7 +310,6 @@
         </div>
       </details>
     </div>
-
     <div class="panel">
       <details>
         <summary>📖 물리 공식 설명</summary>
@@ -262,53 +326,7 @@
     </div>
   </div>
 
-  <!-- ══════════ 오른쪽: 조작 · 측정 ══════════ -->
-  <div class="side-col">
-
-    <fieldset class="panel">
-      <h3 class="sec">1. 광원 설정</h3>
-      <div class="param">
-        <label for="freqSlider">진동수 f <span class="val"><span id="freqVal">6.50</span> ×10¹⁴ Hz</span></label>
-        <input type="range" id="freqSlider" min="3.5" max="16.0" step="0.05" value="6.5">
-        <div class="hint" id="colorHint" style="margin-top:2px">색: 초록</div>
-      </div>
-      <div class="param">
-        <label for="intenSlider">빛의 세기 <span class="val"><span id="intenVal">60</span> %</span></label>
-        <input type="range" id="intenSlider" min="0" max="100" step="5" value="60">
-      </div>
-    </fieldset>
-
-    <div class="panel">
-      <h3 class="sec">2. 금속판 설정 (일함수 Φ)</h3>
-      <div class="presets" id="presetBox">
-        <button data-wf="2.14" class="active">Cs 2.14</button>
-        <button data-wf="2.36">Na 2.36</button>
-        <button data-wf="4.30">Zn 4.30</button>
-        <button data-wf="5.64">Pt 5.64</button>
-        <button data-wf="mystery" class="mystery">❓ 미지 금속 X</button>
-      </div>
-      <div class="param" id="wfParam">
-        <label for="wfSlider">일함수 Φ <span class="val"><span id="wfVal">2.14</span> eV</span></label>
-        <input type="range" id="wfSlider" min="1.50" max="6.50" step="0.02" value="2.14">
-      </div>
-      <p class="hint" id="mysteryHint" hidden>미지 금속 X의 일함수는 숨겨져 있습니다. 여러 진동수에서 V₀를 측정해 h와 한계진동수 f₀를 구하고 Φ = h·f₀로 정체를 밝혀보세요.
-        <button id="revealBtn" style="font-size:.9em;padding:2px 8px">정답 공개</button></p>
-    </div>
-
-    <div class="panel" id="voltPanel" hidden>
-      <h3 class="sec">3. 외부 전압 & 전류계</h3>
-      <div class="param">
-        <label for="voltSlider">외부 전압 V <span class="val"><span id="voltVal">0.00</span> V</span></label>
-        <input type="range" id="voltSlider" min="-6.0" max="2.0" step="0.01" value="0">
-        <div class="hint">V &lt; 0 : 역방향(전자를 밀어냄) · V &gt; 0 : 순방향(전자를 끌어당김)</div>
-      </div>
-      <div class="ammeter">
-        <div class="cur" id="ammeterVal">0.0</div>
-        <div class="hint">광전류 (상대값, 포화 100)</div>
-        <div class="bar"><i id="ammeterBar"></i></div>
-      </div>
-    </div>
-
+  <div class="stack">
     <div class="panel">
       <h3 class="sec">실시간 계산값</h3>
       <div class="calc-grid">
@@ -318,21 +336,20 @@
         <span class="k">저지전압 V₀ = K<sub>max</sub>/e</span><span class="v big" id="cV0">0.55 V</span>
       </div>
     </div>
-
+    <div class="panel">
+      <h3 class="sec">상황별 원리 설명</h3>
+      <div class="hint" id="explain" style="font-size:.92em; color:var(--ink)"></div>
+    </div>
     <div class="panel" id="measurePanel" hidden>
-      <div class="row" style="justify-content:space-between; margin-bottom:6px">
-        <b>저지전압 측정 <span class="badge">h 산출</span></b>
-      </div>
+      <div class="controls-row" style="justify-content:space-between; margin-bottom:6px"><b>저지전압 측정 <span class="badge">h 산출</span></b></div>
       <div class="mode-tabs">
         <button id="mManual" class="active">✋ 수동</button>
         <button id="mAuto">🎯 자동</button>
       </div>
       <p class="hint" id="grpNote" style="font-weight:600;color:var(--ink)"></p>
       <label class="hint" style="display:block;margin-top:4px"><input type="checkbox" id="noiseChk"> 🎲 자동 측정에도 눈금 읽기 오차(±0.05 V) 넣기 — 실제 실험처럼 점이 직선에서 흩어집니다</label>
-      <p class="hint" id="measHint">전압을 낮춰 <b>전류가 0이 되는 순간의 전압</b>이 저지전압 V₀입니다. 그 지점에서 아래 버튼으로 기록하세요. (전류가 흐르면 아직 V₀가 아닙니다.)</p>
-      <div class="controls-row" style="margin-top:8px">
-        <button id="recordBtn" class="primary">＋ 현재 진동수의 (f, V₀) 기록</button>
-      </div>
+      <p class="hint" id="measHint"></p>
+      <div class="controls-row" style="margin-top:8px"><button id="recordBtn" class="primary">＋ 현재 진동수의 (f, V₀) 기록</button></div>
       <table id="measTable" style="margin-top:8px">
         <thead><tr><th>#</th><th>f (×10¹⁴)</th><th>V₀ (V)</th><th>금속</th></tr></thead>
         <tbody></tbody>
@@ -350,14 +367,77 @@
       </div>
       <p class="hint">※ 한 금속(같은 Φ)으로 서로 다른 진동수 3점 이상을 측정해야 직선이 잘 나옵니다.</p>
     </div>
-
-    <div class="panel">
-      <h3 class="sec">상황별 원리 설명</h3>
-      <div class="hint" id="explain" style="font-size:.9em; color:var(--ink)"></div>
-    </div>
-
   </div>
 </div>
+
+<!-- ══════════ 실제 장치와 비교 ══════════ -->
+<section class="card cmp-sec" id="compare" style="margin-top:14px">
+  <h2>🔍 실제 실험은 어떻게 할까? — 사진·그림과 비교하기</h2>
+  <p class="hint">위 시뮬레이션의 장치는 학교 실험실에서 쓰는 광전효과 장치(수은등 + 간섭 필터 + 광전관 + 전원·전압계·전류계)를 본뜬 것이에요. 부품마다 실물과 짝지어 보세요.</p>
+  <div class="cmp-grid">
+    <div class="cmp-item">
+      <h4>① 실제 광전관(진공 광전관) 사진</h4>
+      <figure>
+        <img src="assets/phototube.jpg" alt="실제 광전관(진공관) 사진" width="960" height="720">
+        <span class="pin" style="left:46%;top:38%">A</span>
+        <span class="pin" style="left:62%;top:36%">B</span>
+        <span class="pin" style="left:30%;top:20%">C</span>
+        <span class="pin" style="left:49%;top:76%">D</span>
+        <figcaption>사진: GOKLuLe 盧樂, <a href="https://commons.wikimedia.org/wiki/File:%E5%85%89%E9%9B%BB%E7%AE%A1.JPG" target="_blank" rel="noopener">Wikimedia Commons</a>, CC BY-SA 3.0. 관을 감싼 투명한 띠는 장치 부품이 아니라 보관·촬영용 받침으로 보입니다.</figcaption>
+      </figure>
+      <ul class="maplist">
+        <li><b>A</b><span><b style="all:unset;font-weight:700">광음극</b> — 안쪽의 넓은 판(금속을 얇게 입힌 면). 시뮬의 ‘광음극 K’(오목한 판).</span></li>
+        <li><b>B</b><span><b style="all:unset;font-weight:700">양극</b> — 음극 둘레의 가는 금속 철사. 빛을 가리지 않도록 가늘게 만든다. 시뮬의 ‘양극 A’(고리).</span></li>
+        <li><b>C</b><span><b style="all:unset;font-weight:700">유리관 속 진공</b> — 공기가 있으면 전자가 기체와 부딪혀 측정이 흐트러진다. 빛이 들어오는 창은 자외선이 통하는 석영/특수 유리를 쓰기도 한다.</span></li>
+        <li><b>D</b><span><b style="all:unset;font-weight:700">단자(받침)</b> — 음극·양극 선이 나와 전원·전류계와 연결되는 곳.</span></li>
+      </ul>
+    </div>
+
+    <div class="cmp-item">
+      <h4>② 시뮬레이션 속 광전관 (실시간)</h4>
+      <figure><canvas id="cmpTube" width="900" height="560"></canvas>
+        <figcaption>위 실험대의 암상자 부분을 실시간으로 확대한 모습이에요. 금속·진동수·전압을 바꿔 보세요.</figcaption></figure>
+      <h4 style="margin-top:12px">구조 그림 (원본 독일어 → 한국어)</h4>
+      <figure><img src="assets/phototube-schematic.png" alt="광전관 구조 그림" width="1010" height="544">
+        <figcaption>그림: Gernheim, 퍼블릭 도메인, <a href="https://commons.wikimedia.org/wiki/File:Photoeffekt_millikan.png" target="_blank" rel="noopener">Wikimedia Commons</a>. Alkali-Methode = 알칼리 금속 광음극, Anode = 양극, Quarz-Fenster = 석영 창, monochromatisches Licht = 단색광, U = 전원 전압, I = 전류계.</figcaption></figure>
+    </div>
+
+    <div class="cmp-item">
+      <h4>③ 밀리컨이 직접 그린 V₀–f 그래프 (원본)</h4>
+      <figure><img src="assets/millikan-graph.jpg" alt="밀리컨의 광전효과 실험 그래프 원본" width="1280" height="730">
+        <figcaption>밀리컨 본인의 그래프(퍼블릭 도메인, <a href="https://commons.wikimedia.org/wiki/File:Millikan_photoelectric_experiment_1906.jpg" target="_blank" rel="noopener">Wikimedia Commons</a>, 파일명상 연도는 1906). 세로축은 저지전압(−Volts가 아래), 가로축은 진동수(×10¹³ Hz). 점들이 한 직선 위에 놓이고, 오른쪽 상자에 기울기로 h를 계산한 손글씨 풀이가 있어요(이미지 속 결과 h ≈ 6.56×10⁻²⁷ erg·s = 6.56×10⁻³⁴ J·s).</figcaption></figure>
+    </div>
+
+    <div class="cmp-item">
+      <h4>④ 내가 측정한 V₀–f 그래프</h4>
+      <figure><canvas id="cmpGraph" width="560" height="360"></canvas>
+        <figcaption>⚡ 측정 탭에서 기록한 점으로 그린 그래프예요. 밀리컨처럼 점이 직선 위에 놓이는지, 기울기가 h/e인지 비교해 보세요.</figcaption></figure>
+    </div>
+
+    <div class="cmp-item">
+      <h4>⑤ 실제 실험 순서 — 시뮬에서 따라 해 보기</h4>
+      <ol class="steps">
+        <li><span>광원(수은등)을 켜고 몇 분 예열해 빛이 안정되게 한다. 광전관은 <b>암상자</b>에 넣어 바깥 빛을 막는다.</span></li>
+        <li><span>간섭 필터를 끼워 <b>한 가지 색(파장)</b>만 통과시킨다. 파장 λ에서 진동수 f = c/λ.</span><button data-go="filter">필터 고르기</button></li>
+        <li><span>광음극에 빛이 정확히 닿게 맞춘다. 전원 장치는 <b>역방향</b>(전자를 막는 방향)으로 연결하고 0 V에서 시작한다.</span><button data-go="volt0">측정 모드로</button></li>
+        <li><span>전압을 조금씩 높이며 전류계를 본다. <b>전류가 0이 되는 전압</b>이 저지전압 V₀.</span><button data-go="find">Cs, 필터 436 nm</button></li>
+        <li><span>필터를 바꿔 가며 같은 측정을 <b>5가지 이상의 진동수</b>에서 반복하고 (f, V₀)를 표에 적는다.</span></li>
+        <li><span>V₀–f 점들에 직선을 그린다. <b>기울기 = h/e</b>, x절편 = 한계진동수 f₀.</span></li>
+      </ol>
+    </div>
+
+    <div class="cmp-item">
+      <h4>⑥ 실제 실험과 시뮬레이션의 다른 점</h4>
+      <ul class="diff">
+        <li><b>전류의 크기</b>: 실제 광전류는 매우 작아서(대략 나노~피코 암페어) 민감한 전류계가 필요해요. 시뮬의 nA 값은 보기 쉽게 환산한 값입니다.</li>
+        <li><b>전류가 ‘딱 0’이 되지 않아요</b>: 실제로는 전류가 서서히 0에 가까워지고, 누설 전류·양극에서 나오는 반대 방향 광전류가 섞여요. 그래서 곡선이 0을 가로지르는 지점을 V₀로 읽어요. (시뮬은 이상적인 직선 감소)</li>
+        <li><b>접촉 전위차</b>: 음극과 양극의 금속이 달라서 생기는 작은 전위차 때문에 V₀가 조금 밀리지만, 직선의 <b>기울기(h/e)는 그대로</b>예요.</li>
+        <li><b>광원</b>: 수은등은 연속 색이 아니라 <b>선스펙트럼</b>(365·405·436·546·577 nm 등)이라 필터로 이 파장들만 골라 써요. 시뮬의 연속 슬라이더는 가상의 분광기예요.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="credit">이미지 출처와 라이선스: 광전관 사진 — GOKLuLe 盧樂, CC BY-SA 3.0(<a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">라이선스</a>), 이 사이트에 그대로 게시(크기만 줄임). 구조 그림(Gernheim)·밀리컨 그래프는 퍼블릭 도메인. 실험대 그림은 일반적인 교육용 광전효과 장치를 본떠 직접 그린 일러스트이며 특정 제품이 아닙니다.</p>
+</section>
 
 <!-- ══════════ 실험보고서 ══════════ -->
 <section class="panel" id="reportSec">
@@ -386,6 +466,9 @@
   </div>
 </section>
 <div id="reportPrint"></div>
+
+
+</div>
 
 <script>
 "use strict";
@@ -487,177 +570,326 @@ function colorLabel(f14) {
 }
 const rgba = (c, a) => `rgba(${c.r},${c.g},${c.b},${a})`;
 
-/* ════════════════════════ 입자 생성/갱신 (시각화) ════════════════════════ */
+/* ════════════════════════ 실험대 장면 (실제 장치 모습) ════════════════════════ */
+const SW = 1000, SH = 450, SY0 = 110;   // 장면 좌표 y는 SY0부터 보임(위쪽 빈 곳 생략)
+const dpr = Math.min(2, window.devicePixelRatio || 1);
+tube.width = SW * dpr; tube.height = SH * dpr;
+const BEAM_Y = 260;
+const HG = [   // 수은등의 대표 선스펙트럼 (교육용 광전효과 장치에서 쓰는 간섭필터)
+  { nm: 365, f: 8.21, c: "#8b6cff" }, { nm: 405, f: 7.40, c: "#6d4aff" },
+  { nm: 436, f: 6.88, c: "#3b82ff" }, { nm: 546, f: 5.49, c: "#34d399" }, { nm: 577, f: 5.20, c: "#facc15" },
+];
+const FWIN = (i) => ({ x: 216, y: 178 + i * 33, w: 34, h: 28 });
+const BOX = { x: 330, y: 140, w: 440, h: 232 };
+const AX = 500;                                              // 양극(고리) x
+const CATH = { cy: 260, half: 52, cx: 668, bow: 22 };         // 광음극(오목한 판)
+const cathX = (y) => CATH.cx - CATH.bow * Math.pow((y - CATH.cy) / CATH.half, 2);
+const KNOB = { x: 100, y: 510, r: 28, aMin: -135, aMax: 135 }; // 전압 조절 손잡이
+const V_MIN = -6, V_MAX = 2;
+state.filterIdx = -1; state.cur = 0; state.flash = 0;
+const METAL_COL = { "2.14": "#e6b84a", "2.36": "#cfd6df", "4.30": "#8da2b8", "5.64": "#e8ecf2" };
+function metalColor() {
+  if (state.wfKey === "mystery") return "#b4a3c8";
+  return METAL_COL[state.wfKey] || "#c9d3df";
+}
+function syncFilter() {
+  state.filterIdx = HG.findIndex(h => Math.abs(h.f - state.freq14) < 0.006);
+}
+function setFreq(f) { state.freq14 = f; $("freqSlider").value = f; lastChanged = "freq"; syncFilter(); }
+
+/* ── 입자 ── */
 function spawnPhoton() {
   if (state.inten <= 0) return;
-  if (Math.random() > state.inten / 100 * 0.22) return;
-  const ty = PLATE_TOP + Math.random() * (PLATE_BOT - PLATE_TOP);
-  const dx = EMITTER_X - LAMP.x, dy = ty - LAMP.y;
-  const d = Math.hypot(dx, dy);
-  state.photons.push({ x: LAMP.x, y: LAMP.y, vx: dx / d * PHOTON_SPEED, vy: dy / d * PHOTON_SPEED });
+  if (Math.random() > state.inten / 100 * 0.2) return;
+  const ty = CATH.cy + (Math.random() - 0.5) * 2 * CATH.half * 0.9;
+  const x0 = 262, y0 = BEAM_Y + (Math.random() - 0.5) * 30;
+  const dx = cathX(ty) - x0, dy = ty - y0, d = Math.hypot(dx, dy);
+  state.photons.push({ x: x0, y: y0, vx: dx / d * 6, vy: dy / d * 6, ty });
 }
-
 function spawnElectron() {
   const k0 = kMax_eV(state.freq14, currentWf());
   if (k0 <= 0) return;
-  // 표면 전자(40%)는 K_max, 심부 전자는 손실
   const surface = Math.random() < 0.4;
   const k = surface ? k0 : k0 * (0.1 + Math.random() * 0.7);
-  const y = PLATE_TOP + Math.random() * (PLATE_BOT - PLATE_TOP);
-  state.electrons.push({
-    x: EMITTER_X + 4, y,
-    vx: ELECTRON_SPEED * Math.sqrt(k),
-    vy: (Math.random() - 0.5) * 0.8,
-    k, kmax: surface, returned: false,
-  });
+  const y = CATH.cy + (Math.random() - 0.5) * 2 * CATH.half * 0.9;
+  state.electrons.push({ x: cathX(y) - 4, y, vx: -3.4 * Math.sqrt(k) - 0.4, vy: (Math.random() - 0.5) * 0.9, k, kmax: surface });
 }
-
 function updateParticles() {
   const wf = currentWf();
   const emits = kMax_eV(state.freq14, wf) > 0 && state.inten > 0;
-  // 전자를 순방향으로 끌거나 역방향으로 미는 가속도 (시각화용 근사)
   const v0 = stoppingVoltage_V(state.freq14, wf);
-  // 광자
   for (let i = state.photons.length - 1; i >= 0; i--) {
-    const p = state.photons[i];
-    p.x += p.vx; p.y += p.vy;
-    if (p.x >= EMITTER_X) {
-      state.photons.splice(i, 1);
-      if (emits && Math.random() < 0.9) spawnElectron();
-    } else if (p.x < -20 || p.y < -20 || p.y > tube.height + 20) {
-      state.photons.splice(i, 1);
-    }
+    const p = state.photons[i]; p.x += p.vx; p.y += p.vy;
+    if (p.x >= cathX(p.y)) { state.photons.splice(i, 1); if (emits && Math.random() < 0.9) spawnElectron(); }
   }
-  // 전자
   const field = state.mode === "volt" ? state.volt_V : 0;
   for (let i = state.electrons.length - 1; i >= 0; i--) {
     const e = state.electrons[i];
-    // 역방향 전압이면 감속, 순방향이면 가속 (에너지 기준 근사)
-    if (field < 0 && v0 > 0) {
-      // |V|/v0 비율만큼 감속: 전자의 초기 K 대비 통과 가능 여부를 부드럽게 표현
-      e.vx -= (-field) / v0 * 0.05 * ELECTRON_SPEED;
-    } else if (field > 0) {
-      e.vx += field * 0.02 * ELECTRON_SPEED;
-    }
+    if (field < 0 && v0 > 0) e.vx += (-field) / v0 * 0.05 * 3.4;       // 역방향: 뒤로 미는 힘
+    else if (field > 0) e.vx -= field * 0.02 * 3.4;                     // 순방향: 양극으로 끄는 힘
     e.x += e.vx; e.y += e.vy;
-    if (e.vx <= 0 && field < 0) { // 역방향 전압에 밀려 되돌아감
-      e.returned = true;
-      if (e.x <= EMITTER_X) { state.electrons.splice(i, 1); continue; }
-    }
-    if (e.x >= COLLECTOR_X) { state.electrons.splice(i, 1); continue; }
-    if (e.y < TUBE.y || e.y > TUBE.y + TUBE.h) { state.electrons.splice(i, 1); continue; }
+    if (e.y < 200 || e.y > 320) e.vy *= -1;
+    if (e.x >= cathX(e.y)) { state.electrons.splice(i, 1); continue; }  // 되돌아와 음극에 흡수
+    if (e.x <= AX) { state.electrons.splice(i, 1); state.flash = 1; continue; }  // 양극에 도달 → 전류
   }
+  state.flash *= 0.9;
 }
 
-/* ════════════════════════ 장면 렌더링 ════════════════════════ */
-function drawTube() {
-  const c = tctx, W = tube.width, H = tube.height;
-  c.clearRect(0, 0, W, H);
-  c.fillStyle = "#0c1119"; c.fillRect(0, 0, W, H);
+/* ── 그리기 도우미 ── */
+function roundRect(c, x, y, w, h, r) {
+  c.beginPath(); c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+}
+function rrect(c, x, y, w, h, r) { roundRect(c, x, y, w, h, r); }
+function vGrad(c, y0, y1, stops) { const g = c.createLinearGradient(0, y0, 0, y1); stops.forEach(([o, col]) => g.addColorStop(o, col)); return g; }
+function hGrad(c, x0, x1, stops) { const g = c.createLinearGradient(x0, 0, x1, 0); stops.forEach(([o, col]) => g.addColorStop(o, col)); return g; }
+function badge(c, n, x, y) {
+  c.fillStyle = "#f59e0b"; c.beginPath(); c.arc(x, y, 11, 0, 7); c.fill();
+  c.fillStyle = "#1b1305"; c.font = "700 13px system-ui, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";
+  c.fillText(n, x, y + 1); c.textBaseline = "alphabetic";
+}
+function label(c, txt, x, y, align, col) {
+  c.fillStyle = col || "rgba(226,234,246,.92)"; c.font = "600 14px 'Noto Sans KR', system-ui, sans-serif"; c.textAlign = align || "left"; c.fillText(txt, x, y);
+}
+function wire(c, pts, col) {
+  c.lineCap = "round"; c.lineJoin = "round";
+  c.beginPath(); c.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i + 1 < pts.length; i += 2) c.quadraticCurveTo(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]);
+  c.strokeStyle = "rgba(0,0,0,.45)"; c.lineWidth = 7; c.stroke();
+  c.strokeStyle = col; c.lineWidth = 4.5; c.stroke();
+  c.strokeStyle = "rgba(255,255,255,.25)"; c.lineWidth = 1.2; c.stroke();
+}
+function terminal(c, x, y, col) {
+  c.fillStyle = "#0b0f17"; c.beginPath(); c.arc(x, y, 8, 0, 7); c.fill();
+  c.fillStyle = col; c.beginPath(); c.arc(x, y, 5.5, 0, 7); c.fill();
+  c.fillStyle = "rgba(255,255,255,.35)"; c.beginPath(); c.arc(x - 1.5, y - 1.5, 1.8, 0, 7); c.fill();
+}
+function display(c, x, y, w, h, text, unit, col) {
+  c.fillStyle = "#04110b"; rrect(c, x, y, w, h, 6); c.fill();
+  c.strokeStyle = "rgba(255,255,255,.12)"; c.lineWidth = 1; rrect(c, x, y, w, h, 6); c.stroke();
+  c.shadowColor = col; c.shadowBlur = 10; c.fillStyle = col;
+  c.font = "700 30px ui-monospace, Menlo, Consolas, monospace"; c.textAlign = "right"; c.fillText(text, x + w - 46, y + h - 12);
+  c.shadowBlur = 0; c.font = "700 15px system-ui, sans-serif"; c.textAlign = "left"; c.fillText(unit, x + w - 40, y + h - 12);
+}
+function instrument(c, x, y, w, h, title) {
+  c.fillStyle = "rgba(0,0,0,.4)"; rrect(c, x + 4, y + 8, w, h, 10); c.fill();
+  c.fillStyle = vGrad(c, y, y + h, [[0, "#d9dee6"], [0.08, "#c4cbd6"], [1, "#9aa4b3"]]); rrect(c, x, y, w, h, 10); c.fill();
+  c.strokeStyle = "rgba(255,255,255,.5)"; c.lineWidth = 1; rrect(c, x + .5, y + .5, w - 1, h - 1, 10); c.stroke();
+  c.fillStyle = "#2b3442"; c.font = "700 13px 'Noto Sans KR', system-ui, sans-serif"; c.textAlign = "left"; c.fillText(title, x + (title === "직류 전원 장치" ? 100 : 12), y + 22);
+}
 
-  // 진공관 외곽
-  c.strokeStyle = "rgba(180,205,230,0.35)"; c.lineWidth = 2;
-  roundRect(c, TUBE.x, TUBE.y, TUBE.w, TUBE.h, 18); c.stroke();
-
-  const wf = currentWf();
-  const col = freqColor(state.freq14);
+/* ── 장면 ── */
+function drawScene() {
+  const c = tctx; c.setTransform(dpr, 0, 0, dpr, 0, -SY0 * dpr);
+  const wf = currentWf(), col = freqColor(state.freq14), I = state.inten / 100;
   const emitting = kMax_eV(state.freq14, wf) > 0 && state.inten > 0;
+  const uv = state.freq14 >= 7.9;
+  const fc = HG[state.filterIdx] ? HG[state.filterIdx].c : rgba(col, 1);
 
-  // 광원(램프) + 빛 다발
-  if (state.inten > 0) {
-    const beam = c.createLinearGradient(LAMP.x, LAMP.y, EMITTER_X, (PLATE_TOP + PLATE_BOT) / 2);
-    beam.addColorStop(0, rgba(col, 0.30 * state.inten / 100 + 0.05));
-    beam.addColorStop(1, rgba(col, 0));
-    c.fillStyle = beam;
-    c.beginPath();
-    c.moveTo(LAMP.x, LAMP.y);
-    c.lineTo(EMITTER_X, PLATE_TOP);
-    c.lineTo(EMITTER_X, PLATE_BOT);
-    c.closePath(); c.fill();
-  }
-  c.fillStyle = "#334155"; c.beginPath(); c.arc(LAMP.x, LAMP.y, 9, 0, 7); c.fill();
-  c.fillStyle = state.inten > 0 ? rgba(col, 1) : "#1e293b";
-  c.beginPath(); c.arc(LAMP.x, LAMP.y, 5, 0, 7); c.fill();
-  c.fillStyle = "rgba(200,215,230,0.6)"; c.font = "10px sans-serif"; c.textAlign = "center";
-  c.fillText("광원", LAMP.x, LAMP.y + 24);
+  // 배경 + 작업대
+  c.fillStyle = vGrad(c, 0, 560, [[0, "#070c18"], [0.7, "#0f1930"], [1, "#0a1122"]]); c.fillRect(0, 0, SW, 560);
+  c.fillStyle = "rgba(120,150,200,.05)";
+  for (let x = 0; x < SW; x += 40) c.fillRect(x, 0, 1, 392);
+  for (let y = 0; y < 392; y += 40) c.fillRect(0, y, SW, 1);
+  c.fillStyle = vGrad(c, 392, 560, [[0, "#2c3749"], [1, "#161d2b"]]); c.fillRect(0, 392, SW, 560 - 392);
+  c.fillStyle = "rgba(255,255,255,.1)"; c.fillRect(0, 392, SW, 2);
 
-  // 광음극(방출판) & 집전판
-  drawPlate(EMITTER_X, "left");
-  drawPlate(COLLECTOR_X, "right");
-  c.fillStyle = "rgba(210,225,240,0.85)"; c.font = "11px sans-serif";
-  c.textAlign = "center";
-  c.fillText("광음극", EMITTER_X, TUBE.y + TUBE.h + 15);
-  c.fillText("집전판", COLLECTOR_X, TUBE.y + TUBE.h + 15);
-  c.fillStyle = "rgba(180,200,220,0.6)"; c.font = "10px sans-serif";
-  const wfLabel = (state.wfKey === "mystery" && !state.mysteryRevealed) ? "Φ = ???" : `Φ = ${wf.toFixed(2)} eV`;
-  c.fillText(wfLabel, EMITTER_X, TUBE.y - 8);
+  // 광학 레일 + 지지대
+  c.fillStyle = vGrad(c, 372, 390, [[0, "#c9d1dc"], [0.5, "#8995a6"], [1, "#4c5666"]]); rrect(c, 14, 372, 790, 18, 4); c.fill();
+  c.fillStyle = "rgba(0,0,0,.35)"; for (let x = 30; x < 800; x += 22) c.fillRect(x, 378, 8, 3);
+  const post = (x, top, w) => { c.fillStyle = hGrad(c, x, x + w, [[0, "#79849a"], [0.5, "#c5cddb"], [1, "#5a6578"]]); c.fillRect(x, top, w, 372 - top); };
+  post(90, 325, 18); post(226, 352, 14); post(560, 360, 18);
 
-  // 역방향/순방향 전기장 화살표 (측정 모드)
-  if (state.mode === "volt" && Math.abs(state.volt_V) > 0.02) {
-    const rev = state.volt_V < 0;
-    c.strokeStyle = rev ? "rgba(255,90,80,0.5)" : "rgba(70,220,120,0.5)";
-    c.fillStyle = c.strokeStyle; c.lineWidth = 1.2;
-    const midY = (PLATE_TOP + PLATE_BOT) / 2;
-    for (let k = 0; k < 3; k++) {
-      const y = PLATE_TOP + 40 + k * 60;
-      const x0 = EMITTER_X + 24, x1 = COLLECTOR_X - 24;
-      c.beginPath(); c.moveTo(x0, y); c.lineTo(x1, y); c.stroke();
-      const ax = rev ? x0 + 14 : x1 - 14, dir = rev ? -1 : 1;  // 전자에 작용하는 힘 방향
-      c.beginPath(); c.moveTo(ax, y); c.lineTo(ax + 7 * dir, y - 4); c.lineTo(ax + 7 * dir, y + 4); c.fill();
-    }
-    c.fillStyle = rev ? "rgba(255,120,110,0.85)" : "rgba(90,230,140,0.85)";
-    c.font = "10px sans-serif"; c.textAlign = "center";
-    c.fillText(rev ? "역방향: 전자를 밀어냄" : "순방향: 전자를 끌어당김", (EMITTER_X + COLLECTOR_X) / 2, midY);
+  // 빛살 (렌즈 → 필터 → 암상자 안 광음극)
+  if (I > 0) {
+    const a = 0.16 + 0.34 * I;
+    c.fillStyle = `rgba(255,248,230,${a * 0.8})`;
+    c.beginPath(); c.moveTo(192, 236); c.lineTo(214, 242); c.lineTo(214, 278); c.lineTo(192, 284); c.closePath(); c.fill();
+    const bc = uv ? "rgba(167,139,250," : (HG[state.filterIdx] ? hexA(HG[state.filterIdx].c) : `rgba(${col.r},${col.g},${col.b},`);
+    const gb = hGrad(c, 256, 668, [[0, bc + (a * 1.2) + ")"], [1, bc + (a * 0.55) + ")"]]);
+    c.fillStyle = gb;
+    c.beginPath(); c.moveTo(256, 241); c.lineTo(334, 238); c.lineTo(334, 282); c.lineTo(256, 279); c.closePath(); c.fill();
   }
 
-  // 광자
+  // 수은등 하우징
+  c.fillStyle = "rgba(0,0,0,.4)"; rrect(c, 34, 203, 150, 128, 14); c.fill();
+  c.fillStyle = vGrad(c, 195, 325, [[0, "#4b5668"], [0.5, "#2b3442"], [1, "#171d28"]]); rrect(c, 30, 195, 150, 130, 14); c.fill();
+  c.strokeStyle = "rgba(255,255,255,.18)"; c.lineWidth = 1.2; rrect(c, 30.5, 195.5, 149, 129, 14); c.stroke();
+  c.fillStyle = "rgba(0,0,0,.35)"; for (let i = 0; i < 9; i++) c.fillRect(44 + i * 9, 205, 4, 110);   // 방열 핀
+  c.fillStyle = vGrad(c, 232, 290, [[0, "#6b778b"], [1, "#2c3544"]]); rrect(c, 150, 232, 44, 56, 8); c.fill();     // 렌즈통
+  c.strokeStyle = "rgba(255,255,255,.3)"; rrect(c, 150.5, 232.5, 43, 55, 8); c.stroke();
+  const glow = c.createRadialGradient(194, BEAM_Y, 2, 194, BEAM_Y, 22);
+  glow.addColorStop(0, `rgba(235,245,255,${I > 0 ? 0.95 : 0.1})`); glow.addColorStop(1, "rgba(235,245,255,0)");
+  c.fillStyle = glow; c.beginPath(); c.arc(194, BEAM_Y, 22, 0, 7); c.fill();
+  c.fillStyle = I > 0 ? "rgba(240,248,255,.95)" : "#1f2937"; c.beginPath(); c.ellipse(194, BEAM_Y, 5, 22, 0, 0, 7); c.fill();
+  c.fillStyle = I > 0 ? "#22c55e" : "#475569"; c.beginPath(); c.arc(60, 308, 3.5, 0, 7); c.fill();               // 전원 LED
+  label(c, "수은등", 105, 187, "center"); badge(c, "1", 36, 187);
+
+  // 필터 홀더
+  c.fillStyle = "rgba(0,0,0,.4)"; rrect(c, 214, 172, 40, 184, 8); c.fill();
+  c.fillStyle = vGrad(c, 168, 352, [[0, "#556178"], [1, "#2a3342"]]); rrect(c, 210, 168, 44, 184, 8); c.fill();
+  HG.forEach((h, i) => {
+    const r = FWIN(i), on = i === state.filterIdx;
+    c.fillStyle = "#0b0f17"; rrect(c, r.x - 2, r.y - 2, r.w + 4, r.h + 4, 5); c.fill();
+    c.globalAlpha = on ? 1 : 0.5; c.fillStyle = h.c; rrect(c, r.x, r.y, r.w, r.h, 4); c.fill(); c.globalAlpha = 1;
+    c.fillStyle = "rgba(255,255,255,.35)"; c.fillRect(r.x + 3, r.y + 3, r.w - 6, 3);
+    if (on) { c.strokeStyle = "#fff"; c.lineWidth = 2; rrect(c, r.x - 3, r.y - 3, r.w + 6, r.h + 6, 6); c.stroke(); }
+    c.fillStyle = on ? "#fff" : "rgba(255,255,255,.8)"; c.font = "700 12px system-ui, sans-serif"; c.textAlign = "center";
+    c.fillText(h.nm, r.x + r.w / 2, r.y + 19);
+  });
+  label(c, state.filterIdx < 0 ? "분광기(가변)" : "간섭 필터", 232, 160, "center"); badge(c, "2", state.filterIdx < 0 ? 180 : 188, 160);
+
+  // 암상자
+  c.fillStyle = "rgba(0,0,0,.45)"; rrect(c, BOX.x + 5, BOX.y + 8, BOX.w, BOX.h, 14); c.fill();
+  c.fillStyle = vGrad(c, BOX.y, BOX.y + BOX.h, [[0, "#232a37"], [1, "#12171f"]]); rrect(c, BOX.x, BOX.y, BOX.w, BOX.h, 14); c.fill();
+  c.strokeStyle = "rgba(255,255,255,.12)"; c.lineWidth = 1.2; rrect(c, BOX.x + .5, BOX.y + .5, BOX.w - 1, BOX.h - 1, 14); c.stroke();
+  // 단면(안이 보이는 창)
+  c.fillStyle = vGrad(c, 156, 356, [[0, "#0a1220"], [1, "#101b31"]]); rrect(c, 346, 160, 408, 196, 10); c.fill();
+  c.strokeStyle = "rgba(125,160,220,.28)"; c.lineWidth = 1.5; rrect(c, 346, 160, 408, 196, 10); c.stroke();
+  if (I > 0) {   // 암상자 안의 빛살
+    const a2 = 0.16 + 0.34 * I;
+    const bc2 = uv ? "rgba(167,139,250," : (HG[state.filterIdx] ? hexA(HG[state.filterIdx].c) : `rgba(${col.r},${col.g},${col.b},`);
+    c.fillStyle = hGrad(c, 346, 668, [[0, bc2 + (a2 * 1.1) + ")"], [1, bc2 + (a2 * 0.5) + ")"]]);
+    c.beginPath(); c.moveTo(346, 240); c.lineTo(cathX(CATH.cy - 50), CATH.cy - 50); c.lineTo(cathX(CATH.cy + 50), CATH.cy + 50); c.lineTo(346, 280); c.closePath(); c.fill();
+  }
+  c.fillStyle = "rgba(0,0,0,.5)"; c.fillRect(330, 236, 18, 48);     // 입사 슬릿
+  c.fillStyle = I > 0 ? (uv ? "rgba(167,139,250,.5)" : fc) : "#0a0f18"; c.globalAlpha = I > 0 ? 0.35 : 1; c.fillRect(330, 241, 18, 38); c.globalAlpha = 1;
+  label(c, "암상자 (바깥 빛 차단)", 560, 134, "center"); badge(c, "3", 442, 134);
+
+  // 광전관 유리관
+  const gx0 = 388, gx1 = 706, gy0 = 192, gy1 = 328;
+  c.fillStyle = "rgba(150,190,240,.07)";
+  c.beginPath(); c.moveTo(gx0, gy0 + 20); c.quadraticCurveTo(gx0, gy0, gx0 + 20, gy0); c.lineTo(gx1 - 52, gy0);
+  c.quadraticCurveTo(gx1, gy0, gx1, CATH.cy); c.quadraticCurveTo(gx1, gy1, gx1 - 52, gy1); c.lineTo(gx0 + 20, gy1); c.quadraticCurveTo(gx0, gy1, gx0, gy1 - 20); c.closePath(); c.fill();
+  c.strokeStyle = "rgba(190,215,245,.55)"; c.lineWidth = 2.2; c.stroke();
+  c.strokeStyle = "rgba(255,255,255,.28)"; c.lineWidth = 3; c.beginPath(); c.moveTo(gx0 + 30, gy0 + 9); c.lineTo(gx1 - 60, gy0 + 9); c.stroke();   // 유리 반사광
+  c.fillStyle = "rgba(190,215,245,.35)"; c.beginPath(); c.ellipse(gx0, CATH.cy, 7, 62, 0, 0, 7); c.fill();       // 석영 창
+  c.strokeStyle = "rgba(220,235,255,.8)"; c.lineWidth = 1.5; c.stroke();
+
+  // 양극 (가는 철사 고리)
+  c.strokeStyle = "#cfd6e2"; c.lineWidth = 2.4; c.beginPath(); c.ellipse(AX, CATH.cy, 6, 56, 0, 0, 7); c.stroke();
+  c.beginPath(); c.moveTo(AX, CATH.cy + 56); c.lineTo(AX, gy1 + 10); c.stroke();
+  // 광음극 (금속 코팅 오목판)
+  c.strokeStyle = "rgba(0,0,0,.5)"; c.lineWidth = 11; c.lineCap = "butt"; c.beginPath();
+  for (let y = CATH.cy - CATH.half; y <= CATH.cy + CATH.half; y += 4) y === CATH.cy - CATH.half ? c.moveTo(cathX(y) + 4, y) : c.lineTo(cathX(y) + 4, y); c.stroke();
+  c.strokeStyle = metalColor(); c.lineWidth = 8; c.beginPath();
+  for (let y = CATH.cy - CATH.half; y <= CATH.cy + CATH.half; y += 4) y === CATH.cy - CATH.half ? c.moveTo(cathX(y), y) : c.lineTo(cathX(y), y); c.stroke();
+  if (emitting) {
+    c.strokeStyle = rgba(col, 0.55); c.lineWidth = 3; c.shadowColor = rgba(col, 1); c.shadowBlur = 14; c.beginPath();
+    for (let y = CATH.cy - CATH.half; y <= CATH.cy + CATH.half; y += 4) y === CATH.cy - CATH.half ? c.moveTo(cathX(y) - 5, y) : c.lineTo(cathX(y) - 5, y); c.stroke(); c.shadowBlur = 0;
+  }
+  c.strokeStyle = "#cfd6e2"; c.lineWidth = 2.4; c.lineCap = "round";
+  c.beginPath(); c.moveTo(CATH.cx + 2, CATH.cy + 8); c.lineTo(CATH.cx + 2, gy1 + 10); c.stroke();
+  // 관 밖 도선 → 암상자 밖
+  wire(c, [[AX, gy1 + 10], [AX, 372], [AX, 395]], "#ef4444");
+  wire(c, [[CATH.cx + 2, gy1 + 10], [CATH.cx + 2, 372], [CATH.cx + 2, 395]], "#1f2937");
+  label(c, "양극 A", AX, 183, "center", "#cfe0ff"); label(c, "광음극 K", 676, 183, "center", "#ffe39a");
+  label(c, Φlabel(), 676, 345, "center", "rgba(255,227,154,.95)"); label(c, "석영 창", 388, 345, "center", "rgba(190,215,245,.8)");
+  badge(c, "4", 430, 207);
+
+  // 광자·전자
   for (const p of state.photons) {
-    c.strokeStyle = rgba(col, 0.9); c.lineWidth = 2;
-    c.beginPath();
-    const ux = p.vx / PHOTON_SPEED, uy = p.vy / PHOTON_SPEED, ox = -uy, oy = ux;
-    for (let s = -6; s <= 6; s += 2) {
-      const amp = Math.sin(s * 0.9 + performance.now() * 0.02) * 3;
-      const wx = p.x + ux * s + ox * amp, wy = p.y + uy * s + oy * amp;
-      s === -6 ? c.moveTo(wx, wy) : c.lineTo(wx, wy);
-    }
+    c.strokeStyle = uv ? "rgba(196,181,253,.95)" : (HG[state.filterIdx] ? HG[state.filterIdx].c : rgba(col, 0.95)); c.lineWidth = 2; c.beginPath();
+    const ux = p.vx / 6, uy = p.vy / 6, ox = -uy, oy = ux;
+    for (let s = -7; s <= 7; s += 2) { const amp = Math.sin(s * 0.9 + performance.now() * 0.02) * 3.2; const wx = p.x + ux * s + ox * amp, wy = p.y + uy * s + oy * amp; s === -7 ? c.moveTo(wx, wy) : c.lineTo(wx, wy); }
     c.stroke();
   }
-
-  // 전자
   for (const e of state.electrons) {
-    c.fillStyle = e.kmax ? "#22d3ee" : "#f59e0b";
-    c.shadowBlur = 6; c.shadowColor = c.fillStyle;
-    c.beginPath(); c.arc(e.x, e.y, e.kmax ? 4 : 3, 0, 7); c.fill();
-    c.shadowBlur = 0;
+    c.fillStyle = e.kmax ? "#22d3ee" : "#f59e0b"; c.shadowBlur = 8; c.shadowColor = c.fillStyle;
+    c.beginPath(); c.arc(e.x, e.y, e.kmax ? 4 : 3, 0, 7); c.fill(); c.shadowBlur = 0;
   }
-
-  // 방출 안내 배지
+  if (state.flash > 0.05) { c.fillStyle = `rgba(103,232,249,${state.flash * 0.6})`; c.beginPath(); c.ellipse(AX, CATH.cy, 12, 58, 0, 0, 7); c.fill(); }
   if (!emitting) {
-    c.fillStyle = "rgba(255,90,80,0.15)"; roundRect(c, TUBE.x + TUBE.w / 2 - 92, TUBE.y + 8, 184, 22, 8); c.fill();
-    c.fillStyle = "rgba(255,150,140,0.95)"; c.font = "12px sans-serif"; c.textAlign = "center";
-    c.fillText(state.inten <= 0 ? "광원이 꺼져 있음" : "hf < Φ : 전자 방출 안 됨", TUBE.x + TUBE.w / 2, TUBE.y + 23);
+    c.fillStyle = "rgba(239,68,68,.18)"; rrect(c, 462, 166, 196, 22, 8); c.fill();
+    c.fillStyle = "#fca5a5"; c.font = "600 13px 'Noto Sans KR', system-ui, sans-serif"; c.textAlign = "center";
+    c.fillText(state.inten <= 0 ? "광원이 꺼져 있음" : "hf < Φ : 전자 방출 안 됨", 560, 181);
   }
-}
+  if (uv && I > 0) { c.fillStyle = "rgba(196,181,253,.95)"; c.font = "600 12px 'Noto Sans KR', system-ui, sans-serif"; c.textAlign = "left"; c.fillText("자외선: 눈에는 안 보여요 (보라색으로 표시)", 262, 226); }
 
-function drawPlate(x, side) {
-  const c = tctx;
-  const g = c.createLinearGradient(x - 6, 0, x + 6, 0);
-  g.addColorStop(0, "#2b3648"); g.addColorStop(0.5, "#4a5a72"); g.addColorStop(1, "#2b3648");
-  c.fillStyle = g;
-  c.fillRect(x - 4, PLATE_TOP, 8, PLATE_BOT - PLATE_TOP);
-  c.strokeStyle = "rgba(255,255,255,0.15)"; c.lineWidth = 1;
-  c.strokeRect(x - 4, PLATE_TOP, 8, PLATE_BOT - PLATE_TOP);
-}
+  // ── 계기 ──
+  // 전원 장치
+  instrument(c, 40, 445, 292, 103, "직류 전원 장치");
+  const ang = (KNOB.aMin + (state.volt_V - V_MIN) / (V_MAX - V_MIN) * (KNOB.aMax - KNOB.aMin)) * Math.PI / 180;
+  for (let v = V_MIN; v <= V_MAX; v += 1) {
+    const a = (KNOB.aMin + (v - V_MIN) / (V_MAX - V_MIN) * (KNOB.aMax - KNOB.aMin) - 90) * Math.PI / 180;
+    c.strokeStyle = v === 0 ? "#b91c1c" : "#2b3442"; c.lineWidth = v === 0 ? 3 : 1.6;
+    c.beginPath(); c.moveTo(KNOB.x + Math.cos(a) * (KNOB.r + 4), KNOB.y + Math.sin(a) * (KNOB.r + 4)); c.lineTo(KNOB.x + Math.cos(a) * (KNOB.r + 10), KNOB.y + Math.sin(a) * (KNOB.r + 10)); c.stroke();
+    c.fillStyle = "#2b3442"; c.font = "600 10px system-ui, sans-serif"; c.textAlign = "center";
+    c.fillText(v, KNOB.x + Math.cos(a) * (KNOB.r + 19), KNOB.y + Math.sin(a) * (KNOB.r + 19) + 3);
+  }
+  c.fillStyle = "rgba(0,0,0,.4)"; c.beginPath(); c.arc(KNOB.x + 2, KNOB.y + 4, KNOB.r, 0, 7); c.fill();
+  const kg = c.createRadialGradient(KNOB.x - 10, KNOB.y - 12, 4, KNOB.x, KNOB.y, KNOB.r);
+  kg.addColorStop(0, "#5b6578"); kg.addColorStop(1, "#1a202b");
+  c.fillStyle = kg; c.beginPath(); c.arc(KNOB.x, KNOB.y, KNOB.r, 0, 7); c.fill();
+  c.strokeStyle = "rgba(255,255,255,.25)"; c.lineWidth = 1.5; c.stroke();
+  const ia = ang - Math.PI / 2;
+  c.strokeStyle = state.mode === "volt" ? "#fbbf24" : "#6b7280"; c.lineWidth = 4; c.lineCap = "round";
+  c.beginPath(); c.moveTo(KNOB.x + Math.cos(ia) * 10, KNOB.y + Math.sin(ia) * 10); c.lineTo(KNOB.x + Math.cos(ia) * (KNOB.r - 5), KNOB.y + Math.sin(ia) * (KNOB.r - 5)); c.stroke();
+  c.fillStyle = "#2b3442"; c.font = "600 11px 'Noto Sans KR', system-ui, sans-serif"; c.textAlign = "center";
+  c.textAlign = "left"; c.fillText(state.mode === "volt" ? "◀ 손잡이를 드래그해 전압 조절" : "(⚡측정 탭에서 조절)", 168, 534);
+  const rev = state.volt_V < -0.02, fwd = state.volt_V > 0.02;
+  c.fillStyle = rev ? "#ef4444" : fwd ? "#22c55e" : "#64748b"; c.shadowColor = c.fillStyle; c.shadowBlur = rev || fwd ? 10 : 0;
+  c.beginPath(); c.arc(176, 492, 6, 0, 7); c.fill(); c.shadowBlur = 0;
+  c.fillStyle = "#2b3442"; c.font = "600 12px 'Noto Sans KR', system-ui, sans-serif"; c.textAlign = "left";
+  c.fillText(rev ? "역방향 (전자를 막음)" : fwd ? "순방향 (전자를 당김)" : "0 V", 188, 496);
+  terminal(c, 256, 447, "#ef4444"); terminal(c, 296, 447, "#111827");
+  c.fillStyle = "#2b3442"; c.font = "700 11px system-ui, sans-serif"; c.textAlign = "center"; c.fillText("+", 256, 466); c.fillText("−", 296, 466);
+  badge(c, "5", 340 - 12, 456);
 
-function roundRect(c, x, y, w, h, r) {
-  c.beginPath();
-  c.moveTo(x + r, y);
-  c.arcTo(x + w, y, x + w, y + h, r);
-  c.arcTo(x + w, y + h, x, y + h, r);
-  c.arcTo(x, y + h, x, y, r);
-  c.arcTo(x, y, x + w, y, r);
-  c.closePath();
+  // 전압계
+  instrument(c, 372, 445, 190, 103, "디지털 전압계");
+  const vTxt = (state.mode === "volt" ? state.volt_V : 0).toFixed(2);
+  display(c, 384, 480, 166, 56, vTxt, "V", "#4ade80");
+  terminal(c, 404, 447, "#ef4444"); terminal(c, 444, 447, "#111827");
+  badge(c, "6", 573 - 11, 456);
+
+  // 전류계
+  instrument(c, 592, 445, 212, 103, "피코(나노) 전류계");
+  const nA = state.cur * 0.9;
+  display(c, 604, 480, 188, 56, nA < 0.05 ? "0.0" : nA.toFixed(1), "nA", state.cur > 0.05 ? "#4ade80" : "#f87171");
+  terminal(c, 626, 447, "#ef4444"); terminal(c, 770, 447, "#111827");
+  badge(c, "7", 814 - 11, 456);
+
+  // 배선: 광전관 ↔ 전류계 ↔ 전원 (+ 전압계는 전원과 병렬)
+  wire(c, [[AX, 395], [AX, 430], [626, 447]], "#ef4444");
+  wire(c, [[770, 447], [770, 424], [300, 424], [256, 447]], "#ef4444");
+  wire(c, [[CATH.cx + 2, 395], [CATH.cx + 2, 418], [296, 438], [296, 447]], "#374151");
+  wire(c, [[256, 447], [330, 430], [404, 447]], "#ef4444");
+  wire(c, [[296, 447], [370, 432], [444, 447]], "#374151");
 }
+function Φlabel() { return (state.wfKey === "mystery" && !state.mysteryRevealed) ? "Φ = ???" : `Φ = ${currentWf().toFixed(2)} eV`; }
+function hexA(h) { const n = parseInt(h.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},`; }
+
+/* ── 조작: 필터 클릭, 전압 손잡이 드래그 ── */
+function scenePos(ev) { const r = tube.getBoundingClientRect(); return { x: (ev.clientX - r.left) / r.width * SW, y: (ev.clientY - r.top) / r.height * SH + SY0 }; }
+let knobDrag = false;
+function knobToVolt(p) {
+  let a = Math.atan2(p.y - KNOB.y, p.x - KNOB.x) * 180 / Math.PI + 90;   // 위쪽이 0°
+  if (a > 180) a -= 360;
+  a = Math.max(KNOB.aMin, Math.min(KNOB.aMax, a));
+  return Math.round((V_MIN + (a - KNOB.aMin) / (KNOB.aMax - KNOB.aMin) * (V_MAX - V_MIN)) * 100) / 100;
+}
+tube.addEventListener("pointerdown", (ev) => {
+  const p = scenePos(ev);
+  for (let i = 0; i < HG.length; i++) {
+    const r = FWIN(i);
+    if (p.x >= r.x - 4 && p.x <= r.x + r.w + 40 && p.y >= r.y - 3 && p.y <= r.y + r.h + 3) { setFreq(HG[i].f); updateUI(); return; }
+  }
+  if (Math.hypot(p.x - KNOB.x, p.y - KNOB.y) <= KNOB.r + 14) {
+    if (state.mode !== "volt") { setMode("volt"); }
+    knobDrag = true; tube.setPointerCapture(ev.pointerId);
+    state.volt_V = knobToVolt(p); $("voltSlider").value = state.volt_V; updateUI();
+  }
+});
+tube.addEventListener("pointermove", (ev) => {
+  const p = scenePos(ev);
+  if (knobDrag) { state.volt_V = knobToVolt(p); $("voltSlider").value = state.volt_V; updateUI(); return; }
+  const onF = HG.some((h, i) => { const r = FWIN(i); return p.x >= r.x - 4 && p.x <= r.x + r.w + 40 && p.y >= r.y - 3 && p.y <= r.y + r.h + 3; });
+  tube.style.cursor = (onF || Math.hypot(p.x - KNOB.x, p.y - KNOB.y) <= KNOB.r + 14) ? "pointer" : "default";
+});
+tube.addEventListener("pointerup", () => { knobDrag = false; });
+tube.addEventListener("pointercancel", () => { knobDrag = false; });
 
 /* ════════════════════════ 그래프 ════════════════════════ */
 function drawGraphAxes(ctx, W, H, L, B, T, R, xLabel, yLabel, k) {
@@ -673,7 +905,8 @@ function drawGraphAxes(ctx, W, H, L, B, T, R, xLabel, yLabel, k) {
 
 // I–V 곡선
 function drawIVGraph() {
-  const ctx = gIV.getContext("2d"), W = gIV.width, H = gIV.height;
+  const ctx = gIV.getContext("2d"), W = 280, H = 180;
+  ctx.setTransform(gIV.width / 280, 0, 0, gIV.height / 180, 0, 0);
   const L = 34, B = 22, T = 10, R = 10;
   const wf = currentWf();
   const vMin = -6, vMax = 2, iMax = 100;
@@ -745,7 +978,8 @@ function drawVfGraph(cv, metal) {
 
 // K_max–f 이론 그래프 (기본 모드): 기울기 h, f 절편 f₀, 세로 절편 −Φ
 function drawKfGraph() {
-  const ctx = gKf.getContext("2d"), W = gKf.width, H = gKf.height;
+  const ctx = gKf.getContext("2d"), W = 280, H = 180;
+  ctx.setTransform(gKf.width / 280, 0, 0, gKf.height / 180, 0, 0);
   const L = 34, B = 22, T = 10, R = 10, fMax = 16, kMaxAxis = 6;
   drawGraphAxes(ctx, W, H, L, B, T, R, "f (×10¹⁴ Hz)", "K_max (eV)", 1);
   const px = (f) => L + f / fMax * (W - L - R), py = (v) => (H - B) - v / kMaxAxis * (H - B - T);
@@ -788,12 +1022,7 @@ function updateUI() {
   $("cV0").textContent = v0 > 0 ? v0.toFixed(2) + " V" : "—";
   $("cV0").className = "v big" + (v0 > 0 ? "" : " zero");
 
-  // 전류계
-  const cur = photocurrent(state.freq14, wf, state.inten, state.volt_V);
-  $("ammeterVal").textContent = cur.toFixed(1);
-  $("ammeterVal").className = "cur" + (cur <= 0.05 ? " zero" : "");
-  $("ammeterBar").style.width = Math.min(100, cur) + "%";
-  $("ammeterBar").style.background = cur <= 0.05 ? "var(--accent2)" : "var(--ok)";
+  state.cur = photocurrent(state.freq14, wf, state.inten, state.volt_V);
 
   // 방출 상태
   $("emitStatus").textContent = state.inten <= 0 ? "광원 꺼짐"
@@ -806,6 +1035,8 @@ function updateUI() {
   drawIVGraph();
   drawVfGraph(gVf);
   drawKfGraph();
+  drawVfGraph($("cmpGraph"));
+  syncChips();
 }
 
 let lastChanged = "freq";
@@ -941,12 +1172,14 @@ function resetSim() {
 /* ════════════════════════ 루프 ════════════════════════ */
 function loop() {
   if (!state.paused) { spawnPhoton(); updateParticles(); }
-  drawTube();
+  drawScene();
+  const cc = $("cmpTube").getContext("2d");
+  cc.drawImage(tube, 322 * dpr, (124 - SY0) * dpr, 456 * dpr, 284 * dpr, 0, 0, 900, 560);
   requestAnimationFrame(loop);
 }
 
 /* ════════════════════════ 이벤트 ════════════════════════ */
-$("freqSlider").addEventListener("input", (e) => { state.freq14 = parseFloat(e.target.value); lastChanged = "freq"; updateUI(); });
+$("freqSlider").addEventListener("input", (e) => { setFreq(parseFloat(e.target.value)); updateUI(); });
 $("intenSlider").addEventListener("input", (e) => { state.inten = parseInt(e.target.value, 10); lastChanged = "inten"; updateUI(); });
 $("wfSlider").addEventListener("input", (e) => {
   if (state.wfKey === "mystery") return;   // 미지 금속은 슬라이더 잠금
@@ -1003,7 +1236,7 @@ setMode("basic");
   const q = new URLSearchParams(location.search);
   const pick = (k, lo, hi) => { const v = parseFloat(q.get(k)); return isFinite(v) ? Math.min(hi, Math.max(lo, v)) : null; };
   const f = pick("f", 3.5, 16), i = pick("i", 0, 100), w = pick("w", 1.5, 6.5);
-  if (f !== null) { state.freq14 = f; $("freqSlider").value = f; }
+  if (f !== null) setFreq(f);
   if (i !== null) { state.inten = Math.round(i / 5) * 5; $("intenSlider").value = state.inten; }
   if (w !== null) { state.wf_eV = w; state.wfKey = String(w); $("wfSlider").value = w; }
 })();
@@ -1040,12 +1273,12 @@ const STEPS = [
     quiz: { q: "세슘(Φ = 2.14 eV)에 f = 6.0×10¹⁴ Hz(E ≈ 2.48 eV)를 비출 때 K<sub>max</sub>는?", opts: ["0.34 eV", "2.48 eV", "4.62 eV"], ans: 0, why: "K<sub>max</sub> = hf − Φ = 2.48 − 2.14 ≈ 0.34 eV. 광자 에너지 전부가 운동에너지가 되는 게 아니에요." } },
   { sci: "millikan", title: "5단계 · 저지전압으로 K_max를 직접 재다",
     text: `저는 처음엔 광양자설이 못 미더워서 <b>틀렸음을 보이려고</b> 실험했어요(밀리컨은 광양자 개념에 회의적이었다고 알려져 있어요). 전자를 막는 <b>역방향 전압</b>을 걸어 전류가 딱 0이 되는 전압, 즉 <b>저지전압 V₀</b>를 쟀죠. 가장 빠른 전자까지 멈추니까 <b>eV₀ = K<sub>max</sub></b>예요.`,
-    task: `<b>⚡ 저지전압 측정</b> 탭입니다. 전압 슬라이더를 0에서 왼쪽(−)으로 내리면서 전류가 0이 되는 순간을 찾으세요. 그때의 |V|가 V₀이고, 위 ‘실시간 계산값’의 K<sub>max</sub>와 같은 숫자예요. (그래프의 빨간 점선 −V₀도 확인!)`,
+    task: `<b>⚡ 측정</b> 모드입니다. 실험대의 <b>전원 장치 손잡이(5)</b>를 드래그하거나 전압 슬라이더로 0에서 −쪽으로 내리면서, <b>전류계(7)가 0</b>이 되는 순간을 찾으세요. 그때의 |V|가 V₀이고, 위 ‘실시간 계산값’의 K<sub>max</sub>와 같은 숫자예요. (그래프의 빨간 점선 −V₀도 확인!)`,
     setup: { mode: "volt", metal: "2.14", f: 8.0, i: 60, v: 0 },
     quiz: { q: "K<sub>max</sub> = 1.17 eV인 전자를 막는 저지전압 V₀는?", opts: ["1.17 V", "2.34 V", "0.58 V"], ans: 0, why: "eV₀ = K<sub>max</sub> → V₀ = K<sub>max</sub>/e. 단위를 eV로 쓰면 숫자가 그대로예요: 1.17 eV ↔ 1.17 V." } },
   { sci: "millikan", title: "6단계 · 기울기로 플랑크 상수 h 구하기",
     text: `여러 진동수에서 V₀를 재면 <b>직선</b>이 나와요. V₀ = (h/e)·f − Φ/e 이니까 <b>기울기 = h/e</b>, <b>x절편 = f₀</b>, <b>y절편 = −Φ/e</b>예요. 1916년 제 결과는 h ≈ 6.57×10⁻³⁴ J·s로, 오늘날 값(6.626×10⁻³⁴)과 1% 안팎으로 일치했죠. 이제 여러분 차례예요.`,
-    task: `금속 하나를 정해 진동수를 바꿔 가며 <b>3점 이상</b> 기록하세요(수동이 어렵다면 자동 + 오차 넣기). 기울기·h·오차율을 확인한 뒤 <b>미지 금속 X</b>에도 도전해 Φ = h·f₀로 정체를 맞혀 보세요. 끝나면 아래 <b>실험보고서</b>를 쓰세요.`,
+    task: `금속 하나를 정해 <b>간섭 필터(365·405·436·546·577 nm)</b>를 바꿔 가며 <b>3점 이상</b> 기록하세요(수동이 어렵다면 자동 + 오차 넣기). 기울기·h·오차율을 확인한 뒤 <b>미지 금속 X</b>에도 도전해 Φ = h·f₀로 정체를 맞혀 보세요. 끝나면 아래 <b>실험보고서</b>를 쓰세요.`,
     setup: { mode: "volt", metal: "2.14", f: 7.0, i: 60, v: 0 },
     quiz: { q: "V₀–f 직선의 기울기는 무엇일까요?", opts: ["h", "h/e", "e/h"], ans: 1, why: "V₀ = (h/e)f − Φ/e 에서 f 앞의 계수가 h/e. 기울기에 전자의 전하량 e를 곱하면 h가 돼요." } },
 ];
@@ -1056,7 +1289,7 @@ function applyStep(st) {
   const u = st.setup;
   setMode(u.mode);
   document.querySelector(`#presetBox button[data-wf="${u.metal}"]`).click();
-  state.freq14 = u.f; setSliderVal("freqSlider", u.f); lastChanged = "freq";
+  setFreq(u.f);
   state.inten = u.i; setSliderVal("intenSlider", u.i);
   if (u.v !== undefined) { state.volt_V = u.v; setSliderVal("voltSlider", u.v); }
   state.photons = []; state.electrons = [];
@@ -1172,6 +1405,24 @@ REP_FIELDS.forEach(id => $(id).addEventListener("input", saveReport));
 window.addEventListener("beforeprint", () => { if (!$("reportPrint").innerHTML) $("reportPrint").innerHTML = `<style>${REP_CSS}</style>` + buildReportHTML(); });
 window.addEventListener("afterprint", () => { $("reportPrint").innerHTML = ""; });
 loadReport(); renderGuide(); refreshReportData();
+/* ════════════════════════ 필터 칩 · 이동 버튼 · 비교 ════════════════════════ */
+HG.forEach((h, i) => {
+  const b = document.createElement("button"); b.className = "fchip"; b.style.setProperty("--c", h.c);
+  b.textContent = `${h.nm} nm (f ${h.f.toFixed(2)})`; b.dataset.i = i;
+  b.onclick = () => { setFreq(h.f); updateUI(); };
+  $("filterChips").appendChild(b);
+});
+function syncChips() { [...$("filterChips").children].forEach((b, i) => b.classList.toggle("active", i === state.filterIdx)); }
+$("cmpJump").addEventListener("click", () => $("compare").scrollIntoView({ behavior: "smooth" }));
+document.querySelectorAll("#compare .steps button[data-go]").forEach(b => b.addEventListener("click", () => {
+  const g = b.dataset.go;
+  if (g === "filter") { setMode("basic"); }
+  else if (g === "volt0") { setMode("volt"); state.volt_V = 0; $("voltSlider").value = 0; }
+  else if (g === "find") { setMode("volt"); document.querySelector('#presetBox button[data-wf="2.14"]').click(); setFreq(6.88); state.inten = 60; $("intenSlider").value = 60; state.volt_V = 0; $("voltSlider").value = 0; }
+  updateUI(); document.querySelector(".scene-card").scrollIntoView({ behavior: "smooth", block: "start" });
+}));
+syncFilter(); updateUI();
+
 
 
 /* 완성 기준 콘솔 검증 */
@@ -1184,6 +1435,7 @@ loadReport(); renderGuide(); refreshReportData();
   const fit = linearFit(pts), hMeas = slopeToPlanck_JS(fit.slope);
   console.log(`[검증] V₀–f 적합 h=${hMeas.toExponential(4)} J·s (참값 ${PLANCK_TRUE_JS.toExponential(4)}), 오차=${(Math.abs(hMeas-PLANCK_TRUE_JS)/PLANCK_TRUE_JS*100).toFixed(3)}%`);
 })();
+
 </script>
 </body>
 </html>

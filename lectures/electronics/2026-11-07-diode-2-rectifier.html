@@ -1,0 +1,830 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>다이오드 ② 정류·평활·정전압</title>
+<!-- diode-2-rectifier · 직류 전원 장치 구성 · 반파·전파·브리지·배압 정류 · 콘덴서·LC 평활 · 제너·78xx 정전압 · 오실로스코프 관찰 실험 (13장) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap">
+<style>
+:root{
+  --bg:#dfe5f0; --slide:#f5f7fc; --panel:#ffffff; --ink:#14203a; --muted:#54617b; --line:#c9d2e4;
+  --blue:#1f5fd1; --onblue:#ffffff; --amber:#b45f00; --green:#0c7a58; --red:#b8321f;
+  --blue-soft:#dce8fb; --amber-soft:#fbe8cf;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+    --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+    --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+  --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+  --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;overflow:hidden}
+#viewport{position:relative;width:100%;height:100%;overflow:hidden}
+#deck{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center center;background:var(--slide);box-shadow:0 12px 70px rgba(0,0,0,.28);overflow:hidden}
+.slide{position:absolute;inset:0;display:none;flex-direction:column;padding:84px 88px 52px;gap:24px;background:var(--slide);font-size:32px;line-height:1.4}
+.slide.active{display:flex}
+.hd{display:flex;align-items:baseline;justify-content:space-between;gap:24px;flex:none}
+.hd h2{font-size:58px;line-height:1.15;margin:0;font-weight:800;letter-spacing:-.01em}
+.hd .src{font-size:26px;color:var(--muted);white-space:nowrap}
+.body{flex:1;min-height:0;display:grid;gap:36px}
+.mg-box{position:relative;aspect-ratio:16/9;border-radius:16px;overflow:hidden;background:#06142a;align-self:start}
+.mg-box.mg-full{height:100%;max-width:100%;justify-self:center}
+.mg-box iframe{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none}
+.mg-re{position:absolute;right:14px;bottom:14px;font:inherit;font-size:24px;padding:8px 18px;border-radius:10px;border:1px solid rgba(255,255,255,.4);background:rgba(0,0,0,.55);color:#fff;cursor:pointer;opacity:.75}
+.mg-re:hover,.mg-re:focus-visible{opacity:1}
+.side{display:flex;flex-direction:column;gap:18px;min-height:0}
+canvas{display:block;border-radius:16px;background:#0a1330}
+.box{background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:20px 26px}
+.box h3{margin:0 0 8px;font-size:30px}
+.sm{font-size:26px;color:var(--muted)}
+.lead{font-size:40px;line-height:1.35}
+.k{color:var(--amber);font-weight:700}.p{color:var(--blue);font-weight:700}.ok{color:var(--green);font-weight:700}.bad{color:var(--red);font-weight:700}
+/* math */
+.m{font-family:'STIX Two Text','Times New Roman',serif;font-style:italic;font-size:1.1em;white-space:nowrap}
+.m .u,.u{font-style:normal}
+.m sub,.m sup{font-size:.68em;line-height:0;font-style:normal}
+.fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.15;margin:0 .12em;font-size:.95em}
+.fr>span:first-child{padding:0 .2em .06em;border-bottom:.07em solid currentColor}
+.fr>span:last-child{padding-top:.06em}
+.sq{white-space:nowrap}.sq .rad{border-top:.07em solid currentColor;padding:0 .15em;margin-left:-.04em}
+.eq{font-size:44px;text-align:center;padding:6px 0}
+/* controls */
+.ctl{display:flex;flex-direction:column;gap:4px}
+.ctl .row{display:flex;justify-content:space-between;align-items:baseline;font-size:27px;gap:12px}
+.ctl .val{font-weight:700;font-variant-numeric:tabular-nums}
+.rangew{position:relative}
+input[type=range]{width:100%;height:44px;-webkit-appearance:none;appearance:none;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:38px;height:38px;border-radius:50%;background:var(--blue);margin-top:-13px;border:4px solid var(--panel);box-shadow:0 1px 6px rgba(0,0,0,.35)}
+input[type=range]::-moz-range-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;background:var(--blue);border:4px solid var(--panel)}
+input[type=range]:focus-visible{outline:3px solid var(--blue);outline-offset:4px;border-radius:8px}
+.marks{position:relative;height:60px;font-size:22px;color:var(--muted)}
+.marks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.btns{display:flex;gap:12px;flex-wrap:wrap}
+.btn,.chip{font:inherit;font-size:27px;font-weight:700;padding:10px 24px;border-radius:12px;border:2px solid var(--blue);background:var(--panel);color:var(--blue);cursor:pointer;line-height:1.25}
+.btn.pri{background:var(--blue);color:var(--onblue)}
+.chip{padding:8px 18px;font-size:26px;border-color:var(--line);color:var(--ink);font-weight:500}
+.chip.on{border-color:var(--blue);background:var(--blue-soft);font-weight:700}
+.btn:focus-visible,.chip:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.chips{display:flex;gap:10px;flex-wrap:wrap}
+/* step reveal */
+.st{display:grid;grid-template-columns:46px 1fr;gap:14px;padding:8px 14px;border-radius:14px;opacity:0;transform:translateY(10px);transition:opacity .35s,transform .35s;border:2px solid transparent}
+.st.on{opacity:.55;transform:none}
+.st.cur{opacity:1;background:var(--panel);border-color:var(--blue)}
+.st .n{width:42px;height:42px;border-radius:50%;background:var(--blue);color:var(--onblue);display:grid;place-items:center;font-weight:800;font-size:24px;margin-top:2px}
+.st .tl{display:flex;flex-wrap:wrap;gap:2px 14px;align-items:baseline}
+.st .t{font-size:23px;color:var(--muted);line-height:1.3}
+.st b{font-size:27px}
+.st .eq{font-size:35px;line-height:1.1;text-align:left;padding:2px 0}
+/* cover */
+.cover{flex-direction:row;align-items:center;gap:56px}
+.cover.active{display:flex}
+.cv-l{flex:1;display:flex;flex-direction:column;gap:28px}
+.cv-l h1{font-size:200px;line-height:1;margin:0;font-weight:800;letter-spacing:-.04em}
+.cv-l h1.long{font-size:92px;line-height:1.22;letter-spacing:-.02em;text-wrap:balance;word-break:keep-all}
+.cv-tag{font-size:30px;color:var(--muted)}
+.q{border-left:8px solid var(--blue);border-radius:6px;padding:8px 0 8px 28px;font-size:36px;line-height:1.45}
+/* table */
+table.t{border-collapse:collapse;width:100%;font-size:27px}
+table.t th,table.t td{padding:10px 14px;border-bottom:2px solid var(--line);text-align:right;white-space:nowrap}
+table.t th:first-child,table.t td:first-child,table.t th:last-child,table.t td:last-child{text-align:left}
+table.t th{font-size:24px;color:var(--muted);font-weight:500}
+table.t tbody tr{cursor:pointer}
+table.t tbody tr.on{background:var(--blue-soft);font-weight:700}
+/* HUD / notes */
+#hud{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:10px;align-items:center;background:rgba(10,19,48,.86);color:#e9effd;padding:8px 14px;border-radius:14px;font-size:18px;opacity:0;transition:opacity .3s;z-index:20}
+#hud.show{opacity:1}
+#hud button{font:inherit;font-size:18px;color:#e9effd;background:transparent;border:1.5px solid rgba(233,239,253,.5);border-radius:8px;padding:4px 12px;cursor:pointer}
+#notes{position:absolute;left:0;right:0;bottom:0;background:rgba(10,19,48,.94);color:#eaf0ff;padding:26px 88px 34px;font-size:30px;line-height:1.5;display:none;z-index:15}
+#notes.on{display:block}
+#notes b{color:#ffb454}
+
+.ko{font-family:'Noto Sans KR',sans-serif;font-style:normal;font-size:.8em}
+#bar{position:absolute;top:14px;left:88px;right:88px;height:54px;display:flex;justify-content:space-between;align-items:center;z-index:12}
+#bar .bl{font-size:26px;font-weight:800}
+#bar .br{display:flex;gap:10px}
+.tb{font:inherit;font-size:24px;font-weight:700;padding:7px 18px;border-radius:12px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;line-height:1.2}
+.tb:hover{border-color:var(--blue)}.tb.on{border-color:var(--blue);background:var(--blue-soft)}
+.tb:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+#help{position:absolute;inset:0;background:rgba(6,11,30,.82);display:none;align-items:center;justify-content:center;z-index:30}
+#help.on{display:flex}
+.hp{background:var(--panel);color:var(--ink);border-radius:22px;padding:36px 52px 40px;width:1320px;max-height:960px;overflow:auto;font-size:27px;line-height:1.5;border:2px solid var(--line)}
+.hp h3{font-size:40px;margin:0 0 14px}.hp h4{font-size:29px;margin:18px 0 6px;color:var(--blue)}
+.hp .g{display:grid;grid-template-columns:230px 1fr;gap:6px 22px}
+.hp kbd{font:inherit;font-size:24px;font-weight:700;background:var(--blue-soft);border:2px solid var(--line);border-radius:8px;padding:1px 10px;margin-right:4px}
+#ask{position:absolute;inset:0;background:rgba(6,11,30,.6);display:none;align-items:center;justify-content:center;z-index:25;cursor:pointer}
+#ask.on{display:flex}
+#ask .ak{background:var(--panel);color:var(--ink);border-radius:24px;border-left:16px solid var(--blue);padding:44px 72px 40px 60px;width:1500px;box-shadow:0 20px 80px rgba(0,0,0,.45)}
+#ask .ah{font-size:30px;color:var(--blue);font-weight:800;margin-bottom:18px}
+#ask .aq{font-size:54px;line-height:1.4;font-weight:700;margin:10px 0;letter-spacing:-.01em}
+#ask .aq span{color:var(--blue);margin-right:14px}
+#ask .af{font-size:24px;color:var(--muted);margin-top:22px}
+#notes .nh{font-size:24px;color:#9db0d8;margin-bottom:6px}
+#notes .nq{margin:4px 0 10px;font-size:29px}
+#notes .ni{margin:6px 0;font-size:27px;line-height:1.45}
+#notes .nx{color:#ff9d9d;font-weight:700}#notes .nv{color:#5eead4;font-weight:700}
+@media (prefers-reduced-motion: reduce){.st{transition:none}}
+#simError{position:absolute;left:88px;right:88px;top:76px;z-index:40;background:rgba(184,50,31,.95);color:#fff;font-size:22px;line-height:1.4;padding:10px 18px;border-radius:12px;white-space:pre-wrap;display:none}
+#simError.on{display:block}
+/* ---- 반응형(reflow): 폭 1100px 미만(폰·태블릿)에서는 1920 스케일 대신 세로로 흐르는 레이아웃 ---- */
+html.rf #deck{left:0;top:0;transform-origin:top left;box-shadow:none}
+html.rf .slide{padding:104px 22px 100px;gap:18px;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;font-size:30px}
+html.rf .body{display:flex !important;flex-direction:column;gap:22px;flex:none;min-height:auto}
+html.rf .side{min-height:auto}
+html.rf .hd{flex-direction:column;align-items:flex-start;gap:6px}
+html.rf .hd h2{font-size:44px}
+html.rf .hd .src{font-size:23px;white-space:normal}
+html.rf canvas{width:100% !important;height:auto !important;max-width:100%}
+html.rf .mg-box.mg-full{height:auto;width:100%}
+html.rf img,html.rf svg,html.rf video{max-width:100%;height:auto}
+html.rf .cover{flex-direction:column;align-items:stretch;gap:26px}
+html.rf .cv-l h1{font-size:112px}
+html.rf .cv-l h1.long{font-size:52px}
+html.rf .cv-tag{font-size:26px}
+html.rf .q{font-size:30px}
+html.rf .lead{font-size:34px}
+html.rf .eq{font-size:36px;overflow-x:auto}
+html.rf table.t{display:block;overflow-x:auto;font-size:24px}
+html.rf .btn,html.rf .chip{min-height:52px}
+html.rf #bar{left:14px;right:14px;top:12px;height:auto;flex-wrap:wrap;gap:8px}
+html.rf #bar .bl{display:none}
+html.rf #bar .br{flex-wrap:wrap;justify-content:flex-end;width:100%}
+html.rf .tb{font-size:20px;padding:8px 12px}
+html.rf .hp{width:92%;max-height:88%;padding:24px 22px 28px;font-size:23px}
+html.rf .hp h3{font-size:32px}
+html.rf .hp .g{grid-template-columns:1fr;gap:2px 0}
+html.rf #ask .ak{width:92%;padding:26px 24px 24px 28px;border-left-width:10px}
+html.rf #ask .aq{font-size:34px}
+html.rf #notes{padding:18px 20px 26px;font-size:23px;max-height:62%;overflow:auto}
+html.rf #notes .nq{font-size:25px}
+html.rf #notes .ni{font-size:23px}
+html.rf #simError{left:14px;right:14px;top:96px}
+html.rf #hud{padding:8px 16px;width:max-content;max-width:96%}
+html.rf #hud #h-pg{white-space:nowrap;font-size:22px}
+html.rf .st:not(.on){display:none}
+html.rf #hud button{font-size:22px;padding:6px 16px;min-height:44px}
+/* ---- extra_css ---- */
+.fit p,.fit td,.fit th{font-size:21px !important;line-height:1.4}.fit h3{font-size:25px !important}
+.warn{border-left:6px solid #e0a000;padding:8px 16px;background:rgba(224,160,0,.10);border-radius:6px}
+table.t{width:100%;table-layout:fixed}
+table.t td,table.t th{text-align:left;font-size:21px;vertical-align:top;white-space:normal;word-break:keep-all;overflow-wrap:anywhere}
+details summary{cursor:pointer;color:#e0a000;font-weight:700;margin-top:6px}
+.btns{flex-wrap:wrap}
+a{color:inherit}
+.side .chips{flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div id="viewport">
+<div id="deck">
+
+<!-- c -->
+<section class="slide cover" id="c">
+  <div class="cv-l"><div class="cv-tag">전자 과학 · 다이오드 ② 정류·평활·정전압 회로</div>
+    <h1 class="long">교류를 직류로 바꾸는 전원 장치</h1>
+    <p class="lead" style="margin:0">콘센트의 전기는 교류인데 스마트폰 충전기 안에서는 직류가 필요하다. 다이오드로 교류를 한쪽으로 모으고(정류), 출렁임을 줄이고(평활), 전압을 일정하게 만드는(정전압) 과정을 가상 오실로스코프로 직접 관찰한다.</p>
+    <div class="q">어댑터 속 회로는 어떻게 교류에서 깨끗한 직류를 만들까?</div>
+    <div class="sm">「고등학교 전자과학」 Ⅲ-2~4 정류·평활·정전압 99~122쪽 · 오실로스코프 덱과 이어지는 관찰 수업</div></div>
+  <canvas id="c-cv"></canvas>
+</section>
+
+<!-- fl -->
+<section class="slide" id="fl">
+  <header class="hd"><h2>직류 전원 장치의 구성 — 단계마다 파형을 보자</h2><span class="src">교재 99쪽 · 그림 3-17 · 값은 모형</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="fl-cv"></canvas><div class="side"><div class="chips"><div class="chip on" id="fl-s0">① 변압기</div><div class="chip" id="fl-s1">② 정류기</div><div class="chip" id="fl-s2">③ 평활</div><div class="chip" id="fl-s3">④ 정전압</div></div><div class="box"><p class="sm" style="font-size:19px">변압기: 크기 조절 → 정류기: 한 방향 맥류 → 평활: 리플 감소 → 정전압: 일정 출력(교재 그림 3-17). 노랑 파형이 선택 단계의 출력이다.</p></div></div>
+</div>
+</section>
+
+<!-- rc -->
+<section class="slide" id="rc">
+  <header class="hd"><h2>반파 정류 — 다이오드 1개</h2><span class="src">교재 99~103쪽 · 식 3-15~3-18</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="rc-cv"></canvas><div class="side"><div class="chips"><div class="chip on" id="rc-k-half">반파 정류</div></div><div class="ctl"><div class="row">입력 최대값 V<sub>p</sub><span class="val" id="rc-vp-v"></span></div><input type="range" id="rc-vp" min="5" max="15" step="0.5" value="10"></div><div class="ctl"><label style="font-size:21px"><input type="checkbox" id="rc-vd" checked> 다이오드 강하 0.7 V 반영</label></div><div class="box"><p id="rc-msg" style="font-size:20px"></p></div></div>
+</div>
+</section>
+
+<!-- fw -->
+<section class="slide" id="fw">
+  <header class="hd"><h2>전파 정류 — 중간 탭과 브리지</h2><span class="src">교재 103~107쪽 · 식 3-21~3-24, 그림 3-25~3-30</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="fw-cv"></canvas><div class="side"><div class="chips"><div class="chip on" id="fw-k-ct">중간 탭 전파</div><div class="chip" id="fw-k-bridge">브리지</div></div><div class="ctl"><div class="row">입력 최대값 V<sub>p</sub><span class="val" id="fw-vp-v"></span></div><input type="range" id="fw-vp" min="5" max="15" step="0.5" value="10"></div><div class="ctl"><label style="font-size:21px"><input type="checkbox" id="fw-vd" checked> 다이오드 강하 0.7 V 반영</label></div><div class="box"><p id="fw-msg" style="font-size:20px"></p></div></div>
+</div>
+</section>
+
+<!-- cmp -->
+<section class="slide" id="cmp">
+  <header class="hd"><h2>세 가지 정류 회로 비교</h2><span class="src">교재 102~107쪽 정리 · 값은 이론값(다이오드 강하 무시)</span></header>
+<table class="t" style="font-size:22px"><tr><th style="width:210px"></th><th>반파</th><th>전파(중간 탭)</th><th>브리지</th></tr>
+<tr><td>다이오드 수</td><td>1개</td><td>2개</td><td>4개</td></tr>
+<tr><td>변압기</td><td>보통</td><td><b>중간 탭 필요</b></td><td>보통</td></tr>
+<tr><td>평균 출력(직류)</td><td>V<sub>p</sub>/π ≈ <b>0.318V<sub>p</sub></b></td><td>2V<sub>p</sub>/π ≈ <b>0.637V<sub>p</sub></b></td><td>≈ 0.637V<sub>p</sub> (− 2V<sub>D</sub>)</td></tr>
+<tr><td>출력 주파수</td><td>f</td><td><b>2f</b></td><td><b>2f</b></td></tr>
+<tr><td>리플률</td><td><b>1.21</b></td><td><b>0.482</b></td><td>0.482</td></tr>
+<tr><td>최대 역전압(다이오드 1개)</td><td>V<sub>p</sub></td><td><b>2V<sub>p</sub></b></td><td>V<sub>p</sub></td></tr>
+<tr><td>특징</td><td>간단, 비효율</td><td>효율 좋음, 탭 변압기</td><td>가장 널리 사용</td></tr></table>
+<div class="box" style="margin-top:14px"><p style="font-size:21px"><b>리플률</b> r = (교류 성분 실효값)/(직류 성분 평균) — 작을수록 좋다. 반파의 1.21은 “교류 성분이 직류보다 크다”는 뜻이다(교재 102쪽). 앞 장의 시뮬레이션 값과 이론값이 같은지 확인해 보자.</p></div>
+</section>
+
+<!-- db -->
+<section class="slide" id="db">
+  <header class="hd"><h2>배압 정류 — 전압을 2배로</h2><span class="src">교재 107쪽 · 그림 3-31·3-32</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="db-cv"></canvas><div class="side"><div class="ctl"><div class="row">입력 최대값 V<sub>p</sub><span class="val" id="db-vp-v"></span></div><input type="range" id="db-vp" min="5" max="15" step="0.5" value="10"></div><div class="box"><p id="db-msg" style="font-size:21px"></p></div><div class="box"><p class="sm">콘덴서 2개가 번갈아 충전되며 출력이 2V<sub>p</sub>까지 올라간다. 같은 원리를 반복하면 3배, 4배로 올릴 수 있다. 값은 단순 모형이다.</p></div></div>
+</div>
+</section>
+
+<!-- sm -->
+<section class="slide" id="sm">
+  <header class="hd"><h2>평활 회로 — 콘덴서로 리플 줄이기</h2><span class="src">교재 109~112쪽 · 식 3-26~3-34 · 시뮬 V_p=12 V, 60 Hz</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="sm-cv"></canvas><div class="side"><div class="chips"><div class="chip" id="sm-k-half">반파</div><div class="chip on" id="sm-k-full">전파(탭)</div><div class="chip" id="sm-k-bridge">브리지</div></div><div class="chips"><div class="chip on" id="sm-cap">콘덴서 연결</div><div class="chip" id="sm-ac">AC 결합으로 리플만 확대</div></div><div class="ctl"><div class="row">콘덴서 C(로그)<span class="val" id="sm-lc-v"></span></div><input type="range" id="sm-lc" min="1" max="3.4" step="0.01" value="2.3"></div><div class="ctl"><div class="row">부하 저항 R(로그)<span class="val" id="sm-lr-v"></span></div><input type="range" id="sm-lr" min="1.7" max="3.3" step="0.01" value="2"></div><div class="box"><p id="sm-msg" style="font-size:20px"></p></div></div>
+</div>
+</section>
+
+<!-- lc -->
+<section class="slide" id="lc">
+  <header class="hd"><h2>코일을 더하면 — LC 평활 회로의 효과</h2><span class="src">교재 112~114쪽 · 식 3-33, 3-38</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="lc-cv"></canvas><div class="side"><div class="ctl"><div class="row">코일 L<span class="val" id="lc-l-v"></span></div><input type="range" id="lc-l" min="1" max="20" step="0.5" value="10"></div><div class="ctl"><div class="row">콘덴서 C<span class="val" id="lc-c-v"></span></div><input type="range" id="lc-c" min="10" max="1000" step="10" value="100"></div><div class="ctl"><div class="row">부하 저항 R<span class="val" id="lc-r-v"></span></div><input type="range" id="lc-r" min="50" max="2000" step="10" value="100"></div><div class="box"><p id="lc-msg" style="font-size:20px"></p></div></div>
+</div>
+</section>
+
+<!-- zn -->
+<section class="slide" id="zn">
+  <header class="hd"><h2>제너 다이오드 정전압 회로</h2><span class="src">교재 116~117쪽 · 그림 3-42~3-45, 식 3-41 · 값은 모형</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="zn-cv"></canvas><div class="side"><div class="ctl"><div class="row">입력 V<sub>in</sub><span class="val" id="zn-vi-v"></span></div><input type="range" id="zn-vi" min="4" max="20" step="0.1" value="12"></div><div class="ctl"><div class="row">부하 R_L(로그)<span class="val" id="zn-lr-v"></span></div><input type="range" id="zn-lr" min="2" max="4" step="0.01" value="3"></div><div class="box"><p id="zn-msg" style="font-size:20px"></p></div><div class="box"><p class="sm">제너 다이오드: 역방향 전압이 V<sub>Z</sub>에 이르면 전류가 급증하며 전압이 거의 일정(제너 붕괴·전자사태). 보호 저항 R<sub>s</sub>로 전류를 제한한다.</p></div></div>
+</div>
+</section>
+
+<!-- ic -->
+<section class="slide" id="ic">
+  <header class="hd"><h2>3단자 정전압 IC(78xx)로 만드는 5 V 전원</h2><span class="src">교재 118~119쪽 · 그림 3-46, 표 3-2 · 값은 모형(최소 입력 약 7 V)</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="ic-cv"></canvas><div class="side"><div class="chips"><div class="chip" id="ic-ac">AC 결합으로 출력 리플 확대</div></div><div class="ctl"><div class="row">변압기 2차 최대값 V<sub>p</sub><span class="val" id="ic-vp-v"></span></div><input type="range" id="ic-vp" min="8" max="20" step="0.5" value="12"></div><div class="ctl"><div class="row">앞쪽 콘덴서 C(로그)<span class="val" id="ic-lc-v"></span></div><input type="range" id="ic-lc" min="1.5" max="3.7" step="0.01" value="3"></div><div class="ctl"><div class="row">부하 R(로그)<span class="val" id="ic-lr-v"></span></div><input type="range" id="ic-lr" min="1" max="3" step="0.01" value="2"></div><div class="box"><p id="ic-msg" style="font-size:20px"></p></div></div>
+</div>
+</section>
+
+<!-- lab -->
+<section class="slide" id="lab">
+  <header class="hd"><h2>실험 — 오실로스코프로 여러 정류 회로 관찰하기</h2><span class="src">교재 108쪽 실험 · 안전·접지 주의는 제조사 입문서</span></header>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+<div class="box fit"><h3>준비 · 과정(교재 108쪽)</h3>
+<p>준비: 중간 탭 변압기(110/6 V), 브레드 보드, 오실로스코프, 정류용 다이오드, 콘덴서, 저항, 모눈종이</p>
+<p>① 변압기 저전압(6 V) 쪽을 브레드 보드에 연결(콘센트 쪽은 사용자 안전 확인 후에만)</p>
+<p>② <b>반파</b> 회로 → 입력·출력 파형을 모눈종이에 그린다.</p>
+<p>③ <b>전파(중간 탭)</b> → ④ <b>브리지</b> → ⑤ <b>배압</b> 출력 전압 측정</p>
+<p><b>정리</b>: 정류 후 주파수를 입력과 비교(반파 f, 전파 2f)</p>
+<h3 style="margin-top:10px">오실로스코프 팁</h3>
+<p>· 파형을 정확히 보려면 <b>time/div</b>로 2~3주기, 입력 결합 <b>DC</b>로 직류 위치 확인</p>
+<p>· 리플만 보려면 <b>AC 결합</b> + V/div를 줄인다.</p></div>
+<div class="box fit"><div class="warn"><b>⚠ 접지 주의 — 브리지·중간 탭 회로</b>
+<p>오실로스코프 프로브의 접지 클립은 <b>스코프를 통해 서로 연결</b>돼 있다(두 채널의 접지 클립은 같은 점). 클립을 서로 다른 점에 물리면 그 사이가 <b>단락</b>된다.</p>
+<p>· 브리지 정류기에서 입력(변압기 쪽)과 출력(−쪽)은 서로 다른 기준이다. 두 채널의 접지를 한 점에 모으고, <b>입력과 출력을 따로 측정</b>하거나 한 번에 한 점씩 확인한다.</p>
+<p>· 콘센트(전원) 쪽은 직접 측정하지 않는다. <b>변압기로 낮춘 저전압</b>만 쓴다.</p></div>
+<h3 style="margin-top:10px">확인 포인트</h3>
+<p>· 반파 → 전파: 출력 주파수 2배<br>· 콘덴서 연결: 리플 감소, 직류 상승<br>· 부하 R 줄이면 리플 증가</p></div></div>
+</section>
+
+<!-- qz -->
+<section class="slide" id="qz">
+  <header class="hd"><h2>확인 문제 — 계산으로 확인하기</h2><span class="src">교재 연습문제 방식 · 모범답안은 직접 계산</span></header>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+<div class="box fit"><h3>문제 1 (반파)</h3><p>실효값 110 V인 교류를 반파 정류한다. 최대 전압과 평균 전압은? 부하 10 kΩ에서 평균 전류와 최대 전류는?</p>
+<details><summary>답 보기</summary><p>V<sub>p</sub> = 110√2 ≈ <b>155.6 V</b>, 평균 = V<sub>p</sub>/π ≈ <b>49.5 V</b>. I<sub>avg</sub> = 49.5/10 kΩ ≈ <b>4.95 mA</b>, I<sub>max</sub> = 155.6/10 kΩ ≈ <b>15.6 mA</b>(다이오드 강하 무시).</p></details>
+<h3 style="margin-top:12px">문제 2 (브리지)</h3><p>변압기 2차 12 V(실효) 브리지 정류. 출력 최대값과 다이오드 1개의 최대 역전압은? (V<sub>D</sub>=0.7 V)</p>
+<details><summary>답 보기</summary><p>V<sub>p</sub> = 12√2 ≈ 17.0 V. 출력 최대 = 17.0 − 2×0.7 ≈ <b>15.6 V</b>. 최대 역전압 ≈ V<sub>p</sub> ≈ <b>17 V</b>.</p></details>
+<h3 style="margin-top:12px">문제 3 (평활)</h3><p>전파 정류 출력에 C = 1000 µF, 부하 100 Ω, 직류 10 V, f = 60 Hz. 리플률과 리플 p-p는?</p>
+<details><summary>답 보기</summary><p>r = 1/(4√3 fRC) = 1/(4×1.732×60×100×0.001) ≈ <b>2.4 %</b>. V<sub>r(pp)</sub> = I/(2fC) = 0.1/(120×0.001) ≈ <b>0.83 V</b>.</p></details></div>
+<div class="box fit"><h3>문제 4 (제너, 교재 117쪽)</h3><p>V<sub>in</sub> = 30 V, V<sub>Z</sub> = 10 V, R<sub>s</sub> = 100 Ω. 정전압이 유지되는 R<sub>L</sub>의 최소값은?</p>
+<details><summary>답 보기</summary><p>R<sub>L,min</sub> = V<sub>Z</sub>R<sub>s</sub>/(V<sub>in</sub>−V<sub>Z</sub>) = 10×100/20 = <b>50 Ω</b>. 이때 부하 전류 200 mA.</p></details>
+<h3 style="margin-top:12px">서술형</h3>
+<p><b>Q5.</b> 전파 정류가 반파 정류보다 리플률이 작은 까닭은?</p>
+<details><summary>답안 예시</summary><p>전파는 입력의 양쪽 반주기를 모두 이용하므로 출력의 평균(직류)이 2배로 커지고 출력 주파수도 2배가 되어 교류 성분(리플)이 상대적으로 작다. 리플률은 반파 1.21, 전파 0.482다.</p></details>
+<p style="margin-top:8px"><b>Q6.</b> 평활 콘덴서의 용량이 크면 리플은 줄지만 다이오드 전류는 어떻게 되는가?</p>
+<details><summary>답안 예시</summary><p>콘덴서에 충전되는 시간이 짧아지는데 같은 전하를 보충해야 하므로 짧고 큰 전류 펄스가 흐른다(교재 110쪽).</p></details></div></div>
+</section>
+
+<!-- as -->
+<section class="slide" id="as">
+  <header class="hd"><h2>정리 — 처음 질문으로 돌아가 보자</h2><span class="src">교재 99~122쪽 요약 · 쪽 대응 · 참고</span></header>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+<div class="box fit"><h3>오늘의 큰 그림</h3>
+<p>① <b class="k">정류</b>: 다이오드로 교류를 한 방향 맥류로. 반파·전파(중간 탭)·브리지.</p>
+<p>② <b class="k">평활</b>: 콘덴서(코일)로 리플 감소. C↑ → 리플↓, 부하 전류↑ → 리플↑.</p>
+<p>③ <b class="k">정전압</b>: 제너 다이오드 또는 78xx IC로 출력 일정.</p>
+<p>④ 파형은 <b>오실로스코프</b>로: 직류는 DC 결합, 리플은 AC 결합 + 작은 V/div.</p>
+<h3 style="margin-top:10px">처음 질문의 답</h3><p>변압기로 전압을 맞추고, 브리지 정류와 평활 콘덴서로 직류에 가깝게 만든 뒤, 정전압 회로로 출력을 일정하게 다듬는다.</p></div>
+<div class="box fit"><h3>교재 쪽 대응</h3>
+<table class="t"><tr><th style="width:130px">쪽(PDF)</th><th>내용</th></tr>
+<tr><td>99~102(113~116)</td><td>직류 전원 장치, 리플률, 반파</td></tr><tr><td>103~107(117~121)</td><td>전파, 브리지, 배압</td></tr><tr><td>108(122)</td><td>실험: 여러 정류 회로</td></tr><tr><td>109~114(123~128)</td><td>평활 회로(C, L, LC)</td></tr><tr><td>116~119(130~133)</td><td>제너, 78xx 정전압 IC</td></tr></table>
+<p class="sm" style="font-size:19px;margin-top:10px">시뮬레이션은 이상적인 다이오드(강하 0.7 V) 모형이다. 실제 소자는 데이터시트의 정격(최대 역전압, 전류)을 확인한다. 교재 본문은 요약, 그림은 직접 제작.</p></div></div>
+</section>
+
+<div id="notes"></div>
+<div id="bar"><div class="bl">🔋 다이오드 ② — 교류를 직류로 바꾸는 전원 장치 <span class="sm">· 전자 과학 · 다이오드 회로 · 정류·평활·정전압</span></div><div class="br"><button class="tb" id="b-help">❓ 조작법</button><button class="tb" id="b-ask">💬 발문 띄우기</button><button class="tb" id="b-notes">📝 오개념 교정 노트</button><button class="tb" id="b-theme">🌙 다크 전환</button></div></div>
+<div id="ask" role="dialog" aria-label="발문"></div>
+<div id="help" role="dialog" aria-label="조작법 설명"><div class="hp">
+<h3>조작법</h3>
+<h4>키보드</h4>
+<div class="g"><div><kbd>→</kbd><kbd>Space</kbd></div><div>다음 (단계가 있는 슬라이드는 단계부터 진행)</div>
+<div><kbd>←</kbd></div><div>이전 (단계도 거꾸로)</div>
+<div><kbd>Home</kbd><kbd>End</kbd></div><div>처음 / 마지막 슬라이드</div>
+<div><kbd>F</kbd></div><div>전체 화면</div>
+<div><kbd>Q</kbd></div><div>이 슬라이드의 <b>발문(학생용 질문)</b>을 화면 위에 크게 띄우기 / 닫기 (아무 곳이나 클릭해도 닫힘)</div>
+<div><kbd>N</kbd></div><div>오개념 교정 노트 열기/닫기 (교사용)</div>
+<div><kbd>T</kbd></div><div>다크 / 라이트 전환</div>
+<div><kbd>?</kbd><kbd>Esc</kbd></div><div>조작법 열기 / 닫기</div></div>
+<h4>화면 조작</h4>
+<div class="g"><div>→ / Space</div><div>다음 단계·슬라이드</div>
+<div>Q</div><div>학생 발문 열기</div>
+<div>N</div><div>오개념 노트</div>
+<div>슬라이더·칩</div><div>가상 회로·오실로스코프 조작</div>
+<div>답 보기</div><div>확인 문제 풀이</div>
+<div>슬라이더 키보드</div><div>슬라이더를 클릭해 초점이 있는 동안에는 ← → 가 값 조절에 쓰입니다. 마우스로 놓으면 자동 해제</div></div>
+<h4>수업 진행 팁</h4>
+<div>회로의 노란 점은 전류 방향, 오른쪽의 스코프는 입력(노랑)과 출력(청록)이다. AC 결합 칩으로 리플을 크게 볼 수 있다.</div>
+<div class="btns" style="margin-top:22px"><button class="btn pri" id="help-x">닫기 (Esc)</button></div>
+</div></div>
+<div id="simError"></div>
+</div>
+<div id="hud"><button id="h-prev" aria-label="이전">◀</button><span id="h-pg">1 / 1</span><button id="h-next" aria-label="다음">▶</button><button id="h-fs" aria-label="전체화면">⛶</button></div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   공통 유틸 / 그리기 도우미 (템플릿 제공)
+   ===================================================================== */
+const DECK = {"title":"다이오드 ② — 교류를 직류로 바꾸는 전원 장치","notes":{"c":{"q":"노랑은 교류 입력, 청록은 출력이다. 세 가지 정류 방식이 번갈아 나온다. 오늘의 질문은 마지막 장에서 답한다. 이 덱은 가상 오실로스코프 사용법(오실로스코프 ①·② 덱)을 알고 있다고 가정한다.","m":[["어댑터는 변압기만 있으면 된다","변압기는 교류 전압의 크기만 바꾼다. 교류를 직류로 바꾸려면 정류(다이오드)가 필요하다."]]},"fl":{"q":"단계를 눌러 가며 “무엇이 사라지고 무엇이 남았나?”를 묻는다. 3단계에서 직류 성분 위에 작은 리플이 남고, 4단계에서 거의 평평해진다. 화면 아래의 직류·교류 성분(실효값) 숫자로 비교한다. 값은 12 V 정점, 브리지, 470 µF, 100 Ω 모형이다.","m":[["정류만 하면 깨끗한 직류가 된다","정류만 하면 크기가 계속 출렁이는 맥류다. 평활·정전압을 거쳐야 평평해진다."]]},"rc":{"q":"점선(커서)이 시간에 따라 움직이며 도통 구간을 표시한다. 회로의 노란 점은 전류 방향이다. 평균 전압은 이론 V_p/π ≈ 0.318V_p(식 3-15), 리플률 1.21(식 3-18)은 “교류 성분이 직류보다 크다”는 뜻이라 거의 쓰이지 않는다(교재 102쪽). 다이오드가 차단일 때 양단 전압은 최대 V_p(최대 역전압).","m":[["출력 주파수가 입력의 2배다","반파는 반주기에만 전류가 흘러 주기가 같다(60 Hz). 전파 정류는 2배(120 Hz)다."],["다이오드가 차단일 때는 전압이 0이다","다이오드 양단에 역전압(최대 V_p)이 걸린다. 최대 역전압 이상의 다이오드를 골라야 한다."]]},"fw":{"q":"두 방식을 번갈아 보며 “출력 파형은 같은데 회로가 어떻게 다른가?”를 묻는다. 중간 탭은 다이오드 2개 + 중간 탭 변압기, 다이오드 한 개에 걸리는 최대 역전압이 2V_p. 브리지는 다이오드 4개로 중간 탭이 필요 없고 최대 역전압이 V_p, 대신 전류 경로에 다이오드가 2개라 전압 강하가 1.4 V. 교재 예제 4: 110 V(60 Hz), 권선비 2:1 → 2차 55 V(실효) → 최대 77.8 V → 평균 49.5 V.","m":[["브리지는 다이오드가 4개라 출력이 4배다","출력 파형은 중간 탭 전파와 같다. 중간 탭을 없애고 다이오드가 견뎌야 할 역전압을 절반으로 줄인 것이 장점이다."],["전파 정류는 반파보다 리플이 크다","반파 1.21, 전파 0.482로 전파가 더 작다."]]},"cmp":{"q":"표를 보고 “어떤 상황에 어떤 정류 회로를 고를까?”를 모둠이 토의한다(어댑터 → 브리지, 간단한 저전류 → 반파 등). 표의 값은 이상적인 다이오드 기준이다.","m":[["브리지의 출력이 전파(중간 탭)보다 항상 두 배다","같은 변압기 2차 전압이면 브리지 출력은 같은 크기(다이오드 강하만큼 더 낮음)다. 중간 탭은 전체 권선의 절반씩 쓴다."]]},"db":{"q":"음의 반주기에 C₁이 V_p까지 충전, 양의 반주기에 입력 전압과 C₁이 더해져 C₂가 2V_p까지 충전된다(교재 107쪽). 그래프는 주기마다 올라가는 모습(무부하)이다. 부하가 크면 내려가므로 전류가 작은 고전압용(복사기, 정전기 장치 등)에 쓰인다.","m":[["변압기가 전압을 2배로 올린 것이다","변압기는 그대로, 콘덴서와 다이오드가 충전·합성해 직류 전압을 2배로 올린다. 대신 큰 전류는 얻기 어렵다."]]},"sm":{"q":"①콘덴서 없음 → 있음: 파형이 평평해지는 것. ②C를 키우면 리플이 줄지만 충전 시간이 짧아져 다이오드 전류가 짧고 큰 펄스(교재 110쪽 그림 3-35). ③R을 줄이면(전류↑) 리플이 커지고 직류가 내려간다. ④“AC 결합” 칩: 오실로스코프 AC 결합으로 직류를 제거하고 V/div를 줄여 리플만 확대해 본다(오실로스코프 ② 덱의 입력 결합과 연결). 공식 r = 1/(4√3 fRC)(전파, 교재 식 3-33)와 시뮬레이션이 일치하는지 확인한다.","m":[["C가 클수록 무조건 좋다","리플은 줄지만 다이오드에 흐르는 충전 전류가 커져(전원 켤 때 돌입 전류) 소자 부담이 커진다."],["리플은 부하와 무관하다","부하 전류가 클수록(R이 작을수록) 콘덴서가 더 빨리 방전돼 리플이 커진다."]]},"lc":{"q":"코일(유도성 평활)은 전류 변화를 막고(교재 112쪽), 콘덴서와 함께 쓰면 리플이 크게 줄어든다. LC 형은 리플률이 부하 R에 의존하지 않는 것이 특징(식 3-38). 슬라이더로 콘덴서만 쓴 경우와 비교한다. 코일은 크고 무거워 요즘은 소형 전원에서는 콘덴서+정전압 IC를 주로 쓴다.","m":[["코일은 전류를 막아 전류가 0이 된다","코일은 교류(변하는 전류)에 큰 저항 효과를 낸다. 직류는 그대로 통과시킨다."]]},"zn":{"q":"Vin을 바꿔도 V_out이 5.1 V로 유지되는 구간을 보여 준다. 부하를 낮은 저항으로 줄이면 어느 순간 정전압이 깨진다(교재 117쪽 예: V_in 30 V, V_Z 10 V, R_s 100 Ω → R_L 최소 50 Ω, 최대 부하 전류 약 200 mA). 제너의 전류 I_Z가 음수가 되는 순간이 한계다.","m":[["제너 다이오드는 순방향으로 쓰는 소자다","정전압 용도로는 역방향 항복 구간에서 쓴다."],["제너 다이오드는 전류가 많이 흘러도 안전하다","과대 전류에 파손되므로 정격 전류 안에서 보호 저항으로 제한한다."]]},"ic":{"q":"7805는 입력 단자(①)에 정류·평활된 전압을, ②를 접지하고, ③에서 5 V 정전압을 얻는다(교재 118쪽). 입력의 골짜기가 출력+약 2 V(드롭아웃) 아래로 내려가면 정전압이 깨진다. AC 결합으로 보면 입력 리플은 V 단위인데 출력 리플은 mV 단위로 크게 줄어든다(IC의 리플 제거, 모형값 약 60 dB). 입력을 너무 높게 주면 IC가 열이 많이 나 방열판이 필요하다.","m":[["78xx는 입력 전압이 높을수록 좋다","입력이 너무 높으면 (입력−출력)×전류가 열로 소비되어 IC가 뜨거워진다."],["정전압 IC가 있으면 평활 콘덴서는 필요 없다","입력 리플이 크면 골짜기가 드롭아웃 아래로 내려가 정전압이 깨진다. 앞쪽 콘덴서는 필요하다(교재 118쪽: 수백 µF)."]]},"lab":{"q":"교재 실험은 실물 회로이므로 접지 클립 주의를 먼저 설명한다. 각 모둠은 한 종류씩 맡아 파형을 그리고 서로 비교하는 방식이 효율적이다. 가상 오실로스코프 덱(②)의 안전 장과 연결한다.","m":[["두 채널의 접지 클립은 서로 다른 점에 연결해도 된다","스코프 안에서 두 접지가 같은 점이라 단락 위험이 있다. 반드시 같은 기준점에 연결한다."]]},"qz":{"q":"각 문제는 가상 오실로스코프로 확인할 수 있다. 문제 1의 값 변환과 교재의 이상적 다이오드 가정을 짚는다. 문제 4는 교재 117쪽 예와 같다.","m":[["리플률은 리플의 크기(V)다","리플률은 교류 성분 실효값/직류 평균값의 비(무차원)이다. V 단위의 p-p 값은 다르다."]]},"as":{"q":"“어댑터 속 부품 이름을 순서대로 말해 보자”(변압기→브리지→콘덴서→정전압 IC)로 마무리한다. 다음은 트랜지스터와 증폭기다.","m":[["정류·평활·정전압 중 하나만 있어도 충전기가 된다","세 단계가 각각 다른 일을 한다. 간단한 장치는 일부를 생략하기도 한다."]]}},"ask":{"rc":["반파 정류기의 출력 주파수는 입력(60 Hz)과 같을까, 2배일까? 파형을 보고 말해 보자."],"sm":["콘덴서를 크게 하면 리플은 줄어든다. 그런데 다이오드를 흐르는 전류는 어떻게 될까?"]}};
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const TAU = Math.PI * 2, DPR = 2;
+const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const C = { bg: '#0a1330', grid: 'rgba(160,190,255,.22)', text: '#e3ecff', dim: '#9db0d8', KE: '#ffb454', PE: '#7fb2ff', E: '#ffffff', ok: '#5eead4', bad: '#ff9d9d' };
+const font = (px, w = 500, it = false) => `${it ? 'italic ' : ''}${w} ${px}px 'Noto Sans KR',sans-serif`;
+const mathFont = px => `italic 400 ${px}px 'STIX Two Text','Times New Roman',serif`;
+function setupCanvas(cv, W, H) { cv.width = W * DPR; cv.height = H * DPR; cv.style.width = W + 'px'; cv.style.height = H + 'px'; const c = cv.getContext('2d'); c.setTransform(DPR, 0, 0, DPR, 0, 0); return c; }
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function makeStars(W, H, n, seed) { const r = mulberry(seed); return Array.from({ length: n }, () => [r() * W, r() * H, .25 + r() * .55, r() < .12 ? 3 : 2]); }
+function drawStars(ctx, stars) { stars.forEach(([x, y, a, s]) => { ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(x, y, s, s); }); }
+function arrow(ctx, x0, y0, x1, y1, color, lw = 4, head = 15) {
+  const a = Math.atan2(y1 - y0, x1 - x0); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - Math.cos(a) * head * .6, y1 - Math.sin(a) * head * .6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - head * Math.cos(a - .45), y1 - head * Math.sin(a - .45)); ctx.lineTo(x1 - head * Math.cos(a + .45), y1 - head * Math.sin(a + .45)); ctx.closePath(); ctx.fill();
+}
+function mathRun(ctx, x, y, parts) { let cx = x; parts.forEach(q => { ctx.font = q.f; ctx.fillStyle = q.c; ctx.fillText(q.t, cx, y + (q.dy || 0)); cx += ctx.measureText(q.t).width; }); return cx; }
+function bindRange(id, cb) { const el = $('#' + id); el.addEventListener('input', () => cb(parseFloat(el.value))); el.addEventListener('change', () => el.blur()); return el; }
+const fmt = (x, d = 2) => (x < 0 ? '−' : '') + Math.abs(x).toFixed(d);
+
+/* 오류 표시: 슬라이드 코드 예외를 화면 상단과 window.__wsErrors에 남긴다 (헤드리스 검사용) */
+window.__wsErrors = [];
+function reportError(where, e) {
+  const msg = `${where}: ${e && e.message ? e.message : e}`;
+  if (!window.__wsErrors.includes(msg)) { window.__wsErrors.push(msg); console.error('[슬라이드 오류] ' + msg); }
+  const box = document.getElementById('simError'); box.textContent = window.__wsErrors.slice(-3).join('\n'); box.classList.add('on');
+}
+function safe(where, fn, ...args) { try { return fn && fn(...args); } catch (e) { reportError(where, e); } }
+
+/* =====================================================================
+   shared_js (주제별 물리 계산부·공용 시뮬레이터)
+   ===================================================================== */
+/* ===== 오실로스코프 가상 장비: 공용 엔진(DOM 거의 없음) ===== */
+const SCC={ch1:'#ffe27a',ch2:'#5eead4',grid:'rgba(120,220,170,.20)',axis:'rgba(120,220,170,.45)',scr:'#06130f',dim:'#8ea3cf',trig:'#ff9ecf',cur:'#ffb454'};
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function g(id){return +document.getElementById(id).value;}
+function setT(id,s){const e=document.getElementById(id);if(e&&e.textContent!==s)e.textContent=s;}
+function setH(id,s){const e=document.getElementById(id);if(e&&e.innerHTML!==s)e.innerHTML=s;}
+function tx(ctx,s,x,y,px,col,al,w){ctx.font=(w||500)+' '+px+"px 'Noto Sans KR',sans-serif";ctx.fillStyle=col||C.text;ctx.textAlign=al||'left';ctx.textBaseline='alphabetic';ctx.fillText(s,x,y);}
+function onClick(id,f){const el=document.getElementById(id);if(el)el.addEventListener('click',f);}
+function setChips(ids,on){ids.forEach(i=>{const e=document.getElementById(i);if(e)e.classList.toggle('on',i===on);});}
+/* 1-2-5 사다리 */
+function scLadder(e0,e1){const a=[];for(let e=e0;e<=e1;e++)for(const m of[1,2,5])a.push(+(m*Math.pow(10,e)).toPrecision(6));return a;}
+const SC_V=scLadder(-3,0).concat([10]);          /* 1 mV ~ 10 V /칸 */
+const SC_T=scLadder(-9,-1).concat([1]);           /* 1 ns ~ 1 s /칸 */
+function scNum(x){return String(+x.toPrecision(3));}
+function scFmtV(v){const a=Math.abs(v);return a>=1?scNum(v)+' V':a>=1e-3?scNum(v*1e3)+' mV':scNum(v*1e6)+' µV';}
+function scFmtT(t){const a=Math.abs(t);return a>=1?scNum(t)+' s':a>=1e-3?scNum(t*1e3)+' ms':a>=1e-6?scNum(t*1e6)+' µs':scNum(t*1e9)+' ns';}
+function scFmtF(f){return f>=1e6?scNum(f/1e6)+' MHz':f>=1e3?scNum(f/1e3)+' kHz':scNum(f)+' Hz';}
+/* 파형 */
+function scWave(type,t,f,A,ph,comp){const p=TAU*f*t+(ph||0)*Math.PI/180;
+ if(type==='square'){let s=Math.sin(p)>=0?1:-1;
+  if(comp){const u=((p/Math.PI)%1+1)%1*0.5;return A*s*(1+comp*0.4*Math.exp(-u/0.04));}
+  return A*s;}
+ if(type==='tri')return A*(2/Math.PI)*Math.asin(Math.sin(p));
+ if(type==='saw'){const u=p/TAU;return A*2*(u-Math.floor(u+.5));}
+ return A*Math.sin(p);}
+/* 채널 신호(프로브 끝 전압) → 스코프 입력 전압. cpl: DC/AC/GND, att: 프로브 감쇠비 */
+function scVolt(c,t){if(c.cpl==='GND')return 0;
+ let raw;
+ if(c.tbl){const N=c.tbl.length,u=(((c.f*t+(c.ph||0)/360)%1)+1)%1*N,i=Math.floor(u),fr=u-i;raw=c.tbl[i%N]*(1-fr)+c.tbl[(i+1)%N]*fr;return ((c.cpl==='AC'?raw-(c.tmean||0):raw+c.off)/c.att);}
+ else if(c.bw){/* 대역폭 한계(1차 저역통과): 사인은 이득·위상, 사각은 홀수 고조파 합 */
+  const p0=TAU*c.f*t+(c.ph||0)*Math.PI/180;
+  if(c.wave==='square'){raw=0;for(let k=1;k<=79;k+=2){const gk=rcGain(k*c.f,c.bw),pk=rcPhase(k*c.f,c.bw)*Math.PI/180;raw+=c.A*4/(Math.PI*k)*gk*Math.sin(k*p0+pk);}}
+  else raw=c.A*rcGain(c.f,c.bw)*Math.sin(p0+rcPhase(c.f,c.bw)*Math.PI/180);}
+ else raw=scWave(c.wave,t,c.f,c.A,c.ph,c.comp);
+ if(c.hum)raw+=c.hum*Math.sin(TAU*60*t+1);
+ return (c.cpl==='AC'?raw:raw+c.off)/c.att;}
+function scDiv(c,t){return scVolt(c,t)/c.vdiv+c.pos;}     /* 화면 칸(중앙 0, 위 +) */
+function scChan(o){return Object.assign({on:1,wave:'sine',f:1000,A:1,off:0,ph:0,att:1,cpl:'DC',vdiv:0.5,pos:0,comp:0},o||{});}
+function newScope(o){o=o||{};const s={ch1:scChan(o.ch1),ch2:scChan(Object.assign({on:0},o.ch2)),tdiv:o.tdiv||2e-4,hpos:o.hpos||0,
+ trig:Object.assign({src:1,lvl:0,slope:1,mode:'auto'},o.trig),xy:!!o.xy,xyspan:o.xyspan||1e-3,dots:!!o.dots,cur:null,last:null};return s;}
+/* 트리거 시각: 원하는 기울기로 레벨을 지나는 첫 시각(없으면 null) */
+function scTrigTime(sc){const c=sc['ch'+sc.trig.src];if(!c.on||c.cpl==='GND')return null;
+ const T=1/c.f,N=1800,dt=T*1.3/N,L=sc.trig.lvl,sl=sc.trig.slope;let p=scDiv(c,0);
+ for(let i=1;i<=N;i++){const t=i*dt,q=scDiv(c,t);
+  if(sl>0?(p<L&&q>=L):(p>L&&q<=L)){return t-dt*(q-L)/(q-p||1);}p=q;}return null;}
+/* 한 번의 소인(sweep)을 t0부터 그린 점 목록 */
+function scTrace(c,sc,t0,w,step){const pts=[],dtd=sc.tdiv;for(let px=0;px<=w;px+=step){const xd=px/w*10,t=t0+(xd-sc.hpos)*dtd;pts.push([px,scDiv(c,t)]);}return pts;}
+/* 그리기: 화면(x,y,w,h) 10×8칸 */
+function scDraw(ctx,sc,tn,o){o=o||{};const X=o.x==null?70:o.x,Y=o.y==null?20:o.y,Wd=o.w||900,Ht=o.h||640,dx=Wd/10,dy=Ht/8;
+ ctx.fillStyle=SCC.scr;ctx.fillRect(X-10,Y-10,Wd+20,Ht+20);
+ ctx.strokeStyle='#2a3a52';ctx.lineWidth=4;ctx.strokeRect(X-10,Y-10,Wd+20,Ht+20);
+ ctx.save();ctx.beginPath();ctx.rect(X,Y,Wd,Ht);ctx.clip();
+ ctx.lineWidth=1;ctx.strokeStyle=SCC.grid;ctx.beginPath();
+ for(let i=0;i<=10;i++){ctx.moveTo(X+i*dx,Y);ctx.lineTo(X+i*dx,Y+Ht);}for(let j=0;j<=8;j++){ctx.moveTo(X,Y+j*dy);ctx.lineTo(X+Wd,Y+j*dy);}ctx.stroke();
+ ctx.strokeStyle=SCC.axis;ctx.beginPath();ctx.moveTo(X+5*dx,Y);ctx.lineTo(X+5*dx,Y+Ht);ctx.moveTo(X,Y+4*dy);ctx.lineTo(X+Wd,Y+4*dy);
+ for(let i=0;i<50;i++){const x=X+i*dx/5;ctx.moveTo(x,Y+4*dy-5);ctx.lineTo(x,Y+4*dy+5);}for(let j=0;j<40;j++){const y=Y+j*dy/5;ctx.moveTo(X+5*dx-5,y);ctx.lineTo(X+5*dx+5,y);}ctx.stroke();
+ let status='';
+ const drawPts=(pts,col,al,dots)=>{ctx.globalAlpha=al;ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=2.6;ctx.shadowColor=col;ctx.shadowBlur=al>.5?8:0;
+  if(dots){if(sc.joined){ctx.globalAlpha=al*.5;ctx.lineWidth=1.6;ctx.beginPath();pts.forEach((p,i)=>{const px=X+p[0],py=Y+Ht/2-clamp(p[1],-6,6)*dy;i?ctx.lineTo(px,py):ctx.moveTo(px,py);});ctx.stroke();ctx.globalAlpha=al;}pts.forEach(p=>{ctx.beginPath();ctx.arc(X+p[0],Y+Ht/2-clamp(p[1],-6,6)*dy,4,0,TAU);ctx.fill();});}
+  else{ctx.beginPath();pts.forEach((p,i)=>{const px=X+p[0],py=Y+Ht/2-clamp(p[1],-6,6)*dy;i?ctx.lineTo(px,py):ctx.moveTo(px,py);});ctx.stroke();}
+  ctx.shadowBlur=0;ctx.globalAlpha=1;};
+ if(sc.xy){const c1=sc.ch1,c2=sc.ch2,n=1600,pts=[];for(let i=0;i<=n;i++){const t=i/n*sc.xyspan;pts.push([X+Wd/2+scVolt(c1,t)/c1.vdiv*dx+c1.pos*dx,scDiv(c2,t)]);}
+  ctx.strokeStyle=SCC.ch2;ctx.shadowColor=SCC.ch2;ctx.shadowBlur=8;ctx.lineWidth=2.6;ctx.beginPath();pts.forEach((p,i)=>{const py=Y+Ht/2-clamp(p[1],-6,6)*dy;i?ctx.lineTo(p[0],py):ctx.moveTo(p[0],py);});ctx.stroke();ctx.shadowBlur=0;status='XY';}
+ else{
+  const step=sc.dots?Math.max(6,Wd/sc.dots):1.5;let tt=scTrigTime(sc),free=sc.trig.mode==='free'||(tt===null&&sc.trig.mode==='auto');
+  const span=10*sc.tdiv;
+  const chs=[sc.ch1,sc.ch2].filter(c=>c.on);
+  if(free){status=sc.trig.mode==='free'?'TRIG OFF':'AUTO';for(let k=4;k>=0;k--){const n=Math.floor(tn*14)-k,t0=n*span*1.137+sc.hpos*sc.tdiv;chs.forEach(c=>drawPts(scTrace(c,sc,t0,Wd,step),c===sc.ch1?SCC.ch1:SCC.ch2,.18+.2*(4-k)/4+(k===0?.45:0),sc.dots));}}
+  else if(tt===null){status='NO TRIG';}
+  else{status='TRIG\'D';chs.forEach(c=>drawPts(scTrace(c,sc,tt,Wd,step),c===sc.ch1?SCC.ch1:SCC.ch2,1,sc.dots));}
+  if(o.cur){ctx.setLineDash([8,6]);ctx.lineWidth=2;ctx.strokeStyle=SCC.cur;ctx.beginPath();(o.cur.v||[]).forEach(v=>{const y=Y+Ht/2-v*dy;ctx.moveTo(X,y);ctx.lineTo(X+Wd,y);});(o.cur.t||[]).forEach(t=>{const x=X+t*dx;ctx.moveTo(x,Y);ctx.lineTo(x,Y+Ht);});ctx.stroke();ctx.setLineDash([]);}
+ }
+ ctx.restore();
+ if(!sc.xy){
+  [[sc.ch1,'1',SCC.ch1],[sc.ch2,'2',SCC.ch2]].forEach(a=>{const c=a[0];if(!c.on)return;const y=Y+Ht/2-c.pos*dy;ctx.fillStyle=a[2];ctx.beginPath();ctx.moveTo(X-9,y);ctx.lineTo(X-24,y-9);ctx.lineTo(X-24,y+9);ctx.closePath();ctx.fill();tx(ctx,a[1],X-37,y+6,17,a[2],'right',700);});
+  const tc=sc['ch'+sc.trig.src],ty=Y+Ht/2-(sc.trig.lvl)*dy;if(sc.trig.mode!=='free'){ctx.fillStyle=SCC.trig;ctx.beginPath();ctx.moveTo(X+Wd+9,ty);ctx.lineTo(X+Wd+24,ty-9);ctx.lineTo(X+Wd+24,ty+9);ctx.closePath();ctx.fill();}
+  const hx=X+sc.hpos*dx;if(sc.hpos>=0&&sc.hpos<=10){ctx.fillStyle=SCC.trig;ctx.beginPath();ctx.moveTo(hx,Y-3);ctx.lineTo(hx-8,Y-16);ctx.lineTo(hx+8,Y-16);ctx.closePath();ctx.fill();}}
+ /* 화면 아래 글자(디지털 스코프 방식) */
+ const yb=Y+Ht+38;let x=X;
+ [[sc.ch1,'CH1',SCC.ch1],[sc.ch2,'CH2',SCC.ch2]].forEach(a=>{const c=a[0];if(!c.on||sc.xy&&false)return;tx(ctx,a[1]+' '+scFmtV(c.vdiv)+(c.cpl==='AC'?' ~':c.cpl==='GND'?' ⏚':'')+(c.att===10?' ×10':''),x,yb,22,a[2],'left',700);x+=250;});
+ if(!sc.xy)tx(ctx,'M '+scFmtT(sc.tdiv),x,yb,22,'#d8e3ff','left',700);
+ tx(ctx,status+(sc.trig.mode!=='free'&&!sc.xy?'  ('+(sc.trig.slope>0?'↗':'↘')+' CH'+sc.trig.src+')':''),X+Wd,yb,22,status==='NO TRIG'?'#ff7a7a':SCC.trig,'right',700);
+ return status;}
+/* 조작 바인딩: id 규칙 `${p}-vi1`(V/div 슬라이더), ti, pos1, pos2, lvl, hpos, lf1(log f), a1, o1, ph2, lf2, a2 + 칩 `${p}-cpl1-DC` 등 */
+function scBind(p,sc,on){const E=id=>document.getElementById(p+'-'+id);
+ const R={vi1:[i=>sc.ch1.vdiv=SC_V[i|0],()=>SC_V.indexOf(sc.ch1.vdiv),i=>scFmtV(SC_V[i|0])+'/칸'],vi2:[i=>sc.ch2.vdiv=SC_V[i|0],()=>SC_V.indexOf(sc.ch2.vdiv),i=>scFmtV(SC_V[i|0])+'/칸'],
+  ti:[i=>sc.tdiv=SC_T[i|0],()=>SC_T.indexOf(sc.tdiv),i=>scFmtT(SC_T[i|0])+'/칸'],
+  pos1:[v=>sc.ch1.pos=v,()=>sc.ch1.pos,v=>v.toFixed(1)+'칸'],pos2:[v=>sc.ch2.pos=v,()=>sc.ch2.pos,v=>v.toFixed(1)+'칸'],
+  lvl:[v=>sc.trig.lvl=v,()=>sc.trig.lvl,v=>v.toFixed(2)+'칸'],hpos:[v=>sc.hpos=v,()=>sc.hpos,v=>v.toFixed(1)+'칸'],
+  lf1:[v=>sc.ch1.f=Math.pow(10,v),()=>Math.log10(sc.ch1.f),v=>scFmtF(Math.pow(10,v))],lf2:[v=>sc.ch2.f=Math.pow(10,v),()=>Math.log10(sc.ch2.f),v=>scFmtF(Math.pow(10,v))],
+  a1:[v=>sc.ch1.A=v,()=>sc.ch1.A,v=>scFmtV(v)],a2:[v=>sc.ch2.A=v,()=>sc.ch2.A,v=>scFmtV(v)],o1:[v=>sc.ch1.off=v,()=>sc.ch1.off,v=>scFmtV(v)],ph2:[v=>sc.ch2.ph=v,()=>sc.ch2.ph,v=>Math.round(v)+'°']};
+ const Gp={cpl1:[['DC','AC','GND'],v=>sc.ch1.cpl=v,()=>sc.ch1.cpl],cpl2:[['DC','AC','GND'],v=>sc.ch2.cpl=v,()=>sc.ch2.cpl],slp:[['up','dn'],v=>sc.trig.slope=v==='up'?1:-1,()=>sc.trig.slope>0?'up':'dn'],
+  md:[['auto','norm','free'],v=>sc.trig.mode=v==='norm'?'normal':v,()=>sc.trig.mode==='normal'?'norm':sc.trig.mode],src:[['1','2'],v=>sc.trig.src=+v,()=>String(sc.trig.src)],
+  w1:[['sine','square','tri'],v=>sc.ch1.wave=v,()=>sc.ch1.wave],at1:[['1','10'],v=>sc.ch1.att=+v,()=>String(sc.ch1.att)]};
+ function sync(){for(const k in R){const e=E(k);if(!e)continue;const v=R[k][1]();e.value=v;const l=E(k+'-v');if(l)l.textContent=R[k][2](v);}
+  for(const k in Gp){Gp[k][0].forEach(v=>{const e=E(k+'-'+v);if(e)e.classList.toggle('on',Gp[k][2]()===v);});}}
+ for(const k in R){const e=E(k);if(e)e.addEventListener('input',()=>{R[k][0](+e.value);const l=E(k+'-v');if(l)l.textContent=R[k][2](+e.value);on&&on(k);});}
+ for(const k in Gp)Gp[k][0].forEach(v=>{const e=E(k+'-'+v);if(e)e.addEventListener('click',()=>{Gp[k][1](v);sync();on&&on(k);});});
+ sync();return{sync};}
+/* 읽기 도우미(검산용): 눈금 칸 수 → 값 */
+function scReadV(nDiv,vdiv,att){return nDiv*vdiv*att;}
+function scPeriod(nDiv,tdiv){return nDiv*tdiv;}
+/* 물리 */
+function rcGain(f,fc){return 1/Math.sqrt(1+(f/fc)*(f/fc));}
+function rcPhase(f,fc){return -Math.atan(f/fc)*180/Math.PI;}
+function aliasF(f,fs){return Math.abs(f-Math.round(f/fs)*fs);}
+/* ===== 다이오드 ②: 정류·평활·정전압 (스코프 엔진 위에 추가) ===== */
+function rectSim(kind,Vp,R,C,Vd,fin){const N=1000,T=1/fin,dt=T/N;let vc=0;const out=new Float64Array(N),cond=new Uint8Array(N);const vdrop=kind==='bridge'?2*Vd:Vd;
+ for(let cyc=0;cyc<14;cyc++)for(let i=0;i<N;i++){const vin=Vp*Math.sin(TAU*i/N);const src=kind==='half'?Math.max(vin,0):Math.abs(vin);const drv=Math.max(src-vdrop,0);let v,cd=0;
+  if(!C||C<=0){v=drv;cd=drv>0?1:0;}else{if(drv>vc){vc=drv;cd=1;}else vc=vc*Math.exp(-dt/(R*C));v=vc;}
+  if(cyc===13){out[i]=v;cond[i]=cd;}}
+ return{tbl:out,cond:cond};}
+function tblStats(t){const N=t.length;let s=0,mx=-1e9,mn=1e9;for(let i=0;i<N;i++){s+=t[i];mx=Math.max(mx,t[i]);mn=Math.min(mn,t[i]);}const m=s/N;let q=0;for(let i=0;i<N;i++)q+=(t[i]-m)*(t[i]-m);const ac=Math.sqrt(q/N);return{dc:m,acrms:ac,r:ac/Math.max(m,1e-9),pp:mx-mn,max:mx,min:mn};}
+function rippleFormula(kind,f,R,C){return kind==='half'?1/(2*Math.sqrt(3)*f*R*C):1/(4*Math.sqrt(3)*f*R*C);}
+function zenerOut(Vin,Rs,RL,Vz){const open=Vin*RL/(Rs+RL);if(open>Vz){return{vo:Vz,iz:(Vin-Vz)/Rs-Vz/RL,reg:true};}return{vo:open,iz:0,reg:false};}
+function sLine(ctx,pts,col,lw){ctx.strokeStyle=col||'#e6edff';ctx.lineWidth=lw||3;ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();}
+function sDiodeV(ctx,x1,y1,x2,y2,on,lab){const mx=(x1+x2)/2,my=(y1+y2)/2,a=Math.atan2(y2-y1,x2-x1),s=17;const col=on?'#ffd166':'#8ea3cf';
+ ctx.save();ctx.translate(mx,my);ctx.rotate(a);ctx.fillStyle=on?'rgba(255,209,102,.35)':'rgba(255,255,255,.05)';ctx.strokeStyle=col;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-s,-s);ctx.lineTo(-s,s);ctx.lineTo(s,0);ctx.closePath();ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(s,-s);ctx.lineTo(s,s);ctx.stroke();ctx.restore();
+ if(lab)tx(ctx,lab,mx+(y1===y2?0:-22),my-(y1===y2?26:10),17,col,'center',700);}
+function sRes(ctx,x,y1,y2,lab){ctx.strokeStyle='#e6edff';ctx.lineWidth=3;ctx.fillStyle='rgba(255,255,255,.05)';ctx.beginPath();ctx.rect(x-12,y1,24,y2-y1);ctx.fill();ctx.stroke();if(lab)tx(ctx,lab,x+22,(y1+y2)/2+6,18,'#e6edff','left',700);}
+function sCap(ctx,x,y,lab){ctx.strokeStyle='#e6edff';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x-22,y-7);ctx.lineTo(x+22,y-7);ctx.moveTo(x-22,y+7);ctx.lineTo(x+22,y+7);ctx.stroke();if(lab)tx(ctx,lab,x+30,y+6,18,'#e6edff','left',700);}
+function sSrc(ctx,x,y,lab){ctx.strokeStyle='#e6edff';ctx.lineWidth=3;ctx.fillStyle='rgba(255,255,255,.05)';ctx.beginPath();ctx.arc(x,y,26,0,TAU);ctx.fill();ctx.stroke();ctx.beginPath();for(let i=0;i<=20;i++){const px=x-14+i*1.4,py=y-Math.sin(i/20*TAU)*8;i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.stroke();if(lab)tx(ctx,lab,x-40,y+6,17,C.dim,'right',500);}
+function pathDots(ctx,pts,t,n,col){let L=[],tot=0;for(let i=1;i<pts.length;i++){const d=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);L.push(d);tot+=d;}
+ ctx.fillStyle=col||'#ffd166';for(let k=0;k<n;k++){let d=((t*0.35+k/n)%1)*tot,i=0;while(i<L.length-1&&d>L[i]){d-=L[i];i++;}const f=d/(L[i]||1);ctx.beginPath();ctx.arc(pts[i][0]+(pts[i+1][0]-pts[i][0])*f,pts[i][1]+(pts[i+1][1]-pts[i][1])*f,5,0,TAU);ctx.fill();}}
+/* 정류 회로 도식. kind: half | ct | bridge, ph: 입력 위상(rad), cap: 콘덴서 유무, conduct: 도통 중인지 */
+function drawRect(ctx,kind,ph,cap,conduct,tn){const pos=Math.sin(ph)>=0,col='#e6edff';
+ if(kind==='half'){sSrc(ctx,80,130,'v₁');sLine(ctx,[[80,104],[80,60],[190,60]]);sDiodeV(ctx,175,60,235,60,conduct&&pos,'D');sLine(ctx,[[235,60],[420,60],[420,98]]);sRes(ctx,420,98,164,'R');sLine(ctx,[[420,164],[420,200],[80,200],[80,156]]);
+  if(cap){sLine(ctx,[[330,60],[330,116]]);sCap(ctx,330,123,'C');sLine(ctx,[[330,130],[330,200]]);}
+  if(conduct&&pos)pathDots(ctx,[[80,104],[80,60],[235,60],[420,60],[420,98],[420,164],[420,200],[80,200],[80,156]],tn,10);else if(cap&&Math.abs(Math.sin(ph))>=0)pathDots(ctx,[[420,60],[420,98],[420,164],[420,200]],tn,4);
+  tx(ctx,'교류 전원 → D → R',250,28,19,C.dim,'center',500);}
+ else if(kind==='ct'){sSrc(ctx,90,90,'');sSrc(ctx,90,170,'');tx(ctx,'중간 탭',40,150,17,C.dim,'right',500);sLine(ctx,[[90,64],[90,50],[170,50]]);sLine(ctx,[[90,196],[90,210],[170,210]]);sLine(ctx,[[90,116],[90,144]]);sLine(ctx,[[90,130],[40,130],[40,250],[440,250],[440,164]]);
+  sDiodeV(ctx,170,50,230,50,conduct&&pos,'D₁');sDiodeV(ctx,170,210,230,210,conduct&&!pos,'D₂');sLine(ctx,[[230,50],[300,50],[300,130],[380,130],[380,98],[440,98]]);sLine(ctx,[[230,210],[300,210],[300,130]]);sRes(ctx,440,98,164,'R');
+  if(cap){sLine(ctx,[[380,98],[380,116]]);sCap(ctx,380,123,'C');sLine(ctx,[[380,130],[380,250]]);}
+  tx(ctx,pos?'위쪽 반(D₁)이 도통':'아래쪽 반(D₂)이 도통',250,28,19,'#ffd166','center',700);
+  if(conduct)pathDots(ctx,pos?[[90,64],[90,50],[230,50],[300,50],[300,130],[380,130],[380,98],[440,98],[440,164],[440,250],[40,250],[40,130],[90,130]]:[[90,196],[90,210],[230,210],[300,210],[300,130],[380,130],[380,98],[440,98],[440,164],[440,250],[40,250],[40,130],[90,130]],tn,12);}
+ else{sSrc(ctx,80,130,'v₁');sLine(ctx,[[80,104],[80,60],[340,60]]);sLine(ctx,[[80,156],[80,200],[340,200]]);
+  sDiodeV(ctx,340,60,470,130,conduct&&pos,'D₁');sDiodeV(ctx,340,200,470,130,conduct&&!pos,'D₂');sDiodeV(ctx,210,130,340,60,conduct&&!pos,'D₃');sDiodeV(ctx,210,130,340,200,conduct&&pos,'D₄');
+  sLine(ctx,[[470,130],[540,130],[540,98],[600,98]]);sRes(ctx,600,98,164,'R');sLine(ctx,[[600,164],[600,250],[150,250],[150,130],[210,130]]);
+  if(cap){sLine(ctx,[[540,98],[540,116]]);sCap(ctx,540,123,'C');sLine(ctx,[[540,130],[540,250]]);}
+  tx(ctx,pos?'D₁·D₄ 도통':'D₂·D₃ 도통',340,28,19,'#ffd166','center',700);
+  if(conduct)pathDots(ctx,pos?[[80,104],[80,60],[340,60],[470,130],[540,130],[540,98],[600,98],[600,164],[600,250],[150,250],[150,130],[210,130],[340,200],[80,200],[80,156]]:[[80,156],[80,200],[340,200],[470,130],[540,130],[540,98],[600,98],[600,164],[600,250],[150,250],[150,130],[210,130],[340,60],[80,60],[80,104]],tn,14);}}
+function TESTS(){const o=[];const T=(n,ok,d)=>o.push([n,!!ok,d]);
+ const h=tblStats(rectSim('half',10,1000,0,0,60).tbl),f=tblStats(rectSim('full',10,1000,0,0,60).tbl);
+ T('반파 평균 = Vp/π ≈ 0.318Vp',Math.abs(h.dc-10/Math.PI)<0.02,'식 3-15');
+ T('전파 평균 = 2Vp/π ≈ 0.637Vp',Math.abs(f.dc-20/Math.PI)<0.02,'식 3-21');
+ T('반파 리플률 ≈ 1.21',Math.abs(h.r-1.21)<0.02,'식 3-18');
+ T('전파 리플률 ≈ 0.482',Math.abs(f.r-0.482)<0.01,'식 3-24');
+ const b=tblStats(rectSim('bridge',10,1000,0,0.7,60).tbl);T('브리지: 다이오드 2개 전압 강하(1.4 V)만큼 낮은 최대',Math.abs(b.max-8.6)<0.02,'');
+ const c=tblStats(rectSim('full',10,1000,100e-6,0,60).tbl);const rf=rippleFormula('full',60,1000,100e-6);T('콘덴서 평활: 리플률이 공식 1/(4√3fRC)와 20% 이내',Math.abs(c.r-rf)/rf<0.25,'식 3-33 (sim '+c.r.toFixed(3)+', 공식 '+rf.toFixed(3)+')');
+ T('교재 예제 4: 55 V(실효) 전파 정류 평균 ≈ 49.5 V',Math.abs(55*Math.SQRT2*2/Math.PI-49.5)<0.2,'');
+ T('LC 평활 리플률 0.83/(L·C[µF])',Math.abs(0.83/(10*100)-8.3e-4)<1e-6,'식 3-38');
+ const z=zenerOut(15,200,1000,5.1);T('제너: Vin이 충분하면 출력 = Vz',z.reg&&z.vo===5.1&&z.iz>0,'');
+ T('제너: Vin이 낮으면 분압 값',!zenerOut(5,200,1000,5.1).reg,'');
+ return o;}
+
+
+/* =====================================================================
+   슬라이드별 모듈: { start(), stop(), frame(dt), onStep(step) }
+   ===================================================================== */
+const REG = {};
+/* ---- c ---- */
+REG["c"] = safe("c.init", function () {
+const cv=$('#c-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);
+const sc=newScope({ch1:{wave:'sine',f:60,A:10,vdiv:5,pos:0},ch2:{on:1,wave:'sine',f:60,A:10,vdiv:5,pos:-2},tdiv:5e-3,trig:{lvl:0,slope:1,mode:'auto'}});let tn=0;
+const K=['half','full','bridge'],TB=K.map(k=>rectSim(k,10,200,k==='half'?0:0,k==='bridge'?0.7:0.7,60).tbl);
+function draw(){const k=Math.floor(tn/3.5)%3;sc.ch2.tbl=TB[k];sc.ch2.tmean=0;ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);scDraw(ctx,sc,tn);tx(ctx,['반파 정류','전파 정류','브리지 정류'][k]+'  (노랑: 입력 / 청록: 출력)',W/2,H-20,26,C.text,'center',700);}
+return{start(){draw();},frame(dt){tn+=dt;draw();}};
+
+});
+
+/* ---- fl ---- */
+REG["fl"] = safe("fl.init", function () {
+const cv=$('#fl-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);
+const ST=[['변압기','교류 전압을 알맞게 올리거나 내린다'],['정류기','교류 → 맥류(한 방향)'],['평활 회로','맥류의 출렁임(리플)을 줄인다'],['정전압 회로','부하·전원이 변해도 출력 전압을 일정하게']];
+const Tb=[]; (function(){const s=new Float64Array(1000);for(let i=0;i<1000;i++)s[i]=12*Math.sin(TAU*i/1000);Tb.push(s);const r=rectSim('bridge',12,100,0,0.7,60).tbl;Tb.push(r);const sm=rectSim('bridge',12,100,470e-6,0.7,60).tbl;Tb.push(sm);const st=tblStats(sm),z=new Float64Array(1000);for(let i=0;i<1000;i++)z[i]=5+(sm[i]-st.dc)/1000;Tb.push(z);})();
+const CFG=[[5,0],[5,-3],[2,-3],[2,-3]];let k=0,tn=0;
+const sc=newScope({ch1:{wave:'sine',f:60,A:1,vdiv:5,pos:0},tdiv:5e-3,trig:{lvl:0,slope:1,mode:'auto'}});
+ST.forEach((_,i)=>onClick('fl-s'+i,()=>{k=i;setChips(ST.map((_,j)=>'fl-s'+j),'fl-s'+i);}));
+function draw(){const c=sc.ch1;c.tbl=Tb[k];c.tmean=0;c.vdiv=CFG[k][0];c.pos=CFG[k][1];ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ for(let i=0;i<4;i++){const x=30+i*250;ctx.fillStyle=i===k?'rgba(255,209,102,.25)':'rgba(255,255,255,.06)';ctx.strokeStyle=i===k?'#ffd166':'rgba(160,190,255,.5)';ctx.lineWidth=3;ctx.beginPath();ctx.rect(x,40,200,90);ctx.fill();ctx.stroke();tx(ctx,(i+1)+'. '+ST[i][0],x+100,95,26,i===k?'#ffd166':C.text,'center',700);
+  if(i<3){ctx.strokeStyle='#e6edff';ctx.beginPath();ctx.moveTo(x+205,85);ctx.lineTo(x+245,85);ctx.stroke();ctx.fillStyle='#e6edff';ctx.beginPath();ctx.moveTo(x+245,85);ctx.lineTo(x+235,79);ctx.lineTo(x+235,91);ctx.fill();}}
+ tx(ctx,'교류 전원 →',30,30,19,C.dim,'left',500);tx(ctx,'→ 직류 전압',1010,30,19,C.dim,'right',500);
+ tx(ctx,ST[k][1],W/2,180,24,'#ffd166','center',700);
+ scDraw(ctx,sc,tn,{x:280,y:215,w:480,h:384});const s=tblStats(Tb[k]);
+ tx(ctx,'직류 성분 '+s.dc.toFixed(2)+' V · 교류 성분(실효) '+s.acrms.toFixed(3)+' V',W/2,H-18,22,C.text,'center',700);}
+return{start(){setChips(ST.map((_,j)=>'fl-s'+j),'fl-s0');draw();},frame(dt){tn+=dt;draw();}};
+
+});
+
+/* ---- rc ---- */
+REG["rc"] = safe("rc.init", function () {
+const cv=$('#rc-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);
+
+let kind='half',tn=0;
+const sc=newScope({ch1:{wave:'sine',f:60,A:10,vdiv:5,pos:0},ch2:{on:1,wave:'sine',f:60,A:10,vdiv:5,pos:-2},tdiv:5e-3,trig:{lvl:0,slope:1,mode:'auto'}});
+const KS=['half','ct','bridge'];
+KS.forEach(k=>onClick('rc-k-'+k,()=>{kind=k;setChips(KS.map(x=>'rc-k-'+x),'rc-k-'+k);}));
+let sim=null,lastKey='';
+function upd(){const Vp=g('rc-vp'),kk=kind==='ct'?'full':kind;const Vd=document.getElementById('rc-vd').checked?0.7:0;const key=kind+Vp+Vd;if(key!==lastKey){lastKey=key;sim=rectSim(kk,Vp,1000,0,Vd,60);sc.ch1.A=Vp;sc.ch2.tbl=sim.tbl;sc.ch2.tmean=0;sc.ch2.vdiv=Vp>9?5:2;sc.ch1.vdiv=sc.ch2.vdiv;sc.ch2.pos=-2;}}
+function draw(){upd();const Vp=g('rc-vp'),st=tblStats(sim.tbl),Vd=document.getElementById('rc-vd').checked?0.7:0;setT('rc-vp-v',Vp.toFixed(1)+' V');
+ const ph=((tn*0.25)%1)*TAU;const idx=Math.floor(ph/TAU*1000)%1000;const cond=sim.cond[idx];
+ ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);drawRect(ctx,kind,ph,false,!!cond,tn);
+ scDraw(ctx,sc,tn,{x:290,y:300,w:450,h:360,cur:{t:[ph/TAU*(1/60)/sc.tdiv]}});
+ const f=kind==='half'?'0.318':'0.637',pk=kind==='bridge'?Vp-2*Vd:Vp-Vd;
+ const th=(kind==='half'?1/Math.PI:2/Math.PI)*pk;
+ setH('rc-msg','<b>평균 전압(직류)</b>: 시뮬 <b class="k">'+st.dc.toFixed(2)+' V</b> ≈ '+f+'·V<sub>p</sub> = '+th.toFixed(2)+' V<br><b>리플률</b> r = '+st.r.toFixed(2)+' ('+(kind==='half'?'이론 1.21':'이론 0.482')+')<br><b>출력 주파수</b>: '+(kind==='half'?'60 Hz (입력과 같음)':'120 Hz (입력의 2배)')+'<br><b>다이오드 최대 역전압</b>: '+(kind==='ct'?'2V<sub>p</sub> = '+(2*Vp).toFixed(0)+' V':'V<sub>p</sub> = '+Vp.toFixed(0)+' V'));}
+return{start(){setChips(KS.map(x=>'rc-k-'+x),'rc-k-half');kind='half';lastKey='';draw();},frame(dt){tn+=dt;draw();}};
+
+});
+
+/* ---- fw ---- */
+REG["fw"] = safe("fw.init", function () {
+const cv=$('#fw-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);
+
+let kind='ct',tn=0;
+const sc=newScope({ch1:{wave:'sine',f:60,A:10,vdiv:5,pos:0},ch2:{on:1,wave:'sine',f:60,A:10,vdiv:5,pos:-2},tdiv:5e-3,trig:{lvl:0,slope:1,mode:'auto'}});
+const KS=['ct','bridge'];
+KS.forEach(k=>onClick('fw-k-'+k,()=>{kind=k;setChips(KS.map(x=>'fw-k-'+x),'fw-k-'+k);}));
+let sim=null,lastKey='';
+function upd(){const Vp=g('fw-vp'),kk=kind==='ct'?'full':kind;const Vd=document.getElementById('fw-vd').checked?0.7:0;const key=kind+Vp+Vd;if(key!==lastKey){lastKey=key;sim=rectSim(kk,Vp,1000,0,Vd,60);sc.ch1.A=Vp;sc.ch2.tbl=sim.tbl;sc.ch2.tmean=0;sc.ch2.vdiv=Vp>9?5:2;sc.ch1.vdiv=sc.ch2.vdiv;sc.ch2.pos=-2;}}
+function draw(){upd();const Vp=g('fw-vp'),st=tblStats(sim.tbl),Vd=document.getElementById('fw-vd').checked?0.7:0;setT('fw-vp-v',Vp.toFixed(1)+' V');
+ const ph=((tn*0.25)%1)*TAU;const idx=Math.floor(ph/TAU*1000)%1000;const cond=sim.cond[idx];
+ ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);drawRect(ctx,kind,ph,false,!!cond,tn);
+ scDraw(ctx,sc,tn,{x:290,y:300,w:450,h:360,cur:{t:[ph/TAU*(1/60)/sc.tdiv]}});
+ const f=kind==='half'?'0.318':'0.637',pk=kind==='bridge'?Vp-2*Vd:Vp-Vd;
+ const th=(kind==='half'?1/Math.PI:2/Math.PI)*pk;
+ setH('fw-msg','<b>평균 전압(직류)</b>: 시뮬 <b class="k">'+st.dc.toFixed(2)+' V</b> ≈ '+f+'·V<sub>p</sub> = '+th.toFixed(2)+' V<br><b>리플률</b> r = '+st.r.toFixed(2)+' ('+(kind==='half'?'이론 1.21':'이론 0.482')+')<br><b>출력 주파수</b>: '+(kind==='half'?'60 Hz (입력과 같음)':'120 Hz (입력의 2배)')+'<br><b>다이오드 최대 역전압</b>: '+(kind==='ct'?'2V<sub>p</sub> = '+(2*Vp).toFixed(0)+' V':'V<sub>p</sub> = '+Vp.toFixed(0)+' V'));}
+return{start(){setChips(KS.map(x=>'fw-k-'+x),'fw-k-ct');kind='ct';lastKey='';draw();},frame(dt){tn+=dt;draw();}};
+
+});
+
+/* ---- db ---- */
+REG["db"] = safe("db.init", function () {
+const cv=$('#db-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);let tn=0;
+function sim(Vp,Vd,n){const a=[],b=[];let c1=0,c2=0;for(let i=0;i<=n;i++){c1=Vp-Vd;const tgt=2*(Vp-Vd);c2=c2+(tgt-c2)*(i===0?0.5:0.45);a.push(c1);b.push(c2);}return[a,b];}
+function draw(){const Vp=g('db-vp'),Vd=0.7;setT('db-vp-v',Vp.toFixed(1)+' V');const [c1,c2]=sim(Vp,Vd,10);const cyc=(tn*0.5)%11,n=Math.floor(cyc),ph=((cyc%1))*TAU;const pos=Math.sin(ph)>=0;
+ ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ sSrc(ctx,80,130,'v₁');sLine(ctx,[[80,104],[80,60],[190,60]]);ctx.strokeStyle='#e6edff';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(190,38);ctx.lineTo(190,82);ctx.moveTo(206,38);ctx.lineTo(206,82);ctx.stroke();tx(ctx,'C₁',198,30,18,C.text,'center',700);sLine(ctx,[[206,60],[290,60]]);
+ sLine(ctx,[[80,156],[80,230],[290,230]]);sLine(ctx,[[290,230],[290,60]]);
+ /* D1: 접지(아래)->X(위) */sDiodeV(ctx,290,230,290,100,!pos,'D₁');sLine(ctx,[[290,60],[290,100]]);
+ sDiodeV(ctx,290,60,420,60,pos,'D₂');sLine(ctx,[[420,60],[520,60],[520,98]]);sLine(ctx,[[420,60],[420,100]]);ctx.strokeStyle='#e6edff';ctx.beginPath();ctx.moveTo(398,100);ctx.lineTo(442,100);ctx.moveTo(398,116);ctx.lineTo(442,116);ctx.stroke();tx(ctx,'C₂',455,114,18,C.text,'left',700);sLine(ctx,[[420,116],[420,230]]);sLine(ctx,[[290,230],[600,230]]);
+ sRes(ctx,520,98,164,'R');sLine(ctx,[[520,164],[520,230]]);
+ tx(ctx,pos?'v₁ > 0: D₂ 도통 — C₂가 (v₁ + C₁ 전압)까지 충전':'v₁ < 0: D₁ 도통 — C₁이 V₀까지 충전',640,70,21,'#ffd166','left',700);
+ /* 그래프 */const gx=70,gy=330,gw=900,gh=290,ymax=2*Vp;ctx.fillStyle='rgba(255,255,255,.05)';ctx.fillRect(gx,gy,gw,gh);ctx.strokeStyle='rgba(160,190,255,.3)';ctx.lineWidth=1;ctx.strokeRect(gx,gy,gw,gh);
+ const X=i=>gx+30+i/10*(gw-60),Y=v=>gy+gh-v/ymax*(gh-20)-10;tx(ctx,'무부하 상태에서 주기마다 올라가는 전압 (모형: 이상적인 다이오드 전압 강하 0.7 V, C₁=C₂)',gx,gy-10,19,C.text,'left',700);
+ [[c1,'#7cc4ff','C₁ 전압'],[c2,'#ffe27a','출력(C₂) 전압']].forEach(a=>{ctx.strokeStyle=a[1];ctx.lineWidth=3.5;ctx.beginPath();a[0].forEach((v,i)=>{const x=X(i),y=Y(v);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();a[0].forEach((v,i)=>{ctx.fillStyle=a[1];ctx.beginPath();ctx.arc(X(i),Y(v),i===n?9:5,0,TAU);ctx.fill();});});
+ tx(ctx,'V_p = '+Vp.toFixed(1)+' V → 2(V_p − 0.7)',gx+gw-8,Y(2*(Vp-Vd))-8,20,'#ffe27a','right',700);tx(ctx,'V_p − 0.7',gx+gw-8,Y(Vp-Vd)-8,20,'#7cc4ff','right',700);tx(ctx,'주기',gx+gw/2,gy+gh+28,18,C.dim,'center',500);
+ setH('db-msg','출력 전압은 약 <b class="k">'+c2[n].toFixed(1)+' V</b> (이론 최대 2V<sub>p</sub> = '+(2*Vp).toFixed(0)+' V, 다이오드 강하 만큼 낮음). 부하를 걸면 전압이 내려가 전압 변동률이 커진다. 각 다이오드의 최대 역전압은 <b>2V<sub>p</sub></b>(교재 107쪽).');}
+return{start(){draw();},frame(dt){tn+=dt;draw();}};
+
+});
+
+/* ---- sm ---- */
+REG["sm"] = safe("sm.init", function () {
+const cv=$('#sm-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);
+const sc=newScope({ch1:{wave:'sine',f:60,A:10,vdiv:5,pos:0},ch2:{on:1,wave:'sine',f:60,A:10,vdiv:5,pos:-2},tdiv:5e-3,trig:{lvl:0,slope:1,mode:'auto'}});
+const KS=['half','full','bridge'];let kind='full',tn=0,capOn=true,acv=false,sim=null,key='';
+KS.forEach(k=>onClick('sm-k-'+k,()=>{kind=k;setChips(KS.map(x=>'sm-k-'+x),'sm-k-'+k);}));
+onClick('sm-cap',()=>{capOn=!capOn;setChips(['sm-cap'],capOn?'sm-cap':'');});onClick('sm-ac',()=>{acv=!acv;setChips(['sm-ac'],acv?'sm-ac':'');});
+const LAD=SC_V;
+function draw(){const Vp=12,Cc=capOn?Math.pow(10,g('sm-lc'))*1e-6:0,R=Math.pow(10,g('sm-lr')),Vd=0.7;setT('sm-lc-v',capOn?scNum(Cc*1e6)+' µF':'(없음)');setT('sm-lr-v',scNum(R)+' Ω');
+ const k=kind+Cc+R;if(k!==key){key=k;sim=rectSim(kind,Vp,R,Cc,Vd,60);sc.ch1.A=Vp;sc.ch2.tbl=sim.tbl;}
+ const st=tblStats(sim.tbl);sc.ch2.tmean=st.dc;
+ if(acv){sc.ch2.cpl='AC';let v=SC_V[0];for(const x of SC_V){if(x*6>=st.pp){v=x;break;}v=x;}sc.ch2.vdiv=Math.max(v,0.005);sc.ch2.pos=0;sc.ch1.on=0;}else{sc.ch2.cpl='DC';sc.ch2.vdiv=5;sc.ch2.pos=-3;sc.ch1.on=1;sc.ch1.vdiv=5;sc.ch1.pos=0;}
+ const ph=((tn*0.25)%1)*TAU,idx=Math.floor(ph/TAU*1000)%1000;
+ ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);drawRect(ctx,kind==='full'?'ct':kind,ph,capOn,!!sim.cond[idx],tn);
+ scDraw(ctx,sc,tn,{x:290,y:300,w:450,h:360});
+ const Idc=st.dc/R,fo=kind==='half'?60:120,rf=capOn?rippleFormula(kind==="half"?"half":"full",60,R,Cc):NaN;
+ setH('sm-msg','<b>직류</b> '+st.dc.toFixed(2)+' V · <b>리플 p-p</b> '+st.pp.toFixed(2)+' V<br><b>리플률</b> 시뮬 '+(st.r*100).toFixed(1)+' %'+(capOn?' · 공식 1/('+(kind==='half'?'2':'4')+'√3fRC) = '+(rf*100).toFixed(1)+' %':'')+'<br>다이오드 전류: '+(capOn?'<b>짧고 큰 펄스</b>(충전 시간이 짧다)':'반주기 내내 흐름')+'<br>부하 전류 '+(Idc*1000).toFixed(0)+' mA');}
+return{start(){setChips(KS.map(x=>'sm-k-'+x),'sm-k-full');setChips(['sm-cap'],'sm-cap');setChips(['sm-ac'],'');draw();},frame(dt){tn+=dt;draw();}};
+
+});
+
+/* ---- lc ---- */
+REG["lc"] = safe("lc.init", function () {
+const cv=$('#lc-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);
+function draw(){const L=g('lc-l'),Cu=g('lc-c'),R=g('lc-r'),f=60;setT('lc-l-v',L.toFixed(1)+' H');setT('lc-c-v',Math.round(Cu)+' µF');setT('lc-r-v',Math.round(R)+' Ω');
+ const rc=rippleFormula('full',f,R,Cu*1e-6),rlc=0.83/(L*Cu);ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ /* 회로: 코일 입력형 LC */sLine(ctx,[[60,110],[200,110]]);ctx.strokeStyle='#e6edff';ctx.lineWidth=3;for(let i=0;i<4;i++){ctx.beginPath();ctx.arc(215+i*26,110,13,Math.PI,0);ctx.stroke();}sLine(ctx,[[300,110],[470,110],[470,140]]);tx(ctx,'L',255,80,22,C.text,'center',700);
+ sCap(ctx,470,160,'C');sLine(ctx,[[470,167],[470,230]]);sLine(ctx,[[470,110],[620,110],[620,140]]);sRes(ctx,620,140,220,'R');sLine(ctx,[[620,220],[620,230],[60,230]]);tx(ctx,'정류기 출력 →',60,90,19,C.dim,'left',500);
+ tx(ctx,'코일은 교류 성분에 큰 임피던스(2ωL), 콘덴서는 교류 성분을 접지로 우회',60,290,21,'#ffd166','left',700);
+ /* 막대: 로그 */const bars=[['콘덴서만 (C, R)',rc,'#7cc4ff'],['LC 평활 (코일+콘덴서)',rlc,'#ffe27a']];const bx=330,bw=600;tx(ctx,'리플률(로그 눈금, 전파 정류, 60 Hz)',60,360,22,C.text,'left',700);
+ bars.forEach((b,i)=>{const y=400+i*110,l=clamp(Math.log10(b[1]),-5,1),w=(l+5)/6*bw;ctx.fillStyle=b[2];ctx.fillRect(bx,y,Math.max(3,w),48);tx(ctx,b[0],bx-14,y+32,22,b[2],'right',700);tx(ctx,(b[1]*100).toPrecision(2)+' %',bx+Math.max(3,w)+10,y+33,24,'#fff','left',700);});
+ for(let e=-5;e<=1;e++){const x=bx+(e+5)/6*bw;ctx.strokeStyle='rgba(160,190,255,.25)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,390);ctx.lineTo(x,625);ctx.stroke();tx(ctx,'10^'+(e+2)+' %',x,650,15,C.dim,'center',500);}
+ setH('lc-msg','콘덴서만: r = 1/(4√3·f·R·C) = <b class="k">'+(rc*100).toPrecision(2)+' %</b><br>LC: r ≈ 0.83/(L·C) = <b class="k">'+(rlc*100).toPrecision(2)+' %</b> (L은 H, C는 µF, 60 Hz 전파 — 교재 식 3-38, <b>R에 거의 무관</b>)<br><span class="sm">콘덴서만 쓸 때는 부하 R이 작아지면(전류↑) 리플이 커진다.</span>');}
+return{start(){draw();},frame(){draw();}};
+
+});
+
+/* ---- zn ---- */
+REG["zn"] = safe("zn.init", function () {
+const cv=$('#zn-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);const VZ=5.1,RS=220;
+function draw(){const Vin=g('zn-vi'),RL=Math.pow(10,g('zn-lr'));setT('zn-vi-v',Vin.toFixed(1)+' V');setT('zn-lr-v',scNum(RL)+' Ω');const z=zenerOut(Vin,RS,RL,VZ),IL=z.vo/RL,Is=(Vin-z.vo)/RS;
+ ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ /* 회로 */sLine(ctx,[[60,70],[200,70]]);ctx.strokeStyle='#e6edff';ctx.lineWidth=3;ctx.fillStyle='rgba(255,255,255,.05)';ctx.beginPath();ctx.rect(200,56,90,28);ctx.fill();ctx.stroke();tx(ctx,'R_s='+RS+' Ω',245,46,18,C.text,'center',700);sLine(ctx,[[290,70],[420,70],[420,110]]);
+ /* 제너: 아래로 향하는 (캐소드가 위) */sDiodeV(ctx,420,205,420,110,z.reg,'D_Z');sLine(ctx,[[420,205],[420,250]]);sLine(ctx,[[420,70],[600,70],[600,110]]);sRes(ctx,600,110,200,'R_L');sLine(ctx,[[600,200],[600,250]]);sLine(ctx,[[60,250],[600,250]]);sLine(ctx,[[60,70],[60,90]]);
+ tx(ctx,'V_in = '+Vin.toFixed(1)+' V',60,60,22,'#ffd166','left',700);tx(ctx,'V_out = '+z.vo.toFixed(2)+' V',640,80,26,z.reg?'#5eead4':'#ff7a7a','left',700);
+ if(z.reg)pathDots(ctx,[[60,70],[290,70],[420,70],[420,110],[420,250]],performance.now()/1000,8);
+ /* 그래프: V_out vs V_in */const gx=90,gy=330,gw=420,gh=300;ctx.fillStyle='rgba(255,255,255,.05)';ctx.fillRect(gx,gy,gw,gh);ctx.strokeStyle='rgba(160,190,255,.35)';ctx.lineWidth=1;ctx.strokeRect(gx,gy,gw,gh);
+ const X=v=>gx+v/20*gw,Y=v=>gy+gh-v/12*gh;ctx.strokeStyle='#ffe27a';ctx.lineWidth=3.5;ctx.beginPath();for(let i=0;i<=100;i++){const v=i/100*20,o=zenerOut(v,RS,RL,VZ).vo;i?ctx.lineTo(X(v),Y(o)):ctx.moveTo(X(v),Y(o));}ctx.stroke();
+ ctx.setLineDash([6,6]);ctx.strokeStyle='#8ea3cf';ctx.beginPath();for(let i=0;i<=100;i++){const v=i/100*20,o=v*RL/(RS+RL);i?ctx.lineTo(X(v),Y(o)):ctx.moveTo(X(v),Y(o));}ctx.stroke();ctx.setLineDash([]);
+ ctx.fillStyle='#ff9ecf';ctx.beginPath();ctx.arc(X(Vin),Y(z.vo),8,0,TAU);ctx.fill();tx(ctx,'V_out(V)  vs  V_in(V)',gx,gy-10,19,C.text,'left',700);tx(ctx,'제너(노랑) · 제너 없이 분압(점선)',gx+gw,gy+gh+26,17,C.dim,'right',500);tx(ctx,'5.1 V',gx+6,Y(VZ)-6,17,'#5eead4','left',700);
+ const rlmin=Vin>VZ?VZ*RS/(Vin-VZ):Infinity;
+ setH('zn-msg',(Vin>VZ?'<span class="sm">정전압이 유지되는 최소 부하 R<sub>L</sub> = V<sub>Z</sub>R<sub>s</sub>/(V<sub>in</sub>−V<sub>Z</sub>) = '+Math.round(rlmin)+' Ω (교재 식 3-41)</span><br>':'')+(z.reg?'<b class="ok">정전압 동작</b>: V<sub>out</sub> = V<sub>Z</sub> = '+VZ+' V<br>I<sub>s</sub> = '+(Is*1000).toFixed(1)+' mA = I<sub>L</sub> '+(IL*1000).toFixed(1)+' mA + I<sub>Z</sub> <b class="k">'+(z.iz*1000).toFixed(1)+' mA</b><br>제너 전력 P<sub>Z</sub> = V<sub>Z</sub>I<sub>Z</sub> = '+(VZ*z.iz*1000).toFixed(0)+' mW':'<b class="bad">제너가 항복하지 않음</b>: V<sub>in</sub>이 낮거나 부하 전류가 너무 커서 분압 값('+z.vo.toFixed(2)+' V)이 나온다.'));}
+return{start(){draw();},frame(){draw();}};
+
+});
+
+/* ---- ic ---- */
+REG["ic"] = safe("ic.init", function () {
+const cv=$('#ic-cv'),W=1040,H=720,ctx=setupCanvas(cv,W,H);
+const sc=newScope({ch1:{wave:'sine',f:60,A:1,vdiv:2,pos:-3},ch2:{on:1,wave:'sine',f:60,A:1,vdiv:2,pos:-3},tdiv:5e-3,trig:{lvl:0,slope:1,mode:'auto',src:1}});let tn=0,acv=false,key='',sim=null,out=null;
+onClick('ic-ac',()=>{acv=!acv;setChips(['ic-ac'],acv?'ic-ac':'');});
+function draw(){const Vp=g('ic-vp'),Cu=Math.pow(10,g('ic-lc')),R=Math.pow(10,g('ic-lr'));setT('ic-vp-v',Vp.toFixed(1)+' V');setT('ic-lc-v',Math.round(Cu)+' µF');setT('ic-lr-v',scNum(R)+' Ω');
+ const k=Vp+'_'+Cu+'_'+R;if(k!==key){key=k;sim=rectSim('bridge',Vp,R*0+Math.max(R,10),Cu*1e-6,0.7,60);const st=tblStats(sim.tbl);out=new Float64Array(1000);for(let i=0;i<1000;i++){const v=sim.tbl[i];out[i]=(v-2>=5)?5+(v-st.dc)/1000:Math.max(v-2,0);}}
+ const si=tblStats(sim.tbl),so=tblStats(out);sc.ch1.tbl=sim.tbl;sc.ch1.tmean=si.dc;sc.ch2.tbl=out;sc.ch2.tmean=so.dc;
+ if(acv){sc.ch1.cpl='AC';sc.ch2.cpl='AC';sc.ch1.vdiv=1;sc.ch1.pos=1.5;sc.ch2.vdiv=0.005;sc.ch2.pos=-1.5;sc.tdiv=5e-3;}else{sc.ch1.cpl='DC';sc.ch2.cpl='DC';sc.ch1.vdiv=2;sc.ch2.vdiv=2;sc.ch1.pos=-3;sc.ch2.pos=-3;}
+ ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ const bx=[[20,'변압기·브리지·C','(리플 있는 직류)','#ffe27a'],[360,'78xx 3단자 IC','(정전압 소자)','#c8a6ff'],[700,'부하','(5 V 회로)','#5eead4']];bx.forEach((b,i)=>{ctx.fillStyle='rgba(255,255,255,.06)';ctx.strokeStyle=b[3];ctx.lineWidth=3;ctx.beginPath();ctx.rect(b[0],20,300,80);ctx.fill();ctx.stroke();tx(ctx,b[1],b[0]+150,58,22,b[3],'center',700);tx(ctx,b[2],b[0]+150,86,17,C.dim,'center',500);});
+ ctx.strokeStyle='#e6edff';ctx.lineWidth=3;[[322,60,358,60],[662,60,698,60]].forEach(a=>{ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(a[2],a[3]);ctx.stroke();});
+ scDraw(ctx,sc,tn,{x:290,y:150,w:450,h:360});
+ const lo=si.min,okreg=lo-2>=5;
+ tx(ctx,acv?'AC 결합: 노랑 1 V/div(입력 리플), 청록 5 mV/div(출력 리플)':'DC 결합: 노랑 = IC 입력, 청록 = IC 출력 (2 V/div)',W/2,H-90,21,C.text,'center',700);
+ setH('ic-msg','IC 입력: 직류 <b>'+si.dc.toFixed(1)+' V</b>, 골짜기 <b>'+lo.toFixed(1)+' V</b>, 리플 p-p '+si.pp.toFixed(2)+' V<br>IC 출력: <b class="k">'+so.dc.toFixed(3)+' V</b>, 리플 p-p '+(so.pp*1000).toFixed(1)+' mV<br>'+(okreg?'<b class="ok">골짜기가 출력+2 V(= 7 V) 이상 → 정전압 유지</b>':'<b class="bad">골짜기가 7 V 미만(드롭아웃) → 출력이 내려간다</b>'));}
+return{start(){setChips(['ic-ac'],'');draw();},frame(dt){tn+=dt;draw();}};
+
+});
+
+/* =====================================================================
+   슬라이드 관리자
+   ===================================================================== */
+const slides = $$('.slide'), deck = $('#deck'); let cur = -1, step = 0, activeFrame = null, activeId = '', hudTimer = 0;
+const NOTES = DECK.notes, ASK = DECK.ask, CIRC = ['①', '②', '③', '④', '⑤'];
+function renderNotes(i) {
+  const n = NOTES[slides[i].id]; if (!n) { $('#notes').innerHTML = ''; return; }
+  $('#notes').innerHTML = `<div class="nh">📝 오개념 교정 노트 · 슬라이드 ${i + 1} / ${slides.length}<span style="float:right">발문을 화면에 띄우기: Q 키</span></div>` + (n.q ? `<div class="nq">💬 발문: ${n.q}</div>` : '') +
+    (n.m || []).map(([a, b]) => `<div class="ni"><span class="nx">❌ 오개념</span> ${a}<br><span class="nv">✅ 교정</span> ${b}</div>`).join('');
+}
+function renderAsk(i) {
+  const q = ASK[slides[i].id] || [];
+  $('#ask').innerHTML = `<div class="ak"><div class="ah">💬 생각해 보기 · ${i + 1} / ${slides.length}</div>` + (q.length ? q.map((t, k) => `<div class="aq">${q.length > 1 ? `<span>${CIRC[k] || (k + 1) + '.'}</span>` : ''}${t}</div>`).join('') : '<div class="aq" style="color:var(--muted)">이 슬라이드에는 발문이 없습니다.</div>') + '<div class="af">Q 키 · Esc · 화면 클릭으로 닫기</div></div>';
+}
+function toggleAsk(force) { const on = $('#ask').classList.toggle('on', force); $('#b-ask').classList.toggle('on', on); }
+const maxStep = i => +(slides[i].dataset.steps || 0);
+function fit() {
+  const vp = $('#viewport'), vw = vp.clientWidth, vh = vp.clientHeight, rf = vw < 1100;
+  document.documentElement.classList.toggle('rf', rf);
+  if (rf) { const W = vw < 640 ? 640 : vw, s = vw / W; deck.style.width = W + 'px'; deck.style.height = (vh / s) + 'px'; deck.style.transform = `scale(${s})`; return; }
+  deck.style.width = ''; deck.style.height = '';
+  const s = Math.min(vw / 1920, vh / 1080); deck.style.transform = `translate(-50%,-50%) scale(${s})`;
+}
+function fitSteps() { // 단계 목록이 영역을 넘으면 자동 축소 (실제 렌더링 높이 기준)
+  if (cur < 0) return; const side = $('.side.steps', slides[cur]); if (!side) return;
+  side.style.transform = ''; side.style.width = '';
+  if (side.clientHeight > 0 && side.scrollHeight > side.clientHeight + 1) { const k = side.clientHeight / side.scrollHeight; side.style.transformOrigin = 'top left'; side.style.transform = `scale(${k})`; side.style.width = (100 / k) + '%'; }
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitSteps);
+function applyStep() {
+  $$('.st', slides[cur]).forEach(el => { el.classList.toggle('on', +el.dataset.i <= step); el.classList.toggle('cur', +el.dataset.i === step); });
+  const id = slides[cur].id, r = REG[id]; r && r.onStep && safe(id + '.onStep', () => r.onStep(step));
+}
+const mgSet = (sl, on) => $$('iframe.mg-embed', sl).forEach(f => { f.src = on ? f.dataset.src : 'about:blank'; });
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.mg-re'); if (b) { const f = $('iframe', b.parentElement); f && f.contentWindow && f.contentWindow.postMessage({ mg: 'cmd', cmd: 'restart' }, '*'); b.blur(); } });
+function show(i, st = 0) {
+  i = Math.max(0, Math.min(slides.length - 1, i));
+  if (cur >= 0) { const oid = slides[cur].id, o = REG[oid]; o && o.stop && safe(oid + '.stop', () => o.stop()); slides[cur].classList.remove('active'); mgSet(slides[cur], false); }
+  cur = i; step = Math.min(st, maxStep(i)); slides[i].classList.add('active'); mgSet(slides[i], true);
+  const id = slides[i].id, r = REG[id]; activeFrame = r && r.frame ? (dt => r.frame(dt)) : null; activeId = id;
+  fitSteps(); r && r.start && safe(id + '.start', () => r.start());
+  $('#h-pg').textContent = `${i + 1} / ${slides.length}`; renderNotes(i); renderAsk(i); toggleAsk(false); applyStep();
+  if (DECK.ask_auto !== false && (ASK[id] || []).length && !askSeen[id]) { askSeen[id] = 1; toggleAsk(true); } // 처음 들어오면 발문을 먼저 띄운다(닫기 전까지 시뮬레이션 정지)
+}
+const askSeen = {};
+const next = () => { if ($('#ask').classList.contains('on')) { toggleAsk(false); return; } if (step < maxStep(cur)) { step++; applyStep(); } else if (cur < slides.length - 1) show(cur + 1); };
+const prev = () => { if (step > 0) { step--; applyStep(); } else if (cur > 0) show(cur - 1, maxStep(cur - 1)); };
+function isDark() { const r = document.documentElement; return r.dataset.theme === 'dark' || (!r.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches); }
+function themeBtn() { $('#b-theme').textContent = isDark() ? '☀ 라이트 전환' : '🌙 다크 전환'; }
+function toggleTheme() { document.documentElement.dataset.theme = isDark() ? 'light' : 'dark'; themeBtn(); }
+function toggleNotes() { const on = $('#notes').classList.toggle('on'); $('#b-notes').classList.toggle('on', on); }
+function toggleHelp(force) { const on = $('#help').classList.toggle('on', force); $('#b-help').classList.toggle('on', on); }
+function fullscreen() { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) { } }
+function poke() { $('#hud').classList.add('show'); clearTimeout(hudTimer); hudTimer = setTimeout(() => $('#hud').classList.remove('show'), 2600); }
+document.addEventListener('keydown', e => {
+  const t = e.target; if (t && t.tagName === 'INPUT' && t.type === 'range' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); next(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+  else if (e.key === 'Home') show(0); else if (e.key === 'End') show(slides.length - 1);
+  else if (e.key === 'f' || e.key === 'F') fullscreen(); else if (e.key === 'n' || e.key === 'N') toggleNotes(); else if (e.key === 't' || e.key === 'T') toggleTheme(); else if (e.key === 'q' || e.key === 'Q') toggleAsk(); else if (e.key === '?' || e.key === 'h' || e.key === 'H') toggleHelp(); else if (e.key === 'Escape') { toggleHelp(false); toggleAsk(false); if ($('#notes').classList.contains('on')) toggleNotes(); }
+});
+$('#h-prev').onclick = prev; $('#h-next').onclick = next; $('#h-fs').onclick = fullscreen; $('#b-help').onclick = () => toggleHelp(); $('#b-ask').onclick = () => toggleAsk(); $('#ask').onclick = () => toggleAsk(false); $('#help-x').onclick = () => toggleHelp(false); $('#help').onclick = e => { if (e.target.id === 'help') toggleHelp(false); }; $('#b-notes').onclick = toggleNotes; $('#b-theme').onclick = toggleTheme;
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
+['mousemove', 'touchstart', 'pointerdown'].forEach(ev => document.addEventListener(ev, poke, { passive: true }));
+window.addEventListener('resize', () => { fit(); fitSteps(); }); fit();
+/* 터치: 좌우로 쓸어 넘기기 (슬라이더·캔버스·버튼 위에서 시작한 건 제외) */
+(function () {
+  let x0 = 0, y0 = 0, ok = false;
+  document.addEventListener('touchstart', e => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; ok = !(e.target.closest && e.target.closest('input,canvas,button,table,.eq,#help,#notes')); }, { passive: true });
+  document.addEventListener('touchend', e => { if (!ok) return; const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; if (Math.abs(dx) > 70 && Math.abs(dx) > 2 * Math.abs(dy)) { dx < 0 ? next() : prev(); } }, { passive: true });
+})();
+let lastT = performance.now();
+(function loop(now) {
+  const dt = Math.min(.05, (now - lastT) / 1000); lastT = now;
+  if (activeFrame && !$('#ask').classList.contains('on')) { try { activeFrame(dt); } catch (e) { reportError(activeId + '.frame', e); activeFrame = null; } }
+  requestAnimationFrame(loop);
+})(lastT);
+
+/* 물리 검증: shared_js에 TESTS() → [[이름, 통과여부, 설명], ...] 가 있으면 콘솔에 출력 */
+(function runSelfTests() {
+  if (typeof TESTS !== 'function') { console.log('물리 검증 항목 없음'); return; }
+  let results = [];
+  try { results = TESTS() || []; } catch (e) { reportError('TESTS', e); return; }
+  console.log('=== ' + DECK.title + ' 물리 검증 ==='); let pass = 0;
+  for (const [name, ok, detail] of results) { console.log(`[${ok ? 'PASS' : 'FAIL'}] ${name}${detail ? ' — ' + detail : ''}`); if (ok) pass++; }
+  console.log(pass === results.length ? '모든 검증 통과' : '일부 검증 실패 — 콘솔 확인 필요');
+  window.__wsSelfTest = { pass, total: results.length };
+})();
+
+window.__deck = { show, next, get cur() { return cur; }, get step() { return step; }, count: slides.length, maxStep };
+let startAt = 0; try { const h = parseInt(location.hash.slice(1), 10); if (h >= 1 && h <= slides.length) startAt = h - 1; } catch (e) { }
+themeBtn(); show(startAt); poke();
+</script>
+</body>
+</html>

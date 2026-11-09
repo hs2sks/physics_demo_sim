@@ -3,164 +3,710 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>이중 슬릿 간섭 시뮬레이션</title>
+<title>이중 슬릿 간섭 — 토머스 영과 함께</title>
+<link rel="stylesheet" href="../common/og.css?v=3">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root { --bg:#0d1117; --panel:#161b22; --line:#30363d; --text:#e6edf3; --sub:#8b949e; --acc:#58a6ff; --gold:#f0a500; --ok:#3fb950; }
-  body { background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; padding:16px; min-height:100vh; }
-  h1 { text-align:center; font-size:1.35rem; color:var(--acc); margin-bottom:4px; }
-  .subtitle { text-align:center; font-size:.82rem; color:var(--sub); margin-bottom:14px; }
-  .layout { display:flex; gap:14px; align-items:flex-start; max-width:1100px; margin:0 auto; }
-  .main { flex:1; min-width:0; display:flex; flex-direction:column; gap:10px; }
-  .side { width:310px; flex-shrink:0; display:flex; flex-direction:column; gap:10px; }
-  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
-  .ph { padding:7px 12px; background:#1c2128; border-bottom:1px solid var(--line); font-size:.82rem; font-weight:600; }
-  canvas { display:block; width:100%; }
-  .ctl { padding:10px 12px; }
-  .ctl label { display:flex; justify-content:space-between; font-size:.82rem; margin-top:8px; }
-  .ctl label b { color:var(--gold); font-variant-numeric:tabular-nums; }
-  input[type=range] { width:100%; accent-color:var(--acc); margin-top:2px; }
-  .read { padding:10px 12px; font-size:.85rem; line-height:1.75; }
-  .read b { color:var(--gold); font-variant-numeric:tabular-nums; }
-  .verdict { margin:8px 12px 12px; padding:8px 10px; border-radius:8px; font-weight:700; text-align:center; font-size:.95rem; }
-  .v-b { background:#3a2c0a; color:var(--gold); } .v-d { background:#102a43; color:var(--acc); } .v-m { background:#21262d; color:var(--sub); }
-  .note { font-size:.74rem; color:var(--sub); padding:0 12px 10px; line-height:1.55; }
-  a.home { position:fixed; left:12px; bottom:12px; background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:20px; padding:8px 14px; font-size:.85rem; text-decoration:none; z-index:10; }
-  body.embed a.home, body.embed h1, body.embed .subtitle, body.embed .note { display:none; }
-  body.embed { padding:8px; }
-  @media (max-width:700px) { .layout { flex-direction:column; align-items:stretch; } .side { width:100%; } }
+  :root { --bg:#f4f6fa; --panel:#fff; --ink:#1c2733; --sub:#5a6b7d; --accent:#1f6fd6; --border:#d7dee8; --radius:12px;
+          --gold:#c07c00; --ok:#1e8f4e; --meas:#e8590c; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  [hidden] { display:none !important; }
+  body { font-family:"Segoe UI","Malgun Gothic",sans-serif; background:var(--bg); color:var(--ink); padding:12px; font-size:15px; line-height:1.55; }
+  .wrap { max-width:1180px; margin:0 auto; }
+  header { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+  header h1 { font-size:1.25em; }
+  .navbtn { text-decoration:none; color:var(--sub); border:1px solid var(--border); padding:7px 13px; border-radius:9px; font-size:.9em; white-space:nowrap; background:#fff; }
+  .navbtn:hover { color:var(--accent); border-color:var(--accent); }
 
-  /* 터치 영역 확대 */
-  input[type=range]{height:28px;margin:0}
-  input[type=checkbox]{width:20px;height:20px}
-  summary{padding:6px 0}
+  .tabs { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+  .tabs button { flex:1 1 220px; padding:11px 14px; border-radius:10px; border:1px solid var(--border); background:#fff; cursor:pointer; font-size:1em; font-weight:600; color:var(--ink); text-align:left; }
+  .tabs button small { display:block; font-weight:400; color:var(--sub); font-size:.8em; }
+  .tabs button.active { background:var(--ink); border-color:var(--ink); color:#fff; }
+  .tabs button.active small { color:#c3cfdb; }
+
+  .layout { display:grid; grid-template-columns:minmax(0,1fr) 330px; gap:12px; align-items:start; }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:12px; }
+  .ph { display:flex; align-items:center; gap:8px; padding:7px 12px; background:#eef3fa; border-bottom:1px solid var(--border); font-size:.86em; font-weight:700; }
+  .ph .hint { margin-left:auto; font-weight:400; color:var(--sub); font-size:.9em; text-align:right; }
+  canvas.cv { display:block; width:100%; background:#0c1119; }
+  .cap { font-size:.78em; color:var(--sub); padding:6px 12px 8px; line-height:1.5; }
+  .cap b { color:var(--ink); }
+
+  .side { position:sticky; top:8px; }
+  .box { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:12px; overflow:hidden; }
+  .box > h2 { font-size:.9em; padding:8px 12px; background:#eef3fa; border-bottom:1px solid var(--border); }
+  .box .body { padding:10px 12px; display:flex; flex-direction:column; gap:8px; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; }
+  .chip { border:1px solid var(--border); background:#fff; border-radius:20px; padding:7px 12px; cursor:pointer; font-size:.86em; font-weight:600; min-height:36px; color:var(--ink); }
+  .chip:hover { border-color:var(--accent); color:var(--accent); }
+  .chip.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .row label { display:flex; justify-content:space-between; font-size:.84em; color:var(--sub); }
+  .row label b { color:var(--ink); font-variant-numeric:tabular-nums; }
+  input[type=range] { width:100%; height:30px; margin:0; cursor:pointer; accent-color:var(--accent); }
+  .row.p input[type=range] { accent-color:var(--gold); }
+  .badge { display:block; text-align:center; padding:8px 12px; border-radius:10px; font-weight:800; font-size:1em; }
+  .b-b { background:#fff3d6; color:#8a5a00; } .b-d { background:#dfeaff; color:#174ea6; } .b-m { background:#eef1f5; color:var(--sub); }
+  table.rd { width:100%; border-collapse:collapse; font-size:.88em; font-variant-numeric:tabular-nums; }
+  table.rd td { padding:4px 2px; border-bottom:1px solid var(--border); }
+  table.rd td:first-child { color:var(--sub); }
+  table.rd td:last-child { text-align:right; font-weight:700; }
+  .eqbox { background:#f6f8fb; border:1px solid var(--border); border-radius:9px; padding:8px 10px; font-size:.88em; line-height:1.75; font-family:Georgia,"Times New Roman","Malgun Gothic",serif; }
+  .eqbox b { color:var(--gold); font-variant-numeric:tabular-nums; }
+  .hintbox { font-size:.82em; color:var(--sub); line-height:1.6; }
+  .hintbox b { color:var(--ink); }
+
+  /* 비교 탭 */
+  .field { display:flex; flex-direction:column; gap:3px; font-size:.84em; color:var(--sub); }
+  .field input[type=number], .field select { font:inherit; color:var(--ink); border:1px solid var(--border); border-radius:8px; padding:7px 9px; min-height:38px; background:#fff; width:100%; }
+  .field .unit { color:var(--sub); font-size:.9em; }
+  .mrow { display:grid; grid-template-columns:44px 1fr; gap:8px; align-items:center; font-size:.9em; }
+  .mrow input { font:inherit; border:1px solid var(--border); border-radius:8px; padding:7px 9px; min-height:38px; width:100%; }
+  table.cmp { width:100%; border-collapse:collapse; font-size:.9em; font-variant-numeric:tabular-nums; }
+  table.cmp th, table.cmp td { padding:7px 8px; border-bottom:1px solid var(--border); text-align:right; }
+  table.cmp th:first-child, table.cmp td:first-child { text-align:left; }
+  table.cmp th { background:#eef3fa; font-size:.82em; color:var(--sub); }
+  table.cmp td.th { color:var(--gold); font-weight:700; } table.cmp td.ms { color:var(--meas); font-weight:700; }
+  table.cmp td.good { color:var(--ok); font-weight:700; } table.cmp td.warn { color:#c0392b; font-weight:700; }
+  .summary { margin:10px 12px 12px; padding:10px 12px; border-radius:10px; font-size:.92em; line-height:1.65; }
+  .s-good { background:#e7f6ec; border:1px solid #bfe3cb; } .s-mid { background:#fff6e0; border:1px solid #f0dca6; } .s-bad { background:#fdeceb; border:1px solid #f1c3bf; } .s-none { background:#f1f4f8; border:1px solid var(--border); color:var(--sub); }
+  .legend { display:flex; gap:14px; flex-wrap:wrap; padding:6px 12px 10px; font-size:.8em; color:var(--sub); }
+  .legend i { display:inline-block; width:18px; height:0; border-top:3px solid; vertical-align:middle; margin-right:5px; }
+  details.why { border:1px solid var(--border); border-radius:var(--radius); background:#fff; margin-bottom:12px; }
+  details.why summary { cursor:pointer; padding:10px 14px; font-weight:700; }
+  details.why ul { padding:0 14px 12px 34px; line-height:1.75; font-size:.92em; }
+  table.sum { width:100%; border-collapse:collapse; font-size:.86em; }
+  table.sum th, table.sum td { border-bottom:1px solid var(--border); padding:7px 8px; text-align:left; vertical-align:top; }
+  table.sum th { background:#eef3fa; color:var(--sub); font-size:.9em; }
+
+  /* 수업 덱 임베드: 시뮬만 */
+  body.embed { padding:8px; }
+  body.embed header, body.embed #personaHost, body.embed #howtoHost, body.embed #tabs, body.embed #missionsHost, body.embed #cmpView,
+  body.embed .hide-embed { display:none !important; }
+
+  @media (max-width:860px) { .layout { grid-template-columns:1fr; } .side { position:static; } }
 </style>
 </head>
 <body>
-<h1>이중 슬릿 간섭 시뮬레이션</h1>
-<div class="subtitle">슬릿 간격·파장·스크린 거리를 바꾸고, 스크린 위의 한 점 P에서 경로차를 확인해 보세요.</div>
-<div class="layout">
+<div class="wrap">
+
+<header>
+  <a class="navbtn" href="../../index.html">🏠 홈</a>
+  <a class="navbtn" href="../index.html">← 광학으로</a>
+  <h1>〰️ 이중 슬릿 간섭</h1>
+</header>
+
+<div id="personaHost"></div>
+<div id="howtoHost"></div>
+
+<div class="tabs" id="tabs" role="tablist">
+  <button data-tab="1" class="active" role="tab">① 경로차로 이해하기<small>한 점 P에서 밝고 어두운 이유</small></button>
+  <button data-tab="2" role="tab">② 슬릿 폭과 회절<small>줄무늬 전체의 크기는 무엇이 정할까</small></button>
+  <button data-tab="3" role="tab">③ 내 실험과 비교하기<small>이중·단일 슬릿, 회절격자, 용수철</small></button>
+</div>
+
+<!-- ═════ ①② 시뮬레이션 ═════ -->
+<div id="simView" class="layout">
   <div class="main">
-    <div class="panel"><div class="ph">위에서 본 장치 (비율은 과장)</div><canvas id="cv-top" height="190"></canvas></div>
-    <div class="panel"><div class="ph">스크린에 나타난 무늬 (가운데 O에서 ±15 mm)</div><canvas id="cv-strip" height="70"></canvas></div>
-    <div class="panel"><div class="ph">밝기 분포</div><canvas id="cv-graph" height="150"></canvas></div>
-  </div>
-  <div class="side">
-    <div class="panel"><div class="ph">조절</div><div class="ctl">
-      <label>파장 λ <b id="lv">532 nm</b></label><input id="lam" type="range" min="400" max="700" step="1" value="532">
-      <label>슬릿 간격 d <b id="dv">0.25 mm</b></label><input id="d" type="range" min="0.10" max="1.00" step="0.01" value="0.25">
-      <label>슬릿 폭 a (틈 하나의 너비) <b id="av">0.05 mm</b></label><input id="a" type="range" min="0.02" max="0.20" step="0.01" value="0.05">
-      <label style="align-items:center;justify-content:flex-start;gap:8px"><input id="diff" type="checkbox"> <span>슬릿 폭 반영 (한 틈의 회절까지 보기)</span></label>
-      <label>스크린 거리 L <b id="Lv">1.00 m</b></label><input id="L" type="range" min="0.5" max="3" step="0.05" value="1">
-      <label>관찰 위치 P <b id="yv">0 mm</b></label><input id="y" type="range" min="-15" max="15" step="0.05" value="3">
-    </div></div>
-    <div class="panel"><div class="ph">읽기값</div>
-      <div class="read">
-        이웃한 밝은 줄 사이 간격 Δy = <b id="dy"></b><br>
-        슬릿1→P <b id="r1"></b> · 슬릿2→P <b id="r2"></b><br>
-        경로차 <b id="dl"></b> = 파장의 <b id="dlr"></b>배<br>
-        근사식 d·y/L = <b id="dapp"></b> (정확한 값과 비교)<br>
-        <span id="dwrap">슬릿 간격/폭 d/a = <b id="dar"></b> <span id="dmiss"></span></span>
-      </div>
-      <div class="verdict" id="verdict"></div>
-      <div class="note">경로차가 파장의 정수배(0, 1, 2…)이면 보강 간섭으로 밝고, 반정수배(0.5, 1.5…)이면 상쇄 간섭으로 어둡습니다. <br>‘슬릿 폭 반영’을 끄면 폭이 아주 좁은 이상적인 모형(밝기가 어디서나 같은 줄무늬), 켜면 한 틈에서 퍼지는 빛(회절)의 밝기 곡선(점선)이 줄무늬의 크기를 정합니다. 슬릿 <b>간격</b> d는 줄무늬의 <b>간격</b>을, 슬릿 <b>폭</b> a는 줄무늬 전체의 <b>폭</b>(바깥 곡선)을 정합니다.</div>
+    <div id="missionsHost"></div>
+    <div class="panel">
+      <div class="ph">위에서 본 장치 <span class="hint">그림은 보기 쉽게 비율을 과장했어요</span></div>
+      <canvas class="cv" id="cv-top"></canvas>
+      <div class="cap hide-embed">P에서 <b>가까운 쪽 길이만큼</b> 잘라 내면, <b>남는 노란 부분이 경로차 Δ</b>입니다.</div>
+    </div>
+    <div class="panel hide-embed">
+      <div class="ph">경로차 Δ를 파장 자로 재기 <span class="hint" id="rulerHint"></span></div>
+      <canvas class="cv" id="cv-ruler"></canvas>
+    </div>
+    <div class="panel">
+      <div class="ph">스크린에 나타난 무늬 <span class="hint">가운데 O에서 ±15 mm · 눌러서 P 옮기기</span></div>
+      <canvas class="cv" id="cv-strip" style="touch-action:pan-y;cursor:ew-resize"></canvas>
+    </div>
+    <div class="panel">
+      <div class="ph">밝기 분포 <span class="hint">눌러서 P 옮기기</span></div>
+      <canvas class="cv" id="cv-graph" style="touch-action:pan-y;cursor:ew-resize"></canvas>
     </div>
   </div>
+
+  <aside class="side">
+    <div class="box hide-embed">
+      <h2>🎛 바로 해 보기</h2>
+      <div class="body">
+        <div class="chips" id="presets"></div>
+        <div class="hintbox" style="margin-top:2px"><b>P 옮기기</b> — 줄 번호로 바로 이동</div>
+        <div class="chips" id="jumps"></div>
+      </div>
+    </div>
+    <div class="box">
+      <h2>조절</h2>
+      <div class="body">
+        <div class="row"><label>파장 λ <b id="lv"></b></label><input id="lam" type="range" min="400" max="700" step="1" value="532"></div>
+        <div class="row"><label>슬릿 간격 d <b id="dv"></b></label><input id="d" type="range" min="0.10" max="1.00" step="0.01" value="0.25"></div>
+        <div class="row" id="aRow"><label>슬릿 폭 a (틈 하나의 너비) <b id="av"></b></label><input id="a" type="range" min="0.02" max="0.20" step="0.01" value="0.05"></div>
+        <div class="row"><label>스크린 거리 L <b id="Lv"></b></label><input id="L" type="range" min="0.5" max="3" step="0.05" value="1"></div>
+        <div class="row p"><label style="color:var(--gold)">관찰 위치 P <b id="yv"></b></label><input id="y" type="range" min="-15" max="15" step="0.05" value="3"></div>
+      </div>
+    </div>
+    <div class="box">
+      <h2>읽기값</h2>
+      <div class="body">
+        <div class="badge b-m" id="verdict"></div>
+        <table class="rd" id="rd"></table>
+        <div class="eqbox hide-embed" id="eq"></div>
+        <div class="hintbox hide-embed" id="tip"></div>
+      </div>
+    </div>
+  </aside>
 </div>
-<a class="home" href="../../index.html">🏠 홈</a>
+
+<!-- ═════ ③ 실험 비교 ═════ -->
+<div id="cmpView" class="layout" hidden>
+  <div class="main">
+    <div class="chips" id="cTypes" style="margin-bottom:12px"></div>
+    <div class="panel">
+      <div class="ph" id="cSetupTitle">실험 장치</div>
+      <canvas class="cv" id="cv-setup"></canvas>
+      <div class="cap" id="cSetupCap"></div>
+    </div>
+    <div class="panel">
+      <div class="ph">이론 곡선과 내 측정 <span class="hint" id="cPlotHint"></span></div>
+      <canvas class="cv" id="cv-cmp"></canvas>
+      <div class="legend"><span><i style="border-color:#c07c00;border-top-style:dashed"></i>이론 위치</span><span><i style="border-color:var(--meas)"></i>내 측정</span></div>
+    </div>
+    <div class="panel">
+      <div class="ph">이론값과 측정값 비교표</div>
+      <div id="cTable"></div>
+      <div class="summary s-none" id="cSummary"></div>
+    </div>
+    <details class="why" open>
+      <summary>🔍 왜 다를까? 오차의 원인 점검표</summary>
+      <ul id="cWhy"></ul>
+    </details>
+    <div class="panel">
+      <div class="ph">네 가지 장치 한눈에 비교</div>
+      <div style="overflow-x:auto"><table class="sum">
+        <tr><th>장치</th><th>무늬 모양</th><th>조건</th><th>줄 사이 간격</th></tr>
+        <tr><td><b>이중 슬릿</b></td><td>밝기가 비슷한 줄무늬가 여러 개 (바깥은 회절 곡선 안에서만)</td><td>밝음: d sinθ = mλ</td><td>Δy ≈ λL/d</td></tr>
+        <tr><td><b>단일 슬릿</b></td><td>가운데가 가장 밝고 넓은 띠, 옆은 약한 띠</td><td>어둠: a sinθ = mλ (m=1,2,…)</td><td>가운데 띠 폭 ≈ 2λL/a</td></tr>
+        <tr><td><b>회절격자</b></td><td>가늘고 선명한 밝은 점·줄이 멀리 떨어져 나타남</td><td>밝음: d sinθ = mλ, d = 1/(줄 수)</td><td>선 수가 많을수록 더 멀리</td></tr>
+        <tr><td><b>용수철</b></td><td>코일 사이 틈이 격자 역할 → 점이 일정 간격으로 늘어섬</td><td>밝음: p sinθ = mλ (p = 피치)</td><td>Δy ≈ λL/p</td></tr>
+      </table></div>
+    </div>
+  </div>
+
+  <aside class="side">
+    <div class="box">
+      <h2>① 레이저와 거리</h2>
+      <div class="body">
+        <div class="hintbox"><b>레이저 파장 λ</b> (포인터에 적힌 값)</div>
+        <div class="chips" id="cLamChips"></div>
+        <label class="field">파장 직접 입력 <span><input type="number" id="cLam" min="380" max="780" step="1"> <span class="unit">nm</span></span></label>
+        <label class="field">장치 → 스크린 거리 L <span><input type="number" id="cL" min="10" max="1000" step="1"> <span class="unit">cm</span></span></label>
+      </div>
+    </div>
+    <div class="box">
+      <h2>② 장치에 적힌 값</h2>
+      <div class="body" id="cParams"></div>
+    </div>
+    <div class="box">
+      <h2>③ 스크린에서 잰 값</h2>
+      <div class="body">
+        <div class="hintbox" id="cMeasHelp"></div>
+        <label class="field">입력 단위 <select id="cUnit"><option value="mm">mm</option><option value="cm">cm</option></select></label>
+        <div id="cMeas" style="display:flex;flex-direction:column;gap:6px"></div>
+        <div class="chips">
+          <button class="chip" id="cDemo" type="button">예시 값 넣어 보기</button>
+          <button class="chip" id="cClear" type="button">비우기</button>
+        </div>
+        <div class="hintbox" style="font-size:.76em">‘예시 값’은 연습용 가짜 데이터입니다. 실제 측정값을 넣으세요. 입력한 값은 이 기기 밖으로 나가지 않습니다.</div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+</div>
+<script src="../common/og.js?v=3"></script>
 <script>
+"use strict";
 (function(){
-  const q = new URLSearchParams(location.search);
-  if (q.get('embed') === '1') document.body.classList.add('embed');
-  const $ = id => document.getElementById(id);
-  const el = {lam:$('lam'), d:$('d'), L:$('L'), y:$('y')};
-  function setFromQuery(key, id, lo, hi){ const v = parseFloat(q.get(key)); if (isFinite(v)) el[id].value = Math.min(hi, Math.max(lo, v)); }
-  el.a = $('a'); el.diff = $('diff');
-  setFromQuery('lambda','lam',400,700); setFromQuery('a','a',.02,.2); if (q.get('diff') === '1' || q.has('a')) el.diff.checked = true; setFromQuery('d','d',.1,1); setFromQuery('L','L',.5,3); setFromQuery('y','y',-15,15);
+const q = new URLSearchParams(location.search);
+const EMBED = q.get('embed') === '1';
+if (EMBED) document.body.classList.add('embed');
+const $ = id => document.getElementById(id);
+const TAU = Math.PI * 2;
+const dpr = () => Math.min(window.devicePixelRatio || 1, 2);
+const fmt = (x, n) => x.toFixed(n);
 
-  function wlRGB(nm){ // 가시광 근사 색
-    let r=0,g=0,b=0;
-    if (nm<440){r=-(nm-440)/60;b=1} else if(nm<490){g=(nm-440)/50;b=1} else if(nm<510){g=1;b=-(nm-510)/20}
-    else if(nm<580){r=(nm-510)/70;g=1} else if(nm<645){r=1;g=-(nm-645)/65} else {r=1}
-    const f = nm<420 ? .3+.7*(nm-400)/20 : nm>700 ? .3+.7*(750-nm)/50 : 1;
-    return [r,g,b].map(c => Math.round(255*Math.pow(Math.max(0,c)*f, .8)));
+function wlRGB(nm){ // 가시광 근사 색
+  let r=0,g=0,b=0;
+  if (nm<440){r=-(nm-440)/60;b=1} else if(nm<490){g=(nm-440)/50;b=1} else if(nm<510){g=1;b=-(nm-510)/20}
+  else if(nm<580){r=(nm-510)/70;g=1} else if(nm<645){r=1;g=-(nm-645)/65} else {r=1}
+  const f = nm<420 ? .3+.7*(nm-400)/20 : nm>700 ? .3+.7*(750-nm)/50 : 1;
+  return [r,g,b].map(c => Math.round(255*Math.pow(Math.max(0,c)*f, .8)));
+}
+function fit(cv, cssH){
+  const r = dpr(), w = Math.max(200, cv.clientWidth);
+  cv.style.height = cssH + 'px';
+  const W = Math.round(w*r), H = Math.round(cssH*r);
+  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+  const c = cv.getContext('2d'); c.setTransform(r,0,0,r,0,0);
+  return [c, w, cssH];
+}
+const sinc2 = x => Math.abs(x) < 1e-9 ? 1 : Math.pow(Math.sin(x)/x, 2);
+
+/* ═══════════ 안내 (토머스 영) ═══════════ */
+const LINES = {
+  1: [
+    "저는 의사이자 물리학자 <b>토머스 영</b>입니다. 모두가 빛을 <b>작은 입자</b>라고 믿던 1800년대 초, 저는 <b>빛도 물결이라면</b> 좁은 틈 두 개를 지난 빛이 서로 겹쳐 <b>밝고 어두운 줄무늬</b>를 만들 것이라 생각했습니다.",
+    "줄무늬의 비밀은 딱 하나, <b>경로차</b>입니다. 스크린의 한 점 P에는 슬릿 S1, S2에서 출발한 두 빛이 오는데, 두 빛이 <b>걸어온 길의 길이 차</b>가 밝기를 정합니다.",
+    "경로차가 파장의 <b>정수배</b>(0, 1, 2…)이면 마루와 마루가 만나 <b>밝고</b>, <b>반정수배</b>(0.5, 1.5…)이면 마루와 골이 만나 <b>어둡습니다</b>. 오른쪽 ‘P 옮기기’ 버튼이나 아래 무늬를 눌러 P를 움직여 보세요.",
+    "예상해 보세요. 슬릿 간격 d를 <b>좁히면</b> 줄무늬 사이 간격은 넓어질까요, 좁아질까요? 슬라이더로 확인한 뒤 ‘해 보기’ 목록을 채워 보세요."
+  ],
+  2: [
+    "지금까지는 슬릿을 ‘아주 가는 선’이라고 가정했어요. 진짜 틈에는 <b>폭 a</b>가 있어서, 한 틈을 지난 빛 자체도 옆으로 퍼집니다. 이것을 <b>회절</b>이라고 합니다.",
+    "이중 슬릿의 줄무늬(실선)는 한 틈의 회절 곡선(점선) <b>안에서만</b> 밝습니다. 슬릿 <b>간격 d</b>는 줄무늬 사이의 <b>간격</b>을, 슬릿 <b>폭 a</b>는 줄무늬 전체의 <b>폭</b>을 정합니다.",
+    "d가 a의 정수배가 되면, 어떤 밝은 줄이 회절 곡선의 어두운 곳과 겹쳐 <b>사라집니다</b>. 읽기값의 d/a를 보며 찾아보세요."
+  ],
+  3: [
+    "이제 여러분이 직접 한 실험을 이론과 견줘 볼 차례입니다. 실험은 <b>언제나 조금씩 어긋납니다</b>. 얼마나 어긋났고 왜 그런지 따져 보는 데까지가 과학이에요.",
+    "순서는 이렇습니다. 장치를 고르고 → 레이저 파장·거리 L·장치에 적힌 값을 넣고 → 스크린에서 잰 거리를 넣으면 이론값과 비교해 줍니다.",
+    "‘측정에서 구한 값’도 눈여겨보세요. 측정 결과로 슬릿 간격이나 1 mm당 선 수를 <b>거꾸로 구해</b> 상품에 적힌 값과 맞는지 확인할 수 있습니다."
+  ]
+};
+const guide = OG.persona($('personaHost'), { who: 'young', lines: LINES[1] });
+OG.howto($('howtoHost'), [
+  '<b>① 경로차로 이해하기</b>: 노란 점 P(스크린 위의 한 점)를 옮기며 경로차가 파장의 몇 배인지, 그때 밝은지 어두운지 봅니다.',
+  '<b>② 슬릿 폭과 회절</b>: 슬릿 <b>폭</b> a를 바꾸면 줄무늬 전체의 크기가 어떻게 달라지는지 봅니다.',
+  '<b>③ 내 실험과 비교하기</b>: 이중 슬릿·단일 슬릿·회절격자·용수철로 직접 잰 값을 넣고 이론값과 비교합니다.',
+  '각 탭의 <b>🎯 해 보기</b>를 모두 체크하면 영 선생님이 한마디 해 줍니다.'
+], { title: '처음이면 이렇게 사용하세요', open: false });
+
+/* ═══════════ ① ② 시뮬레이션 ═══════════ */
+const el = { lam:$('lam'), d:$('d'), a:$('a'), L:$('L'), y:$('y') };
+function setFromQuery(key, id, lo, hi){ const v = parseFloat(q.get(key)); if (isFinite(v)) el[id].value = Math.min(hi, Math.max(lo, v)); }
+setFromQuery('lambda','lam',400,700); setFromQuery('a','a',.02,.2); setFromQuery('d','d',.1,1); setFromQuery('L','L',.5,3); setFromQuery('y','y',-15,15);
+
+let tab = 1;
+const diffOn = () => tab === 2 || EMBED;
+
+function state(){
+  const lam = +el.lam.value*1e-9, d = +el.d.value*1e-3, L = +el.L.value, y = +el.y.value*1e-3;
+  const r1 = Math.hypot(L, y + d/2), r2 = Math.hypot(L, y - d/2);   // 화면에서 S1은 위쪽, y는 아래쪽이 +
+  const a = Math.min(+el.a.value*1e-3, d*0.95), on = diffOn();
+  return {lam, d, L, y, a, on, r1, r2, dl: Math.abs(r2-r1), dy: lam*L/d};
+}
+const Sy = (S, y) => { const x = Math.PI*S.a*y/(S.lam*S.L); return sinc2(x); };
+const I = (S, y) => Math.pow(Math.cos(Math.PI*S.d*y/(S.lam*S.L)), 2) * (S.on ? Sy(S, y) : 1);
+const yPos = (S, order) => S.lam*S.L*order/S.d * 1e3;  // mm
+
+/* 미션 */
+const M1 = [
+  { id:'dark',  text:'P를 <b>첫 번째 어두운 줄</b>(경로차 0.5λ)에 놓아 보기' },
+  { id:'bright',text:'P를 <b>1번째 밝은 줄</b>(경로차 1λ)에 놓아 보기' },
+  { id:'dnar',  text:'슬릿 간격 d를 <b>0.15 mm 이하</b>로 줄여 무늬 간격 변화 확인하기' },
+  { id:'color', text:'파장을 <b>보라(450 nm 이하)</b>와 <b>빨강(640 nm 이상)</b>으로 바꿔 무늬 간격 비교하기' }
+];
+const M2 = [
+  { id:'anar',  text:'슬릿 폭 a를 <b>0.03 mm 이하</b>로 줄여 점선 곡선이 넓어지는 것 보기' },
+  { id:'miss',  text:'d/a가 <b>정수</b>가 되게 맞춰 사라지는 밝은 줄 찾기' },
+  { id:'lamb',  text:'파장을 <b>640 nm 이상</b>으로 키워 점선 곡선이 넓어지는 것 보기' }
+];
+const REACT = {
+  dark:'맞아요! 경로차 <b>0.5λ</b>에서는 한쪽의 마루가 다른 쪽의 골과 만나 서로 지워 줍니다.',
+  bright:'좋아요. 경로차가 <b>정확히 1λ</b>이면 두 빛이 같은 모양으로 겹쳐 밝습니다. 이웃한 밝은 줄이 바로 이 줄입니다.',
+  dnar:'간격 d를 <b>좁히니</b> 줄무늬가 <b>넓게 퍼졌죠?</b> Δy = λL/d 이므로 d와 줄무늬 간격은 반비례합니다.',
+  color:'파장이 <b>긴 빨강</b>일수록 줄무늬 간격이 넓습니다. Δy가 λ에 비례하기 때문이에요. 빛의 색이 곧 파장입니다.',
+  anar:'틈이 <b>좁을수록</b> 빛이 더 많이 퍼져 점선 곡선(회절)이 <b>넓어집니다</b>. 폭과 퍼짐은 반비례합니다.',
+  miss:'찾았군요! d/a가 정수이면 그 차수의 밝은 줄이 회절 곡선의 <b>어두운 곳</b>과 겹쳐 사라집니다.',
+  lamb:'파장이 길수록 회절도 커져서 곡선이 넓어집니다. 간섭 줄무늬 간격도 함께 넓어졌을 거예요.'
+};
+let mis = null, seenR = false, seenV = false;
+function buildMissions(){
+  const host = $('missionsHost'); host.innerHTML = '';
+  mis = OG.missions(host, tab === 2 ? M2 : M1, { title:'해 보기', onDone:(m, all) => guide.say(REACT[m.id] + (all ? '<br><b>🎉 모두 해냈어요!</b>' : '')) });
+  seenR = seenV = false;
+}
+function checkMissions(src){
+  if (!mis || EMBED) return;
+  const S = state(), ratio = S.dl/S.lam, nm = +el.lam.value;
+  if (tab === 1) {
+    if (src === 'y' || src === 'd' || src === 'L' || src === 'lam') {
+      if (Math.abs(ratio-.5) < .04) mis.done('dark');
+      if (Math.abs(ratio-1) < .04) mis.done('bright');
+    }
+    if (src === 'd' && +el.d.value <= .15) mis.done('dnar');
+    if (src === 'lam') { if (nm >= 640) seenR = true; if (nm <= 450) seenV = true; if (seenR && seenV) mis.done('color'); }
+  } else if (tab === 2) {
+    if (src === 'a' && +el.a.value <= .03) mis.done('anar');
+    if (src === 'a' || src === 'd') { const r = S.d/S.a, n = Math.round(r); if (n >= 1 && Math.abs(r-n) < .02) mis.done('miss'); }
+    if (src === 'lam' && nm >= 640) mis.done('lamb');
   }
-  function fit(cv){ const dpr = window.devicePixelRatio||1, w = cv.clientWidth, h = +cv.getAttribute('height');
-    cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); const c = cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); return [c,w,h]; }
-  const fmt = (x,n) => x.toFixed(n);
+}
 
-  function state(){
-    const lam = +el.lam.value*1e-9, d = +el.d.value*1e-3, L = +el.L.value, y = +el.y.value*1e-3;
-    const r1 = Math.hypot(L, y + d/2), r2 = Math.hypot(L, y - d/2);   // 화면에서 S1은 위쪽, y는 아래쪽이 +
-    const a = Math.min(+el.a.value*1e-3, d*0.95), on = el.diff.checked;
-    return {lam, d, L, y, a, on, r1, r2, dl: Math.abs(r2-r1), dy: lam*L/d};
+/* 프리셋·점프 */
+const PRESETS = [
+  { label:'초록 532 nm', set:{ lam:532 } }, { label:'빨강 650 nm', set:{ lam:650 } }, { label:'보라 420 nm', set:{ lam:420 } },
+  { label:'간격 좁게 0.12 mm', set:{ d:0.12 } }, { label:'간격 넓게 0.60 mm', set:{ d:0.6 } }
+];
+PRESETS.forEach(p => {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = p.label;
+  b.onclick = () => { for (const k in p.set) el[k].value = p.set[k]; draw(Object.keys(p.set)[0]); };
+  $('presets').append(b);
+});
+const JUMPS = [ { label:'O (가운데)', o:0 }, { label:'첫 어두운 줄', o:.5 }, { label:'1번째 밝은 줄', o:1 }, { label:'2번째 밝은 줄', o:2 }, { label:'3번째 밝은 줄', o:3 } ];
+JUMPS.forEach(j => {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = j.label;
+  b.onclick = () => {
+    const S = state(); let v = yPos(S, j.o);
+    if (v > 15) { v = 15; $('tip').innerHTML = '※ 그 줄은 화면(±15 mm) 밖에 있어요. d를 키우거나 L·λ를 줄여 보세요.'; }
+    el.y.value = v; draw('y');
+  };
+  $('jumps').append(b);
+});
+
+/* 그리기 */
+function drawTop(S, rgb){
+  const [c,w,h] = fit($('cv-top'), 230);
+  c.fillStyle = '#0c1119'; c.fillRect(0,0,w,h);
+  const xs = 70, xe = w-50, my = h/2, gap = 14 + 38*(S.d*1e3-.1)/.9, yv = +el.y.value, py = my + (yv/15)*(h/2-24);
+  const col = `rgb(${rgb})`, colA = a => `rgba(${rgb},${a})`;
+  // 물결 모양(이해를 돕는 그림)
+  const sp = 9 + 9*(S.lam*1e9-400)/300;
+  c.save(); c.beginPath(); c.rect(xs+2,0,xe-xs-2,h); c.clip(); c.lineWidth = 1;
+  [my-gap, my+gap].forEach(sy => { for (let r=sp; r < xe-xs+h; r+=sp) { c.strokeStyle = colA(.11); c.beginPath(); c.arc(xs, sy, r, -1.6, 1.6); c.stroke(); } });
+  c.restore();
+  // 슬릿 벽
+  const hv = S.on ? 2 + 6*(S.a*1e3-.02)/.18 : 3;
+  c.strokeStyle = '#8b949e'; c.lineWidth = 4; c.beginPath();
+  c.moveTo(xs,6); c.lineTo(xs,my-gap-hv); c.moveTo(xs,my-gap+hv); c.lineTo(xs,my+gap-hv); c.moveTo(xs,my+gap+hv); c.lineTo(xs,h-6); c.stroke();
+  c.strokeStyle = '#59636e'; c.lineWidth = 6; c.beginPath(); c.moveTo(xe,4); c.lineTo(xe,h-4); c.stroke();
+  // 가운데선
+  c.strokeStyle = '#30363d'; c.setLineDash([4,4]); c.lineWidth = 1; c.beginPath(); c.moveTo(xs,my); c.lineTo(xe,my); c.stroke(); c.setLineDash([]);
+  // 광선
+  const S1 = [xs, my-gap], S2 = [xs, my+gap], P = [xe, py];
+  c.strokeStyle = col; c.lineWidth = 1.6;
+  [S1,S2].forEach(s => { c.beginPath(); c.moveTo(s[0],s[1]); c.lineTo(P[0],P[1]); c.stroke(); });
+  // 경로차 표시: 먼 쪽 광선에서 가까운 쪽 길이만큼 잘라 낸 나머지
+  const d1 = Math.hypot(P[0]-S1[0], P[1]-S1[1]), d2 = Math.hypot(P[0]-S2[0], P[1]-S2[1]);
+  const far = d1 > d2 ? S1 : S2, near = d1 > d2 ? d2 : d1, farLen = Math.max(d1,d2);
+  if (farLen - near > 0.6) {
+    const t = near/farLen, Q = [P[0]+(far[0]-P[0])*t, P[1]+(far[1]-P[1])*t];
+    c.save(); c.strokeStyle = 'rgba(240,165,0,.55)'; c.setLineDash([3,3]); c.lineWidth = 1;
+    const a0 = Math.atan2(far[1]-P[1], far[0]-P[0]);
+    c.beginPath(); c.arc(P[0], P[1], near, a0-.35, a0+.35); c.stroke(); c.restore();
+    c.strokeStyle = '#f0a500'; c.lineWidth = 5; c.lineCap = 'round'; c.beginPath(); c.moveTo(Q[0],Q[1]); c.lineTo(far[0],far[1]); c.stroke(); c.lineCap = 'butt';
+    c.fillStyle = '#f0a500'; c.font = 'bold 13px system-ui'; c.textBaseline = 'middle';
+    c.fillText('Δ', (Q[0]+far[0])/2 + 8, (Q[1]+far[1])/2 + (far === S1 ? -10 : 10));
   }
-  const sinc2 = (S, y) => { const x = Math.PI*S.a*y/(S.lam*S.L); return Math.abs(x) < 1e-9 ? 1 : Math.pow(Math.sin(x)/x, 2); };
-  const I = (S, y) => Math.pow(Math.cos(Math.PI*S.d*y/(S.lam*S.L)), 2) * (S.on ? sinc2(S, y) : 1);
+  c.fillStyle = '#e6edf3'; c.font = '12px system-ui'; c.textBaseline = 'middle';
+  c.fillText('S1', xs-26, my-gap); c.fillText('S2', xs-26, my+gap);
+  c.fillStyle = '#f0a500'; c.beginPath(); c.arc(P[0], P[1], 6, 0, TAU); c.fill(); c.fillText('P', xe+11, py);
+  c.fillStyle = '#9aa7b4'; c.fillText('O', xe+11, my); c.fillText('슬릿', xs-8, 12); c.fillText('스크린', xe-18, 12);
+}
+function drawRuler(S, rgb){
+  const [c,w,h] = fit($('cv-ruler'), 78);
+  c.fillStyle = '#0c1119'; c.fillRect(0,0,w,h);
+  const ratio = S.dl/S.lam, m = Math.floor(ratio), fr = ratio - m;
+  const x0 = 16, x1 = w-16, bw = x1-x0, by = 24, bh = 22;
+  const img = c.createImageData(Math.max(1,Math.round(bw*dpr())), 1);
+  for (let i=0;i<img.width;i++){ const k = Math.pow(Math.cos(Math.PI*i/(img.width-1)), 2);
+    const [r,g,b] = rgb.split(',').map(Number); img.data[i*4]=r*k; img.data[i*4+1]=g*k; img.data[i*4+2]=b*k; img.data[i*4+3]=255; }
+  const tmp = document.createElement('canvas'); tmp.width = img.width; tmp.height = 1; tmp.getContext('2d').putImageData(img,0,0);
+  c.imageSmoothingEnabled = false; c.drawImage(tmp, x0, by, bw, bh);
+  c.strokeStyle = '#30363d'; c.strokeRect(x0+.5, by+.5, bw, bh);
+  c.fillStyle = '#9aa7b4'; c.font = '11px system-ui'; c.textBaseline = 'alphabetic';
+  [['0',0],['0.5λ',.5],['1λ',1]].forEach(([t,f]) => { const x = x0+f*bw; c.fillRect(x-.5, by+bh, 1, 5); const tw = c.measureText(t).width; c.fillText(t, Math.min(Math.max(x-tw/2,2),w-tw-2), by+bh+17); });
+  c.fillStyle = '#f0a500'; const xm = x0 + fr*bw; c.beginPath(); c.moveTo(xm, by-2); c.lineTo(xm-6, by-12); c.lineTo(xm+6, by-12); c.closePath(); c.fill();
+  c.fillStyle = '#e6edf3'; c.font = 'bold 12px system-ui'; c.fillText(`Δ = ${m}λ + ${fr.toFixed(2)}λ`, 16, 13);
+  $('rulerHint').textContent = '막대 밝기 = 이상적인 두 빛의 겹침 결과';
+}
+function drawStrip(S, rgb){
+  const [c,w,h] = fit($('cv-strip'), 74);
+  const [rr,gg,bb] = rgb.split(',').map(Number);
+  const img = c.createImageData(Math.max(1,Math.round(w*dpr())), 1), px = img.width;
+  for (let i=0;i<px;i++){ const yy = ((i/(px-1))*2-1)*15e-3, k = I(S,yy);
+    img.data[i*4]=rr*k; img.data[i*4+1]=gg*k; img.data[i*4+2]=bb*k; img.data[i*4+3]=255; }
+  const tmp = document.createElement('canvas'); tmp.width = px; tmp.height = 1; tmp.getContext('2d').putImageData(img,0,0);
+  c.fillStyle = '#0c1119'; c.fillRect(0,0,w,h);
+  c.imageSmoothingEnabled = false; c.drawImage(tmp, 0, 0, w, h-16);
+  c.fillStyle = '#9aa7b4'; c.font = '11px system-ui'; c.textBaseline = 'alphabetic';
+  for (let m=-15;m<=15;m+=5){ const x = (m+15)/30*(w-1); c.fillRect(x,h-16,1,5); c.fillText(m+' mm', Math.min(Math.max(x-14,0),w-36), h-2); }
+  const xp = (+el.y.value+15)/30*(w-1); c.fillStyle = '#f0a500'; c.fillRect(xp-1,0,2,h-16);
+}
+function drawGraph(S, rgb){
+  const [c,w,h] = fit($('cv-graph'), 170);
+  c.fillStyle = '#0c1119'; c.fillRect(0,0,w,h);
+  const base = h-30, top = 18;
+  c.strokeStyle = '#30363d'; c.lineWidth = 1; c.beginPath(); c.moveTo(0,base); c.lineTo(w,base); c.stroke();
+  c.strokeStyle = `rgb(${rgb})`; c.lineWidth = 2; c.beginPath();
+  for (let i=0;i<=w;i++){ const yy = ((i/w)*2-1)*15e-3, Y = base - I(S,yy)*(base-top); i ? c.lineTo(i,Y) : c.moveTo(i,Y); }
+  c.stroke();
+  if (S.on) { c.save(); c.setLineDash([5,4]); c.strokeStyle = '#9aa7b4'; c.lineWidth = 1.5; c.beginPath();
+    for (let i=0;i<=w;i++){ const yy = ((i/w)*2-1)*15e-3, Y = base - Sy(S,yy)*(base-top); i ? c.lineTo(i,Y) : c.moveTo(i,Y); }
+    c.stroke(); c.restore(); c.fillStyle = '#9aa7b4'; c.font = '11px system-ui'; c.textAlign = 'right'; c.fillText('점선: 한 틈의 회절 곡선(줄무늬의 바깥 테두리)', w-8, 14); c.textAlign = 'left'; }
+  // 밝은 줄 번호
+  const pxPerOrder = Math.abs(yPos(S,1))/30*w; let step = 1; while (pxPerOrder*step < 26 && step < 20) step++;
+  c.fillStyle = '#9aa7b4'; c.font = '11px system-ui'; c.textBaseline = 'alphabetic';
+  for (let m=-60; m<=60; m+=step){ const yy = yPos(S,m); if (Math.abs(yy) > 15) continue; const x = (yy+15)/30*w; if (x < 14 || x > w-14) continue;
+    c.fillRect(x, base, 1, 4); const t = (m>0?'+':'')+m; c.fillText(t, x - c.measureText(t).width/2, base+15); }
+  const xp = (+el.y.value+15)/30*w; c.strokeStyle = '#f0a500'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(xp,6); c.lineTo(xp,base); c.stroke();
+  c.fillStyle = '#9aa7b4'; c.fillText('밝기', 6, 14); c.fillText('줄 번호 m (가운데 0)', w/2-48, h-2);
+}
+function readout(S){
+  const ratio = S.dl/S.lam, m = Math.round(ratio), frac = ratio - Math.floor(ratio);
+  const nearInt = Math.min(frac, 1-frac) < .08, nearHalf = Math.abs(frac-.5) < .08;
+  const v = $('verdict');
+  if (nearInt) { v.className = 'badge b-b'; v.textContent = `보강 간섭 → 밝다 (${m === 0 ? '가운데 밝은 줄' : m+'번째 밝은 줄'})`; }
+  else if (nearHalf) { v.className = 'badge b-d'; v.textContent = `상쇄 간섭 → 어둡다 (${Math.floor(ratio) === 0 ? '가운데' : Math.floor(ratio)+'번째'}와 ${Math.floor(ratio)+1}번째 밝은 줄 사이)`; }
+  else { v.className = 'badge b-m'; v.textContent = '중간 밝기 (정수배도 반정수배도 아님)'; }
+  const rows = [
+    ['슬릿 S1 → P', fmt(S.r1,6)+' m'], ['슬릿 S2 → P', fmt(S.r2,6)+' m'],
+    ['경로차 Δ = |S2P − S1P|', fmt(S.dl*1e9,0)+' nm'], ['Δ ÷ λ', fmt(ratio,2)+' 배'],
+    ['이웃한 밝은 줄 사이 Δy', fmt(S.dy*1e3,2)+' mm']
+  ];
+  if (S.on) {
+    const r = S.d/S.a, n = Math.round(r), nmax = Math.ceil(r-1e-9)-1;
+    rows.push(['회절 첫 어두운 곳 y = λL/a', fmt(S.lam*S.L/S.a*1e3,1)+' mm']);
+    rows.push(['d / a', fmt(r,2)]);
+    rows.push(['곡선 가운데 안의 밝은 줄', (2*nmax+1)+'개']);
+    $('tip').innerHTML = Math.abs(r-n) < .02 && n >= 1 ? `<b>d/a = ${n}</b> → ${n}번째 밝은 줄이 회절 곡선의 어두운 곳과 겹쳐 <b>사라졌어요</b>.` : 'd/a가 정수가 아니라서 모든 밝은 줄이 보여요. 정수가 되면 일부가 사라집니다.';
+  } else {
+    $('tip').innerHTML = '밝은 줄 위치는 <b>y = m·λL/d</b>입니다. 위 그래프 아래 번호가 m이에요. 슬릿을 아주 가는 선으로 본 이상적인 모형입니다(폭의 영향은 ② 탭).';
+  }
+  $('rd').innerHTML = rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
+  const app = S.d*S.y/S.L;
+  $('eq').innerHTML = `경로차 Δ ≈ d·y/L<br>= ${fmt(S.d*1e3,2)} mm × ${fmt(S.y*1e3,2)} mm ÷ ${fmt(S.L,2)} m<br>= <b>${fmt(app*1e9,0)} nm</b> (정확한 값 ${fmt(S.dl*1e9,0)} nm)<br>→ Δ = <b>${fmt(ratio,2)} λ</b><br><span style="color:var(--sub)">밝은 줄: Δ = mλ ⇒ y = m·λL/d</span>`;
+}
+function draw(src){
+  if (!$('simView') || $('simView').hidden) return;
+  const S = state(), rgb = wlRGB(S.lam*1e9).join(',');
+  $('lv').textContent = el.lam.value+' nm'; $('dv').textContent = fmt(+el.d.value,2)+' mm'; $('av').textContent = fmt(+el.a.value,2)+' mm';
+  $('Lv').textContent = fmt(S.L,2)+' m'; $('yv').textContent = fmt(+el.y.value,2)+' mm';
+  $('aRow').style.display = S.on ? '' : 'none';
+  drawTop(S, rgb); drawRuler(S, rgb); drawStrip(S, rgb); drawGraph(S, rgb); readout(S);
+  if (src) checkMissions(src);
+}
+Object.keys(el).forEach(k => el[k].addEventListener('input', () => draw(k)));
+window.addEventListener('resize', () => { draw(); if (tab === 3) renderCmp(); });
+[['cv-strip'],['cv-graph']].forEach(([id]) => {
+  const cv = $(id); let down = false;
+  const move = e => { const r = cv.getBoundingClientRect(); const f = Math.min(1, Math.max(0, (e.clientX-r.left)/r.width)); el.y.value = ((f*2-1)*15).toFixed(2); draw('y'); };
+  cv.addEventListener('pointerdown', e => { down = true; cv.setPointerCapture(e.pointerId); move(e); });
+  cv.addEventListener('pointermove', e => { if (down) move(e); });
+  cv.addEventListener('pointerup', () => down = false); cv.addEventListener('pointercancel', () => down = false);
+});
 
-  function draw(){
-    const S = state(), [rr,gg,bb] = wlRGB(S.lam*1e9);
-    $('lv').textContent = el.lam.value+' nm'; $('dv').textContent = fmt(+el.d.value,2)+' mm';
-    $('Lv').textContent = fmt(S.L,2)+' m'; $('yv').textContent = fmt(+el.y.value,2)+' mm';
-    $('dy').textContent = fmt(S.dy*1e3,2)+' mm';
-    $('av').textContent = fmt(+el.a.value,2)+' mm'; $('dapp').textContent = fmt(S.d*S.y/S.L*1e9,0)+' nm';
-    $('dwrap').style.display = S.on ? '' : 'none';
-    { const r = S.d/S.a, nr = Math.round(r); $('dar').textContent = fmt(r,2);
-      $('dmiss').textContent = Math.abs(r-nr) < .02 && nr >= 1 ? '→ '+nr+'번째 밝은 줄이 사라집니다(회절 극소와 겹침)' : '→ 정수가 아니면 모든 밝은 줄이 보입니다'; }
-    $('r1').textContent = fmt(S.r1,6)+' m'; $('r2').textContent = fmt(S.r2,6)+' m';
-    const ratio = S.dl/S.lam;
-    $('dl').textContent = fmt(S.dl*1e9,0)+' nm'; $('dlr').textContent = fmt(ratio,2);
-    const frac = ratio - Math.floor(ratio), nearInt = Math.min(frac, 1-frac) < .08, nearHalf = Math.abs(frac-.5) < .08;
-    const v = $('verdict');
-    if (nearInt) { v.className='verdict v-b'; v.textContent = '보강 간섭 → 밝다'; }
-    else if (nearHalf) { v.className='verdict v-d'; v.textContent = '상쇄 간섭 → 어둡다'; }
-    else { v.className='verdict v-m'; v.textContent = '중간 밝기 (정수배·반정수배가 아님)'; }
+/* ═══════════ ③ 내 실험과 비교 ═══════════ */
+const TY = {
+  double:  { name:'이중 슬릿', icon:'〰️', mode:'bright', unit:'mm', L:300,
+             params:[ {k:'d', label:'슬릿 간격 d', u:'mm', def:0.25, step:0.01}, {k:'a', label:'슬릿 폭 a', u:'mm', def:0.05, step:0.01} ],
+             what:'가운데(m=0)에서 <b>m번째 밝은 줄</b>의 중심까지 거리 y' , unknown:'슬릿 간격 d' },
+  single:  { name:'단일 슬릿', icon:'▏', mode:'dark', unit:'mm', L:300,
+             params:[ {k:'a', label:'슬릿 폭 a', u:'mm', def:0.10, step:0.01} ],
+             what:'가운데 밝은 띠 중심에서 <b>m번째 어두운 줄</b>까지 거리 y', unknown:'슬릿 폭 a' },
+  grating: { name:'회절격자', icon:'▤', mode:'bright', unit:'cm', L:100,
+             params:[ {k:'N', label:'1 mm당 선의 수', u:'줄/mm', def:300, step:1} ],
+             what:'가운데 점에서 <b>m차 밝은 점</b>까지 거리 y', unknown:'1 mm당 선의 수' },
+  spring:  { name:'용수철', icon:'🌀', mode:'bright', unit:'mm', L:300,
+             params:[ {k:'p', label:'코일 간격(피치) p', u:'mm', def:1.5, step:0.1}, {k:'w', label:'철사 지름 w', u:'mm', def:0.5, step:0.05} ],
+             what:'가운데 점에서 <b>m번째 밝은 점</b>까지 거리 y (용수철 축 방향)', unknown:'코일 간격 p' }
+};
+const NMEAS = 3;
+const cmp = { type:'double', lam:532 };
+for (const k in TY) { const t = TY[k]; t.val = {}; t.params.forEach(p => t.val[p.k] = p.def); t.Lcm = t.L; t.meas = Array(NMEAS).fill(''); t.yu = t.unit; }
+const LAMS = [ ['보라 405', 405], ['초록 532', 532], ['빨강 650', 650] ];
 
-    // 위에서 본 장치
-    let [c,w,h] = fit($('cv-top'));
-    c.fillStyle = '#0d1117'; c.fillRect(0,0,w,h);
-    const xs = 70, xe = w-50, my = h/2, gap = 12 + 36*(S.d-.1)/.9, py = my + (+el.y.value/15)*(h/2-20);
-    c.strokeStyle = '#8b949e'; c.lineWidth = 3;
-    const hv = S.on ? 2 + 6*(S.a*1e3-.02)/.18 : 3;   // 슬릿 개구 반폭(그림)
-    c.beginPath(); c.moveTo(xs,6); c.lineTo(xs,my-gap-hv); c.moveTo(xs,my-gap+hv); c.lineTo(xs,my+gap-hv); c.moveTo(xs,my+gap+hv); c.lineTo(xs,h-6); c.stroke();
-    c.strokeStyle = '#444c56'; c.lineWidth = 6; c.beginPath(); c.moveTo(xe,4); c.lineTo(xe,h-4); c.stroke();
-    c.strokeStyle = `rgb(${rr},${gg},${bb})`; c.lineWidth = 1.6;
-    [my-gap, my+gap].forEach(sy => { c.beginPath(); c.moveTo(xs,sy); c.lineTo(xe,py); c.stroke(); });
-    c.fillStyle = '#e6edf3'; c.font = '12px system-ui'; c.textBaseline='middle';
-    c.fillText('S1', xs-26, my-gap); c.fillText('S2', xs-26, my+gap);
-    c.fillStyle = '#f0a500'; c.beginPath(); c.arc(xe, py, 5, 0, 6.3); c.fill(); c.fillText('P', xe+10, py);
-    c.fillStyle = '#8b949e'; c.fillText('O', xe+10, my); c.fillText('스크린', xe-18, 12);
-    c.strokeStyle = '#30363d'; c.setLineDash([4,4]); c.beginPath(); c.moveTo(xs,my); c.lineTo(xe,my); c.stroke(); c.setLineDash([]);
+function period(t){ const v = t.val; return t === TY.grating ? 1/Math.max(1e-6, v.N) : t === TY.spring ? v.p : t === TY.single ? v.a : v.d; } // mm
+const MM = nm => nm*1e-6;
+function thY(t, m){ // m번째 위치(mm) 또는 null
+  const s = m*MM(cmp.lam)/period(t); if (!(s < 0.999)) return null; const L = t.Lcm*10; return L*s/Math.sqrt(1-s*s);
+}
+function estParam(t, m, ymm){ // 측정에서 구한 period (mm)
+  const L = t.Lcm*10; return m*MM(cmp.lam)/Math.sin(Math.atan2(ymm, L));
+}
+function sIntensity(t, s){
+  const lam = MM(cmp.lam), v = t.val;
+  if (t === TY.single) return sinc2(Math.PI*v.a*s/lam);
+  if (t === TY.double) return Math.pow(Math.cos(Math.PI*v.d*s/lam),2) * sinc2(Math.PI*v.a*s/lam);
+  const N = t === TY.grating ? 20 : 12, p = period(t), phi = Math.PI*p*s/lam, sn = Math.sin(phi);
+  const g = Math.abs(sn) < 1e-7 ? 1 : Math.pow(Math.sin(N*phi)/(N*sn), 2);
+  return g * (t === TY.spring ? sinc2(Math.PI*Math.max(.01, v.p-v.w)*s/lam) : 1);
+}
+const toMM = (t, x) => x * (t.yu === 'cm' ? 10 : 1);
 
-    // 스크린 무늬
-    [c,w,h] = fit($('cv-strip'));
-    const img = c.createImageData(Math.max(1,Math.round(w*(window.devicePixelRatio||1))), 1);
-    const px = img.width;
-    for (let i=0;i<px;i++){ const yy = ((i/(px-1))*2-1)*15e-3, k = I(S,yy);
-      img.data[i*4]=rr*k; img.data[i*4+1]=gg*k; img.data[i*4+2]=bb*k; img.data[i*4+3]=255; }
-    const tmp = document.createElement('canvas'); tmp.width = px; tmp.height = 1; tmp.getContext('2d').putImageData(img,0,0);
-    c.imageSmoothingEnabled = false; c.drawImage(tmp, 0, 0, w, h-14);
-    c.fillStyle = '#8b949e'; c.font='11px system-ui'; c.textBaseline='alphabetic';
-    for (let m=-15;m<=15;m+=5){ const x = (m+15)/30*(w-1); c.fillRect(x,h-14,1,5); c.fillText(m+' mm', Math.min(Math.max(x-14,0),w-36), h-1); }
-    const xp = (+el.y.value+15)/30*(w-1); c.fillStyle='#f0a500'; c.fillRect(xp-1,0,2,h-14);
+function setupTypes(){
+  const box = $('cTypes'); box.innerHTML = '';
+  for (const k in TY) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (k === cmp.type ? ' on' : ''); b.textContent = TY[k].icon + ' ' + TY[k].name;
+    b.onclick = () => { cmp.type = k; setupTypes(); setupSide(); renderCmp(); guide.say(`<b>${TY[k].name}</b>를 골랐네요. 오른쪽에서 장치에 적힌 값과 스크린에서 잰 거리를 넣어 보세요.`); };
+    box.append(b);
+  }
+  const lc = $('cLamChips'); lc.innerHTML = '';
+  LAMS.forEach(([lab, v]) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (cmp.lam === v ? ' on' : ''); b.textContent = lab + ' nm';
+    b.onclick = () => { cmp.lam = v; $('cLam').value = v; setupTypes(); renderCmp(); }; lc.append(b); });
+}
+function setupSide(){
+  const t = TY[cmp.type];
+  $('cLam').value = cmp.lam; $('cL').value = t.Lcm;
+  const pb = $('cParams'); pb.innerHTML = '';
+  t.params.forEach(p => {
+    const lab = document.createElement('label'); lab.className = 'field';
+    lab.innerHTML = `${p.label} <span><input type="number" min="0" step="${p.step}" value="${t.val[p.k]}"> <span class="unit">${p.u}</span></span>`;
+    lab.querySelector('input').addEventListener('input', e => { const v = parseFloat(e.target.value); if (v > 0) { t.val[p.k] = v; renderCmp(); } });
+    pb.append(lab);
+  });
+  if (cmp.type === 'spring') { const n = document.createElement('div'); n.className = 'hintbox'; n.style.fontSize = '.76em'; n.innerHTML = '※ 코일 사이 <b>틈</b>(p − w)이 빛이 지나는 길, 주기가 <b>p</b>인 격자처럼 다룬 단순 모형입니다. 실제 나선(helix)의 가로 방향 무늬는 다루지 않아요.'; pb.append(n); }
+  $('cUnit').value = t.yu;
+  $('cMeasHelp').innerHTML = '스크린에서 줄자로 잰 값을 넣으세요: ' + t.what + '.';
+  const mb = $('cMeas'); mb.innerHTML = '';
+  for (let i=0;i<NMEAS;i++) {
+    const r = document.createElement('div'); r.className = 'mrow';
+    r.innerHTML = `<b>m = ${i+1}</b><input type="number" min="0" step="any" inputmode="decimal" placeholder="y (${t.yu})" value="${t.meas[i]}">`;
+    r.querySelector('input').addEventListener('input', e => { t.meas[i] = e.target.value; renderCmp(); });
+    mb.append(r);
+  }
+}
+$('cLam').addEventListener('input', e => { const v = parseFloat(e.target.value); if (v >= 380 && v <= 780) { cmp.lam = v; setupTypes(); renderCmp(); } });
+$('cL').addEventListener('input', e => { const v = parseFloat(e.target.value); if (v > 0) { TY[cmp.type].Lcm = v; renderCmp(); } });
+$('cUnit').addEventListener('change', e => {
+  const t = TY[cmp.type], f = (t.yu === 'cm' ? 10 : 1) / (e.target.value === 'cm' ? 10 : 1);
+  t.meas = t.meas.map(s => { const v = parseFloat(s); return isFinite(v) ? String(+(v*f).toPrecision(5)) : s; });
+  t.yu = e.target.value; setupSide(); renderCmp();
+});
+$('cClear').onclick = () => { TY[cmp.type].meas = Array(NMEAS).fill(''); setupSide(); renderCmp(); };
+$('cDemo').onclick = () => {
+  const t = TY[cmp.type], err = [1.03, 0.98, 1.04], f = t.yu === 'cm' ? .1 : 1;
+  t.meas = t.meas.map((_, i) => { const y = thY(t, i+1); return y == null ? '' : String(+(y*err[i]*f).toFixed(t.yu === 'cm' ? 2 : 2)); });
+  setupSide(); renderCmp(); guide.say('연습용 <b>예시 값</b>이에요(이론값에 몇 %씩 오차를 섞은 가짜 자료). 표와 아래 설명이 어떻게 바뀌는지 본 뒤, <b>여러분의 실제 값</b>으로 바꿔 넣으세요.');
+};
 
-    // 밝기 그래프
-    [c,w,h] = fit($('cv-graph'));
-    c.fillStyle = '#0d1117'; c.fillRect(0,0,w,h);
-    c.strokeStyle = '#30363d'; c.lineWidth = 1; c.beginPath(); c.moveTo(0,h-22); c.lineTo(w,h-22); c.stroke();
-    c.strokeStyle = `rgb(${rr},${gg},${bb})`; c.lineWidth = 2; c.beginPath();
-    for (let i=0;i<=w;i++){ const yy = ((i/w)*2-1)*15e-3, Y = (h-26) - I(S,yy)*(h-40); i ? c.lineTo(i,Y) : c.moveTo(i,Y); }
+function renderCmp(){
+  if ($('cmpView').hidden) return;
+  const t = TY[cmp.type], rgb = wlRGB(cmp.lam).join(','), dark = t.mode === 'dark';
+  const per = period(t), lamMM = MM(cmp.lam), L = t.Lcm*10, yu = t.yu, k = yu === 'cm' ? .1 : 1;
+  // 실험 장치 그림
+  { const [c,w,h] = fit($('cv-setup'), 150); c.fillStyle = '#0c1119'; c.fillRect(0,0,w,h);
+    const lx = 24, sx = Math.max(150, w*.38), ex = w-60, my = h/2;
+    c.fillStyle = '#59636e'; c.fillRect(lx, my-9, 54, 18); c.fillStyle = '#c0392b'; c.fillRect(lx+54, my-4, 6, 8);
+    c.strokeStyle = `rgb(${rgb})`; c.lineWidth = 2; c.beginPath(); c.moveTo(lx+60,my); c.lineTo(sx,my); c.stroke();
+    c.strokeStyle = '#8b949e'; c.lineWidth = 5; c.beginPath();
+    if (cmp.type === 'single') { c.moveTo(sx,16); c.lineTo(sx,my-5); c.moveTo(sx,my+5); c.lineTo(sx,h-16); }
+    else if (cmp.type === 'double') { c.moveTo(sx,16); c.lineTo(sx,my-16); c.moveTo(sx,my-8); c.lineTo(sx,my+8); c.moveTo(sx,my+16); c.lineTo(sx,h-16); }
+    else if (cmp.type === 'grating') { for (let yy=my-34; yy<=my+34; yy+=6) { c.moveTo(sx-6,yy); c.lineTo(sx+6,yy); } }
+    else { for (let yy=my-36; yy<=my+36; yy+=12) { c.moveTo(sx-7,yy); c.lineTo(sx+7,yy); } }
     c.stroke();
-    if (S.on) { c.save(); c.setLineDash([5,4]); c.strokeStyle = '#8b949e'; c.lineWidth = 1.5; c.beginPath();
-      for (let i=0;i<=w;i++){ const yy = ((i/w)*2-1)*15e-3, Y = (h-26) - sinc2(S,yy)*(h-40); i ? c.lineTo(i,Y) : c.moveTo(i,Y); }
-      c.stroke(); c.restore(); c.fillStyle = '#8b949e'; c.font='11px system-ui'; c.fillText('점선: 한 틈의 회절 (줄무늬의 포락선)', w-210, 14); }
-    c.strokeStyle = '#f0a500'; c.beginPath(); c.moveTo(xp,6); c.lineTo(xp,h-22); c.stroke();
-    c.fillStyle = '#8b949e'; c.font='11px system-ui'; c.fillText('가운데 O', w/2-24, h-6); c.fillText('밝기', 6, 14);
+    c.strokeStyle = '#59636e'; c.lineWidth = 6; c.beginPath(); c.moveTo(ex,10); c.lineTo(ex,h-10); c.stroke();
+    // 퍼지는 빛
+    c.strokeStyle = `rgba(${rgb},.35)`; c.lineWidth = 1.2;
+    [-1,-.55,.55,1].forEach(f => { c.beginPath(); c.moveTo(sx,my); c.lineTo(ex,my+f*(h/2-22)); c.stroke(); });
+    c.fillStyle = `rgb(${rgb})`; [0,-1,-.55,.55,1].forEach((f,i) => { c.globalAlpha = i ? .85 : 1; c.beginPath(); c.arc(ex, my+f*(h/2-22), i ? 4 : 5.5, 0, TAU); c.fill(); }); c.globalAlpha = 1;
+    c.strokeStyle = '#9aa7b4'; c.lineWidth = 1; c.beginPath(); c.moveTo(sx, h-8); c.lineTo(ex, h-8); c.moveTo(sx,h-12); c.lineTo(sx,h-4); c.moveTo(ex,h-12); c.lineTo(ex,h-4); c.stroke();
+    c.fillStyle = '#e6edf3'; c.font = '12px system-ui'; c.textBaseline = 'middle'; c.textAlign = 'center';
+    c.fillText(`L = ${t.Lcm} cm`, (sx+ex)/2, h-18); c.fillText('레이저', lx+28, my-22); c.fillText(t.name, sx, 8); c.fillText('스크린', ex, 8);
+    c.fillStyle = '#f0a500'; c.textAlign = 'left'; c.fillText('y', ex+10, my-(h/2-22)*.28);
+    c.strokeStyle = '#f0a500'; c.beginPath(); c.moveTo(ex+6, my); c.lineTo(ex+6, my-(h/2-22)*.55); c.stroke(); c.textAlign = 'left';
+    $('cSetupTitle').textContent = `실험 장치 — ${t.name}`;
+    $('cSetupCap').innerHTML = `레이저 빛을 ${t.name}에 쏘아 스크린에 생긴 무늬에서 <b>y</b>를 잽니다. 레이저를 사람 눈에 직접 비추지 마세요.`;
   }
-  Object.values(el).forEach(e => e.addEventListener('input', draw)); el.diff.addEventListener('change', draw);
-  window.addEventListener('resize', draw);
-  draw();
-  window.__ds = {state, draw, I, sinc2};
+  // 측정 읽기
+  const rows = [];
+  for (let i=0;i<NMEAS;i++) { const m = i+1, th = thY(t, m), raw = parseFloat(t.meas[i]), ms = isFinite(raw) && raw > 0 ? raw*(yu === 'cm' ? 10 : 1) : null; rows.push({ m, th, ms }); }
+  // 그래프
+  { const [c,w,h] = fit($('cv-cmp'), 190); c.fillStyle = '#0c1119'; c.fillRect(0,0,w,h);
+    const smax = Math.min(.97, 3.6*lamMM/per), R = L*smax/Math.sqrt(1-smax*smax), base = h-32, top = 24;
+    const X = y => (y+R)/(2*R)*w;
+    // 스크린 띠
+    const stripH = 14;
+    c.strokeStyle = '#30363d'; c.beginPath(); c.moveTo(0,base); c.lineTo(w,base); c.stroke();
+    const [rr,gg,bb] = rgb.split(',').map(Number);
+    c.beginPath();
+    const ys = [];
+    for (let i=0;i<=w*2;i++){ const y = ((i/(w*2))*2-1)*R, s = y/Math.hypot(y,L), v = sIntensity(t, s); ys.push(v);
+      const Y = base - v*(base-top); i ? c.lineTo(i/2,Y) : c.moveTo(i/2,Y); }
+    c.strokeStyle = `rgb(${rgb})`; c.lineWidth = 2; c.stroke();
+    c.lineTo(w, base); c.lineTo(0, base); c.closePath(); c.fillStyle = `rgba(${rr},${gg},${bb},.18)`; c.fill();
+    // 이론 위치
+    c.font = '11px system-ui'; c.textBaseline = 'alphabetic';
+    rows.forEach(r => { if (r.th == null) return;
+      [-1,1].forEach(sg => { const x = X(sg*r.th); c.save(); c.setLineDash([4,4]); c.strokeStyle = '#f0a500'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x, top-6); c.lineTo(x, base); c.stroke(); c.restore();
+        if (sg > 0) { c.fillStyle = '#f0a500'; c.textAlign = 'center'; c.fillText('m='+r.m, x, top-9); } }); });
+    // 측정 위치
+    rows.forEach(r => { if (r.ms == null) return;
+      [-1,1].forEach(sg => { const x = X(sg*r.ms); c.strokeStyle = '#ff8a4c'; c.lineWidth = sg > 0 ? 2.5 : 1.2; c.globalAlpha = sg > 0 ? 1 : .45; c.beginPath(); c.moveTo(x, top+8); c.lineTo(x, base); c.stroke();
+        c.fillStyle = '#ff8a4c'; c.beginPath(); c.arc(x, top+8, sg > 0 ? 4.5 : 3, 0, TAU); c.fill(); }); c.globalAlpha = 1; });
+    // 눈금
+    c.fillStyle = '#9aa7b4'; c.textAlign = 'center';
+    for (let i=-4;i<=4;i++){ const y = i/4*R, x = X(y); c.fillRect(x-.5, base, 1, 4); const lab = (y*k).toFixed(Math.abs(y*k) < 10 ? 1 : 0); c.fillText(lab, Math.min(Math.max(x,14),w-14), base+16); }
+    c.textAlign = 'left'; c.fillText(`가운데에서의 거리 y (${yu})`, 8, h-3); c.fillText('밝기', 8, 14);
+    $('cPlotHint').textContent = (dark ? '어두운 줄' : '밝은 줄') + ' 위치를 비교해요 (오른쪽만 측정, 왼쪽은 대칭)';
+  }
+  // 표
+  const label = dark ? '어두운 줄' : '밝은 줄';
+  let html = `<table class="cmp"><tr><th>m (${label})</th><th>이론 y (${yu})</th><th>내 측정 y (${yu})</th><th>차이 (${yu})</th><th>오차</th></tr>`;
+  const errs = [], ratios = [], ests = [];
+  rows.forEach(r => {
+    const th = r.th == null ? '—' : fmt(r.th*k, r.th*k < 10 ? 2 : 1), ms = r.ms == null ? '' : fmt(r.ms*k, r.ms*k < 10 ? 2 : 1);
+    let diff = '', er = '', cls = '';
+    if (r.th != null && r.ms != null) { const e = (r.ms - r.th)/r.th*100; errs.push(Math.abs(e)); ratios.push(r.ms/r.th); diff = ((r.ms-r.th)*k >= 0 ? '+' : '') + fmt((r.ms-r.th)*k, 2); er = (e >= 0 ? '+' : '') + fmt(e,1) + ' %'; cls = Math.abs(e) < 5 ? 'good' : Math.abs(e) > 15 ? 'warn' : ''; }
+    if (r.ms != null) ests.push(estParam(t, r.m, r.ms));
+    html += `<tr><td>m = ${r.m}</td><td class="th">${th}</td><td class="ms">${ms || '<span style="color:var(--sub);font-weight:400">미입력</span>'}</td><td>${diff}</td><td class="${cls}">${er}</td></tr>`;
+  });
+  html += '</table>';
+  $('cTable').innerHTML = html;
+  // 측정에서 구한 값 + 요약
+  const sm = $('cSummary'); let txt = '';
+  if (ests.length) {
+    const avg = ests.reduce((a,b) => a+b, 0)/ests.length;
+    let nom, got, un;
+    if (cmp.type === 'grating') { nom = t.val.N; got = 1/avg; un = '줄/mm'; } else { nom = period(t); got = avg; un = 'mm'; }
+    const pe = (got-nom)/nom*100, nd = cmp.type === 'grating' ? 0 : 3;
+    txt += `📐 <b>측정에서 구한 ${t.unknown}</b> = <b>${got.toFixed(nd)} ${un}</b> (장치에 적힌 값 ${nom} ${un}, 차이 ${pe >= 0 ? '+' : ''}${pe.toFixed(1)} %)<br>`;
+  }
+  if (errs.length) {
+    const mean = errs.reduce((a,b) => a+b, 0)/errs.length;
+    const rm = ratios.reduce((a,b) => a+b, 0)/ratios.length, sd = Math.sqrt(ratios.reduce((a,b) => a+(b-rm)*(b-rm), 0)/ratios.length);
+    let cls, head, why = '';
+    if (mean < 5) { cls = 's-good'; head = `✅ 평균 오차 ${mean.toFixed(1)} % — 이론과 잘 맞아요.`; }
+    else if (mean < 15) { cls = 's-mid'; head = `⚠️ 평균 오차 ${mean.toFixed(1)} % — 조금 차이가 나요.`; }
+    else { cls = 's-bad'; head = `❗ 평균 오차 ${mean.toFixed(1)} % — 많이 달라요. 측정 방법부터 다시 점검해 보세요.`; }
+    if (mean >= 5 && errs.length >= 2) why = sd < .03 ? `<br>모든 m에서 <b>비슷한 비율</b>(약 ${(rm*100).toFixed(0)} %)로 어긋났어요 → <b>거리 L, 레이저 파장, 장치에 적힌 값</b>이 실제와 다를 가능성이 큽니다(한 번에 같이 틀어지는 <b>계통 오차</b>).` : `<br>m마다 어긋남이 <b>제각각</b>이에요 → 무늬 중심을 읽는 <b>측정 오차</b>(줄자 눈금, 점이 번진 폭)일 가능성이 큽니다. 여러 번 재어 평균을 내 보세요.`;
+    const sorted = rows.filter(r => r.ms != null).every((r, i, a) => !i || r.ms > a[i-1].ms);
+    if (!sorted) why += '<br>⚠️ m이 커질수록 거리 y도 커져야 해요. 입력 순서나 단위(mm/cm)를 확인하세요.';
+    txt += `${head}${why}`; sm.className = 'summary ' + cls;
+  } else { sm.className = 'summary s-none'; if (!txt) txt = '오른쪽 ③에 스크린에서 잰 거리를 입력하면 이론값과 비교해 드려요. ‘예시 값 넣어 보기’로 연습해 볼 수도 있어요.'; else sm.className = 'summary s-good'; }
+  sm.innerHTML = txt;
+  // 이론 설명 + 오차 점검표
+  const tips = {
+    double:  ['밝은 줄 사이 간격이 mm 단위로 좁아요. <b>m번째 줄까지 거리를 재서 m으로 나누면</b> 읽기 오차가 줄어요.', '슬릿 폭 a가 넓으면 바깥 줄이 어두워 중심 찾기가 어려워요.'],
+    single:  ['어두운 줄은 눈으로 위치를 정하기 어려워요. <b>어둠의 가운데</b>를 일관되게 잡으세요.', '가운데 밝은 띠가 가장 넓고 밝아요: 폭 ≈ 2λL/a. 이 폭을 재도 a를 구할 수 있어요.'],
+    grating: ['선 수가 많을수록 점이 멀리, 선명하게 생깁니다. 레이저가 격자에 <b>수직</b>이 되게 하세요.', 'θ가 크면 <b>tanθ ≠ sinθ</b>예요. 이 시뮬은 정확한 식을 써서 근사 오차가 없어요.'],
+    spring:  ['용수철은 늘려서 코일 사이를 벌려야 해요. 코일 간격 p는 <b>자로 여러 칸을 재서 나누면</b> 더 정확해요.', '이 모형은 코일 사이 틈을 격자로 보는 단순화예요. 실제 무늬에는 나선 모양 때문에 가로 방향 무늬도 섞여 있어요.']
+  };
+  $('cWhy').innerHTML = [
+    '<b>거리 L</b>: 장치에서 스크린까지 잰 기준점이 다르면 L이 몇 cm씩 틀려요. 장치 위치를 정확히 정하세요.',
+    '<b>줄자 읽기</b>: 밝은 점은 번져서 폭이 있어요. 점의 <b>가운데(또는 같은 쪽 가장자리)</b>를 일관되게 읽으세요. y가 작을수록 같은 1 mm 오차도 비율은 커져요.',
+    '<b>레이저 파장</b>: 포인터에 적힌 파장은 대략값이라 실제와 몇 nm 다를 수 있어요.',
+    '<b>장치에 적힌 값</b>: 슬릿 간격·선 수는 제조 값이라 정확하지 않을 수 있어요. 그래서 위에 ‘측정에서 구한 값’을 비교해 본답니다.',
+    '<b>레이저가 수직이 아님</b>: 장치나 스크린이 기울면 무늬가 한쪽으로 치우쳐요. 좌우 y를 모두 재어 평균을 내 보세요.'
+  ].concat(tips[cmp.type]).map(s => '<li>'+s+'</li>').join('');
+}
+
+/* ═══════════ 탭 전환 ═══════════ */
+function setTab(n){
+  tab = n;
+  [...$('tabs').children].forEach(b => b.classList.toggle('active', +b.dataset.tab === n));
+  $('simView').hidden = n === 3; $('cmpView').hidden = n !== 3;
+  $('missionsHost').hidden = n === 3;
+  guide.set(LINES[n], 0);
+  if (n === 3) { $('howtoHost').hidden = false; renderCmp(); }
+  else { buildMissions(); draw(); }
+  if (n === 2 && !q.has('a') && +el.a.value <= .05) { el.a.value = .08; draw(); }
+}
+[...$('tabs').children].forEach(b => b.onclick = () => setTab(+b.dataset.tab));
+
+/* 시작 */
+setupTypes(); setupSide();
+if (EMBED) { $('missionsHost').hidden = true; draw(); }
+else { buildMissions(); if (q.has('a') || q.get('tab') === '2') setTab(2); else if (q.get('tab') === '3') setTab(3); else draw(); }
+window.__ds = { state, draw, I, sinc2: Sy, setTab, cmp, TY };
 })();
 </script>
 </body>

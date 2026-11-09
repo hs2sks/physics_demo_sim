@@ -77,6 +77,26 @@
   table.sum th, table.sum td { border-bottom:1px solid var(--border); padding:7px 8px; text-align:left; vertical-align:top; }
   table.sum th { background:#eef3fa; color:var(--sub); font-size:.9em; }
 
+  /* 단계별 학습 */
+  .steps { display:flex; gap:6px; padding:8px 12px; flex-wrap:wrap; border-bottom:1px solid var(--border); }
+  .steps button { border:1px solid var(--border); background:#fff; border-radius:20px; padding:6px 12px; font-size:.84em; font-weight:600; cursor:pointer; min-height:34px; color:var(--ink); }
+  .steps button.on { background:var(--ink); border-color:var(--ink); color:#fff; }
+  .steps button.done::after { content:" ✓"; color:var(--ok); font-weight:800; } .steps button.on.done::after { color:#9be3b3; }
+  .stepbody { padding:10px 14px 4px; font-size:.93em; line-height:1.75; }
+  .stepbody p { margin-bottom:8px; } .stepbody b.k { color:var(--accent); }
+  .stepbody canvas { display:block; width:100%; background:#0c1119; border-radius:9px; margin:6px 0; }
+  .live { background:#f6f8fb; border:1px solid var(--border); border-radius:9px; padding:8px 10px; font-size:.9em; line-height:1.75; margin:6px 0 8px; font-variant-numeric:tabular-nums; }
+  .live b { color:var(--gold); }
+  .stepnav { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 12px 10px; border-top:1px solid var(--border); font-size:.84em; color:var(--sub); }
+  .stepnav button { border:1px solid var(--border); background:#fff; border-radius:9px; padding:7px 14px; min-height:38px; font-weight:700; cursor:pointer; color:var(--ink); }
+  .stepnav button:disabled { opacity:.35; cursor:default; }
+  .qbox { border:1px solid var(--border); border-radius:10px; padding:9px 12px; margin:8px 0; background:#fff; }
+  .qbox .q { font-weight:700; margin-bottom:4px; }
+  .qbox .fb { margin-top:6px; font-size:.9em; } .fb.ok { color:var(--ok); } .fb.ng { color:#c0392b; }
+  .qbox input[type=number] { font:inherit; border:1px solid var(--border); border-radius:8px; padding:6px 8px; width:110px; min-height:36px; }
+  table.mini { border-collapse:collapse; width:100%; font-size:.9em; margin:6px 0 8px; }
+  table.mini th, table.mini td { border:1px solid var(--border); padding:5px 8px; text-align:center; } table.mini th { background:#eef3fa; }
+
   /* 수업 덱 임베드: 시뮬만 */
   body.embed { padding:8px; }
   body.embed header, body.embed #personaHost, body.embed #howtoHost, body.embed #tabs, body.embed #missionsHost, body.embed #cmpView,
@@ -115,6 +135,12 @@
     <div class="panel hide-embed">
       <div class="ph">경로차 Δ를 파장 자로 재기 <span class="hint" id="rulerHint"></span></div>
       <canvas class="cv" id="cv-ruler"></canvas>
+    </div>
+    <div class="panel hide-embed" id="stepPanel">
+      <div class="ph">📘 경로차, 단계별로 배우기 <span class="hint">수업자료 「빛의 중첩과 간섭」 1차시 · 교과서 125~127쪽 · <a href="../../lectures/mechanics-energy/2026-11-07-superposition-interference-1.html" style="color:inherit">수업자료 열기</a></span></div>
+      <div class="steps" id="stepTabs"></div>
+      <div class="stepbody" id="stepBody"></div>
+      <div class="stepnav"><button type="button" id="stPrev">‹ 이전 단계</button><span id="stPos"></span><button type="button" id="stNext">다음 단계 ›</button></div>
     </div>
     <div class="panel">
       <div class="ph">스크린에 나타난 무늬 <span class="hint">가운데 O에서 ±15 mm · 눌러서 P 옮기기</span></div>
@@ -272,6 +298,7 @@ const LINES = {
     "저는 의사이자 물리학자 <b>토머스 영</b>입니다. 모두가 빛을 <b>작은 입자</b>라고 믿던 1800년대 초, 저는 <b>빛도 물결이라면</b> 좁은 틈 두 개를 지난 빛이 서로 겹쳐 <b>밝고 어두운 줄무늬</b>를 만들 것이라 생각했습니다.",
     "줄무늬의 비밀은 딱 하나, <b>경로차</b>입니다. 스크린의 한 점 P에는 슬릿 S1, S2에서 출발한 두 빛이 오는데, 두 빛이 <b>걸어온 길의 길이 차</b>가 밝기를 정합니다.",
     "경로차가 파장의 <b>정수배</b>(0, 1, 2…)이면 마루와 마루가 만나 <b>밝고</b>, <b>반정수배</b>(0.5, 1.5…)이면 마루와 골이 만나 <b>어둡습니다</b>. 오른쪽 ‘P 옮기기’ 버튼이나 아래 무늬를 눌러 P를 움직여 보세요.",
+    "수업에서 배운 <b>‘겹침의 규칙’</b>(위상이 같으면 보강, 반대면 상쇄)이 빛에서는 <b>경로차</b>로 바뀝니다. 아래 <b>📘 단계별 학습</b>에서 5단계로 풀어 볼게요. 단계마다 P를 움직여 확인하세요.",
     "예상해 보세요. 슬릿 간격 d를 <b>좁히면</b> 줄무늬 사이 간격은 넓어질까요, 좁아질까요? 슬라이더로 확인한 뒤 ‘해 보기’ 목록을 채워 보세요."
   ],
   2: [
@@ -288,6 +315,7 @@ const LINES = {
 const guide = OG.persona($('personaHost'), { who: 'young', lines: LINES[1] });
 OG.howto($('howtoHost'), [
   '<b>① 경로차로 이해하기</b>: 노란 점 P(스크린 위의 한 점)를 옮기며 경로차가 파장의 몇 배인지, 그때 밝은지 어두운지 봅니다.',
+  '<b>📘 단계별 학습</b>(탭 ① 가운데): 수업에서 배운 겹침의 규칙 → 경로차와 위상차 → d sinθ → 줄 위치·간격 → 확인 문제 순서로 시뮬과 함께 공부합니다.',
   '<b>② 슬릿 폭과 회절</b>: 슬릿 <b>폭</b> a를 바꾸면 줄무늬 전체의 크기가 어떻게 달라지는지 봅니다.',
   '<b>③ 내 실험과 비교하기</b>: 이중 슬릿·단일 슬릿·회절격자·용수철로 직접 잰 값을 넣고 이론값과 비교합니다.',
   '각 탭의 <b>🎯 해 보기</b>를 모두 체크하면 영 선생님이 한마디 해 줍니다.'
@@ -316,7 +344,8 @@ const M1 = [
   { id:'dark',  text:'P를 <b>첫 번째 어두운 줄</b>(경로차 0.5λ)에 놓아 보기' },
   { id:'bright',text:'P를 <b>1번째 밝은 줄</b>(경로차 1λ)에 놓아 보기' },
   { id:'dnar',  text:'슬릿 간격 d를 <b>0.15 mm 이하</b>로 줄여 무늬 간격 변화 확인하기' },
-  { id:'color', text:'파장을 <b>보라(450 nm 이하)</b>와 <b>빨강(640 nm 이상)</b>으로 바꿔 무늬 간격 비교하기' }
+  { id:'color', text:'파장을 <b>보라(450 nm 이하)</b>와 <b>빨강(640 nm 이상)</b>으로 바꿔 무늬 간격 비교하기' },
+  { id:'quiz',  text:'<b>📘 단계 ⑤ 확인 문제</b> 3개 모두 맞히기' }
 ];
 const M2 = [
   { id:'anar',  text:'슬릿 폭 a를 <b>0.03 mm 이하</b>로 줄여 점선 곡선이 넓어지는 것 보기' },
@@ -328,6 +357,7 @@ const REACT = {
   bright:'좋아요. 경로차가 <b>정확히 1λ</b>이면 두 빛이 같은 모양으로 겹쳐 밝습니다. 이웃한 밝은 줄이 바로 이 줄입니다.',
   dnar:'간격 d를 <b>좁히니</b> 줄무늬가 <b>넓게 퍼졌죠?</b> Δy = λL/d 이므로 d와 줄무늬 간격은 반비례합니다.',
   color:'파장이 <b>긴 빨강</b>일수록 줄무늬 간격이 넓습니다. Δy가 λ에 비례하기 때문이에요. 빛의 색이 곧 파장입니다.',
+  quiz:'수업에서 배운 <b>경로차 → 위상차 → 밝기</b>의 흐름과 <b>Δy = λL/d</b>를 문제로 확인했어요. 이제 d와 λ를 바꿔 가며 예상과 비교해 보세요.',
   anar:'틈이 <b>좁을수록</b> 빛이 더 많이 퍼져 점선 곡선(회절)이 <b>넓어집니다</b>. 폭과 퍼짐은 반비례합니다.',
   miss:'찾았군요! d/a가 정수이면 그 차수의 밝은 줄이 회절 곡선의 <b>어두운 곳</b>과 겹쳐 사라집니다.',
   lamb:'파장이 길수록 회절도 커져서 곡선이 넓어집니다. 간섭 줄무늬 간격도 함께 넓어졌을 거예요.'
@@ -375,6 +405,136 @@ JUMPS.forEach(j => {
   };
   $('jumps').append(b);
 });
+
+/* ═══════════ 📘 단계별 학습 (수업자료 「빛의 중첩과 간섭」 1차시 ⑥~⑬) ═══════════ */
+const quiz = { q2:false, q3:false, q4:false };
+let stepNo = 0; const stepSeen = {};
+function jumpToOrder(k){ const S = state(); el.y.value = Math.min(15, S.lam*S.L*k/S.d*1e3); draw('y'); }
+function nextOrder(kind){
+  const S = state(), cur = +el.y.value, dy = S.lam*S.L/S.d*1e3; let first = null;
+  for (let n = 0; n < 200; n++) { const kk = kind === 'b' ? n : n + .5, y = kk*dy; if (first === null) first = y;
+    if (y > cur + 0.02) { if (y > 15) break; el.y.value = y; draw('y'); return; } if (y > 15) break; }
+  el.y.value = Math.min(15, first); draw('y');
+}
+const STEPS = [
+  { t:'① 겹침의 규칙', html:() => `
+    <p><b class="k">복습</b> 두 파동이 만나면 각 점의 변위를 더합니다 <b>y = y₁ + y₂</b>. 위상이 같으면 <b>보강</b> A = A₁ + A₂, 반대이면 <b>상쇄</b> A = |A₁ − A₂|. 보강·상쇄는 합성파의 <b>크기</b>를 뜻해요.</p>
+    <p>빛에서는 이 ‘위상이 같은가, 반대인가’를 <b>경로차</b>가 정합니다. 아래는 스크린의 점 P에 도착한 두 빛(S1, S2에서 온 빛)과 그 합입니다. <b>P를 움직여</b> 합성 모양이 어떻게 바뀌는지 보세요.</p>
+    <canvas id="stCv"></canvas><div class="live" id="stLive"></div>` },
+  { t:'② 경로차 → 위상차', html:() => `
+    <p>P까지 한 빛이 다른 빛보다 <b>파장 하나(λ)</b>만큼 더 걸으면 위상이 360° 돌아 <b>똑같은 모양</b>으로 만납니다. 반 파장(λ/2)만 더 걸으면 <b>정반대 모양</b>이 되고요.</p>
+    <table class="mini"><tr><th>경로차 Δ</th><th>위상차</th><th>두 빛이 만나는 모습</th><th>결과</th></tr>
+      <tr><td>0, λ, 2λ … <b>(mλ)</b></td><td>0°, 360° …</td><td>마루 + 마루</td><td><b>보강 → 밝다</b></td></tr>
+      <tr><td>½λ, 3/2λ … <b>((m+½)λ)</b></td><td>180°, 540° …</td><td>마루 + 골</td><td><b>상쇄 → 어둡다</b></td></tr></table>
+    <div class="chips"><button class="chip" data-go="1">Δ = 1λ 로 이동</button><button class="chip" data-go="1.5">Δ = 1.5λ 로 이동</button><button class="chip" data-go="0.5">Δ = 0.5λ 로 이동</button></div>
+    <canvas id="stCv"></canvas><div class="live" id="stLive"></div>` },
+  { t:'③ 왜 d sinθ 일까', html:() => `
+    <p>스크린이 슬릿에서 <b>아주 멀면</b> S1·S2에서 P로 가는 두 광선은 거의 <b>평행</b>합니다. S2에서 광선에 수직인 선(점선)을 그으면 <b>직각삼각형</b>이 생겨요. 빗변이 슬릿 간격 <b>d</b>이고 θ의 마주 변이 S1이 <b>더 가야 하는 길 Δ</b>입니다. 그래서 <b>Δ = d sinθ</b>. 금색 눈금 하나가 파장 λ 하나예요.</p>
+    <canvas id="stCv"></canvas><div class="live" id="stLive"></div>` },
+  { t:'④ 줄의 위치와 간격', html:() => `
+    <p>θ가 아주 작으면 sinθ ≈ tanθ ≈ y/L 이므로, 밝은 조건 <b>d sinθ = mλ</b> 에서 <b>y = m·λL/d</b>. 이웃한 밝은 줄 사이 간격은 <b>Δy = λL/d</b> 입니다. 어두운 줄은 d sinθ = (m+½)λ.</p>
+    <div class="chips"><button class="chip" id="stNextB">다음 밝은 줄 ▶</button><button class="chip" id="stNextD">다음 어두운 줄 ▶</button></div>
+    <div class="live" id="stLive"></div>
+    <table class="mini"><tr><th>바꾸는 것</th><th>Δy는?</th><th>까닭</th></tr>
+      <tr><td>파장 λ ↑ (빨강)</td><td>↑ 넓어짐</td><td>같은 mλ를 만들려면 더 큰 각이 필요</td></tr>
+      <tr><td>스크린 거리 L ↑</td><td>↑ 넓어짐</td><td>같은 각이라도 멀리 가면 퍼짐</td></tr>
+      <tr><td>슬릿 간격 d ↑</td><td>↓ 촘촘해짐</td><td>경로차가 작은 각에서도 빨리 커짐</td></tr></table>` },
+  { t:'⑤ 확인 문제', html:() => `
+    <p>수업자료 ‘확인해 보기’의 문제입니다. 시뮬레이션으로 확인해도 좋아요.</p>
+    <div class="qbox" id="qa2"><div class="q">Q1. 이중 슬릿에서 한 점 P까지 경로차가 <b>1.5λ</b>이다. P는 밝을까, 어두울까?</div>
+      <div class="chips"><button class="chip" data-a="밝다">밝다</button><button class="chip" data-a="어둡다">어둡다</button><button class="chip" data-go="1.5">시뮬로 확인 (Δ=1.5λ)</button></div><div class="fb"></div></div>
+    <div class="qbox" id="qa3"><div class="q">Q2. 파장 532 nm, d = 0.25 mm, L = 2 m 일 때 밝은 줄 사이 간격은? (mm)</div>
+      <input type="number" step="0.01" inputmode="decimal" placeholder="mm"> <button class="chip" data-chk="1">확인</button> <button class="chip" data-set="1">시뮬 값 맞추기</button><div class="fb"></div></div>
+    <div class="qbox" id="qa4"><div class="q">Q3. 빨간 레이저로 바꾸면 줄무늬 간격은?</div>
+      <div class="chips"><button class="chip" data-a="넓어진다">넓어진다</button><button class="chip" data-a="좁아진다">좁아진다</button><button class="chip" data-a="그대로">그대로다</button><button class="chip" data-set="red">시뮬로 확인 (650 nm)</button></div><div class="fb"></div></div>` }
+];
+function renderStep(){
+  const st = STEPS[stepNo]; stepSeen[stepNo] = 1;
+  $('stepBody').innerHTML = st.html();
+  [...$('stepTabs').children].forEach((b, i) => b.classList.toggle('on', i === stepNo));
+  $('stPrev').disabled = stepNo === 0; $('stNext').disabled = stepNo === STEPS.length-1; $('stPos').textContent = (stepNo+1) + ' / ' + STEPS.length;
+  const B = $('stepBody');
+  B.querySelectorAll('[data-go]').forEach(b => b.onclick = () => jumpToOrder(+b.dataset.go));
+  if ($('stNextB')) { $('stNextB').onclick = () => nextOrder('b'); $('stNextD').onclick = () => nextOrder('d'); }
+  if (stepNo === 4) bindQuiz(B);
+  drawStep();
+}
+function quizDone(id, ok, fbEl, msg){
+  fbEl.className = 'fb ' + (ok ? 'ok' : 'ng'); fbEl.innerHTML = msg;
+  if (ok && !quiz[id]) { quiz[id] = true; $('stepTabs').children[4].classList.toggle('done', quiz.q2 && quiz.q3 && quiz.q4); if (quiz.q2 && quiz.q3 && quiz.q4 && mis && !EMBED) mis.done('quiz'); }
+}
+function bindQuiz(B){
+  const f2 = B.querySelector('#qa2 .fb'), f3 = B.querySelector('#qa3 .fb'), f4 = B.querySelector('#qa4 .fb');
+  B.querySelectorAll('#qa2 [data-a]').forEach(b => b.onclick = () => b.dataset.a === '어둡다'
+    ? quizDone('q2', true, f2, '✅ 정답! 1.5λ = 3λ/2 는 반파장의 <b>홀수배</b> → 두 빛이 <b>반대 위상</b>으로 만나 상쇄 → <b>어둡다</b>.')
+    : quizDone('q2', false, f2, '다시 생각해 보세요. 경로차가 <b>정수배</b>인지 <b>반정수배</b>인지 먼저 따져 보세요.'));
+  const inp = B.querySelector('#qa3 input');
+  B.querySelector('#qa3 [data-chk]').onclick = () => { const v = parseFloat(inp.value);
+    if (!isFinite(v)) { quizDone('q3', false, f3, '숫자를 입력해 주세요.'); return; }
+    Math.abs(v - 4.256) <= .15 ? quizDone('q3', true, f3, '✅ 정답! Δy = λL/d = (532×10⁻⁹ × 2) ÷ (0.25×10⁻³) = 4.26×10⁻³ m ≈ <b>4.3 mm</b>')
+      : quizDone('q3', false, f3, '단위를 맞춰 보세요: 532 nm = 532×10⁻⁹ m, 0.25 mm = 0.25×10⁻³ m. 식은 Δy = λL/d 입니다.'); };
+  B.querySelector('#qa3 [data-set]').onclick = () => { el.lam.value = 532; el.d.value = .25; el.L.value = 2; draw('lam'); f3.className = 'fb'; f3.textContent = '시뮬 값을 맞췄어요. 읽기값의 ‘이웃한 밝은 줄 사이 Δy’와 내 계산을 비교해 보세요.'; };
+  B.querySelectorAll('#qa4 [data-a]').forEach(b => b.onclick = () => b.dataset.a === '넓어진다'
+    ? quizDone('q4', true, f4, '✅ 정답! 파장이 길어지면 같은 경로차 조건(mλ)을 만들려면 더 큰 각이 필요해 간격이 <b>넓어집니다</b> (Δy ∝ λ).')
+    : quizDone('q4', false, f4, 'Δy = λL/d 에서 λ가 커지면 Δy는 어떻게 될까요?'));
+  B.querySelector('#qa4 [data-set]').onclick = () => { el.lam.value = 650; draw('lam'); f4.className = 'fb'; f4.textContent = '650 nm로 바꿨어요. 읽기값의 Δy가 어떻게 달라졌나요?'; };
+  [['q2', f2], ['q3', f3], ['q4', f4]].forEach(([id, f]) => { if (quiz[id]) { f.className = 'fb ok'; f.textContent = '✅ 이미 맞혔어요.'; } });
+}
+(function(){ const tb = $('stepTabs'); STEPS.forEach((s, i) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = s.t; b.onclick = () => { stepNo = i; renderStep(); }; tb.append(b); });
+  $('stPrev').onclick = () => { stepNo = Math.max(0, stepNo-1); renderStep(); }; $('stNext').onclick = () => { stepNo = Math.min(STEPS.length-1, stepNo+1); renderStep(); }; })();
+
+function drawStepWave(S){
+  const cv = $('stCv'), [c,w,h] = fit(cv, 170); c.fillStyle = '#0c1119'; c.fillRect(0,0,w,h);
+  const ratio = S.dl/S.lam, phi = TAU*ratio, A = (h-34)/4, my = h/2 + 6;
+  c.strokeStyle = '#30363d'; c.lineWidth = 1; c.beginPath(); c.moveTo(0,my); c.lineTo(w,my); c.stroke();
+  const line = (f, col, lw, al) => { c.strokeStyle = col; c.lineWidth = lw; c.globalAlpha = al; c.beginPath(); for (let i=0;i<=w;i++){ const wt = i/w*2*TAU, Y = my - A*f(wt); i ? c.lineTo(i,Y) : c.moveTo(i,Y); } c.stroke(); c.globalAlpha = 1; };
+  line(t => Math.cos(t), '#f0a500', 1.6, .85); line(t => Math.cos(t - phi), '#58a6ff', 1.6, .85); line(t => Math.cos(t) + Math.cos(t - phi), '#3fb950', 3, 1);
+  c.font = '11px system-ui'; c.textBaseline = 'alphabetic'; c.fillStyle = '#f0a500'; c.fillText('S1에서 온 빛', 8, 14); c.fillStyle = '#58a6ff'; c.fillText('S2에서 온 빛', 92, 14); c.fillStyle = '#3fb950'; c.fillText('합성 (P에서 보이는 빛)', 180, 14);
+  c.fillStyle = '#9aa7b4'; c.fillText('시간 →', w-44, h-4);
+  const amp = Math.abs(2*Math.cos(phi/2)), deg = ((ratio*360) % 360).toFixed(0);
+  const kind = amp > 1.85 ? '마루+마루 → <b>보강, 밝다</b>' : amp < .15 ? '마루+골 → <b>상쇄, 어둡다</b>' : '정수배도 반정수배도 아님 → <b>중간 밝기</b>';
+  $('stLive').innerHTML = `경로차 Δ = <b>${fmt(ratio,2)} λ</b> → 위상차 = 360° × ${fmt(ratio,2)} = ${fmt(ratio*360,0)}° (한 바퀴를 빼면 <b>${deg}°</b>)<br>합성 진폭 = <b>${fmt(amp,2)} A</b> (A = 빛 하나의 진폭, 최대 2A · 최소 0) → ${kind}`;
+}
+function drawStepTri(S){
+  const cv = $('stCv'), [c,w,h] = fit(cv, 250); c.fillStyle = '#0c1119'; c.fillRect(0,0,w,h);
+  const ratio = S.dl/S.lam, s1 = .12, sn = Math.min(.97, ratio*s1), th = Math.asin(sn), D = 150, x0 = 90, y0 = h/2, lamD = D*s1;
+  const S1 = [x0, y0-D/2], S2 = [x0, y0+D/2], u = [Math.cos(th), Math.sin(th)], Rl = w - x0 - 40;
+  c.strokeStyle = '#8b949e'; c.lineWidth = 5; c.beginPath(); c.moveTo(x0,8); c.lineTo(x0,S1[1]-4); c.moveTo(x0,S1[1]+4); c.lineTo(x0,S2[1]-4); c.moveTo(x0,S2[1]+4); c.lineTo(x0,h-8); c.stroke();
+  c.strokeStyle = '#30363d'; c.setLineDash([4,4]); c.lineWidth = 1; c.beginPath(); c.moveTo(S1[0],S1[1]); c.lineTo(w-30,S1[1]); c.stroke(); c.setLineDash([]);
+  c.strokeStyle = 'rgba(88,166,255,.9)'; c.lineWidth = 1.6; [S1,S2].forEach(P0 => { c.beginPath(); c.moveTo(P0[0],P0[1]); c.lineTo(P0[0]+u[0]*Rl, P0[1]+u[1]*Rl); c.stroke(); });
+  c.fillStyle = '#e6edf3'; c.font = '12px system-ui'; c.textBaseline = 'middle'; c.fillText('S1', x0-26, S1[1]); c.fillText('S2', x0-26, S2[1]);
+  c.fillStyle = '#9aa7b4'; c.fillText('→ 아주 먼 스크린의 P 쪽(평행 광선)', w-250, y0 + D/2 + 52 > h-8 ? h-10 : y0 + D/2 + 40);
+  if (th > .004) {
+    const dd = D*sn, Q = [S1[0]+u[0]*dd, S1[1]+u[1]*dd];
+    c.fillStyle = 'rgba(240,165,0,.10)'; c.beginPath(); c.moveTo(S1[0],S1[1]); c.lineTo(S2[0],S2[1]); c.lineTo(Q[0],Q[1]); c.closePath(); c.fill();
+    c.strokeStyle = '#9aa7b4'; c.setLineDash([5,4]); c.lineWidth = 1.2; c.beginPath(); c.moveTo(S2[0],S2[1]); c.lineTo(Q[0],Q[1]); c.stroke(); c.setLineDash([]);
+    // 직각 표시
+    const e1 = [-u[0], -u[1]], e2 = [(S2[0]-Q[0])/Math.hypot(S2[0]-Q[0], S2[1]-Q[1]), (S2[1]-Q[1])/Math.hypot(S2[0]-Q[0], S2[1]-Q[1])], q = 9;
+    c.strokeStyle = '#9aa7b4'; c.beginPath(); c.moveTo(Q[0]+e1[0]*q, Q[1]+e1[1]*q); c.lineTo(Q[0]+e1[0]*q+e2[0]*q, Q[1]+e1[1]*q+e2[1]*q); c.lineTo(Q[0]+e2[0]*q, Q[1]+e2[1]*q); c.stroke();
+    // 경로차 (금색) + λ 눈금
+    c.strokeStyle = '#f0a500'; c.lineWidth = 5; c.lineCap = 'round'; c.beginPath(); c.moveTo(S1[0],S1[1]); c.lineTo(Q[0],Q[1]); c.stroke(); c.lineCap = 'butt';
+    c.strokeStyle = '#0c1119'; c.lineWidth = 1.5; for (let i=1; i*lamD < dd-1; i++) { const px = S1[0]+u[0]*i*lamD, py = S1[1]+u[1]*i*lamD; c.beginPath(); c.moveTo(px-u[1]*5, py+u[0]*5); c.lineTo(px+u[1]*5, py-u[0]*5); c.stroke(); }
+    c.fillStyle = '#f0a500'; c.font = 'bold 13px system-ui'; c.fillText('Δ = d sinθ', (S1[0]+Q[0])/2 + 6, (S1[1]+Q[1])/2 - 16);
+    c.fillStyle = '#e6edf3'; c.font = '12px system-ui'; c.fillText('d', x0+8, y0); c.fillText('직각', Q[0]+14, Q[1]-4);
+    // θ 호
+    c.strokeStyle = '#3fb950'; c.lineWidth = 1.6; c.beginPath(); c.arc(S1[0], S1[1], 52, 0, th); c.stroke(); c.fillStyle = '#3fb950'; c.fillText('θ', S1[0]+60, S1[1]+Math.min(18, 52*Math.sin(th/2)+10));
+    c.beginPath(); c.arc(S2[0], S2[1], 40, -Math.PI/2, -Math.PI/2 + th); c.stroke(); c.fillText('θ', S2[0]+4+40*Math.sin(th/2), S2[1]-44);
+  } else { c.fillStyle = '#f0a500'; c.font = 'bold 13px system-ui'; c.fillText('θ = 0 → 두 광선의 길이가 같아요 (Δ = 0, 가운데 밝은 줄)', x0+30, y0 - D/2 - 14); }
+  c.fillStyle = '#9aa7b4'; c.font = '11px system-ui'; c.fillText('금색 눈금 하나 = 파장 λ 하나', 12, h-12);
+  const sinT = Math.abs(S.y)/Math.hypot(S.y, S.L), thDeg = Math.asin(sinT)*180/Math.PI;
+  $('stLive').innerHTML = `실제 각도: sinθ = y/√(y²+L²) = <b>${sinT.toExponential(2)}</b> (θ ≈ ${thDeg.toFixed(2)}°, <b>아주 작아요</b> — 그림은 보기 쉽게 크게 그렸어요)<br>Δ = d sinθ = ${fmt(S.d*1e3,2)} mm × ${sinT.toExponential(2)} = <b>${fmt(S.d*sinT*1e9,0)} nm</b> (S1P − S2P를 직접 잰 값 ${fmt(S.dl*1e9,0)} nm, 거의 같죠) = <b>${fmt(ratio,2)} λ</b>`;
+}
+function drawStepPos(S){
+  const dy = S.lam*S.L/S.d*1e3, ratio = S.dl/S.lam, y = Math.abs(+el.y.value);
+  const rows = [1,2,3].map(m => `<tr><td>${m}</td><td>${fmt(m*dy,2)} mm</td><td>${fmt((m-.5)*dy,2)} mm</td></tr>`).join('');
+  $('stLive').innerHTML = `<b>Δy = λL/d</b> = (${fmt(S.lam*1e9,0)} nm × ${fmt(S.L,2)} m) ÷ ${fmt(S.d*1e3,2)} mm = <b>${fmt(dy,2)} mm</b><br>지금 P: y = ${fmt(y,2)} mm → m = y ÷ Δy = <b>${fmt(y/dy,2)}</b> (= Δ ÷ λ = ${fmt(ratio,2)}) <span style="color:var(--sub)">· 정수면 밝고 반정수면 어두워요</span>
+    <table class="mini"><tr><th>m</th><th>m번째 밝은 줄 y = mλL/d</th><th>m번째 어두운 줄 y = (m−½)λL/d</th></tr>${rows}</table>`;
+}
+function drawStep(){
+  if ($('stepPanel').hidden || !$('stLive') && stepNo !== 4) return;
+  const S = state();
+  if (stepNo === 0 || stepNo === 1) drawStepWave(S); else if (stepNo === 2) drawStepTri(S); else if (stepNo === 3) drawStepPos(S);
+}
 
 /* 그리기 */
 function drawTop(S, rgb){
@@ -495,7 +655,7 @@ function draw(src){
   $('lv').textContent = el.lam.value+' nm'; $('dv').textContent = fmt(+el.d.value,2)+' mm'; $('av').textContent = fmt(+el.a.value,2)+' mm';
   $('Lv').textContent = fmt(S.L,2)+' m'; $('yv').textContent = fmt(+el.y.value,2)+' mm';
   $('aRow').style.display = S.on ? '' : 'none';
-  drawTop(S, rgb); drawRuler(S, rgb); drawStrip(S, rgb); drawGraph(S, rgb); readout(S);
+  drawTop(S, rgb); drawRuler(S, rgb); drawStrip(S, rgb); drawGraph(S, rgb); readout(S); if (tab === 1 && !EMBED) drawStep();
   if (src) checkMissions(src);
 }
 Object.keys(el).forEach(k => el[k].addEventListener('input', () => draw(k)));
@@ -764,7 +924,7 @@ function setTab(n){
   tab = n;
   [...$('tabs').children].forEach(b => b.classList.toggle('active', +b.dataset.tab === n));
   $('simView').hidden = n === 3; $('cmpView').hidden = n !== 3;
-  $('missionsHost').hidden = n === 3;
+  $('missionsHost').hidden = n === 3; $('stepPanel').hidden = n !== 1;
   guide.set(LINES[n], 0);
   if (n === 3) { $('howtoHost').hidden = false; renderCmp(); }
   else { buildMissions(); draw(); }
@@ -774,6 +934,7 @@ function setTab(n){
 
 /* 시작 */
 setupTypes(); setupSide();
+$('stepPanel').hidden = EMBED; if (!EMBED) renderStep();
 if (EMBED) { $('missionsHost').hidden = true; draw(); }
 else { buildMissions(); if (q.has('a') || q.get('tab') === '2') setTab(2); else if (q.get('tab') === '3') setTab(3); else draw(); }
 window.__ds = { state, draw, I, sinc2: Sy, setTab, cmp, TY };

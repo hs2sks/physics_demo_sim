@@ -135,7 +135,7 @@
       <div class="stepnav"><button type="button" id="stPrev">‹ 이전 단계</button><span id="stPos"></span><button type="button" id="stNext">다음 단계 ›</button></div>
     </div>
     <div class="panel" id="pTop">
-      <div class="ph">위에서 본 장치 <span class="hint">그림은 보기 쉽게 비율을 과장했어요</span></div>
+      <div class="ph" id="topTitle">위에서 본 장치 <span class="hint">그림은 보기 쉽게 비율을 과장했어요</span></div>
       <canvas class="cv" id="cv-top"></canvas>
       <div class="cap hide-embed">P에서 <b>가까운 쪽 길이만큼</b> 잘라 내면, <b>남는 노란 부분이 경로차 Δ</b>입니다.</div>
     </div>
@@ -451,13 +451,13 @@ const STEPS = [
       <tr><td>스크린 거리 L ↑</td><td>↑ 넓어짐</td><td>같은 각이라도 멀리 가면 퍼짐</td></tr>
       <tr><td>슬릿 간격 d ↑</td><td>↓ 촘촘해짐</td><td>경로차가 작은 각에서도 빨리 커짐</td></tr></table>` },
   { t:'⑤ 확인 문제', html:() => `
-    <p>수업자료 ‘확인해 보기’의 문제입니다. 시뮬레이션으로 확인해도 좋아요.</p>
+    <p>수업자료 ‘확인해 보기’의 문제입니다. 배운 식으로 풀어 보세요.</p>
     <div class="qbox" id="qa2"><div class="q">Q1. 이중 슬릿에서 한 점 P까지 경로차가 <b>1.5λ</b>이다. P는 밝을까, 어두울까?</div>
       <div class="chips"><button class="chip" data-a="밝다">밝다</button><button class="chip" data-a="어둡다">어둡다</button><button class="chip" data-go="1.5">시뮬로 확인 (Δ=1.5λ)</button></div><div class="fb"></div></div>
     <div class="qbox" id="qa3"><div class="q">Q2. 파장 532 nm, d = 0.25 mm, L = 2 m 일 때 밝은 줄 사이 간격은? (mm)</div>
-      <input type="number" step="0.01" inputmode="decimal" placeholder="mm"> <button class="chip" data-chk="1">확인</button> <button class="chip" data-set="1">시뮬 값 맞추기</button><div class="fb"></div></div>
+      <input type="number" step="0.01" inputmode="decimal" placeholder="mm"> <button class="chip" data-chk="1">확인</button><div class="fb"></div></div>
     <div class="qbox" id="qa4"><div class="q">Q3. 빨간 레이저로 바꾸면 줄무늬 간격은?</div>
-      <div class="chips"><button class="chip" data-a="넓어진다">넓어진다</button><button class="chip" data-a="좁아진다">좁아진다</button><button class="chip" data-a="그대로">그대로다</button><button class="chip" data-set="red">시뮬로 확인 (650 nm)</button></div><div class="fb"></div></div>` }
+      <div class="chips"><button class="chip" data-a="넓어진다">넓어진다</button><button class="chip" data-a="좁아진다">좁아진다</button><button class="chip" data-a="그대로">그대로다</button></div><div class="fb"></div></div>` }
 ];
 function renderStep(){
   const st = STEPS[stepNo]; stepSeen[stepNo] = 1;
@@ -484,11 +484,9 @@ function bindQuiz(B){
     if (!isFinite(v)) { quizDone('q3', false, f3, '숫자를 입력해 주세요.'); return; }
     Math.abs(v - 4.256) <= .15 ? quizDone('q3', true, f3, '✅ 정답! Δy = λL/d = (532×10⁻⁹ × 2) ÷ (0.25×10⁻³) = 4.26×10⁻³ m ≈ <b>4.3 mm</b>')
       : quizDone('q3', false, f3, '단위를 맞춰 보세요: 532 nm = 532×10⁻⁹ m, 0.25 mm = 0.25×10⁻³ m. 식은 Δy = λL/d 입니다.'); };
-  B.querySelector('#qa3 [data-set]').onclick = () => { el.lam.value = 532; el.d.value = .25; el.L.value = 2; draw('lam'); f3.className = 'fb'; f3.textContent = '시뮬 값을 맞췄어요. 읽기값의 ‘이웃한 밝은 줄 사이 Δy’와 내 계산을 비교해 보세요.'; };
   B.querySelectorAll('#qa4 [data-a]').forEach(b => b.onclick = () => b.dataset.a === '넓어진다'
     ? quizDone('q4', true, f4, '✅ 정답! 파장이 길어지면 같은 경로차 조건(mλ)을 만들려면 더 큰 각이 필요해 간격이 <b>넓어집니다</b> (Δy ∝ λ).')
     : quizDone('q4', false, f4, 'Δy = λL/d 에서 λ가 커지면 Δy는 어떻게 될까요?'));
-  B.querySelector('#qa4 [data-set]').onclick = () => { el.lam.value = 650; draw('lam'); f4.className = 'fb'; f4.textContent = '650 nm로 바꿨어요. 읽기값의 Δy가 어떻게 달라졌나요?'; };
   [['q2', f2], ['q3', f3], ['q4', f4]].forEach(([id, f]) => { if (quiz[id]) { f.className = 'fb ok'; f.textContent = '✅ 이미 맞혔어요.'; } });
 }
 (function(){ const tb = $('stepTabs'); STEPS.forEach((s, i) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = s.t; b.onclick = () => { stepNo = i; renderStep(); }; tb.append(b); });
@@ -642,22 +640,28 @@ function readout(S){
   if (nearInt) { v.className = 'badge b-b'; v.textContent = `보강 간섭 → 밝다 (${m === 0 ? '가운데 밝은 줄' : m+'번째 밝은 줄'})`; }
   else if (nearHalf) { v.className = 'badge b-d'; v.textContent = `상쇄 간섭 → 어둡다 (${Math.floor(ratio) === 0 ? '가운데' : Math.floor(ratio)+'번째'}와 ${Math.floor(ratio)+1}번째 밝은 줄 사이)`; }
   else { v.className = 'badge b-m'; v.textContent = '중간 밝기 (정수배도 반정수배도 아님)'; }
-  const rows = [
+  const rows = tab === 1 ? [
+    ['경로차 Δ ÷ λ', fmt(ratio,2)+' 배'],
+    ['위상차 (360° × Δ/λ)', fmt(ratio*360 % 360,0)+'°'],
+    ['두 빛이 만나는 모습', nearInt ? '마루 + 마루' : nearHalf ? '마루 + 골' : '그 중간']
+  ] : [
     ['슬릿 S1 → P', fmt(S.r1,6)+' m'], ['슬릿 S2 → P', fmt(S.r2,6)+' m'],
     ['경로차 Δ = |S2P − S1P|', fmt(S.dl*1e9,0)+' nm'], ['Δ ÷ λ', fmt(ratio,2)+' 배'],
     ['이웃한 밝은 줄 사이 Δy', fmt(S.dy*1e3,2)+' mm']
   ];
-  if (S.on) {
+  if (tab === 1) {
+    $('tip').innerHTML = '경로차가 <b>정수배(mλ)</b>이면 밝고, <b>반정수배((m+½)λ)</b>이면 어둡습니다. 위의 5단계를 따라가며 확인하세요.';
+  } else if (S.on) {
     const r = S.d/S.a, n = Math.round(r), nmax = Math.ceil(r-1e-9)-1;
     rows.push(['회절 첫 어두운 곳 y = λL/a', fmt(S.lam*S.L/S.a*1e3,1)+' mm']);
     rows.push(['d / a', fmt(r,2)]);
     rows.push(['곡선 가운데 안의 밝은 줄', (2*nmax+1)+'개']);
     $('tip').innerHTML = Math.abs(r-n) < .02 && n >= 1 ? `<b>d/a = ${n}</b> → ${n}번째 밝은 줄이 회절 곡선의 어두운 곳과 겹쳐 <b>사라졌어요</b>.` : 'd/a가 정수가 아니라서 모든 밝은 줄이 보여요. 정수가 되면 일부가 사라집니다.';
   } else {
-    $('tip').innerHTML = (tab === 1 ? '밝은 줄 위치는 <b>y = m·λL/d</b>입니다(단계 ④). 무늬 전체는 ② 탭에서 봅니다.' : '밝은 줄 위치는 <b>y = m·λL/d</b>입니다. 위 그래프 아래 번호가 m이에요. 슬릿을 아주 가는 선으로 본 이상적인 모형입니다(폭의 영향은 ③ 탭).');
+    $('tip').innerHTML = ('밝은 줄 위치는 <b>y = m·λL/d</b>입니다. 위 그래프 아래 번호가 m이에요. 슬릿을 아주 가는 선으로 본 이상적인 모형입니다(폭의 영향은 ③ 탭).');
   }
   $('rd').innerHTML = rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
-  const app = S.d*S.y/S.L;
+  const app = S.d*S.y/S.L; $('eq').hidden = tab === 1;
   $('eq').innerHTML = `경로차 Δ ≈ d·y/L<br>= ${fmt(S.d*1e3,2)} mm × ${fmt(S.y*1e3,2)} mm ÷ ${fmt(S.L,2)} m<br>= <b>${fmt(app*1e9,0)} nm</b> (정확한 값 ${fmt(S.dl*1e9,0)} nm)<br>→ Δ = <b>${fmt(ratio,2)} λ</b><br><span style="color:var(--sub)">밝은 줄: Δ = mλ ⇒ y = m·λL/d</span>`;
 }
 function draw(src){
@@ -936,9 +940,15 @@ function applyView(){
   const show = (id, on) => { $(id).hidden = !on; };
   if (EMBED) return;
   show('stepPanel', tab === 1); show('pRuler', tab <= 2); show('pStrip', tab >= 2); show('pGraph', tab >= 2);
+  const learn = tab === 1, boxes = document.querySelectorAll('#simView .side > .box');
+  $('presets').hidden = learn; ['lam','d','L'].forEach(k => el[k].parentElement.hidden = learn);
+  boxes[1].querySelector('h2').textContent = learn ? '관찰 위치' : '조절'; boxes[2].querySelector('h2').textContent = learn ? '지금 P의 상태' : '읽기값';
+  $('rd').hidden = learn; $('topTitle').firstChild.textContent = learn ? '경로차 그림 ' : '위에서 본 장치 ';
 }
+let started = false;
 function setTab(n){
   tab = n;
+  if (n === 1 && started) { el.lam.value = 532; el.d.value = .25; el.L.value = 1; }
   [...$('tabs').children].forEach(b => b.classList.toggle('active', +b.dataset.tab === n));
   $('simView').hidden = n === 4; $('cmpView').hidden = n !== 4;
   $('missionsHost').hidden = n === 4;
@@ -954,6 +964,7 @@ setupTypes(); setupSide();
 if (!EMBED) renderStep();
 if (EMBED) { $('missionsHost').hidden = true; draw(); }
 else { buildMissions(); if (q.has('a') || q.get('tab') === '3') setTab(3); else if (q.get('tab') === '4') setTab(4); else if (q.get('tab') === '2') setTab(2); else draw(); }
+started = true;
 window.__ds = { state, draw, I, sinc2: Sy, setTab, cmp, TY };
 })();
 </script>

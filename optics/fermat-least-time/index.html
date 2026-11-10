@@ -744,13 +744,14 @@ function drawWave(api) {
 /* ④-1 전반사: 빛은 아래(매질 1)에서 경계로 올라온다 */
 function drawTir(api) {
   const P = api.P, ctx = begin(api), n1 = P.tn1, n2 = P.tn2, th = rad(P.tth), s = Math.sin(th), c = Math.cos(th);
-  const OX = 500, OY = 215, RL = 175, th2 = PHY.theta2(n1, n2, th), thc = PHY.thetaC(n1, n2), tir = th2 === null, R = PHY.fres(n1, n2, th);
+  const OX = TIR.OX, OY = TIR.OY, RL = TIR.RL, th2 = PHY.theta2(n1, n2, th), thc = PHY.thetaC(n1, n2), tir = th2 === null, R = PHY.fres(n1, n2, th);
   ctx.fillStyle = `rgba(127,214,255,${.04 + .06 * n2})`; ctx.fillRect(40, 20, 920, OY - 20);
   ctx.fillStyle = `rgba(127,214,255,${.04 + .06 * n1})`; ctx.fillRect(40, OY, 920, 205);
   line(ctx, 40, OY, 960, OY, '#d8ecff', 3, [10, 6]); line(ctx, OX, OY - 170, OX, OY + 190, 'rgba(216,236,255,.35)', 1.5, [5, 5]);
   txt(ctx, '매질 2  n₂ = ' + f1(n2, 2) + (n2 < n1 ? '  (빠름)' : n2 > n1 ? '  (느림)' : ''), 50, 46, COL.dim, 16); txt(ctx, '매질 1  n₁ = ' + f1(n1, 2) + (n1 > n2 ? '  (느림)' : n1 < n2 ? '  (빠름)' : ''), 50, OY + 28, COL.dim, 16);
-  // 입사
-  arrow(ctx, OX - RL * s, OY + RL * c, OX - 6 * s, OY + 6 * c, COL.y, 5);
+  // 입사 (꼬리 끝을 끌어 각도 변경)
+  arrow(ctx, OX - RL * s, OY + RL * c, OX - 6 * s, OY + 6 * c, COL.y, 5); halo(ctx, OX - RL * s, OY + RL * c); dot(ctx, OX - RL * s, OY + RL * c, 7, COL.y);
+  txt(ctx, '입사 광선을 끌어 각도를 바꿔 보세요', 960, 46, COL.dim, 15, 600, 'right');
   // 반사 (세기 ∝ R)
   ctx.globalAlpha = clamp(.15 + .85 * R, 0, 1); arrow(ctx, OX + 6 * s, OY + 6 * c, OX + RL * s, OY + RL * c, tir ? '#ff7aa8' : '#ffb454', 3 + 3 * R); ctx.globalAlpha = 1;
   // 굴절 (세기 ∝ 1−R)
@@ -800,6 +801,7 @@ function drawFiber(api) {
   api.setNote('광섬유는 굴절률이 큰 코어를 작은 클래딩이 감싸 코어 안의 빛이 벽에서 계속 전반사됩니다. 입사각이 수용각 θmax = sin⁻¹√(n₁²−n₂²)를 넘으면 벽 입사각이 임계각보다 작아져 한 번 닿을 때마다 일부가 새어 나갑니다.');
   ctx.restore();
 }
+const TIR = { OX: 500, OY: 215, RL: 175 };
 const DRAW = { refl: drawRefl, refr: drawRefr, wave: drawWave, tir: drawTir, fiber: drawFiber };
 
 /* 점 끌기: A·B(가로·세로)와 P(가로) */
@@ -811,7 +813,9 @@ function handles(api) {
 function toV(api, e) { const rc = api.canvas.getBoundingClientRect(), k = Math.min(api.width / W0, api.height / H0); return [(e.clientX - rc.left - (api.width - W0 * k) / 2) / k, (e.clientY - rc.top - (api.height - H0 * k) / 2) / k]; }
 function nearest(h, vx, vy) { let best = null, bd = 34; for (const n of ['A', 'B', 'P']) { const d = Math.hypot(h.pts[n][0] - vx, h.pts[n][1] - vy); if (d < bd) { bd = d; best = n; } } return best; }
 let drag = null;
+function tirRegion(vx, vy) { return vy > TIR.OY - 10 && vy < TIR.OY + 215 && vx > 40 && vx < 960; }
 function applyDrag(api, e) {
+  if (drag === 'T') { const [vx, vy] = toV(api, e); const ang = deg(Math.atan2(Math.max(0, TIR.OX - vx), Math.max(1, vy - TIR.OY))); api.setParam('tth', clamp(rnd2(ang), 0, 89)); api.refresh(); return; }
   const h = handles(api); if (!h || !drag) return; const [vx, vy] = toV(api, e), cm = (vx - XA) / PPC, k = h.k, g = h.g;
   if (drag === 'P') api.setParam(k + 'x', rnd2(clamp(cm, g.xa, g.xb)));
   else if (drag === 'A') { api.setParam(k + 'xa', rnd2(clamp(cm, 0, g.xb - MINSEP))); api.setParam(k + 'a', rnd2(clamp((BY - vy) / PPC, 1, 8))); }
@@ -822,8 +826,8 @@ function applyDrag(api, e) {
 const SIM = {
   init(api) {
     api.canvas.style.touchAction = 'none';
-    api.canvas.addEventListener('pointerdown', e => { const h = handles(api); if (!h) return; const [vx, vy] = toV(api, e); drag = nearest(h, vx, vy); if (drag) { try { api.canvas.setPointerCapture(e.pointerId); } catch (_) { } applyDrag(api, e); } });
-    api.canvas.addEventListener('pointermove', e => { const h = handles(api); if (!h) { api.canvas.style.cursor = ''; return; } if (drag && (e.buttons & 1)) applyDrag(api, e); else { const [vx, vy] = toV(api, e); api.canvas.style.cursor = nearest(h, vx, vy) ? 'grab' : ''; } });
+    api.canvas.addEventListener('pointerdown', e => { if (api.scenario.id === 'tir') { const [tx, ty] = toV(api, e); if (tirRegion(tx, ty)) { drag = 'T'; try { api.canvas.setPointerCapture(e.pointerId); } catch (_) { } applyDrag(api, e); } return; } const h = handles(api); if (!h) return; const [vx, vy] = toV(api, e); drag = nearest(h, vx, vy); if (drag) { try { api.canvas.setPointerCapture(e.pointerId); } catch (_) { } applyDrag(api, e); } });
+    api.canvas.addEventListener('pointermove', e => { if (api.scenario.id === 'tir') { if (drag && (e.buttons & 1)) applyDrag(api, e); else { const [tx, ty] = toV(api, e); api.canvas.style.cursor = tirRegion(tx, ty) ? 'grab' : ''; } return; } const h = handles(api); if (!h) { api.canvas.style.cursor = ''; return; } if (drag && (e.buttons & 1)) applyDrag(api, e); else { const [vx, vy] = toV(api, e); api.canvas.style.cursor = nearest(h, vx, vy) ? 'grab' : ''; } });
     const up = () => { drag = null; }; api.canvas.addEventListener('pointerup', up); api.canvas.addEventListener('pointercancel', up);
   },
   enter(api) {

@@ -97,6 +97,7 @@
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 let decks = [];
 let subject = "전체";
+let rank = {}; // 관리자가 정한 카드 순서(order.json) — 같은 단원 안에서만 적용, 없는 자료는 뒤(날짜 내림차순)
 const closed = new Set(); // 접어 둔 과목
 
 function render() {
@@ -115,7 +116,7 @@ function render() {
     const unitNo = (u) => { const i = "ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ".indexOf(String(u).trim()[0]); return i < 0 ? 99 : i; }; // 단원 앞 로마 숫자 순(없으면 맨 뒤, 같으면 등록 순)
     const units = [...new Set(inSub.map((d) => d.unit))].sort((x, y) => unitNo(x) - unitNo(y));
     return `<details class="subj" data-s="${esc(sub)}"${closed.has(sub) ? "" : " open"}><summary>${esc(sub)} <span class="cnt">${inSub.length}</span></summary>` + units.map((u) => {
-      const cards = inSub.filter((d) => d.unit === u).map((d) => `
+      const cards = inSub.filter((d) => d.unit === u).sort((a, b) => (rank[a.path] ?? 1e6) - (rank[b.path] ?? 1e6)).map((d) => `
         <a class="card" href="${esc(d.path)}" target="_blank" rel="noopener">
           ${d.thumb ? `<img class="thumb" src="${esc(d.thumb)}" alt="" loading="lazy" onerror="this.remove()">` : ""}
           <div class="date">${esc(d.date)}</div>
@@ -142,13 +143,16 @@ function renderChips() {
   }));
 }
 
-fetch("index.json").then((r) => r.json()).then((data) => {
+fetch("../order.json", { cache: "no-cache" }).then((r) => r.ok ? r.json() : {}).catch(() => ({})).then((all) => {
+  ((all || {})["lectures"] || []).forEach((p, i) => { rank[p] = i; });
+  return fetch("index.json");
+}).then((r) => r.json()).then((data) => {
   // 최신 수업이 위로
   decks = data.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
   renderChips(); render();
   document.getElementById("q").addEventListener("input", render);
 }).catch(() => { document.getElementById("list").innerHTML = '<p class="empty">목록을 불러오지 못했습니다.</p>'; });
 </script>
-<script src="../site-nav.js?v=10"></script>
+<script src="../site-nav.js?v=11"></script>
 </body>
 </html>

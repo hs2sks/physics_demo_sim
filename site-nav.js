@@ -55,4 +55,30 @@
     var fit = function () { document.body.style.paddingTop = (base + bar.offsetHeight + 8) + 'px'; };
     fit(); window.addEventListener('resize', fit); window.addEventListener('load', fit);
   }
+  // 카드 순서(관리자가 board.crazyray.uk/admin/order 에서 저장한 order.json)를 같은 묶음 안에서 적용한다.
+  var pageKey = rel === '' || rel === 'index.html' ? 'home' : rel.split('/')[0];
+  fetch(root + 'order.json', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : {}; }).then(function (all) {
+    var saved = all[pageKey]; if (!saved || !saved.length) return;
+    var rank = {}; saved.forEach(function (h, i) { rank[h] = i; });
+    [].forEach.call(document.querySelectorAll('.grid'), function (g) {
+      var kids = [].slice.call(g.children), idx = [], cards = [];
+      kids.forEach(function (k, i) { if (k.matches('a.card[href]')) { idx.push(i); cards.push(k); } });
+      if (cards.length < 2) return;
+      var sorted = cards.map(function (c, i) { return { c: c, i: i }; }).sort(function (a, b) {
+        var ra = rank[a.c.getAttribute('href')], rb = rank[b.c.getAttribute('href')];
+        ra = ra === undefined ? 1e6 : ra; rb = rb === undefined ? 1e6 : rb;
+        return ra - rb || a.i - b.i;
+      });
+      idx.forEach(function (pos, n) { kids[pos] = sorted[n].c; });
+      kids.forEach(function (k) { g.appendChild(k); });
+    });
+  }).catch(function () { });
+  // 카드·목록 링크를 누르면 어떤 자료인지 경로만 세어 관리자 통계에 쓴다(개인 정보 없음, 실패해도 이동에는 영향 없음).
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href]');
+    if (!a || a.closest('#site-nav')) return;
+    var u; try { u = new URL(a.href, location.href); } catch (x) { return; }
+    if (u.origin !== location.origin || !a.closest('.card, .grid, .row, .item, .list, li')) return;
+    try { navigator.sendBeacon('https://board.crazyray.uk/api/click', u.pathname); } catch (x) { }
+  }, true);
 })();

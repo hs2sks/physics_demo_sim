@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>최단시간으로 보는 반사와 굴절 — 파동의 속력과 굴절률</title>
+<style>
+  :root {
+    --bg: #f4f6fa; --panel: #ffffff; --ink: #1c2733; --sub: #5a6b7d;
+    --accent: #4f46e5; --accent2: #e11d48; --ok: #059669;
+    --border: #e2e7f0; --radius: 16px; --shadow: 0 1px 2px rgba(20,30,60,.05), 0 8px 24px rgba(20,30,60,.06);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+  body {
+    font-family: "Pretendard", "Noto Sans KR", "Segoe UI", "Malgun Gothic", system-ui, sans-serif;
+    background: radial-gradient(1200px 500px at 10% -10%, #dfe4ff 0, transparent 60%), #eef1f8; color: var(--ink);
+    padding: 12px; font-size: 15px;
+  }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  header h1 { font-size: 1.25em; }
+  header .spacer { flex: 1; }
+  a.home { text-decoration:none; color:var(--sub); border:1px solid var(--border); padding:6px 14px; border-radius:999px; font-size:0.9em; white-space:nowrap; background:#fff; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .tabs button { flex: 0 0 auto; padding: 8px 18px; border-radius: 999px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 1em; }
+  .tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .layout { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); }
+  .sim-col { flex: 2 1 480px; display: flex; flex-direction: column; gap: 12px; }
+  .side-col { flex: 1 1 320px; display: flex; flex-direction: column; gap: 12px; }
+
+  .scene-scroll { overflow-x: auto; border-radius: 12px; }
+  #sceneWrap { position: relative; width: 100%; aspect-ratio: 16/10; border-radius: 8px; overflow: hidden; background: radial-gradient(circle at 50% 30%, #16233a, #060a12 75%); }
+  #sceneWrap canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #hoverHint { position:absolute; left:8px; bottom:8px; color:#9fb3d9; font-size:0.78em; background:rgba(6,10,18,0.55); padding:4px 8px; border-radius:6px; pointer-events:none; }
+  #hoverHint:empty { display: none; }
+  #simError { position:absolute; left:8px; right:8px; top:8px; color:#fff; background:rgba(214,69,69,0.92); padding:6px 10px; border-radius:6px; font-size:0.82em; white-space:pre-wrap; }
+
+  /* 빠른 조작줄: 장면 바로 아래 */
+  .quickbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: 10px; padding: 8px 12px; background: #f1f4fb; border-radius: 12px; }
+  .quickbar .param { display: flex; align-items: center; gap: 8px; margin: 0; }
+  .quickbar .param label { display: flex; gap: 8px; margin: 0; white-space: nowrap; font-size: .9em; }
+  .quickbar .param input[type=range] { width: 170px; max-width: 38vw; }
+  .quickbar .row { margin: 0 !important; gap: 6px; }
+  .quickbar .row button { padding: 5px 12px; font-size: .86em; }
+  /* 학습 페이지(이론·실제 실험·의미·보고서) */
+  .pagenav { position: sticky; top: 0; z-index: 30; display: flex; gap: 6px; overflow-x: auto; margin: 0 -12px 14px; padding: 8px 12px; background: rgba(255,255,255,.92); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); scrollbar-width: none; }
+  .pagenav button { flex: 1 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; padding: 10px 16px; white-space: nowrap; font-weight: 600; color: var(--sub); background: transparent; border-color: transparent; }
+  .pagenav button i { font-style: normal; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #e4e8f3; font-size: .78em; }
+  .pagenav button.seen i { background: #d1fae5; color: var(--ok); }
+  .pagenav button.active { background: var(--accent); color: #fff; box-shadow: 0 4px 14px rgba(79,70,229,.3); }
+  .pagenav button.active i { background: rgba(255,255,255,.25); color: #fff; }
+  .pagenav .split-btn { flex: 0 0 auto; margin-left: auto; display: none; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .page h2 { font-size: 1.3em; margin-bottom: 4px; }
+  .page .lead { color: var(--sub); margin-bottom: 14px; }
+  .page .card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); margin-bottom: 14px; }
+  .page .card h3 { font-size: .95em; color: var(--sub); margin-bottom: 10px; }
+  .page .cmp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+  .page .cmp-item { border: 1px solid var(--border); border-radius: 14px; padding: 12px; background: #fbfcff; }
+  .page .cmp-item h4 { font-size: .95em; margin-bottom: 8px; }
+  .page img { max-width: 100%; height: auto; border-radius: 10px; }
+  .page figcaption, .page .credit { font-size: .78em; color: var(--sub); line-height: 1.5; margin-top: 5px; }
+  .page .eqgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+  .page .eqbox { border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; background: linear-gradient(180deg, #fbfbff, #f3f5ff); }
+  .page .eqbox .eq { font-family: Georgia, serif; font-size: 1.3em; color: var(--accent); margin-bottom: 4px; }
+  .page ul.diff { padding-left: 18px; line-height: 1.75; font-size: .92em; }
+  .page ol.steps { counter-reset: s; list-style: none; display: grid; gap: 8px; }
+  .page ol.steps li { counter-increment: s; display: flex; gap: 10px; align-items: flex-start; font-size: .92em; line-height: 1.6; }
+  .page ol.steps li::before { content: counter(s); flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: .85em; }
+  .page .work { background: #fff8e6; border: 1px solid #f0d99a; border-radius: 12px; padding: 10px 14px; }
+  .page .pane-next { display: flex; gap: 10px; justify-content: space-between; flex-wrap: wrap; margin-top: 16px; }
+  #workarea { display: block; }
+  #reportPage { display: none; }
+  body[data-page="report"] #reportPage { display: block; }
+  #reportPage h2 { font-size: 1.2em; }
+  #reportPage .rfield { margin: 10px 0; }
+  #reportPage .rfield label { display: block; font-weight: 700; margin-bottom: 3px; }
+  #reportPage textarea, #reportPage input[type=text] { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 10px; font: inherit; line-height: 1.6; }
+  #reportPage textarea { min-height: 76px; resize: vertical; }
+  #reportPage .rauto { background: #f6f9fc; border: 1px dashed var(--border); border-radius: 10px; padding: 8px 10px; }
+  a.btnlink { display: inline-block; text-decoration: none; padding: 8px 18px; border-radius: 999px; border: 1px solid var(--accent); background: var(--accent); color: #fff; font-size: .95em; }
+  #reportPrint { display: none; }
+  @media (min-width: 1100px) {
+    .pagenav .split-btn.on { display: inline-block; }
+    body.split .workarea-wide, body.split #workarea { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(420px, 1fr); gap: 16px; align-items: start; }
+    body.split #reportPage { display: block; position: sticky; top: 64px; max-height: calc(100vh - 80px); overflow-y: auto; }
+  }
+  @media print {
+    body { background: #fff; padding: 0; }
+    header, .pagenav, #pageHost, #simView, #reportPage { display: none !important; }
+    #reportPrint { display: block !important; }
+  }
+  .scenario-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .scenario-picker button { flex: 1 1 30%; min-width: 120px; padding: 8px 6px; font-size: 0.86em; border-radius: 12px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  .scenario-picker button.active { background: #eef0ff; border-color: var(--accent); color: var(--accent); font-weight: 700; }
+
+  .param { margin-bottom: 10px; }
+  .param label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 4px; font-size: 0.92em; }
+  .param label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .param input[type=range] { width: 100%; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .hint { color: var(--sub); font-size: 0.83em; margin-top: 2px; line-height: 1.5; }
+
+  button { font-size: 1em; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.warn { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .controls-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.82em; color: var(--sub); margin-top: 8px; }
+  .legend:empty { display: none; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .swatch { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .swatch.bar { border-radius: 2px; }
+
+  table.readout { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+  table.readout td { padding: 4px 2px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  table.readout td:first-child { color: var(--sub); }
+  table.readout td:last-child { text-align: right; font-weight: 700; }
+
+  details { margin-top: 6px; }
+  summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+  .formula-body { padding: 8px 2px; line-height: 1.8; font-size: 0.92em; }
+  .formula-body .eq { font-size: 1.08em; text-align: center; margin: 6px 0; font-family: Georgia, serif; }
+  .note { border-left: 3px solid var(--accent); background: #eef0ff; padding: 8px 10px; border-radius: 6px; font-size: 0.86em; margin-top: 8px; line-height: 1.6; }
+  .note:empty { display: none; }
+  .misconception { border-left: 3px solid var(--accent2); background: #fff0f3; padding: 8px 10px; border-radius: 6px; font-size: 0.86em; margin-top: 8px; line-height: 1.6; }
+
+  canvas.chart { width: 100%; background: #fff; border: 1px solid var(--border); border-radius: 6px; }
+
+  body.projector { font-size: 19px; }
+  body.projector button { padding: 12px 18px; }
+  body.projector .scenario-picker button { font-size: 1em; padding: 12px 8px; }
+
+  @media (max-width: 720px) {
+    body { font-size: 16px; padding: 8px; }
+    .layout { flex-direction: column; }
+    .sim-col, .side-col { flex: 1 1 100%; }
+    button { padding: 11px 14px; }
+    input[type=range] { height: 26px; }
+  }
+/* ---- 레시피 입력 extra_css ---- */
+@media(max-width:480px){.pagenav{margin:0 -8px 14px;padding:8px}}
+</style>
+</head>
+<body>
+
+<header>
+  <a class="home" href="../../index.html">🏠 홈</a>
+  <h1>⏱️ 최단시간으로 보는 반사와 굴절 — 파동의 속력과 굴절률</h1>
+  <span class="spacer"></span>
+  <button id="projectorBtn" title="프로젝터용 큰 글씨 모드">🖥 큰 글씨 모드</button>
+</header>
+
+<nav class="pagenav" id="pageNav" hidden></nav>
+<div id="workarea">
+<div id="mainArea">
+<div id="pageHost"></div>
+<div id="simView">
+<div class="tabs" id="tabs"></div>
+
+<div class="layout">
+
+  <div class="sim-col">
+    <div class="panel">
+      <div class="scene-scroll"><div id="sceneWrap">
+        <div id="hoverHint"></div>
+        <div id="simError" hidden></div>
+      </div></div>
+      <div class="quickbar" id="quickbar" hidden></div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="panel" id="graphPanel" hidden>
+      <canvas id="chartCanvas" class="chart" width="440" height="220"></canvas>
+      <div class="hint" id="chartHint"></div>
+    </div>
+  </div>
+
+  <div class="side-col">
+
+    <div class="panel" id="scenarioPanel">
+      <div class="scenario-picker" id="scenarioPicker"></div>
+      <div id="scenarioBody"></div>
+      <div id="customPanel"></div>
+    </div>
+
+    <div class="panel" id="readoutPanel">
+      <b id="readoutTitle"></b>
+      <table class="readout" id="readout"></table>
+      <div class="note" id="readoutNote"></div>
+    </div>
+
+    <div class="panel">
+      <details id="formulaDetails">
+        <summary>📐 관련 공식 보기</summary>
+        <div class="formula-body" id="formulaBody"></div>
+      </details>
+    </div>
+
+    <div class="panel" id="misconceptionPanel"></div>
+
+  </div>
+</div>
+</div><!-- /simView -->
+</div><!-- /mainArea -->
+<section class="panel" id="reportPage"></section>
+</div><!-- /workarea -->
+<div id="reportPrint"></div>
+
+
+<script>
+const WS_CONFIG = {
+ "title": "최단시간으로 보는 반사와 굴절 — 파동의 속력과 굴절률",
+ "renderer": "canvas2d",
+ "scene": {
+  "aspect": "16/10",
+  "hint": "노란 점 P를 끌거나 슬라이더로 옮겨 보세요"
+ },
+ "legend": [
+  {
+   "label": "A에서 B로 가는 경로",
+   "color": "#ffd24a"
+  },
+  {
+   "label": "최단 위치 P*",
+   "color": "#5eead4"
+  },
+  {
+   "label": "거울상·직선(비교)",
+   "color": "#ff7aa8"
+  }
+ ],
+ "tabs": [
+  {
+   "id": "a",
+   "label": "① 반사 : 최단 경로"
+  },
+  {
+   "id": "b",
+   "label": "② 굴절 : 최단 시간"
+  },
+  {
+   "id": "c",
+   "label": "③ 굴절률·속력·파장"
+  }
+ ],
+ "scenarios": [
+  {
+   "id": "refl",
+   "tab": "a",
+   "name": "거울에서의 최단 경로",
+   "section": "페르마 ①",
+   "desc": "A에서 출발해 거울의 한 점 P를 거쳐 B로 가는 경로 중 가장 짧은(가장 빠른) 경로를 찾아 봅니다. 같은 매질이라 시간은 길이에 비례합니다.",
+   "misconception_title": "오개념: 빛이 일부러 가장 짧은 길을 계산해서 간다",
+   "misconception": "빛이 미리 계산하는 것이 아닙니다. 파동은 모든 경로로 퍼지지만 시간이 극값인 경로 근처에서만 위상이 비슷해 보강되므로 그 경로가 관측됩니다. (심화) 평면 거울은 최소이지만 타원 거울은 모든 경로의 시간이 같으므로 '최소' 대신 '극값'이라 합니다.",
+   "formula": [
+    {
+     "eq_html": "AP + PB = AP + PB′ ≥ AB′",
+     "text_html": "B′ 은 거울에 대한 B 의 거울상. 곧은 선 AB′ 위의 P*에서 최소"
+    },
+    {
+     "eq_html": "θᵢ = θᵣ",
+     "text_html": "최단 경로에서 입사각과 반사각이 같다 (반사 법칙)"
+    }
+   ],
+   "params": [
+    {
+     "key": "ra",
+     "label": "A의 높이",
+     "min": 2,
+     "max": 8,
+     "step": 0.5,
+     "value": 5,
+     "unit": "cm"
+    },
+    {
+     "key": "rb",
+     "label": "B의 높이",
+     "min": 2,
+     "max": 8,
+     "step": 0.5,
+     "value": 4,
+     "unit": "cm"
+    },
+    {
+     "key": "rx",
+     "label": "P의 위치 x",
+     "min": 0,
+     "max": 35,
+     "step": 0.5,
+     "value": 10,
+     "unit": "cm"
+    }
+   ],
+   "quick": [
+    "rx"
+   ]
+  },
+  {
+   "id": "refr",
+   "tab": "b",
+   "name": "경계에서의 최단 시간",
+   "section": "페르마 ②",
+   "desc": "A(매질 1)에서 B(매질 2)로 가는 경로를 경계의 점 P로 바꿔 보며 걸린 시간을 비교합니다. 모래사장과 물에서 구조 요원이 달리는 문제와 같습니다.",
+   "misconception_title": "오개념: 빛은 가장 짧은 거리의 경로(직선)로 간다",
+   "misconception": "가장 짧은 것은 '거리'가 아니라 '시간'입니다. 직선은 거리가 최소지만, 매질마다 속력이 다르면 느린 매질을 덜 지나도록 꺾인 경로가 더 빠릅니다. n 값을 같게 하면 직선이 됩니다.",
+   "formula": [
+    {
+     "eq_html": "T = (n₁·AP + n₂·PB) / c",
+     "text_html": "n·L 은 광경로 길이(속력 c/n 으로 가는 시간 환산)"
+    },
+    {
+     "eq_html": "dT/dx = 0  ⟹  n₁ sinθ₁ = n₂ sinθ₂",
+     "text_html": "시간이 최소인 위치에서 스넬 법칙이 성립"
+    }
+   ],
+   "params": [
+    {
+     "key": "fn1",
+     "label": "굴절률 n₁ (위)",
+     "min": 1,
+     "max": 2,
+     "step": 0.05,
+     "value": 1
+    },
+    {
+     "key": "fn2",
+     "label": "굴절률 n₂ (아래)",
+     "min": 1,
+     "max": 2.5,
+     "step": 0.05,
+     "value": 1.5
+    },
+    {
+     "key": "fa",
+     "label": "A의 높이",
+     "min": 2,
+     "max": 8,
+     "step": 0.5,
+     "value": 5,
+     "unit": "cm"
+    },
+    {
+     "key": "fb",
+     "label": "B의 깊이",
+     "min": 2,
+     "max": 8,
+     "step": 0.5,
+     "value": 5,
+     "unit": "cm"
+    },
+    {
+     "key": "fx",
+     "label": "P의 위치 x",
+     "min": 0,
+     "max": 35,
+     "step": 0.5,
+     "value": 10,
+     "unit": "cm"
+    }
+   ],
+   "quick": [
+    "fx",
+    "fn2"
+   ]
+  },
+  {
+   "id": "wave",
+   "tab": "c",
+   "name": "굴절률과 속력·파장",
+   "section": "속력 심화",
+   "animated": true,
+   "status_hint": "파면(마루)이 경계에서 꺾이며 간격이 바뀝니다",
+   "desc": "평면파가 경계를 지날 때 진동수는 같고 속력·파장이 1/n 로 바뀌며 파면이 꺾입니다. 느린 쪽에서 빠른 쪽으로 보낼 때 임계각을 넘으면 전반사가 일어납니다.",
+   "misconception_title": "오개념: 굴절하면 빛의 진동수(색)가 바뀐다",
+   "misconception": "매질이 바뀌어도 진동수는 그대로이며 바뀌는 것은 속력과 파장입니다. 물속에서 색이 달라 보이지 않는 이유입니다. 파장이 짧아지는 것은 v = fλ 에서 v가 줄었기 때문입니다.",
+   "formula": [
+    {
+     "eq_html": "n = c/v = λ₀/λ",
+     "text_html": "진동수 f 는 불변"
+    },
+    {
+     "eq_html": "sinθ₁/sinθ₂ = v₁/v₂ = λ₁/λ₂ = n₂/n₁",
+     "text_html": "파면이 경계에서 끊기지 않고 이어질 조건"
+    },
+    {
+     "eq_html": "sinθc = n₂/n₁  (n₁ &gt; n₂)",
+     "text_html": "임계각 이상에서 전반사"
+    }
+   ],
+   "params": [
+    {
+     "key": "wn1",
+     "label": "굴절률 n₁ (위)",
+     "min": 1,
+     "max": 2,
+     "step": 0.05,
+     "value": 1
+    },
+    {
+     "key": "wn2",
+     "label": "굴절률 n₂ (아래)",
+     "min": 1,
+     "max": 2.5,
+     "step": 0.05,
+     "value": 1.5
+    },
+    {
+     "key": "wth",
+     "label": "입사각 θ₁",
+     "min": 0,
+     "max": 85,
+     "step": 1,
+     "value": 50,
+     "unit": "°"
+    }
+   ],
+   "quick": [
+    "wth",
+    "wn2"
+   ]
+  }
+ ],
+ "common_params": null,
+ "readout_title": "측정값",
+ "pages": [
+  {
+   "id": "theory",
+   "label": "이론",
+   "position": "before",
+   "html": "<h2>파동의 속력은 무엇이 정할까?<\/h2><p class='lead'>진동수는 <b>파원<\/b>이 정하고, 속력은 <b>매질<\/b>이 정합니다. 경계를 지나면 진동수는 그대로, 속력이 바뀌므로 파장이 바뀝니다 (v = fλ).<\/p>\n<div class='card'><h3>① 매질의 성질이 속력을 정한다<\/h3><div class='eqgrid'>\n<div class='eqbox'><div class='eq'>v = √(T/μ)<\/div>줄 : 장력 T ↑ 빨라짐, 단위 길이당 질량 μ ↑ 느려짐<\/div>\n<div class='eqbox'><div class='eq'>v ≈ 331 + 0.6t<\/div>공기 속 소리(m/s, t는 °C) : 온도가 높을수록 빠름. 고체·액체 속이 더 빠르다<\/div>\n<div class='eqbox'><div class='eq'>v = √(gh)<\/div>얕은 물결(수심 h ≪ 파장) : 깊을수록 빠름 → 해안에서 파도가 느려지며 꺾인다<\/div>\n<div class='eqbox'><div class='eq'>v = c / n<\/div>빛 : 굴절률 n 인 매질에서 진공 광속 c 의 1/n 배<\/div><\/div><\/div>\n<div class='card'><h3>② 굴절률과 속력<\/h3><div class='eqgrid'>\n<div class='eqbox'><div class='eq'>n = c / v = λ₀ / λ<\/div>진공에서 λ₀, 매질 안에서 λ = λ₀/n (진동수는 같다)<\/div>\n<div class='eqbox'><div class='eq'>n₁ sinθ₁ = n₂ sinθ₂<\/div>스넬 법칙 = sinθ₁ : sinθ₂ = v₁ : v₂ = λ₁ : λ₂<\/div><\/div>\n<p>공기 1.0003 · 물 1.33 · 유리 약 1.5 · 다이아몬드 2.42 (가시광선 근처, 파장에 따라 조금씩 다름)<\/p><\/div>\n<div class='card'><h3>③ 페르마의 원리 (최단시간의 원리)<\/h3><p>A에서 B로 가는 빛은 걸리는 <b>시간<\/b>이 극값(대부분 최소)인 경로를 지납니다. 거리가 아니라 시간이므로, 느린 매질은 짧게·빠른 매질은 길게 지나며 꺾입니다. 같은 매질 안이면 직선이고, 반사는 거울상 B′으로 곧게 잇는 경로가 최단입니다.<\/p><\/div>\n<div class='pane-next'><span><\/span><button class='primary' data-go='sim'>시뮬레이션으로 →<\/button><\/div>"
+  },
+  {
+   "id": "summary",
+   "label": "정리",
+   "position": "after",
+   "html": "<h2>정리와 더 생각해 보기<\/h2>\n<div class='card'><div class='eqgrid'>\n<div class='eqbox'><div class='eq'>반사<\/div>최단 경로 → 입사각 = 반사각 (거울상으로 확인)<\/div>\n<div class='eqbox'><div class='eq'>굴절<\/div>최단 시간 → n₁sinθ₁ = n₂sinθ₂ (스넬 법칙과 같다)<\/div>\n<div class='eqbox'><div class='eq'>v, λ, f<\/div>경계에서 f 불변, v와 λ는 1/n 에 비례<\/div><\/div><\/div>\n<div class='card'><h3>이어서 생각해 볼 것<\/h3><ul>\n<li><b>전반사·광섬유<\/b> : 느린 매질에서 빠른 매질로 가는 빛은 임계각 sinθc = n₂/n₁ 를 넘으면 굴절하지 못한다 (③ 탭).<\/li>\n<li><b>신기루·휘어지는 빛<\/b> : 굴절률이 연속으로 변하는 공기층에서는 빛이 더 빠른(굴절률 작은) 쪽으로 휜다.<\/li>\n<li><b>볼록렌즈<\/b> : 축에 평행한 빛은 경로가 달라도 초점까지 걸리는 시간이 같다 — 가운데는 두꺼운 유리를 오래, 가장자리는 얇은 유리를 짧게 지난다.<\/li>\n<li><b>극값의 의미<\/b> : 평면 거울은 최소지만 타원 거울은 모든 경로 시간이 같고, 일부 오목면에서는 최대가 되기도 한다. 그래서 '극값'이 정확한 표현이다.<\/li>\n<li><b>왜 빛이 최단시간을 '알까'<\/b> : 빛이 계산하는 것이 아니다. 모든 경로의 파동이 겹치는데, 시간이 극값인 경로 근처에서만 위상이 비슷해 보강되어 관측된다.<\/li>\n<li><b>지진파·탄성파의 굴절<\/b> : 지구 깊이에 따라 속력이 달라 지진파가 휜다 (탄성파 ② 이용 사례와 연결).<\/li><\/ul><\/div>"
+  }
+ ],
+ "report": null,
+ "sim_label": "실험"
+};
+</script>
+<script>
+/* ============================ 시뮬레이션 코드 (레시피 입력 sim_js) ============================ */
+"use strict";
+/* 1. 물리 코어 — 거리 cm, 광속 c = 30 cm/ns, 시간 ns */
+const CC = 30, DD = 35;
+const PHY = {
+  Lrefl(x, a, b) { return Math.hypot(x, a) + Math.hypot(DD - x, b); },
+  Trefr(x, a, b, n1, n2) { return (n1 * Math.hypot(x, a) + n2 * Math.hypot(DD - x, b)) / CC; },
+  // T(x)는 볼록 → 삼분 탐색으로 최소점
+  argmin(f, lo, hi) { for (let i = 0; i < 90; i++) { const m1 = lo + (hi - lo) / 3, m2 = hi - (hi - lo) / 3; if (f(m1) < f(m2)) hi = m2; else lo = m1; } return (lo + hi) / 2; },
+  xstarRefl(a, b) { return DD * a / (a + b); },
+  xstarRefr(a, b, n1, n2) { return PHY.argmin(x => PHY.Trefr(x, a, b, n1, n2), 0, DD); },
+  theta2(n1, n2, th1) { const s = n1 * Math.sin(th1) / n2; return s > 1 ? null : Math.asin(s); },
+  thetaC(n1, n2) { return n1 > n2 ? Math.asin(n2 / n1) : null; }
+};
+/* 2. 그리기 도우미: 가상 좌표 1000×625 */
+const COL = { bg: '#0f1a33', text: '#e3ecff', dim: '#9db0d8', ok: '#5eead4', bad: '#ff5d73', a: '#7fd6ff', b: '#ffb454', c: '#b48cff', y: '#ffd24a', grid: 'rgba(160,190,255,.18)' };
+const W0 = 1000, H0 = 625, XA = 110, PPC = 20, BY = 235;
+function begin(api) { const { ctx, width: w, height: h } = api; ctx.fillStyle = COL.bg; ctx.fillRect(0, 0, w, h); const k = Math.min(w / W0, h / H0); ctx.save(); ctx.translate((w - W0 * k) / 2, (h - H0 * k) / 2); ctx.scale(k, k); return ctx; }
+function txt(ctx, s, x, y, col, px, wt, al) { ctx.font = `${wt || 600} ${px || 18}px sans-serif`; ctx.fillStyle = col || COL.text; ctx.textAlign = al || 'left'; ctx.fillText(s, x, y); ctx.textAlign = 'left'; }
+function line(ctx, x0, y0, x1, y1, col, lw, dash) { ctx.beginPath(); ctx.setLineDash(dash || []); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.strokeStyle = col; ctx.lineWidth = lw || 2; ctx.lineCap = 'round'; ctx.stroke(); ctx.setLineDash([]); }
+function dot(ctx, x, y, r, col) { ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = col; ctx.fill(); }
+function arrow(ctx, x0, y0, x1, y1, col, lw = 3) {
+  const len = Math.hypot(x1 - x0, y1 - y0); if (len < 3) return; const a = Math.atan2(y1 - y0, x1 - x0), hd = Math.min(13, len * .5);
+  line(ctx, x0, y0, x1 - Math.cos(a) * hd * .7, y1 - Math.sin(a) * hd * .7, col, lw);
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - hd * Math.cos(a - .4), y1 - hd * Math.sin(a - .4)); ctx.lineTo(x1 - hd * Math.cos(a + .4), y1 - hd * Math.sin(a + .4)); ctx.closePath(); ctx.fillStyle = col; ctx.fill();
+}
+const f1 = (v, d) => (+v).toFixed(d === undefined ? 1 : d);
+const deg = r => r * 180 / Math.PI;
+
+/* 시간(또는 길이) 그래프: x는 P 위치 0..35 cm */
+function drawGraph(ctx, fn, xcur, xstar, ylabel, fmt) {
+  const gx0 = XA, gx1 = XA + DD * PPC, gy0 = 430, gy1 = 585;
+  let mn = 1e9, mx = -1e9; const pts = [];
+  for (let i = 0; i <= 140; i++) { const x = DD * i / 140, y = fn(x); pts.push([x, y]); mn = Math.min(mn, y); mx = Math.max(mx, y); }
+  const span = Math.max(mx - mn, 1e-9), lo = mn - span * .08, hi = mx + span * .08;
+  const X = x => gx0 + x / DD * (gx1 - gx0), Y = y => gy1 - (y - lo) / (hi - lo) * (gy1 - gy0);
+  ctx.fillStyle = 'rgba(160,190,255,.06)'; ctx.fillRect(gx0, gy0, gx1 - gx0, gy1 - gy0);
+  line(ctx, gx0, gy1, gx1, gy1, COL.dim, 2); line(ctx, gx0, gy0, gx0, gy1, COL.dim, 2);
+  ctx.beginPath(); pts.forEach(([x, y], i) => i ? ctx.lineTo(X(x), Y(y)) : ctx.moveTo(X(x), Y(y))); ctx.strokeStyle = COL.a; ctx.lineWidth = 3.5; ctx.stroke();
+  const ys = fn(xstar); line(ctx, gx0, Y(ys), gx1, Y(ys), 'rgba(94,234,212,.5)', 1.5, [6, 6]);
+  line(ctx, X(xstar), gy0, X(xstar), gy1, 'rgba(94,234,212,.5)', 1.5, [6, 6]); dot(ctx, X(xstar), Y(ys), 8, COL.ok);
+  line(ctx, X(xcur), gy0, X(xcur), gy1, 'rgba(255,210,74,.5)', 1.5, [3, 5]); dot(ctx, X(xcur), Y(fn(xcur)), 9, COL.y);
+  txt(ctx, 'P의 위치 x (cm) →', gx1, gy1 + 22, COL.dim, 14, 600, 'right'); txt(ctx, ylabel, gx0, gy0 - 8, COL.dim, 14);
+  txt(ctx, '최소 ' + fmt(ys), Math.min(gx1 - 4, X(xstar) + 12), Math.max(gy0 + 16, Y(ys) - 10), COL.ok, 14, 700, X(xstar) > gx1 - 150 ? 'right' : 'left');
+  txt(ctx, '지금 ' + fmt(fn(xcur)), Math.min(gx1 - 4, X(xcur) + 12), Y(fn(xcur)) - 14, COL.y, 14, 700, X(xcur) > gx1 - 150 ? 'right' : 'left');
+}
+function arc(ctx, cx, cy, r, a0, a1, col) { ctx.beginPath(); ctx.arc(cx, cy, r, a0, a1); ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.stroke(); }
+
+/* 3. 장면별 그리기 */
+function drawRefl(api) {
+  const P = api.P, ctx = begin(api), a = P.ra, b = P.rb, x = P.rx, xs = PHY.xstarRefl(a, b);
+  const Ax = XA, Ay = BY - a * PPC, Bx = XA + DD * PPC, By = BY - b * PPC, Px = XA + x * PPC, Pxs = XA + xs * PPC;
+  ctx.fillStyle = 'rgba(160,190,255,.10)'; ctx.fillRect(40, BY, 920, 150);
+  for (let k = 50; k < 950; k += 22) line(ctx, k + 10, BY + 2, k - 10, BY + 22, 'rgba(160,190,255,.25)', 2);
+  line(ctx, 40, BY, 960, BY, '#d8ecff', 5); txt(ctx, '거울(평면)', 960, BY + 42, COL.dim, 15, 600, 'right');
+  // 거울상 B'
+  dot(ctx, Bx, BY + b * PPC, 8, 'rgba(255,122,168,.55)'); txt(ctx, "B′ (거울상)", Bx + 14, BY + b * PPC + 5, '#ff7aa8', 15);
+  line(ctx, Ax, Ay, Bx, BY + b * PPC, 'rgba(255,122,168,.7)', 2, [8, 7]);
+  line(ctx, Px, BY - 95, Px, BY + 8, 'rgba(216,236,255,.35)', 1.5, [5, 5]);
+  line(ctx, Ax, Ay, Px, BY, COL.y, 4); arrow(ctx, Ax, Ay, (Ax + Px) / 2, (Ay + BY) / 2, COL.y, 4);
+  line(ctx, Px, BY, Bx, By, COL.y, 4); arrow(ctx, Px, BY, (Px + Bx) / 2, (BY + By) / 2, COL.y, 4);
+  dot(ctx, Ax, Ay, 11, COL.b); txt(ctx, 'A', Ax - 30, Ay + 6, COL.b, 20, 800); dot(ctx, Bx, By, 11, COL.a); txt(ctx, 'B', Bx + 18, By + 6, COL.a, 20, 800);
+  ctx.beginPath(); ctx.moveTo(Pxs, BY + 3); ctx.lineTo(Pxs - 9, BY + 20); ctx.lineTo(Pxs + 9, BY + 20); ctx.closePath(); ctx.fillStyle = COL.ok; ctx.fill(); txt(ctx, 'P*', Pxs, BY + 40, COL.ok, 14, 700, 'center');
+  dot(ctx, Px, BY, 8, COL.y);
+  const ti = Math.atan2(x, a), tr = Math.atan2(DD - x, b);
+  arc(ctx, Px, BY, 44, -Math.PI / 2 - ti, -Math.PI / 2, COL.b); arc(ctx, Px, BY, 44, -Math.PI / 2, -Math.PI / 2 + tr, COL.a);
+  txt(ctx, 'θᵢ ' + f1(deg(ti)) + '°', Px - 12, BY - 52, COL.b, 15, 700, 'right'); txt(ctx, 'θᵣ ' + f1(deg(tr)) + '°', Px + 12, BY - 52, COL.a, 15, 700);
+  const L = PHY.Lrefl(x, a, b), Lm = PHY.Lrefl(xs, a, b);
+  drawGraph(ctx, xx => PHY.Lrefl(xx, a, b) / CC, x, xs, '걸린 시간 T = (AP + PB)/c  (ns)', v => f1(v, 3) + ' ns');
+  api.setReadout([['P 위치 x', f1(x) + ' cm'], ['경로 길이 AP+PB', f1(L, 2) + ' cm'], ['걸린 시간 T', f1(L / CC, 3) + ' ns'], ['최단 경로 길이 (= AB′)', f1(Lm, 2) + ' cm'], ['입사각 θᵢ', f1(deg(ti)) + '°'], ['반사각 θᵣ', f1(deg(tr)) + '°'], ['판정', Math.abs(deg(ti) - deg(tr)) < .4 ? 'θᵢ = θᵣ → 최단 경로' : '더 긴 경로 (θᵢ ≠ θᵣ)']]);
+  api.setNote('노란 점 P를 끌거나 슬라이더로 옮겨 보세요. 거울상 B′로 곧게 잇는 분홍 점선이 가장 짧고, 그 선이 거울과 만나는 P*에서 θᵢ = θᵣ 입니다.');
+  ctx.restore();
+}
+function drawRefr(api) {
+  const P = api.P, ctx = begin(api), a = P.fa, b = P.fb, x = P.fx, n1 = P.fn1, n2 = P.fn2, xs = PHY.xstarRefr(a, b, n1, n2);
+  const Ax = XA, Ay = BY - a * PPC, Bx = XA + DD * PPC, By = BY + b * PPC, Px = XA + x * PPC, Pxs = XA + xs * PPC;
+  ctx.fillStyle = `rgba(127,214,255,${.04 + .06 * n1})`; ctx.fillRect(40, 20, 920, BY - 20);
+  ctx.fillStyle = `rgba(127,214,255,${.04 + .06 * n2})`; ctx.fillRect(40, BY, 920, 150);
+  line(ctx, 40, BY, 960, BY, '#d8ecff', 3, [10, 6]);
+  txt(ctx, '매질 1  n₁ = ' + f1(n1, 2) + '   v₁ = ' + f1(CC / n1 * .1, 2) + '×10⁸ m/s', 50, 44, COL.dim, 15); txt(ctx, '매질 2  n₂ = ' + f1(n2, 2) + '   v₂ = ' + f1(CC / n2 * .1, 2) + '×10⁸ m/s', 50, BY + 24, COL.dim, 15);
+  txt(ctx, n1 < n2 ? '← 빠른 곳(모래사장)' : n1 > n2 ? '느린 곳 →' : '', 960, 44, COL.dim, 14, 600, 'right'); txt(ctx, n1 < n2 ? '느린 곳(물) 에서는 천천히' : n1 > n2 ? '빠른 곳에서는 빠르게' : '', 960, BY + 24, COL.dim, 14, 600, 'right');
+  const xl = PHY.xstarRefr(a, b, 1, 1); const Plx = XA + xl * PPC;
+  line(ctx, Ax, Ay, Bx, By, 'rgba(216,236,255,.45)', 2, [4, 7]);
+  line(ctx, Px, BY - 110, Px, BY + 110, 'rgba(216,236,255,.3)', 1.5, [5, 5]);
+  line(ctx, Ax, Ay, Px, BY, COL.y, 4); line(ctx, Px, BY, Bx, By, COL.y, 4);
+  dot(ctx, Ax, Ay, 11, COL.b); txt(ctx, 'A', Ax - 30, Ay + 6, COL.b, 20, 800); dot(ctx, Bx, By, 11, COL.a); txt(ctx, 'B', Bx + 18, By + 6, COL.a, 20, 800);
+  ctx.beginPath(); ctx.moveTo(Pxs, BY - 3); ctx.lineTo(Pxs - 9, BY - 20); ctx.lineTo(Pxs + 9, BY - 20); ctx.closePath(); ctx.fillStyle = COL.ok; ctx.fill(); txt(ctx, 'P*', Pxs, BY - 26, COL.ok, 14, 700, 'center');
+  dot(ctx, Px, BY, 8, COL.y);
+  const t1 = Math.atan2(x, a), t2 = Math.atan2(DD - x, b);
+  arc(ctx, Px, BY, 46, -Math.PI / 2 - t1, -Math.PI / 2, COL.b); arc(ctx, Px, BY, 46, Math.PI / 2 - t2, Math.PI / 2, COL.a);
+  txt(ctx, 'θ₁ ' + f1(deg(t1)) + '°', Px - 12, BY - 58, COL.b, 15, 700, 'right'); txt(ctx, 'θ₂ ' + f1(deg(t2)) + '°', Px + 12, BY + 72, COL.a, 15, 700);
+  const T = PHY.Trefr(x, a, b, n1, n2), Tm = PHY.Trefr(xs, a, b, n1, n2), Tl = PHY.Trefr(xl, a, b, n1, n2);
+  drawGraph(ctx, xx => PHY.Trefr(xx, a, b, n1, n2), x, xs, '걸린 시간 T = (n₁·AP + n₂·PB)/c  (ns)', v => f1(v, 3) + ' ns');
+  const s1 = n1 * Math.sin(t1), s2 = n2 * Math.sin(t2);
+  api.setReadout([['P 위치 x', f1(x) + ' cm'], ['걸린 시간 T', f1(T, 3) + ' ns'], ['최단 시간 T_min (P*)', f1(Tm, 3) + ' ns'], ['직선 AB 경로 시간', f1(Tl, 3) + ' ns'], ['n₁ sinθ₁', f1(s1, 3)], ['n₂ sinθ₂', f1(s2, 3)], ['판정', Math.abs(s1 - s2) < .012 ? '스넬 법칙 성립 → 최단 시간' : (s1 > s2 ? 'P를 오른쪽으로 → 시간 줄어듦?' : 'P를 왼쪽으로 → 시간 줄어듦?')]]);
+  api.setNote(n1 === n2 ? '두 매질이 같으면 직선이 최단 경로입니다. n를 바꿔 보세요.' : '빠른 매질을 길게, 느린 매질은 짧게 지나가도록 꺾입니다. 직선(점선)은 거리는 최소지만 시간은 최소가 아닙니다.');
+  ctx.restore();
+}
+const S = { t: 0 };
+function drawWave(api) {
+  const P = api.P, ctx = begin(api), n1 = P.wn1, n2 = P.wn2, th1 = P.wth * Math.PI / 180, s1 = Math.sin(th1), c1 = Math.cos(th1);
+  const th2 = PHY.theta2(n1, n2, th1), tir = th2 === null, WB = 312, lam0 = 150, f = .5, ox = 500;
+  const l1 = lam0 / n1, l2 = lam0 / n2, ft = f * S.t;
+  ctx.fillStyle = `rgba(127,214,255,${.04 + .06 * n1})`; ctx.fillRect(20, 20, 960, WB - 20);
+  ctx.fillStyle = `rgba(127,214,255,${.04 + .06 * n2})`; ctx.fillRect(20, WB, 960, 290);
+  function crests(sn, cs, lam, yLo, yHi, col, sgn) {
+    ctx.save(); ctx.beginPath(); ctx.rect(20, yLo, 960, yHi - yLo); ctx.clip();
+    const M = Math.ceil(1600 / lam); const base = ft - Math.floor(ft);
+    for (let m = -M; m <= M; m++) {
+      const K = lam * (m + base), px = ox + K * sn, py = WB + K * cs * sgn;
+      const dx = cs, dy = -sn * sgn;
+      line(ctx, px - dx * 1700, py - dy * 1700, px + dx * 1700, py + dy * 1700, col, 3);
+    }
+    ctx.restore();
+  }
+  crests(s1, c1, l1, 20, WB, 'rgba(127,214,255,.85)', 1);
+  if (tir) crests(s1, c1, l1, 20, WB, 'rgba(255,122,168,.55)', -1);
+  else crests(Math.sin(th2), Math.cos(th2), l2, WB, 600, 'rgba(255,180,84,.85)', 1);
+  line(ctx, 20, WB, 980, WB, '#d8ecff', 3, [10, 6]); line(ctx, ox, WB - 230, ox, WB + 230, 'rgba(216,236,255,.4)', 1.5, [5, 5]);
+  const R1 = 190; arrow(ctx, ox - R1 * s1, WB - R1 * c1, ox - 6 * s1, WB - 6 * c1, COL.y, 4);
+  if (!tir) arrow(ctx, ox + 6 * Math.sin(th2), WB + 6 * Math.cos(th2), ox + R1 * Math.sin(th2), WB + R1 * Math.cos(th2), COL.y, 4);
+  else arrow(ctx, ox + 6 * s1, WB - 6 * c1, ox + R1 * s1, WB - R1 * c1, '#ff7aa8', 4);
+  arc(ctx, ox, WB, 70, -Math.PI / 2 - th1, -Math.PI / 2, COL.b); txt(ctx, 'θ₁ ' + f1(P.wth, 0) + '°', ox - 80, WB - 78, COL.b, 16, 700, 'right');
+  if (!tir) { arc(ctx, ox, WB, 70, Math.PI / 2 - th2, Math.PI / 2, COL.a); txt(ctx, 'θ₂ ' + f1(deg(th2)) + '°', ox + 84, WB + 90, COL.a, 16, 700); }
+  txt(ctx, '매질 1: n₁ = ' + f1(n1, 2) + '   λ₁ = ' + f1(600 / n1, 0) + ' nm   v₁ = ' + f1(3 / n1, 2) + '×10⁸ m/s', 34, 52, COL.text, 17, 700);
+  txt(ctx, '매질 2: n₂ = ' + f1(n2, 2) + '   λ₂ = ' + f1(600 / n2, 0) + ' nm   v₂ = ' + f1(3 / n2, 2) + '×10⁸ m/s', 34, WB + 36, COL.text, 17, 700);
+  txt(ctx, '진동수 f = 5.0×10¹⁴ Hz (두 매질에서 같다)', 966, 590, COL.ok, 16, 700, 'right');
+  if (tir) txt(ctx, '전반사! 굴절파 없음 (θ₁ > 임계각 ' + f1(deg(PHY.thetaC(n1, n2))) + '°)', ox, WB + 150, COL.bad, 22, 800, 'center');
+  const thc = PHY.thetaC(n1, n2);
+  api.setReadout([['n₁ , n₂', f1(n1, 2) + ' , ' + f1(n2, 2)], ['속력 v₁ → v₂', f1(3 / n1, 2) + ' → ' + f1(3 / n2, 2) + ' (×10⁸ m/s)'], ['파장 λ₁ → λ₂', f1(600 / n1, 0) + ' → ' + f1(600 / n2, 0) + ' nm'], ['진동수 f', '5.0×10¹⁴ Hz (불변)'], ['sinθ₁ / sinθ₂', tir ? '—' : f1(s1 / Math.sin(th2), 3)], ['n₂ / n₁ = v₁/v₂ = λ₁/λ₂', f1(n2 / n1, 3)], ['굴절각 θ₂', tir ? '전반사' : f1(deg(th2)) + '°'], ['임계각', thc === null ? '없음 (n₁ ≤ n₂)' : f1(deg(thc)) + '°']]);
+  api.setNote('마루(선)의 간격이 파장입니다. 경계에서 진동수는 같고 속력이 바뀌므로 파장도 같은 비율로 바뀌고, 그 결과 파면이 꺾입니다.');
+  ctx.restore();
+}
+const DRAW = { refl: drawRefl, refr: drawRefr, wave: drawWave };
+
+const SIM = {
+  init(api) {
+    const mv = e => {
+      const id = api.scenario.id; if (id !== 'refl' && id !== 'refr') return; if (e.type === 'pointermove' && !(e.buttons & 1)) return;
+      const rc = api.canvas.getBoundingClientRect(), k = Math.min(api.width / W0, api.height / H0);
+      const vx = (e.clientX - rc.left - (api.width - W0 * k) / 2) / k, x = Math.max(0, Math.min(DD, (vx - XA) / PPC));
+      api.setParam(id === 'refl' ? 'rx' : 'fx', Math.round(x * 2) / 2);
+    };
+    api.canvas.addEventListener('pointerdown', mv); api.canvas.addEventListener('pointermove', mv);
+  },
+  enter(api) {
+    const id = api.scenario.id, c = api.custom;
+    if (id === 'refl' || id === 'refr') {
+      const b = document.createElement('button'); b.className = 'primary'; b.textContent = '★ 최단 ' + (id === 'refl' ? '경로' : '시간') + ' 위치(P*)로 옮기기';
+      b.addEventListener('click', () => { const P = api.P; api.setParam(id === 'refl' ? 'rx' : 'fx', Math.round((id === 'refl' ? PHY.xstarRefl(P.ra, P.rb) : PHY.xstarRefr(P.fa, P.fb, P.fn1, P.fn2)) * 2) / 2); });
+      c.append(b);
+    }
+    if (id === 'wave') { S.t = 0; api.setPlaying(true); }
+  },
+  update(api) { (DRAW[api.scenario.id] || drawRefl)(api); },
+  frame(api, dt) { if (api.scenario && api.scenario.id === 'wave' && api.playing) { S.t += dt; api.refresh(); } },
+  reset(api) { S.t = 0; },
+  tests() {
+    const T = [], near = (a, b, e) => Math.abs(a - b) < e;
+    let ok1 = true; for (const [a, b] of [[5, 4], [2, 8], [8, 2], [3, 3]]) { const xs = PHY.xstarRefl(a, b), ti = Math.atan2(xs, a), tr = Math.atan2(DD - xs, b); if (!near(ti, tr, 1e-9)) ok1 = false; }
+    T.push(['반사 최단 경로에서 입사각 = 반사각', ok1, 'x* = D·a/(a+b)']);
+    let ok2 = true; for (const [a, b] of [[5, 4], [2, 8]]) { const xs = PHY.xstarRefl(a, b); if (!near(PHY.Lrefl(xs, a, b), Math.hypot(DD, a + b), 1e-9)) ok2 = false; }
+    T.push(['최단 경로 길이 = AB′ = √(D²+(a+b)²) (거울상)', ok2, '']);
+    let ok3 = true, ok4 = true, ok5 = true;
+    for (const [a, b, n1, n2] of [[5, 5, 1, 1.5], [3, 7, 1, 2], [6, 2, 1.5, 1], [4, 4, 1.33, 1.5], [5, 5, 2, 1.2]]) {
+      const xs = PHY.xstarRefr(a, b, n1, n2), t1 = Math.atan2(xs, a), t2 = Math.atan2(DD - xs, b);
+      if (!near(n1 * Math.sin(t1), n2 * Math.sin(t2), 1e-6)) ok3 = false;
+      const Tm = PHY.Trefr(xs, a, b, n1, n2); for (const dx of [-1, -.2, .2, 1]) if (xs + dx > 0 && xs + dx < DD && PHY.Trefr(xs + dx, a, b, n1, n2) < Tm - 1e-12) ok4 = false;
+      const xl = DD * a / (a + b); if (n1 !== n2 && PHY.Trefr(xl, a, b, n1, n2) < Tm - 1e-12) ok5 = false;
+    }
+    T.push(['굴절 최단시간 위치에서 n₁sinθ₁ = n₂sinθ₂ (스넬 법칙)', ok3, '5개 조합, 삼분 탐색']);
+    T.push(['최단시간 위치 양옆의 시간은 더 길다', ok4, '극소']); T.push(['직선 경로의 시간 ≥ 최단 시간', ok5, '거리가 최소 ≠ 시간이 최소']);
+    T.push(['n₁=n₂ 이면 최단시간 경로는 직선', near(PHY.xstarRefr(5, 4, 1.3, 1.3), DD * 5 / 9, 1e-6), '']);
+    const th2 = PHY.theta2(1, 1.5, 50 * Math.PI / 180); T.push(['공기→유리(1.5) 50° → 굴절각 30.7°', th2 !== null && near(deg(th2), 30.71, .02), 'sinθ₂ = 0.766/1.5']);
+    T.push(['유리→공기 임계각 41.8°, 그 이상은 전반사', near(deg(PHY.thetaC(1.5, 1)), 41.81, .02) && PHY.theta2(1.5, 1, 45 * Math.PI / 180) === null, 'sinθc = n₂/n₁']);
+    T.push(['위상 연속: sinθ₁/λ₁ = sinθ₂/λ₂ (파면이 경계에서 이어짐)', (() => { const t1 = 40 * Math.PI / 180, t2 = PHY.theta2(1, 1.5, t1); return near(Math.sin(t1) / 150, Math.sin(t2) / (150 / 1.5), 1e-12); })(), 'λ ∝ 1/n']);
+    return T;
+  }
+};
+
+</script>
+<script>
+"use strict";
+/* ============================ 공용 UI 프레임워크 (템플릿) ============================ */
+(function () {
+  const C = WS_CONFIG;
+  const $ = (id) => document.getElementById(id);
+  const P = {};
+  const ui = { tab: C.tabs[0].id, scenarioId: null, playing: false };
+  const lastScenarioOfTab = {};
+
+  function addDefaults(params) { (params || []).forEach(p => { if (!(p.key in P)) P[p.key] = p.value; }); }
+  C.scenarios.forEach(s => { addDefaults(s.params); addDefaults(s.choices); });
+  if (C.common_params) addDefaults(C.common_params.params);
+
+  function current() { return C.scenarios.find(s => s.id === ui.scenarioId); }
+  function scenariosOfTab(tab) { return C.scenarios.filter(s => s.tab === tab); }
+  function fmtVal(v, unit) {
+    if (!unit) return String(v);
+    return /^[°%′″]/.test(unit) ? v + unit : v + " " + unit;
+  }
+
+  function showError(where, e) {
+    const box = $("simError");
+    box.hidden = false;
+    box.textContent = "시뮬레이션 오류 (" + where + "): " + (e && e.message ? e.message : e);
+    console.error(e);
+  }
+  const SIMOBJ = (typeof SIM !== "undefined") ? SIM : null;
+  function call(hook, ...args) {
+    if (!SIMOBJ || typeof SIMOBJ[hook] !== "function") return undefined;
+    try { return SIMOBJ[hook](api, ...args); } catch (e) { showError(hook, e); return undefined; }
+  }
+
+  /* ---------- 렌더러 ---------- */
+  const wrap = $("sceneWrap");
+  const api = {
+    config: C, P,
+    get scenario() { return current(); },
+    get tab() { return ui.tab; },
+    get playing() { return ui.playing; },
+    setPlaying(b) { ui.playing = !!b; updatePlayButton(); },
+    boxHalf: (C.scene && C.scene.box_half) || 16,
+    sceneEl: wrap,
+    THREE: window.THREE || null,
+    scene: null, camera: null, renderer: null, controls: null,
+    canvas: null, ctx: null, width: 0, height: 0,
+    custom: $("customPanel"),
+    chart: {
+      canvas: $("chartCanvas"),
+      ctx: $("chartCanvas").getContext("2d"),
+      setHint(html) { $("chartHint").innerHTML = html; },
+    },
+    setReadout(rows) {
+      const tbl = $("readout");
+      tbl.innerHTML = "";
+      (rows || []).forEach(r => {
+        const tr = document.createElement("tr");
+        const a = document.createElement("td"); a.textContent = r[0];
+        const b = document.createElement("td"); b.textContent = r[1];
+        tr.append(a, b); tbl.appendChild(tr);
+      });
+    },
+    setNote(text) { $("readoutNote").textContent = text || ""; },
+    setStatus(text) { const el = $("wsStatus"); if (el) el.textContent = text || ""; },
+    setChoice(key, v) {
+      P[key] = v;
+      document.querySelectorAll('[data-ckey="' + key + '"] button').forEach(b => { b.className = b.dataset.val === String(v) ? "primary" : ""; });
+    },
+    goto(page) { showPage(page); },
+    setParam(key, v) {
+      P[key] = v;
+      const el = $("p_" + key); if (el) el.value = v;
+      const vEl = $("p_" + key + "_val"); if (vEl) vEl.textContent = fmtVal(v, vEl.dataset.unit);
+    },
+    refresh() { call("update"); },
+  };
+
+  function initRenderer() {
+    const sc = C.scene || {};
+    if (C.renderer === "three") {
+      if (!window.THREE) { showError("init", "Three.js를 불러오지 못했습니다 (인터넷 연결 확인)"); return false; }
+      const T = window.THREE;
+      api.scene = new T.Scene();
+      api.camera = new T.PerspectiveCamera(45, wrap.clientWidth / wrap.clientHeight, 0.1, 500);
+      const cp = sc.camera || [26, 20, 30];
+      api.camera.position.set(cp[0], cp[1], cp[2]);
+      api.renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
+      api.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      wrap.insertBefore(api.renderer.domElement, wrap.firstChild);
+      api.controls = new T.OrbitControls(api.camera, api.renderer.domElement);
+      api.controls.enableDamping = true;
+      api.controls.dampingFactor = 0.08;
+      api.controls.target.set(0, 0, 0);
+      api.scene.add(new T.AmbientLight(0xffffff, 0.55));
+      const dl = new T.DirectionalLight(0xffffff, 0.9);
+      dl.position.set(20, 30, 15);
+      api.scene.add(dl);
+      if (sc.grid !== false) api.scene.add(new T.GridHelper(api.boxHalf * 2, 16, 0x3a5a8a, 0x1f3352));
+      if (sc.axes !== false) api.scene.add(new T.AxesHelper(api.boxHalf * 0.6));
+    } else {
+      api.canvas = document.createElement("canvas");
+      if (C.scene && C.scene.pan_y) api.canvas.style.touchAction = "pan-y";
+      wrap.insertBefore(api.canvas, wrap.firstChild);
+      api.ctx = api.canvas.getContext("2d");
+    }
+    window.addEventListener("resize", onResize);
+    onResize();
+    return true;
+  }
+
+  function onResize() {
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    api.width = w; api.height = h;
+    if (api.renderer) {
+      api.camera.aspect = w / h;
+      api.camera.updateProjectionMatrix();
+      api.renderer.setSize(w, h);
+    } else if (api.canvas) {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      api.canvas.width = Math.round(w * dpr);
+      api.canvas.height = Math.round(h * dpr);
+      api.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (ui.scenarioId) call("update");
+    }
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    if (api.controls) api.controls.update();
+    call("frame", 1 / 60);
+    if (api.renderer) api.renderer.render(api.scene, api.camera);
+  }
+
+  /* ---------- UI ---------- */
+  function renderTabs() {
+    const box = $("tabs");
+    box.innerHTML = "";
+    box.hidden = C.tabs.length < 2;
+    C.tabs.forEach(t => {
+      const b = document.createElement("button");
+      b.textContent = t.label;
+      b.className = t.id === ui.tab ? "active" : "";
+      b.addEventListener("click", () => switchTab(t.id));
+      box.appendChild(b);
+    });
+  }
+
+  function renderPicker() {
+    const box = $("scenarioPicker");
+    const list = scenariosOfTab(ui.tab);
+    box.innerHTML = "";
+    box.hidden = list.length < 2;
+    list.forEach(s => {
+      const b = document.createElement("button");
+      b.textContent = s.name;
+      b.className = s.id === ui.scenarioId ? "active" : "";
+      b.addEventListener("click", () => selectScenario(s.id));
+      box.appendChild(b);
+    });
+  }
+
+  function sliderEl(p) {
+    const div = document.createElement("div");
+    div.className = "param";
+    const label = document.createElement("label");
+    label.textContent = p.label + " ";
+    const val = document.createElement("span");
+    val.className = "val"; val.id = "p_" + p.key + "_val"; val.dataset.unit = p.unit || "";
+    val.textContent = fmtVal(P[p.key], p.unit);
+    label.appendChild(val);
+    const inp = document.createElement("input");
+    inp.type = "range"; inp.id = "p_" + p.key;
+    inp.min = p.min; inp.max = p.max; inp.step = p.step; inp.value = P[p.key];
+    inp.addEventListener("input", () => {
+      const v = parseFloat(inp.value);
+      P[p.key] = v;
+      val.textContent = fmtVal(v, p.unit);
+      call("update");
+    });
+    div.append(label, inp);
+    return div;
+  }
+
+  function choiceEl(c) {
+    const row = document.createElement("div");
+    row.className = "row"; row.style.marginBottom = "8px"; row.dataset.ckey = c.key;
+    if (c.label) { const l = document.createElement("b"); l.style.fontSize = "0.9em"; l.textContent = c.label; row.appendChild(l); }
+    c.options.forEach(o => {
+      const b = document.createElement("button");
+      b.textContent = o.label;
+      b.className = P[c.key] === o.value ? "primary" : ""; b.dataset.val = String(o.value);
+      b.addEventListener("click", () => {
+        P[c.key] = o.value;
+        row.querySelectorAll("button").forEach(x => x.className = "");
+        b.className = "primary";
+        call("update");
+      });
+      row.appendChild(b);
+    });
+    return row;
+  }
+
+  function renderControls() {
+    const s = current();
+    const body = $("scenarioBody");
+    body.innerHTML = "";
+    if (s.desc || s.section) {
+      const p = document.createElement("p");
+      p.className = "hint"; p.style.marginBottom = "10px";
+      if (s.section) { const b = document.createElement("b"); b.textContent = s.section; p.appendChild(b); if (s.desc) p.appendChild(document.createTextNode(" — ")); }
+      if (s.desc) p.appendChild(document.createTextNode(s.desc));
+      body.appendChild(p);
+    }
+    const qk = new Set(s.quick || []);
+    const qbar = $("quickbar"); qbar.innerHTML = "";
+    const place = (key, el) => (qk.has(key) ? qbar : body).appendChild(el);
+    (s.choices || []).forEach(c => place(c.key, choiceEl(c)));
+    (s.params || []).forEach(p => place(p.key, sliderEl(p)));
+    if (s.animated) {
+      const st = document.createElement("div");
+      st.className = "hint"; st.id = "wsStatus";
+      st.textContent = s.status_hint || "";
+      body.appendChild(st);
+      const row = document.createElement("div");
+      row.className = "controls-row";
+      const play = document.createElement("button");
+      play.id = "playBtn"; play.className = "primary";
+      play.addEventListener("click", () => { ui.playing = !ui.playing; updatePlayButton(); });
+      const reset = document.createElement("button");
+      reset.textContent = "↺ 리셋";
+      reset.addEventListener("click", () => { ui.playing = false; updatePlayButton(); call("reset"); call("update"); });
+      row.append(play, reset);
+      body.appendChild(row);
+      updatePlayButton();
+    }
+    const cp = C.common_params;
+    if (cp && s.use_common !== false) {
+      const hr = document.createElement("hr");
+      hr.style.cssText = "margin:10px 0;border:none;border-top:1px solid var(--border)";
+      body.appendChild(hr);
+      if (cp.title) { const b = document.createElement("b"); b.style.fontSize = "0.9em"; b.textContent = cp.title; body.appendChild(b); }
+      cp.params.forEach(p => place(p.key, sliderEl(p)));
+    }
+    qbar.hidden = !qbar.children.length;
+  }
+
+  function updatePlayButton() {
+    const b = $("playBtn");
+    if (b) b.textContent = ui.playing ? "⏸ 일시정지" : "▶ 재생";
+  }
+
+  function renderFormula() {
+    const s = current();
+    const body = $("formulaBody");
+    body.innerHTML = (s.formula || []).map(f =>
+      (f.eq_html ? `<div class="eq">${f.eq_html}</div>` : "") + (f.text_html || "")
+    ).join("");
+  }
+
+  function renderMisconception() {
+    const s = current();
+    const panel = $("misconceptionPanel");
+    panel.innerHTML = "";
+    panel.hidden = !s.misconception;
+    if (!s.misconception) return;
+    const box = document.createElement("div");
+    box.className = "misconception";
+    const b = document.createElement("b");
+    b.textContent = s.misconception_title || "💡 흔한 오개념";
+    box.append(b, document.createElement("br"), document.createTextNode(s.misconception));
+    panel.appendChild(box);
+  }
+
+  function enterScenario() {
+    ui.playing = false;
+    const s = current();
+    $("graphPanel").hidden = !s.chart;
+    $("chartHint").innerHTML = "";
+    api.custom.innerHTML = "";
+    api.setReadout([]); api.setNote("");
+    renderPicker(); renderControls(); renderFormula(); renderMisconception();
+    call("enter");
+    call("update");
+  }
+
+  function selectScenario(id) {
+    ui.scenarioId = id;
+    lastScenarioOfTab[ui.tab] = id;
+    enterScenario();
+  }
+
+  function switchTab(tab) {
+    ui.tab = tab;
+    renderTabs();
+    selectScenario(lastScenarioOfTab[tab] || scenariosOfTab(tab)[0].id);
+  }
+
+  function renderLegend() {
+    const box = $("legend");
+    (C.legend || []).forEach(l => {
+      const span = document.createElement("span");
+      const sw = document.createElement("i");
+      sw.className = "swatch" + (l.shape === "bar" ? " bar" : "");
+      sw.style.background = l.color;
+      span.append(sw, document.createTextNode(l.label));
+      box.appendChild(span);
+    });
+  }
+
+  function runSelfTests() {
+    if (!SIMOBJ || typeof SIMOBJ.tests !== "function") { console.log("물리 검증 항목 없음"); return; }
+    let results = [];
+    try { results = SIMOBJ.tests() || []; } catch (e) { showError("tests", e); return; }
+    console.log("=== " + C.title + " 물리 검증 ===");
+    let pass = 0;
+    for (const [name, ok, detail] of results) {
+      console.log(`[${ok ? "PASS" : "FAIL"}] ${name}${detail ? " — " + detail : ""}`);
+      if (ok) pass++;
+    }
+    console.log(pass === results.length ? "모든 검증 통과" : "일부 검증 실패 — 콘솔 확인 필요");
+    window.__wsSelfTest = { pass, total: results.length };
+  }
+
+
+  /* ---------- 학습 페이지 · 보고서 (선택) ---------- */
+  const PAGES = C.pages || [];
+  const REPORT = C.report || null;
+  const pageIds = [];
+  let curPage = "sim";
+  function showPage(id) {
+    if (!pageIds.includes(id)) id = "sim";
+    curPage = id; document.body.dataset.page = id;
+    document.querySelectorAll("#pageHost .page").forEach(el => el.classList.toggle("active", el.dataset.page === id));
+    $("simView").style.display = id === "sim" ? "" : "none";
+    document.querySelectorAll("#pageNav button[data-page]").forEach(b => { b.classList.toggle("active", b.dataset.page === id); if (b.dataset.page === id) b.classList.add("seen"); });
+    if (id === "sim") onResize();
+    if (id === "report" || document.body.classList.contains("split")) refreshReport();
+    try { history.replaceState(null, "", "#" + id); } catch (e) {}
+    window.scrollTo({ top: 0 });
+  }
+  function setSplit(on) {
+    if (on && window.innerWidth < 1100) { alert("분할뷰는 화면 가로 1100px 이상에서 쓸 수 있어요."); return; }
+    document.body.classList.toggle("split", on);
+    const b = $("splitBtn"); if (b) b.textContent = on ? "◫ 분할뷰 끄기" : "◫ 보고서 나란히 쓰기";
+    if (on) { if (curPage === "report") showPage("sim"); refreshReport(); }
+    onResize();
+  }
+  function buildPages() {
+    if (!PAGES.length && !REPORT) { pageIds.push("sim"); return; }
+    const nav = $("pageNav"); nav.hidden = false;
+    const order = [];
+    PAGES.filter(p => p.position !== "after").forEach(p => order.push(p));
+    order.push({ id: "sim", label: C.sim_label || "🕹 시뮬레이션" });
+    PAGES.filter(p => p.position === "after").forEach(p => order.push(p));
+    if (REPORT) order.push({ id: "report", label: REPORT.label || "📝 보고서" });
+    order.forEach((p, i) => {
+      pageIds.push(p.id);
+      const b = document.createElement("button"); b.dataset.page = p.id;
+      b.innerHTML = "<i>" + (i + 1) + "</i>" + p.label;
+      b.addEventListener("click", () => showPage(p.id));
+      nav.appendChild(b);
+      if (p.id !== "sim" && p.id !== "report") {
+        const sec = document.createElement("section"); sec.className = "page"; sec.dataset.page = p.id; sec.innerHTML = p.html || "";
+        $("pageHost").appendChild(sec);
+      }
+    });
+    if (REPORT) {
+      const sb = document.createElement("button"); sb.className = "split-btn on"; sb.id = "splitBtn"; sb.textContent = "◫ 보고서 나란히 쓰기";
+      sb.addEventListener("click", () => setSplit(!document.body.classList.contains("split")));
+      nav.appendChild(sb);
+      buildReport();
+    }
+    document.body.addEventListener("click", (ev) => {
+      const t = ev.target.closest("[data-go]"); if (!t) return;
+      ev.preventDefault(); const g = t.dataset.go;
+      if (g === "split") setSplit(true); else showPage(g);
+    });
+    window.addEventListener("resize", () => { if (window.innerWidth < 1100 && document.body.classList.contains("split")) setSplit(false); });
+    const h = (location.hash || "").slice(1);
+    showPage(pageIds.includes(h) ? h : order[0].id);
+  }
+  /* 보고서: 입력칸은 이 브라우저(localStorage)에만 저장. 이름·학번 칸은 두지 않는다. */
+  const REP_KEY = "wsreport:" + (C.title || "sim");
+  function repFields() { return (REPORT.sections || []).map(s => s.id); }
+  function buildReport() {
+    const R = REPORT, root = $("reportPage");
+    let h = "<h2>" + (R.title || "📝 실험보고서") + "</h2>" + (R.intro ? '<p class="hint">' + R.intro + "</p>" : "");
+    h += '<div class="rfield"><label>자동으로 들어오는 결과</label><div class="rauto" id="reportAuto">시뮬레이션에서 측정하면 여기에 나타나요.</div></div>';
+    (R.sections || []).forEach(sec => {
+      h += '<div class="rfield"><label for="rf_' + sec.id + '">' + sec.label + '</label><textarea id="rf_' + sec.id + '" placeholder="' + (sec.placeholder || "").replace(/"/g, "&quot;") + '"></textarea></div>';
+    });
+    h += '<div class="controls-row">' + (R.template_href ? '<a class="btnlink" href="' + R.template_href + '" download="' + (R.template_name || "") + '">⬇ 한글(.hwpx) 양식 받기</a>' : "") +
+      '<button class="primary" id="repPrint">🖨 인쇄 / PDF</button><button id="repHtml">⬇ HTML 저장</button><button id="repClear">초안 지우기</button></div>';
+    root.innerHTML = h;
+    try { const o = JSON.parse(localStorage.getItem(REP_KEY) || "null"); if (o) repFields().forEach(k => { if (typeof o[k] === "string") $("rf_" + k).value = o[k]; }); } catch (e) {}
+    repFields().forEach(k => $("rf_" + k).addEventListener("input", () => {
+      const o = {}; repFields().forEach(x => o[x] = $("rf_" + x).value);
+      try { localStorage.setItem(REP_KEY, JSON.stringify(o)); } catch (e) {}
+    }));
+    $("repPrint").addEventListener("click", () => { $("reportPrint").innerHTML = reportDoc(); window.print(); });
+    $("repHtml").addEventListener("click", () => {
+      const doc = '<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>' + (R.title || "보고서") + '</title></head><body>' + reportDoc() + "</body></html>";
+      const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([doc], { type: "text/html" })); a.download = (R.file_name || "report") + ".html"; a.click(); URL.revokeObjectURL(a.href);
+    });
+    $("repClear").addEventListener("click", () => { if (confirm("쓴 내용을 모두 지울까요?")) { repFields().forEach(k => $("rf_" + k).value = ""); try { localStorage.removeItem(REP_KEY); } catch (e) {} } });
+    window.addEventListener("afterprint", () => { $("reportPrint").innerHTML = ""; });
+  }
+  const escH = (t) => String(t).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  function reportDoc() {
+    const R = REPORT;
+    return '<style>body{font-family:"Malgun Gothic",sans-serif;line-height:1.7}h2{border-bottom:1px solid #999;margin-top:1.1em}table{border-collapse:collapse}th,td{border:1px solid #999;padding:3px 8px}</style><h1>' + escH(R.title || "보고서") +
+      '</h1><p>반 · 번호 · 이름: ________________</p>' + '<h2>결과</h2>' + ($("reportAuto").innerHTML) +
+      (R.sections || []).map(s => "<h2>" + s.label + "</h2><p>" + (escH($("rf_" + s.id).value).replace(/\n/g, "<br>") || "&nbsp;") + "</p>").join("");
+  }
+  function refreshReport() {
+    if (!REPORT) return;
+    const html = call("reportAuto");
+    if (typeof html === "string") $("reportAuto").innerHTML = html;
+  }
+  api.report = { refresh: refreshReport };
+
+  /* ---------- 시작 ---------- */
+  if (C.scene && C.scene.min_width) wrap.style.minWidth = C.scene.min_width + "px";
+  $("readoutTitle").textContent = C.readout_title || "측정값";
+  $("hoverHint").textContent = (C.scene && C.scene.hint != null) ? C.scene.hint
+    : (C.renderer === "three" ? "마우스 드래그: 회전 · 휠: 확대/축소" : "");
+  $("projectorBtn").addEventListener("click", () => document.body.classList.toggle("projector"));
+  renderLegend();
+  if (!SIMOBJ) showError("load", "sim_js에 SIM 객체가 정의되지 않았습니다");
+  if (initRenderer()) {
+    call("init");
+    renderTabs();
+    switchTab(ui.tab);
+    animate();
+  }
+  buildPages();
+  runSelfTests();
+})();
+</script>
+
+</body>
+</html>
+<!--claude-meta
+category: 광학
+slug: fermat-least-time
+icon: ⏱️
+title: 최단시간으로 보는 반사와 굴절 — 파동의 속력과 굴절률
+desc: 파동의 속력을 정하는 요인, 굴절률과 속력·파장의 관계, 페르마의 최단시간 원리로 반사 법칙과 스넬 법칙 이해하기 (물리학 파동·빛)
+-->

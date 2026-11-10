@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>렌즈에 의한 상과 수차 3D</title>
+<style>
+  :root {
+    --bg: #eef1f8; --panel: #ffffff; --ink: #172033; --sub: #5d6b82;
+    --accent: #4f46e5; --accent-soft: #eef0ff; --accent2: #e11d48; --ok: #059669; --warn: #d97706;
+    --border: #e2e7f0; --radius: 16px;
+    --shadow: 0 1px 2px rgba(20,30,60,.05), 0 8px 24px rgba(20,30,60,.06);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { font-family: "Pretendard","Noto Sans KR","Segoe UI","Malgun Gothic",system-ui,sans-serif; background: radial-gradient(1200px 500px at 10% -10%, #dfe4ff 0, transparent 60%), var(--bg); color: var(--ink); font-size: 15px; line-height: 1.6; padding: 0 0 40px; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 0 14px; }
+  header.top { background: rgba(255,255,255,.82); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+  header.top .wrap { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 10px; padding-bottom: 10px; }
+  header.top h1 { font-size: 1.15em; letter-spacing: -.2px; }
+  .homebtn { text-decoration: none; color: var(--sub); border: 1px solid var(--border); padding: 7px 14px; border-radius: 999px; font-size: .88em; white-space: nowrap; background: #fff; }
+  .panel, .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); }
+  .stack { display: flex; flex-direction: column; gap: 14px; }
+  canvas { display: block; max-width: 100%; }
+  button { font: inherit; font-size: .95em; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--border); background: #fff; color: var(--ink); cursor: pointer; transition: background .12s, box-shadow .12s; }
+  button:hover { background: #f5f7fd; box-shadow: 0 2px 8px rgba(30,40,80,.08); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { background: #4338ca; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  input[type=range] { accent-color: var(--accent); width: 100%; }
+  .seg { display: inline-flex; background: #e9edf7; border-radius: 999px; padding: 4px; gap: 2px; flex-wrap: wrap; }
+  .seg button { border: none; background: transparent; padding: 6px 14px; box-shadow: none; }
+  .seg button.active { background: #fff; color: var(--accent); font-weight: 700; box-shadow: 0 1px 4px rgba(30,40,80,.15); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips button { padding: 5px 12px; font-size: .9em; }
+  .chips button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  h3.sec { font-size: .92em; color: var(--sub); margin-bottom: 10px; font-weight: 700; }
+  .param { margin-bottom: 10px; }
+  .param label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 2px; font-size: .94em; }
+  .param label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .hint { font-size: .86em; color: var(--sub); }
+  .ctrl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 12px; margin-top: 14px; }
+  .ctrl-grid .panel { padding: 14px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+  /* 탭 */
+  .tabs { position: sticky; top: 0; z-index: 30; background: rgba(255,255,255,.92); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  .tabs .wrap { display: flex; gap: 6px; overflow-x: auto; padding-top: 8px; padding-bottom: 8px; scrollbar-width: none; }
+  .tabs button { flex: 1 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; padding: 10px 16px; white-space: nowrap; font-weight: 600; color: var(--sub); background: transparent; border-color: transparent; }
+  .tabs button i { font-style: normal; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #e4e8f3; font-size: .78em; color: var(--sub); }
+  .tabs button.seen i { background: #d1fae5; color: var(--ok); }
+  .tabs button.active { background: var(--accent); color: #fff; box-shadow: 0 4px 14px rgba(79,70,229,.3); }
+  .tabs button.active i { background: rgba(255,255,255,.25); color: #fff; }
+  .pane { display: none; } .pane.active { display: block; }
+  .pane-head { margin-bottom: 14px; } .pane-head h2 { font-size: 1.35em; letter-spacing: -.3px; margin-bottom: 4px; } .pane-head p { color: var(--sub); }
+  .pane-next { display: flex; gap: 10px; justify-content: space-between; flex-wrap: wrap; margin-top: 18px; } .pane-next button { padding: 11px 22px; }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; align-items: start; }
+  .eqgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+  .eqbox { border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; background: linear-gradient(180deg, #fbfbff, #f3f5ff); }
+  .eqbox .eq { font-family: Georgia, "Times New Roman", serif; font-size: 1.35em; color: var(--accent); margin-bottom: 4px; }
+  .eqbox p { font-size: .88em; color: var(--sub); }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .kpi { border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; background: #fbfcff; display: flex; flex-direction: column; }
+  .kpi span { font-size: .82em; color: var(--sub); } .kpi b { font-size: 1.2em; color: var(--accent); font-variant-numeric: tabular-nums; margin: 1px 0; } .kpi small { color: var(--sub); font-size: .74em; line-height: 1.35; }
+  table { width: 100%; border-collapse: collapse; font-size: .9em; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: center; font-variant-numeric: tabular-nums; }
+  th { background: #f4f6fc; }
+  td.l, th.l { text-align: left; }
+  .note { border-left: 4px solid var(--accent); background: var(--accent-soft); padding: 10px 14px; border-radius: 0 12px 12px 0; margin: 10px 0; font-size: .93em; }
+  .note.warn { border-color: var(--warn); background: #fff7e6; }
+  .note.ok { border-color: var(--ok); background: #ecfdf5; }
+  .src { font-size: .8em; color: var(--sub); margin-top: 8px; }
+  ul.tight { padding-left: 1.2em; } ul.tight li { margin: 3px 0; }
+  h3 { font-size: 1.05em; margin: 4px 0 8px; }
+  [hidden] { display: none !important; }
+  body[data-tab="aberr"] .only-sim { display: none !important; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .85em; color: var(--sub); margin-top: 8px; }
+  .legend i { display: inline-block; width: 22px; height: 4px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+
+  /* 3D 장면 카드 */
+  .scene-card { padding: 12px 12px 14px; background: linear-gradient(180deg, #0f172a, #0b1224); border-color: #1d2a4a; color: #e2e8f0; }
+  .scene-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .scene-bar .chip { margin-left: auto; font-size: .85em; padding: 5px 12px; border-radius: 999px; background: rgba(255,255,255,.1); color: #fde68a; }
+  .scene-card button:not(.primary) { background: rgba(255,255,255,.08); color: #e2e8f0; border-color: rgba(255,255,255,.14); }
+  .scene-card button { padding: 5px 12px; font-size: .86em; }
+  .scene-card label.tg { display: inline-flex; align-items: center; gap: 5px; font-size: .86em; color: #cbd5e1; }
+  #sceneCard { display: none; } .pane #sceneCard { display: block; }
+  #view3d { position: relative; width: 100%; height: clamp(300px, 44vw, 470px); border-radius: 12px; overflow: hidden; }
+  #view3d canvas { width: 100% !important; height: 100% !important; touch-action: none; }
+  .scene-hint { font-size: .8em; color: #94a3b8; margin-top: 6px; }
+  .quickbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 22px; margin-top: 10px; padding: 8px 14px; border-radius: 12px; background: rgba(255,255,255,.07); font-size: .92em; }
+  .quickbar label { display: flex; align-items: center; gap: 8px; }
+  .quickbar input[type=range] { width: 190px; max-width: 38vw; }
+  .quickbar b { min-width: 4.2em; font-variant-numeric: tabular-nums; color: #fcd34d; }
+  .missionbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 9px 14px; margin-bottom: 12px; font-size: .88em; box-shadow: var(--shadow); }
+  .missionbar .m { display: inline-flex; align-items: center; gap: 6px; color: var(--sub); }
+  .missionbar .m i { font-style: normal; display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #e4e8f3; color: var(--sub); font-size: .8em; }
+  .missionbar .m.done { color: var(--ok); font-weight: 600; } .missionbar .m.done i { background: var(--ok); color: #fff; }
+  #inspector { width: 100%; max-width: 420px; aspect-ratio: 1; border-radius: 12px; border: 1px solid #1d2a4a; background: #0a0e18; margin: 0 auto; }
+  .sharp { height: 10px; border-radius: 6px; background: #e4e8f3; overflow: hidden; margin-top: 4px; } .sharp div { height: 100%; width: 0; transition: width .15s; }
+  .side { display: flex; flex-direction: column; gap: 14px; }
+  .main3 { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(300px, 1fr); gap: 14px; align-items: start; }
+  @media (max-width: 980px) { .main3 { grid-template-columns: 1fr; } }
+  .diag { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 14px; }
+  .diag .panel { padding: 12px; } .diag canvas { width: 100%; height: auto; border-radius: 8px; }
+  .ab-card h3 { color: var(--accent); }
+  details.f { border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px; background: #fbfcff; margin: 8px 0; }
+  details.f summary { cursor: pointer; font-weight: 600; font-size: .93em; }
+  details.f p { margin-top: 6px; font-size: .92em; }
+  #graph { width: 100%; max-width: 640px; height: auto; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+  @media (max-width: 720px) { .tabs button { padding: 9px 12px; } .pane-head h2 { font-size: 1.15em; } }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "../../vendor/three-0.186.1/build/three.module.js",
+  "three/addons/": "../../vendor/three-0.186.1/examples/jsm/"
+} }
+</script>
+</head>
+<body data-tab="theory">
+<header class="top"><div class="wrap">
+  <a class="homebtn" href="../../index.html">🏠 홈</a>
+  <h1>🔭 렌즈에 의한 상과 수차 3D</h1>
+</div></header>
+<nav class="tabs" id="tabs"><div class="wrap">
+  <button data-tab="theory" class="active"><i>1</i>📖 이론</button>
+  <button data-tab="real"><i>2</i>🔬 실제 실험</button>
+  <button data-tab="sim"><i>3</i>🕹 3D 시뮬레이션</button>
+  <button data-tab="aberr"><i>4</i>🌈 렌즈의 수차</button>
+  <button data-tab="meaning"><i>5</i>💡 의미·정리</button>
+</div></nav>
+
+<div class="wrap">
+
+<!-- ══════════ 1. 이론 ══════════ -->
+<section class="pane active" id="pane-theory">
+  <div class="pane-head"><h2>📖 이론 — 렌즈는 어떻게 상을 만들까?</h2><p>볼록 렌즈와 오목 렌즈가 만드는 상의 규칙을 정리하고, 이 규칙이 “어디까지 맞는지”를 수차에서 확인합니다.</p></div>
+  <div class="two">
+    <div class="card">
+      <h3>① 렌즈가 빛을 꺾는 방법</h3>
+      <p>유리의 두 구면에서 빛은 <b>스넬 법칙</b> n₁ sin θ₁ = n₂ sin θ₂ 에 따라 굴절합니다. 렌즈가 얇고 광선이 광축에 가까우면(<b>근축 근사</b>, sin θ ≈ θ) 광축에서 높이 y만큼 떨어진 광선이 꺾이는 각이 y/f에 비례해서, 한 점에서 나온 모든 광선이 한 점으로 모입니다. 이 한 점이 <b>상</b>입니다.</p>
+      <div class="note">시뮬레이션은 근축 근사를 쓰지 않습니다. 렌즈의 두 구면에서 <b>스넬 법칙으로 광선을 하나하나 추적</b>하므로, 아래 공식이 맞는 범위와 틀어지는 부분(수차)이 모두 화면에 나옵니다.</div>
+      <p class="src">교재: Hecht <i>Optics</i> 5판 §5.2 렌즈 · Chabay &amp; Sherwood <i>Matter &amp; Interactions</i> Vol.2 §23.10 상의 형성(실상·허상, 구면수차)</p>
+    </div>
+    <div class="card">
+      <h3>② 광선 작도 3규칙 <span class="hint">(3D 장면의 굵은 광선 색과 같아요)</span></h3>
+      <ul class="tight">
+        <li><b style="color:#f97316">주황</b> — 광축에 나란히 입사 → 렌즈 뒤 초점 F′을 지난다 (오목 렌즈는 앞쪽 초점에서 나오는 것처럼 퍼진다)</li>
+        <li><b style="color:#16a34a">초록</b> — 렌즈 중심을 지난다 → 거의 꺾이지 않고 직진</li>
+        <li><b style="color:#3b82f6">파랑</b> — 앞쪽 초점 F를 향해 입사 → 광축에 나란히 나간다</li>
+      </ul>
+      <p style="margin-top:6px">세 광선이 (또는 그 연장선이) 만나는 곳이 물체 끝점의 상입니다. 실제 광선이 모이면 <b>실상</b>(스크린에 맺힘), 연장선만 모이면 <b>허상</b>(눈으로만 보임)입니다.</p>
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h3>③ 핵심 식</h3>
+    <div class="eqgrid">
+      <div class="eqbox"><div class="eq">1/a + 1/b = 1/f</div><p>렌즈 공식. a 물체 거리, b 상 거리(실상 +, 허상 −), f 초점거리(볼록 +, 오목 −). 대학 교재는 a, b를 s<sub>o</sub>, s<sub>i</sub>로 씁니다.</p></div>
+      <div class="eqbox"><div class="eq">m = −b / a</div><p>가로 배율. m &lt; 0 이면 도립(거꾸로), m &gt; 0 이면 정립. |m| &gt; 1 이면 확대.</p></div>
+      <div class="eqbox"><div class="eq">1/f = (n−1)(1/R₁ − 1/R₂)</div><p>렌즈 제작자 공식. 유리 굴절률 n과 두 면의 곡률반지름 R₁, R₂로 f가 정해집니다. n이 파장마다 달라서 <b>색수차</b>가 생깁니다.</p></div>
+    </div>
+  </div>
+  <div class="two" style="margin-top:14px">
+    <div class="card">
+      <h3>④ 볼록 렌즈(f &gt; 0)가 만드는 상</h3>
+      <table><tr><th>물체 위치</th><th>상의 위치</th><th>성질</th></tr>
+        <tr><td>a &gt; 2f</td><td>f &lt; b &lt; 2f</td><td>실상 · 도립 · 축소</td></tr>
+        <tr><td>a = 2f</td><td>b = 2f</td><td>실상 · 도립 · 같은 크기</td></tr>
+        <tr><td>f &lt; a &lt; 2f</td><td>b &gt; 2f</td><td>실상 · 도립 · 확대</td></tr>
+        <tr><td>a = f</td><td>상이 없다(평행광)</td><td>—</td></tr>
+        <tr><td>a &lt; f</td><td>b &lt; 0 (물체와 같은 쪽)</td><td>허상 · 정립 · 확대 (돋보기)</td></tr></table>
+    </div>
+    <div class="card">
+      <h3>⑤ 오목 렌즈(f &lt; 0)가 만드는 상</h3>
+      <p>빛을 퍼지게 하므로 <b>물체를 어디에 두어도</b> 렌즈 앞쪽(물체 쪽)에 <b>허상 · 정립 · 축소</b>된 상이 생깁니다. 상 거리는 |b| &lt; |f|, 물체가 멀수록 상은 초점 F 쪽으로 다가갑니다.</p>
+      <table style="margin-top:6px"><tr><th>f = −10 cm</th><th>a = 30</th><th>a = 20</th><th>a = 10</th></tr><tr><td>b (cm)</td><td>−7.5</td><td>−6.7</td><td>−5.0</td></tr><tr><td>m</td><td>+0.25</td><td>+0.33</td><td>+0.50</td></tr></table>
+      <div class="note ok" style="margin-top:10px">🕹 3D 시뮬레이션에서 오목 렌즈로 바꾸고 스크린에 상이 맺히는지 확인해 보세요.</div>
+    </div>
+  </div>
+  <div class="note warn"><b>근축 근사의 한계.</b> sin θ = θ − θ³/6 + … 에서 θ³ 이후 항을 버린 것이 위 식들입니다. 광선이 렌즈 가장자리를 지나거나 광축에서 멀어질수록 이 항이 커져 상이 번집니다 — 이것이 <b>수차</b>(④ 탭)입니다. 파장에 따른 굴절률 차이는 <b>색수차</b>를 만듭니다.</div>
+  <div class="pane-next"><span></span><button class="primary" data-tab="real">다음: 🔬 실제 실험은 어떻게 할까? →</button></div>
+</section>
+
+<!-- ══════════ 2. 실제 실험 ══════════ -->
+<section class="pane" id="pane-real">
+  <div class="pane-head"><h2>🔬 실제 실험 — 광학대에서 상을 찾는 법</h2><p>3D 시뮬레이션은 아래 실험을 그대로 옮겨 놓았습니다. 장치와 측정 요령을 먼저 봅니다.</p></div>
+  <div class="two">
+    <div class="card">
+      <h3>장치 구성</h3>
+      <svg viewBox="0 0 620 230" width="100%" role="img" aria-label="광학대 배치도">
+        <rect x="10" y="190" width="600" height="14" rx="3" fill="#cbd5e1"/>
+        <g stroke="#94a3b8"><line x1="10" y1="206" x2="610" y2="206"/></g>
+        <line x1="10" y1="110" x2="610" y2="110" stroke="#94a3b8" stroke-dasharray="6 5"/>
+        <rect x="60" y="86" width="24" height="48" rx="4" fill="#fde68a" stroke="#d97706"/><text x="72" y="156" text-anchor="middle" font-size="13" fill="#172033">F 모양</text><text x="72" y="172" text-anchor="middle" font-size="12" fill="#5d6b82">구멍 + LED</text>
+        <path d="M290 60 Q312 110 290 160 Q268 110 290 60Z" fill="#bfdbfe" stroke="#2563eb" stroke-width="2"/><text x="290" y="50" text-anchor="middle" font-size="13" fill="#172033">볼록 렌즈</text>
+        <rect x="500" y="64" width="8" height="92" fill="#f1f5f9" stroke="#64748b"/><text x="504" y="50" text-anchor="middle" font-size="13" fill="#172033">스크린</text>
+        <line x1="72" y1="90" x2="290" y2="90" stroke="#f97316" stroke-width="2"/><line x1="290" y1="90" x2="504" y2="130" stroke="#f97316" stroke-width="2"/>
+        <line x1="72" y1="90" x2="504" y2="130" stroke="#16a34a" stroke-width="2"/>
+        <line x1="72" y1="140" x2="290" y2="140" stroke="#94a3b8" stroke-width="0"/>
+        <g font-size="12" fill="#172033"><text x="180" y="226" text-anchor="middle">a (물체 거리)</text><text x="400" y="226" text-anchor="middle">b (상 거리)</text></g>
+        <path d="M72 214 H290" stroke="#4f46e5" marker-end="url(#ar)" fill="none"/><path d="M290 214 H504" stroke="#4f46e5" fill="none"/>
+      </svg>
+      <ul class="tight" style="margin-top:8px"><li>광원 + 물체(F 모양 구멍이 뚫린 카드), 볼록 렌즈(f ≈ 10~20 cm), 스크린을 눈금자(광학대) 위에 세웁니다.</li><li>렌즈 위치 눈금 기준으로 a, b를 읽습니다. 광축과 높이를 일직선으로 맞춰야 상이 찌그러지지 않습니다.</li></ul>
+    </div>
+    <div class="card">
+      <h3>측정 순서</h3>
+      <ol class="tight">
+        <li>렌즈 초점거리를 먼저 대략 잰다(먼 창문 상이 맺히는 거리).</li>
+        <li>a를 정하고, 스크린을 앞뒤로 움직이며 상이 <b>가장 또렷한</b> 위치 b를 찾는다 — 또렷한 범위가 넓으면 양 끝 위치의 평균을 쓴다.</li>
+        <li>a를 바꿔 5회 이상 반복해 (a, b)를 기록한다.</li>
+        <li>1/a 대 1/b 그래프가 기울기 −1인 직선이면, y절편이 1/f 이다.</li>
+        <li><b>오목 렌즈</b>는 스크린에 상이 안 맺힌다. 볼록 렌즈가 만든 실상 앞에 오목 렌즈를 끼우면 상이 더 멀어지는 것으로 f를 잰다.</li>
+      </ol>
+      <div class="note">🕹 시뮬레이션의 “📌 이 위치 기록”이 이 표를 대신합니다. 시뮬레이션은 허상의 위치도 알려 줍니다.</div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h3>실험에서 이런 것이 보이면 수차입니다</h3>
+    <div class="two">
+      <div><b>번짐</b><ul class="tight"><li>렌즈를 활짝 쓰면 <b>가장자리가 흐려진다</b> → 구면수차</li><li>렌즈 앞에 <b>구멍 뚫린 종이(조리개)</b>를 대면 선명해지지만 어두워진다</li><li>광축에서 먼 곳의 점이 <b>혜성 꼬리</b>처럼 번진다 → 코마</li></ul></div>
+      <div><b>색</b><ul class="tight"><li>흰 물체의 가장자리에 <b>파란·붉은 띠</b>가 생긴다 → 색수차</li><li>파랑·빨강 초점이 달라서, 스크린을 움직이면 띠의 색이 바뀐다</li><li>색지움(아크로매틱) 렌즈는 이 띠가 거의 없다</li></ul></div>
+    </div>
+  </div>
+  <div class="pane-next"><button data-tab="theory">← 이론으로</button><button class="primary" data-tab="sim">다음: 🕹 3D 시뮬레이션 하러 가기 →</button></div>
+</section>
+
+<!-- ══════════ 3 & 4. 3D 장면(공유) ══════════ -->
+<div id="sceneCard" class="card scene-card">
+  <div class="scene-bar">
+    <div class="chips"><button data-act="view:side">📐 옆에서(광선도)</button><button data-act="view:oblique">🧊 비스듬히</button><button data-act="view:back">🎥 스크린 쪽에서</button></div>
+    <label class="tg only-sim"><input type="checkbox" data-kb="showP"> 3대 광선</label>
+    <label class="tg only-sim"><input type="checkbox" data-kb="showB"> 광선 다발</label>
+    <label class="tg only-sim"><input type="checkbox" data-kb="showI"> 상(허깨비)</label>
+    <span class="chip only-sim" id="imgChip">–</span>
+  </div>
+  <div id="view3d"></div>
+  <div class="scene-hint">드래그: 회전 · 휠/핀치: 확대 · 우클릭 드래그: 이동. 광선은 렌즈 두 면에서 스넬 법칙으로 정확히 추적됩니다(근축 근사 아님).</div>
+</div>
+
+<section class="pane" id="pane-sim">
+  <div class="pane-head"><h2>🕹 3D 시뮬레이션 — 상은 어디에, 어떻게 생길까?</h2><p>물체를 움직이고 스크린을 옮겨 상을 맺어 보세요. 볼록/오목 렌즈를 바꾸어 비교합니다.</p></div>
+  <div class="missionbar" id="missionbar"></div>
+  <div class="main3">
+    <div>
+      <div id="host-sim"></div>
+      <div class="quickbar" style="background:#0f172a;color:#e2e8f0;border-radius:12px;margin-top:0">
+        <div class="seg"><button data-set="type:convex">볼록 렌즈</button><button data-set="type:concave">오목 렌즈</button></div>
+        <label>물체 거리 a <input type="range" data-k="do_" min="4" max="80" step="0.5"><b data-v="do_" data-u=" cm">–</b></label>
+        <label>스크린 위치 b <input type="range" data-k="sc" min="3" max="90" step="0.1"><b data-v="sc" data-u=" cm">–</b></label>
+        <button data-act="focus" title="상이 맺히는 위치로 스크린을 옮깁니다">🎯 초점 맞춤</button>
+      </div>
+    </div>
+    <div class="side">
+      <div class="panel"><h3 class="sec">📺 스크린에 맺힌 상</h3>
+        <canvas id="inspector" width="420" height="420"></canvas>
+        <div class="hint" id="realNote" style="margin-top:6px"></div>
+        <div class="hint" style="margin-top:6px">선명도 (축 위 점의 퍼짐)</div><div class="sharp"><div id="sharp"></div></div>
+      </div>
+      <div class="panel"><h3 class="sec">📏 읽기값</h3>
+        <div class="kpis">
+          <div class="kpi"><span>물체 거리 a</span><b id="kA">–</b></div>
+          <div class="kpi"><span>상 거리 b (공식)</span><b id="kBf">–</b><small>1/b = 1/f − 1/a</small></div>
+          <div class="kpi"><span>상 거리 b (광선추적)</span><b id="kBt">–</b><small>두께 있는 실제 렌즈</small></div>
+          <div class="kpi"><span>배율 m</span><b id="kM">–</b></div>
+          <div class="kpi" style="grid-column:1/-1"><span>상의 성질</span><b id="kType" style="font-size:1.05em">–</b></div>
+          <div class="kpi"><span>스크린 위 퍼짐(RMS)</span><b id="kBlur">–</b></div>
+        </div>
+        <div class="row" style="margin-top:10px"><button class="primary" data-act="record">📌 이 위치 기록</button><span class="hint" id="recMsg"></span></div>
+      </div>
+    </div>
+  </div>
+  <div class="ctrl-grid">
+    <div class="panel"><h3 class="sec">🔍 렌즈</h3>
+      <div class="param"><label>초점거리 |f| <span class="val" data-v="f" data-u=" cm">–</span></label><input type="range" data-k="f" min="5" max="20" step="0.5"></div>
+      <div class="param"><label>조리개 지름 <span class="val"><span data-v="stopD" data-u=" cm"></span> (<span data-v="stopFN"></span>)</span></label><input type="range" data-k="stopD" min="0.5" max="8" step="0.1"></div>
+      <div class="param"><label>렌즈 종류</label><div class="seg"><button data-set="kind:singlet">단일 렌즈</button><button data-set="kind:doublet">색지움 이중렌즈</button></div></div>
+      <div class="hint">조리개를 줄이면 상이 선명해지는 대신 어두워집니다. 활짝 열면(f/1.3) 가장자리 광선 때문에 번집니다.</div>
+    </div>
+    <div class="panel"><h3 class="sec">🅰 물체</h3>
+      <div class="param"><label>물체 높이 <span class="val" data-v="ho" data-u=" cm">–</span></label><input type="range" data-k="ho" min="1" max="5" step="0.5"></div>
+      <div class="param"><label>물체 모양</label><div class="chips"><button data-set="obj:F">글자 F</button><button data-set="obj:pt">점광원(축 위)</button><button data-set="obj:pt-off">점광원(축 밖)</button></div></div>
+      <div class="param"><label>빛</label><div class="seg"><button data-set="color:white">백색광(R·G·B)</button><button data-set="color:green">단색(초록)</button></div></div>
+    </div>
+    <div class="panel"><h3 class="sec">💡 관찰 포인트</h3>
+      <ul class="tight"><li>a를 f 가까이로 줄여 보세요. 상이 점점 멀어지다 <b>a = f</b>에서 사라집니다.</li><li><b>a &lt; f</b>이면 스크린은 흐린 빛만 받고, 점선(연장선)이 만나는 곳에 <b>허상</b>이 있습니다.</li><li>글자 F가 <b>180° 돌아서</b> 맺히는 것을 보세요(위아래·좌우 모두 반전).</li><li>백색광으로 상 가장자리의 <b>색 번짐</b>을 확인하고, 이중렌즈로 바꾸면 사라지는지 봅니다.</li></ul>
+    </div>
+  </div>
+  <div class="pane-next"><button data-tab="real">← 실제 실험 보기</button><button class="primary" data-tab="aberr">다음: 🌈 렌즈의 수차 →</button></div>
+</section>
+
+<!-- ══════════ 4. 수차 ══════════ -->
+<section class="pane" id="pane-aberr">
+  <div class="pane-head"><h2>🌈 렌즈의 수차 — 완벽한 상은 왜 불가능할까?</h2><p>근축 근사에서 벗어난 광선이 만드는 오차입니다. 점광원 하나를 렌즈로 보냈을 때 <b>한 점이 아니라 번진 얼룩</b>이 되는 이유를 3D와 진단 그래프로 봅니다.</p></div>
+  <div class="row" style="margin-bottom:12px"><b>종류:</b>
+    <div class="chips"><button data-set="ab:sph">⚪ 구면수차</button><button data-set="ab:chr">🌈 색수차</button><button data-set="ab:coma">☄ 코마·비점수차(축 밖)</button></div></div>
+  <div class="main3">
+    <div><div id="host-aberr"></div>
+      <div class="legend" id="legendRing"><span><i style="background:#22d3ee"></i>광축 가까운 광선</span><span><i style="background:#fbbf24"></i>중간</span><span><i style="background:#fb7185"></i>렌즈 가장자리 광선</span><span style="color:#94a3b8">· 파랑 막대 = 근축 초점 · 빨강 = 주변 초점 · 노랑 = 최소혼란원</span></div>
+    </div>
+    <div class="side">
+      <div class="panel ab-card" data-ab="sph"><h3>⚪ 구면수차 (spherical aberration)</h3>
+        <p>구면 렌즈는 광축에서 먼 곳을 지나는 광선을 <b>더 세게</b> 꺾습니다(θ³ 항). 그래서 가장자리 광선은 렌즈 가까이에서, 중심 광선은 더 멀리서 광축과 만납니다. 두 초점 사이 거리가 <b>종 구면수차(LSA)</b>이고, 가장 덜 번지는 지점은 <b>최소혼란원</b>입니다.</p>
+        <p class="hint">줄이는 법: 조리개 ↓ · 렌즈를 알맞게 휘기(q) · 렌즈 두 장 조합 · 비구면 렌즈</p><p class="src">교재: Hecht §6.3.1 단색 수차 · Matter &amp; Interactions Fig.23.79</p></div>
+      <div class="panel ab-card" data-ab="chr" hidden><h3>🌈 색수차 (chromatic aberration)</h3>
+        <p>유리의 굴절률 n(λ)은 파랑이 빨강보다 큽니다(분산). 같은 렌즈도 <b>파랑을 더 세게 꺾어</b> 파랑 초점이 렌즈 쪽으로 당겨집니다. 흰 물체의 가장자리에 색 띠가 생기는 이유입니다. 크라운 유리(볼록)와 플린트 유리(오목)를 붙인 <b>색지움 이중렌즈</b>는 두 색의 초점을 일치시킵니다.</p>
+        <p class="hint">아래에서 “색지움 이중렌즈”를 켜고 R·G·B 초점이 겹치는지 보세요.</p><p class="src">교재: Hecht §5.7(색수차, 색지움) · §6.3.2</p></div>
+      <div class="panel ab-card" data-ab="coma" hidden><h3>☄ 코마와 비점수차 (축 밖 점)</h3>
+        <p>광축에서 기울어 들어오는 빛은 렌즈 윗부분과 아랫부분의 광선이 다른 배율로 모여 <b>혜성 모양(코마)</b>이 됩니다. 또 광선 다발의 세로 단면(접선)과 가로 단면(샛선)이 <b>다른 위치에서 모여</b> 점이 짧은 선으로 늘어납니다(<b>비점수차</b>). 초점면이 평면이 아니라 휘는 것은 <b>상면 만곡</b>입니다.</p>
+        <p class="hint">입사각 θ를 키우며 “주변 광선만 쓰는 조리개”와 비교해 보세요.</p><p class="src">교재: Hecht §6.3.1 코마·비점수차·상면 만곡</p></div>
+    </div>
+  </div>
+  <div class="ctrl-grid">
+    <div class="panel"><h3 class="sec">🔍 렌즈와 조리개</h3>
+      <div class="param"><div class="seg"><button data-set="type:convex">볼록</button><button data-set="type:concave">오목</button></div></div>
+      <div class="param"><label>초점거리 |f| <span class="val" data-v="f" data-u=" cm">–</span></label><input type="range" data-k="f" min="5" max="20" step="0.5"></div>
+      <div class="param"><label>조리개 지름 <span class="val"><span data-v="stopDA" data-u=" cm"></span> (<span data-v="stopFN"></span>)</span></label><input type="range" data-k="stopDA" min="0.5" max="8" step="0.1"></div>
+      <div class="param"><label>렌즈 종류</label><div class="seg"><button data-set="kind:singlet">단일 렌즈</button><button data-set="kind:doublet">색지움 이중렌즈</button></div></div>
+      <div class="param"><label>렌즈 휘기 q <span class="val" data-v="q" data-d="2"></span></label><input type="range" data-k="q" min="-1" max="1" step="0.05"><div class="hint">−1: 평면이 앞 · 0: 양쪽 대칭 · +1: 볼록면이 빛을 먼저 받는 평볼록</div></div>
+    </div>
+    <div class="panel"><h3 class="sec">💡 광원</h3>
+      <div class="param"><div class="seg"><button data-set="inf:true">먼 물체(평행광)</button><button data-set="inf:false">가까운 물체</button></div></div>
+      <div class="param"><label>가까운 물체 거리 a <span class="val" data-v="do_" data-u=" cm"></span></label><input type="range" data-k="do_" min="4" max="80" step="0.5"></div>
+      <div class="param"><label>축 밖 입사각 θ <span class="val" data-v="theta" data-u="°" data-d="0"></span></label><input type="range" data-k="theta" min="0" max="15" step="1"></div>
+      <div class="param"><label>광선 색 표시</label><div class="seg"><button data-set="rayMode:ring">구경별</button><button data-set="rayMode:lam">파장별(R·G·B)</button></div></div>
+      <div class="param"><label>빛</label><div class="seg"><button data-set="colorA:green">단색(초록)</button><button data-set="colorA:white">백색광</button></div></div>
+    </div>
+    <div class="panel"><h3 class="sec">📺 스크린</h3>
+      <div class="param"><label>스크린 위치 <span class="val" data-v="scA" data-u=" cm" data-d="2"></span></label><input type="range" data-k="scA" min="-20" max="80" step="0.01"></div>
+      <div class="chips"><button data-act="scA:p">근축 초점</button><button data-act="scA:best">최소혼란원</button><button data-act="scA:m">주변 초점</button></div>
+      <div class="param" style="margin-top:10px"><label>스크린 확대 <span class="val" id="shLab"></span></label><input type="range" data-k="shI" min="0" max="6" step="1"></div>
+    </div>
+  </div>
+  <div class="panel" style="margin-top:14px"><h3 class="sec">📏 수차 측정값 (G선 550 nm · 초점 위치와 번짐은 광축 위 점 기준)</h3>
+    <div class="kpis">
+      <div class="kpi"><span>근축 초점 위치</span><b id="aZp">–</b></div>
+      <div class="kpi"><span>종 구면수차 LSA</span><b id="aLsa">–</b><small>근축 − 주변 초점</small></div>
+      <div class="kpi"><span>최소혼란원 위치</span><b id="aBest">–</b></div>
+      <div class="kpi"><span>기하 번짐 (RMS 반지름)</span><b id="aGeo">–</b></div>
+      <div class="kpi"><span>회절 한계 (에어리 반지름)</span><b id="aAiry">–</b><small>1.22 λ b / D</small></div>
+      <div class="kpi"><span>축상 색수차 f<sub>R</sub>−f<sub>B</sub></span><b id="aCa">–</b></div>
+    </div>
+    <div class="note" id="aVerdict" style="margin-top:10px"></div>
+    <div class="kpis" id="aOff" hidden style="margin-top:8px">
+      <div class="kpi"><span>접선(tangential) 초점</span><b id="aT">–</b></div>
+      <div class="kpi"><span>샛선(sagittal) 초점</span><b id="aS">–</b></div>
+      <div class="kpi"><span>비점수차 (S − T)</span><b id="aAs">–</b></div>
+      <div class="kpi"><span>상면 만곡 (T − 근축)</span><b id="aFc">–</b></div>
+    </div>
+  </div>
+  <div class="diag">
+    <div class="panel"><h3 class="sec">① 초점 부근 광선 단면 (세로 확대)</h3><canvas id="cCaustic" width="560" height="360"></canvas><div class="hint">광선이 한 점에서 만나지 않고 퍼져 있는 정도를 확대해 본 그림. 가로는 실제 비율, 세로는 크게 늘렸습니다.</div></div>
+    <div class="panel"><h3 class="sec">② 스폿 다이어그램 (스크린 위치)</h3><canvas id="cSpot" width="360" height="360"></canvas><div class="hint">광선 하나하나가 스크린에 닿는 자리. 파랑·초록·빨강 점이 겹치면 흰색.</div></div>
+    <div class="panel"><h3 class="sec">③ 초점 위치 대 광선 높이</h3><canvas id="cLSA" width="460" height="360"></canvas><div class="hint">가장자리 광선(h 큼)일수록 초점이 옆으로 이동 = 구면수차. 백색광이면 세 색의 곡선이 갈라짐 = 색수차.</div></div>
+  </div>
+  <div class="pane-next"><button data-tab="sim">← 3D 시뮬레이션으로</button><button class="primary" data-tab="meaning">다음: 💡 의미·정리 →</button></div>
+</section>
+
+<!-- ══════════ 5. 의미·정리 ══════════ -->
+<section class="pane" id="pane-meaning">
+  <div class="pane-head"><h2>💡 의미·정리 — 내 측정은 렌즈 공식을 확인해 주었을까?</h2><p>시뮬레이션에서 기록한 (a, b)로 렌즈 공식을 검증하고, 수차를 정리합니다.</p></div>
+  <div class="card"><h3>① 내 기록 — 1/a + 1/b = 1/f ?</h3>
+    <div style="overflow-x:auto"><table><thead><tr><th>#</th><th>렌즈</th><th>a (cm)</th><th>b (cm)</th><th>1/a</th><th>1/b</th><th>1/a+1/b</th><th>f 계산</th><th>f 설정</th></tr></thead><tbody id="recBody"></tbody></table></div>
+    <div class="row" style="margin-top:10px"><button data-act="clearrec">기록 지우기</button><button data-tab="sim">🕹 더 기록하러 가기</button></div>
+    <div style="margin-top:12px"><canvas id="graph" width="640" height="400"></canvas>
+    <div class="hint">점이 점선(1/b = 1/f − 1/a) 위에 놓이면 공식이 맞는 것입니다. 오목 렌즈는 b가 음수(허상)라 아래쪽에 찍힙니다.</div></div>
+    <div class="note">f 계산값이 f 설정과 몇 % 어긋나는 것은 측정 실수가 아니라 <b>렌즈 두께</b>(얇은 렌즈 근사의 한계)와 <b>구면수차</b>(가장 또렷한 위치가 근축 초점보다 렌즈 쪽) 때문입니다. 시뮬레이션은 두께 있는 실제 렌즈를 추적합니다. 조리개를 줄여 다시 기록하면 오차가 줄어듭니다.</div>
+  </div>
+  <div class="two" style="margin-top:14px">
+    <div class="card"><h3>② 수차 한눈에</h3>
+      <table><tr><th class="l">수차</th><th class="l">원인</th><th class="l">줄이는 법</th></tr>
+        <tr><td class="l"><b>구면수차</b></td><td class="l">가장자리 광선을 더 세게 꺾음</td><td class="l">조리개, 렌즈 휘기, 렌즈 조합, 비구면</td></tr>
+        <tr><td class="l"><b>색수차</b></td><td class="l">n이 파장마다 다름(분산)</td><td class="l">색지움 이중렌즈(크라운+플린트), 단색광</td></tr>
+        <tr><td class="l"><b>코마</b></td><td class="l">축 밖 점, 렌즈 구역별 배율 차이</td><td class="l">조리개 위치·렌즈 조합</td></tr>
+        <tr><td class="l"><b>비점수차</b></td><td class="l">접선·샛선 초점 불일치</td><td class="l">렌즈 조합</td></tr>
+        <tr><td class="l"><b>상면 만곡·왜곡</b></td><td class="l">초점면이 휨, 배율이 시야마다 다름</td><td class="l">조리개 위치, 플래트너</td></tr></table>
+    </div>
+    <div class="card"><h3>③ 수차와 파동성 — 조리개의 딜레마</h3>
+      <p>조리개를 줄이면 기하학적 번짐(수차)은 빠르게 줄지만, 빛의 <b>파동성(회절)</b> 때문에 점은 반지름 1.22 λ b / D 의 에어리 원보다 작아질 수 없습니다. D가 작을수록 이 한계는 <b>커집니다</b>. 그래서 사진 렌즈에는 <b>가장 선명한 조리개 값</b>이 따로 있습니다.</p>
+      <div class="note ok">④ 탭에서 조리개를 줄이며 “기하 번짐”과 “회절 한계”가 만나는 지점을 찾아보세요.</div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px"><h3>④ 생각해 보기</h3>
+    <details class="f"><summary>a = 2f 에서 b = 2f, m = −1 임을 렌즈 공식으로 보이시오.</summary><p>1/b = 1/f − 1/(2f) = 1/(2f) → b = 2f. m = −b/a = −2f/2f = −1.</p></details>
+    <details class="f"><summary>오목 렌즈로 만든 허상은 왜 스크린에 못 맺히나? 눈으로는 왜 보이나?</summary><p>렌즈 뒤 광선이 계속 퍼져 나가서 실제로 만나지 않는다(연장선만 만남). 눈의 수정체는 퍼지는 광선을 다시 모아 망막에 상을 만들기 때문에 허상을 볼 수 있다.</p></details>
+    <details class="f"><summary>같은 f의 렌즈에서 평볼록 렌즈의 방향을 바꾸면 구면수차가 달라질까?</summary><p>달라진다. 평행광을 받을 때는 볼록면이 빛을 먼저 받는 방향(q=+1)이 평면이 먼저인 방향(q=−1)보다 수차가 작다. ④ 탭의 q 슬라이더로 LSA를 비교해 보자. 굴절을 두 면에 나누어 가질수록 한 면의 입사각이 줄기 때문이다.</p></details>
+    <details class="f"><summary>색지움 이중렌즈는 어떻게 파랑·빨강 초점을 일치시키나?</summary><p>볼록 크라운 렌즈의 색 오차를 분산이 큰 오목 플린트 렌즈가 반대 방향으로 상쇄하도록 두 렌즈의 굴절능을 φ₁/V₁ + φ₂/V₂ = 0 (V는 아베수)로 잡는다. 전체로는 볼록 렌즈(f &gt; 0)로 작동한다.</p></details>
+  </div>
+  <div class="card" style="margin-top:14px"><h3>⑤ 참고한 교재</h3>
+    <ul class="tight"><li>E. Hecht, <i>Optics</i>, 5th ed. — §5.2 렌즈, §5.7 광학계(색수차), §6.1 두꺼운 렌즈, §6.3 수차</li><li>R. Chabay &amp; B. Sherwood, <i>Matter &amp; Interactions</i> Vol. II — §23.10 상의 형성(실상·허상, 수차: 얇은 렌즈 모형의 한계)</li><li>Serway 등 일반물리 — 거울과 렌즈 장(구면수차·색수차 소개)</li></ul>
+    <p class="src">시뮬레이션의 모든 광선은 두 구면(색지움 이중렌즈는 세 면)에서 스넬 법칙으로 추적합니다. 유리: BK7(n<sub>d</sub>=1.5168, V=64.2), F2(n<sub>d</sub>=1.620, V=36.4), 굴절률은 n(λ)=A+B/λ² (코시식)로 아베수에서 환산. 모든 값은 교육용 모형입니다.</p>
+  </div>
+  <div class="pane-next"><button data-tab="aberr">← 수차로</button><a class="homebtn" href="../index.html">광학 목록으로</a></div>
+</section>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+// ===== 렌즈 광선추적 엔진 (단위 cm, 광축 = w, 가로 = (u,v)) =====
+// 구면 굴절면을 스넬 법칙으로 정확히 추적한다(근축 근사 아님). 굴절률은 코시식 n(λ)=A+B/λ².
+const LAM = { R: 0.65, G: 0.55, B: 0.45 };           // µm (대표 파장)
+const lF = 0.4861, lC = 0.6563, lD = 0.5876;
+function makeGlass(nd, V) {                          // nd: d선 굴절률, V: 아베수
+  const B = (nd - 1) / (V * (1 / (lF * lF) - 1 / (lC * lC)));
+  const A = nd - B / (lD * lD);
+  return { nd, V, n: (lam) => A + B / (lam * lam) };
+}
+const AIR = { nd: 1, V: 0, n: () => 1 };
+const BK7 = makeGlass(1.5168, 64.2);                 // 크라운 유리
+const F2 = makeGlass(1.6200, 36.4);                  // 플린트 유리
+
+const sag = (c, r) => { const q = 1 - c * c * r * r; return q > 0 ? c * r * r / (1 + Math.sqrt(q)) : NaN; };
+
+// 면 목록: [{z: 꼭짓점 위치, c: 곡률(1/R), n: 면 뒤쪽 매질 굴절률 함수}], 맨 끝 면 뒤는 공기
+// 얇은 렌즈(단일): 초점거리 f(오목은 음수), 휘어짐 q(-1~1), 구경 지름 D
+function singlet(f, q, D, glass = BK7) {
+  const nd = glass.nd;
+  const cmax = Math.max(Math.abs(1 + q), Math.abs(q - 1)) / (2 * (nd - 1) * Math.abs(f)) * 1.06;
+  const a = Math.min(D / 2, 0.85 / cmax);                    // 구경이 곡률반지름을 넘지 않게
+  let k = 1;                                                 // 두께 때문에 생기는 f 오차를 반복 보정
+  let sys;
+  for (let it = 0; it < 4; it++) {
+    const c1 = k * (1 + q) / (2 * (nd - 1) * f), c2 = k * (q - 1) / (2 * (nd - 1) * f);
+    const tc = Math.max(0.15, 0.12 + sag(c1, a) - sag(c2, a));
+    sys = { surf: [{ z: -tc / 2, c: c1, n: glass.n }, { z: tc / 2, c: c2, n: AIR.n }], a, tc, kind: 'singlet', glass };
+    const fm = paraxialEFL(sys);
+    k *= fm / f;                                             // f_측정 > f_목표 이면 곡률을 키운다
+  }
+  return sys;
+}
+// 색지움 이중렌즈(크라운 양볼록 + 플린트 평오목, 접합). 얇은 렌즈 조건 φ1/V1 + φ2/V2 = 0 에서 출발해,
+// 렌즈 두께 효과까지 포함해 R·B 초점이 일치하도록 크라운 굴절능 비율을 수치로 보정한다.
+function doublet(f, D) {
+  const g1 = BK7, g2 = F2, phi = 1 / f, fr0 = g1.V / (g1.V - g2.V);
+  const c2t = Math.abs((1 - fr0) * phi / (g2.nd - 1)), c1t = Math.abs(c2t + fr0 * phi / (g1.nd - 1));
+  const a = Math.min(D / 2, 0.8 / (Math.max(c1t, c2t) * 1.1));
+  const build = (fr) => {
+    const p1 = fr * phi, p2 = phi - p1; let k = 1, sys;
+    for (let it = 0; it < 6; it++) {
+      const c2 = k * p2 / (g2.nd - 1), c1 = c2 + k * p1 / (g1.nd - 1);
+      const t1 = Math.max(0.15, 0.12 + sag(c1, a) - sag(c2, a)), t2 = 0.15;
+      sys = { surf: [{ z: -(t1 + t2) / 2, c: c1, n: g1.n }, { z: -(t1 + t2) / 2 + t1, c: c2, n: g2.n }, { z: (t1 + t2) / 2, c: 0, n: AIR.n }], a, tc: t1 + t2, kind: 'doublet', glass: g1 };
+      k *= paraxialEFL(sys) / f;
+    }
+    return sys;
+  };
+  const ca = (s) => paraxialFocusZ(s, LAM.R) - paraxialFocusZ(s, LAM.B);
+  let x0 = g1.V / (g1.V - g2.V), x1 = x0 * 1.03, f0 = ca(build(x0)), f1 = ca(build(x1));
+  for (let i = 0; i < 10 && Math.abs(f1) > 1e-5 && f1 !== f0; i++) { const x2 = x1 - f1 * (x1 - x0) / (f1 - f0); x0 = x1; f0 = f1; x1 = x2; f1 = ca(build(x1)); }
+  return build(x1);
+}
+
+// 한 광선을 모든 면에 통과시킨다. p, d = [u,v,w]. 성공하면 {pts:[...], p, d}, 막히면 null
+function trace(sys, p, d, lam, keep = false) {
+  let px = p[0], py = p[1], pz = p[2], dx = d[0], dy = d[1], dz = d[2];
+  let n1 = 1; const pts = keep ? [[px, py, pz]] : null;
+  const S = sys.surf;
+  for (let i = 0; i < S.length; i++) {
+    const s = S[i], c = s.c; let t;
+    if (c === 0) { t = (s.z - pz) / dz; }
+    else {
+      const R = 1 / c, cz = s.z + R;
+      const ox = px, oy = py, oz = pz - cz;
+      const b = ox * dx + oy * dy + oz * dz, cc = ox * ox + oy * oy + oz * oz - R * R;
+      const disc = b * b - cc; if (disc < 0) return null;
+      const sq = Math.sqrt(disc), t1 = -b - sq, t2 = -b + sq;
+      t = R > 0 ? t1 : t2;
+    }
+    if (!(t > 0)) return null;
+    px += t * dx; py += t * dy; pz += t * dz;
+    if (px * px + py * py > sys.a * sys.a * 1.0001) return null;   // 구경 밖(가려짐)
+    let nx, ny, nz;
+    if (c === 0) { nx = 0; ny = 0; nz = -1; }
+    else { const R = 1 / c, cz = s.z + R; nx = (px) / R; ny = (py) / R; nz = (pz - cz) / R; }
+    let cosi = -(dx * nx + dy * ny + dz * nz);
+    if (cosi < 0) { nx = -nx; ny = -ny; nz = -nz; cosi = -cosi; }
+    const n2 = s.n(lam), eta = n1 / n2, k = 1 - eta * eta * (1 - cosi * cosi);
+    if (k < 0) return null;                                          // 전반사
+    const g = eta * cosi - Math.sqrt(k);
+    dx = eta * dx + g * nx; dy = eta * dy + g * ny; dz = eta * dz + g * nz;
+    n1 = n2; if (keep) pts.push([px, py, pz]);
+  }
+  return { pts, p: [px, py, pz], d: [dx, dy, dz] };
+}
+
+// 광축 근처(h 작음) 평행광선으로 유효 초점거리·초점 위치를 잰다
+function paraxialEFL(sys, lam = LAM.G) {
+  const h = 1e-3 * sys.a, r = trace(sys, [h, 0, -50], [0, 0, 1], lam); if (!r) return NaN;
+  const slope = r.d[0] / r.d[2];                                   // 광축을 향하는 기울기 -h/f
+  return -h / slope;
+}
+function paraxialFocusZ(sys, lam = LAM.G) {                 // 평행광이 광축과 만나는 z (뒷초점)
+  const h = 1e-3 * sys.a, r = trace(sys, [h, 0, -50], [0, 0, 1], lam); if (!r) return NaN;
+  return r.p[2] - r.p[0] / (r.d[0] / r.d[2]);
+}
+// 점물체 P가 만드는 근축 상의 z (광축 위 물체일 때)
+function paraxialImageZ(sys, zo, lam = LAM.G) {
+  const h = 1e-3 * sys.a, r = trace(sys, [0, 0, zo], norm([h, 0, -zo]), lam); if (!r) return NaN;
+  return r.p[2] - r.p[0] / (r.d[0] / r.d[2]);
+}
+function norm(v) { const l = Math.hypot(v[0], v[1], v[2]); return [v[0] / l, v[1] / l, v[2] / l]; }
+
+// 동공(렌즈 구경)을 고르게 채우는 표본점(해바라기 배열)
+function pupil(n, a) {
+  const out = [], g = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < n; i++) { const r = a * Math.sqrt((i + 0.5) / n), t = i * g; out.push([r * Math.cos(t), r * Math.sin(t)]); }
+  return out;
+}
+// 점물체 P=[u,v,w]에서 나온 광선 다발을 추적해 평면 w=ws와 만나는 점들을 돌려 준다
+function spot(sys, P, ws, lam, n = 200, stopA = sys.a) {
+  const pts = [];
+  for (const [qu, qv] of pupil(n, stopA)) {
+    const dir = norm([qu - P[0], qv - P[1], 0 - P[2]]);
+    const r = trace(sys, P, dir, lam); if (!r) continue;
+    const t = (ws - r.p[2]) / r.d[2];
+    pts.push([r.p[0] + t * r.d[0], r.p[1] + t * r.d[1]]);
+  }
+  return pts;
+}
+function rms(pts) {                                         // 무게중심 기준 RMS 반지름
+  if (!pts.length) return NaN;
+  let cx = 0, cy = 0; for (const p of pts) { cx += p[0]; cy += p[1]; } cx /= pts.length; cy /= pts.length;
+  let s = 0; for (const p of pts) s += (p[0] - cx) ** 2 + (p[1] - cy) ** 2;
+  return Math.sqrt(s / pts.length);
+}
+// 광축 위 점물체의 최소 퍼짐 위치(최소혼란원) — 황금분할 탐색
+function bestFocus(sys, zo, lam, zmin, zmax, stopA = sys.a) {
+  const f = (z) => rms(spot(sys, [0, 0, zo], z, lam, 120, stopA));
+  let a = zmin, b = zmax; const gr = 0.618034;
+  let c = b - gr * (b - a), d = a + gr * (b - a), fc = f(c), fd = f(d);
+  for (let i = 0; i < 40; i++) {
+    if (fc < fd) { b = d; d = c; fd = fc; c = b - gr * (b - a); fc = f(c); }
+    else { a = c; c = d; fc = fd; d = a + gr * (b - a); fd = f(d); }
+  }
+  const z = (a + b) / 2; return { z, r: f(z) };
+}
+
+// ===== 앱: 3D 장면 + 상(스크린) 몬테카를로 + 수차 진단 =====
+const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const R_ = LAM.R, G_ = LAM.G, B_ = LAM.B, rnd = Math.random;
+const fmt = (x, d = 1) => Number.isFinite(x) ? x.toFixed(d) : '∞';
+const Dlens = 8;                                    // 렌즈 지름(cm)
+const SH = [0.02, 0.05, 0.1, 0.2, 0.5, 1, 3];       // 수차 탭 스크린 반폭(cm)
+const S = {
+  mode: 'image', type: 'convex', kind: 'singlet', f: 10, q: 0,
+  do_: 25, ho: 3, obj: 'F', color: 'white', stopD: 4, sc: 16.7, showP: true, showB: true, showI: true,
+  ab: 'sph', inf: true, theta: 0, rayMode: 'ring', colorA: 'green', stopDA: 8, scA: 10, shI: 3,
+};
+const C = {};                                       // 계산 결과
+const ringCol = [0x22d3ee, 0xfbbf24, 0xfb7185], lamCol = { R: 0xff5a5a, G: 0x4ade80, B: 0x6aa6ff };
+const T = (u, v, w) => new THREE.Vector3(w, v, u);  // 엔진 좌표(u,v,w) → 화면 좌표(x=w, y=v, z=u)
+
+/* ───────── 계산 ───────── */
+function sysNow() {
+  const fs = S.type === 'convex' ? S.f : -S.f;
+  return (S.kind === 'doublet' && S.type === 'convex') ? doublet(fs, Dlens) : singlet(fs, S.q, Dlens);
+}
+function crossAxisU(sys, P, h, lam) {               // v=0 단면에서 높이 h 광선이 광축과 만나는 z
+  const r = trace(sys, P, norm([h - P[0], 0 - P[1], 0 - P[2]]), lam); if (!r) return NaN;
+  return r.p[2] - r.p[0] / (r.d[0] / r.d[2]);
+}
+function derive() {
+  const ab = S.mode === 'aberr';
+  C.fs = S.type === 'convex' ? S.f : -S.f;
+  C.sys = sysNow(); C.a = C.sys.a;
+  C.stopA = Math.min((ab ? S.stopDA : S.stopD) / 2, C.a);
+  C.L = ab && S.inf ? 1000 : S.do_;
+  const th = ab ? S.theta * Math.PI / 180 : 0;
+  C.th = th;
+  C.P0 = ab ? [0, C.L * Math.tan(th), -C.L] : [0, 0, -S.do_];
+  C.sc = ab ? S.scA : S.sc;
+  C.zi = paraxialImageZ(C.sys, -C.L);               // 광선추적 근축 상 위치
+  const A = C.L, f = C.fs;
+  C.bF = Math.abs(A - f) < 0.05 ? Infinity : f * A / (A - f);   // 렌즈 공식
+  C.mF = Number.isFinite(C.bF) ? -C.bF / A : Infinity;
+  C.m = Number.isFinite(C.zi) && Math.abs(C.zi) < 400 ? -C.zi / A : NaN;
+  C.real = C.zi > 0.2;
+  C.sh = ab ? SH[S.shI] : (Number.isFinite(C.m) && Math.abs(C.m) < 20 ? Math.max(2.5, Math.min(9, 0.7 * Math.abs(C.m) * S.ho + 1.6)) : 5);
+  // 스크린 중심(주광선이 닿는 곳)
+  C.scr = [0, 0];
+  if (ab) {
+    const ch = trace(C.sys, C.P0, norm([-C.P0[0], -C.P0[1], -C.P0[2]]), G_);
+    if (ch) { const t = (C.sc - ch.p[2]) / ch.d[2]; C.scr = [ch.p[0] + t * ch.d[0], ch.p[1] + t * ch.d[1]]; }
+  }
+}
+function classify() {
+  if (S.type === 'concave') return '허상 · 정립 · 축소';
+  if (Math.abs(S.do_ - S.f) < 0.15) return '상이 생기지 않음 (평행광)';
+  if (S.do_ < S.f) return '허상 · 정립 · 확대';
+  const m = Math.abs(C.mF);
+  return '실상 · 도립 · ' + (Math.abs(S.do_ - 2 * S.f) < 0.25 ? '같은 크기' : m > 1 ? '확대' : '축소');
+}
+function bestAxis() {                                 // 축 위 점의 가장 또렷한 스크린 위치(최소혼란원)
+  if (!(Math.abs(C.zi) < 200) || C.zi < 0.5) return null;
+  return bestFocus(C.sys, -S.do_, G_, Math.max(0.5, C.zi * 0.75), C.zi * 1.12, C.stopA);
+}
+function blurAt(P, w, lam = G_, n = 140) { const pts = spot(C.sys, P, w, lam, n, C.stopA); return pts.length ? rms(pts) : NaN; }
+function computeAb() {
+  const sys = C.sys, a = C.stopA, L = C.L, Pax = [0, 0, -L], o = {};
+  o.zp = paraxialImageZ(sys, -L, G_); o.zm = crossAxisU(sys, Pax, 0.97 * a, G_);
+  o.zR = paraxialImageZ(sys, -L, R_); o.zB = paraxialImageZ(sys, -L, B_);
+  const zs = [o.zp, o.zm, o.zR, o.zB].filter(Number.isFinite);
+  const lo = Math.min(...zs), hi = Math.max(...zs), pad = 0.35 * (hi - lo) + 0.06;
+  o.zlo = lo - pad; o.zhi = hi + pad;
+  o.best = bestFocus(sys, -L, G_, o.zlo, o.zhi, a);
+  o.lsa = o.zp - o.zm; o.ca = o.zR - o.zB;
+  o.airy = 1.22 * 0.55e-4 * Math.abs(o.zp) / (2 * a) * 1e4;        // µm
+  o.geo = o.best.r * 1e4;                                           // µm (RMS 반지름)
+  if (C.th > 0.001) {                                               // 축 밖: 접선·샛선 초점
+    const P = C.P0, d = 0.03 * a, ray = (qu, qv) => trace(sys, P, norm([qu - P[0], qv - P[1], -P[2]]), G_);
+    const ta = ray(0, d), tb = ray(0, -d), sa = ray(d, 0), sb = ray(-d, 0);
+    if (ta && tb) { const s1 = ta.d[1] / ta.d[2], s2 = tb.d[1] / tb.d[2]; o.zT = (tb.p[1] - ta.p[1] + s1 * ta.p[2] - s2 * tb.p[2]) / (s1 - s2); }
+    if (sa && sb) { const s1 = sa.d[0] / sa.d[2], s2 = sb.d[0] / sb.d[2]; o.zS = (sb.p[0] - sa.p[0] + s1 * sa.p[2] - s2 * sb.p[2]) / (s1 - s2); }
+  }
+  C.ab = o;
+}
+
+/* ───────── 3D 장면 ───────── */
+const host = $('#sceneCard'), box = $('#view3d');
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+box.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x0b1224);
+const camera = new THREE.PerspectiveCamera(34, 1.6, 0.3, 800);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.12;
+scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+const dl = new THREE.DirectionalLight(0xffffff, 1.4); dl.position.set(-20, 40, 50); scene.add(dl);
+const gStatic = new THREE.Group(), gLens = new THREE.Group(), gObj = new THREE.Group(), gScr = new THREE.Group(),
+  gRays = new THREE.Group(), gImg = new THREE.Group(), gMark = new THREE.Group();
+scene.add(gStatic, gLens, gObj, gScr, gRays, gImg, gMark);
+function clearG(g) { for (const c of [...g.children]) { g.remove(c); c.traverse(o => { o.geometry && o.geometry.dispose(); if (o.material) { (o.material.map && o.material.map.dispose && o.material.map !== scrTex && o.material.map !== objTex) && o.material.map.dispose(); o.material.dispose(); } }); } }
+function resize() {
+  const w = box.clientWidth, h = box.clientHeight; if (!w || !h) return;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(box);
+
+function label(text, color = '#fff', size = 1.5) {
+  const cv = document.createElement('canvas'); cv.width = 320; cv.height = 96; const x = cv.getContext('2d');
+  let fs = 44; x.textAlign = 'center'; x.textBaseline = 'middle';
+  do { x.font = `bold ${fs}px "Noto Sans KR","Malgun Gothic",sans-serif`; fs -= 2; } while (x.measureText(text).width > 276 && fs > 16);
+  const w = Math.min(310, x.measureText(text).width + 36);
+  x.fillStyle = 'rgba(8,14,32,.78)'; x.beginPath(); x.roundRect((320 - w) / 2, 10, w, 76, 22); x.fill();
+  x.fillStyle = color; x.fillText(text, 160, 49);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true }));
+  size *= 1.45; s.scale.set(size * 3.33, size, 1); s.renderOrder = 20; return s;
+}
+function cyl(a, b, r, color, op = 1) {
+  const d = new THREE.Vector3().subVectors(b, a), len = d.length(); if (len < 1e-6) return null;
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 8, 1), new THREE.MeshBasicMaterial({ color, transparent: op < 1, opacity: op }));
+  m.position.copy(a).addScaledVector(d, 0.5);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()); return m;
+}
+const texOf = (cv) => { const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t; };
+
+// 물체 글자 F
+const FW = 80, FH = 100, fcv = document.createElement('canvas'); fcv.width = FW; fcv.height = FH;
+(function () { const x = fcv.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(12, 6, 18, 90); x.fillRect(12, 6, 58, 18); x.fillRect(12, 40, 44, 16); })();
+const fcv2 = document.createElement('canvas'); fcv2.width = FW * 2; fcv2.height = FH * 2;
+(function () { const x = fcv2.getContext('2d'); x.shadowColor = '#ffd27a'; x.shadowBlur = 14; x.fillStyle = '#fff4d6'; x.scale(2, 2); x.fillRect(12, 6, 18, 90); x.fillRect(12, 6, 58, 18); x.fillRect(12, 40, 44, 16); })();
+const objTex = texOf(fcv2);
+const mask = []; (function () { const d = fcv.getContext('2d').getImageData(0, 0, FW, FH).data; for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) if (d[(y * FW + x) * 4 + 3] > 128) mask.push([x, y]); })();
+
+// 스크린 누적 캔버스
+const SW = 360, SC = document.createElement('canvas'); SC.width = SC.height = SW;
+const sctx = SC.getContext('2d'), scrTex = texOf(SC), buf = new Float32Array(SW * SW * 3);
+let frames = 0, imgData = sctx.createImageData(SW, SW);
+
+// 광학대(고정)
+(function buildBench() {
+  const bench = new THREE.Mesh(new THREE.BoxGeometry(210, 1.6, 6), new THREE.MeshStandardMaterial({ color: 0x2b3556, roughness: .8 }));
+  bench.position.set(10, -7.9, 0); gStatic.add(bench);
+  const X0 = -95, X1 = 115, PX = 19, cv = document.createElement('canvas'); cv.width = (X1 - X0) * PX; cv.height = 96;
+  const x = cv.getContext('2d'); x.fillStyle = '#dfe5f0'; x.fillRect(0, 0, cv.width, 96);
+  x.fillStyle = '#1b2440'; x.strokeStyle = '#1b2440'; x.font = 'bold 30px sans-serif'; x.textAlign = 'center';
+  for (let i = X0; i <= X1; i++) {
+    const px = (i - X0) * PX; const len = i % 10 === 0 ? 46 : i % 5 === 0 ? 30 : 16;
+    x.lineWidth = i % 10 === 0 ? 3 : 1.5; x.beginPath(); x.moveTo(px, 0); x.lineTo(px, len); x.stroke();
+    if (i % 10 === 0) x.fillText(String(i), px, 82);
+  }
+  const t = texOf(cv), r = new THREE.Mesh(new THREE.PlaneGeometry(X1 - X0, 96 / PX), new THREE.MeshBasicMaterial({ map: t }));
+  r.position.set((X0 + X1) / 2, -7.9, 3.02); gStatic.add(r);
+  const axis = cyl(new THREE.Vector3(-95, 0, 0), new THREE.Vector3(115, 0, 0), 0.025, 0x64748b, .7); gStatic.add(axis);
+  const cap = label('눈금: cm (렌즈 중심 = 0)', '#cbd5e1', 0.8); cap.position.set(-4, -10.3, 3); gStatic.add(cap);
+})();
+const post = (x, ytop, w = 0.5) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, ytop + 7.1, w), new THREE.MeshStandardMaterial({ color: 0x475569 })); m.position.set(x, (ytop - 7.1) / 2, 0); return m; };
+
+function lensMesh(zF, cF, zB, cB, a, color) {
+  const pts = [], N = 22;
+  for (let i = 0; i <= N; i++) { const r = a * i / N; pts.push(new THREE.Vector2(r, zF + sag(cF, r))); }
+  for (let i = N; i >= 0; i--) { const r = a * i / N; pts.push(new THREE.Vector2(r, zB + sag(cB, r))); }
+  pts.push(pts[0].clone());
+  const geo = new THREE.LatheGeometry(pts, 72); geo.rotateZ(-Math.PI / 2);
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(geo, new THREE.MeshPhysicalMaterial({ color, transparent: true, opacity: .34, roughness: .06, metalness: 0, clearcoat: 1, side: THREE.DoubleSide, depthWrite: false })));
+  g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), new THREE.LineBasicMaterial({ color: 0xdbeafe, transparent: true, opacity: .55 })));
+  return g;
+}
+function rebuildLens() {
+  clearG(gLens); const s = C.sys, a = C.a, S0 = s.surf;
+  if (s.kind === 'doublet') {
+    gLens.add(lensMesh(S0[0].z, S0[0].c, S0[1].z, S0[1].c, a, 0x9fd8ff));
+    gLens.add(lensMesh(S0[1].z, S0[1].c, S0[2].z, S0[2].c, a, 0xf0a8ff));
+  } else gLens.add(lensMesh(S0[0].z, S0[0].c, S0[1].z, S0[1].c, a, 0x8fd3ff));
+  if (C.stopA < a - 0.02) {                                         // 조리개(가림막)
+    const ring = new THREE.Mesh(new THREE.RingGeometry(C.stopA, a + 0.9, 72), new THREE.MeshStandardMaterial({ color: 0x1f2937, side: THREE.DoubleSide, roughness: .9 }));
+    ring.rotateY(Math.PI / 2); ring.position.x = -s.tc / 2 - 0.05; gLens.add(ring);
+    const lb = label('조리개 지름 ' + (2 * C.stopA).toFixed(1) + ' cm', '#fbbf24', 0.9); lb.position.set(-0.5, a + 1.6, 0); gLens.add(lb);
+  }
+  gLens.add(post(0, -a - 0.2, 0.7));
+  const nm = label((S.type === 'convex' ? '볼록 렌즈 ' : '오목 렌즈 ') + (s.kind === 'doublet' ? '(색지움 이중)' : '') + ' f = ' + C.fs.toFixed(0) + ' cm', '#93c5fd', 1.0);
+  nm.position.set(0, -a - 1.9, 0); gLens.add(nm);
+}
+function rebuildMarks() {
+  clearG(gMark); const f = Math.abs(C.fs);
+  for (const [x, t] of [[-f, 'F'], [f, "F′"], [-2 * f, '2F'], [2 * f, "2F′"]]) {
+    const d = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), new THREE.MeshBasicMaterial({ color: 0xfacc15 })); d.position.set(x, 0, 0); gMark.add(d);
+    const l = label(t, '#fde68a', 0.9); l.position.set(x, -1.5, 0); gMark.add(l);
+  }
+}
+function rebuildObject() {
+  clearG(gObj); const ab = S.mode === 'aberr';
+  if (!ab && S.obj === 'F') {
+    const w = FW / FH * S.ho, m = new THREE.Mesh(new THREE.PlaneGeometry(w, S.ho), new THREE.MeshBasicMaterial({ map: objTex, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
+    m.rotateY(-Math.PI / 2); m.position.set(-S.do_, S.ho / 2, 0); gObj.add(m);
+    gObj.add(post(-S.do_, 0)); const lb = label('물체 (a = ' + S.do_.toFixed(1) + ' cm)', '#fde68a', 1.0); lb.position.set(-S.do_, S.ho + 1.4, 0); gObj.add(lb);
+  } else {
+    const P = ab ? C.P0 : (S.obj === 'pt' ? [0, 0, -S.do_] : [0, S.ho, -S.do_]);
+    if (ab && S.inf) { const lb = label('먼 물체 (평행광)' + (S.theta ? ' · ' + S.theta + '° 기울어 입사' : ''), '#fde68a', 1.0); lb.position.set(-18, 6.2, 0); gObj.add(lb); return; }
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), new THREE.MeshBasicMaterial({ color: 0xfff1b8 })); s.position.copy(T(P[0], P[1], P[2])); gObj.add(s);
+    gObj.add(post(P[2], Math.min(0, P[1]))); const lb = label('점광원', '#fde68a', 0.9); lb.position.set(P[2], P[1] + 1.4, 0); gObj.add(lb);
+  }
+}
+function rebuildScreen() {
+  clearG(gScr); const sh = C.sh, w = C.sc;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(2 * sh, 2 * sh), new THREE.MeshBasicMaterial({ map: scrTex, side: THREE.DoubleSide }));
+  m.rotateY(-Math.PI / 2); m.position.set(w, C.scr[1], C.scr[0]); gScr.add(m);
+  const e = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(2 * sh, 2 * sh)), new THREE.LineBasicMaterial({ color: 0xcbd5e1 }));
+  e.rotateY(-Math.PI / 2); e.position.copy(m.position); gScr.add(e);
+  if (S.mode === 'image') gScr.add(post(w, -sh));
+  const lb = label(S.mode === 'image' ? '스크린 (b = ' + w.toFixed(1) + ' cm)' : '스크린 ±' + sh + ' cm · ' + w.toFixed(2) + ' cm', '#e2e8f0', 1.0);
+  lb.position.set(w, C.scr[1] + sh + 1.3, C.scr[0]); gScr.add(lb);
+}
+function rebuildImage() {
+  clearG(gImg); if (S.mode !== 'image' || !S.showI) return;
+  const zi = C.zi; if (!Number.isFinite(zi) || Math.abs(zi) > 150 || !Number.isFinite(C.m)) return;
+  if (S.obj === 'pt') return;
+  const m = C.m, real = zi > 0.2;
+  if (S.obj === 'F') {
+    const w = FW / FH * S.ho, g = new THREE.Mesh(new THREE.PlaneGeometry(w, S.ho), new THREE.MeshBasicMaterial({ map: objTex, color: real ? 0x67e8f9 : 0xd8b4fe, transparent: true, opacity: real ? .55 : .45, side: THREE.DoubleSide, depthWrite: false }));
+    g.rotateY(-Math.PI / 2); g.scale.set(m, m, 1); g.position.set(zi, m * S.ho / 2, 0); gImg.add(g);
+  } else { const s = new THREE.Mesh(new THREE.SphereGeometry(0.25, 12, 12), new THREE.MeshBasicMaterial({ color: real ? 0x67e8f9 : 0xd8b4fe })); s.position.set(zi, m * S.ho, 0); gImg.add(s); }
+  const lb = label((real ? '실상' : '허상') + ' (b = ' + zi.toFixed(1) + ' cm)', real ? '#67e8f9' : '#d8b4fe', 1.0);
+  lb.position.set(zi, Math.max(m * S.ho, 0) + 2.2 + (m < 0 ? 0 : 0), 0); gImg.add(lb);
+}
+
+/* 광선 */
+function rayStart(P, Q) {                                          // 물체(점 또는 먼 물체)에서 동공점 Q로 향하는 광선
+  const dir = norm([Q[0] - P[0], Q[1] - P[1], -P[2]]);
+  if (S.mode === 'aberr' && S.inf) return { o: [Q[0] - dir[0] * 26 / dir[2], Q[1] - dir[1] * 26 / dir[2], -26], d: dir };
+  return { o: P, d: dir };
+}
+function rebuildRays() {
+  clearG(gRays); const sys = C.sys, ab = S.mode === 'aberr', a = C.stopA, wEnd = C.sc;
+  const pos = [], col = [];
+  const push = (pts, c, fin) => {
+    const cc = new THREE.Color(c);
+    for (let i = 0; i < pts.length - 1; i++) { pos.push(pts[i][2], pts[i][1], pts[i][0], pts[i + 1][2], pts[i + 1][1], pts[i + 1][0]); col.push(cc.r, cc.g, cc.b, cc.r, cc.g, cc.b); }
+  };
+  const path = (o, d, lam) => {
+    const r = trace(sys, o, d, lam, true); if (!r) return null;
+    const t = (wEnd - r.p[2]) / r.d[2], pts = r.pts.slice();
+    if (t > 0) pts.push([r.p[0] + t * r.d[0], r.p[1] + t * r.d[1], wEnd]);
+    return { pts, r };
+  };
+  if (!ab) {
+    const lamL = S.color === 'white' ? [R_, G_, B_] : [G_], lc = { [R_]: lamCol.R, [G_]: lamCol.G, [B_]: lamCol.B };
+    if (S.showB) {
+      for (const [P, c, n] of [[[0, S.obj === 'pt' ? 0 : S.ho, -S.do_], 0xa5b4fc, 30], ...(S.obj === 'F' ? [[[0, 0, -S.do_], 0xfde68a, 18]] : [])]) {
+        for (const lam of (S.color === 'white' && S.obj !== 'F' ? lamL : [G_])) {
+          for (const [qu, qv] of pupil(n, a)) { const s = rayStart(P, [qu, qv, 0]), p = path(s.o, s.d, lam); if (p) push(p.pts, S.color === 'white' && S.obj !== 'F' ? lc[lam] : c); }
+        }
+      }
+    }
+    if (S.showP && S.obj !== 'pt') {
+      const P = [0, S.ho, -S.do_], y0 = S.ho * C.fs / (C.fs - S.do_), defs = [[[0, S.ho, 0], 0xf97316], [[0, 0, 0], 0x22c55e], [[0, y0, 0], 0x3b82f6]];
+      for (const [Q, c] of defs) {
+        if (Math.abs(Q[1]) > a) continue;
+        const s = rayStart(P, Q), p = path(s.o, s.d, G_); if (!p) continue;
+        for (let i = 0; i < p.pts.length - 1; i++) { const m = cyl(T(...p.pts[i]), T(...p.pts[i + 1]), 0.07, c); m && gRays.add(m); }
+        if (C.zi < 0 && Number.isFinite(C.m)) {                    // 허상: 거꾸로 연장(점선)
+          const e = p.r, tip = [0, C.m * S.ho, C.zi], dd = [e.p[2], e.p[1], e.p[0]];
+          const g = new THREE.BufferGeometry().setFromPoints([T(e.p[0], e.p[1], e.p[2]), T(0, 0, 0).set(C.zi, tip[1], 0)]);
+          const ln = new THREE.Line(g, new THREE.LineDashedMaterial({ color: c, dashSize: .6, gapSize: .45 })); ln.computeLineDistances(); gRays.add(ln);
+        }
+      }
+    }
+  } else {
+    const P = C.P0, rings = S.rayMode === 'ring' ? [.3, .65, .97] : [.5, .97], lamL = S.rayMode === 'lam' ? [R_, G_, B_] : [G_];
+    rings.forEach((fr, ri) => {
+      for (let j = 0; j < 12; j++) {
+        const ph = j / 12 * 2 * Math.PI, Q = [fr * a * Math.cos(ph), fr * a * Math.sin(ph), 0];
+        for (const lam of lamL) {
+          const s = rayStart(P, Q), p = path(s.o, s.d, lam); if (!p) continue;
+          const c = S.rayMode === 'ring' ? ringCol[ri] : (lam === R_ ? lamCol.R : lam === G_ ? lamCol.G : lamCol.B);
+          push(p.pts, c);
+        }
+      }
+    });
+  }
+  if (pos.length) {
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    gRays.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: ab ? .75 : .5 })));
+  }
+  if (ab) {                                                         // 초점 위치 표지
+    const A = C.ab, items = [[A.zp, '근축 초점', 0x93c5fd, 1.6], [A.zm, '주변 초점', 0xfb7185, 3.4], [A.best.z, '최소혼란원', 0xfbbf24, 5.2]];
+    for (const [z, t, c, h] of items) if (Number.isFinite(z)) {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.2, 0.05), new THREE.MeshBasicMaterial({ color: c })); b.position.set(z, 0, 0); gRays.add(b);
+      const l = label(t, '#' + c.toString(16).padStart(6, '0'), 0.8); l.position.set(z, -h, 0); gRays.add(l);
+      gRays.add(cyl(new THREE.Vector3(z, -0.6, 0), new THREE.Vector3(z, -h + 0.8, 0), 0.02, c, .7));
+    }
+  }
+}
+
+/* 카메라 */
+function setView(kind) {
+  const ab = S.mode === 'aberr';
+  const x0 = ab ? (S.inf ? -28 : -S.do_ - 4) : -S.do_ - 6, x1 = ab ? Math.max(C.sc, 1.5 * Math.abs(C.fs)) + 5 : Math.max(C.sc, 2 * Math.abs(C.fs)) + 6;
+  const cx = (x0 + x1) / 2, half = (x1 - x0) / 2, fov = camera.fov * Math.PI / 180;
+  const dist = Math.max(half / (Math.tan(fov / 2) * camera.aspect) * 1.08, (ab ? 7 : 10) / Math.tan(fov / 2));
+  controls.target.set(cx, 0.5, 0);
+  if (kind === 'side') camera.position.set(cx, 1, dist);
+  else if (kind === 'back') camera.position.set(cx + dist * 0.55, dist * 0.3, dist * 0.8);
+  else camera.position.set(cx - dist * 0.38, dist * 0.38, dist * 0.86);
+  controls.update();
+}
+
+/* ───────── 스크린 상: 몬테카를로 ───────── */
+function resetMC() { buf.fill(0); frames = 0; }
+function pickPoint() {
+  if (S.mode === 'aberr') return C.P0;
+  if (S.obj === 'F') { const [px, py] = mask[(rnd() * mask.length) | 0]; return [((px + rnd()) / FW - 0.5) * (FW / FH) * S.ho, (1 - (py + rnd()) / FH) * S.ho, -S.do_]; }
+  return S.obj === 'pt' ? [0, 0, -S.do_] : [0, S.ho, -S.do_];
+}
+function mcStep() {
+  const N = 7000, ab = S.mode === 'aberr', white = ab ? S.colorA === 'white' : S.color === 'white', lams = white ? [R_, G_, B_] : [G_];
+  const sys = C.sys, a = C.stopA, ws = C.sc, sh = C.sh, cu = C.scr[0], cv = C.scr[1], k = SW / (2 * sh);
+  for (let i = 0; i < N; i++) {
+    const P = pickPoint(), r0 = a * Math.sqrt(rnd()), ph = rnd() * 6.2832, qu = r0 * Math.cos(ph), qv = r0 * Math.sin(ph);
+    const dir = norm([qu - P[0], qv - P[1], -P[2]]);
+    for (let li = 0; li < lams.length; li++) {
+      const r = trace(sys, P, dir, lams[li]); if (!r) continue;
+      const t = (ws - r.p[2]) / r.d[2], u = r.p[0] + t * r.d[0] - cu, v = r.p[1] + t * r.d[1] - cv;
+      const px = (u * k + SW / 2) - 0.5, py = (SW / 2 - v * k) - 0.5, x0 = Math.floor(px), y0 = Math.floor(py);
+      if (x0 < 0 || y0 < 0 || x0 >= SW - 1 || y0 >= SW - 1) continue;
+      const fx = px - x0, fy = py - y0, ch = white ? li : 1;
+      const o = (y0 * SW + x0) * 3 + ch;
+      buf[o] += (1 - fx) * (1 - fy); buf[o + 3] += fx * (1 - fy); buf[o + 3 * SW] += (1 - fx) * fy; buf[o + 3 * SW + 3] += fx * fy;
+    }
+  }
+  frames++;
+}
+function paintMC() {
+  const n = SW * SW, hist = new Uint32Array(512); let mx = 0;
+  for (let i = 0; i < n; i++) { const v = Math.max(buf[i * 3], buf[i * 3 + 1], buf[i * 3 + 2]); if (v > mx) mx = v; }
+  if (mx <= 0) mx = 1;
+  for (let i = 0; i < n; i++) { const v = Math.max(buf[i * 3], buf[i * 3 + 1], buf[i * 3 + 2]); hist[Math.min(511, (v / mx * 511) | 0)]++; }
+  let acc = 0, p = 511; const lim = n * 0.003; for (let b = 511; b >= 0; b--) { acc += hist[b]; if (acc > lim) { p = b; break; } }
+  const ref = Math.max(1e-9, (p + 1) / 511 * mx), d = imgData.data;
+  for (let i = 0; i < n; i++) {
+    for (let c = 0; c < 3; c++) { const v = Math.min(1, Math.pow(buf[i * 3 + c] / ref, 0.62)); d[i * 4 + c] = 10 + v * 245; }
+    d[i * 4 + 3] = 255;
+  }
+  sctx.putImageData(imgData, 0, 0); scrTex.needsUpdate = true; drawInspector();
+}
+function niceStep(x) { const e = Math.pow(10, Math.floor(Math.log10(x))), m = x / e; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * e; }
+function drawInspector() {
+  const cv = $('#inspector'); if (!cv || !cv.offsetParent) return; const W = cv.width, x = cv.getContext('2d');
+  x.clearRect(0, 0, W, W); x.drawImage(SC, 0, 0, W, W);
+  const sh = C.sh, st = niceStep(sh / 2.5), k = W / (2 * sh);
+  x.strokeStyle = 'rgba(255,255,255,.12)'; x.fillStyle = 'rgba(255,255,255,.55)'; x.font = '11px sans-serif'; x.lineWidth = 1;
+  for (let v = -Math.floor(sh / st) * st; v <= sh + 1e-9; v += st) {
+    const p = W / 2 + v * k; x.beginPath(); x.moveTo(p, 0); x.lineTo(p, W); x.moveTo(0, p); x.lineTo(W, p); x.stroke();
+    if (Math.abs(v) > 1e-9) x.fillText((v >= 0 ? '' : '') + (+v.toFixed(3)), p + 2, W / 2 - 3);
+  }
+  x.strokeStyle = 'rgba(255,255,255,.35)'; x.beginPath(); x.moveTo(W / 2, 0); x.lineTo(W / 2, W); x.moveTo(0, W / 2); x.lineTo(W, W / 2); x.stroke();
+  x.fillStyle = 'rgba(255,255,255,.7)'; x.fillText('격자 ' + (+st.toFixed(3)) + ' cm · 렌즈 쪽에서 스크린을 바라본 모습', 6, W - 6);
+}
+
+/* ───────── 읽기값 · 미션 · 기록 ───────── */
+const missions = [
+  { id: 'm1', t: '① a > 2f : 도립·축소 실상', ok: () => S.type === 'convex' && S.do_ > 2 * S.f + 0.3 },
+  { id: 'm2', t: '② a = 2f : 같은 크기', ok: () => S.type === 'convex' && Math.abs(S.do_ - 2 * S.f) < 0.3 },
+  { id: 'm3', t: '③ f < a < 2f : 도립·확대 실상', ok: () => S.type === 'convex' && S.do_ > S.f + 0.3 && S.do_ < 2 * S.f - 0.3 },
+  { id: 'm4', t: '④ a < f : 정립·확대 허상 (돋보기)', ok: () => S.type === 'convex' && S.do_ < S.f - 0.3 },
+  { id: 'm5', t: '⑤ 오목 렌즈 : 항상 허상', ok: () => S.type === 'concave' },
+  { id: 'm6', t: '⑥ 조리개를 줄여 흐림 줄이기', ok: () => S.mode === 'image' && S.stopD < 3 && S.type === 'convex' },
+];
+const done = new Set();
+function refreshReadouts() {
+  const ab = S.mode === 'aberr';
+  if (S.touched) for (const m of missions) if (m.ok()) done.add(m.id);
+  const mb = $('#missionbar'); if (mb) mb.innerHTML = '<b>🎯 미션</b>' + missions.map(m => `<span class="m ${done.has(m.id) ? 'done' : ''}"><i>${done.has(m.id) ? '✓' : '·'}</i>${m.t}</span>`).join('');
+  if (!ab) {
+    const r = (id, v) => { const e = $('#' + id); if (e) e.textContent = v; };
+    r('kA', fmt(S.do_, 1) + ' cm'); r('kBf', Number.isFinite(C.bF) ? fmt(C.bF, 1) + ' cm' : '∞');
+    r('kBt', Number.isFinite(C.zi) && Math.abs(C.zi) < 300 ? fmt(C.zi, 1) + ' cm' : '∞');
+    r('kM', Number.isFinite(C.mF) ? (C.mF >= 0 ? '+' : '−') + Math.abs(C.mF).toFixed(2) + '배' : '∞');
+    r('kType', classify()); $('#imgChip').textContent = classify();
+    const P = S.obj === 'pt-off' ? [0, S.ho, -S.do_] : [0, 0, -S.do_];
+    C.blur = C.real || S.type === 'convex' ? blurAt(P, S.sc) : NaN;
+    const bf = bestAxis(); C.bf = bf; C.blurMin = bf ? bf.r : NaN;
+    r('kBlur', Number.isFinite(C.blur) ? (C.blur * 10).toFixed(2) + ' mm' : '–');
+    const bar = $('#sharp'); if (bar) { const q = Number.isFinite(C.blur) && C.bf ? Math.max(0, Math.min(1, 1 - Math.log10(Math.max(C.blur / Math.max(C.blurMin, 0.004), 1)) / 1.3)) : 0; C.q = q; bar.style.width = (q * 100) + '%'; bar.style.background = q > .8 ? '#22c55e' : q > .45 ? '#f59e0b' : '#ef4444'; }
+    $('#realNote').textContent = C.real ? '' : (S.type === 'concave' || S.do_ < S.f - 0.15 ? '허상은 스크린에 맺히지 않는다 — 실제 광선은 퍼져 나가고, 반대로 연장한 점선이 만나는 곳에 상이 있다.' : '');
+  }
+}
+const recs = [];
+function record() {
+  const msg = $('#recMsg');
+  if (!Number.isFinite(C.zi) || Math.abs(C.zi) > 200) { msg.textContent = '상이 너무 멀리 생겨서 기록하지 않았어요 (a ≈ f).'; return; }
+  let b;
+  if (C.real) { if (!(C.q > 0.8)) { msg.textContent = '스크린을 상이 가장 또렷한 위치로 옮긴 뒤 기록하세요 (선명도 막대가 초록이 될 때).'; return; } b = S.sc; }
+  else b = C.zi;
+  recs.push({ type: S.type, f: C.fs, a: S.do_, b, real: C.real }); if (recs.length > 14) recs.shift();
+  msg.textContent = '기록했어요! (' + recs.length + '개) — ⑤ 의미·정리 탭에서 확인합니다.'; renderRecs();
+}
+function renderRecs() {
+  const tb = $('#recBody'); if (!tb) return;
+  tb.innerHTML = recs.length ? recs.map((r, i) => { const fe = r.a * r.b / (r.a + r.b); return `<tr><td>${i + 1}</td><td>${r.type === 'convex' ? '볼록' : '오목'}</td><td>${r.a.toFixed(1)}</td><td>${r.b.toFixed(1)}</td><td>${(1 / r.a).toFixed(4)}</td><td>${(1 / r.b).toFixed(4)}</td><td>${(1 / r.a + 1 / r.b).toFixed(4)}</td><td>${fe.toFixed(2)}</td><td>${Math.abs(r.f).toFixed(1)}</td></tr>`; }).join('') : '<tr><td colspan="9" style="color:#64748b">아직 기록이 없어요. 🕹 시뮬레이션에서 “이 위치 기록”을 눌러 보세요.</td></tr>';
+  drawGraph();
+}
+function drawGraph() {
+  const cv = $('#graph'); if (!cv) return; const x = cv.getContext('2d'), W = cv.width, H = cv.height, m = { l: 62, r: 16, t: 18, b: 44 };
+  x.clearRect(0, 0, W, H); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
+  const xs = recs.map(r => 1 / r.a), ys = recs.map(r => 1 / r.b), lim = Math.max(0.25, ...xs.map(Math.abs), ...ys.map(Math.abs)) * 1.15;
+  const X = v => m.l + (v + lim) / (2 * lim) * (W - m.l - m.r), Y = v => H - m.b - (v + lim) / (2 * lim) * (H - m.t - m.b);
+  x.strokeStyle = '#e2e7f0'; x.fillStyle = '#5d6b82'; x.font = '12px sans-serif'; x.textAlign = 'center';
+  const st = niceStep(lim / 2);
+  for (let v = -Math.floor(lim / st) * st; v <= lim; v += st) { x.beginPath(); x.moveTo(X(v), m.t); x.lineTo(X(v), H - m.b); x.moveTo(m.l, Y(v)); x.lineTo(W - m.r, Y(v)); x.stroke(); x.fillText((+v.toFixed(3)), X(v), H - m.b + 15); x.textAlign = 'right'; x.fillText((+v.toFixed(3)), m.l - 6, Y(v) + 4); x.textAlign = 'center'; }
+  x.strokeStyle = '#64748b'; x.lineWidth = 1.5; x.beginPath(); x.moveTo(X(0), m.t); x.lineTo(X(0), H - m.b); x.moveTo(m.l, Y(0)); x.lineTo(W - m.r, Y(0)); x.stroke();
+  x.fillStyle = '#172033'; x.font = '13px sans-serif'; x.fillText('1/a  (cm⁻¹)', (m.l + W - m.r) / 2, H - 8);
+  x.save(); x.translate(14, (m.t + H - m.b) / 2); x.rotate(-Math.PI / 2); x.fillText('1/b  (cm⁻¹)', 0, 0); x.restore();
+  const last = recs[recs.length - 1];
+  if (last) { const f = 1 / Math.abs(last.f) * Math.sign(last.f); x.strokeStyle = '#4f46e5'; x.setLineDash([6, 5]); x.lineWidth = 2; x.beginPath(); x.moveTo(X(-lim), Y(f + lim)); x.lineTo(X(lim), Y(f - lim)); x.stroke(); x.setLineDash([]); }
+  for (const r of recs) { x.fillStyle = r.type === 'convex' ? '#e11d48' : '#059669'; x.beginPath(); x.arc(X(1 / r.a), Y(1 / r.b), 5, 0, 7); x.fill(); }
+  if (last) { x.fillStyle = '#4f46e5'; x.textAlign = 'left'; x.fillText('점선: 1/b = 1/f − 1/a  (f = ' + last.f.toFixed(1) + ' cm)', m.l + 8, m.t + 14); }
+}
+
+/* ───────── 수차 진단(2차원) ───────── */
+function plotFrame(cv, bg = '#0d1530') { const x = cv.getContext('2d'); x.clearRect(0, 0, cv.width, cv.height); x.fillStyle = bg; x.fillRect(0, 0, cv.width, cv.height); return x; }
+const colHex = (c) => '#' + c.toString(16).padStart(6, '0');
+function drawCaustic() {
+  const cv = $('#cCaustic'); if (!cv || !cv.offsetParent) return; const x = plotFrame(cv), W = cv.width, H = cv.height, A = C.ab, sys = C.sys, a = C.stopA, P = C.P0;
+  const chief = trace(sys, P, norm([-P[0], -P[1], -P[2]]), G_); if (!chief) return;
+  const vAt = (r, z) => r.p[1] + r.d[1] / r.d[2] * (z - r.p[2]);
+  const lines = [], add = (h, lam, c) => { const r = trace(sys, P, norm([0 - P[0], h - P[1], -P[2]]), lam); if (r) lines.push({ r, c, lam }); };
+  if (S.rayMode === 'ring') for (let i = -10; i <= 10; i++) add(i / 10 * a, G_, `hsl(${190 - Math.abs(i) * 17},90%,62%)`);
+  else for (const lam of [R_, G_, B_]) for (const fr of [-.97, -.5, .5, .97]) add(fr * a, lam, colHex(lam === R_ ? lamCol.R : lam === G_ ? lamCol.G : lamCol.B));
+  const zlo = A.zlo, zhi = A.zhi; let ym = 1e-5;
+  for (const l of lines) for (const z of [zlo, zhi]) ym = Math.max(ym, Math.abs(vAt(l.r, z) - vAt(chief, z)));
+  ym *= 1.2; const m = { l: 56, r: 12, t: 14, b: 34 }, X = z => m.l + (z - zlo) / (zhi - zlo) * (W - m.l - m.r), Y = v => (H - m.t - m.b) / 2 + m.t - v / ym * (H - m.t - m.b) / 2;
+  x.strokeStyle = 'rgba(255,255,255,.12)'; x.lineWidth = 1; x.beginPath(); x.moveTo(m.l, Y(0)); x.lineTo(W - m.r, Y(0)); x.stroke();
+  x.lineWidth = 1.2; for (const l of lines) { x.strokeStyle = l.c; x.globalAlpha = .8; x.beginPath(); x.moveTo(X(zlo), Y(vAt(l.r, zlo) - vAt(chief, zlo))); x.lineTo(X(zhi), Y(vAt(l.r, zhi) - vAt(chief, zhi))); x.stroke(); }
+  x.globalAlpha = 1; x.font = '12px sans-serif'; x.textAlign = 'center';
+  const mk = (z, c, t, row) => { if (!Number.isFinite(z) || z < zlo || z > zhi) return; x.strokeStyle = c; x.setLineDash([5, 4]); x.beginPath(); x.moveTo(X(z), m.t); x.lineTo(X(z), H - m.b); x.stroke(); x.setLineDash([]); x.fillStyle = c; x.fillText(t, X(z), m.t + 11 + row * 13); };
+  mk(A.zp, '#93c5fd', '근축', 0); mk(A.zm, '#fb7185', '주변', 1); mk(A.best.z, '#fbbf24', '최소혼란원', 2);
+  if (C.sc >= zlo && C.sc <= zhi) { x.strokeStyle = '#fff'; x.lineWidth = 2.5; x.beginPath(); x.moveTo(X(C.sc), H - m.b - 26); x.lineTo(X(C.sc), H - m.b); x.stroke(); x.fillStyle = '#fff'; x.fillText('스크린', X(C.sc), H - m.b - 30); }
+  x.fillStyle = '#94a3b8'; x.textAlign = 'center'; x.fillText('광축 방향 위치 z (cm)   ' + zlo.toFixed(2) + ' ~ ' + zhi.toFixed(2), (m.l + W - m.r) / 2, H - 8);
+  x.save(); x.translate(13, (m.t + H - m.b) / 2); x.rotate(-Math.PI / 2); x.fillText('주광선 기준 높이 (±' + (ym * 10).toFixed(2) + ' mm)', 0, 0); x.restore();
+}
+function drawSpot() {
+  const cv = $('#cSpot'); if (!cv || !cv.offsetParent) return; const x = plotFrame(cv), W = cv.width, sys = C.sys, a = C.stopA, P = C.P0, ws = C.sc;
+  const per = []; for (const [lam, c] of [[R_, '255,90,90'], [G_, '74,222,128'], [B_, '106,166,255']]) {
+    if (S.colorA !== 'white' && lam !== G_) continue; per.push([spot(sys, P, ws, lam, 700, a), c]);
+  }
+  const ch = trace(sys, P, norm([-P[0], -P[1], -P[2]]), G_); let cu = 0, cv_ = 0; if (ch) { const t = (ws - ch.p[2]) / ch.d[2]; cu = ch.p[0] + t * ch.d[0]; cv_ = ch.p[1] + t * ch.d[1]; }
+  let rmax = 1e-6; for (const [pts] of per) for (const p of pts) rmax = Math.max(rmax, Math.hypot(p[0] - cu, p[1] - cv_));
+  const R = Math.max(rmax * 1.15, 2 * C.ab.airy * 1e-4), k = W / 2 / R;
+  x.strokeStyle = 'rgba(255,255,255,.15)'; x.beginPath(); x.moveTo(W / 2, 0); x.lineTo(W / 2, W); x.moveTo(0, W / 2); x.lineTo(W, W / 2); x.stroke();
+  x.globalCompositeOperation = 'lighter';
+  for (const [pts, c] of per) { x.fillStyle = `rgba(${c},.55)`; for (const p of pts) { x.beginPath(); x.arc(W / 2 + (p[0] - cu) * k, W / 2 - (p[1] - cv_) * k, 2.1, 0, 7); x.fill(); } }
+  x.globalCompositeOperation = 'source-over';
+  const ra = C.ab.airy * 1e-4 * k;
+  if (ra > 1.5) { x.strokeStyle = '#fff'; x.setLineDash([4, 3]); x.beginPath(); x.arc(W / 2, W / 2, ra, 0, 7); x.stroke(); x.setLineDash([]); }
+  x.fillStyle = '#cbd5e1'; x.font = '12px sans-serif'; x.textAlign = 'left';
+  const bar = niceStep(R / 2), bw = bar * k; x.fillRect(10, W - 22, bw, 3); x.fillText((bar >= 0.1 ? (bar * 10).toFixed(1) + ' mm' : (bar * 1e4).toFixed(0) + ' µm'), 10, W - 28);
+  x.fillText(ra > 1.5 ? '흰 점선 원 = 회절 한계(에어리 원)' : '회절 한계(에어리 원)는 너무 작아 보이지 않음', 10, 16);
+}
+function drawLSA() {
+  const cv = $('#cLSA'); if (!cv || !cv.offsetParent) return; const x = plotFrame(cv, '#fbfcff'), W = cv.width, H = cv.height, sys = C.sys, a = C.stopA, L = C.L, m = { l: 50, r: 12, t: 14, b: 36 };
+  const zref = C.ab.zp, lams = S.colorA === 'white' ? [[R_, '#ef4444'], [G_, '#16a34a'], [B_, '#2563eb']] : [[G_, '#16a34a']], curves = []; let dmin = 0, dmax = 0;
+  for (const [lam, c] of lams) { const pts = []; for (let i = 1; i <= 24; i++) { const h = a * i / 24, z = crossAxisU(sys, [0, 0, -L], h, lam); if (Number.isFinite(z)) { pts.push([z - zref, h]); dmin = Math.min(dmin, z - zref); dmax = Math.max(dmax, z - zref); } } curves.push([pts, c, lam]); }
+  const sp = Math.max(dmax - dmin, 1e-4) * 1.2, c0 = (dmax + dmin) / 2; const X = d => m.l + (d - (c0 - sp / 2)) / sp * (W - m.l - m.r), Y = h => H - m.b - h / a * (H - m.t - m.b);
+  x.strokeStyle = '#e2e7f0'; x.fillStyle = '#5d6b82'; x.font = '12px sans-serif'; x.textAlign = 'center';
+  const st = niceStep(sp / 4); for (let v = Math.ceil((c0 - sp / 2) / st) * st; v <= c0 + sp / 2; v += st) { x.beginPath(); x.moveTo(X(v), m.t); x.lineTo(X(v), H - m.b); x.stroke(); x.fillText((+v.toFixed(4)), X(v), H - m.b + 14); }
+  x.strokeStyle = '#94a3b8'; x.lineWidth = 1.5; x.beginPath(); x.moveTo(X(0), m.t); x.lineTo(X(0), H - m.b); x.stroke();
+  for (const [pts, c] of curves) { x.strokeStyle = c; x.lineWidth = 2.2; x.beginPath(); pts.forEach((p, i) => i ? x.lineTo(X(p[0]), Y(p[1])) : x.moveTo(X(p[0]), Y(p[1]))); x.stroke(); }
+  x.fillStyle = '#172033'; x.textAlign = 'center'; x.fillText('초점 위치 − 근축 초점 (cm)', (m.l + W - m.r) / 2, H - 6);
+  x.save(); x.translate(13, (m.t + H - m.b) / 2); x.rotate(-Math.PI / 2); x.fillText('광선 높이 h (cm)', 0, 0); x.restore();
+  x.textAlign = 'left'; x.fillStyle = '#5d6b82'; x.fillText('세로선 = 근축 초점 (h→0)', m.l + 6, m.t + 12);
+}
+function refreshAb() {
+  computeAb(); const A = C.ab, r = (id, v) => { const e = $('#' + id); if (e) e.textContent = v; };
+  r('aZp', fmt(A.zp, 3) + ' cm'); r('aLsa', fmt(A.lsa, 3) + ' cm'); r('aBest', fmt(A.best.z, 3) + ' cm');
+  r('aGeo', A.geo.toFixed(A.geo < 100 ? 1 : 0) + ' µm'); r('aAiry', A.airy.toFixed(1) + ' µm');
+  r('aCa', fmt(A.ca, 3) + ' cm');
+  const verdict = A.geo > 1.5 * A.airy ? '수차가 회절보다 커서 <b>수차 제한</b> — 조리개를 줄이면 좋아진다' : A.geo < 0.67 * A.airy ? '회절이 더 커서 <b>회절 제한</b> — 더 줄이면 오히려 흐려진다' : '수차와 회절이 비슷한 <b>최적 조리개 부근</b>';
+  $('#aVerdict').innerHTML = verdict;
+  const off = $('#aOff'); off.hidden = !(C.th > 0.001);
+  if (C.th > 0.001) { r('aT', fmt(A.zT, 3) + ' cm'); r('aS', fmt(A.zS, 3) + ' cm'); r('aAs', fmt(A.zS - A.zT, 3) + ' cm'); r('aFc', fmt(A.zT - A.zp, 3) + ' cm'); }
+  $$('.ab-card').forEach(e => e.hidden = e.dataset.ab !== S.ab);
+  drawCaustic(); drawSpot(); drawLSA();
+}
+
+/* ───────── 갱신 · 연결 ───────── */
+let pend = false; function update() { if (pend) return; pend = true; requestAnimationFrame(() => { pend = false; updateNow(); }); }
+function updateNow() {
+  derive(); if (S.mode === 'aberr') computeAb();
+  rebuildLens(); rebuildMarks(); rebuildObject(); rebuildScreen(); rebuildImage(); rebuildRays();
+  resetMC(); refreshReadouts(); if (S.mode === 'aberr') refreshAb(); syncUI();
+}
+function syncUI() {
+  $$('[data-k]').forEach(el => { const k = el.dataset.k; if (document.activeElement !== el) el.value = S[k]; const v = $$(`[data-v="${k}"]`); v.forEach(e => e.textContent = (+S[k]).toFixed(+(e.dataset.d || 1)) + (e.dataset.u || '')); });
+  $$('[data-kb]').forEach(el => el.checked = !!S[el.dataset.kb]);
+  $$('[data-set]').forEach(el => { const [k, v] = el.dataset.set.split(':'); el.classList.toggle('active', String(S[k]) === v); });
+  const dis = S.type === 'concave'; $$('[data-set="kind:doublet"]').forEach(b => b.disabled = dis);
+  const sD = $('#shLab'); if (sD) sD.textContent = '±' + SH[S.shI] + ' cm';
+  $$('[data-v="stopFN"]').forEach(e => e.textContent = 'f/' + (Math.abs(C.fs) / (S.mode === 'aberr' ? S.stopDA : S.stopD)).toFixed(1));
+}
+function applyPreset(ab) {
+  S.ab = ab;
+  if (ab === 'sph') { S.theta = 0; S.rayMode = 'ring'; S.colorA = 'green'; S.stopDA = 8; }
+  if (ab === 'chr') { S.theta = 0; S.rayMode = 'lam'; S.colorA = 'white'; S.stopDA = 1.6; }
+  if (ab === 'coma') { S.theta = 8; S.rayMode = 'ring'; S.colorA = 'green'; S.stopDA = 8; S.shI = 2; }
+  S.shI = ab === 'coma' ? 2 : 3; updateNow(); const A = C.ab; S.scA = +A.best.z.toFixed(2); updateNow(); setView('side');
+}
+document.addEventListener('input', (e) => {
+  S.touched = true; const el = e.target; if (el.dataset.k) { S[el.dataset.k] = +el.value; update(); }
+  if (el.dataset.kb) { S[el.dataset.kb] = el.checked; update(); }
+});
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-set]'); if (b) { S.touched = true; const [k, v] = b.dataset.set.split(':'); S[k] = isNaN(+v) ? (v === 'true' ? true : v === 'false' ? false : v) : +v; if (k === 'ab') { applyPreset(v); return; } if (k === 'type' && v === 'concave') S.kind = 'singlet'; update(); return; }
+  const a = e.target.closest('[data-act]'); if (!a) return; const act = a.dataset.act;
+  if (act === 'focus') { derive(); const bf = bestAxis(); S.sc = Math.min(90, Math.max(3, +(bf ? bf.z : (C.zi > 0 ? C.zi : S.sc)).toFixed(1))); update(); }
+  if (act === 'record') record();
+  if (act === 'clearrec') { recs.length = 0; renderRecs(); }
+  if (act.startsWith('view:')) setView(act.slice(5));
+  if (act.startsWith('scA:')) { const A = C.ab, z = act.slice(4) === 'p' ? A.zp : act.slice(4) === 'm' ? A.zm : A.best.z; S.scA = +z.toFixed(2); update(); }
+  if (act.startsWith('go:')) goTab(act.slice(3));
+});
+
+/* 탭 */
+let curTab = 'theory'; const seen = new Set(['theory']);
+function goTab(t) {
+  curTab = t; seen.add(t); document.body.dataset.tab = t;
+  $$('.tabs button').forEach(b => { b.classList.toggle('active', b.dataset.tab === t); b.classList.toggle('seen', seen.has(b.dataset.tab) && b.dataset.tab !== t); });
+  $$('.pane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + t));
+  if (t === 'sim' || t === 'aberr') {
+    S.mode = t === 'sim' ? 'image' : 'aberr'; $('#host-' + t).appendChild(host); updateNow(); resize();
+    if (t === 'aberr' && !goTab.abInit) { goTab.abInit = true; applyPreset('sph'); } else setView('oblique');
+  }
+  if (t === 'meaning') renderRecs();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+$$('.tabs button').forEach(b => b.addEventListener('click', () => goTab(b.dataset.tab)));
+document.addEventListener('click', (e) => { const a = e.target.closest('a[data-tab]'); if (a) { e.preventDefault(); goTab(a.dataset.tab); } const bt = e.target.closest('button[data-tab]:not(.tabs button)'); if (bt) goTab(bt.dataset.tab); });
+
+/* 반복 */
+function loop() {
+  requestAnimationFrame(loop); controls.update();
+  if ((curTab === 'sim' || curTab === 'aberr') && frames < 36) { mcStep(); if (frames % 3 === 0 || frames === 36) paintMC(); }
+  renderer.render(scene, camera);
+}
+document.querySelectorAll('details.ab-fold').forEach(() => 0);
+window.__lens = { S, C, update: updateNow, goTab, recs, record, E: { trace, singlet, doublet, spot, rms, bestFocus }, get frames() { return frames; } };
+derive(); { const bf = bestAxis(); S.sc = +Math.max(3, Math.min(90, bf ? bf.z : C.zi)).toFixed(1); } updateNow(); setView('oblique'); renderRecs(); loop();
+
+</script>
+</body>
+</html>

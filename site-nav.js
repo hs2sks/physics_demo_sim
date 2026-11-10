@@ -10,7 +10,6 @@
     { label: '홈', href: 'index.html', on: rel === '' || rel === 'index.html' },
     { label: '수업 자료', href: 'lectures/index.html', on: top === 'lectures' },
     { label: '모션그래픽', href: 'motion-graphic/index.html', on: top === 'motion-graphic' },
-    { label: '진학·면접', href: 'interview/index.html', on: top === 'interview' },
     { label: '시뮬레이션', href: 'index.html#sims', on: SIM.indexOf(top) >= 0 },
     { label: '학생 작품', href: 'students/index.html', on: top === 'students' }
   ];

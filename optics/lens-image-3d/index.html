@@ -89,6 +89,8 @@
   #sceneCard { display: none; } .pane #sceneCard { display: block; }
   #view3d { position: relative; width: 100%; height: clamp(280px, 32vw, 380px); border-radius: 12px; overflow: hidden; }
   #view3d canvas { width: 100% !important; height: 100% !important; touch-action: none; }
+  .srcwrap { display: flex; gap: 10px; align-items: flex-start; } #srcPick { width: 96px; height: 120px; flex: none; border-radius: 8px; border: 1px solid var(--border); cursor: crosshair; } .srcside { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; } .srcside .chips { display: flex; gap: 4px; flex-wrap: wrap; } .srcside .chips button { padding: 4px 10px; }
+  #rayNote { font-size: .8em; color: #fbbf24; margin-top: 4px; }
   .scene-hint { font-size: .8em; color: #94a3b8; margin-top: 6px; }
   .quickbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 22px; margin-top: 10px; padding: 8px 14px; border-radius: 12px; background: rgba(255,255,255,.07); font-size: .92em; }
   .quickbar label { display: flex; align-items: center; gap: 8px; }
@@ -236,6 +238,7 @@
     <span class="chip only-sim" id="imgChip">–</span>
   </div>
   <div id="view3d"></div>
+  <div id="rayNote"></div>
   <div class="scene-hint">드래그: 회전 · 휠/핀치: 확대 · 우클릭 드래그: 이동. 광선은 렌즈 두 면에서 스넬 법칙으로 정확히 추적됩니다(근축 근사 아님).</div>
 </div>
 
@@ -260,7 +263,12 @@
     </div>
     <div class="panel"><h3 class="sec">🅰 물체</h3>
       <div class="param"><label>물체 높이 <span class="val" data-v="ho" data-u=" cm">–</span></label><input type="range" data-k="ho" min="1" max="5" step="0.5"></div>
-      <div class="param"><label>물체 모양</label><div class="chips"><button data-set="obj:F">글자 F</button><button data-set="obj:pt">점광원(축 위)</button><button data-set="obj:pt-off">점광원(축 밖)</button></div></div>
+      <div class="param"><label>물체 모양</label><div class="chips"><button data-set="obj:F">글자 F</button><button data-set="obj:F3">입체 F(두께)</button><button data-set="obj:pt">점광원(축 위)</button><button data-set="obj:pt-off">점광원(축 밖)</button></div></div>
+      <div class="param" id="srcRow"><label>빛이 나가는 점</label><div class="hint" id="srcLab" style="color:var(--accent);font-weight:600;margin-bottom:4px">–</div>
+        <div class="srcwrap"><canvas id="srcPick" width="160" height="200" title="글자 위를 클릭"></canvas>
+          <div class="srcside"><div class="hint">글자 그림을 클릭하거나, 3D 장면의 물체를 직접 클릭하세요. 빛 다발과 3대 광선이 그 점에서 나갑니다(빨간 점).</div>
+            <div class="chips"><button data-act="src:top">꼭대기</button><button data-act="src:mid">가운데</button><button data-act="src:bot">바닥</button></div>
+            <div id="depthRow"><label style="font-size:.85em">깊이(앞면 0 → 뒷면 1) <span class="val" data-v="sd" data-d="2"></span></label><input type="range" data-k="sd" min="0" max="1" step="0.05"></div></div></div></div>
       <div class="param"><label>빛</label><div class="seg"><button data-set="color:white">백색광(R·G·B)</button><button data-set="color:green">단색(초록)</button></div></div>
     </div>
       </div>
@@ -549,7 +557,7 @@ const SH = [0.02, 0.05, 0.1, 0.2, 0.5, 1, 3];       // 수차 탭 스크린 반�
 const S = {
   mode: 'image', type: 'convex', kind: 'singlet', f: 10, q: 0,
   do_: 25, ho: 3, obj: 'F', color: 'white', stopD: 4, sc: 16.7, showP: true, showB: true, showI: true,
-  ab: 'sph', inf: true, theta: 0, rayMode: 'ring', colorA: 'green', stopDA: 8, scA: 10, shI: 3,
+  sx: 40, sy: 6, sd: 0, ab: 'sph', inf: true, theta: 0, rayMode: 'ring', colorA: 'green', stopDA: 8, scA: 10, shI: 3,
 };
 const C = {};                                       // 계산 결과
 const ringCol = [0x22d3ee, 0xfbbf24, 0xfb7185], lamCol = { R: 0xff5a5a, G: 0x4ade80, B: 0x6aa6ff };
@@ -666,6 +674,16 @@ const FW = 80, FH = 100, fcv = document.createElement('canvas'); fcv.width = FW;
 const fcv2 = document.createElement('canvas'); fcv2.width = FW * 2; fcv2.height = FH * 2;
 (function () { const x = fcv2.getContext('2d'); x.shadowColor = '#ffd27a'; x.shadowBlur = 14; x.fillStyle = '#fff4d6'; x.scale(2, 2); x.fillRect(12, 6, 18, 90); x.fillRect(12, 6, 58, 18); x.fillRect(12, 40, 44, 16); })();
 const objTex = texOf(fcv2);
+const RECTS = [[12, 30, 6, 96], [12, 70, 6, 24], [12, 56, 40, 56]];   // 글자 F를 이루는 직사각형(px: x0,x1,y0,y1)
+const isF = () => S.obj === 'F' || S.obj === 'F3';
+const thick = () => S.ho * 0.6;                    // 입체 F의 두께(앞면→뒷면, 렌즈에서 멀어지는 쪽)
+const uOf = (px) => (px - FW / 2) / FH * S.ho, vOf = (py) => (FH - py) / FH * S.ho;
+function srcPoint() {                               // 빛 다발이 나가는 물체 위의 점 [u,v,w]
+  if (S.obj === 'pt') return [0, 0, -S.do_];
+  if (S.obj === 'pt-off') return [0, S.ho, -S.do_];
+  return [uOf(S.sx), vOf(S.sy), -S.do_ - (S.obj === 'F3' ? S.sd * thick() : 0)];
+}
+function imgOf(P) { const z = paraxialImageZ(C.sys, P[2]), m = -z / -P[2]; return { z, m, u: m * P[0], v: m * P[1] }; }
 const mask = []; (function () { const d = fcv.getContext('2d').getImageData(0, 0, FW, FH).data; for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) if (d[(y * FW + x) * 4 + 3] > 128) mask.push([x, y]); })();
 
 // 스크린 누적 캔버스
@@ -727,12 +745,23 @@ function rebuildMarks() {
 }
 function rebuildObject() {
   clearG(gObj); const ab = S.mode === 'aberr';
-  if (!ab && S.obj === 'F') {
-    const w = FW / FH * S.ho, m = new THREE.Mesh(new THREE.PlaneGeometry(w, S.ho), new THREE.MeshBasicMaterial({ map: objTex, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
-    m.rotateY(-Math.PI / 2); m.position.set(-S.do_, S.ho / 2, 0); gObj.add(m);
-    gObj.add(post(-S.do_, 0)); const lb = label('물체 (a = ' + S.do_.toFixed(1) + ' cm)', '#fde68a', 1.0); lb.position.set(-S.do_, S.ho + 1.4, 0); gObj.add(lb);
+  if (!ab && isF()) {
+    if (S.obj === 'F') {
+      const w = FW / FH * S.ho, m = new THREE.Mesh(new THREE.PlaneGeometry(w, S.ho), new THREE.MeshBasicMaterial({ map: objTex, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
+      m.rotateY(-Math.PI / 2); m.position.set(-S.do_, S.ho / 2, 0); m.userData.pick = true; gObj.add(m);
+    } else {                                                        // 입체 F: 글자 모양을 두께만큼 밀어낸 덩어리
+      const q = (x, y) => [uOf(x), vOf(y)], pts = [[12, 6], [70, 6], [70, 24], [30, 24], [30, 40], [56, 40], [56, 56], [30, 56], [30, 96], [12, 96]].map(p => q(...p));
+      const sh = new THREE.Shape(pts.map(p => new THREE.Vector2(p[0], p[1]))), geo = new THREE.ExtrudeGeometry(sh, { depth: thick(), bevelEnabled: false });
+      const g = new THREE.Group();
+      g.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xffe9b0, emissive: 0x5b3d0a, roughness: .55 })));
+      g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 30), new THREE.LineBasicMaterial({ color: 0xb45309 })));
+      g.rotateY(-Math.PI / 2); g.position.set(-S.do_, 0, 0); g.children[0].userData.pick = true; gObj.add(g);
+    }
+    gObj.add(post(-S.do_, 0)); const lb = label((S.obj === 'F3' ? '입체 물체 앞면 (a = ' : '물체 (a = ') + S.do_.toFixed(1) + ' cm)', '#fde68a', 1.0); lb.position.set(-S.do_, S.ho + 1.4, 0); gObj.add(lb);
+    const Ps = srcPoint(), dot = new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.14, S.ho * 0.06), 16, 16), new THREE.MeshBasicMaterial({ color: 0xff4d6d, depthTest: false }));
+    dot.renderOrder = 15; dot.position.copy(T(...Ps)); gObj.add(dot);
   } else {
-    const P = ab ? C.P0 : (S.obj === 'pt' ? [0, 0, -S.do_] : [0, S.ho, -S.do_]);
+    const P = ab ? C.P0 : srcPoint();
     if (ab && S.inf) { const lb = label('먼 물체 (평행광)' + (S.theta ? ' · ' + S.theta + '° 기울어 입사' : ''), '#fde68a', 1.0); lb.position.set(-18, 6.2, 0); gObj.add(lb); return; }
     const s = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), new THREE.MeshBasicMaterial({ color: 0xfff1b8 })); s.position.copy(T(P[0], P[1], P[2])); gObj.add(s);
     gObj.add(post(P[2], Math.min(0, P[1]))); const lb = label('점광원', '#fde68a', 0.9); lb.position.set(P[2], P[1] + 1.4, 0); gObj.add(lb);
@@ -753,9 +782,15 @@ function rebuildImage() {
   const zi = C.zi; if (!Number.isFinite(zi) || Math.abs(zi) > 150 || !Number.isFinite(C.m)) return;
   if (S.obj === 'pt') return;
   const m = C.m, real = zi > 0.2;
-  if (S.obj === 'F') {
-    const w = FW / FH * S.ho, g = new THREE.Mesh(new THREE.PlaneGeometry(w, S.ho), new THREE.MeshBasicMaterial({ map: objTex, color: real ? 0x67e8f9 : 0xd8b4fe, transparent: true, opacity: real ? .55 : .45, side: THREE.DoubleSide, depthWrite: false }));
-    g.rotateY(-Math.PI / 2); g.scale.set(m, m, 1); g.position.set(zi, m * S.ho / 2, 0); gImg.add(g);
+  if (isF()) {
+    const w = FW / FH * S.ho;
+    for (const d of (S.obj === 'F3' ? [0, 1] : [0])) {            // 입체 F는 앞면·뒷면 상이 서로 다른 곳·다른 크기로 맺힌다
+      const o = imgOf([0, 0, -S.do_ - d * thick()]); if (!Number.isFinite(o.z) || Math.abs(o.z) > 150) continue;
+      const re = o.z > 0.2, g = new THREE.Mesh(new THREE.PlaneGeometry(w, S.ho), new THREE.MeshBasicMaterial({ map: objTex, color: re ? 0x67e8f9 : 0xd8b4fe, transparent: true, opacity: (re ? .55 : .45) * (d ? .6 : 1), side: THREE.DoubleSide, depthWrite: false }));
+      g.rotateY(-Math.PI / 2); g.scale.set(o.m, o.m, 1); g.position.set(o.z, o.m * S.ho / 2, 0); gImg.add(g);
+    }
+    const o = imgOf(srcPoint());                                   // 선택한 점의 상
+    if (Number.isFinite(o.z) && Math.abs(o.z) < 150) { const d = new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.14, S.ho * 0.06), 16, 16), new THREE.MeshBasicMaterial({ color: 0xff4d6d, depthTest: false })); d.renderOrder = 15; d.position.copy(T(o.u, o.v, o.z)); gImg.add(d); }
   } else { const s = new THREE.Mesh(new THREE.SphereGeometry(0.25, 12, 12), new THREE.MeshBasicMaterial({ color: real ? 0x67e8f9 : 0xd8b4fe })); s.position.set(zi, m * S.ho, 0); gImg.add(s); }
   const lb = label((real ? '실상' : '허상') + ' (b = ' + zi.toFixed(1) + ' cm)', real ? '#67e8f9' : '#d8b4fe', 1.0);
   lb.position.set(zi, Math.max(m * S.ho, 0) + 2.2 + (m < 0 ? 0 : 0), 0); gImg.add(lb);
@@ -783,26 +818,35 @@ function rebuildRays() {
   if (!ab) {
     const lamL = S.color === 'white' ? [R_, G_, B_] : [G_], lc = { [R_]: lamCol.R, [G_]: lamCol.G, [B_]: lamCol.B };
     if (S.showB) {
-      for (const [P, c, n] of [[[0, S.obj === 'pt' ? 0 : S.ho, -S.do_], 0xa5b4fc, 30], ...(S.obj === 'F' ? [[[0, 0, -S.do_], 0xfde68a, 18]] : [])]) {
-        for (const lam of (S.color === 'white' && S.obj !== 'F' ? lamL : [G_])) {
-          for (const [qu, qv] of pupil(n, a)) { const s = rayStart(P, [qu, qv, 0]), p = path(s.o, s.d, lam); if (p) push(p.pts, S.color === 'white' && S.obj !== 'F' ? lc[lam] : c); }
+      for (const [P, c, n] of [[srcPoint(), 0xa5b4fc, 30], ...(isF() ? [[[0, 0, -S.do_], 0xfde68a, 18]] : [])]) {
+        for (const lam of (S.color === 'white' && !isF() ? lamL : [G_])) {
+          for (const [qu, qv] of pupil(n, a)) { const s = rayStart(P, [qu, qv, 0]), p = path(s.o, s.d, lam); if (p) push(p.pts, S.color === 'white' && !isF() ? lc[lam] : c); }
         }
       }
     }
-    if (S.showP && S.obj !== 'pt') {
-      const P = [0, S.ho, -S.do_], y0 = S.ho * C.fs / (C.fs - S.do_), defs = [[[0, S.ho, 0], 0xf97316], [[0, 0, 0], 0x22c55e], [[0, y0, 0], 0x3b82f6]];
+    let ideal = false;
+    if (S.showP && S.obj !== 'pt') {                                 // 3대 광선: ① 광축에 나란한 광선 ② 렌즈 중심 ③ 앞쪽 초점을 향하는 광선
+      const P = srcPoint(), A = -P[2], fs = C.fs, kf = fs / (fs - A), I = imgOf(P);
+      const defs = [[[P[0], P[1], 0], 0xf97316], [[0, 0, 0], 0x22c55e], [[P[0] * kf, P[1] * kf, 0], 0x3b82f6]];
       for (const [Q, c] of defs) {
-        if (Math.abs(Q[1]) > a) continue;
-        const s = rayStart(P, Q), p = path(s.o, s.d, G_); if (!p) continue;
-        for (let i = 0; i < p.pts.length - 1; i++) { const m = cyl(T(...p.pts[i]), T(...p.pts[i + 1]), 0.07, c); m && gRays.add(m); }
-        if (C.zi < 0 && Number.isFinite(C.m)) {                    // 허상: 거꾸로 연장(점선)
-          const e = p.r, tip = [0, C.m * S.ho, C.zi], dd = [e.p[2], e.p[1], e.p[0]];
-          const g = new THREE.BufferGeometry().setFromPoints([T(e.p[0], e.p[1], e.p[2]), T(0, 0, 0).set(C.zi, tip[1], 0)]);
+        const rad = Math.hypot(Q[0], Q[1]); if (!Number.isFinite(rad) || rad > 40) continue;
+        let pts, e = null;
+        if (rad <= a) { const s = rayStart(P, Q), p = path(s.o, s.d, G_); if (!p) continue; pts = p.pts; e = p.r; }
+        else {                                                       // 조리개·렌즈에 막히는 광선: 이상적인 얇은 렌즈로 작도
+          if (!Number.isFinite(I.z) || Math.abs(I.z) > 400) continue; ideal = true;
+          const dv = I.z > 0 ? [I.u - Q[0], I.v - Q[1], I.z] : [Q[0] - I.u, Q[1] - I.v, -I.z], t = wEnd / dv[2];
+          pts = [P, Q]; if (t > 0) pts.push([Q[0] + t * dv[0], Q[1] + t * dv[1], wEnd]); e = { p: Q };
+        }
+        for (let i = 0; i < pts.length - 1; i++) { const m = cyl(T(...pts[i]), T(...pts[i + 1]), rad <= a ? 0.07 : 0.05, c, rad <= a ? 1 : .45); m && gRays.add(m); }
+        if (I.z < 0 && Number.isFinite(I.m)) {                       // 허상: 거꾸로 연장(점선)
+          const g = new THREE.BufferGeometry().setFromPoints([T(e.p[0], e.p[1], e.p[2]), T(I.u, I.v, I.z)]);
           const ln = new THREE.Line(g, new THREE.LineDashedMaterial({ color: c, dashSize: .6, gapSize: .45 })); ln.computeLineDistances(); gRays.add(ln);
         }
       }
     }
+    const rn = $('#rayNote'); if (rn) rn.textContent = ideal ? '※ 연하고 가는 광선은 조리개(또는 렌즈 가장자리)에 실제로는 막히지만, 3대 광선의 작도 규칙을 보이려고 이상적인 얇은 렌즈로 그린 것입니다. 조리개를 키우면 진짜 광선으로 바뀝니다.' : '';
   } else {
+    const rn = $('#rayNote'); if (rn) rn.textContent = '';
     const P = C.P0, rings = S.rayMode === 'ring' ? [.3, .65, .97] : [.5, .97], lamL = S.rayMode === 'lam' ? [R_, G_, B_] : [G_];
     rings.forEach((fr, ri) => {
       for (let j = 0; j < 12; j++) {
@@ -846,7 +890,7 @@ function setView(kind) {
 function resetMC() { buf.fill(0); frames = 0; }
 function pickPoint() {
   if (S.mode === 'aberr') return C.P0;
-  if (S.obj === 'F') { const [px, py] = mask[(rnd() * mask.length) | 0]; return [((px + rnd()) / FW - 0.5) * (FW / FH) * S.ho, (1 - (py + rnd()) / FH) * S.ho, -S.do_]; }
+  if (isF()) { const [px, py] = mask[(rnd() * mask.length) | 0], d = S.obj === 'F3' ? (rnd() < 0.5 ? 0 : rnd()) : 0; return [((px + rnd()) / FW - 0.5) * (FW / FH) * S.ho, (1 - (py + rnd()) / FH) * S.ho, -S.do_ - d * thick()]; }
   return S.obj === 'pt' ? [0, 0, -S.do_] : [0, S.ho, -S.do_];
 }
 function mcStep() {
@@ -891,6 +935,11 @@ function drawInspector() {
     if (Math.abs(v) > 1e-9) x.fillText((v >= 0 ? '' : '') + (+v.toFixed(3)), p + 2, W / 2 - 3);
   }
   x.strokeStyle = 'rgba(255,255,255,.35)'; x.beginPath(); x.moveTo(W / 2, 0); x.lineTo(W / 2, W); x.moveTo(0, W / 2); x.lineTo(W, W / 2); x.stroke();
+  if (S.mode === 'image' && isF()) {                                // 선택한 점이 스크린 어디에 닿는지(주광선)
+    const P = srcPoint(), r = trace(C.sys, P, norm([-P[0], -P[1], -P[2]]), G_);
+    if (r) { const t = (C.sc - r.p[2]) / r.d[2], px = W / 2 + (r.p[0] + t * r.d[0] - C.scr[0]) * k, py = W / 2 - (r.p[1] + t * r.d[1] - C.scr[1]) * k;
+      x.strokeStyle = '#ff4d6d'; x.lineWidth = 2; x.beginPath(); x.arc(px, py, 9, 0, 6.2832); x.stroke(); }
+  }
   x.fillStyle = 'rgba(255,255,255,.7)'; x.fillText('격자 ' + (+st.toFixed(3)) + ' cm · 렌즈 쪽에서 스크린을 바라본 모습', 6, W - 6);
 }
 
@@ -901,6 +950,7 @@ const missions = [
   { id: 'm3', t: '③ f < a < 2f : 도립·확대 실상', ok: () => S.type === 'convex' && S.do_ > S.f + 0.3 && S.do_ < 2 * S.f - 0.3 },
   { id: 'm4', t: '④ a < f : 정립·확대 허상 (돋보기)', ok: () => S.type === 'convex' && S.do_ < S.f - 0.3 },
   { id: 'm5', t: '⑤ 오목 렌즈 : 항상 허상', ok: () => S.type === 'concave' },
+  { id: 'm7', t: '⑦ 꼭대기가 아닌 점에서 나가는 빛 보기', ok: () => S.mode === 'image' && isF() && S.sy > 30 },
   { id: 'm6', t: '⑥ 조리개를 줄여 흐림 줄이기', ok: () => S.mode === 'image' && S.stopD < 3 && S.type === 'convex' },
 ];
 const done = new Set();
@@ -1027,7 +1077,22 @@ function updateNow() {
   rebuildLens(); rebuildMarks(); rebuildObject(); rebuildScreen(); rebuildImage(); rebuildRays();
   resetMC(); refreshReadouts(); if (S.mode === 'aberr') refreshAb(); syncUI();
 }
+function pickSnap(px, py) {                          // 클릭한 위치에서 가장 가까운 글자 F 위의 점
+  let best = null, bd = 1e9; for (const [x, y] of mask) { const d = (x - px) ** 2 + (y - py) ** 2; if (d < bd) { bd = d; best = [x, y]; } }
+  return best;
+}
+function setSrc(px, py, sd) { const p = pickSnap(px, py); S.sx = p[0] + 0.5; S.sy = p[1] + 0.5; if (sd !== undefined) S.sd = sd; S.touched = true; update(); }
+function drawPicker() {
+  const cv = $('#srcPick'); if (!cv || !cv.offsetParent) return; const x = cv.getContext('2d'), k = cv.width / FW;
+  x.clearRect(0, 0, cv.width, cv.height); x.fillStyle = '#0d1530'; x.fillRect(0, 0, cv.width, cv.height);
+  x.fillStyle = '#fde68a'; for (const [x0, x1, y0, y1] of RECTS) x.fillRect(x0 * k, y0 * k, (x1 - x0) * k, (y1 - y0) * k);
+  x.fillStyle = '#ff4d6d'; x.strokeStyle = '#fff'; x.lineWidth = 2; x.beginPath(); x.arc(S.sx * k, S.sy * k, 7, 0, 6.2832); x.fill(); x.stroke();
+}
 function syncUI() {
+  const showSrc = S.mode === 'image' && isF(); const sr = $('#srcRow'); if (sr) sr.style.display = showSrc ? '' : 'none';
+  const dr = $('#depthRow'); if (dr) dr.style.display = S.obj === 'F3' ? '' : 'none';
+  const sl = $('#srcLab'); if (sl && showSrc) sl.textContent = '높이 ' + vOf(S.sy).toFixed(1) + ' cm · 좌우 ' + uOf(S.sx).toFixed(1) + ' cm' + (S.obj === 'F3' ? ' · 깊이 ' + (S.sd * thick()).toFixed(1) + ' cm' : '');
+  if (showSrc) drawPicker();
   $$('[data-k]').forEach(el => { const k = el.dataset.k; if (document.activeElement !== el) el.value = S[k]; const v = $$(`[data-v="${k}"]`); v.forEach(e => e.textContent = (+S[k]).toFixed(+(e.dataset.d || 1)) + (e.dataset.u || '')); });
   $$('[data-kb]').forEach(el => el.checked = !!S[el.dataset.kb]);
   $$('[data-set]').forEach(el => { const [k, v] = el.dataset.set.split(':'); el.classList.toggle('active', String(S[k]) === v); });
@@ -1050,6 +1115,7 @@ document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-set]'); if (b) { S.touched = true; const [k, v] = b.dataset.set.split(':'); S[k] = isNaN(+v) ? (v === 'true' ? true : v === 'false' ? false : v) : +v; if (k === 'ab') { applyPreset(v); return; } if (k === 'type' && v === 'concave') S.kind = 'singlet'; update(); return; }
   const a = e.target.closest('[data-act]'); if (!a) return; const act = a.dataset.act;
   if (act === 'focus') { derive(); const bf = bestAxis(); S.sc = Math.min(90, Math.max(3, +(bf ? bf.z : (C.zi > 0 ? C.zi : S.sc)).toFixed(1))); update(); }
+  if (act.startsWith('src:')) { const w = act.slice(4); if (w === 'top') setSrc(40, 6); else if (w === 'mid') setSrc(21, 51); else setSrc(21, 94); }
   if (act === 'record') record();
   if (act === 'clearrec') { recs.length = 0; renderRecs(); }
   if (act.startsWith('view:')) setView(act.slice(5));
@@ -1057,6 +1123,18 @@ document.addEventListener('click', (e) => {
   if (act.startsWith('go:')) goTab(act.slice(3));
 });
 
+/* 빛이 나가는 점 고르기: 작은 글자 그림 클릭 · 3D 장면의 물체 클릭 */
+$('#srcPick').addEventListener('click', (e) => { const r = e.currentTarget.getBoundingClientRect(); setSrc((e.clientX - r.left) / r.width * FW, (e.clientY - r.top) / r.height * FH); });
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(); let down = null;
+renderer.domElement.addEventListener('pointerdown', (e) => { down = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', (e) => {
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5 || S.mode !== 'image' || !isF()) return; down = null;
+  const r = renderer.domElement.getBoundingClientRect(); ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1);
+  ray.setFromCamera(ndc, camera); gObj.updateMatrixWorld(true);
+  const hit = ray.intersectObjects(gObj.children, true).find(h => h.object.userData.pick); if (!hit) return;
+  const p = hit.point, u = p.z, w = p.x;                          // 화면 좌표 → 엔진 좌표(z=u, x=w)
+  setSrc(u / S.ho * FH + FW / 2, FH - p.y / S.ho * FH, S.obj === 'F3' ? Math.max(0, Math.min(1, (-w - S.do_) / thick())) : undefined);
+});
 /* 탭 */
 let curTab = 'theory'; const seen = new Set(['theory']);
 function goTab(t) {

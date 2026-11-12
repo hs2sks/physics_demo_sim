@@ -1,0 +1,747 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>도플러 효과 ② phyphox 체험 · 역학과 에너지</title>
+<!-- doppler-2 · 교과서 101쪽 탐구 · 영상 미리보기, 폰 2대로 따라 하는 기본 순서(톤 생성기 → f₀ 확인 → 기준 진동수 → 정지·이동 측정 → 저장), 그래프 읽기, 계산 연습, 수행평가(측정·계산·한계·앱 제작) 안내 (19장) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap">
+<style>
+:root{
+  --bg:#dfe5f0; --slide:#f5f7fc; --panel:#ffffff; --ink:#14203a; --muted:#54617b; --line:#c9d2e4;
+  --blue:#1f5fd1; --onblue:#ffffff; --amber:#b45f00; --green:#0c7a58; --red:#b8321f;
+  --blue-soft:#dce8fb; --amber-soft:#fbe8cf;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+    --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+    --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+  --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+  --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;overflow:hidden}
+#viewport{position:relative;width:100%;height:100%;overflow:hidden}
+#deck{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center center;background:var(--slide);box-shadow:0 12px 70px rgba(0,0,0,.28);overflow:hidden}
+.slide{position:absolute;inset:0;display:none;flex-direction:column;padding:84px 88px 52px;gap:24px;background:var(--slide);font-size:32px;line-height:1.4}
+.slide.active{display:flex}
+.hd{display:flex;align-items:baseline;justify-content:space-between;gap:24px;flex:none}
+.hd h2{font-size:58px;line-height:1.15;margin:0;font-weight:800;letter-spacing:-.01em}
+.hd .src{font-size:26px;color:var(--muted);white-space:nowrap}
+.body{flex:1;min-height:0;display:grid;gap:36px}
+.mg-box{position:relative;aspect-ratio:16/9;border-radius:16px;overflow:hidden;background:#06142a;align-self:start}
+.mg-box.mg-full{height:100%;max-width:100%;justify-self:center}
+.mg-box iframe{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none}
+.mg-re{position:absolute;right:14px;bottom:14px;font:inherit;font-size:24px;padding:8px 18px;border-radius:10px;border:1px solid rgba(255,255,255,.4);background:rgba(0,0,0,.55);color:#fff;cursor:pointer;opacity:.75}
+.mg-re:hover,.mg-re:focus-visible{opacity:1}
+.side{display:flex;flex-direction:column;gap:18px;min-height:0}
+canvas{display:block;border-radius:16px;background:#0a1330}
+.box{background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:20px 26px}
+.box h3{margin:0 0 8px;font-size:30px}
+.sm{font-size:26px;color:var(--muted)}
+.lead{font-size:40px;line-height:1.35}
+.k{color:var(--amber);font-weight:700}.p{color:var(--blue);font-weight:700}.ok{color:var(--green);font-weight:700}.bad{color:var(--red);font-weight:700}
+/* math */
+.m{font-family:'STIX Two Text','Times New Roman',serif;font-style:italic;font-size:1.1em;white-space:nowrap}
+.m .u,.u{font-style:normal}
+.m sub,.m sup{font-size:.68em;line-height:0;font-style:normal}
+.fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.15;margin:0 .12em;font-size:.95em}
+.fr>span:first-child{padding:0 .2em .06em;border-bottom:.07em solid currentColor}
+.fr>span:last-child{padding-top:.06em}
+.sq{white-space:nowrap}.sq .rad{border-top:.07em solid currentColor;padding:0 .15em;margin-left:-.04em}
+.eq{font-size:44px;text-align:center;padding:6px 0}
+/* controls */
+.ctl{display:flex;flex-direction:column;gap:4px}
+.ctl .row{display:flex;justify-content:space-between;align-items:baseline;font-size:27px;gap:12px}
+.ctl .val{font-weight:700;font-variant-numeric:tabular-nums}
+.rangew{position:relative}
+input[type=range]{width:100%;height:44px;-webkit-appearance:none;appearance:none;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:38px;height:38px;border-radius:50%;background:var(--blue);margin-top:-13px;border:4px solid var(--panel);box-shadow:0 1px 6px rgba(0,0,0,.35)}
+input[type=range]::-moz-range-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;background:var(--blue);border:4px solid var(--panel)}
+input[type=range]:focus-visible{outline:3px solid var(--blue);outline-offset:4px;border-radius:8px}
+.marks{position:relative;height:60px;font-size:22px;color:var(--muted)}
+.marks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.btns{display:flex;gap:12px;flex-wrap:wrap}
+.btn,.chip{font:inherit;font-size:27px;font-weight:700;padding:10px 24px;border-radius:12px;border:2px solid var(--blue);background:var(--panel);color:var(--blue);cursor:pointer;line-height:1.25}
+.btn.pri{background:var(--blue);color:var(--onblue)}
+.chip{padding:8px 18px;font-size:26px;border-color:var(--line);color:var(--ink);font-weight:500}
+.chip.on{border-color:var(--blue);background:var(--blue-soft);font-weight:700}
+.btn:focus-visible,.chip:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.chips{display:flex;gap:10px;flex-wrap:wrap}
+/* step reveal */
+.st{display:grid;grid-template-columns:46px 1fr;gap:14px;padding:8px 14px;border-radius:14px;opacity:0;transform:translateY(10px);transition:opacity .35s,transform .35s;border:2px solid transparent}
+.st.on{opacity:.55;transform:none}
+.st.cur{opacity:1;background:var(--panel);border-color:var(--blue)}
+.st .n{width:42px;height:42px;border-radius:50%;background:var(--blue);color:var(--onblue);display:grid;place-items:center;font-weight:800;font-size:24px;margin-top:2px}
+.st .tl{display:flex;flex-wrap:wrap;gap:2px 14px;align-items:baseline}
+.st .t{font-size:23px;color:var(--muted);line-height:1.3}
+.st b{font-size:27px}
+.st .eq{font-size:35px;line-height:1.1;text-align:left;padding:2px 0}
+/* cover */
+.cover{flex-direction:row;align-items:center;gap:56px}
+.cover.active{display:flex}
+.cv-l{flex:1;display:flex;flex-direction:column;gap:28px}
+.cv-l h1{font-size:200px;line-height:1;margin:0;font-weight:800;letter-spacing:-.04em}
+.cv-l h1.long{font-size:92px;line-height:1.22;letter-spacing:-.02em;text-wrap:balance;word-break:keep-all}
+.cv-tag{font-size:30px;color:var(--muted)}
+.q{border-left:8px solid var(--blue);border-radius:6px;padding:8px 0 8px 28px;font-size:36px;line-height:1.45}
+/* table */
+table.t{border-collapse:collapse;width:100%;font-size:27px}
+table.t th,table.t td{padding:10px 14px;border-bottom:2px solid var(--line);text-align:right;white-space:nowrap}
+table.t th:first-child,table.t td:first-child,table.t th:last-child,table.t td:last-child{text-align:left}
+table.t th{font-size:24px;color:var(--muted);font-weight:500}
+table.t tbody tr{cursor:pointer}
+table.t tbody tr.on{background:var(--blue-soft);font-weight:700}
+/* HUD / notes */
+#hud{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:10px;align-items:center;background:rgba(10,19,48,.86);color:#e9effd;padding:8px 14px;border-radius:14px;font-size:18px;opacity:0;transition:opacity .3s;z-index:20}
+#hud.show{opacity:1}
+#hud button{font:inherit;font-size:18px;color:#e9effd;background:transparent;border:1.5px solid rgba(233,239,253,.5);border-radius:8px;padding:4px 12px;cursor:pointer}
+#notes{position:absolute;left:0;right:0;bottom:0;background:rgba(10,19,48,.94);color:#eaf0ff;padding:26px 88px 34px;font-size:30px;line-height:1.5;display:none;z-index:15}
+#notes.on{display:block}
+#notes b{color:#ffb454}
+
+.ko{font-family:'Noto Sans KR',sans-serif;font-style:normal;font-size:.8em}
+#bar{position:absolute;top:14px;left:88px;right:88px;height:54px;display:flex;justify-content:space-between;align-items:center;z-index:12}
+#bar .bl{font-size:26px;font-weight:800}
+#bar .br{display:flex;gap:10px}
+.tb{font:inherit;font-size:24px;font-weight:700;padding:7px 18px;border-radius:12px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;line-height:1.2}
+.tb:hover{border-color:var(--blue)}.tb.on{border-color:var(--blue);background:var(--blue-soft)}
+.tb:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+#help{position:absolute;inset:0;background:rgba(6,11,30,.82);display:none;align-items:center;justify-content:center;z-index:30}
+#help.on{display:flex}
+.hp{background:var(--panel);color:var(--ink);border-radius:22px;padding:36px 52px 40px;width:1320px;max-height:960px;overflow:auto;font-size:27px;line-height:1.5;border:2px solid var(--line)}
+.hp h3{font-size:40px;margin:0 0 14px}.hp h4{font-size:29px;margin:18px 0 6px;color:var(--blue)}
+.hp .g{display:grid;grid-template-columns:230px 1fr;gap:6px 22px}
+.hp kbd{font:inherit;font-size:24px;font-weight:700;background:var(--blue-soft);border:2px solid var(--line);border-radius:8px;padding:1px 10px;margin-right:4px}
+#ask{position:absolute;inset:0;background:rgba(6,11,30,.6);display:none;align-items:center;justify-content:center;z-index:25;cursor:pointer}
+#ask.on{display:flex}
+#ask .ak{background:var(--panel);color:var(--ink);border-radius:24px;border-left:16px solid var(--blue);padding:44px 72px 40px 60px;width:1500px;box-shadow:0 20px 80px rgba(0,0,0,.45)}
+#ask .ah{font-size:30px;color:var(--blue);font-weight:800;margin-bottom:18px}
+#ask .aq{font-size:54px;line-height:1.4;font-weight:700;margin:10px 0;letter-spacing:-.01em}
+#ask .aq span{color:var(--blue);margin-right:14px}
+#ask .af{font-size:24px;color:var(--muted);margin-top:22px}
+#notes .nh{font-size:24px;color:#9db0d8;margin-bottom:6px}
+#notes .nq{margin:4px 0 10px;font-size:29px}
+#notes .ni{margin:6px 0;font-size:27px;line-height:1.45}
+#notes .nx{color:#ff9d9d;font-weight:700}#notes .nv{color:#5eead4;font-weight:700}
+@media (prefers-reduced-motion: reduce){.st{transition:none}}
+#simError{position:absolute;left:88px;right:88px;top:76px;z-index:40;background:rgba(184,50,31,.95);color:#fff;font-size:22px;line-height:1.4;padding:10px 18px;border-radius:12px;white-space:pre-wrap;display:none}
+#simError.on{display:block}
+/* ---- 반응형(reflow): 폭 1100px 미만(폰·태블릿)에서는 1920 스케일 대신 세로로 흐르는 레이아웃 ---- */
+html.rf #deck{left:0;top:0;transform-origin:top left;box-shadow:none}
+html.rf .slide{padding:104px 22px 100px;gap:18px;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;font-size:30px}
+html.rf .body{display:flex !important;flex-direction:column;gap:22px;flex:none;min-height:auto}
+html.rf .side{min-height:auto}
+html.rf .hd{flex-direction:column;align-items:flex-start;gap:6px}
+html.rf .hd h2{font-size:44px}
+html.rf .hd .src{font-size:23px;white-space:normal}
+html.rf canvas{width:100% !important;height:auto !important;max-width:100%}
+html.rf .mg-box.mg-full{height:auto;width:100%}
+html.rf img,html.rf svg,html.rf video{max-width:100%;height:auto}
+html.rf .cover{flex-direction:column;align-items:stretch;gap:26px}
+html.rf .cv-l h1{font-size:112px}
+html.rf .cv-l h1.long{font-size:52px}
+html.rf .cv-tag{font-size:26px}
+html.rf .q{font-size:30px}
+html.rf .lead{font-size:34px}
+html.rf .eq{font-size:36px;overflow-x:auto}
+html.rf table.t{display:block;overflow-x:auto;font-size:24px}
+html.rf .btn,html.rf .chip{min-height:52px}
+html.rf #bar{left:14px;right:14px;top:12px;height:auto;flex-wrap:wrap;gap:8px}
+html.rf #bar .bl{display:none}
+html.rf #bar .br{flex-wrap:wrap;justify-content:flex-end;width:100%}
+html.rf .tb{font-size:20px;padding:8px 12px}
+html.rf .hp{width:92%;max-height:88%;padding:24px 22px 28px;font-size:23px}
+html.rf .hp h3{font-size:32px}
+html.rf .hp .g{grid-template-columns:1fr;gap:2px 0}
+html.rf #ask .ak{width:92%;padding:26px 24px 24px 28px;border-left-width:10px}
+html.rf #ask .aq{font-size:34px}
+html.rf #notes{padding:18px 20px 26px;font-size:23px;max-height:62%;overflow:auto}
+html.rf #notes .nq{font-size:25px}
+html.rf #notes .ni{font-size:23px}
+html.rf #simError{left:14px;right:14px;top:96px}
+html.rf #hud{padding:8px 16px;width:max-content;max-width:96%}
+html.rf #hud #h-pg{white-space:nowrap;font-size:22px}
+html.rf .st:not(.on){display:none}
+html.rf #hud button{font-size:22px;padding:6px 16px;min-height:44px}
+/* ---- extra_css ---- */
+.fit p,.fit td,.fit th{font-size:21px !important;line-height:1.4}.fit h3{font-size:25px !important}
+.warn{border-left:6px solid #e0a000;padding:8px 16px;background:rgba(224,160,0,.10);border-radius:6px}
+table.t{width:100%;table-layout:fixed}
+table.t td,table.t th{text-align:left;font-size:21px;vertical-align:top;white-space:normal;word-break:keep-all;overflow-wrap:anywhere}
+table.t td.n,table.t th.n{text-align:right}
+details summary{cursor:pointer;color:#e0a000;font-weight:700;margin-top:6px}
+.btns{flex-wrap:wrap}a{color:inherit}
+.vid{width:100%;aspect-ratio:16/9;border:0;border-radius:12px;background:#000;display:block}
+.fr{align-items:stretch}.fr>span{text-align:center;padding-left:.3em;padding-right:.3em}.dv td,.dv th{font-size:23px !important;line-height:1.4}.two{display:grid;grid-template-columns:1fr 1fr;gap:20px}.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+.ctlrow{display:flex;gap:28px;align-items:flex-end;margin-top:8px}.ctlrow .ctl{flex:1}
+</style>
+</head>
+<body>
+<div id="viewport">
+<div id="deck">
+
+<!-- c -->
+<section class="slide cover" id="c">
+  <div class="cv-l"><div class="cv-tag">역학과 에너지 Ⅲ. 탄성파와 소리 · 도플러 효과 ② phyphox 체험과 수행평가</div>
+    <h1>도플러 효과 측정</h1>
+    <p class="lead" style="margin:0">지난 시간에 도플러 효과의 원리와 공식을 배웠다. 오늘은 스마트폰 두 대와 phyphox 앱으로 소리 높이가 달라지는 것을 직접 재 본다. 영상으로 먼저 보고, 기본 방법을 단계별로 따라 해 본 뒤, 이어질 수행평가(측정 → 계산 → 한계 찾기 → 나만의 앱)를 안내한다.</p>
+    <div class="q">우리가 만들 수 있는 속력에서 소리 높이는 몇 Hz나 달라질까? 스마트폰은 그것을 구별할 수 있을까?</div>
+    <div class="sm">교과서 101쪽 탐구 · 2차시 중 2차시</div></div>
+  <canvas id="c-cv"></canvas>
+</section>
+
+<!-- pl -->
+<section class="slide" id="pl">
+  <header class="hd"><h2>오늘 할 일</h2><span class="src">50분 안배(예시) · 교과서 101쪽 탐구와 수행평가 안내</span></header>
+<div class="three"><div class="box fit"><h3>① 영상으로 미리 보기 (10분)</h3><p>phyphox 도플러 실험이 어떻게 생겼는지 영상으로 본다.</p><p>볼 것: 폰 두 대의 역할, 앱 화면, 소리가 높아질 때 그래프 모양.</p></div><div class="box fit"><h3>② 기본 방법 따라 하기 (25분)</h3><p>조별로 폰 두 대를 가지고 <b class="k">기본 순서</b>를 단계별로 따라 한다: 소리 내기 → f₀ 확인 → 기준 진동수 입력 → 정지 측정 → 움직이며 측정 → 저장.</p></div><div class="box fit"><h3>③ 수행평가 안내 (15분)</h3><p>오늘 해 본 방법을 <b class="k">예시</b>로, 이어질 수행평가 과제(측정 → 계산 → 한계 찾기 → 앱 제작)를 소개한다.</p></div></div><div class="box fit" style="margin-top:16px"><h3>지난 시간 3줄 복습</h3><p>① 진동수 = 귀에 1초 동안 도착하는 파면의 수. 가까워지면 커지고 멀어지면 작아진다.</p><p>② <b class="k">f′ = (v ± vₒ)/(v ∓ vₛ)·f</b> — “관위 음아, 가까우면 위 +, 아래 −”</p><p>③ 걷는 속력에서는 Δf가 작아 눈금 한두 칸이다 → 오늘은 이것을 직접 확인한다.</p></div>
+</section>
+
+<!-- pd -->
+<section class="slide" id="pd">
+  <header class="hd"><h2>측정 전에 예상하기</h2><span class="src">교사 안내 자료 A2 · V = 331 + 0.6T (m/s) · 눈금은 8192점 FFT·48 kHz 기준 대략값</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="pd-cv"></canvas><div class="side"><div class="chips"><div class="chip on" id="pd-m0">수신 폰이 움직임</div><div class="chip" id="pd-m1">음원 폰이 움직임</div></div><div class="ctl"><div class="row">음원 진동수 f₀<span class="val" id="pd-f-v"></span></div><input type="range" id="pd-f" min="1000" max="6000" step="100" value="4000"></div><div class="ctl"><div class="row">이동 속력<span class="val" id="pd-v-v"></span></div><input type="range" id="pd-v" min="0.2" max="6" step="0.1" value="1"></div><div class="ctl"><div class="row">기온 T<span class="val" id="pd-t-v"></span></div><input type="range" id="pd-t" min="0" max="35" step="1" value="20"></div><div class="box fit"><h3>쉽게 말하면</h3><p>속력이 작을수록, 진동수가 낮을수록 Δf가 작다. Δf ≈ f₀ × v/V</p><p class="sm" style="font-size:19px !important">phyphox는 이 변화를 읽어 속도를 계산해 준다. 변화가 작으면 값이 흔들린다.</p></div></div>
+</div>
+</section>
+
+<!-- v1 -->
+<section class="slide" id="v1">
+  <header class="hd"><h2>영상으로 먼저 보기 ①</h2><span class="src">채널: DIY물리실험 · 설명란: 도플러 효과로 원운동의 속력을 구하는 실험 · 제목·설명란 기준 선정</span></header>
+<div class="body" style="grid-template-columns:1100px 1fr">
+<div class="box"><h3 style="font-size:24px !important">스마트폰 실험 — phyphox 앱을 이용한 도플러 효과 실험</h3><iframe class="vid" src="https://www.youtube-nocookie.com/embed/bRYYrr8lirc" title="스마트폰 실험 — phyphox 앱을 이용한 도플러 효과 실험" loading="lazy" allow="accelerometer; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe><p class="sm" style="margin-top:8px">약 6분 52초 · 설명란 기준 3:26 부근에서 원운동하는 음원이 높게·낮게 들리는 장면. <a href="https://www.youtube.com/watch?v=bRYYrr8lirc" target="_blank" rel="noopener">유튜브에서 열기 ↗</a></p></div><div class="side"><div class="box fit"><h3>보면서 찾아볼 것</h3><p>① 폰이 <b>몇 대</b>, 각각 무슨 역할을 하나?</p><p>② 앱에서 <b>어떤 값</b>을 입력하나?</p><p>③ 소리가 높아질 때 <b>그래프</b>는 어떻게 변하나?</p><p>④ 속력은 어떻게 구하나?</p></div><div class="box fit"><p class="warn"><b>안전</b> 영상처럼 폰을 줄·주머니에 넣어 돌리는 방법은 따라 하지 않는다. 우리는 수레나 회전판을 쓴다.</p></div></div>
+</div>
+</section>
+
+<!-- v2 -->
+<section class="slide" id="v2">
+  <header class="hd"><h2>영상으로 먼저 보기 ②</h2><span class="src">영상 두 편 · 제목·설명란 기준 선정 · 영어·독일어, 화면 위주로 본다 · 인터넷 필요</span></header>
+<div class="body" style="grid-template-columns:1fr 1fr">
+<div class="box"><h3 style="font-size:24px !important">Doppler Effect Investigation with Phyphox app (영어)</h3><iframe class="vid" src="https://www.youtube-nocookie.com/embed/CVOV981N2Tg" title="Doppler Effect Investigation with Phyphox app (영어)" loading="lazy" allow="accelerometer; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe><p class="sm" style="margin-top:8px">6분 55초 · 진자와 phyphox로 도플러 효과를 조사. 앱 화면 위주로 본다. <a href="https://www.youtube.com/watch?v=CVOV981N2Tg" target="_blank" rel="noopener">유튜브에서 열기 ↗</a></p></div><div class="box"><h3 style="font-size:24px !important">Der „Tongenerator“ von phyphox (독일어)</h3><iframe class="vid" src="https://www.youtube-nocookie.com/embed/lyk5T9d-tKI" title="Der „Tongenerator“ von phyphox (독일어)" loading="lazy" allow="accelerometer; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe><p class="sm" style="margin-top:8px">1분 52초 · 음원 폰에서 쓰는 톤 생성기 사용법. 소리 대신 화면을 본다. <a href="https://www.youtube.com/watch?v=lyk5T9d-tKI" target="_blank" rel="noopener">유튜브에서 열기 ↗</a></p></div>
+</div>
+</section>
+
+<!-- rd -->
+<section class="slide" id="rd">
+  <header class="hd"><h2>준비물·역할·안전</h2><span class="src">교사 안내 자료 A3 · 4인 한 조 기준</span></header>
+<div class="three"><div class="box fit"><h3>준비물</h3><p>· phyphox가 설치된 <b>스마트폰 2대</b>(음원용 1, 수신용 1)</p><p>· 수레와 레일, 또는 회전판</p><p>· 줄자, 스톱워치, 온도계</p><p>· (선택) 영상 촬영 기기, Tracker</p></div><div class="box fit"><h3>역할 (회차마다 바꾼다)</h3><p><b>음원 담당</b> 소리 켜고 끄기, 위치·음량 유지</p><p><b>이동 담당</b> 폰(수레)을 정해진 방법으로 움직임</p><p><b>속도 측정 담당</b> 스톱워치·영상으로 속력 따로 재기</p><p><b>기록 담당</b> 회차·조건·기온·특이사항</p><p class="sm" style="font-size:19px !important">조원 모두 이동 담당을 한 번 이상 맡는다.</p></div><div class="box fit"><h3>안전과 환경</h3><p class="warn"><b>폰을 줄에 매달아 손으로 돌리는 방법은 금지.</b> 폰이 날아가 다칠 수 있다.</p><p>· 다른 조·벽에서 떨어져 측정</p><p>· 측정 중에는 조원 모두 말하지 않는다(소음)</p><p>· 음량은 귀가 불편하지 않은 범위에서 크게, 실험 내내 같게</p></div></div>
+</section>
+
+<!-- su -->
+<section class="slide" id="su">
+  <header class="hd"><h2>실험 배치도: 무엇이 움직일까?</h2><span class="src">교사 안내 자료 A3 · 직선 운동 또는 원운동 중 하나를 고른다</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="su-cv"></canvas><div class="side"><div class="chips"><div class="chip on" id="su-0">직선: 수신 폰 이동</div><div class="chip" id="su-1">직선: 음원 폰 이동</div><div class="chip" id="su-2">원운동: 회전판</div></div><div class="box fit"><h3>고르는 법</h3><p>먼저 <b class="k">무엇이 움직이는지</b>(관찰자/음원)를 정한다. 공식이 달라진다.</p><p>수신 폰이 움직이면 <b>vₒ</b> 식, 음원 폰이 움직이면 <b>vₛ</b> 식을 쓴다.</p></div><div class="box fit"><h3>독립 속력(비교 기준)</h3><p><b>직선</b> 구간 거리 ÷ 통과 시간</p><p><b>원운동</b> 10바퀴 시간 → T, 속력 = 2πr ÷ T</p></div></div>
+</div>
+</section>
+
+<!-- st1 -->
+<section class="slide" id="st1" data-steps="4">
+  <header class="hd"><h2>따라 하기 ①~④: 준비와 정지 측정</h2><span class="src">교사 안내 자료 A3 · phyphox 설명서(Doppler Effect): https://phyphox.org/wiki/index.php/Experiment:_Doppler_Effect</span></header>
+<div class="body" style="grid-template-columns:1fr 1fr">
+<div><div class="box fit"><h3>음원 폰</h3><p>phyphox → <b>톤 생성기(Tone generator)</b></p><p>우리 조 진동수 재생 (예: 3000 Hz)</p></div><p style="text-align:center;font-size:30px;margin:6px">⬇ 소리</p><div class="box fit"><h3>수신 폰</h3><p>phyphox → <b>Audio Autocorrelation</b>으로 f₀ 확인</p><p>→ <b>Doppler Effect</b> 열고 <b>기준 진동수</b>에 f₀ 입력</p></div><div class="box fit" style="margin-top:12px"><p class="sm" style="font-size:19px !important">연습(기본 방법)은 1000 Hz로 시작해도 좋다. phyphox 설명서가 시작 값으로 권장한다. 수행평가 실측은 조에 배정된 진동수를 쓴다.</p></div></div>
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>① 음원 폰: 소리 내기</b><span class="t">톤 생성기에서 조 진동수 입력 후 재생</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">음량은 귀가 불편하지 않게, 끝까지 같게. 위치도 움직이지 않는다.</div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>② 수신 폰: 실제 f₀ 확인</b><span class="t">Audio Autocorrelation</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">화면에 나온 진동수를 f₀로 기록한다. 배정값과 조금 다를 수 있다.</div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>③ 수신 폰: 기준 진동수 입력</b><span class="t">Doppler Effect → 설정</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">②에서 잰 f₀를 기준 진동수에 넣는다. 이 값이 틀리면 멈춰 있어도 속도가 0이 아니게 나온다.</div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>④ 둘 다 정지, 10초 측정</b><span class="t">정지 상태에서 표시되는 속도 기록</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">속도가 0에 가깝지 않으면 f₀를 다시 확인한다(원인: 기준 진동수 오차, 소음).</div></div></div></div>
+</div>
+</section>
+
+<!-- st2 -->
+<section class="slide" id="st2" data-steps="4">
+  <header class="hd"><h2>따라 하기 ⑤: 움직이며 측정</h2><span class="src">교사 안내 자료 A3 · 조건마다 3회 이상 · 설명서의 시간 간격(time step): 변화가 느리면 키워 평균 효과</span></header>
+<div class="body" style="grid-template-columns:1fr 1fr">
+<div class="box fit"><h3>한 회차의 순서</h3><p>1) 수신 폰의 Doppler Effect <b>시작</b></p><p>2) 이동 담당이 <b>일정한 속력</b>으로 음원 쪽으로 다가가고(그다음 멀어지고)</p><p>3) 속도 측정 담당이 <b>구간 시간</b>을 잰다</p><p>4) 기록 담당이 회차·조건·기온을 적는다</p><p>5) <b>정지</b> → 저장</p></div><div class="box fit" style="margin-top:12px"><h3>기록표 (오늘 조별로 채운다)</h3><table class="t"><tr><th>회차</th><th>조건</th><th>f₀</th><th>f_max</th><th>f_min</th><th>독립 속력</th></tr><tr><td>1</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>2</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>3</td><td></td><td></td><td></td><td></td><td></td></tr></table></div>
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>① 직선 운동</b><span class="t">수신 폰을 수레에 고정</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">정지한 음원 쪽으로 다가갔다가 반대로 멀어지게 한다. 구간 속력은 일정하게.</div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>② 원운동</b><span class="t">회전판에 폰을 단단히 고정</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">음원은 옆에 정지. 회전판이 일정하게 돌 때 측정한다.</div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>③ 3회 이상 반복</b></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">같은 조건으로 3회 이상 해서 값이 얼마나 흔들리는지 본다. 회차마다 역할을 바꾼다.</div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>④ 그래프를 눈으로 확인</b><span class="t">속도·진동수 그래프</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">다가갈 때 진동수가 커지고 멀어질 때 작아지는가? 계단·들쭉날쭉한 부분이 있는가?</div></div></div></div>
+</div>
+</section>
+
+<!-- ci -->
+<section class="slide" id="ci">
+  <header class="hd"><h2>그래프 읽기: f_max와 f_min</h2><span class="src">원운동 회전판 모형 · f₀ 4000 Hz · 눈금은 대략값 · “현실처럼”은 이해를 돕는 예시 모형</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="ci-cv"></canvas><div class="side"><div class="chips"><div class="chip on" id="ci-c0">이상적</div><div class="chip" id="ci-c1">현실처럼</div></div><div class="ctl"><div class="row">회전 반지름 r<span class="val" id="ci-r-v"></span></div><input type="range" id="ci-r" min="0.05" max="0.5" step="0.01" value="0.2"></div><div class="ctl"><div class="row">회전 속도<span class="val" id="ci-w-v"></span></div><input type="range" id="ci-w" min="20" max="150" step="5" value="60"></div><div class="box fit"><h3>읽는 방법</h3><p>수신 폰이 음원 쪽으로 <b class="ok">다가가는 순간</b> f가 가장 크고(<b>f_max</b>), 멀어지는 순간 가장 작다(<b>f_min</b>).</p><p>속력은 <b class="k">v = V(f_max − f_min)/(2f₀)</b> 로도 구할 수 있다.</p></div></div>
+</div>
+</section>
+
+<!-- st3 -->
+<section class="slide" id="st3" data-steps="3">
+  <header class="hd"><h2>따라 하기 ⑥⑦: 저장하고 독립 속력 재기</h2><span class="src">교사 안내 자료 A3 · 비교할 기준값은 phyphox 밖에서 따로 잰다</span></header>
+<div class="body" style="grid-template-columns:1fr 1fr">
+<div class="box fit"><h3>저장 규칙</h3><p>① 회차마다 <b>CSV 내보내기</b></p><p>② <b>그래프 캡처</b> (회차 번호 표시)</p><p>③ 파일 이름에 <b>조·회차·조건</b>: 예) 3조_2회_수신이동_직선.csv</p><p>④ 조원 모두 같은 파일을 자기 보고서에 첨부</p></div><div class="box fit" style="margin-top:12px"><h3>독립 속력을 따로 재는 까닭</h3><p>앱이 준 속도를 옮겨 적으면 <b>비교</b>가 안 된다. 앱과 무관한 방법으로 잰 값이 있어야 앱 값과 내 계산값이 맞는지 알 수 있다.</p></div>
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>⑥ 데이터 저장</b><span class="t">CSV + 캡처</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">저장하지 않으면 계산·보고서를 쓸 수 없다. 회차마다 바로 저장한다.</div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>⑦ 직선 운동의 독립 속력</b><span class="t">일정한 속력 구간</span></div><div class="eq"><span class="m">v = <span class="fr"><span>L</span><span>t</span></span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">구간 거리 L은 줄자로, 통과 시간 t는 스톱워치(또는 영상)로 잰다.</div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>⑦ 원운동의 독립 속력</b><span class="t">10바퀴 시간으로 주기를 구한다</span></div><div class="eq"><span class="m">v = <span class="fr"><span>2π r</span><span>T</span></span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">10바퀴 시간 ÷ 10 = T, 반지름 r은 줄자로 잰다.</div></div></div></div>
+</div>
+</section>
+
+<!-- cl -->
+<section class="slide" id="cl">
+  <header class="hd"><h2>계산 연습: 진동수 → 속력</h2><span class="src">교사 안내 자료 A4 · 숫자는 설명용 예시 값(가상) · 보고서에는 우리 조의 실제 데이터를 쓴다</span></header>
+<div class="two"><div class="box fit"><h3>입력</h3><div class="chips"><div class="chip on" id="c-m0">관찰자(수신 폰) 이동</div><div class="chip" id="c-m1">음원 폰 이동</div></div><p style="margin-top:12px">기온 T (℃) <input type="number" id="c-T" value="20" step="1" style="width:6em;font-size:22px;padding:2px 6px"></p><p>기준 진동수 f₀ (Hz) <input type="number" id="c-f0" value="2500" step="1" style="width:7em;font-size:22px;padding:2px 6px"></p><p>측정 진동수 f (Hz) <input type="number" id="c-f" value="2507.3" step="0.1" style="width:7em;font-size:22px;padding:2px 6px"> <span class="sm" style="font-size:18px !important">(다가갈 때 f_max, 멀어질 때 f_min)</span></p><p>독립 측정 속력 (m/s) <input type="number" id="c-vi" value="0.987" step="0.001" style="width:7em;font-size:22px;padding:2px 6px"></p><p><span class="chip" id="c-ex">A4 예시 값 넣기</span></p><p class="warn" style="margin-top:8px"><b>주의</b> phyphox가 보여 주는 속도를 옮겨 적는 것이 아니라, 측정한 진동수를 공식에 넣어 직접 계산해야 한다.</p></div><div class="box fit"><h3>풀이 과정</h3><div id="c-out" style="font-size:22px;line-height:1.55"></div></div></div>
+</section>
+
+<!-- ck -->
+<section class="slide" id="ck">
+  <header class="hd"><h2>오늘의 완료 기준</h2><span class="src">체험 활동 · 수행평가와 이어진다</span></header>
+<div class="two"><div class="box fit"><h3>체험 활동 체크</h3><p>☐ 음원 폰에서 우리 조 진동수의 소리를 냈다</p><p>☐ Audio Autocorrelation으로 f₀를 확인했다</p><p>☐ Doppler Effect에 기준 진동수를 넣었다</p><p>☐ 정지 상태 10초를 측정했고 값을 기록했다</p><p>☐ 움직이며 3회 이상 측정했다</p><p>☐ CSV 저장과 그래프 캡처를 했다</p><p>☐ 독립 속력을 따로 쟀다</p><p>☐ 계산 연습으로 속력과 오차율을 구했다</p></div><div class="box fit"><h3>측정하며 적어 둘 것 (수행평가 근거)</h3><p>· 정지 상태인데 속도가 0이 아니었나? 얼마였나?</p><p>· 그래프가 매끄러웠나, 계단 모양·들쭉날쭉했나?</p><p>· 천천히/빠르게 움직일 때 결과를 똑같이 믿을 수 있었나?</p><p>· 주변 소리·벽의 영향은?</p><p>· 음원의 f₀는 실험 내내 일정했나?</p><p class="sm" style="font-size:19px !important">이 관찰이 이어질 <b>한계 분석(근거·원인·개선 방향)</b>의 재료가 된다.</p></div></div>
+</section>
+
+<!-- p1 -->
+<section class="slide" id="p1">
+  <header class="hd"><h2>수행평가: 도플러 효과 측정 및 앱 제작</h2><span class="src">교사 안내 자료 A1 · 성취기준 [12역학03-03] 도플러 효과를 이해하고 물체의 속도 측정 등 다양한 장치에 이용됨을 설명할 수 있다.</span></header>
+<div class="box fit"><h3>무엇을 하나요?</h3><p>스마트폰 앱으로 <b>실제 도플러 효과를 측정</b>하고, 그 원리를 바탕으로 <b>AI와 협업해</b> 도플러 효과 측정·설명 앱(시뮬레이터)을 만든다.</p></div><div class="three" style="margin-top:14px"><div class="box fit"><h3>① 실측 (조별)</h3><p>실험 설계, 측정, 데이터 수집 (4인 권장)</p><p class="sm" style="font-size:19px !important">오늘 해 본 방법을 바탕으로 우리 조의 방법을 정한다.</p></div><div class="box fit"><h3>② 계산·한계 (개인)</h3><p>공식에 직접 넣어 속도 계산, 비교, 오차 분석, <b>한계 찾기</b></p></div><div class="box fit"><h3>③ 앱 제작 (개인)</h3><p>찾은 한계 중 하나 이상을 해결하는 <b>업그레이드 앱</b>, AI 협업 기록, 성찰</p></div></div><p class="warn" style="margin-top:14px"><b>핵심</b> phyphox를 그대로 따라 만들면 3점이다. 내가 찾은 한계를 실제로 해결하는 기능이 있어야 4~5점을 받을 수 있다. 같은 조의 데이터를 함께 써도 계산부터는 각자 쓴다.</p>
+</section>
+
+<!-- p2 -->
+<section class="slide" id="p2">
+  <header class="hd"><h2>일정·제출물·채점 기준</h2><span class="src">교사 안내 자료 A1 · 날짜는 교사가 안내한다</span></header>
+<div class="two"><div class="box fit"><h3>일정 (수행평가 차시)</h3><table class="t"><tr><th style="width:26%">차시</th><th>활동</th></tr><tr><td>1</td><td>이론 정리, phyphox 체험, 실험 설계 (← 오늘까지)</td></tr><tr><td>2</td><td>조별 실측 실험, 데이터 저장</td></tr><tr><td>3</td><td>개인 계산, 한계 분석, 앱 설계</td></tr><tr><td>4</td><td>앱 제작·검증, 보고서 마무리</td></tr><tr><td>마감</td><td>보고서, 앱 링크, 시연 영상</td></tr></table><h3 style="margin-top:12px">제출물</h3><p>보고서(개인) · 조 측정 데이터 CSV+그래프(조원 모두 첨부) · 업그레이드 앱 링크 · 시연 영상 30초~1분 · AI 대화 기록</p></div><div class="box fit dv"><h3>채점 요소 (5점 ~ 2점)</h3><table class="t"><tr><th style="width:30%">요소</th><th>5점이 되려면</th></tr><tr><td>실측 실험의 정확성 (B3, B4)</td><td>측정한 f, f₀를 공식에 <b>직접 대입</b>해 속도를 계산하고 phyphox 값·독립 측정값과 비교</td></tr><tr><td>개선점 도출의 타당성 (B5)</td><td>데이터를 근거로 한계를 제시하고 <b>근거·원인·개선 방향</b>을 모두 제시</td></tr><tr><td>업그레이드 앱의 완성도 (B6)</td><td>내가 정한 개선 목표를 해결하는 기능이 작동하고 <b>검증 결과</b>를 제시</td></tr><tr><td>개념 이해에 대한 메타인지 (B7, B8)</td><td>이해한 부분과 부족했던 부분을 구체적으로 짚고, <b>AI 결과 검증</b>과 보완 과정을 서술</td></tr></table></div></div>
+</section>
+
+<!-- p3 -->
+<section class="slide" id="p3">
+  <header class="hd"><h2>보고서 구성과 한계 찾기</h2><span class="src">교사 안내 자료 A5 · Part B 보고서 양식 B1~B9</span></header>
+<div class="two"><div class="box fit"><h3>보고서 B1~B9</h3><table class="t"><tr><td style="width:20%"><b>B1</b></td><td>기본 정보, 회차별 역할</td></tr><tr><td><b>B2</b></td><td>실험 설계 (조) · 목적, 움직이는 것, f₀, 기온·V, 독립 속력 방법</td></tr><tr><td><b>B3</b></td><td>측정 데이터 (조) · f_max, f_min, 독립 속력, phyphox 값</td></tr><tr><td><b>B4</b></td><td>계산·비교 (개인) · 공식, 대입 과정, 오차율</td></tr><tr><td><b>B5</b></td><td>한계 분석 (개인) · 근거·원인·개선 방향</td></tr><tr><td><b>B6</b></td><td>앱 업그레이드 (개인) · 목표, 기능, 검증</td></tr><tr><td><b>B7·B8</b></td><td>AI 협업 기록 · 메타인지 성찰</td></tr><tr><td><b>B9</b></td><td>자기 점검</td></tr></table></div><div class="box fit"><h3>좋은 한계 분석 = 근거 + 원인 + 개선 방향 (최소 2개)</h3><p>예시(도플러와 무관): 진자 주기를 스톱워치로 잴 때 회차마다 0.2 s씩 차이가 났다 <b>(근거)</b>. 사람이 버튼을 누르는 반응 시간이 일정하지 않기 때문이다 <b>(원인)</b>. 10번 왕복 시간을 재서 10으로 나누거나 영상으로 분석한다 <b>(개선 방향)</b>.</p><h3 style="margin-top:12px">힌트</h3><p>· 폰이 정지해 있는데 속도가 0이 아닌가?</p><p>· 진동수 그래프가 계단 모양인가? 무엇이 최소 간격을 정할까?</p><p>· 천천히/빠르게 움직일 때 결과를 똑같이 믿을 수 있나?</p><p>· phyphox 화면만 보고 친구가 원리를 이해할 수 있을까?</p></div></div>
+</section>
+
+<!-- p4 -->
+<section class="slide" id="p4">
+  <header class="hd"><h2>앱 제작: 두 가지 트랙</h2><span class="src">교사 안내 자료 A6 · 마이크는 https 주소에서만 허용(웹 편집기에서 실행)</span></header>
+<div class="two"><div class="box fit"><h3>트랙 선택</h3><table class="t"><tr><th style="width:26%">트랙</th><th>만드는 것</th></tr><tr><td><b>측정 앱</b></td><td>마이크로 소리를 받아 <b>진동수와 속도를 실시간</b>으로 보여 주는 웹 앱 (FFT) — 측정 측면의 한계 해결</td></tr><tr><td><b>설명 시뮬레이터</b></td><td>움직이는 음원, 퍼지는 파면, 진동수 변화를 보여 주는 웹 앱 (캔버스) — 설명 측면의 한계 해결</td></tr></table><h3 style="margin-top:12px">기본 화면 구성 (출발점)</h3><p>① 설정(f₀, 기온 또는 V) ② 시작·정지 ③ 실시간 그래프(시간-진동수, 시간-속도) ④ 현재 값 ⑤ CSV 저장 ⑥ 사용법</p><p class="sm" style="font-size:19px !important">여기에 내 개선 기능을 더한다.</p></div><div class="box fit"><h3>꼭 챙길 것</h3><p>· <b>검증</b>: 정지 상태 Δf = 0, 손 계산(A4 예시)과 같은 결과, phyphox·이론과 비교</p><p>· <b>FFT 간격</b> = 샘플링 진동수 ÷ FFT 크기. 내 설정으로 직접 계산해 예상 Δf와 비교(예: 48000 ÷ 8192 ≈ 5.86 Hz)</p><p>· 아이폰·아이패드는 <b>버튼을 눌러야</b> 마이크 입력이 시작되게</p><p>· 시뮬레이터는 화면 속도 비율과 단위를 표시</p><p class="warn" style="margin-top:10px"><b>참고</b> 이 사이트의 <a href="../../tools/sound-lab/index.html" target="_blank">소리 실험실(도플러 탭)</a>은 측정 앱이 어떤 모양인지 보여 주는 <b>예시</b>이다. 그대로 제출하는 것은 개선이 아니다.</p></div></div>
+</section>
+
+<!-- p5 -->
+<section class="slide" id="p5">
+  <header class="hd"><h2>AI 협업 규칙과 제출 전 점검</h2><span class="src">교사 안내 자료 A7·A8</span></header>
+<div class="three"><div class="box fit"><h3>AI와 일하는 법</h3><p>· 목표·환경·조건을 적는다 (고등학생용, 브라우저, HTML 한 파일)</p><p>· <b>기능 하나씩</b> 요청</p><p>· 도플러 공식과 기호는 <b>내가 직접 적어 준다</b></p><p>· 오류는 메시지와 증상을 그대로 붙여 넣는다</p><p>· 대화 기록을 남기고, 주요 프롬프트 3개 이상을 B7에</p></div><div class="box fit"><h3>AI 결과 검증 질문</h3><p>· 공식이 내 식과 같은가? 부호·분모는?</p><p>· 단위가 맞나? Hz와 m/s가 섞이지 않았나?</p><p>· 내가 계산한 값을 넣으면 앱도 같은 값을 내나?</p><p>· AI 설명이 교과서와 다른 곳이 있나?</p><p class="warn" style="margin-top:8px"><b>학업 윤리</b> 다른 학생의 코드·보고서를 복사하지 않는다. AI 사용 사실을 숨기지 않는다. <b>설명할 수 없는 코드는 제출하지 않는다.</b></p></div><div class="box fit"><h3>제출 전 체크</h3><p>☐ 보고서 B1~B9를 빈칸 없이</p><p>☐ 조 데이터(CSV)·그래프 첨부</p><p>☐ 속도를 직접 대입·계산, 과정 모두 적음</p><p>☐ 세 값 비교·오차율</p><p>☐ 한계 2개 이상(근거·원인·방향)</p><p>☐ 앱 링크가 다른 기기에서도 열림</p><p>☐ 시연 영상 30초~1분</p><p>☐ AI 기록·프롬프트 3개 이상</p><p>☐ 내 코드를 설명할 수 있음</p></div></div>
+</section>
+
+<!-- nx -->
+<section class="slide" id="nx">
+  <header class="hd"><h2>오늘 정리와 다음 단계</h2><span class="src">교과서 101쪽 · 수행평가 안내 정리</span></header>
+<div class="three"><div class="box fit"><h3>오늘 한 것</h3><p>① 영상으로 phyphox 도플러 실험을 미리 봤다.</p><p>② 폰 2대로 <b>기본 순서</b>를 따라 했다: 소리 → f₀ → 기준 진동수 → 정지 → 이동 → 저장.</p><p>③ 속력을 <b>공식에 넣어 직접 계산</b>하고 오차율을 구했다.</p></div><div class="box fit"><h3>다음 단계</h3><p>· 우리 조의 <b>실험 설계</b>(움직이는 것, 방법, 기준 진동수, 독립 속력 방법)를 정한다.</p><p>· 조별 <b>실측</b> → 개인 <b>계산·한계 분석</b> → 앱 설계·제작</p><p>· 오늘 적어 둔 관찰이 한계 분석의 근거가 된다.</p></div><div class="box fit"><h3>생각해 오기</h3><p>1) 우리 조는 <b>무엇을 움직이고</b> 어떤 방법(직선·원운동)으로 할까?</p><p>2) 오늘 어떤 <b>한계</b>(정지 속도, 계단, 소음…)를 봤나?</p><p>3) 그 한계를 <b>앱</b>으로 해결할 수 있을까? 측정 앱일까, 설명 시뮬레이터일까?</p></div></div>
+</section>
+
+<div id="notes"></div>
+<div id="bar"><div class="bl">📱 도플러 효과 ② phyphox 체험과 수행평가 안내 <span class="sm">· 역학과 에너지 Ⅲ. 탄성파와 소리</span></div><div class="br"><button class="tb" id="b-help">❓ 조작법</button><button class="tb" id="b-ask">💬 발문 띄우기</button><button class="tb" id="b-notes">📝 오개념 교정 노트</button><button class="tb" id="b-theme">🌙 다크 전환</button></div></div>
+<div id="ask" role="dialog" aria-label="발문"></div>
+<div id="help" role="dialog" aria-label="조작법 설명"><div class="hp">
+<h3>조작법</h3>
+<h4>키보드</h4>
+<div class="g"><div><kbd>→</kbd><kbd>Space</kbd></div><div>다음 (단계가 있는 슬라이드는 단계부터 진행)</div>
+<div><kbd>←</kbd></div><div>이전 (단계도 거꾸로)</div>
+<div><kbd>Home</kbd><kbd>End</kbd></div><div>처음 / 마지막 슬라이드</div>
+<div><kbd>F</kbd></div><div>전체 화면</div>
+<div><kbd>Q</kbd></div><div>이 슬라이드의 <b>발문(학생용 질문)</b>을 화면 위에 크게 띄우기 / 닫기 (아무 곳이나 클릭해도 닫힘)</div>
+<div><kbd>N</kbd></div><div>오개념 교정 노트 열기/닫기 (교사용)</div>
+<div><kbd>T</kbd></div><div>다크 / 라이트 전환</div>
+<div><kbd>?</kbd><kbd>Esc</kbd></div><div>조작법 열기 / 닫기</div></div>
+<h4>화면 조작</h4>
+<div class="g"><div>→ / Space</div><div>다음 단계·슬라이드</div>
+<div>Q</div><div>학생 발문 열기</div>
+<div>N</div><div>오개념 노트</div>
+<div>슬라이더·칩</div><div>값·상황 조작</div>
+<div>영상</div><div>재생 버튼은 인터넷 연결 필요</div>
+<div>슬라이더 키보드</div><div>슬라이더를 클릭해 초점이 있는 동안에는 ← → 가 값 조절에 쓰입니다. 마우스로 놓으면 자동 해제</div></div>
+<h4>수업 진행 팁</h4>
+<div>먼저 예상해 본 뒤 조작해서 확인한다. 앱 화면은 버전에 따라 조금 다를 수 있으니 메뉴 이름으로 찾는다.</div>
+<div class="btns" style="margin-top:22px"><button class="btn pri" id="help-x">닫기 (Esc)</button></div>
+</div></div>
+<div id="simError"></div>
+</div>
+<div id="hud"><button id="h-prev" aria-label="이전">◀</button><span id="h-pg">1 / 1</span><button id="h-next" aria-label="다음">▶</button><button id="h-fs" aria-label="전체화면">⛶</button></div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   공통 유틸 / 그리기 도우미 (템플릿 제공)
+   ===================================================================== */
+const DECK = {"title":"도플러 효과 ② phyphox 체험과 수행평가 안내","notes":{"c":{"q":"지난 시간 마지막에 던진 “걷는 속력에서 Δf는 몇 Hz?”를 다시 묻는다. 답(약 12 Hz 안팎)을 학생이 말해 본 뒤 오늘 실제로 재 볼 것이라고 연결한다.","m":[["스마트폰 앱이 알려 주는 값은 항상 정확하다","마이크·스피커의 한계와 소음 때문에 오차가 있다. 오늘은 값을 옮겨 적는 것이 아니라 직접 재고 계산해 보는 것이 목표다."]]},"pl":{"q":"시간 안배는 반 상황에 맞게 조정한다. ②에 가장 오래 쓴다. 폰이 부족하면 조당 폰 2대를 확인한다.","m":[["이번 시간 실험이 곧 수행평가이다","오늘은 기본 방법을 익히는 체험이다. 수행평가는 이어서 진행하며, 오늘 방법을 바탕으로 자기 설계를 한다."]]},"pd":{"q":"슬라이더를 움직이기 전에 학생이 먼저 숫자를 말하게 한다. 4000 Hz, 1 m/s → 약 11.7 Hz(안내 자료 A2 표와 같다). 음원이 움직이는 경우와 수신 폰이 움직이는 경우의 차이는 속력이 작으면 거의 없음을 함께 본다.","m":[["빠르게만 움직이면 Δf가 충분히 커진다","수레·회전판으로 만들 수 있는 속력은 보통 1 m/s 안팎이다. 그래서 f₀를 높이고 반복 측정을 하는 것이다."]]},"v1":{"q":"영상은 전체를 보지 않아도 된다. 핵심 구간(앱 설정 → 측정)만 골라 보여 주고 “찾아볼 것” 4가지를 모둠에서 확인하게 한다. 수업 전에 교사가 직접 시청해 구간을 정한다.","m":[["영상에서 본 방법을 그대로 따라 하면 된다","폰을 줄이나 주머니에 넣어 돌리는 방법은 폰이 날아가 다칠 위험이 있어 하지 않는다. 같은 원리를 수레·회전판으로 한다."]]},"v2":{"q":"톤 생성기 영상으로 음원 폰 설정을 눈으로 확인시킨다(독일어이므로 화면 위주). 이어지는 단계 슬라이드에서 우리말로 다시 정리한다. 설명서: https://phyphox.org/wiki/index.php/Experiment:_Doppler_Effect","m":[["외국어 영상이라 이해하기 어렵다","소리 없이 화면(어떤 버튼을 누르는지)만 보아도 충분하다. 다음 슬라이드가 우리말 단계 설명이다."]]},"rd":{"q":"역할은 회차마다 돌려 가며 하도록 한다. 안전 항목은 읽어 주고 확인한다. 측정 중 정숙이 결과의 질을 좌우함을 강조한다.","m":[["음량을 키울수록 결과가 좋아지니 최대로 한다","귀가 불편하지 않은 범위에서, 실험 내내 같은 음량이어야 한다. 중간에 바꾸면 값이 흔들린다."]]},"su":{"q":"배치도를 보며 “무엇이 정지이고 무엇이 움직이는가?”를 모둠에서 말하게 한다. 학교 장비(수레 레일·회전판)에 맞게 하나를 정한다. 오늘 기본 방법은 직선 운동(수신 폰 이동)을 권장한다.","m":[["폰 두 대가 모두 움직여도 상관없다","한 대만 움직이게 한다. 둘 다 움직이면 공식이 복잡해지고 비교가 어렵다."]]},"st1":{"q":"단계마다 학생이 폰에서 실제로 해 보게 한 뒤 다음 단계를 연다. 앱 화면 구성은 버전에 따라 조금 다를 수 있으므로 메뉴 이름(Tone generator / Audio Autocorrelation / Doppler Effect)으로 찾게 한다. 정지 측정에서 0이 아닌 값은 한계 분석의 좋은 근거가 된다.","m":[["정지 상태에서 속도가 0이 아니면 앱이 고장이다","대개 기준 진동수가 실제 음원 진동수와 조금 달라서 생긴다(phyphox 설명서). f₀를 다시 확인하고, 남는 값은 기록해 둔다."]]},"st2":{"q":"처음에는 천천히 한 번 해 보며 그래프가 어떻게 바뀌는지 본다. 속도가 높을수록 변화가 잘 보이지만 안전이 우선이다. 폰이 수레에서 떨어지지 않는지 먼저 확인한다.","m":[["빠를수록 좋으니 최대한 세게 민다","수레가 흔들리거나 폰이 떨어지면 위험하고 데이터도 나빠진다. 일정한 속력을 유지하는 것이 중요하다."]]},"ci":{"q":"“이상적”에서 사인 모양과 f_max·f_min 위치를 확인한 뒤 “현실처럼”으로 바꿔 계단·잡음을 보게 한다. 한계 분석의 근거(계단 모양·들쭉날쭉)가 여기서 나온다고 연결한다.","m":[["f_max는 폰이 음원에 가장 가까울 때 나온다","f_max는 폰이 음원 쪽으로 가장 빠르게 다가가는 순간(접선 방향이 음원을 향할 때)이다. 가장 가까운 순간은 접근 속도가 0이다."]]},"st3":{"q":"독립 속력은 “앱과 상관없이 잰 값”임을 강조한다. 직선은 L ÷ t, 원운동은 2πr ÷ T. 영상을 찍어 Tracker로 분석하면 더 정확하다(선택).","m":[["phyphox가 주는 속도를 독립 속력으로 쓴다","phyphox 속도는 비교 대상이다. 독립 속력은 줄자·스톱워치·영상으로 따로 잰 값이다."]]},"cl":{"q":"A4 예시 값(20 ℃, f₀ 2500, f_max 2507.3, 독립 속력 0.987)을 넣으면 vₒ ≈ 1.00 m/s, 오차율 약 1.5 %가 나온다. 모둠 값으로 바꿔 보게 한다. 멀어질 때는 f_min을 넣으면 Δf가 음수가 되어 멀어지는 중으로 표시된다. 식은 vₒ = V(f − f₀)/f₀, vₛ = V(f − f₀)/f.","m":[["오차율은 phyphox 값과 비교해서 구한다","오차율은 독립 측정값을 기준으로 구한다. phyphox 값은 따로 비교 대상으로 둔다."],["소수점을 중간에 일찍 반올림해도 된다","중간 계산에서 일찍 반올림하면 오차가 커진다. 마지막에 유효숫자에 맞춘다."]]},"ck":{"q":"체크 항목을 조별로 확인한다. 못 한 항목은 다음 시간에 이어서 한다. 오른쪽 “측정하며 적어 둘 것”은 수행평가 B5(한계 분석)의 근거가 되므로 메모하게 한다.","m":[["실험이 잘 안 되면 해당 데이터는 쓸모없다","안 된 실험도 한계 분석의 좋은 근거가 된다. 왜 안 되었는지를 적어 두면 된다."]]},"p1":{"q":"“오늘은 예시 체험, 지금부터가 평가 과제”임을 구분해 말한다. 가장 중요한 한 줄은 “한계를 찾아 앱으로 해결”이다.","m":[["phyphox와 똑같이 만들면 높은 점수를 받는다","phyphox 수준 재현은 3점이다. 내가 정한 한계를 해결하는 기능과 검증이 있어야 4~5점이다."]]},"p2":{"q":"표의 “차시”는 수행평가 일정이다. 수업의 1·2차시(이론·체험)가 수행평가 1차시 내용에 해당한다고 설명한다. 날짜는 교사가 칠판·학급 공지로 안내한다. 응시했으나 평가할 요소가 없으면 기본점수가 있음은 학생 안내 자료 A1에 있다.","m":[["보고서만 내면 된다","보고서 외에 조 측정 데이터(CSV+그래프), 앱 링크, 시연 영상, AI 대화 기록도 함께 제출한다."]]},"p3":{"q":"오늘 측정하며 적어 둔 관찰(정지 속도, 계단 모양, 소음)이 근거가 된다고 연결한다. 앱으로 해결할 한계는 조원끼리 겹치지 않게 고르도록 권장한다.","m":[["한계는 “오차가 났다”라고 쓰면 된다","근거(어떤 데이터)와 원인(왜)과 개선 방향(무엇을 바꿀까)을 모두 써야 한다."]]},"p4":{"q":"트랙은 B5에서 찾은 한계에 따라 고르도록 한다. 소리 실험실 도플러 탭을 시연해 “기본 화면 구성”을 보여 주되, 베끼기가 아니라 출발점임을 말한다. 혼자 테스트하는 방법: 폰에서 톤 생성기로 소리를 내고 노트북에서 내 앱으로 측정, 폰을 노트북 쪽으로 다가갔다 멀어지게 해 값 변화 확인.","m":[["앱은 파일을 더블클릭해서 열어도 마이크가 된다","브라우저는 https 주소에서만 마이크를 허용한다. CodePen 같은 웹 편집기에서 실행한다."]]},"p5":{"q":"AI 사용은 허용하되 검증은 학생의 몫임을 강조한다. 교사가 코드 일부를 설명해 보라고 요청할 수 있음을 알린다.","m":[["AI가 만든 코드는 맞으니 그대로 제출해도 된다","AI의 공식·부호·단위가 틀릴 수 있다. 내 계산값을 넣어 검증하고, 설명할 수 있는 코드만 낸다."]]},"nx":{"q":"오늘 정리 세 가지를 학생이 한 문장씩 말하게 한다. 생각해 오기는 다음 시간 실험 설계의 출발점이다.","m":[["오늘 수업은 끝났으니 수행평가는 그때 생각하면 된다","오늘 본 한계(관찰)를 지금 적어 두어야 한계 분석의 근거가 된다."]]}},"ask":{"pd":["f₀ = 4000 Hz인 음원 쪽으로 수신 폰이 1 m/s로 다가가면 진동수는 몇 Hz 변할까?","같은 속력이면 f₀가 클수록 Δf는 커질까 작아질까?"],"ci":["회전판 위의 수신 폰이 만드는 진동수 그래프는 어떤 모양일까? 가장 큰 값은 폰이 어디쯤에 있을 때일까?"]}};
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const TAU = Math.PI * 2, DPR = 2;
+const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const C = { bg: '#0a1330', grid: 'rgba(160,190,255,.22)', text: '#e3ecff', dim: '#9db0d8', KE: '#ffb454', PE: '#7fb2ff', E: '#ffffff', ok: '#5eead4', bad: '#ff9d9d' };
+const font = (px, w = 500, it = false) => `${it ? 'italic ' : ''}${w} ${px}px 'Noto Sans KR',sans-serif`;
+const mathFont = px => `italic 400 ${px}px 'STIX Two Text','Times New Roman',serif`;
+function setupCanvas(cv, W, H) { cv.width = W * DPR; cv.height = H * DPR; cv.style.width = W + 'px'; cv.style.height = H + 'px'; const c = cv.getContext('2d'); c.setTransform(DPR, 0, 0, DPR, 0, 0); return c; }
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function makeStars(W, H, n, seed) { const r = mulberry(seed); return Array.from({ length: n }, () => [r() * W, r() * H, .25 + r() * .55, r() < .12 ? 3 : 2]); }
+function drawStars(ctx, stars) { stars.forEach(([x, y, a, s]) => { ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(x, y, s, s); }); }
+function arrow(ctx, x0, y0, x1, y1, color, lw = 4, head = 15) {
+  const a = Math.atan2(y1 - y0, x1 - x0); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - Math.cos(a) * head * .6, y1 - Math.sin(a) * head * .6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - head * Math.cos(a - .45), y1 - head * Math.sin(a - .45)); ctx.lineTo(x1 - head * Math.cos(a + .45), y1 - head * Math.sin(a + .45)); ctx.closePath(); ctx.fill();
+}
+function mathRun(ctx, x, y, parts) { let cx = x; parts.forEach(q => { ctx.font = q.f; ctx.fillStyle = q.c; ctx.fillText(q.t, cx, y + (q.dy || 0)); cx += ctx.measureText(q.t).width; }); return cx; }
+function bindRange(id, cb) { const el = $('#' + id); el.addEventListener('input', () => cb(parseFloat(el.value))); el.addEventListener('change', () => el.blur()); return el; }
+const fmt = (x, d = 2) => (x < 0 ? '−' : '') + Math.abs(x).toFixed(d);
+
+/* 오류 표시: 슬라이드 코드 예외를 화면 상단과 window.__wsErrors에 남긴다 (헤드리스 검사용) */
+window.__wsErrors = [];
+function reportError(where, e) {
+  const msg = `${where}: ${e && e.message ? e.message : e}`;
+  if (!window.__wsErrors.includes(msg)) { window.__wsErrors.push(msg); console.error('[슬라이드 오류] ' + msg); }
+  const box = document.getElementById('simError'); box.textContent = window.__wsErrors.slice(-3).join('\n'); box.classList.add('on');
+}
+function safe(where, fn, ...args) { try { return fn && fn(...args); } catch (e) { reportError(where, e); } }
+
+/* =====================================================================
+   shared_js (주제별 물리 계산부·공용 시뮬레이터)
+   ===================================================================== */
+/* ===== 탄성파 덱 공용: 도우미 ===== */
+const COL={A:'#ffb454',B:'#5eead4',R:'#ff7a7a',L:'#7cc4ff',P:'#ff9ecf',Y:'#ffd166',dim:'#8ea3cf',w:'#e6edff'};
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function g(id){return +document.getElementById(id).value;}
+function setT(id,s){const e=document.getElementById(id);if(e&&e.textContent!==s)e.textContent=s;}
+function setH(id,s){const e=document.getElementById(id);if(e&&e.innerHTML!==s)e.innerHTML=s;}
+function tx(ctx,s,x,y,px,col,al,w){ctx.font=(w||500)+' '+px+"px 'Noto Sans KR',sans-serif";ctx.fillStyle=col||C.text;ctx.textAlign=al||'left';ctx.textBaseline='alphabetic';ctx.fillText(s,x,y);}
+function onClick(id,f){const el=document.getElementById(id);if(el)el.addEventListener('click',f);}
+function setChips(ids,on){ids.forEach(i=>{const e=document.getElementById(i);if(e)e.classList.toggle('on',i===on);});}
+function box(ctx,x,y,w,h,col,fill){ctx.fillStyle=fill||'rgba(255,255,255,.06)';ctx.strokeStyle=col||'rgba(160,190,255,.35)';ctx.lineWidth=2;ctx.beginPath();ctx.rect(x,y,w,h);ctx.fill();ctx.stroke();}
+function axes(ctx,x,y,w,h,xl,yl){ctx.save();ctx.strokeStyle='rgba(160,190,255,.3)';ctx.lineWidth=1.5;ctx.strokeRect(x,y,w,h);ctx.beginPath();ctx.moveTo(x,y+h/2);ctx.lineTo(x+w,y+h/2);ctx.stroke();ctx.restore();
+ if(xl)tx(ctx,xl,x+w-6,y+h/2-8,20,C.dim,'right',600);if(yl)tx(ctx,yl,x+8,y+24,20,C.dim,'left',600);}
+function poly(ctx,pts,col,lw){ctx.strokeStyle=col;ctx.lineWidth=lw||3;ctx.lineJoin='round';ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();}
+function dot(ctx,x,y,r,col){ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill();}
+function mod2pi(a){a%=TAU;return a<0?a+TAU:a;}
+
+/* ===== 도플러 효과 ①: 물리(DOM 없음) ===== */
+/* 소리 속력 v = 331.5 + 0.6 T (m/s) */
+function vSnd(Tc){return 331.5+0.6*Tc;}
+/* 일반식 f' = (v+vO)/(v-vS) f : vO>0 관찰자가 음원 쪽으로, vS>0 음원이 관찰자 쪽으로 (교과서 100쪽) */
+function fDop(f,v,vO,vS){return f*(v+vO)/(v-vS);}
+/* 파면 시뮬레이터: 1차원으로 움직이는 음원이 일정한 주기 T마다 파면을 낸다. 파면은 낸 자리를 중심으로 속력 v로 퍼지는 원. */
+function DopNew(v,T){return{v:v,T:T,t:0,xs:0,vs:0,fr:[],nextE:0,obs:[],rmax:2200};}
+function DopAddObs(S,x,vx){const o={x:x,vx:vx,arr:[]};S.obs.push(o);return o;}
+function DopGap(S,f,o){return Math.abs(o.x-f.x)-S.v*(S.t-f.te);}   /* 관찰자까지 남은 거리: 0이 되면 파면 도착 */
+function DopWarm(S){S.fr=[];S.nextE=0;for(let k=Math.floor(S.rmax/(S.v*S.T));k>=1;k--){const te=-k*S.T;const f={x:S.xs+S.vs*te,te:te,g:[]};S.obs.forEach((o,i)=>{f.g[i]=DopGap(S,f,o);});S.fr.push(f);}}
+function DopStep(S,dt){
+ S.xs+=S.vs*dt;S.obs.forEach(o=>{o.x+=o.vx*dt;});S.t+=dt;
+ while(S.nextE<=S.t+1e-9){const f={x:S.xs-S.vs*(S.t-S.nextE),te:S.nextE,g:[]};S.obs.forEach((o,i)=>{f.g[i]=DopGap(S,f,o);});S.fr.push(f);S.nextE+=S.T;}
+ for(const f of S.fr){S.obs.forEach((o,i)=>{const g=DopGap(S,f,o),p=f.g[i];
+  if(p!==undefined&&p>0&&g<=0){o.arr.push(S.t-dt+dt*p/(p-g));if(o.arr.length>14)o.arr.shift();}f.g[i]=g;});}
+ S.fr=S.fr.filter(f=>S.v*(S.t-f.te)<S.rmax);}
+/* 관찰자가 받은 파면 도착 간격으로 잰 f'/f (최근 6개 간격) */
+function DopMeas(S,o){const a=o.arr;const n=Math.min(a.length,7);if(n<3)return null;return (n-1)/(a[a.length-1]-a[a.length-n])*S.T;}
+/* 그리기: 파면·음원·관찰자·파장 표시. o:{W,top,bot,Y0,names:[A,B],cols:[..],src:true} */
+function DopDraw(ctx,S,o){const Y0=o.Y0;
+ ctx.save();ctx.beginPath();ctx.rect(0,o.top,o.W,o.bot-o.top);ctx.clip();
+ for(const f of S.fr){const r=S.v*(S.t-f.te);if(r<=0)continue;const a=Math.max(0.14,0.9-r/760);
+  ctx.strokeStyle='rgba(124,196,255,'+a.toFixed(3)+')';ctx.lineWidth=2.6;ctx.beginPath();ctx.arc(f.x,Y0,r,0,TAU);ctx.stroke();}
+ ctx.restore();
+ /* 축 위의 파장 표시: 가장 최근에 낸 두 파면 중 반지름이 큰 쪽 */
+ if(o.lam){let pa=null,pb=null;for(let i=S.fr.length-1;i>0;i--){const rn=S.v*(S.t-S.fr[i].te),ro=S.v*(S.t-S.fr[i-1].te);if(rn>=o.lam[0]){pa=S.fr[i];pb=S.fr[i-1];break;}}
+  if(pa&&pb){const ra=S.v*(S.t-pa.te),rb=S.v*(S.t-pb.te),lam0=S.v*S.T;
+   const R=[pa.x+ra,pb.x+rb],L=[pa.x-ra,pb.x-rb];
+   [[R,'R'],[L,'L']].forEach(([p,sd])=>{const yy=Y0+o.lamDy;if(Math.min(p[0],p[1])<10||Math.max(p[0],p[1])>o.W-10)return;
+    ctx.strokeStyle=COL.Y;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(p[0],yy);ctx.lineTo(p[1],yy);ctx.moveTo(p[0],yy-9);ctx.lineTo(p[0],yy+9);ctx.moveTo(p[1],yy-9);ctx.lineTo(p[1],yy+9);ctx.stroke();
+    tx(ctx,'λ′ = '+(Math.abs(p[1]-p[0])/lam0).toFixed(2)+' λ',(p[0]+p[1])/2,yy+30,22,COL.Y,'center',700);});}}
+ /* 음원 */
+ const xs=S.xs;
+ if(o.src!==false){dot(ctx,xs,Y0,15,COL.A);tx(ctx,'음원',xs,Y0-28,22,COL.A,'center',700);
+  if(Math.abs(S.vs)>0.5){const d=Math.sign(S.vs);arrow(ctx,xs+d*24,Y0,xs+d*(24+Math.min(90,Math.abs(S.vs)*0.9)),Y0,COL.A,5,14);}}
+ /* 관찰자 */
+ S.obs.forEach((ob,i)=>{const col=o.cols[i];ctx.fillStyle=col;ctx.fillRect(ob.x-13,Y0-13,26,26);tx(ctx,o.names[i],ob.x,Y0-24,26,col,'center',800);
+  if(Math.abs(ob.vx)>0.5){const d=Math.sign(ob.vx);arrow(ctx,ob.x+d*22,Y0+34,ob.x+d*(22+Math.min(90,Math.abs(ob.vx)*0.9)),Y0+34,col,5,14);}});}
+
+/* ===== 2차시: 수행평가 계산(교사 안내 자료 A2·A4와 같은 식) ===== */
+function vSnd2(Tc){return 331+0.6*Tc;}
+function voFromF(f,f0,V){return V*(f-f0)/f0;}      /* 관찰자 이동 */
+function vsFromF(f,f0,V){return V*(f-f0)/f;}       /* 음원 이동 */
+function errPct(x,ref){return Math.abs(x-ref)/ref*100;}
+function TESTS(){const T=[];
+ /* 1 정지한 관찰자: 음원이 B 쪽으로 0.5v로 움직이면 B는 v/(v−vS)=2배, A는 v/(v+vS)=2/3배 */
+ {const S=DopNew(130,0.75);S.rmax=14000;S.xs=-5000;S.vs=65;const A=DopAddObs(S,-9000,0),B=DopAddObs(S,3000,0);DopWarm(S);
+  for(let i=0;i<7200;i++)DopStep(S,1/120);
+  const mA=DopMeas(S,A),mB=DopMeas(S,B);
+  T.push(['음원 이동: 다가오는 쪽 B',Math.abs(mB-2)<0.02,'측정 '+(mB&&mB.toFixed(3))+' / 이론 2.000']);
+  T.push(['음원 이동: 멀어지는 쪽 A',Math.abs(mA-2/3)<0.01,'측정 '+(mA&&mA.toFixed(3))+' / 이론 0.667']);}
+ /* 2 관찰자가 음원 쪽으로 0.3v로 다가가면 (v+vO)/v=1.3배, 멀어지면 0.7배 */
+ {const S=DopNew(130,0.75);S.rmax=14000;S.xs=0;const B=DopAddObs(S,3000,-39),A=DopAddObs(S,-3000,-39);DopWarm(S);
+  for(let i=0;i<4800;i++)DopStep(S,1/120);
+  const mB=DopMeas(S,B),mA=DopMeas(S,A);
+  T.push(['관찰자 이동: 다가가는 B',Math.abs(mB-1.3)<0.02,'측정 '+(mB&&mB.toFixed(3))+' / 이론 1.300']);
+  T.push(['관찰자 이동: 멀어지는 A',Math.abs(mA-0.7)<0.02,'측정 '+(mA&&mA.toFixed(3))+' / 이론 0.700']);}
+ /* 3 일반식 수치: 2000 Hz, v=343, 10 m/s */
+ {const a=fDop(2000,343,0,10),b=fDop(2000,343,10,0),c=fDop(2000,343,0,-10);
+  T.push(['음원 10 m/s 접근',Math.abs(a-2060.06)<0.01,a.toFixed(2)+' Hz']);
+  T.push(['관찰자 10 m/s 접근',Math.abs(b-2058.31)<0.01,b.toFixed(2)+' Hz']);
+  T.push(['음원 10 m/s 후퇴',Math.abs(c-1943.34)<0.05,c.toFixed(2)+' Hz']);
+  T.push(['같은 속력이어도 값이 다르다(음원≠관찰자)',a>b,'차 '+(a-b).toFixed(2)+' Hz']);}
+ /* 4 반사: 두 번의 도플러(관찰자 → 음원)와 닫힌 식이 같다 */
+ {const f=1000,c=340,v=20;const f1=fDop(f,c,v,0),f2=fDop(f1,c,0,v);
+  T.push(['반사 = 두 번의 도플러',Math.abs(f2-fReflect(f,c,v))<1e-9,f2.toFixed(2)+' Hz']);
+  T.push(['반사 변화량 ≈ 2fv/c',Math.abs((f2-f)-2*f*v/c)/(2*f*v/c)<0.07,(f2-f).toFixed(1)+' vs '+(2*f*v/c).toFixed(1)]);}
+ /* 5 빛의 도플러: β가 작으면 λ'/λ ≈ 1+β */
+ T.push(['적색 편이 λ′/λ',Math.abs(lamRatio(0.01)-1.01)<2e-4&&lamRatio(-0.05)<1,lamRatio(0.01).toFixed(5)]);
+ /* 6 수행평가 계산: 안내 자료 A4 예시(20 ℃, f0 2500, f 2507.3 → 약 1.00 m/s, 오차율 약 1.5 %) */
+ {const V=vSnd2(20),vo=voFromF(2507.3,2500,V),er=errPct(vo,1.5/1.52);
+  T.push(['A4 예시: V = 343 m/s',Math.abs(V-343)<1e-9,V.toFixed(1)]);
+  T.push(['A4 예시: vₒ ≈ 1.00 m/s',Math.abs(vo-1.0017)<0.001,vo.toFixed(4)+' m/s']);
+  T.push(['A4 예시: 오차율 ≈ 1.5 %',Math.abs(er-1.5)<0.3,er.toFixed(2)+' %']);
+  const f=fDop(2500,V,vo,0);T.push(['관찰자 식 왕복 검산',Math.abs(f-2507.3)<1e-6,f.toFixed(3)]);
+  const fs=fDop(2500,V,0,1.2),vs=vsFromF(fs,2500,V);T.push(['음원 식 왕복 검산',Math.abs(vs-1.2)<1e-9,vs.toFixed(4)]);
+  T.push(['Δf 표: 4000 Hz, 1 m/s ≈ 11.7 Hz',Math.abs(4000*1/343-11.66)<0.05,(4000/343).toFixed(2)]);}
+ T.push(['소리 속력 20 ℃',Math.abs(vSnd(20)-343.5)<1e-9,vSnd(20).toFixed(1)+' m/s']);
+ return T;}
+/* ===== 추가: 반사(속력 건)·빛의 도플러 ===== */
+/* 반사체(속력 β=v/c로 다가옴)에서 되돌아온 파동: 반사체는 먼저 관찰자, 다음에 음원 → f''=f(1+β)/(1−β) */
+function fReflect(f,c,v){return f*(c+v)/(c-v);}
+/* 멀어지는 광원(β=v/c)의 파장 비 λ'/λ (상대론적 도플러) */
+function lamRatio(b){return Math.sqrt((1+b)/(1-b));}
+/* 파장(nm) → 색 */
+function lamRGB(l){let r=0,g=0,b=0;
+ if(l>=380&&l<440){r=-(l-440)/60;b=1;}else if(l<490){g=(l-440)/50;b=1;}else if(l<510){g=1;b=-(l-510)/20;}
+ else if(l<580){r=(l-510)/70;g=1;}else if(l<645){r=1;g=-(l-645)/65;}else if(l<=780){r=1;}
+ let f=l<420?0.3+0.7*(l-380)/40:(l>700?0.3+0.7*(780-l)/80:1);if(l<380||l>780)f=0;
+ return 'rgb('+Math.round(255*r*f)+','+Math.round(255*g*f)+','+Math.round(255*b*f)+')';}
+
+
+/* =====================================================================
+   슬라이드별 모듈: { start(), stop(), frame(dt), onStep(step) }
+   ===================================================================== */
+const REG = {};
+/* ---- c ---- */
+REG["c"] = safe("c.init", function () {
+const cv=$('#c-cv'),W=720,H=720,ctx=setupCanvas(cv,W,H);let S;
+function setup(){S=DopNew(130,0.75);S.xs=130;S.vs=0.45*130;S.rmax=1100;DopAddObs(S,46,0);DopAddObs(S,674,0);DopWarm(S);}
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ tx(ctx,'스마트폰이 다가오고 멀어질 때',W/2,70,32,C.text,'center',700);tx(ctx,'소리 높이가 달라지는 것을 재 보자',W/2,114,32,'#ffd166','center',700);
+ DopDraw(ctx,S,{W:W,top:150,bot:640,Y0:400,names:['A','B'],cols:[COL.L,COL.B]});
+ tx(ctx,'멀어지는 쪽: 낮은 소리',130,610,22,COL.L,'center',700);tx(ctx,'다가오는 쪽: 높은 소리',590,610,22,COL.B,'center',700);}
+setup();
+return{start(){setup();draw();},stop(){},frame(dt){dt=Math.min(dt,.05);const n=Math.ceil(dt*120);for(let i=0;i<n;i++)DopStep(S,dt/n);if(S.xs>500)setup();draw();}};
+
+});
+
+/* ---- pd ---- */
+REG["pd"] = safe("pd.init", function () {
+const cv=$('#pd-cv'),W=1040,H=560,ctx=setupCanvas(cv,W,H),BIN=48000/8192;let mode='obs';
+const IDS=['pd-m0','pd-m1'];
+function calc(){const f0=g('pd-f'),v=g('pd-v'),V=331+0.6*g('pd-t');
+ return{f0:f0,v:v,V:V,up:mode==='obs'?f0*(V+v)/V:f0*V/(V-v),dn:mode==='obs'?f0*(V-v)/V:f0*V/(V+v)};}
+function draw(){const q=calc();ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ const span=Math.max(40,(q.up-q.f0)*1.5),ax0=60,ax1=W-60,ay=250,sx=hz=>ax0+(hz-q.f0+span)/(2*span)*(ax1-ax0);
+ tx(ctx,mode==='obs'?'수신 폰이 움직이고, 음원 폰은 정지':'음원 폰이 움직이고, 수신 폰은 정지',W/2,40,26,C.text,'center',700);
+ tx(ctx,'진동수 축  (작은 눈금 1칸 = 약 '+BIN.toFixed(1)+' Hz, 8192점 FFT·48 kHz 기준)',W/2,90,21,C.dim,'center',600);
+ ctx.strokeStyle='rgba(160,190,255,.35)';ctx.lineWidth=1.5;
+ for(let k=Math.ceil((q.f0-span)/BIN);k*BIN<=q.f0+span;k++){const x=sx(k*BIN);ctx.beginPath();ctx.moveTo(x,ay-14);ctx.lineTo(x,ay+14);ctx.stroke();}
+ ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(ax0,ay);ctx.lineTo(ax1,ay);ctx.stroke();
+ const mk=(hz,col,lab,dy,w)=>{const x=clamp(sx(hz),ax0,ax1);ctx.strokeStyle=col;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(x,ay-70);ctx.lineTo(x,ay+22);ctx.stroke();tx(ctx,lab,x,ay+dy,22,col,'center',800);};
+ mk(q.dn,COL.L,'멀어질 때 '+q.dn.toFixed(1)+' Hz',52,5);mk(q.up,COL.B,'다가갈 때 '+q.up.toFixed(1)+' Hz',82,5);
+ ctx.setLineDash([6,6]);mk(q.f0,COL.Y,'f₀ = '+q.f0.toFixed(0)+' Hz',-82,3);ctx.setLineDash([]);
+ const du=q.up-q.f0,dd=q.f0-q.dn;
+ box(ctx,40,350,W-80,180,'rgba(160,190,255,.35)','rgba(255,255,255,.05)');
+ tx(ctx,'소리 속력 V = 331 + 0.6×'+g('pd-t').toFixed(0)+' = '+q.V.toFixed(1)+' m/s',70,392,24,C.text,'left',700);
+ tx(ctx,'다가갈 때 Δf = +'+du.toFixed(1)+' Hz  (눈금 '+(du/BIN).toFixed(1)+'칸)',70,436,28,COL.B,'left',800);
+ tx(ctx,'멀어질 때 Δf = −'+dd.toFixed(1)+' Hz  (눈금 '+(dd/BIN).toFixed(1)+'칸)',70,478,28,COL.L,'left',800);
+ tx(ctx,du<BIN?'눈금 한 칸보다 작다 → 값이 잘 안 보일 수 있다. 속력을 키우거나 여러 번 재야 한다.':'눈금 여러 칸 → 그래프에서 변화가 보인다.',70,516,22,du<BIN?COL.R:COL.B,'left',700);
+ setT('pd-f-v',q.f0.toFixed(0)+' Hz');setT('pd-v-v',q.v.toFixed(1)+' m/s');setT('pd-t-v',g('pd-t').toFixed(0)+' ℃');}
+IDS.forEach((id,i)=>onClick(id,()=>{mode=i?'src':'obs';setChips(IDS,id);draw();}));
+['pd-f','pd-v','pd-t'].forEach(i=>bindRange(i,()=>{}));
+return{start(){mode='obs';setChips(IDS,IDS[0]);draw();},stop(){},frame(){draw();}};
+
+});
+
+/* ---- su ---- */
+REG["su"] = safe("su.init", function () {
+const cv=$('#su-cv'),W=1040,H=620,ctx=setupCanvas(cv,W,H);let m=0;const IDS=['su-0','su-1','su-2'];
+function phone(x,y,col,lab,sub){ctx.fillStyle='rgba(255,255,255,.07)';ctx.strokeStyle=col;ctx.lineWidth=4;ctx.beginPath();ctx.roundRect?ctx.roundRect(x-28,y-46,56,92,10):ctx.rect(x-28,y-46,56,92);ctx.fill();ctx.stroke();
+ ctx.fillStyle=col;ctx.fillRect(x-20,y-36,40,56);tx(ctx,lab,x,y-62,22,col,'center',800);if(sub)tx(ctx,sub,x,y-86,19,C.dim,'center',600);}
+function dimline(a,b,y,col,label){ctx.strokeStyle=col;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(a,y);ctx.lineTo(b,y);ctx.moveTo(a,y-9);ctx.lineTo(a,y+9);ctx.moveTo(b,y-9);ctx.lineTo(b,y+9);ctx.stroke();tx(ctx,label,(a+b)/2,y-14,21,col,'center',700);}
+function draw(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ if(m<2){const obsMove=m===0;
+  tx(ctx,obsMove?'직선 운동 ①: 수신 폰(관찰자)이 수레 위에서 움직인다':'직선 운동 ②: 음원 폰이 수레 위에서 움직인다',W/2,38,26,C.text,'center',700);
+  ctx.strokeStyle='#8ea3cf';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(60,362);ctx.lineTo(980,362);ctx.stroke();tx(ctx,'레일',990,368,19,C.dim,'left',600);
+  const fx=140,cx=obsMove?640:200;
+  ctx.fillStyle='#455a8c';ctx.fillRect(fx-50,306,100,26);
+  phone(fx,258,obsMove?COL.A:COL.B,obsMove?'음원 폰 (정지)':'수신 폰 (정지)',obsMove?'Tone generator':'Doppler Effect');
+  ctx.fillStyle='#455a8c';ctx.fillRect(cx-80,306,160,30);dot(ctx,cx-50,348,13,'#8ea3cf');dot(ctx,cx+50,348,13,'#8ea3cf');
+  phone(cx,258,obsMove?COL.B:COL.A,obsMove?'수신 폰 (수레 위)':'음원 폰 (수레 위)',obsMove?'Doppler Effect':'Tone generator');
+  arrow(ctx,cx-100,410,cx-230,410,COL.Y,6,15);tx(ctx,'다가감 (그다음 반대로: 멀어짐)',cx-165,446,21,COL.Y,'center',700);
+  dimline(560,860,500,COL.L,'일정한 속력 구간 L (줄자)');tx(ctx,'통과 시간 t (스톱워치) → 속력 = L ÷ t',710,540,22,COL.L,'center',700);
+  tx(ctx,'수레를 일정한 속력으로 밀고, 폰은 단단히 고정한다. 폰이 떨어지지 않게 주의!',W/2,592,22,COL.R,'center',700);
+ }else{
+  tx(ctx,'원운동: 수신 폰을 회전판에 고정하고, 음원 폰은 옆에 정지',W/2,38,26,C.text,'center',700);
+  const cx=620,cy=290,R=170;ctx.strokeStyle='#8ea3cf';ctx.lineWidth=5;ctx.fillStyle='rgba(255,255,255,.04)';ctx.beginPath();ctx.arc(cx,cy,R+30,0,TAU);ctx.fill();ctx.stroke();
+  ctx.setLineDash([6,8]);ctx.strokeStyle='rgba(160,190,255,.5)';ctx.beginPath();ctx.arc(cx,cy,R,0,TAU);ctx.stroke();ctx.setLineDash([]);
+  dot(ctx,cx,cy,8,C.dim);ctx.strokeStyle=COL.Y;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+R*Math.cos(-0.6),cy+R*Math.sin(-0.6));ctx.stroke();tx(ctx,'반지름 r (줄자)',cx+R*0.45*Math.cos(-0.6)+10,cy+R*0.45*Math.sin(-0.6)-12,21,COL.Y,'left',700);
+  phone(cx+R*Math.cos(-0.6),cy+R*Math.sin(-0.6),COL.B,'수신 폰 (회전판 위)','');
+  arrow(ctx,cx+R*Math.cos(-0.6)+40,cy+R*Math.sin(-0.6)+20,cx+R*Math.cos(-0.6)+60,cy+R*Math.sin(-0.6)+96,COL.B,5,13);
+  phone(150,300,COL.A,'음원 폰 (정지)','Tone generator');
+  tx(ctx,'10바퀴 시간 → 주기 T,  속력 = 2πr ÷ T',cx,cy+R+80,24,COL.L,'center',700);
+  tx(ctx,'폰은 회전판에 단단히 고정. 줄에 매달아 돌리지 않는다!',W/2,590,22,COL.R,'center',700);}}
+IDS.forEach((id,i)=>onClick(id,()=>{m=i;setChips(IDS,id);draw();}));
+return{start(){m=0;setChips(IDS,IDS[0]);draw();},stop(){},frame(){}};
+
+});
+
+/* ---- ci ---- */
+REG["ci"] = safe("ci.init", function () {
+const cv=$('#ci-cv'),W=1040,H=640,ctx=setupCanvas(cv,W,H),F0=4000,V=343,BIN=48000/8192;let ph=0,tm=0,hist=[],real=false,seed=7;
+const IDS=['ci-c0','ci-c1'];
+function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296-0.5;}
+function ideal(){const r=g('ci-r'),w=g('ci-w')*TAU/60;return F0*(V-r*w*Math.sin(ph))/V;}
+function draw(){const r=g('ci-r'),w=g('ci-w')*TAU/60,v=r*w,dmax=F0*v/V;ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+ const cx=170,cy=150,R=r*330;ctx.strokeStyle='rgba(160,190,255,.5)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(cx,cy,Math.max(R,10),0,TAU);ctx.stroke();
+ const px=cx+Math.max(R,10)*Math.cos(ph),py=cy-Math.max(R,10)*Math.sin(ph);dot(ctx,px,py,13,COL.B);tx(ctx,'수신 폰',cx,cy-Math.max(R,10)-30,20,COL.B,'center',700);
+ ctx.fillStyle=COL.A;ctx.fillRect(420,cy-14,28,28);tx(ctx,'음원 폰(정지)',434,cy-28,20,COL.A,'center',700);arrow(ctx,410,cy,300,cy,COL.dim,3,10);
+ tx(ctx,'회전판을 위에서 본 모습',cx,cy+Math.max(R,10)+44,19,C.dim,'center',600);
+ let f=ideal();if(real){f=Math.round((f+rnd()*3.2)/BIN*1)*BIN+F0%BIN*0;f=F0+Math.round((ideal()-F0+rnd()*5)/ (BIN/2))*(BIN/2);}
+ hist.push([tm,f]);while(hist.length&&tm-hist[0][0]>8)hist.shift();
+ const gx=560,gy=60,gw=430,gh=300,span=Math.max(10,dmax*1.5);
+ axes(ctx,gx,gy,gw,gh,'','수신 진동수 f (Hz)');
+ const yy=hz=>gy+gh/2-(hz-F0)/span*gh/2;
+ ctx.setLineDash([6,6]);ctx.strokeStyle='rgba(255,255,255,.3)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(gx,yy(F0));ctx.lineTo(gx+gw,yy(F0));ctx.stroke();
+ ctx.strokeStyle=COL.B;ctx.beginPath();ctx.moveTo(gx,yy(F0+dmax));ctx.lineTo(gx+gw,yy(F0+dmax));ctx.stroke();ctx.strokeStyle=COL.L;ctx.beginPath();ctx.moveTo(gx,yy(F0-dmax));ctx.lineTo(gx+gw,yy(F0-dmax));ctx.stroke();ctx.setLineDash([]);
+ tx(ctx,'f₀',gx-8,yy(F0)+6,19,COL.Y,'right',700);tx(ctx,'f_max',gx-8,yy(F0+dmax)+6,19,COL.B,'right',700);tx(ctx,'f_min',gx-8,yy(F0-dmax)+6,19,COL.L,'right',700);
+ poly(ctx,hist.map(h=>[gx+gw-(tm-h[0])/8*gw,clamp(yy(h[1]),gy+2,gy+gh-2)]),real?COL.A:COL.B,real?2.5:3.5);
+ box(ctx,40,400,W-80,215,'rgba(160,190,255,.35)','rgba(255,255,255,.05)');
+ tx(ctx,'f₀ = '+F0+' Hz,  V = '+V+' m/s,  r = '+r.toFixed(2)+' m,  '+g('ci-w').toFixed(0)+' 회전/분',70,440,23,C.text,'left',700);
+ tx(ctx,'속력 v = rω = '+v.toFixed(2)+' m/s      f_max − f₀ ≈ '+dmax.toFixed(1)+' Hz  (눈금 '+(dmax/BIN).toFixed(1)+'칸)',70,482,24,COL.Y,'left',700);
+ tx(ctx,'읽는 법:  v = V·(f_max − f_min) / (2 f₀) = '+(V*(2*dmax)/(2*F0)).toFixed(2)+' m/s',70,526,24,C.text,'left',700);
+ tx(ctx,real?'현실처럼: 값이 눈금 단위로 끊기고 잡음이 섞인다(예시 모형). 최댓값·최솟값이 흔들린다.':'이상적인 그래프: 사인 모양, 위·아래 폭이 같다.',70,572,22,real?COL.R:COL.B,'left',700);
+ setT('ci-r-v',r.toFixed(2)+' m');setT('ci-w-v',g('ci-w').toFixed(0)+' 회전/분');}
+IDS.forEach((id,i)=>onClick(id,()=>{real=!!i;setChips(IDS,id);hist=[];}));
+['ci-r','ci-w'].forEach(i=>bindRange(i,()=>{}));
+return{start(){ph=0;tm=0;hist=[];real=false;setChips(IDS,IDS[0]);draw();},stop(){},frame(dt){dt=Math.min(dt,.05);ph+=g('ci-w')*TAU/60*dt;tm+=dt;draw();}};
+
+});
+
+/* ---- cl ---- */
+REG["cl"] = safe("cl.init", function () {
+const M=['c-m0','c-m1'];let mode=0;
+const f2=(x,d)=>isFinite(x)?x.toFixed(d):'—';
+function num(id){const v=parseFloat(document.getElementById(id).value);return isFinite(v)?v:NaN;}
+function compute(){const T=num('c-T'),f0=num('c-f0'),f=num('c-f'),vi=num('c-vi');
+ const V=331+0.6*T,df=f-f0;
+ const v=mode===0?V*df/f0:V*df/f;
+ const form=mode===0?'vₒ = V·(f − f₀)/f₀':'vₛ = V·(f − f₀)/f';
+ const sub=mode===0?'= '+f2(V,1)+' × '+f2(df,1)+' ÷ '+f2(f0,0):'= '+f2(V,1)+' × '+f2(df,1)+' ÷ '+f2(f,1);
+ const er=Math.abs(Math.abs(v)-vi)/vi*100;
+ setH('c-out','<p><b>① 소리 속력</b> V = 331 + 0.6 × '+f2(T,0)+' = <b>'+f2(V,1)+' m/s</b></p>'+
+  '<p><b>② 진동수 변화</b> Δf = f − f₀ = '+f2(f,1)+' − '+f2(f0,0)+' = <b>'+(df>=0?'+':'')+f2(df,1)+' Hz</b> ('+(df>0?'다가오는 중':(df<0?'멀어지는 중':'정지'))+')</p>'+
+  '<p><b>③ 공식</b> '+form+'</p><p>　 '+sub+' = <b class="k">'+f2(Math.abs(v),3)+' m/s</b></p>'+
+  '<p><b>④ 독립 측정값</b> '+f2(vi,3)+' m/s → <b>오차율</b> = |'+f2(Math.abs(v),3)+' − '+f2(vi,3)+'| ÷ '+f2(vi,3)+' × 100 = <b class="p">'+f2(er,1)+' %</b></p>');}
+function setMode(i){mode=i;setChips(M,M[i]);compute();}
+M.forEach((id,i)=>onClick(id,()=>setMode(i)));
+['c-T','c-f0','c-f','c-vi'].forEach(id=>document.getElementById(id).addEventListener('input',compute));
+onClick('c-ex',()=>{const set=(i,v)=>{document.getElementById(i).value=v;};set('c-T',20);set('c-f0',2500);set('c-f',2507.3);set('c-vi',0.987);setMode(0);});
+return{start(){setMode(mode);},stop(){},frame(){}};
+
+});
+
+/* =====================================================================
+   슬라이드 관리자
+   ===================================================================== */
+const slides = $$('.slide'), deck = $('#deck'); let cur = -1, step = 0, activeFrame = null, activeId = '', hudTimer = 0;
+const NOTES = DECK.notes, ASK = DECK.ask, CIRC = ['①', '②', '③', '④', '⑤'];
+function renderNotes(i) {
+  const n = NOTES[slides[i].id]; if (!n) { $('#notes').innerHTML = ''; return; }
+  $('#notes').innerHTML = `<div class="nh">📝 오개념 교정 노트 · 슬라이드 ${i + 1} / ${slides.length}<span style="float:right">발문을 화면에 띄우기: Q 키</span></div>` + (n.q ? `<div class="nq">💬 발문: ${n.q}</div>` : '') +
+    (n.m || []).map(([a, b]) => `<div class="ni"><span class="nx">❌ 오개념</span> ${a}<br><span class="nv">✅ 교정</span> ${b}</div>`).join('');
+}
+function renderAsk(i) {
+  const q = ASK[slides[i].id] || [];
+  $('#ask').innerHTML = `<div class="ak"><div class="ah">💬 생각해 보기 · ${i + 1} / ${slides.length}</div>` + (q.length ? q.map((t, k) => `<div class="aq">${q.length > 1 ? `<span>${CIRC[k] || (k + 1) + '.'}</span>` : ''}${t}</div>`).join('') : '<div class="aq" style="color:var(--muted)">이 슬라이드에는 발문이 없습니다.</div>') + '<div class="af">Q 키 · Esc · 화면 클릭으로 닫기</div></div>';
+}
+function toggleAsk(force) { const on = $('#ask').classList.toggle('on', force); $('#b-ask').classList.toggle('on', on); }
+const maxStep = i => +(slides[i].dataset.steps || 0);
+function fit() {
+  const vp = $('#viewport'), vw = vp.clientWidth, vh = vp.clientHeight, rf = vw < 1100;
+  document.documentElement.classList.toggle('rf', rf);
+  if (rf) { const W = vw < 640 ? 640 : vw, s = vw / W; deck.style.width = W + 'px'; deck.style.height = (vh / s) + 'px'; deck.style.transform = `scale(${s})`; return; }
+  deck.style.width = ''; deck.style.height = '';
+  const s = Math.min(vw / 1920, vh / 1080); deck.style.transform = `translate(-50%,-50%) scale(${s})`;
+}
+function fitSteps() { // 단계 목록이 영역을 넘으면 자동 축소 (실제 렌더링 높이 기준)
+  if (cur < 0) return; const side = $('.side.steps', slides[cur]); if (!side) return;
+  side.style.transform = ''; side.style.width = '';
+  if (side.clientHeight > 0 && side.scrollHeight > side.clientHeight + 1) { const k = side.clientHeight / side.scrollHeight; side.style.transformOrigin = 'top left'; side.style.transform = `scale(${k})`; side.style.width = (100 / k) + '%'; }
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitSteps);
+function applyStep() {
+  $$('.st', slides[cur]).forEach(el => { el.classList.toggle('on', +el.dataset.i <= step); el.classList.toggle('cur', +el.dataset.i === step); });
+  const id = slides[cur].id, r = REG[id]; r && r.onStep && safe(id + '.onStep', () => r.onStep(step));
+}
+const mgSet = (sl, on) => $$('iframe.mg-embed', sl).forEach(f => { f.src = on ? f.dataset.src : 'about:blank'; });
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.mg-re'); if (b) { const f = $('iframe', b.parentElement); f && f.contentWindow && f.contentWindow.postMessage({ mg: 'cmd', cmd: 'restart' }, '*'); b.blur(); } });
+function show(i, st = 0) {
+  i = Math.max(0, Math.min(slides.length - 1, i));
+  if (cur >= 0) { const oid = slides[cur].id, o = REG[oid]; o && o.stop && safe(oid + '.stop', () => o.stop()); slides[cur].classList.remove('active'); mgSet(slides[cur], false); }
+  cur = i; step = Math.min(st, maxStep(i)); slides[i].classList.add('active'); mgSet(slides[i], true);
+  const id = slides[i].id, r = REG[id]; activeFrame = r && r.frame ? (dt => r.frame(dt)) : null; activeId = id;
+  fitSteps(); r && r.start && safe(id + '.start', () => r.start());
+  $('#h-pg').textContent = `${i + 1} / ${slides.length}`; renderNotes(i); renderAsk(i); toggleAsk(false); applyStep();
+  if (DECK.ask_auto !== false && (ASK[id] || []).length && !askSeen[id]) { askSeen[id] = 1; toggleAsk(true); } // 처음 들어오면 발문을 먼저 띄운다(닫기 전까지 시뮬레이션 정지)
+}
+const askSeen = {};
+const next = () => { if ($('#ask').classList.contains('on')) { toggleAsk(false); return; } if (step < maxStep(cur)) { step++; applyStep(); } else if (cur < slides.length - 1) show(cur + 1); };
+const prev = () => { if (step > 0) { step--; applyStep(); } else if (cur > 0) show(cur - 1, maxStep(cur - 1)); };
+function isDark() { const r = document.documentElement; return r.dataset.theme === 'dark' || (!r.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches); }
+function themeBtn() { $('#b-theme').textContent = isDark() ? '☀ 라이트 전환' : '🌙 다크 전환'; }
+function toggleTheme() { document.documentElement.dataset.theme = isDark() ? 'light' : 'dark'; themeBtn(); }
+function toggleNotes() { const on = $('#notes').classList.toggle('on'); $('#b-notes').classList.toggle('on', on); }
+function toggleHelp(force) { const on = $('#help').classList.toggle('on', force); $('#b-help').classList.toggle('on', on); }
+function fullscreen() { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) { } }
+function poke() { $('#hud').classList.add('show'); clearTimeout(hudTimer); hudTimer = setTimeout(() => $('#hud').classList.remove('show'), 2600); }
+document.addEventListener('keydown', e => {
+  const t = e.target; if (t && t.tagName === 'INPUT' && t.type === 'range' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); next(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+  else if (e.key === 'Home') show(0); else if (e.key === 'End') show(slides.length - 1);
+  else if (e.key === 'f' || e.key === 'F') fullscreen(); else if (e.key === 'n' || e.key === 'N') toggleNotes(); else if (e.key === 't' || e.key === 'T') toggleTheme(); else if (e.key === 'q' || e.key === 'Q') toggleAsk(); else if (e.key === '?' || e.key === 'h' || e.key === 'H') toggleHelp(); else if (e.key === 'Escape') { toggleHelp(false); toggleAsk(false); if ($('#notes').classList.contains('on')) toggleNotes(); }
+});
+$('#h-prev').onclick = prev; $('#h-next').onclick = next; $('#h-fs').onclick = fullscreen; $('#b-help').onclick = () => toggleHelp(); $('#b-ask').onclick = () => toggleAsk(); $('#ask').onclick = () => toggleAsk(false); $('#help-x').onclick = () => toggleHelp(false); $('#help').onclick = e => { if (e.target.id === 'help') toggleHelp(false); }; $('#b-notes').onclick = toggleNotes; $('#b-theme').onclick = toggleTheme;
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
+['mousemove', 'touchstart', 'pointerdown'].forEach(ev => document.addEventListener(ev, poke, { passive: true }));
+window.addEventListener('resize', () => { fit(); fitSteps(); }); fit();
+/* 터치: 좌우로 쓸어 넘기기 (슬라이더·캔버스·버튼 위에서 시작한 건 제외) */
+(function () {
+  let x0 = 0, y0 = 0, ok = false;
+  document.addEventListener('touchstart', e => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; ok = !(e.target.closest && e.target.closest('input,canvas,button,table,.eq,#help,#notes')); }, { passive: true });
+  document.addEventListener('touchend', e => { if (!ok) return; const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; if (Math.abs(dx) > 70 && Math.abs(dx) > 2 * Math.abs(dy)) { dx < 0 ? next() : prev(); } }, { passive: true });
+})();
+let lastT = performance.now();
+(function loop(now) {
+  const dt = Math.min(.05, (now - lastT) / 1000); lastT = now;
+  if (activeFrame && !$('#ask').classList.contains('on')) { try { activeFrame(dt); } catch (e) { reportError(activeId + '.frame', e); activeFrame = null; } }
+  requestAnimationFrame(loop);
+})(lastT);
+
+/* 물리 검증: shared_js에 TESTS() → [[이름, 통과여부, 설명], ...] 가 있으면 콘솔에 출력 */
+(function runSelfTests() {
+  if (typeof TESTS !== 'function') { console.log('물리 검증 항목 없음'); return; }
+  let results = [];
+  try { results = TESTS() || []; } catch (e) { reportError('TESTS', e); return; }
+  console.log('=== ' + DECK.title + ' 물리 검증 ==='); let pass = 0;
+  for (const [name, ok, detail] of results) { console.log(`[${ok ? 'PASS' : 'FAIL'}] ${name}${detail ? ' — ' + detail : ''}`); if (ok) pass++; }
+  console.log(pass === results.length ? '모든 검증 통과' : '일부 검증 실패 — 콘솔 확인 필요');
+  window.__wsSelfTest = { pass, total: results.length };
+})();
+
+window.__deck = { show, next, get cur() { return cur; }, get step() { return step; }, count: slides.length, maxStep };
+let startAt = 0; try { const h = parseInt(location.hash.slice(1), 10); if (h >= 1 && h <= slides.length) startAt = h - 1; } catch (e) { }
+themeBtn(); show(startAt); poke();
+</script>
+</body>
+</html>

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>스피커 간섭·맥놀이 실험 — 소리 발생기</title>
+<style>
+  :root { --bg:#f4f6fa; --panel:#fff; --ink:#1c2733; --sub:#5a6b7d; --accent:#1f6fd6; --accent2:#d64545; --ok:#1e8f4e; --warn:#c07c00; --border:#d7dee8; --radius:10px; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:"Segoe UI","Malgun Gothic",sans-serif; background:var(--bg); color:var(--ink); padding:12px; font-size:15px; line-height:1.5; }
+  header { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:0 auto 12px; max-width:900px; }
+  header h1 { font-size:1.25em; }
+  .home { text-decoration:none; color:var(--sub); border:1px solid var(--border); padding:6px 12px; border-radius:8px; font-size:.9em; white-space:nowrap; background:#fff; }
+  .wrap { max-width:900px; margin:0 auto; }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:14px; margin-top:12px; }
+  .stepTitle { font-weight:700; font-size:1.05em; margin-bottom:8px; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:8px 0; }
+  .hint { color:var(--sub); font-size:.85em; margin-top:4px; }
+  .warn { border-left:5px solid var(--warn); background:#fff7e6; padding:8px 12px; border-radius:6px; font-size:.92em; }
+  button { font-size:1em; padding:9px 16px; border-radius:8px; border:1px solid var(--border); background:#fff; cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700; }
+  button.on { background:var(--accent2); border-color:var(--accent2); color:#fff; font-weight:700; }
+  .tabs { display:flex; gap:8px; }
+  .tabs button { flex:1; }
+  .tabs button.sel { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:700; }
+  input[type=number] { font-size:1em; padding:6px 8px; border:1px solid var(--border); border-radius:8px; width:6.5em; }
+  input[type=range] { flex:1; min-width:140px; }
+  .big { font-size:2em; font-weight:800; color:var(--accent); min-width:4.2em; }
+  label { display:inline-flex; align-items:center; gap:6px; }
+  table { border-collapse:collapse; width:100%; font-size:.95em; }
+  td, th { border:1px solid var(--border); padding:5px 8px; text-align:left; }
+  th { background:#eef2f8; }
+  canvas { width:100%; height:200px; display:block; background:#fff; border:1px solid var(--border); border-radius:8px; }
+  [hidden] { display:none !important; }
+  b.k { color:var(--accent); } b.p { color:var(--accent2); }
+</style>
+</head>
+<body>
+<header>
+  <a class="home" href="../../index.html">🏠 홈</a>
+  <h1>스피커 간섭·맥놀이 실험 — 소리 발생기</h1>
+</header>
+<div class="wrap">
+  <div class="panel">
+    <div class="tabs"><button id="tabI" class="sel">① 두 스피커 간섭</button><button id="tabB">② 맥놀이 (진동수가 다른 두 소리)</button></div>
+    <div class="warn" style="margin-top:10px"><b>안전</b> 음량은 작게 시작하고, 스피커를 귀에 바짝 대지 않는다. 한 번에 오래(1분 이상) 연속으로 듣지 않는다.</div>
+  </div>
+
+  <!-- ① 간섭 -->
+  <section id="secI">
+    <div class="panel">
+      <div class="stepTitle">소리 내기 (스테레오 스피커의 왼쪽·오른쪽에서 같은 소리)</div>
+      <div class="row"><input type="number" id="iF" value="1000" min="200" max="4000" step="50"> Hz <div class="big" id="iBig">1000 Hz</div></div>
+      <div class="row"><input type="range" id="iFs" min="300" max="3000" step="10" value="1000"></div>
+      <div class="row">
+        <label><input type="checkbox" id="iL" checked> 왼쪽 스피커</label>
+        <label><input type="checkbox" id="iR" checked> 오른쪽 스피커</label>
+        <label><input type="checkbox" id="iInv"> 오른쪽을 <b class="p">반대 위상</b>으로</label>
+      </div>
+      <div class="row"><label>음량 <input type="range" id="iV" min="0" max="100" value="12" style="min-width:110px"></label>
+        <button class="primary" id="iGo">▶ 소리 내기</button></div>
+      <div class="hint">기기를 스테레오 스피커(또는 이어폰 대신 외부 스피커 2개)에 연결한다. 폰 자체 스피커는 하나뿐이라 간섭 실험이 안 된다. 두 스피커는 소리가 나오는 면이 같은 쪽을 향하게 약 1 m 띄워 놓고, 한쪽 귀로 들으며 가운데에서 옆으로 천천히 걷는다.</div>
+    </div>
+    <div class="panel">
+      <div class="stepTitle">예상 위치 계산 (거리를 직접 재어 넣는다)</div>
+      <div class="row">
+        <label>스피커 간격 d <input type="number" id="pD" value="1.0" min="0.2" max="3" step="0.05"> m</label>
+        <label>스피커에서 걷는 줄까지 L <input type="number" id="pL" value="1.0" min="0.3" max="5" step="0.1"> m</label>
+        <label>소리 속력 v <input type="number" id="pV" value="343" min="320" max="360" step="1" style="width:5em"> m/s</label>
+      </div>
+      <div class="hint" id="pInfo"></div>
+      <canvas id="pCv" width="860" height="200"></canvas>
+      <div class="hint">가운데(0)를 기준으로 좌우로 걸을 때 이론상 소리의 세기 변화(두 스피커를 점 소리원으로 보고, 소리가 퍼지며 약해지는 효과·방 반사는 무시). 파란 점선 = 소리가 가장 작을 곳.</div>
+      <table id="pTb"></table>
+    </div>
+    <div class="panel">
+      <div class="stepTitle">실험 팁</div>
+      <div class="hint" style="font-size:.92em">
+        ① 진동수는 800~2000 Hz가 좋다(너무 낮으면 소리 작은 곳 폭이 넓어 구분이 어렵다). ② 한쪽 귀를 막고, 고개 방향을 바꾸지 말고 몸 전체를 옆으로 옮긴다. ③ 벽·책상 반사가 많으면 작은 곳도 완전히 조용하진 않다. 복도나 넓은 곳이 좋다. ④ <b>오른쪽을 반대 위상</b>으로 바꾸면 가운데가 오히려 조용해진다 — 노이즈 캔슬링과 같은 원리. ⑤ 한쪽 스피커만 켜면 위치에 따른 변화가 거의 없는 것을 확인해 비교한다.
+      </div>
+    </div>
+  </section>
+
+  <!-- ② 맥놀이 -->
+  <section id="secB" hidden>
+    <div class="panel">
+      <div class="stepTitle">맥놀이: 진동수가 조금 다른 두 소리</div>
+      <div class="row"><label>소리 A <input type="number" id="bA" value="440" min="100" max="2000" step="1"> Hz</label>
+        <label>소리 B <input type="number" id="bB" value="444" min="100" max="2000" step="1"> Hz</label></div>
+      <div class="row"><b>|f₁ − f₂| = <span id="bDf" class="k">4</span> Hz</b> → 1초에 약 <span id="bDf2">4</span>번 커졌다 작아졌다 <span class="hint">(10초에 <span id="bDf3">40</span>번)</span></div>
+      <div class="row">
+        <label><input type="checkbox" id="bPA" checked> 이 기기에서 A 재생</label>
+        <label><input type="checkbox" id="bPB" checked> 이 기기에서 B 재생</label>
+      </div>
+      <div class="row"><label>음량 <input type="range" id="bV" min="0" max="100" value="12" style="min-width:110px"></label>
+        <button class="primary" id="bGo">▶ 소리 내기</button></div>
+      <div class="hint">한 기기로: A·B를 모두 체크하면 두 소리가 섞여 맥놀이가 들린다. 두 기기로: 한 대는 A만, 다른 한 대는 B만 체크해 동시에 재생한다(진동수가 거의 맞으니 서로 가까이 둔다). 빠른 선택:
+        <button id="bq1">Δf = 1</button> <button id="bq2">Δf = 2</button> <button id="bq4">Δf = 4</button> <button id="bq8">Δf = 8</button> <button id="bq20">Δf = 20</button>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="stepTitle">두 소리를 더한 모양 (이론)</div>
+      <canvas id="bCv" width="860" height="200"></canvas>
+      <div class="hint">굵은 곡선이 합성파, 얇은 곡선이 포락선(소리 크기 변화). 가로 = 시간 1초.</div>
+    </div>
+    <div class="panel">
+      <div class="stepTitle">소리 실험실 앱으로 측정하기</div>
+      <div class="hint" style="font-size:.92em">마이크로 듣는 기기에서 <a href="../sound-lab/index.html" target="_blank">소리 실험실 → 맥놀이 탭</a>을 열면 크기 변화 그래프로 맥놀이 진동수를 잴 수 있다.</div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+let ac=null,nodes=null,playing=false,mode='I';
+
+/* ---------- 오디오 ---------- */
+function ensure(){if(!ac){ac=new (window.AudioContext||window.webkitAudioContext)();}if(ac.state==='suspended')ac.resume();}
+function vol(id){const v=+$(id).value/100;return v*v*0.35;}   /* 제곱 곡선, 최대 0.35 */
+function stop(){if(nodes){try{nodes.oscs.forEach(o=>o.stop());}catch(e){}nodes=null;}playing=false;$('iGo').textContent='▶ 소리 내기';$('bGo').textContent='▶ 소리 내기';$('iGo').classList.remove('on');$('bGo').classList.remove('on');}
+function startI(){
+ ensure();const o=ac.createOscillator(),m=ac.createChannelMerger(2),gL=ac.createGain(),gR=ac.createGain(),mg=ac.createGain();
+ o.type='sine';o.frequency.value=+$('iF').value;o.connect(gL);o.connect(gR);gL.connect(m,0,0);gR.connect(m,0,1);m.connect(mg);mg.connect(ac.destination);
+ nodes={oscs:[o],gL,gR,mg,o};applyI();mg.gain.value=0;mg.gain.linearRampToValueAtTime(vol('iV'),ac.currentTime+0.05);o.start();playing=true;
+}
+function applyI(){if(!nodes||mode!=='I')return;const t=ac.currentTime;nodes.o.frequency.setTargetAtTime(+$('iF').value,t,0.02);
+ nodes.gL.gain.setTargetAtTime($('iL').checked?1:0,t,0.02);nodes.gR.gain.setTargetAtTime($('iR').checked?($('iInv').checked?-1:1):0,t,0.02);nodes.mg.gain.setTargetAtTime(vol('iV'),t,0.02);}
+function startB(){
+ ensure();const mg=ac.createGain(),oscs=[],gs=[];
+ [['bA','bPA'],['bB','bPB']].forEach(p=>{const o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.value=+$(p[0]).value;g.gain.value=$(p[1]).checked?0.5:0;o.connect(g);g.connect(mg);oscs.push(o);gs.push(g);});
+ mg.connect(ac.destination);nodes={oscs,gs,mg};applyB();mg.gain.value=0;mg.gain.linearRampToValueAtTime(vol('bV'),ac.currentTime+0.05);oscs.forEach(o=>o.start());playing=true;
+}
+function applyB(){if(!nodes||mode!=='B')return;const t=ac.currentTime;['bA','bB'].forEach((id,i)=>nodes.oscs[i].frequency.setTargetAtTime(+$(id).value,t,0.02));
+ ['bPA','bPB'].forEach((id,i)=>nodes.gs[i].gain.setTargetAtTime($(id).checked?0.5:0,t,0.02));nodes.mg.gain.setTargetAtTime(vol('bV'),t,0.02);}
+$('iGo').onclick=()=>{if(playing){stop();return;}startI();$('iGo').textContent='■ 멈추기';$('iGo').classList.add('on');};
+$('bGo').onclick=()=>{if(playing){stop();return;}startB();$('bGo').textContent='■ 멈추기';$('bGo').classList.add('on');};
+function sync(){const f=clamp(+$('iF').value||1000,200,4000);$('iBig').textContent=f+' Hz';applyI();calc();}
+$('iF').oninput=()=>{$('iFs').value=clamp(+$('iF').value,300,3000);sync();};
+$('iFs').oninput=()=>{$('iF').value=$('iFs').value;sync();};
+['iL','iR','iInv','iV'].forEach(id=>$(id).oninput=applyI);
+['bV','bPA','bPB'].forEach(id=>$(id).oninput=applyB);
+['bA','bB'].forEach(id=>$(id).oninput=()=>{applyB();beatUI();});
+[[1,'bq1'],[2,'bq2'],[4,'bq4'],[8,'bq8'],[20,'bq20']].forEach(p=>$(p[1]).onclick=()=>{$('bA').value=440;$('bB').value=440+p[0];applyB();beatUI();});
+function tab(m){stop();mode=m;$('secI').hidden=m!=='I';$('secB').hidden=m!=='B';$('tabI').classList.toggle('sel',m==='I');$('tabB').classList.toggle('sel',m==='B');if(m==='B')beatUI();else calc();}
+$('tabI').onclick=()=>tab('I');$('tabB').onclick=()=>tab('B');
+
+/* ---------- 예상 위치 (간섭) ---------- */
+function dPath(y,d,L){return Math.abs(Math.hypot(L,y+d/2)-Math.hypot(L,y-d/2));}   /* 경로차(양수, y≥0) */
+function solve(target,d,L){if(target>=d)return null;let a=0,b=20;for(let i=0;i<60;i++){const c=(a+b)/2;if(dPath(c,d,L)<target)a=c;else b=c;}return (a+b)/2;}
+function calc(){
+ const f=clamp(+$('iF').value||1000,200,4000),d=+$('pD').value||1,L=+$('pL').value||1,v=+$('pV').value||343,lam=v/f;
+ let q=[],lo=[];for(let m=0;m<12;m++){const yq=solve((m+.5)*lam,d,L);if(yq!=null)q.push([m,yq]);const yl=m>0?solve(m*lam,d,L):0;if(yl!=null&&m>0)lo.push([m,yl]);}
+ $('pInfo').innerHTML='파장 λ = v/f = <b class="k">'+(lam*100).toFixed(1)+' cm</b> · 스피커 간격 d = '+(d*100).toFixed(0)+' cm → 경로차는 0 ~ '+(d*100).toFixed(0)+' cm 사이에서 변한다 ('+(d/lam).toFixed(2)+' λ까지). '+(q.length?'':'<b class="p">d가 λ/2보다 작아 소리 작은 곳이 생기지 않는다. 진동수를 낮추거나 간격을 늘려 보자.</b>');
+ let h='<tr><th>순서</th><th>소리 가장 작음 (상쇄)</th><th>소리 가장 큼 (보강)</th></tr>';
+ h+='<tr><td>0</td><td>—</td><td><b>가운데 0 cm</b> (경로차 0)</td></tr>';
+ const n=Math.max(q.length,lo.length);for(let i=0;i<Math.min(n,5);i++){h+='<tr><td>'+(i+1)+'</td><td>'+(q[i]?'±'+(q[i][1]*100).toFixed(0)+' cm <span class="hint">(경로차 '+(i+.5)+' λ)</span>':'—')+'</td><td>'+(lo[i]?'±'+(lo[i][1]*100).toFixed(0)+' cm <span class="hint">(경로차 '+(i+1)+' λ)</span>':'— <span class="hint">(경로차가 d보다 클 수 없다)</span>')+'</td></tr>';}
+ $('pTb').innerHTML=h;
+ const cv=$('pCv'),c=cv.getContext('2d'),W=cv.width,H=cv.height;c.clearRect(0,0,W,H);
+ const Y=Math.max(1,L*1.2);const X=y=>W/2+y/Y*(W/2-20);
+ c.strokeStyle='#999';c.lineWidth=1;c.beginPath();c.moveTo(10,H-25);c.lineTo(W-10,H-25);c.stroke();
+ c.fillStyle='#555';c.font='12px sans-serif';c.textAlign='center';[-1,-.5,0,.5,1].forEach(t=>{const yy=t*Y;c.fillText((yy*100).toFixed(0)+' cm',X(yy),H-8);});
+ c.strokeStyle='#1f6fd6';c.lineWidth=2.5;c.beginPath();
+ const k=2*Math.PI/lam;
+ for(let px=10;px<=W-10;px++){const y=(px-W/2)/(W/2-20)*Y;const r1=Math.hypot(L,y+d/2),r2=Math.hypot(L,y-d/2);
+  const re=Math.cos(k*r1)/Math.sqrt(r1)+Math.cos(k*r2)/Math.sqrt(r2),im=Math.sin(k*r1)/Math.sqrt(r1)+Math.sin(k*r2)/Math.sqrt(r2);
+  const A=Math.hypot(re,im)/ (2/Math.sqrt(L));const yy=H-25-A*(H-50);px===10?c.moveTo(px,yy):c.lineTo(px,yy);}
+ c.stroke();
+ c.setLineDash([5,5]);c.strokeStyle='#4a9be8';q.forEach(p=>{[-1,1].forEach(s=>{const x=X(s*p[1]);if(x>10&&x<W-10){c.beginPath();c.moveTo(x,10);c.lineTo(x,H-25);c.stroke();}});});c.setLineDash([]);
+ c.fillStyle='#1c2733';c.font='13px sans-serif';c.textAlign='left';c.fillText('소리 세기(상대)',14,18);
+}
+['pD','pL','pV'].forEach(id=>$(id).oninput=calc);
+
+/* ---------- 맥놀이 표시 ---------- */
+function beatUI(){const a=+$('bA').value||0,b=+$('bB').value||0,df=Math.abs(a-b);$('bDf').textContent=df;$('bDf2').textContent=df;$('bDf3').textContent=df*10;drawBeat();}
+function drawBeat(){const cv=$('bCv'),c=cv.getContext('2d'),W=cv.width,H=cv.height;c.clearRect(0,0,W,H);
+ const a=+$('bA').value||440,b=+$('bB').value||444,df=Math.abs(a-b);const mid=H/2,amp=H/2-18;
+ c.strokeStyle='#ccc';c.beginPath();c.moveTo(0,mid);c.lineTo(W,mid);c.stroke();
+ /* 보기용: 시간 1초를 W px로, 진동수가 너무 크면 그리기 어려우므로 두 소리를 같은 비율(÷s)로 줄여 그림 */
+ const fc=df>0?Math.max(df*8,24):30,fa=fc,fb=fc+df;   /* 차이 df는 그대로, 반송 진동수만 그림용으로 낮춤 */
+ c.strokeStyle='#1f6fd6';c.lineWidth=1.5;c.beginPath();for(let x=0;x<=W;x++){const t=x/W;const y=(Math.sin(2*Math.PI*fa*t)+Math.sin(2*Math.PI*fb*t))/2;x?c.lineTo(x,mid-y*amp):c.moveTo(x,mid-y*amp);}c.stroke();
+ c.strokeStyle='#d64545';c.lineWidth=2;[1,-1].forEach(sg=>{c.beginPath();for(let x=0;x<=W;x++){const t=x/W;const y=Math.abs(Math.cos(Math.PI*(fa-fb)*t));x?c.lineTo(x,mid-sg*y*amp):c.moveTo(x,mid-sg*y*amp);}c.stroke();});
+ c.fillStyle='#555';c.font='12px sans-serif';c.fillText('그림은 보기 쉽게 소리 진동수를 낮춰 그렸다 (맥놀이 횟수는 실제와 같은 '+df+' Hz)',10,H-6);}
+calc();beatUI();
+if(location.hash==='#beat')tab('B');
+})();
+</script>
+</body>
+</html>

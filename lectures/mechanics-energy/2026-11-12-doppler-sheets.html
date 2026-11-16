@@ -42,9 +42,9 @@ input:focus,textarea:focus,select:focus{outline:2px solid var(--ac);outline-offs
 }
 </style></head><body><div class="wrap">
 <h1>📱 도플러 효과 수행평가 활동지</h1>
-<div class="note">입력한 내용은 <b>이 기기의 브라우저에만</b> 저장됩니다(서버로 보내지 않음, 사진도 마찬가지). 제출은 <b>인쇄 → PDF 저장</b> 또는 종이 출력으로 합니다. 다른 기기·시크릿 창에서는 내용이 보이지 않습니다.</div>
+<div class="note">입력한 내용은 <b>이 기기의 브라우저에 자동 저장</b>됩니다(서버로 보내지 않음, 사진도 마찬가지). 같은 기기·같은 브라우저로 다시 열면 이어 쓸 수 있습니다. <b>기기를 바꾸거나 수업이 끝나기 전에는 "💾 임시 저장"으로 파일을 내려받아 두고, 다음에 "📂 불러오기"로 이어 쓰세요.</b> 제출은 <b>인쇄 → PDF 저장</b> 또는 종이 출력으로 합니다. 다른 기기·시크릿 창에서는 내용이 보이지 않습니다.</div>
 <div class="tabs"><button data-t="g" class="on">① 모둠 활동지</button><button data-t="p">② 개인 활동지</button></div>
-<div class="tools"><button class="btn" id="prt">🖨 지금 탭 인쇄</button><button class="btn" id="clr">🗑 이 활동지 지우기</button><button class="btn" id="th">🌙 다크 전환</button></div>
+<div class="tools"><button class="btn" id="sv">💾 임시 저장(파일)</button><button class="btn" id="ld">📂 불러오기</button><input type="file" id="ldf" accept=".json,application/json" hidden><button class="btn" id="prt">🖨 지금 탭 인쇄</button><button class="btn" id="clr">🗑 이 활동지 지우기</button><button class="btn" id="th">🌙 다크 전환</button> <span id="stamp" style="font-size:.85em;opacity:.8"></span></div>
 
 <!-- ============ 모둠 ============ -->
 <section class="pane on" id="g">
@@ -153,7 +153,9 @@ T(°C) <input data-k="T2" style="width:70px" inputmode="decimal"> → V = <span 
 <script>
 const KEY='doppler-sheets-v1',$=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 let st={};try{st=JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){}
-const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}};
+const hm=d=>String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+const stamp=t=>{const e=document.getElementById('stamp');if(e)e.textContent=t?'✔ 자동 저장됨 '+t:''};
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(st));stamp(hm(new Date()))}catch(e){stamp('')}};
 const num=v=>{const x=parseFloat(String(v).replace(',','.'));return isFinite(x)?x:NaN};
 const fmt=(x,d=2)=>isFinite(x)?x.toFixed(d):'—';
 function get(k){return st[k]||''}
@@ -179,6 +181,15 @@ calc();
 $$('.tabs button').forEach(b=>b.onclick=()=>{$$('.tabs button').forEach(x=>x.classList.toggle('on',x==b));$$('.pane').forEach(p=>p.classList.toggle('on',p.id==b.dataset.t))});
 $('#prt').onclick=()=>window.print();
 $('#clr').onclick=()=>{if(confirm('이 기기에 저장된 활동지 내용을 모두 지울까요?')){st={};save();$$('.imgslot').forEach(b=>b.clear&&b.clear());setTimeout(()=>location.reload(),300)}};
+$('#sv').onclick=()=>{const img={};$$('.imgslot').forEach(b=>{if(b.get)img[b.dataset.slot]=b.get()});
+  const d=new Date(),z=n=>String(n).padStart(2,'0'),nm='도플러활동지-'+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'-'+z(d.getHours())+z(d.getMinutes())+'.json';
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({v:1,key:KEY,st,img})],{type:'application/json'}));a.download=nm;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  alert('임시 저장 파일을 내려받았습니다: '+nm+'\n(이름·학번이 들어 있으니 다른 사람에게 보내지 마세요.) 다음에 "📂 불러오기"로 이 파일을 선택하면 이어서 쓸 수 있습니다.')};
+$('#ld').onclick=()=>$('#ldf').click();
+$('#ldf').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  let o;try{o=JSON.parse(await f.text());if(o.key!==KEY||typeof o.st!='object')throw 0}catch(x){alert('이 활동지의 임시 저장 파일이 아닙니다.');return}
+  if(!confirm('지금 화면의 내용을 지우고 파일의 내용으로 바꿀까요?'))return;
+  st=o.st;save();$$('.imgslot').forEach(b=>b.set&&b.set((o.img||{})[b.dataset.slot]||[]));setTimeout(()=>location.reload(),500)};
 $('#th').onclick=()=>{const r=document.documentElement,d=r.dataset.theme=='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme:dark)').matches);r.dataset.theme=d?'light':'dark'};
 
 /* ---- 이미지 첨부: IndexedDB(브라우저 안), 줄여서 저장 ---- */
@@ -205,7 +216,7 @@ function mountSlot(box){
   box.addEventListener('drop',e=>box.add([...e.dataTransfer.files]));
   const act=()=>{$$('.imgslot').forEach(x=>x.classList.toggle('act',x==box));activeSlot=box};
   box.addEventListener('mouseenter',act);box.addEventListener('focusin',act);box.addEventListener('click',act);
-  box.clear=()=>{list=[];persist();draw()};
+  box.clear=()=>{list=[];persist();draw()};box.get=()=>list;box.set=l=>{list=l||[];persist();draw()};
   idbGet(id).then(v=>{if(v){list=v;draw()}});
 }
 document.body.insertAdjacentHTML('beforeend','<div id="lb"><img alt=""></div>');

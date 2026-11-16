@@ -46,9 +46,9 @@ input:focus,textarea:focus,select:focus{outline:2px solid var(--ac);outline-offs
 }
 </style></head><body><div class="wrap">
 <h1>📱 도플러 효과 수행평가 활동지</h1>
-<div class="note">입력한 내용은 <b>이 기기의 브라우저에 자동 저장</b>됩니다(사진도 마찬가지). 같은 기기·같은 브라우저로 다시 열면 이어 쓸 수 있고, 기기를 바꾸거나 수업이 끝나기 전에는 <b>"💾 임시 저장"</b> 파일을 받아 두었다가 <b>"📂 불러오기"</b>로 이어 쓰세요. <b>다 쓰면 "📤 서버로 제출"</b>을 누르세요(지금 보이는 탭의 내용이 사진과 함께 선생님께만 전달됩니다. 고쳐서 다시 제출해도 됩니다). 표는 <b>➕ 행 추가 / ✕</b>로 늘리고 줄일 수 있고, 맨 아래 <b>➕ 글 항목·사진 칸 추가</b>로 내용을 더 넣을 수 있습니다. 인쇄(PDF) 제출도 그대로 가능합니다.</div>
+<div class="note">입력한 내용은 <b>이 기기의 브라우저에 자동 저장</b>됩니다(사진도 마찬가지). 같은 기기·같은 브라우저로 다시 열면 이어 쓸 수 있고, 기기를 바꾸거나 수업이 끝나기 전에는 <b>"💾 임시 저장"</b> 파일을 받아 두었다가 <b>"📂 불러오기"</b>로 이어 쓰세요. <b>다 쓰면 "📤 서버로 제출"</b>을 누르세요(지금 보이는 탭의 내용이 사진과 함께 선생님께만 전달됩니다. <b>제출 기한 안에는</b> 고쳐서 "🔁 다시 제출"하거나 "↩ 제출 취소"를 할 수 있고, 기한이 지나면 모두 막힙니다. 제출한 기기·브라우저에서만 취소·수정 제출이 됩니다). 표는 <b>➕ 행 추가 / ✕</b>로 늘리고 줄일 수 있고, 맨 아래 <b>➕ 글 항목·사진 칸 추가</b>로 내용을 더 넣을 수 있습니다. 인쇄(PDF) 제출도 그대로 가능합니다.</div>
 <div class="tabs"><button data-t="g" class="on">① 모둠 활동지</button><button data-t="p">② 개인 활동지</button></div>
-<div class="tools"><button class="btn" id="sub">📤 서버로 제출</button><button class="btn" id="sv">💾 임시 저장(파일)</button><button class="btn" id="ld">📂 불러오기</button><input type="file" id="ldf" accept=".json,application/json" hidden><button class="btn" id="prt">🖨 지금 탭 인쇄</button><button class="btn" id="clr">🗑 이 활동지 지우기</button><button class="btn" id="th">🌙 다크 전환</button> <span id="subres"></span> <span id="stamp" style="font-size:.85em;opacity:.8"></span></div>
+<div class="tools"><button class="btn" id="sub">📤 서버로 제출</button><button class="btn" id="cancel" hidden>↩ 제출 취소</button><button class="btn" id="sv">💾 임시 저장(파일)</button><button class="btn" id="ld">📂 불러오기</button><input type="file" id="ldf" accept=".json,application/json" hidden><button class="btn" id="prt">🖨 지금 탭 인쇄</button><button class="btn" id="clr">🗑 이 활동지 지우기</button><button class="btn" id="th">🌙 다크 전환</button> <div id="dl" style="font-weight:700;margin:2px 0"></div><span id="subres"></span> <span id="stamp" style="font-size:.85em;opacity:.8"></span></div>
 
 <!-- ============ 모둠 ============ -->
 <section class="pane on" id="g">
@@ -266,7 +266,18 @@ document.addEventListener('paste',e=>{const fs=[...(e.clipboardData?.files||[])]
 idbOpen().then(d=>{idb=d;$$('.imgslot').forEach(mountSlot)});
 /* ---- 서버 제출: 지금 탭을 사진 포함 정적 HTML로 만들어 보냄(입력값 JSON은 보내지 않음) ---- */
 const API='https://board.crazyray.uk/api/ds/submit',KN={g:'모둠 활동지',p:'개인 활동지'};
-function showSub(){const k=$('.pane.on').id,v=(st._sub||{})[k];$('#subres').textContent=v?'✔ '+KN[k]+' 제출됨 ('+v+')':''}
+let DL=null;
+const subOf=()=>{const v=(st._sub||{})[$('.pane.on').id];return v&&typeof v=='object'?v:null};
+const leftTxt=n=>{if(n<=0)return'마감됨';const d=Math.floor(n/86400),h=Math.floor(n%86400/3600),m=Math.floor(n%3600/60);return '남은 시간 '+(d?d+'일 ':'')+(d||h?h+'시간 ':'')+m+'분'};
+function showSub(){const k=$('.pane.on').id,v=subOf(),dl=DL&&DL[k];
+  const left=dl&&dl.deadline?dl.left-Math.floor((Date.now()-DL.at)/1000):null,closed=left!==null&&left<=0;
+  $('#dl').textContent=dl&&dl.deadline?'⏰ '+KN[k]+' 제출 기한: '+dl.deadline.slice(5)+' ('+leftTxt(left)+')':'';
+  $('#dl').style.color=closed?'var(--warn)':'';
+  const ok=v&&v.status!='cancelled';
+  $('#subres').textContent=(ok?'✔ '+KN[k]+' 제출됨 ('+v.time+')':(v?'↩ 제출을 취소했습니다. 고친 뒤 다시 제출할 수 있어요.':''))+(closed?' · 기한이 지나 제출·수정·취소할 수 없어요':'');
+  const bt=$('#sub');bt.textContent=ok?'🔁 수정해서 다시 제출':'📤 서버로 제출';bt.disabled=closed;
+  $('#cancel').hidden=!ok;$('#cancel').disabled=closed}
+function loadDL(){fetch(API.replace('submit','status')).then(r=>r.json()).then(j=>{if(j&&j.ok){DL=j;DL.at=Date.now();showSub()}}).catch(()=>{})}
 function snapshot(id,who){
   const pane=$('#'+id),c=pane.cloneNode(true);
   const o=[...pane.querySelectorAll('[data-k]')],n=[...c.querySelectorAll('[data-k]')];
@@ -288,15 +299,25 @@ $('#sub').onclick=async()=>{
   const k=$('.pane.on').id;
   const who=(k=='p'?get('p_id'):[get('g_team'),[get('g_m1'),get('g_m2'),get('g_m3')].filter(x=>x.trim()).join(', ')].filter(x=>x.trim()).join(' / ')).trim().slice(0,58);
   if(who.length<2){alert(k=='p'?'개인 활동지 맨 위의 "학번 / 이름" 칸을 먼저 써 주세요.':'모둠 활동지 B1의 "조"와 조원 칸을 먼저 써 주세요.');return}
-  if(!confirm(KN[k]+'를 선생님께 제출합니다.\n제출자: '+who+'\n\n※ 지금 보이는 탭('+KN[k]+')의 내용만 사진과 함께 전송됩니다. 고쳐서 다시 제출해도 됩니다. 제출할까요?'))return;
+  const prev=subOf(),again=prev&&prev.status!='cancelled';
+  if(!confirm(KN[k]+(again?'를 고쳐서 다시 제출합니다. 이전 제출은 이 내용으로 바뀝니다.':'를 선생님께 제출합니다.')+'\n제출자: '+who+'\n\n※ 지금 보이는 탭('+KN[k]+')의 내용만 사진과 함께 전송됩니다. 고쳐서 다시 제출해도 됩니다. 제출할까요?'))return;
   const bt=$('#sub');bt.disabled=true;$('#subres').textContent='보내는 중…';
   try{
-    const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:k,who,snap:snapshot(k,who)})});
+    const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:k,who,snap:snapshot(k,who),id:prev?prev.id:undefined,token:prev?prev.token:undefined})});
     const j=await r.json().catch(()=>({}));
-    if(r.ok&&j.ok){st._sub=st._sub||{};st._sub[k]=String(j.time||'').slice(5,16)+' · 번호 '+j.id;save();alert('제출했어요. (번호 '+j.id+')')}
-    else{alert('제출하지 못했어요: '+(j.msg||('서버 응답 '+r.status))+'\n(내용은 이 기기에 그대로 있습니다. 임시 저장 후 선생님께 알려 주세요.)')}
+    if(r.ok&&j.ok){st._sub=st._sub||{};st._sub[k]={id:j.id,token:j.token,time:String(j.time||'').slice(5,16),status:'ok'};save();alert((j.again?'다시 제출했어요.':'제출했어요.')+' (번호 '+j.id+')')}
+    else{if(j.closed)loadDL();alert('제출하지 못했어요: '+(j.msg||('서버 응답 '+r.status))+'\n(내용은 이 기기에 그대로 있습니다. 임시 저장 후 선생님께 알려 주세요.)')}
   }catch(e){alert('제출 서버에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.\n안 되면 "💾 임시 저장"으로 파일을 받아 두고 선생님께 알려 주세요.')}
   bt.disabled=false;showSub()};
-showSub();
+$('#cancel').onclick=async()=>{
+  const k=$('.pane.on').id,v=subOf();if(!v)return;
+  if(!confirm(KN[k]+' 제출을 취소할까요?\n(내용은 이 기기에 그대로 남아 있고, 기한 안에 다시 제출할 수 있어요.)'))return;
+  try{
+    const r=await fetch(API.replace('submit','cancel'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:v.id,token:v.token})});
+    const j=await r.json().catch(()=>({}));
+    if(r.ok&&j.ok){v.status='cancelled';save();alert('제출을 취소했어요.')}else{if(j.closed)loadDL();alert('취소하지 못했어요: '+(j.msg||('서버 응답 '+r.status)))}
+  }catch(e){alert('제출 서버에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.')}
+  showSub()};
+loadDL();setInterval(showSub,30000);showSub();
 
 </script></body></html>

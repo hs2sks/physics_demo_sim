@@ -1,0 +1,831 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>화석이 간직한 빛깔</title>
+<!-- fossil-color · 나방 화석(47백만 년)과 암몰라이트에서 박막·다층 간섭을 심화: 1/4 파장 조건, 굴절률 변화·매질·각도에 따른 색, 모형의 한계, 자료 처리, 측정·가정·추론 구분 (16장) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap">
+<style>
+:root{
+  --bg:#dfe5f0; --slide:#f5f7fc; --panel:#ffffff; --ink:#14203a; --muted:#54617b; --line:#c9d2e4;
+  --blue:#1f5fd1; --onblue:#ffffff; --amber:#b45f00; --green:#0c7a58; --red:#b8321f;
+  --blue-soft:#dce8fb; --amber-soft:#fbe8cf;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+    --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+    --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#04070f; --slide:#0e162e; --panel:#182347; --ink:#e9effd; --muted:#a9b6d6; --line:#2b3b6c;
+  --blue:#7aa9ff; --onblue:#08122b; --amber:#ffb454; --green:#4fd1a1; --red:#ff8f7a;
+  --blue-soft:#1d2f5c; --amber-soft:#3b2c12;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;overflow:hidden}
+#viewport{position:relative;width:100%;height:100%;overflow:hidden}
+#deck{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center center;background:var(--slide);box-shadow:0 12px 70px rgba(0,0,0,.28);overflow:hidden}
+.slide{position:absolute;inset:0;display:none;flex-direction:column;padding:84px 88px 52px;gap:24px;background:var(--slide);font-size:32px;line-height:1.4}
+.slide.active{display:flex}
+.hd{display:flex;align-items:baseline;justify-content:space-between;gap:24px;flex:none}
+.hd h2{font-size:58px;line-height:1.15;margin:0;font-weight:800;letter-spacing:-.01em}
+.hd .src{font-size:26px;color:var(--muted);white-space:nowrap}
+.body{flex:1;min-height:0;display:grid;gap:36px}
+.mg-box{position:relative;aspect-ratio:16/9;border-radius:16px;overflow:hidden;background:#06142a;align-self:start}
+.mg-box.mg-full{height:100%;max-width:100%;justify-self:center}
+.mg-box iframe{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none}
+.mg-re{position:absolute;right:14px;bottom:14px;font:inherit;font-size:24px;padding:8px 18px;border-radius:10px;border:1px solid rgba(255,255,255,.4);background:rgba(0,0,0,.55);color:#fff;cursor:pointer;opacity:.75}
+.mg-re:hover,.mg-re:focus-visible{opacity:1}
+.side{display:flex;flex-direction:column;gap:18px;min-height:0}
+canvas{display:block;border-radius:16px;background:#0a1330}
+.box{background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:20px 26px}
+.box h3{margin:0 0 8px;font-size:30px}
+.sm{font-size:26px;color:var(--muted)}
+.lead{font-size:40px;line-height:1.35}
+.k{color:var(--amber);font-weight:700}.p{color:var(--blue);font-weight:700}.ok{color:var(--green);font-weight:700}.bad{color:var(--red);font-weight:700}
+/* math */
+.m{font-family:'STIX Two Text','Times New Roman',serif;font-style:italic;font-size:1.1em;white-space:nowrap}
+.m .u,.u{font-style:normal}
+.m sub,.m sup{font-size:.68em;line-height:0;font-style:normal}
+.fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.15;margin:0 .12em;font-size:.95em}
+.fr>span:first-child{padding:0 .2em .06em;border-bottom:.07em solid currentColor}
+.fr>span:last-child{padding-top:.06em}
+.sq{white-space:nowrap}.sq .rad{border-top:.07em solid currentColor;padding:0 .15em;margin-left:-.04em}
+.eq{font-size:44px;text-align:center;padding:6px 0}
+/* controls */
+.ctl{display:flex;flex-direction:column;gap:4px}
+.ctl .row{display:flex;justify-content:space-between;align-items:baseline;font-size:27px;gap:12px}
+.ctl .val{font-weight:700;font-variant-numeric:tabular-nums}
+.rangew{position:relative}
+input[type=range]{width:100%;height:44px;-webkit-appearance:none;appearance:none;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:38px;height:38px;border-radius:50%;background:var(--blue);margin-top:-13px;border:4px solid var(--panel);box-shadow:0 1px 6px rgba(0,0,0,.35)}
+input[type=range]::-moz-range-track{height:12px;border-radius:6px;background:var(--line)}
+input[type=range]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;background:var(--blue);border:4px solid var(--panel)}
+input[type=range]:focus-visible{outline:3px solid var(--blue);outline-offset:4px;border-radius:8px}
+.marks{position:relative;height:60px;font-size:22px;color:var(--muted)}
+.marks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.btns{display:flex;gap:12px;flex-wrap:wrap}
+.btn,.chip{font:inherit;font-size:27px;font-weight:700;padding:10px 24px;border-radius:12px;border:2px solid var(--blue);background:var(--panel);color:var(--blue);cursor:pointer;line-height:1.25}
+.btn.pri{background:var(--blue);color:var(--onblue)}
+.chip{padding:8px 18px;font-size:26px;border-color:var(--line);color:var(--ink);font-weight:500}
+.chip.on{border-color:var(--blue);background:var(--blue-soft);font-weight:700}
+.btn:focus-visible,.chip:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.chips{display:flex;gap:10px;flex-wrap:wrap}
+/* step reveal */
+.st{display:grid;grid-template-columns:46px 1fr;gap:14px;padding:8px 14px;border-radius:14px;opacity:0;transform:translateY(10px);transition:opacity .35s,transform .35s;border:2px solid transparent}
+.st.on{opacity:.55;transform:none}
+.st.cur{opacity:1;background:var(--panel);border-color:var(--blue)}
+.st .n{width:42px;height:42px;border-radius:50%;background:var(--blue);color:var(--onblue);display:grid;place-items:center;font-weight:800;font-size:24px;margin-top:2px}
+.st .tl{display:flex;flex-wrap:wrap;gap:2px 14px;align-items:baseline}
+.st .t{font-size:23px;color:var(--muted);line-height:1.3}
+.st b{font-size:27px}
+.st .eq{font-size:35px;line-height:1.1;text-align:left;padding:2px 0}
+/* cover */
+.cover{flex-direction:row;align-items:center;gap:56px}
+.cover.active{display:flex}
+.cv-l{flex:1;display:flex;flex-direction:column;gap:28px}
+.cv-l h1{font-size:200px;line-height:1;margin:0;font-weight:800;letter-spacing:-.04em}
+.cv-l h1.long{font-size:92px;line-height:1.22;letter-spacing:-.02em;text-wrap:balance;word-break:keep-all}
+.cv-tag{font-size:30px;color:var(--muted)}
+.q{border-left:8px solid var(--blue);border-radius:6px;padding:8px 0 8px 28px;font-size:36px;line-height:1.45}
+/* table */
+table.t{border-collapse:collapse;width:100%;font-size:27px}
+table.t th,table.t td{padding:10px 14px;border-bottom:2px solid var(--line);text-align:right;white-space:nowrap}
+table.t th:first-child,table.t td:first-child,table.t th:last-child,table.t td:last-child{text-align:left}
+table.t th{font-size:24px;color:var(--muted);font-weight:500}
+table.t tbody tr{cursor:pointer}
+table.t tbody tr.on{background:var(--blue-soft);font-weight:700}
+/* HUD / notes */
+#hud{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:10px;align-items:center;background:rgba(10,19,48,.86);color:#e9effd;padding:8px 14px;border-radius:14px;font-size:18px;opacity:0;transition:opacity .3s;z-index:20}
+#hud.show{opacity:1}
+#hud button{font:inherit;font-size:18px;color:#e9effd;background:transparent;border:1.5px solid rgba(233,239,253,.5);border-radius:8px;padding:4px 12px;cursor:pointer}
+#notes{position:absolute;left:0;right:0;bottom:0;background:rgba(10,19,48,.94);color:#eaf0ff;padding:26px 88px 34px;font-size:30px;line-height:1.5;display:none;z-index:15}
+#notes.on{display:block}
+#notes b{color:#ffb454}
+
+.ko{font-family:'Noto Sans KR',sans-serif;font-style:normal;font-size:.8em}
+#bar{position:absolute;top:14px;left:88px;right:88px;height:54px;display:flex;justify-content:space-between;align-items:center;z-index:12}
+#bar .bl{font-size:26px;font-weight:800}
+#bar .br{display:flex;gap:10px}
+.tb{font:inherit;font-size:24px;font-weight:700;padding:7px 18px;border-radius:12px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;line-height:1.2}
+.tb:hover{border-color:var(--blue)}.tb.on{border-color:var(--blue);background:var(--blue-soft)}
+.tb:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+#help{position:absolute;inset:0;background:rgba(6,11,30,.82);display:none;align-items:center;justify-content:center;z-index:30}
+#help.on{display:flex}
+.hp{background:var(--panel);color:var(--ink);border-radius:22px;padding:36px 52px 40px;width:1320px;max-height:960px;overflow:auto;font-size:27px;line-height:1.5;border:2px solid var(--line)}
+.hp h3{font-size:40px;margin:0 0 14px}.hp h4{font-size:29px;margin:18px 0 6px;color:var(--blue)}
+.hp .g{display:grid;grid-template-columns:230px 1fr;gap:6px 22px}
+.hp kbd{font:inherit;font-size:24px;font-weight:700;background:var(--blue-soft);border:2px solid var(--line);border-radius:8px;padding:1px 10px;margin-right:4px}
+#ask{position:absolute;inset:0;background:rgba(6,11,30,.6);display:none;align-items:center;justify-content:center;z-index:25;cursor:pointer}
+#ask.on{display:flex}
+#ask .ak{background:var(--panel);color:var(--ink);border-radius:24px;border-left:16px solid var(--blue);padding:44px 72px 40px 60px;width:1500px;box-shadow:0 20px 80px rgba(0,0,0,.45)}
+#ask .ah{font-size:30px;color:var(--blue);font-weight:800;margin-bottom:18px}
+#ask .aq{font-size:54px;line-height:1.4;font-weight:700;margin:10px 0;letter-spacing:-.01em}
+#ask .aq span{color:var(--blue);margin-right:14px}
+#ask .af{font-size:24px;color:var(--muted);margin-top:22px}
+#notes .nh{font-size:24px;color:#9db0d8;margin-bottom:6px}
+#notes .nq{margin:4px 0 10px;font-size:29px}
+#notes .ni{margin:6px 0;font-size:27px;line-height:1.45}
+#notes .nx{color:#ff9d9d;font-weight:700}#notes .nv{color:#5eead4;font-weight:700}
+@media (prefers-reduced-motion: reduce){.st{transition:none}}
+#simError{position:absolute;left:88px;right:88px;top:76px;z-index:40;background:rgba(184,50,31,.95);color:#fff;font-size:22px;line-height:1.4;padding:10px 18px;border-radius:12px;white-space:pre-wrap;display:none}
+#simError.on{display:block}
+/* ---- 반응형(reflow): 폭 1100px 미만(폰·태블릿)에서는 1920 스케일 대신 세로로 흐르는 레이아웃 ---- */
+html.rf #deck{left:0;top:0;transform-origin:top left;box-shadow:none}
+html.rf .slide{padding:104px 22px 100px;gap:18px;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;font-size:30px}
+html.rf .body{display:flex !important;flex-direction:column;gap:22px;flex:none;min-height:auto}
+html.rf .side{min-height:auto}
+html.rf .hd{flex-direction:column;align-items:flex-start;gap:6px}
+html.rf .hd h2{font-size:44px}
+html.rf .hd .src{font-size:23px;white-space:normal}
+html.rf canvas{width:100% !important;height:auto !important;max-width:100%}
+html.rf .mg-box.mg-full{height:auto;width:100%}
+html.rf img,html.rf svg,html.rf video{max-width:100%;height:auto}
+html.rf .cover{flex-direction:column;align-items:stretch;gap:26px}
+html.rf .cv-l h1{font-size:112px}
+html.rf .cv-l h1.long{font-size:52px}
+html.rf .cv-tag{font-size:26px}
+html.rf .q{font-size:30px}
+html.rf .lead{font-size:34px}
+html.rf .eq{font-size:36px;overflow-x:auto}
+html.rf table.t{display:block;overflow-x:auto;font-size:24px}
+html.rf .btn,html.rf .chip{min-height:52px}
+html.rf #bar{left:14px;right:14px;top:12px;height:auto;flex-wrap:wrap;gap:8px}
+html.rf #bar .bl{display:none}
+html.rf #bar .br{flex-wrap:wrap;justify-content:flex-end;width:100%}
+html.rf .tb{font-size:20px;padding:8px 12px}
+html.rf .hp{width:92%;max-height:88%;padding:24px 22px 28px;font-size:23px}
+html.rf .hp h3{font-size:32px}
+html.rf .hp .g{grid-template-columns:1fr;gap:2px 0}
+html.rf #ask .ak{width:92%;padding:26px 24px 24px 28px;border-left-width:10px}
+html.rf #ask .aq{font-size:34px}
+html.rf #notes{padding:18px 20px 26px;font-size:23px;max-height:62%;overflow:auto}
+html.rf #notes .nq{font-size:25px}
+html.rf #notes .ni{font-size:23px}
+html.rf #simError{left:14px;right:14px;top:96px}
+html.rf #hud{padding:8px 16px;width:max-content;max-width:96%}
+html.rf #hud #h-pg{white-space:nowrap;font-size:22px}
+html.rf .st:not(.on){display:none}
+html.rf #hud button{font-size:22px;padding:6px 16px;min-height:44px}
+/* ---- extra_css ---- */
+.fit p,.fit td,.fit th,.fit li{font-size:21px !important;line-height:1.4}.fit h3{font-size:25px !important}
+.warn{border-left:6px solid #e0a000;padding:8px 16px;background:rgba(224,160,0,.10);border-radius:6px}
+.bad2{border-left:6px solid #ff7a7a;padding:8px 16px;background:rgba(255,122,122,.10);border-radius:6px}
+table.t{width:100%;table-layout:fixed}
+table.t td,table.t th{text-align:left;font-size:21px;vertical-align:top;white-space:normal;word-break:keep-all;overflow-wrap:anywhere}
+details summary{cursor:pointer;color:#e0a000;font-weight:700;margin-top:6px}
+.btns{flex-wrap:wrap}a{color:inherit}
+.vid{width:100%;aspect-ratio:16/9;border:0;border-radius:12px;background:#000;display:block}
+.cards3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.cards3 .box{padding:12px 16px}.cards3 h3{margin:4px 0 4px !important;font-size:24px !important}
+.cards3 p{font-size:19px !important;line-height:1.38;margin:3px 0}
+.tag{display:inline-block;padding:1px 10px;border-radius:999px;font-size:18px;font-weight:700;margin-right:6px;background:rgba(124,196,255,.2);color:#7cc4ff}
+.ctlrow{display:flex;gap:28px;align-items:flex-end;margin-top:8px}.ctlrow .ctl{flex:1}
+.rdo{font-size:25px;font-weight:700;color:#ffd166;font-variant-numeric:tabular-nums}
+.side .chip{font-size:22px;padding:6px 14px}
+.side .ctl .row{font-size:23px}
+.mono{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div id="viewport">
+<div id="deck">
+
+<!-- c -->
+<section class="slide cover" id="c">
+  <div class="cv-l"><div class="cv-tag">물리학 Ⅲ. 빛과 물질 · 빛의 간섭 심화 (3차시)</div>
+    <h1>화석이 간직한 빛깔</h1>
+    <p class="lead" style="margin:0">4,700만 년 전 나방 화석의 날개는 지금 파랗게 보이지만, 연구자들은 원래 노랑-초록이었다고 계산했다. 박막 간섭을 다층 반사체로 넓혀 굴절률·각도가 색을 바꾸는 과정을 따져 보고, 암몰라이트의 무지갯빛에 적용한다.</p>
+    <div class="q">구조가 그대로인데 색만 변했다면, 무엇이 달라진 걸까? 그리고 화석의 원래 색을 우리는 어디까지 알 수 있을까?</div>
+    <div class="sm">1차시 심화 · 16장 · 시뮬레이션 7종 · 원 논문 수치 확인</div></div>
+  <canvas id="c-cv"></canvas>
+</section>
+
+<!-- mp -->
+<section class="slide" id="mp">
+  <header class="hd"><h2>오늘의 지도 — 1·2차시에서 어디로 가는가</h2><span class="src">1차시: 이중 슬릿, 2차시: 박막·뉴턴 링·구조색 → 오늘: 다층 반사체와 화석</span></header>
+<div style="display:grid;grid-template-columns:1.15fr 1fr;gap:22px"><div class="box fit"><h3>수업 흐름</h3><table class="t"><tr><th style="width:230px">장</th><th>내용</th></tr><tr><td>③ 복습</td><td>한 겹 막의 간섭 — 반사 위상, 광학 두께 nd</td></tr><tr><td>④~⑤ 다층</td><td>여러 겹을 쌓으면 왜 한 파장만 강하게 반사하나(1/4 파장 조건 유도)</td></tr><tr><td>⑥~⑨ 나방 화석</td><td>구조 단면과 논문의 측정값 → 굴절률이 바뀌면? → 매질에 담그면? → 모형의 한계</td></tr><tr><td>⑩ 각도</td><td>비스듬히 보면 색이 변하는 까닭, 오목한 비늘이 줄이는 방법</td></tr><tr><td>⑪~⑬ 암몰라이트</td><td>진주층의 4 nm 틈, 판 두께와 색, 자료 처리 연습</td></tr><tr><td>⑭~⑯</td><td>측정·가정·추론 가르기, 교재·학과 연결, 출처와 확인 상태</td></tr></table></div><div class="box fit"><h3>오늘의 약속</h3><p>① 시뮬레이션은 <b class="k">교육용 단순 모형</b>이다. 논문의 실제 구조 전체를 재현하지 않는다.</p><p>② 논문에서 읽은 숫자(두께·굴절률·파장)와 <b>내가 가정한 숫자</b>를 구별한다.</p><p>③ 화석의 “원래 색”은 측정값이 아니라 <b class="k">계산으로 복원한 값</b>이다 — 얼마나 믿을 수 있는지를 마지막에 따진다.</p><p class="sm">쓰는 도구: 박막 간섭의 경로차·위상 변화, 굴절률 n과 광학 두께 nd, 입사각에 따른 굴절.</p></div></div>
+</section>
+
+<!-- fm -->
+<section class="slide" id="fm">
+  <header class="hd"><h2>복습 — 한 겹의 얇은 막은 어떤 색을 반사할까</h2><span class="src">Halliday 35-4 · Serway 37.5 · 공기 속의 막(양쪽 n = 1) · 전달 행렬로 계산(여러 번 반사 포함)</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="fm-cv"></canvas><div class="side"><div class="ctl"><div class="row">막 두께 d<span class="val" id="fm-d-v"></span></div><input type="range" id="fm-d" min="40" max="500" step="2" value="200"></div><div class="ctl"><div class="row">막의 굴절률 n<span class="val" id="fm-n-v"></span></div><input type="range" id="fm-n" min="1.2" max="2.4" step="0.01" value="1.5"></div><div class="box fit"><p>위·아래 면에서 반사한 두 빛의 경로차는 <b>2nd</b>. 공기→막 반사에서만 위상이 π 바뀐다.</p><p>보강: <b class="k">2nd = (m − ½)λ</b> (m = 1, 2, …)</p><p class="sm">두께를 키우면 보강 조건을 만족하는 파장이 여러 개가 되어 색이 옅어진다.</p></div></div>
+</div>
+</section>
+
+<!-- ml -->
+<section class="slide" id="ml">
+  <header class="hd"><h2>여러 겹으로 쌓으면 — 다층 반사체</h2><span class="src">Hecht 9.7 주기적 다층막(442~446쪽) · Halliday 35-4 · 위 그림 위쪽이 빛이 들어오는 쪽</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="ml-cv"></canvas><div class="side"><div class="ctl"><div class="row">주기 수 N<span class="val" id="ml-N-v"></span></div><input type="range" id="ml-N" min="1" max="14" step="1" value="4"></div><div class="ctl"><div class="row">높은 층 n₁<span class="val" id="ml-n1-v"></span></div><input type="range" id="ml-n1" min="1.2" max="2.4" step="0.01" value="1.56"></div><div class="ctl"><div class="row">낮은 층 n₂<span class="val" id="ml-n2-v"></span></div><input type="range" id="ml-n2" min="1.0" max="1.6" step="0.01" value="1.0"></div><div class="ctl"><div class="row">n₁ 층 두께 d₁<span class="val" id="ml-d1-v"></span></div><input type="range" id="ml-d1" min="40" max="200" step="1" value="110"></div><div class="ctl"><div class="row">n₂ 층 두께 d₂<span class="val" id="ml-d2-v"></span></div><input type="range" id="ml-d2" min="40" max="200" step="1" value="111"></div><div class="box fit"><p>주기마다 반사가 더해져 <b class="k">특정 파장 띠</b>만 강하게 반사된다.</p></div></div>
+</div>
+</section>
+
+<!-- qw -->
+<section class="slide" id="qw" data-steps="6">
+  <header class="hd"><h2>왜 그 파장일까 — 1/4 파장 조건</h2><span class="src">Hecht 9.7 주기적 다층막 · 공기(1.0)와 큐티클(1.56)의 경계 한 면의 반사율 ≈ 4.8 %</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="qw-cv"></canvas>
+<div class="side steps" style="gap:6px;justify-content:flex-start"><div class="st" data-i="1"><div class="n">1</div><div><div class="tl"><b>① 경계마다 약한 반사</b></div><div class="eq"><span class="m">r = <span class="fr"><span>n<sub>a</sub> - n<sub>b</sub></span><span>n<sub>a</sub> + n<sub>b</sub></span></span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">굴절률 차가 클수록 강하다. 공기와 큐티클(1.56)의 한 경계는 반사율이 약 5 %다.</div></div></div>
+<div class="st" data-i="2"><div class="n">2</div><div><div class="tl"><b>② 반사 위상</b></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">낮은 → 높은 굴절률 경계에서 반사하면 위상이 π 바뀌고, 높은 → 낮은 경계에서는 바뀌지 않는다. 경계마다 부호가 번갈아 나타난다.</div></div></div>
+<div class="st" data-i="3"><div class="n">3</div><div><div class="tl"><b>③ 한 층을 왕복하는 위상</b></div><div class="eq"><span class="m">Δφ = <span class="fr"><span>2π</span><span>λ</span></span>· 2nd</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">층을 왕복하면 광학 경로가 2nd만큼 늘어난다.</div></div></div>
+<div class="st" data-i="4"><div class="n">4</div><div><div class="tl"><b>④ 이웃 반사가 같은 위상이 되려면</b></div><div class="eq"><span class="m">π + <span class="fr"><span>4π nd</span><span>λ</span></span> = 2π ⇒ nd = <span class="fr"><span>λ</span><span>4</span></span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">각 층의 광학 두께가 λ/4이면 모든 반사가 보강된다(1/4 파장 다층).</div></div></div>
+<div class="st" data-i="5"><div class="n">5</div><div><div class="tl"><b>⑤ 반사 파장</b></div><div class="eq"><span class="m">λ = 2(n<sub>1</sub> d<sub>1</sub> + n<sub>2</sub> d<sub>2</sub>)</span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">주기의 광학 두께에 의해 정해진다. 두 층이 모두 λ/4이면 반사가 가장 강하고, 그렇지 않아도 피크 위치는 같다.</div></div></div>
+<div class="st" data-i="6"><div class="n">6</div><div><div class="tl"><b>⑥ 숫자 대입 (검증)</b></div><div class="eq"><span class="m">d<sub>1</sub> = <span class="fr"><span>565</span><span>4 × 1.56</span></span> ≈ 90&thinsp;<span class="ko">nm</span></span></div><div class="t" style="color:var(--ink);font-size:27px;line-height:1.4">논문이 측정한 가장 윗층 두께(93~124 nm)와 같은 크기다. 황록(565 nm)을 낼 수 있는 두께다.</div></div></div></div>
+</div>
+</section>
+
+<!-- sc -->
+<section class="slide" id="sc">
+  <header class="hd"><h2>47백만 년 전 나방 — 무엇을 어떻게 알았나</h2><span class="src">McNamara et al. (2011) PLoS Biology 9(11): e1001200 · 메셀 오일셰일(독일), 에오세</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="sc-cv"></canvas><div class="side"><div class="box fit"><h3>논문에서 읽은 것</h3><p><b>시료</b> 알락나방과(Zygaenidae)로 보이는 나방(멸종 계통일 가능성)의 앞날개 비늘, 투과전자현미경(TEM) 단면.</p><p><b>구조</b> 구멍 뚫린 층이 3~5겹. 맨 윗층 93~124 nm.</p><p><b>굴절률</b> 큐티클 1.56, 공기 1.0 (현생 인시류와 비슷하다고 가정).</p><p><b>측정</b> 공기 중 반사 피크 <b class="p">473 nm(파랑)</b></p><p><b>복원</b> 구조의 푸리에 분석으로 예측한 피크 <b class="ok">565 nm(황록)</b></p></div></div>
+</div>
+</section>
+
+<!-- fo -->
+<section class="slide" id="fo">
+  <header class="hd"><h2>구조는 그대로인데 색이 달라졌다면?</h2><span class="src">논문 해석: 큐티클 성분(굴절률) 변화 추정 · 교육용 모형(110 nm + 111 nm × 4)</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="fo-cv"></canvas><div class="side"><div class="ctl"><div class="row">큐티클 굴절률 n<span class="val" id="fo-n-v"></span></div><input type="range" id="fo-n" min="1.0" max="1.7" step="0.01" value="1.56"></div><div class="box fit"><p>논문은 비늘의 <b>구조가 거의 변하지 않았다</b>고 본다(층이 겹치거나 부서지지 않음). 그렇다면 바뀐 것은 구조가 아니라 <b class="k">물질의 굴절률</b>이다.</p><p>n을 내려 측정값(473 nm)에 맞춰 보자. 어떤 일이 일어날까?</p></div></div>
+</div>
+</section>
+
+<!-- me -->
+<section class="slide" id="me">
+  <header class="hd"><h2>매질에 담그면 — 굴절률의 역할을 직접 본다</h2><span class="src">논문: 공기·에탄올·글리세린에서 측정 · 모형은 정량 비교 금지</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="me-cv"></canvas><div class="side"><div class="chips"><div class="chip on" id="me-m0">공기</div><div class="chip" id="me-m1">에탄올</div><div class="chip" id="me-m2">글리세린</div></div><div class="box fit"><p>구멍과 층 사이를 채우던 공기(1.0)가 액체(1.36~1.47)로 바뀌면 층 사이의 굴절률 차가 줄고, 광학 두께가 커진다.</p><p>결과: <b class="k">피크가 긴 파장으로 이동</b>하고 <b class="k">반사율이 크게 감소</b>.</p><p class="sm">실제 논문에서도 공기 중에서는 파랗게 보이던 비늘이 글리세린에서는 노랗게 보인다. 모형의 반사율 값은 실제보다 훨씬 극단적이다(실제 구조는 구멍이 일부만 채워진다).</p></div></div>
+</div>
+</section>
+
+<!-- lm -->
+<section class="slide" id="lm">
+  <header class="hd"><h2>거꾸로 계산해 보면 — 모형의 한계</h2><span class="src">교사가 만든 단순 모형의 계산값 · 논문은 변한 n 값을 제시하지 않음(확인 범위)</span></header>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px"><div class="box fit"><h3>큐티클 n만 바꾸면 피크는?</h3><table class="t"><tr><th>n</th><th>피크</th><th>최대 반사율</th></tr><tr><td>1.56</td><td>568 nm</td><td>91 %</td></tr><tr><td>1.45</td><td>544 nm</td><td>85 %</td></tr><tr><td>1.35</td><td>520 nm</td><td>75 %</td></tr><tr><td>1.25</td><td>496 nm</td><td>57 %</td></tr><tr><td>1.20</td><td>484 nm</td><td>45 %</td></tr><tr><td><b class="p">1.15</b></td><td><b class="p">476 nm</b></td><td>31 %</td></tr></table><p class="sm" style="margin-top:8px">측정 피크 473 nm에 맞추려면 이 모형에서는 n ≈ 1.15가 필요하다.</p></div><div class="box fit"><h3>읽는 법</h3><p>① <b class="k">1.56 → 1.15</b>는 너무 큰 변화다(공기 1.0에 가깝다). 유기물 굴절률이 이만큼 내려갔다고 보기는 어렵다(교사 판단).</p><p>② 그래서 이 단순 모형으로는 “굴절률 하나가 바뀌었다”만으로 473 nm를 설명하기 어렵다.</p><p>③ 가능한 이유: 층 속의 구멍·유기물이 섞인 <b>유효 굴절률</b>, 부서지거나 기울어진 기둥(논문도 언급), 측정·복원의 오차, 두 물질 모형의 단순화.</p><p>④ 논문이 “화석화 중 변화했을 것(probably)”이라고 조심스럽게 쓴 이유다.</p></div></div>
+</section>
+
+<!-- an -->
+<section class="slide" id="an">
+  <header class="hd"><h2>보는 각도에 따라 변하는 색 — 무지갯빛</h2><span class="src">λ ≈ 2Σ dᵢ√(nᵢ² − sin²θ) · 구멍(천공) 효과는 모형에 없음</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="an-cv"></canvas><div class="side"><div class="ctl"><div class="row">보는 각도 θ<span class="val" id="an-th-v"></span></div><input type="range" id="an-th" min="0" max="70" step="1" value="0"></div><div class="ctl"><div class="row">기울기 퍼짐(오목한 정도)<span class="val" id="an-sg-v"></span></div><input type="range" id="an-sg" min="0" max="25" step="1" value="0"></div><div class="box fit"><p>비스듬히 볼수록 층 속 광학 경로가 짧아져 피크가 <b class="k">파란 쪽</b>으로 간다 → 무지갯빛.</p><p>비늘이 <b>오목</b>하면 같은 방향에서도 층이 여러 각도로 기울어져 있어, 여러 파장이 섞인다 → 각도에 덜 민감하다.</p></div></div>
+</div>
+</section>
+
+<!-- na -->
+<section class="slide" id="na">
+  <header class="hd"><h2>암몰라이트 — 화석 껍데기의 무지갯빛</h2><span class="src">Imai 외 (2025) Sci. Rep. 15, 37541 · 보도 기사로 확인(원문 미확인) · 판 n ≈ 1.68은 교사 가정</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="na-cv"></canvas><div class="side"><div class="ctl"><div class="row">판 두께 d<span class="val" id="na-d-v"></span></div><input type="range" id="na-d" min="100" max="230" step="2" value="160"></div><div class="ctl"><div class="row">틈의 두께 g<span class="val" id="na-g-v"></span></div><input type="range" id="na-g" min="0" max="20" step="1" value="4"></div><div class="ctl"><div class="row">판의 수 N<span class="val" id="na-N-v"></span></div><input type="range" id="na-N" min="3" max="20" step="1" value="10"></div><div class="chips"><div class="chip" id="na-p0">빨강 조각 190</div><div class="chip on" id="na-p1">초록 조각 160</div><div class="chip" id="na-p2">파랑 조각 140</div></div><div class="chips"><div class="chip on" id="na-gm0">틈: 공기</div><div class="chip" id="na-gm1">틈: 유기물</div></div><div class="box fit"><p>색소가 아니라 <b class="k">아라고나이트 판 + 얇은 틈</b>의 다층 간섭이다. 보고된 판 두께로 계산하면 빨강·초록·파랑 순서가 나온다.</p></div></div>
+</div>
+</section>
+
+<!-- cm -->
+<section class="slide" id="cm">
+  <header class="hd"><h2>나방 비늘과 암몰라이트 — 같은 원리, 다른 재료</h2><span class="src">관찰 활동 제안 · 진주·전복 껍데기·CD(교사 준비) · 2·5·8·11장의 표</span></header>
+<div style="display:grid;grid-template-columns:1.2fr 1fr;gap:22px"><div class="box fit"><table class="t"><tr><th style="width:150px"></th><th>나방 비늘 (47백만 년)</th><th>암몰라이트</th></tr><tr><td>높은 굴절률 층</td><td>큐티클 n ≈ 1.56</td><td>아라고나이트 판 n ≈ 1.68(가정)</td></tr><tr><td>낮은 굴절률 층</td><td>공기(구멍·간격)</td><td>약 4 nm 틈(공기 또는 유기물)</td></tr><tr><td>층 두께</td><td>약 55~124 nm</td><td>약 140~190 nm (색에 따라)</td></tr><tr><td>색을 정하는 것</td><td>층 두께·굴절률</td><td>판 두께(균일성)·틈</td></tr><tr><td>화석에서 바뀐 것</td><td>굴절률(추정)</td><td>보존된 구조가 색을 유지</td></tr><tr><td>각도 의존</td><td>오목·천공으로 줄임</td><td>(이 수업에서는 미조사)</td></tr></table></div><div class="box fit"><h3>관찰 활동 — 각도와 색</h3><p>① 진주·전복 껍데기를 한 조명 아래에 두고 0°·30°·60°에서 사진을 찍는다.</p><p>② 색 이름과 대략적인 파장(분광 앱이나 색 표)을 기록한다.</p><p>③ 비스듬할수록 <b class="k">파랗게</b> 되는지 확인한다. (식 λ ≈ λ₀√(1 − sin²θ/n²))</p><p>④ 13장에서 그래프로 정리한다.</p><p class="sm">손 때·기름이 묻으면 색이 달라질 수 있다 — 같은 조건에서 비교한다.</p></div></div>
+</section>
+
+<!-- ft -->
+<section class="slide" id="ft">
+  <header class="hd"><h2>자료 처리 연습 — 각도 자료에서 유효 굴절률 구하기</h2><span class="src">가상 자료(λ₀ = 565 nm, 잡음 포함) · λ² = λ₀²(1 − sin²θ / n²) → λ² 대 sin²θ 는 직선</span></header>
+<div class="body" style="grid-template-columns:1040px 1fr">
+<canvas id="ft-cv"></canvas><div class="side"><div class="ctl"><div class="row">직선의 n<span class="val" id="ft-ne-v"></span></div><input type="range" id="ft-ne" min="1.0" max="2.2" step="0.01" value="1.8"></div><div class="chips"><div class="chip" id="ft-ans">정답 보기</div></div><div class="box fit"><p>식을 λ²에 대해 정리하면 sin²θ에 대한 <b class="k">직선</b>이다.</p><p>기울기 = −λ₀² / n², 절편 = λ₀². 슬라이더를 움직여 점에 가장 가까운 직선을 찾고, <b>n_eff</b>를 구하라.</p></div></div>
+</div>
+</section>
+
+<!-- ep -->
+<section class="slide" id="ep">
+  <header class="hd"><h2>측정한 것, 가정한 것, 추론한 것</h2><span class="src">McNamara et al. (2011) · Imai et al. (2025) 보도 · 이 덱의 모형</span></header>
+<div class="cards3"><div class="box"><h3><span class="tag" style="background:rgba(94,234,212,.2);color:#5eead4">측정</span> 직접 잰 것</h3><p>• TEM 단면의 층 두께(맨 윗층 93~124 nm)</p><p>• 화석 비늘의 공기 중 반사 피크 473 nm</p><p>• 매질을 바꿀 때의 색(글리세린에서 노랑)</p><p>• 암몰라이트의 판 두께(평균 190/160/140 nm)·틈 약 4 nm</p></div><div class="box"><h3><span class="tag" style="background:rgba(255,180,84,.2);color:#ffb454">가정</span> 믿고 쓴 것</h3><p>• 큐티클 n = 1.56 (현생 인시류와 비슷하다고 봄)</p><p>• 공기 n = 1.0</p><p>• 화석화로 구조는 변하지 않음</p><p>• 아라고나이트 판 n ≈ 1.68 (이 덱의 가정)</p></div><div class="box"><h3><span class="tag" style="background:rgba(124,196,255,.2);color:#7cc4ff">추론</span> 계산해서 얻은 것</h3><p>• 원래 피크 565 nm(황록)</p><p>• 변색 이유: 큐티클 성분(굴절률) 변화, “아마도”</p><p>• 무지갯빛 억제: 구멍·오목함의 효과</p><p>• 색이 옅은 껍데기: 틈의 크기·유기물</p></div></div><div class="box fit" style="margin-top:14px"><h3>토론</h3><p>“47백만 년 전 나방은 황록색이었다”는 문장을 보도에서 읽는다면, 어떤 단서를 붙여야 정확할까? 근거로 쓴 가정이 하나라도 틀리면 결론은 어떻게 달라질까?</p></div>
+</section>
+
+<!-- bk -->
+<section class="slide" id="bk">
+  <header class="hd"><h2>대학 교재와 학과로 이어 읽기</h2><span class="src">서버 색인 교재(bookref)로 확인한 쪽 · 본문은 직접 인용하지 않음</span></header>
+<div style="display:grid;grid-template-columns:1.1fr 1fr;gap:22px"><div class="box fit"><h3>교재 이어 읽기</h3><table class="t"><tr><th style="width:290px">교재</th><th>장·절 (쪽)</th></tr><tr><td>Halliday, Fundamentals of Physics</td><td>35-4 Interference from Thin Films (1089쪽)</td></tr><tr><td>Serway &amp; Jewett, Physics for Scientists and Engineers</td><td>37.5 Interference in Thin Films (1182쪽)</td></tr><tr><td>Hecht, Optics (5판)</td><td>9.7 Applications of Single and Multilayer Films (442쪽) — 주기적 다층막 444~446쪽</td></tr></table><p class="sm" style="margin-top:8px">다층막의 정량 설명(전달 행렬)은 Hecht 9.6~9.7과 대학 광학에서 다룬다.</p></div><div class="box fit"><h3>이어지는 대학 과목·학과</h3><p>• <b>광학·박막 광학</b> — 반사 방지막, 거울, 필터(물리학과·광학공학)</p><p>• <b>광자 결정·메타물질</b> — 주기 구조로 빛을 제어(물리·재료공학)</p><p>• <b>고생물학·지질학</b> — 화석 색의 복원(지구과학)</p><p>• <b>생체모방공학</b> — 구조색 페인트·센서(화학·재료)</p></div></div>
+</section>
+
+<!-- sr -->
+<section class="slide" id="sr">
+  <header class="hd"><h2>출처와 확인 상태</h2><span class="src">이 덱의 사실·수치의 출처와 아직 확인하지 않은 부분</span></header>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px"><div class="box fit"><h3>논문·자료</h3><ul><li>McNamara, M. E. et al. (2011). Fossilized biophotonic nanostructures reveal the original colors of 47-million-year-old moths. <i>PLoS Biology</i> 9(11): e1001200. doi:10.1371/journal.pbio.1001200</li><li>Imai, H. 외 (2025). Brilliant structural colors originating from reflection by nanogaps of nacreous layers in fossilized ammonite shells. <i>Scientific Reports</i> 15, 37541. doi:10.1038/s41598-025-21872-z</li><li>교재: Halliday 35-4, Serway 37.5, Hecht 9.7</li></ul></div><div class="box fit"><h3>확인 상태 — 정직하게</h3><ul><li><b>나방 논문</b>: 본문 앞부분(구조·굴절률·피크 473/565 nm·천공 계수)은 원문 텍스트로 확인. 뒷부분(글리세린 피크 603 nm 등)은 요약본만 확인해 이 덱에 넣지 않았다.</li><li><b>암몰라이트</b>: 보도자료·기사(판 두께 190/160/140 nm, 틈 4 nm)로만 확인. 논문 원문은 미확인.</li><li>아라고나이트 n ≈ 1.68, 큐티클 층 두께 110 nm·공기층 111 nm 는 <b>교사 가정</b>이다.</li><li>시뮬레이션의 색은 보정된 화면 색이다. 소리·분광 측정 활동은 미시험.</li></ul></div></div>
+</section>
+
+<div id="notes"></div>
+<div id="bar"><div class="bl">🦋 화석이 간직한 빛깔 — 다층 간섭과 구조색 (나방 화석·암몰라이트) <span class="sm">· 물리학 Ⅲ. 빛과 물질 · 빛의 간섭 심화</span></div><div class="br"><button class="tb" id="b-help">❓ 조작법</button><button class="tb" id="b-ask">💬 발문 띄우기</button><button class="tb" id="b-notes">📝 오개념 교정 노트</button><button class="tb" id="b-theme">🌙 다크 전환</button></div></div>
+<div id="ask" role="dialog" aria-label="발문"></div>
+<div id="help" role="dialog" aria-label="조작법 설명"><div class="hp">
+<h3>조작법</h3>
+<h4>키보드</h4>
+<div class="g"><div><kbd>→</kbd><kbd>Space</kbd></div><div>다음 (단계가 있는 슬라이드는 단계부터 진행)</div>
+<div><kbd>←</kbd></div><div>이전 (단계도 거꾸로)</div>
+<div><kbd>Home</kbd><kbd>End</kbd></div><div>처음 / 마지막 슬라이드</div>
+<div><kbd>F</kbd></div><div>전체 화면</div>
+<div><kbd>Q</kbd></div><div>이 슬라이드의 <b>발문(학생용 질문)</b>을 화면 위에 크게 띄우기 / 닫기 (아무 곳이나 클릭해도 닫힘)</div>
+<div><kbd>N</kbd></div><div>오개념 교정 노트 열기/닫기 (교사용)</div>
+<div><kbd>T</kbd></div><div>다크 / 라이트 전환</div>
+<div><kbd>?</kbd><kbd>Esc</kbd></div><div>조작법 열기 / 닫기</div></div>
+<h4>화면 조작</h4>
+<div class="g"><div>→ / Space</div><div>다음 단계·슬라이드</div>
+<div>Q</div><div>학생 발문 열기</div>
+<div>N</div><div>오개념 노트</div>
+<div>슬라이더·칩</div><div>시뮬레이션 조작</div>
+<div>슬라이더 키보드</div><div>슬라이더를 클릭해 초점이 있는 동안에는 ← → 가 값 조절에 쓰입니다. 마우스로 놓으면 자동 해제</div></div>
+<h4>수업 진행 팁</h4>
+<div>시뮬레이션은 교육용 단순 모형이며, 색은 보기 좋게 밝기를 보정했다. 논문의 값과 내 가정을 구분해서 읽는다.</div>
+<div class="btns" style="margin-top:22px"><button class="btn pri" id="help-x">닫기 (Esc)</button></div>
+</div></div>
+<div id="simError"></div>
+</div>
+<div id="hud"><button id="h-prev" aria-label="이전">◀</button><span id="h-pg">1 / 1</span><button id="h-next" aria-label="다음">▶</button><button id="h-fs" aria-label="전체화면">⛶</button></div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   공통 유틸 / 그리기 도우미 (템플릿 제공)
+   ===================================================================== */
+const DECK = {"title":"화석이 간직한 빛깔 — 다층 간섭과 구조색 (나방 화석·암몰라이트)","notes":{"c":{"q":"표지의 날개가 천천히 파랑↔황록으로 변한다. “무엇이 바뀌면 색이 바뀔까?”를 먼저 예상하게 한다(두께·굴절률·각도). 본 수업은 1·2차시(박막 간섭, 구조색)를 마친 학생 대상 심화이다.","m":[["화석의 색은 색소가 변해서 달라졌다","이 나방의 색은 색소가 아니라 비늘의 나노 구조(구조색)에서 나온다. 구조가 같아도 물질의 굴절률이 변하면 색이 달라질 수 있다."]]},"mp":{"q":"“오늘 우리가 쓰는 식은 2차시의 2nd = mλ 하나다. 다만 층이 여러 겹이 된다.”라고 연결해 준다.","m":[["심화 수업이니 식이 훨씬 복잡할 것이다","식은 같다. 층이 많아지면 더하는 반사파가 늘어날 뿐이다."]]},"fm":{"q":"d를 천천히 올리며 피크가 오른쪽으로 이동하고, 어느 두께부터는 피크가 두 개가 되는 것을 보여 준다. “막이 얇을수록 선명한 색”이 되는 까닭과 연결한다. 위상 π는 낮은 굴절률→높은 굴절률 반사에서만 생긴다고 확인한다.","m":[["막이 두꺼울수록 색이 진해진다","두꺼우면 보강하는 파장이 여러 개 생겨 색이 섞여 옅어진다(고차 간섭)."],["위·아래 두 반사파의 세기는 같다","약 4~5%로 비슷하지만 같지 않다. 전달 행렬 계산은 여러 번 반사를 모두 포함한다."]]},"ml":{"q":"N=1→10으로 올려 반사율이 커지는 것을 본다. n₂를 n₁에 가깝게 올리면 반사가 약해지고 띠가 좁아지는 것도 확인한다. 초록 점선 2(n₁d₁+n₂d₂)와 피크가 일치하는지 본다.","m":[["층을 많이 쌓으면 모든 색이 더 강해진다","쌓은 구조의 주기가 정한 파장 띠만 강해지고, 나머지는 오히려 투과한다."],["굴절률 차가 작아도 층만 많으면 된다","차가 작으면 한 경계 반사가 약해 N이 아주 커야 한다."]]},"qw":{"q":"단계 ②에서 “왜 부호가 번갈아 바뀌는가”를 학생에게 먼저 답하게 한다(낮→높만 π). ④에서 위상 합이 2π가 되는 조건을 칠판에 직접 쓰게 한다. ⑥의 90 nm는 논문 측정값의 범위와 비교하되 일치한다고 단정하지 않는다(같은 크기).","m":[["위상 π는 모든 반사에서 생긴다","굴절률이 작은 쪽에서 큰 쪽으로 반사할 때만 생긴다."],["모든 층이 정확히 λ/4여야 색이 난다","반사 파장 위치는 주기 광학 두께로 정해지고, λ/4는 반사를 가장 강하게 하는 조건이다."]]},"sc":{"q":"핵심은 “구조(두께)는 현미경으로 직접 잰다. 굴절률 1.56은 가정이다.”를 구분하는 것이다. 파랑(측정)과 황록(복원)의 차이를 다음 장의 질문으로 연결한다. 논문은 이 색이 포식자에게 경고(먹이 활동 중)와 위장(앉아 있을 때)의 이중 기능을 했을 것으로 제안한다.","m":[["화석 속 색소가 남아 있어서 원래 색을 안다","이 연구는 색소가 아니라 나노 구조의 모양에서 색을 계산했다. 원래 색은 계산한 예측값이다."]]},"fo":{"q":"n을 1.56에서 낮추며 피크가 이동하는 것을 본다. 광학 두께 nd가 줄면 피크가 짧은 파장 쪽으로 간다. 473 nm 근처까지 낮추면 반사율이 크게 떨어지는 것도 짚는다(논문도 화석 반사체가 이상적이 아니라고 언급).","m":[["굴절률이 바뀌면 층의 두께도 바뀐다","두께와 굴절률은 별개 양이다. 여기서는 두께를 고정하고 n만 바꿨다."],["측정한 473 nm가 원래 색이다","화석화로 변한 뒤의 값이다. 원래 색은 565 nm로 예측한다."]]},"me":{"q":"세 매질을 차례로 눌러 보게 하고 “n이 달라지면 색이 달라진다”를 직접 확인시킨다. 박막 식에서 n이 하는 역할(광학 두께)과 층 사이 굴절률 차(반사율)의 두 가지를 구별한다.","m":[["액체에 담그면 비늘이 변색된다","구조는 그대로이고 굴절률 조건이 바뀌어 반사 파장이 바뀐다. 말리면 다시 돌아온다."]]},"lm":{"q":"“계산이 맞았다”가 아니라 “계산이 어디서 틀리는지가 정보다”를 강조한다. 본 슬라이드의 수치는 교사가 만든 단순 모형의 결과이며 논문의 값이 아니다. 논문 본문 일부만 직접 확인했음을 밝힌다(마지막 장).","m":[["모형이 안 맞으면 연구가 틀린 것이다","모형의 가정(두 물질, 균일한 층)이 현실보다 단순하다는 뜻일 수 있다. 어떤 가정이 의심스러운지 찾는 것이 연구다."]]},"an":{"q":"θ를 0→60°로 끌며 띠가 파랑·보라로 이동하는 것을 보여 준다. 기울기 퍼짐을 15° 이상으로 올리면 아래 띠가 단조로워지는 것을 비교한다. 논문은 구멍 뚫린 층(perforation)과 오목함이 함께 작용했다고 보며, 이 모형은 오목함만 다룬다.","m":[["각도가 커지면 파장이 길어진다(붉어진다)","층 속 경로가 짧아져 파장은 짧아진다(파랗게 이동)."],["오목하게 하면 색이 사라진다","색의 각도 의존성이 줄 뿐, 평균색은 남는다."]]},"na":{"q":"[근거] 판 두께 평균 190/160/140 nm(빨강/초록/파랑), 틈 약 4 nm는 보도 기사 기준이다. 판 n ≈ 1.68은 교사 가정(아라고나이트, 빛이 판에 수직으로 들어올 때). / 판 두께 칩 세 개를 차례로 눌러 파랑·초록·빨강이 나오는 것을 본다. 틈이 얇아도(4 nm ≪ λ) 굴절률 차가 있어야 반사가 생긴다는 점이 핵심이다. 연구진은 색이 옅은 시료의 이유로 틈이 크거나 없거나 유기물이 차 있는 경우를 제안했다(보도 기사 기준). 모형의 피크는 식 2(nd+n′g)보다 조금 긴 파장으로 나온다(약 20 nm).","m":[["틈이 있으면 빛이 새서 색이 약해진다","틈은 굴절률 대비를 만들어 반사를 만드는 요소이다. 틈이 유기물로 채워지면 대비가 줄어 오히려 약해진다."],["암몰라이트는 색소 광물이다","이 연구에서는 구조(간섭)에서 색이 나온다고 설명한다."]]},"cm":{"q":"표의 “낮은 굴절률 층” 행을 먼저 학생이 채우게 한다. 진주층은 현생 조개에도 있어 암모나이트와 비교할 수 있다. 실제 측정 결과가 모형과 다를 수 있음을 미리 말해 둔다.","m":[["진주나 조개껍데기는 색소로 무지갯빛이 난다","진주층의 무지갯빛은 얇은 층의 간섭(구조색)이다."]]},"ft":{"q":"“정답 보기” 전에 학생이 n을 직접 맞추게 한다. 실제 측정 자료가 있으면 이 자료를 바꿔서 같은 방법을 적용한다. 이 자료는 교사가 만든 가상 값이며 n_eff = 1.30에서 잡음을 섞어 만들었다.","m":[["n_eff는 층 한 물질의 굴절률이다","여러 층을 한 번에 설명하는 평균(유효) 굴절률이다."]]},"ep":{"q":"세 칸을 학생이 직접 분류해 보게 한 뒤 비교한다. 정답은 학교·학생 수준에 따라 한 개 정도는 열어 둔다. “아마도”가 과학에서 약점이 아니라 정직함이라는 점을 강조한다.","m":[["추론은 증거가 아니라 추측이다","추론도 측정·가정과 모형에 근거한 결과이며, 틀릴 수 있는 지점이 명시된 주장이다."]]},"bk":{"q":"쪽수는 서버에 색인한 교재 기준이다. 교재 쪽 번호와 PDF 쪽이 다를 수 있으니 학생에게 안내할 때는 절 이름을 함께 알려 준다.","m":[["광학 교재는 파동 광학을 이해해야만 읽을 수 있다","이 수업의 2nd = mλ 와 위상 π만 알아도 35-4와 37.5의 앞부분을 읽을 수 있다."]]},"sr":{"q":"수업 전 암몰라이트 논문 원문과 나방 논문 보충자료(Fig. S2)를 직접 확인하면 덱의 정확도가 올라간다.","m":[["보도 기사는 논문과 같은 수준의 근거다","기사는 요약이며 숫자가 달라질 수 있다. 수업에는 가능하면 원문을 쓴다."]]}},"ask":{"ml":["주기 수 N을 늘리면 최대 반사율과 반사하는 파장 띠의 폭은 어떻게 변할까? 예상한 뒤 확인해 보자.","두 층의 굴절률 차(n₁ − n₂)를 줄이면 반사율은?"],"fo":["화석의 반사 피크가 565 nm에서 473 nm로 이동했다. 두께는 그대로라면 어떤 값이 어떻게 변해야 할까?","피크가 이동할 때 최대 반사율은 어떻게 달라지는가? 이것이 의미하는 것은?"],"lm":["모형 계산과 측정값이 맞지 않을 때 과학자는 무엇을 해야 할까? (모형을 버린다 / 가정을 바꾼다 / 더 측정한다)"],"an":["평평한 층에서는 θ가 커질수록 색이 어떻게 변하나? 오목하게 퍼지면 색의 변화 폭은 어떻게 달라지나?","나방이 무지갯빛을 줄이면 포식자에게 어떤 점이 달라질까?"],"na":["판 두께가 190 → 160 → 140 nm로 얇아지면 반사 색은 어떻게 변할까? 예상한 뒤 칩을 눌러 확인해 보자.","틈을 공기에서 유기물(n = 1.5)로 바꾸면 밝기가 어떻게 변할까? 이것은 “색이 옅은 껍데기”를 설명할 수 있을까?"]}};
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const TAU = Math.PI * 2, DPR = 2;
+const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const C = { bg: '#0a1330', grid: 'rgba(160,190,255,.22)', text: '#e3ecff', dim: '#9db0d8', KE: '#ffb454', PE: '#7fb2ff', E: '#ffffff', ok: '#5eead4', bad: '#ff9d9d' };
+const font = (px, w = 500, it = false) => `${it ? 'italic ' : ''}${w} ${px}px 'Noto Sans KR',sans-serif`;
+const mathFont = px => `italic 400 ${px}px 'STIX Two Text','Times New Roman',serif`;
+function setupCanvas(cv, W, H) { cv.width = W * DPR; cv.height = H * DPR; cv.style.width = W + 'px'; cv.style.height = H + 'px'; const c = cv.getContext('2d'); c.setTransform(DPR, 0, 0, DPR, 0, 0); return c; }
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function makeStars(W, H, n, seed) { const r = mulberry(seed); return Array.from({ length: n }, () => [r() * W, r() * H, .25 + r() * .55, r() < .12 ? 3 : 2]); }
+function drawStars(ctx, stars) { stars.forEach(([x, y, a, s]) => { ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(x, y, s, s); }); }
+function arrow(ctx, x0, y0, x1, y1, color, lw = 4, head = 15) {
+  const a = Math.atan2(y1 - y0, x1 - x0); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - Math.cos(a) * head * .6, y1 - Math.sin(a) * head * .6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - head * Math.cos(a - .45), y1 - head * Math.sin(a - .45)); ctx.lineTo(x1 - head * Math.cos(a + .45), y1 - head * Math.sin(a + .45)); ctx.closePath(); ctx.fill();
+}
+function mathRun(ctx, x, y, parts) { let cx = x; parts.forEach(q => { ctx.font = q.f; ctx.fillStyle = q.c; ctx.fillText(q.t, cx, y + (q.dy || 0)); cx += ctx.measureText(q.t).width; }); return cx; }
+function bindRange(id, cb) { const el = $('#' + id); el.addEventListener('input', () => cb(parseFloat(el.value))); el.addEventListener('change', () => el.blur()); return el; }
+const fmt = (x, d = 2) => (x < 0 ? '−' : '') + Math.abs(x).toFixed(d);
+
+/* 오류 표시: 슬라이드 코드 예외를 화면 상단과 window.__wsErrors에 남긴다 (헤드리스 검사용) */
+window.__wsErrors = [];
+function reportError(where, e) {
+  const msg = `${where}: ${e && e.message ? e.message : e}`;
+  if (!window.__wsErrors.includes(msg)) { window.__wsErrors.push(msg); console.error('[슬라이드 오류] ' + msg); }
+  const box = document.getElementById('simError'); box.textContent = window.__wsErrors.slice(-3).join('\n'); box.classList.add('on');
+}
+function safe(where, fn, ...args) { try { return fn && fn(...args); } catch (e) { reportError(where, e); } }
+
+/* =====================================================================
+   shared_js (주제별 물리 계산부·공용 시뮬레이터)
+   ===================================================================== */
+/* ===== 탄성파 덱 공용: 도우미 ===== */
+const COL={A:'#ffb454',B:'#5eead4',R:'#ff7a7a',L:'#7cc4ff',P:'#ff9ecf',Y:'#ffd166',dim:'#8ea3cf',w:'#e6edff'};
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function g(id){return +document.getElementById(id).value;}
+function setT(id,s){const e=document.getElementById(id);if(e&&e.textContent!==s)e.textContent=s;}
+function setH(id,s){const e=document.getElementById(id);if(e&&e.innerHTML!==s)e.innerHTML=s;}
+function tx(ctx,s,x,y,px,col,al,w){ctx.font=(w||500)+' '+px+"px 'Noto Sans KR',sans-serif";ctx.fillStyle=col||C.text;ctx.textAlign=al||'left';ctx.textBaseline='alphabetic';ctx.fillText(s,x,y);}
+function onClick(id,f){const el=document.getElementById(id);if(el)el.addEventListener('click',f);}
+function setChips(ids,on){ids.forEach(i=>{const e=document.getElementById(i);if(e)e.classList.toggle('on',i===on);});}
+function box(ctx,x,y,w,h,col,fill){ctx.fillStyle=fill||'rgba(255,255,255,.06)';ctx.strokeStyle=col||'rgba(160,190,255,.35)';ctx.lineWidth=2;ctx.beginPath();ctx.rect(x,y,w,h);ctx.fill();ctx.stroke();}
+function axes(ctx,x,y,w,h,xl,yl){ctx.save();ctx.strokeStyle='rgba(160,190,255,.3)';ctx.lineWidth=1.5;ctx.strokeRect(x,y,w,h);ctx.beginPath();ctx.moveTo(x,y+h/2);ctx.lineTo(x+w,y+h/2);ctx.stroke();ctx.restore();
+ if(xl)tx(ctx,xl,x+w-6,y+h/2-8,20,C.dim,'right',600);if(yl)tx(ctx,yl,x+8,y+24,20,C.dim,'left',600);}
+function poly(ctx,pts,col,lw){ctx.strokeStyle=col;ctx.lineWidth=lw||3;ctx.lineJoin='round';ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();}
+function dot(ctx,x,y,r,col){ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill();}
+function mod2pi(a){a%=TAU;return a<0?a+TAU:a;}
+
+/* ===== 다층 간섭 덱 공용: 전달 행렬 반사율·색 변환·그리기 ===== */
+const CXm=(a,b)=>[a[0]*b[0]-a[1]*b[1],a[0]*b[1]+a[1]*b[0]];
+const CXa=(a,b)=>[a[0]+b[0],a[1]+b[1]];
+function cdiv(a,b){const d=b[0]*b[0]+b[1]*b[1];return[(a[0]*b[0]+a[1]*b[1])/d,(a[1]*b[0]-a[0]*b[1])/d];}
+/* 한 편광의 반사율. L=[[n,d(nm)],…] 위에서부터, n0=입사 매질, ns=기판, th=입사각(rad), pol 0=s 1=p */
+function Rpol(lam,L,n0,ns,th,pol){
+ const s0=n0*Math.sin(th),k0=2*Math.PI/lam,cs=n=>Math.sqrt(Math.max(1e-9,1-(s0/n)*(s0/n))),eta=n=>pol?n/cs(n):n*cs(n);
+ let M=[[[1,0],[0,0]],[[0,0],[1,0]]];
+ for(const[n,d]of L){const dl=k0*n*cs(n)*d,e=eta(n),c=Math.cos(dl),s=Math.sin(dl),m=[[[c,0],[0,s/e]],[[0,e*s],[c,0]]];
+  M=[[CXa(CXm(M[0][0],m[0][0]),CXm(M[0][1],m[1][0])),CXa(CXm(M[0][0],m[0][1]),CXm(M[0][1],m[1][1]))],
+     [CXa(CXm(M[1][0],m[0][0]),CXm(M[1][1],m[1][0])),CXa(CXm(M[1][0],m[0][1]),CXm(M[1][1],m[1][1]))]];}
+ const e0=eta(n0),es=eta(ns),B=CXa(M[0][0],[M[0][1][0]*es,M[0][1][1]*es]),Cc=CXa(M[1][0],[M[1][1][0]*es,M[1][1][1]*es]);
+ const r=cdiv([e0*B[0]-Cc[0],e0*B[1]-Cc[1]],[e0*B[0]+Cc[0],e0*B[1]+Cc[1]]);return r[0]*r[0]+r[1]*r[1];}
+function Runp(lam,L,n0,ns,th){return th<1e-6?Rpol(lam,L,n0,ns,0,0):0.5*(Rpol(lam,L,n0,ns,th,0)+Rpol(lam,L,n0,ns,th,1));}
+function stackOf(n1,d1,n2,d2,N){const L=[];for(let i=0;i<N;i++){L.push([n1,d1]);L.push([n2,d2]);}return L;}
+/* 스펙트럼 [[nm,R],…] 380~780, 4 nm 간격. o={n0,ns,th(deg),sg(기울기 퍼짐 σ, deg)} */
+function spectrum(L,o){o=o||{};const n0=o.n0||1,ns=o.ns||1,th=(o.th||0)*Math.PI/180,sg=o.sg||0,out=[];
+ let ts=[[th,1]];
+ if(sg>0){ts=[];let w=0;for(let k=-4;k<=4;k++){const d=k*sg/2,ww=Math.exp(-0.5*Math.pow(d/sg,2));ts.push([Math.min(1.45,Math.abs(th+d*Math.PI/180)),ww]);w+=ww;}ts=ts.map(t=>[t[0],t[1]/w]);}
+ for(let l=380;l<=780;l+=4){let r=0;for(const[t,w]of ts)r+=w*Runp(l,L,n0,ns,t);out.push([l,r]);}return out;}
+function peakOf(sp){let b=0;for(let i=1;i<sp.length;i++)if(sp[i][1]>sp[b][1])b=i;return{lam:sp[b][0],R:sp[b][1]};}
+/* 색: CIE 1931 해석적 근사(Wyman 2013) → sRGB, R≡1을 흰색으로 맞춤. 밝기는 색이 보이도록 보정 */
+function g1(l,m,s1,s2){const t=(l-m)/(l<m?s1:s2);return Math.exp(-0.5*t*t);}
+function cmf(l){return[1.056*g1(l,599.8,37.9,31)+0.362*g1(l,442,16,26.7)-0.065*g1(l,501.1,20.4,26.2),0.821*g1(l,568.8,46.9,40.5)+0.286*g1(l,530.9,16.3,31.1),1.217*g1(l,437,11.8,36)+0.681*g1(l,459,26,13.8)];}
+function toLin(X,Y,Z){return[3.2406*X-1.5372*Y-0.4986*Z,-0.9689*X+1.8758*Y+0.0415*Z,0.0557*X-0.2040*Y+1.0570*Z];}
+function rgbArr(sp,boost){let X=0,Y=0,Z=0,Xw=0,Yw=0,Zw=0;for(const[l,r]of sp){const c=cmf(l);X+=r*c[0];Y+=r*c[1];Z+=r*c[2];Xw+=c[0];Yw+=c[1];Zw+=c[2];}
+ const a=toLin(X,Y,Z),w=toLin(Xw,Yw,Zw);let v=a.map((x,i)=>Math.max(0,x/w[i]));const yrel=Y/Yw;
+ if(boost!==false){const m=Math.max(v[0],v[1],v[2],1e-6);const k=Math.max(0.3,Math.min(1,yrel*3.2));v=v.map(x=>x/m*k);}
+ return v.map(x=>Math.round(255*Math.pow(Math.min(1,x),1/2.2)));}
+function rgbOf(sp,boost){const v=rgbArr(sp,boost);return'rgb('+v[0]+','+v[1]+','+v[2]+')';}
+function lamRGB(l){const c=cmf(l),a=toLin(c[0],c[1],c[2]);let v=a.map(x=>Math.max(0,x));const m=Math.max(v[0],v[1],v[2],1e-6);return'rgb('+v.map(x=>Math.round(255*Math.pow(x/m,1/2.2))).join(',')+')';}
+/* 스펙트럼 그래프. o={ymax, marks:[{l,label,col}], col, fill} */
+function plotSpec(ctx,x,y,w,h,sp,o){o=o||{};const ymax=o.ymax||1,X=l=>x+(l-380)/400*w,Y=r=>y+h-Math.min(1,r/ymax)*h;
+ ctx.fillStyle='rgba(255,255,255,.04)';ctx.fillRect(x,y,w,h);ctx.strokeStyle='rgba(160,190,255,.35)';ctx.lineWidth=1.5;ctx.strokeRect(x,y,w,h);
+ for(let l=400;l<=780;l+=100){ctx.strokeStyle='rgba(160,190,255,.15)';ctx.beginPath();ctx.moveTo(X(l),y);ctx.lineTo(X(l),y+h);ctx.stroke();tx(ctx,''+l,X(l),y+h+44,19,C.dim,'center',600);}
+ for(let i=0;i<w;i+=4){ctx.fillStyle=lamRGB(380+i/w*400);ctx.fillRect(x+i,y+h+6,4,12);}
+ tx(ctx,'파장 (nm)',x+w,y+h+66,19,C.dim,'right',600);tx(ctx,'반사율',x,y-8,19,C.dim,'left',600);
+ for(let r=0;r<=1;r+=0.5){if(r<=ymax){tx(ctx,r.toFixed(1),x-8,Y(r)+6,17,C.dim,'right',500);}}
+ (o.marks||[]).forEach(m=>{ctx.setLineDash([7,6]);ctx.strokeStyle=m.col||COL.Y;ctx.lineWidth=2.2;ctx.beginPath();ctx.moveTo(X(m.l),y);ctx.lineTo(X(m.l),y+h);ctx.stroke();ctx.setLineDash([]);
+  tx(ctx,m.label,X(m.l)+(m.dx||6),y+(m.dy||22),19,m.col||COL.Y,m.al||'left',700);});
+ ctx.beginPath();sp.forEach((p,i)=>{const px=X(p[0]),py=Y(p[1]);i?ctx.lineTo(px,py):ctx.moveTo(px,py);});
+ if(o.fill){ctx.lineTo(X(780),y+h);ctx.lineTo(X(380),y+h);ctx.closePath();ctx.fillStyle='rgba(255,209,102,.16)';ctx.fill();ctx.beginPath();sp.forEach((p,i)=>{const px=X(p[0]),py=Y(p[1]);i?ctx.lineTo(px,py):ctx.moveTo(px,py);});}
+ ctx.strokeStyle=o.col||COL.Y;ctx.lineWidth=3.4;ctx.lineJoin='round';ctx.stroke();}
+/* 층 그림: 위에서 아래로, 높이는 두께에 비례. 굴절률은 색으로(1.0=어두움 → 높을수록 호박색) */
+function nCol(n){const t=Math.max(0,Math.min(1,(n-1)/1.0));return'rgb('+Math.round(40+t*200)+','+Math.round(50+t*130)+','+Math.round(95-t*50)+')';}
+function drawStack(ctx,x,y,w,hMax,L,o){o=o||{};let tot=0;L.forEach(l=>tot+=l[1]);const k=Math.min(o.k||9,hMax/tot);let yy=y;
+ ctx.strokeStyle='rgba(190,210,255,.7)';ctx.lineWidth=1.5;
+ L.forEach((l,i)=>{const hh=Math.max(2,l[1]*k);ctx.fillStyle=nCol(l[0]);ctx.fillRect(x,yy,w,hh);ctx.strokeRect(x,yy,w,hh);
+  if(o.label&&hh>16&&i<(o.maxLabel||4)){tx(ctx,'n='+l[0].toFixed(2)+', '+Math.round(l[1])+' nm',x+w/2,yy+hh/2+6,Math.min(18,hh*0.8),'#fff','center',700);}yy+=hh;});
+ return{k:k,h:yy-y};}
+/* 해석식(검증용) */
+function braggLam(n1,d1,n2,d2){return 2*(n1*d1+n2*d2);}
+function TESTS(){const T=[];
+ const f=(a,b,t)=>Math.abs(a-b)<=t;
+ T.push(['단일 계면 프레넬 반사율 (1→1.56)',f(Rpol(550,[],1,1.56,0,0),Math.pow((1-1.56)/(1+1.56),2),1e-9),'R=((n1−n2)/(n1+n2))²=0.0479']);
+ const Rq=Rpol(550,[[1.38,550/4/1.38]],1,1.52,0,0),Rt=Math.pow((1*1.52-1.38*1.38)/(1*1.52+1.38*1.38),2);
+ T.push(['1/4 파장 반사 방지막 (MgF₂ 1.38 / 유리 1.52)',f(Rq,Rt,1e-6),'R='+Rq.toFixed(5)+' vs 해석 '+Rt.toFixed(5)]);
+ const Rh=Rpol(550,[[1.38,550/2/1.38]],1,1.52,0,0),R0=Math.pow((1-1.52)/(1+1.52),2);
+ T.push(['1/2 파장 막은 막이 없는 것과 같음',f(Rh,R0,1e-6),'R='+Rh.toFixed(5)+' vs 맨 유리 '+R0.toFixed(5)]);
+ const L1=stackOf(1.56,110,1,110.9,4),p1=peakOf(spectrum(L1,{ns:1.56}));
+ T.push(['다층 반사 피크 = 2(n₁d₁+n₂d₂)',f(p1.lam,braggLam(1.56,110,1,110.9),6),'피크 '+p1.lam+' nm vs '+braggLam(1.56,110,1,110.9).toFixed(0)+' nm']);
+ const p2=peakOf(spectrum(stackOf(1.56,110,1,110.9,8),{ns:1.56}));
+ T.push(['주기 수가 늘면 반사율이 커짐',p2.R>p1.R&&p1.R>0.5,'N=4: '+p1.R.toFixed(2)+', N=8: '+p2.R.toFixed(2)]);
+ const pa=peakOf(spectrum(L1,{ns:1.56,th:40})).lam;
+ const cs1=Math.sqrt(1-Math.pow(Math.sin(40*Math.PI/180)/1.56,2)),lamA=2*(1.56*110*cs1+1*110.9*Math.cos(Math.asin(Math.sin(40*Math.PI/180))));
+ T.push(['비스듬히 보면 파란 쪽으로 이동 (λ=2Σ nd cosθ)',f(pa,lamA,8)&&pa<p1.lam,'40°: 피크 '+pa+' nm vs 식 '+lamA.toFixed(0)+' nm']);
+ const pn=peakOf(spectrum(stackOf(1.45,110,1,110.9,4),{ns:1.45})).lam;
+ T.push(['큐티클 굴절률이 낮아지면 피크가 짧은 파장으로',pn<p1.lam,'n=1.45: '+pn+' nm < n=1.56: '+p1.lam+' nm']);
+ const pg=peakOf(spectrum(stackOf(1.56,110,1.47,110.9,4),{n0:1.47,ns:1.56})).lam;
+ T.push(['공기 대신 글리세린(1.47)이 차면 피크가 긴 파장으로, 반사율은 크게 감소',pg>p1.lam&&peakOf(spectrum(stackOf(1.56,110,1.47,110.9,4),{n0:1.47,ns:1.56})).R<0.3,'글리세린 피크 '+pg+' nm']);
+ const pr=peakOf(spectrum(stackOf(1.68,190,1,4,10),{ns:1.68})).lam,pgn=peakOf(spectrum(stackOf(1.68,160,1,4,10),{ns:1.68})).lam,pb=peakOf(spectrum(stackOf(1.68,140,1,4,10),{ns:1.68})).lam;
+ T.push(['진주층: 판 190·160·140 nm → 빨강·초록·파랑 순서',pr>600&&pgn>520&&pgn<600&&pb<520&&pr>pgn&&pgn>pb,pr+' / '+pgn+' / '+pb+' nm']);
+ const w=rgbArr([[380,1],[480,1],[580,1],[680,1],[780,1]].concat([]),false);
+ T.push(['색 변환: 평탄한 스펙트럼 → 무채색',Math.max.apply(null,w)-Math.min.apply(null,w)<60,'rgb('+w.join(',')+')']);
+ const fit=fitLine(FIT_DATA);T.push(['직선 맞춤: 가상 자료에서 n_eff ≈ 1.30 복원',f(fit.n,1.30,0.03),'n_eff='+fit.n.toFixed(3)]);
+ return T;}
+/* 자료 처리 연습용 가상 자료: λ0=565, n_eff=1.30, 결정적 잡음 */
+const FIT_DATA=(function(){const a=[0,15,30,45,60],nz=[0,2.5,-3,2,-2.5];return a.map((d,i)=>{const s=Math.sin(d*Math.PI/180);return{th:d,x:s*s,lam:565*Math.sqrt(1-s*s/1.69)+nz[i]};});})();
+function fitLine(D){const n=D.length;let sx=0,sy=0,sxx=0,sxy=0;D.forEach(p=>{const y=p.lam*p.lam;sx+=p.x;sy+=y;sxx+=p.x*p.x;sxy+=p.x*y;});
+ const m=(n*sxy-sx*sy)/(n*sxx-sx*sx),b=(sy-m*sx)/n;return{m:m,b:b,lam0:Math.sqrt(b),n:Math.sqrt(-b/m)};}
+
+/* 슬라이드 3·4: 한 겹 막(film) / 다층(multi) 탐색기 */
+function stackModule(id,mode){
+ const cv=document.getElementById(id+'-cv'),W=1040,H=660,ctx=setupCanvas(cv,W,H);
+ let on=false;
+ function layers(){
+  if(mode==='film')return{L:[[g(id+'-n'),g(id+'-d')]],o:{n0:1,ns:1},bragg:null};
+  const n1=g(id+'-n1'),n2=g(id+'-n2'),d1=g(id+'-d1'),d2=g(id+'-d2'),N=g(id+'-N');
+  return{L:stackOf(n1,d1,n2,d2,N),o:{n0:1,ns:n1},bragg:braggLam(n1,d1,n2,d2)};}
+ function draw(){
+  const q=layers(),sp=spectrum(q.L,q.o),pk=peakOf(sp);
+  ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  tx(ctx,mode==='film'?'공기 속의 얇은 막 (비눗방울 같은 막)':'굴절률이 다른 두 층을 번갈아 쌓은 다층 반사체',30,36,23,COL.Y,'left',700);
+  drawStack(ctx,40,70,190,520,q.L,{k:mode==='film'?1.6:2.2,label:mode==='film'});
+  tx(ctx,'↑ 빛',135,64,18,C.dim,'center',600);
+  const marks=[];if(q.bragg&&q.bragg>380&&q.bragg<780)marks.push({l:q.bragg,label:'2(n₁d₁+n₂d₂)',col:COL.B,dy:46});
+  plotSpec(ctx,300,90,700,260,sp,{marks:marks,fill:true});
+  ctx.fillStyle=rgbOf(sp);ctx.beginPath();ctx.roundRect?ctx.roundRect(300,430,300,150,18):ctx.rect(300,430,300,150);ctx.fill();
+  tx(ctx,'반사된 빛의 색',450,614,20,C.dim,'center',600);tx(ctx,'(밝기는 보기 좋게 보정)',450,640,16,C.dim,'center',500);
+  tx(ctx,'반사 피크 '+pk.lam+' nm',640,470,30,'#fff','left',700);
+  tx(ctx,'최대 반사율 '+(pk.R*100).toFixed(0)+' %',640,512,26,COL.Y,'left',700);
+  if(q.bragg)tx(ctx,'2(n₁d₁+n₂d₂) = '+q.bragg.toFixed(0)+' nm',640,554,24,COL.B,'left',700);
+  else tx(ctx,'광학 두께 nd = '+(g(id+'-n')*g(id+'-d')).toFixed(0)+' nm',640,554,24,COL.B,'left',700);
+  const ids=mode==='film'?['n','d']:['N','n1','n2','d1','d2'];
+  ids.forEach(k=>{const v=g(id+'-'+k);setT(id+'-'+k+'-v',(k[0]==='n'&&k!=='N'?v.toFixed(2):(k==='N'?v+'주기':v+' nm')));});}
+ function bind(){(mode==='film'?['n','d']:['N','n1','n2','d1','d2']).forEach(k=>document.getElementById(id+'-'+k).addEventListener('input',draw));}
+ return{start(){if(!on){bind();on=true;}draw();}};}
+
+/* 슬라이드 7·8: 나방 비늘 교육용 모형 (큐티클 110 nm + 공기층 111 nm × 4주기, 기판=큐티클) */
+const MOTH={d1:110,d2:110.9,N:4};
+function mothModule(id,mode){
+ const cv=document.getElementById(id+'-cv'),W=1040,H=660,ctx=setupCanvas(cv,W,H);
+ const S={m:0},MED=[['공기',1.0],['에탄올',1.36],['글리세린',1.47]];let on=false;
+ const ref=spectrum(stackOf(1.56,MOTH.d1,1,MOTH.d2,MOTH.N),{ns:1.56}),refCol=rgbOf(ref);
+ function cur(){const n1=mode==='fossil'?g(id+'-n'):1.56,nm=mode==='fossil'?1:MED[S.m][1];
+  const L=stackOf(n1,MOTH.d1,nm,MOTH.d2,MOTH.N);return{n1:n1,nm:nm,L:L,sp:spectrum(L,{n0:nm,ns:n1})};}
+ function draw(){
+  const c=cur(),pk=peakOf(c.sp);ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  tx(ctx,mode==='fossil'?'구조는 그대로, 큐티클 굴절률만 바꿔 보기 (교육용 모형)':'같은 구조를 다른 매질에 담가 보기 (교육용 모형)',30,36,23,COL.Y,'left',700);
+  drawStack(ctx,40,70,190,520,c.L,{k:2.2});tx(ctx,'↑ 빛',135,64,18,C.dim,'center',600);
+  const marks=mode==='fossil'?[{l:473,label:'공기 중 측정 473 nm',col:'#7cc4ff',dy:24},{l:565,label:'복원 565 nm',col:COL.B,dy:48}]:[];
+  plotSpec(ctx,300,90,700,260,c.sp,{marks:marks,fill:true});
+  ctx.fillStyle=rgbOf(c.sp);ctx.fillRect(300,430,200,150);ctx.fillStyle=refCol;ctx.fillRect(510,430,90,150);
+  tx(ctx,'지금 설정',400,614,19,C.dim,'center',600);tx(ctx,'기준(n=1.56, 공기)',555,614,17,C.dim,'center',600);
+  tx(ctx,'반사 피크 '+pk.lam+' nm',640,470,30,'#fff','left',700);
+  tx(ctx,'최대 반사율 '+(pk.R*100).toFixed(0)+' %',640,512,26,COL.Y,'left',700);
+  tx(ctx,mode==='fossil'?'큐티클 n = '+c.n1.toFixed(2)+'  (사이 층: 공기 1.00)':'사이 층·바깥 매질: '+MED[S.m][0]+' n = '+c.nm.toFixed(2),640,554,23,COL.B,'left',700);
+  if(mode==='fossil')setT(id+'-n-v',c.n1.toFixed(2));
+  MED.forEach((m,i)=>{const e=document.getElementById(id+'-m'+i);if(e)e.classList.toggle('on',i===S.m);});}
+ function bind(){if(mode==='fossil')document.getElementById(id+'-n').addEventListener('input',draw);else MED.forEach((m,i)=>onClick(id+'-m'+i,()=>{S.m=i;draw();}));}
+ return{start(){if(!on){bind();on=true;}draw();}};}
+
+/* 슬라이드 10: 보는 각도와 기울기 퍼짐(오목한 비늘) */
+function angleModule(id){
+ const cv=document.getElementById(id+'-cv'),W=1040,H=660,ctx=setupCanvas(cv,W,H);
+ const L=stackOf(1.56,MOTH.d1,1,MOTH.d2,MOTH.N),A=[];for(let a=0;a<=70;a+=5)A.push(a);
+ let ideal=null,spreadCache={sg:-1,cols:null},on=false;
+ function strips(sg){if(!ideal)ideal=A.map(a=>rgbOf(spectrum(L,{ns:1.56,th:a})));
+  if(spreadCache.sg!==sg){spreadCache={sg:sg,cols:A.map(a=>rgbOf(spectrum(L,{ns:1.56,th:a,sg:sg})))};}return spreadCache.cols;}
+ function draw(){
+  const th=g(id+'-th'),sg=g(id+'-sg'),sp=spectrum(L,{ns:1.56,th:th,sg:sg}),pk=peakOf(sp),sp0=spectrum(L,{ns:1.56,th:th});
+  ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  tx(ctx,'보는 각도 θ 에 따른 반사 스펙트럼',30,36,23,COL.Y,'left',700);
+  plotSpec(ctx,70,70,920,210,sp0,{col:'rgba(255,209,102,.55)'});
+  if(sg>0){const X=l=>70+(l-380)/400*920,Y=r=>70+210-Math.min(1,r)*210;ctx.beginPath();sp.forEach((p,i)=>{i?ctx.lineTo(X(p[0]),Y(p[1])):ctx.moveTo(X(p[0]),Y(p[1]));});ctx.strokeStyle=COL.B;ctx.lineWidth=3.4;ctx.stroke();}
+  tx(ctx,'노랑: 평평한 층(θ='+th+'°)   '+(sg>0?'청록: 기울기가 ±'+sg+'° 퍼진 오목한 비늘':''),90,96,19,C.text,'left',700);
+  const cols=strips(sg),x0=70,w=920/A.length;
+  tx(ctx,'평평한 층: 각도별 색 (0° → 70°)',70,372,21,COL.Y,'left',700);
+  A.forEach((a,i)=>{ctx.fillStyle=ideal?ideal[i]:'#000';ctx.fillRect(x0+i*w,384,w-3,78);if(Math.abs(a-th)<2.5){ctx.strokeStyle='#fff';ctx.lineWidth=4;ctx.strokeRect(x0+i*w-1,382,w-1,82);}tx(ctx,a+'°',x0+i*w+w/2-1.5,484,15,C.dim,'center',600);});
+  tx(ctx,'오목한 비늘(기울기 퍼짐 ±'+sg+'°): 각도별 색',70,530,21,COL.B,'left',700);
+  A.forEach((a,i)=>{ctx.fillStyle=cols[i];ctx.fillRect(x0+i*w,542,w-3,78);if(Math.abs(a-th)<2.5){ctx.strokeStyle='#fff';ctx.lineWidth=4;ctx.strokeRect(x0+i*w-1,540,w-1,82);}});
+  tx(ctx,'반사 피크 '+pk.lam+' nm  (θ=0°에서는 '+peakOf(spectrum(L,{ns:1.56})).lam+' nm)',70,650,22,'#fff','left',700);
+  setT(id+'-th-v',th+'°');setT(id+'-sg-v','±'+sg+'°');}
+ function bind(){['th','sg'].forEach(k=>document.getElementById(id+'-'+k).addEventListener('input',draw));}
+ return{start(){if(!on){bind();on=true;}draw();}};}
+
+/* 슬라이드 11: 암몰라이트 진주층 — 아라고나이트 판(n≈1.68)과 얇은 틈 */
+function nacreModule(id){
+ const cv=document.getElementById(id+'-cv'),W=1040,H=660,ctx=setupCanvas(cv,W,H),NA=1.68,GM=[['공기 1.0',1.0],['유기물 1.5',1.5]];
+ const S={gm:0};let on=false;
+ function draw(){
+  const d=g(id+'-d'),gp=g(id+'-g'),N=g(id+'-N'),ng=GM[S.gm][1],L=[];for(let i=0;i<N;i++){L.push([NA,d]);if(gp>0)L.push([ng,gp]);}
+  const sp=spectrum(L,{ns:NA}),pk=peakOf(sp),est=2*(NA*d+ng*gp);
+  ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  tx(ctx,'진주층: 아라고나이트 판 + 판 사이의 틈 (판 n ≈ 1.68 로 가정)',30,36,23,COL.Y,'left',700);
+  /* 층 그림: 틈을 보이게 과장 */
+  const x=40,w=190;let yy=70;const kk=Math.min(2.4,500/(N*(d+Math.max(gp,1)*8)));
+  for(let i=0;i<N&&yy<590;i++){const h=d*kk;ctx.fillStyle=nCol(NA);ctx.fillRect(x,yy,w,h);yy+=h;const gh=Math.max(3,gp*kk*6);ctx.fillStyle=gp>0?(S.gm?'#c9a86a':'#101a38'):'#101a38';ctx.fillRect(x,yy,w,gh);yy+=gh;}
+  tx(ctx,'틈은 보기 좋게 6배 과장',135,616,15,C.dim,'center',500);
+  plotSpec(ctx,300,90,700,260,sp,{ymax:Math.max(0.3,Math.ceil(pk.R*10)/10+0.1),marks:[{l:est,label:'2(n·d+n′·g)',col:COL.B,dy:46}],fill:true});
+  ctx.fillStyle=rgbOf(sp);ctx.fillRect(300,430,300,150);tx(ctx,'반사된 빛의 색(보정)',450,614,19,C.dim,'center',600);
+  tx(ctx,'반사 피크 '+pk.lam+' nm',640,470,30,'#fff','left',700);
+  tx(ctx,'최대 반사율 '+(pk.R*100).toFixed(0)+' %',640,512,26,COL.Y,'left',700);
+  tx(ctx,'식 2(nd+n′g) = '+est.toFixed(0)+' nm',640,554,24,COL.B,'left',700);
+  setT(id+'-d-v',d+' nm');setT(id+'-g-v',gp+' nm');setT(id+'-N-v',N+'장');
+  GM.forEach((m,i)=>{const e=document.getElementById(id+'-gm'+i);if(e)e.classList.toggle('on',i===S.gm);});
+  [190,160,140].forEach((v,i)=>{const e=document.getElementById(id+'-p'+i);if(e)e.classList.toggle('on',v===d);});}
+ function bind(){['d','g','N'].forEach(k=>document.getElementById(id+'-'+k).addEventListener('input',draw));
+  GM.forEach((m,i)=>onClick(id+'-gm'+i,()=>{S.gm=i;draw();}));
+  [190,160,140].forEach((v,i)=>onClick(id+'-p'+i,()=>{const e=document.getElementById(id+'-d');e.value=v;draw();}));}
+ return{start(){if(!on){bind();on=true;}draw();}};}
+
+/* 슬라이드 13: 자료 처리 — λ² 대 sin²θ 직선 (가상 자료) */
+function fitModule(id){
+ const cv=document.getElementById(id+'-cv'),W=1040,H=640,ctx=setupCanvas(cv,W,H);let on=false,show=false;
+ const px=0.0,X0=130,Y0=70,PW=840,PH=420,xmax=0.8,ymin=1.4e5,ymax=3.4e5;
+ const X=x=>X0+x/xmax*PW,Y=y=>Y0+PH-(y-ymin)/(ymax-ymin)*PH;
+ function draw(){
+  const ne=g(id+'-ne'),lam0=565;ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  tx(ctx,'가상 자료: 보는 각도 θ 와 반사 피크 파장 λ  (λ² 대 sin²θ)',30,36,23,COL.Y,'left',700);
+  ctx.strokeStyle='rgba(160,190,255,.35)';ctx.lineWidth=1.5;ctx.strokeRect(X0,Y0,PW,PH);
+  for(let x=0;x<=0.8;x+=0.2){tx(ctx,x.toFixed(1),X(x),Y0+PH+28,19,C.dim,'center',500);}
+  for(let y=1.5e5;y<=3.5e5;y+=0.5e5){tx(ctx,(y/1e4).toFixed(0),X0-10,Y(y)+6,19,C.dim,'right',500);ctx.strokeStyle='rgba(160,190,255,.12)';ctx.beginPath();ctx.moveTo(X0,Y(y));ctx.lineTo(X0+PW,Y(y));ctx.stroke();}
+  tx(ctx,'sin²θ',X0+PW,Y0+PH+58,21,C.dim,'right',700);tx(ctx,'λ² (×10⁴ nm²)',X0+4,Y0-12,20,C.dim,'left',700);
+  const f=x=>lam0*lam0*(1-x/(ne*ne));
+  ctx.strokeStyle=COL.B;ctx.lineWidth=3.4;ctx.beginPath();ctx.moveTo(X(0),Y(f(0)));ctx.lineTo(X(xmax),Y(f(xmax)));ctx.stroke();
+  let sse=0;FIT_DATA.forEach(p=>{const y=p.lam*p.lam;sse+=Math.pow(y-f(p.x),2);ctx.fillStyle=COL.Y;ctx.beginPath();ctx.arc(X(p.x),Y(y),9,0,TAU);ctx.fill();
+   tx(ctx,p.th+'°, '+p.lam.toFixed(0)+' nm',X(p.x)+14,Y(y)-12,17,C.text,'left',600);});
+  const rms=Math.sqrt(sse/FIT_DATA.length)/1e4;
+  tx(ctx,'직선 λ² = λ₀²(1 − sin²θ / n²)   (λ₀ = 565 nm 고정)',X0,Y0+PH+96,22,COL.B,'left',700);
+  tx(ctx,'n = '+ne.toFixed(2)+'   점과 직선의 평균 어긋남 '+rms.toFixed(2)+' ×10⁴ nm²',X0,Y0+PH+130,22,'#fff','left',700);
+  if(show){const r=fitLine(FIT_DATA);tx(ctx,'최소제곱 직선: n_eff = '+r.n.toFixed(2)+',  λ₀ = '+r.lam0.toFixed(0)+' nm',X0+PW,Y0+PH+96,22,COL.A,'right',700);}
+  setT(id+'-ne-v',ne.toFixed(2));document.getElementById(id+'-ans').classList.toggle('on',show);}
+ function bind(){document.getElementById(id+'-ne').addEventListener('input',draw);onClick(id+'-ans',()=>{show=!show;draw();});}
+ return{start(){if(!on){bind();on=true;}draw();}};}
+
+/* 표지: 큐티클 굴절률이 바뀌면 색이 변한다 (교육용 모형) */
+function coverModule(){
+ const cv=document.getElementById('c-cv'),W=900,H=760,ctx=setupCanvas(cv,W,H);
+ const ns=[];for(let i=0;i<=20;i++){const n=1.56-(1.56-1.15)*i/20;ns.push({n:n,col:rgbOf(spectrum(stackOf(n,MOTH.d1,1,MOTH.d2,MOTH.N),{ns:n}))});}
+ let t=0;
+ function wing(cx,cy,rot,col){ctx.save();ctx.translate(cx,cy);ctx.rotate(rot);ctx.fillStyle=col;ctx.strokeStyle='rgba(230,237,255,.7)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(0,0);ctx.bezierCurveTo(60,-150,260,-190,330,-80);ctx.bezierCurveTo(350,-30,260,60,0,0);ctx.fill();ctx.stroke();
+  ctx.strokeStyle='rgba(0,0,0,.25)';ctx.lineWidth=2;for(let k=0;k<5;k++){ctx.beginPath();ctx.moveTo(10,0);ctx.quadraticCurveTo(150,-70+k*18,300+k*8,-70+k*28);ctx.stroke();}ctx.restore();}
+ function draw(){
+  const u=0.5-0.5*Math.cos(t),i=Math.round(u*20),c=ns[i];
+  ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#1a2552';ctx.beginPath();ctx.ellipse(W/2,380,16,150,0,0,TAU);ctx.fill();
+  wing(W/2-6,330,Math.PI+0.35,c.col);wing(W/2+6,330,-0.35,c.col);
+  tx(ctx,'모형: 큐티클 굴절률 n = '+c.n.toFixed(2),W/2,610,30,COL.Y,'center',700);
+  tx(ctx,u<0.5?'원래 구조(복원 쪽)':'화석화로 바뀐 뒤(측정 쪽)',W/2,656,24,C.text,'center',600);
+  tx(ctx,'논문: 복원 565 nm(황록) ↔ 공기 중 측정 473 nm(파랑)',W/2,704,21,C.dim,'center',600);
+  tx(ctx,'※ 구조는 그대로, 굴절률만 바꾼 교육용 모형이며 색은 보정한 것',W/2,736,17,C.dim,'center',500);}
+ return{start(){draw();},frame(dt){t+=Math.min(dt,.05)*0.5;draw();}};}
+
+/* 슬라이드 6: 나방 비늘 단면 모식도 (논문이 보고한 수치를 표시) */
+function scaleModule(id){
+ const cv=document.getElementById(id+'-cv'),W=1040,H=660,ctx=setupCanvas(cv,W,H);
+ function draw(){
+  ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  tx(ctx,'나방 비늘(type A)의 단면 모식도 — 길이·모양은 단순화',30,36,23,COL.Y,'left',700);
+  const x0=90,w=480,lam=[[104,'맨 윗층  93~124 nm'],[70,'다음 층들  74~110 → 55~63 nm'],[60,''],[56,'']];
+  let y=150;
+  /* 입사·반사 화살 */
+  arrow(ctx,x0+80,84,x0+130,y-26,'#fff',4,12);arrow(ctx,x0+190,y-26,x0+240,84,COL.Y,4,12);tx(ctx,'빛',x0+60,100,20,'#fff','right',700);tx(ctx,'반사(파장 선택)',x0+250,90,20,COL.Y,'left',700);
+  /* 마루(능선) */
+  for(let r=0;r<4;r++){ctx.fillStyle='rgba(190,210,255,.35)';ctx.fillRect(x0+r*120+30,y-22,40,22);}
+  tx(ctx,'능선 높이 ≤ 1 μm',x0+w+20,y-6,18,C.dim,'left',600);
+  lam.forEach((l,i)=>{const h=l[0]*0.62;ctx.fillStyle=nCol(1.56);ctx.fillRect(x0,y,w,h);
+   /* 구멍(천공) 표시 */ctx.fillStyle='#101a38';for(let k=0;k<7;k++)ctx.fillRect(x0+22+k*68,y+h*0.25,26,h*0.5);
+   if(l[1])tx(ctx,l[1],x0+w+20,y+h/2+6,19,COL.A,'left',700);
+   y+=h;
+   /* 공기층(스페이서) */const sp=i<3?44:0;if(sp){ctx.fillStyle='#101a38';ctx.fillRect(x0,y,w,sp);ctx.fillStyle=nCol(1.56);for(let k=0;k<8;k++)ctx.fillRect(x0+14+k*60,y,10,sp);y+=sp;}});
+  tx(ctx,'스페이서(막대 모양, 폭 약 60 nm) 사이는 공기',x0+w+20,y-50,18,C.dim,'left',600);
+  /* 기둥 */
+  for(let k=0;k<5;k++){ctx.fillStyle=nCol(1.56);ctx.fillRect(x0+40+k*100,y,16,64);}
+  tx(ctx,'기둥(trabeculae) 0.6~1 μm',x0+w+20,y+40,19,COL.A,'left',700);
+  ctx.fillStyle=nCol(1.56);ctx.fillRect(x0,y+64,w,32);tx(ctx,'바닥층 55~65 nm',x0+w+20,y+86,19,COL.A,'left',700);
+  /* 범례 */
+  ctx.fillStyle=nCol(1.56);ctx.fillRect(40,H-86,30,22);tx(ctx,'큐티클(키틴 등) n = 1.56 로 가정',82,H-68,20,C.text,'left',600);
+  ctx.fillStyle='#101a38';ctx.strokeStyle='rgba(190,210,255,.6)';ctx.strokeRect(40,H-52,30,22);ctx.fillRect(40,H-52,30,22);tx(ctx,'공기 n = 1.0',82,H-34,20,C.text,'left',600);}
+ return{start(){draw();}};}
+
+/* 슬라이드 5: 1/4 파장 다층 — 단계별로 반사 화살·위상·경로를 드러냄 */
+function qwModule(id){
+ const cv=document.getElementById(id+'-cv'),W=1040,H=660,ctx=setupCanvas(cv,W,H);let st=0;
+ function draw(){
+  ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  const x0=330,w=300,hs=[0,110,110,110,110],y0=140;let y=y0;const ys=[];
+  const lays=[['n₂ (낮음)',1.0,70],['n₁ (높음)',1.56,70],['n₂ (낮음)',1.0,70],['n₁ (높음)',1.56,70],['n₂ (낮음)',1.0,70]];
+  lays.forEach((l,i)=>{ctx.fillStyle=nCol(l[1]);ctx.fillRect(x0,y,w,l[2]);ctx.strokeStyle='rgba(190,210,255,.6)';ctx.strokeRect(x0,y,w,l[2]);tx(ctx,l[0],x0+w/2,y+l[2]/2+7,20,'#fff','center',700);ys.push(y);y+=l[2];});ys.push(y);
+  tx(ctx,'↓ 입사한 빛',x0-30,y0-30,22,'#fff','right',700);arrow(ctx,x0-20,y0-70,x0+40,y0-8,'#fff',4,12);
+  const cols=['#ff9ecf','#7cc4ff','#ff9ecf','#7cc4ff'];
+  if(st>=1)for(let i=0;i<4;i++){const xx=x0+70+i*55,yy=ys[i+1];arrow(ctx,xx-10,yy,xx+10,y0-60,COL.Y,3,10);tx(ctx,'r'+(i+1),xx+14,y0-62,19,COL.Y,'left',700);}
+  if(st>=2)for(let i=0;i<4;i++){const up=(i%2===0);tx(ctx,up?'낮→높: 위상 π':'높→낮: 위상 0',x0+w+24,ys[i+1]+6,20,up?'#ff9ecf':'#7cc4ff','left',700);ctx.fillStyle=up?'#ff9ecf':'#7cc4ff';ctx.beginPath();ctx.arc(x0+w+10,ys[i+1],6,0,TAU);ctx.fill();}
+  if(st>=3){for(let i=0;i<4;i++){ctx.strokeStyle='rgba(255,255,255,.55)';ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(x0-12,ys[i+1]);ctx.lineTo(x0-12,ys[i+2]);ctx.stroke();ctx.setLineDash([]);}
+   tx(ctx,'왕복 = 2nd',x0-24,(ys[1]+ys[2])/2+6,20,COL.A,'right',700);tx(ctx,'→ 위상 4πnd/λ',x0-24,(ys[1]+ys[2])/2+32,20,COL.A,'right',700);}
+  if(st>=4){tx(ctx,'π + 4πnd/λ = 2π  →  nd = λ/4',W/2,H-80,30,COL.B,'center',700);tx(ctx,'모든 경계의 반사가 같은 위상으로 겹친다',W/2,H-42,22,C.text,'center',600);}
+  tx(ctx,'공기(1.0)와 큐티클(1.56)을 번갈아 쌓은 층',30,36,23,COL.Y,'left',700);}
+ return{start(){draw();},stop(){},onStep(s){st=s;draw();}};}
+
+
+/* =====================================================================
+   슬라이드별 모듈: { start(), stop(), frame(dt), onStep(step) }
+   ===================================================================== */
+const REG = {};
+/* ---- c ---- */
+REG["c"] = safe("c.init", function () {
+return coverModule();
+});
+
+/* ---- fm ---- */
+REG["fm"] = safe("fm.init", function () {
+return stackModule('fm','film');
+});
+
+/* ---- ml ---- */
+REG["ml"] = safe("ml.init", function () {
+return stackModule('ml','multi');
+});
+
+/* ---- qw ---- */
+REG["qw"] = safe("qw.init", function () {
+return qwModule('qw');
+});
+
+/* ---- sc ---- */
+REG["sc"] = safe("sc.init", function () {
+return scaleModule('sc');
+});
+
+/* ---- fo ---- */
+REG["fo"] = safe("fo.init", function () {
+return mothModule('fo','fossil');
+});
+
+/* ---- me ---- */
+REG["me"] = safe("me.init", function () {
+return mothModule('me','medium');
+});
+
+/* ---- an ---- */
+REG["an"] = safe("an.init", function () {
+return angleModule('an');
+});
+
+/* ---- na ---- */
+REG["na"] = safe("na.init", function () {
+return nacreModule('na');
+});
+
+/* ---- ft ---- */
+REG["ft"] = safe("ft.init", function () {
+return fitModule('ft');
+});
+
+/* =====================================================================
+   슬라이드 관리자
+   ===================================================================== */
+const slides = $$('.slide'), deck = $('#deck'); let cur = -1, step = 0, activeFrame = null, activeId = '', hudTimer = 0;
+const NOTES = DECK.notes, ASK = DECK.ask, CIRC = ['①', '②', '③', '④', '⑤'];
+function renderNotes(i) {
+  const n = NOTES[slides[i].id]; if (!n) { $('#notes').innerHTML = ''; return; }
+  $('#notes').innerHTML = `<div class="nh">📝 오개념 교정 노트 · 슬라이드 ${i + 1} / ${slides.length}<span style="float:right">발문을 화면에 띄우기: Q 키</span></div>` + (n.q ? `<div class="nq">💬 발문: ${n.q}</div>` : '') +
+    (n.m || []).map(([a, b]) => `<div class="ni"><span class="nx">❌ 오개념</span> ${a}<br><span class="nv">✅ 교정</span> ${b}</div>`).join('');
+}
+function renderAsk(i) {
+  const q = ASK[slides[i].id] || [];
+  $('#ask').innerHTML = `<div class="ak"><div class="ah">💬 생각해 보기 · ${i + 1} / ${slides.length}</div>` + (q.length ? q.map((t, k) => `<div class="aq">${q.length > 1 ? `<span>${CIRC[k] || (k + 1) + '.'}</span>` : ''}${t}</div>`).join('') : '<div class="aq" style="color:var(--muted)">이 슬라이드에는 발문이 없습니다.</div>') + '<div class="af">Q 키 · Esc · 화면 클릭으로 닫기</div></div>';
+}
+function toggleAsk(force) { const on = $('#ask').classList.toggle('on', force); $('#b-ask').classList.toggle('on', on); }
+const maxStep = i => +(slides[i].dataset.steps || 0);
+function fit() {
+  const vp = $('#viewport'), vw = vp.clientWidth, vh = vp.clientHeight, rf = vw < 1100;
+  document.documentElement.classList.toggle('rf', rf);
+  if (rf) { const W = vw < 640 ? 640 : vw, s = vw / W; deck.style.width = W + 'px'; deck.style.height = (vh / s) + 'px'; deck.style.transform = `scale(${s})`; return; }
+  deck.style.width = ''; deck.style.height = '';
+  const s = Math.min(vw / 1920, vh / 1080); deck.style.transform = `translate(-50%,-50%) scale(${s})`;
+}
+function fitSteps() { // 단계 목록이 영역을 넘으면 자동 축소 (실제 렌더링 높이 기준)
+  if (cur < 0) return; const side = $('.side.steps', slides[cur]); if (!side) return;
+  side.style.transform = ''; side.style.width = '';
+  if (side.clientHeight > 0 && side.scrollHeight > side.clientHeight + 1) { const k = side.clientHeight / side.scrollHeight; side.style.transformOrigin = 'top left'; side.style.transform = `scale(${k})`; side.style.width = (100 / k) + '%'; }
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitSteps);
+function applyStep() {
+  $$('.st', slides[cur]).forEach(el => { el.classList.toggle('on', +el.dataset.i <= step); el.classList.toggle('cur', +el.dataset.i === step); });
+  const id = slides[cur].id, r = REG[id]; r && r.onStep && safe(id + '.onStep', () => r.onStep(step));
+}
+const mgSet = (sl, on) => $$('iframe.mg-embed', sl).forEach(f => { f.src = on ? f.dataset.src : 'about:blank'; });
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.mg-re'); if (b) { const f = $('iframe', b.parentElement); f && f.contentWindow && f.contentWindow.postMessage({ mg: 'cmd', cmd: 'restart' }, '*'); b.blur(); } });
+function show(i, st = 0) {
+  i = Math.max(0, Math.min(slides.length - 1, i));
+  if (cur >= 0) { const oid = slides[cur].id, o = REG[oid]; o && o.stop && safe(oid + '.stop', () => o.stop()); slides[cur].classList.remove('active'); mgSet(slides[cur], false); }
+  cur = i; step = Math.min(st, maxStep(i)); slides[i].classList.add('active'); mgSet(slides[i], true);
+  const id = slides[i].id, r = REG[id]; activeFrame = r && r.frame ? (dt => r.frame(dt)) : null; activeId = id;
+  fitSteps(); r && r.start && safe(id + '.start', () => r.start());
+  $('#h-pg').textContent = `${i + 1} / ${slides.length}`; renderNotes(i); renderAsk(i); toggleAsk(false); applyStep();
+  if (DECK.ask_auto !== false && (ASK[id] || []).length && !askSeen[id]) { askSeen[id] = 1; toggleAsk(true); } // 처음 들어오면 발문을 먼저 띄운다(닫기 전까지 시뮬레이션 정지)
+}
+const askSeen = {};
+const next = () => { if ($('#ask').classList.contains('on')) { toggleAsk(false); return; } if (step < maxStep(cur)) { step++; applyStep(); } else if (cur < slides.length - 1) show(cur + 1); };
+const prev = () => { if (step > 0) { step--; applyStep(); } else if (cur > 0) show(cur - 1, maxStep(cur - 1)); };
+function isDark() { const r = document.documentElement; return r.dataset.theme === 'dark' || (!r.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches); }
+function themeBtn() { $('#b-theme').textContent = isDark() ? '☀ 라이트 전환' : '🌙 다크 전환'; }
+function toggleTheme() { document.documentElement.dataset.theme = isDark() ? 'light' : 'dark'; themeBtn(); }
+function toggleNotes() { const on = $('#notes').classList.toggle('on'); $('#b-notes').classList.toggle('on', on); }
+function toggleHelp(force) { const on = $('#help').classList.toggle('on', force); $('#b-help').classList.toggle('on', on); }
+function fullscreen() { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) { } }
+function poke() { $('#hud').classList.add('show'); clearTimeout(hudTimer); hudTimer = setTimeout(() => $('#hud').classList.remove('show'), 2600); }
+document.addEventListener('keydown', e => {
+  const t = e.target; if (t && t.tagName === 'INPUT' && t.type === 'range' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); next(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+  else if (e.key === 'Home') show(0); else if (e.key === 'End') show(slides.length - 1);
+  else if (e.key === 'f' || e.key === 'F') fullscreen(); else if (e.key === 'n' || e.key === 'N') toggleNotes(); else if (e.key === 't' || e.key === 'T') toggleTheme(); else if (e.key === 'q' || e.key === 'Q') toggleAsk(); else if (e.key === '?' || e.key === 'h' || e.key === 'H') toggleHelp(); else if (e.key === 'Escape') { toggleHelp(false); toggleAsk(false); if ($('#notes').classList.contains('on')) toggleNotes(); }
+});
+$('#h-prev').onclick = prev; $('#h-next').onclick = next; $('#h-fs').onclick = fullscreen; $('#b-help').onclick = () => toggleHelp(); $('#b-ask').onclick = () => toggleAsk(); $('#ask').onclick = () => toggleAsk(false); $('#help-x').onclick = () => toggleHelp(false); $('#help').onclick = e => { if (e.target.id === 'help') toggleHelp(false); }; $('#b-notes').onclick = toggleNotes; $('#b-theme').onclick = toggleTheme;
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
+['mousemove', 'touchstart', 'pointerdown'].forEach(ev => document.addEventListener(ev, poke, { passive: true }));
+window.addEventListener('resize', () => { fit(); fitSteps(); }); fit();
+/* 터치: 좌우로 쓸어 넘기기 (슬라이더·캔버스·버튼 위에서 시작한 건 제외) */
+(function () {
+  let x0 = 0, y0 = 0, ok = false;
+  document.addEventListener('touchstart', e => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; ok = !(e.target.closest && e.target.closest('input,canvas,button,table,.eq,#help,#notes')); }, { passive: true });
+  document.addEventListener('touchend', e => { if (!ok) return; const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; if (Math.abs(dx) > 70 && Math.abs(dx) > 2 * Math.abs(dy)) { dx < 0 ? next() : prev(); } }, { passive: true });
+})();
+let lastT = performance.now();
+(function loop(now) {
+  const dt = Math.min(.05, (now - lastT) / 1000); lastT = now;
+  if (activeFrame && !$('#ask').classList.contains('on')) { try { activeFrame(dt); } catch (e) { reportError(activeId + '.frame', e); activeFrame = null; } }
+  requestAnimationFrame(loop);
+})(lastT);
+
+/* 물리 검증: shared_js에 TESTS() → [[이름, 통과여부, 설명], ...] 가 있으면 콘솔에 출력 */
+(function runSelfTests() {
+  if (typeof TESTS !== 'function') { console.log('물리 검증 항목 없음'); return; }
+  let results = [];
+  try { results = TESTS() || []; } catch (e) { reportError('TESTS', e); return; }
+  console.log('=== ' + DECK.title + ' 물리 검증 ==='); let pass = 0;
+  for (const [name, ok, detail] of results) { console.log(`[${ok ? 'PASS' : 'FAIL'}] ${name}${detail ? ' — ' + detail : ''}`); if (ok) pass++; }
+  console.log(pass === results.length ? '모든 검증 통과' : '일부 검증 실패 — 콘솔 확인 필요');
+  window.__wsSelfTest = { pass, total: results.length };
+})();
+
+window.__deck = { show, next, get cur() { return cur; }, get step() { return step; }, count: slides.length, maxStep };
+let startAt = 0; try { const h = parseInt(location.hash.slice(1), 10); if (h >= 1 && h <= slides.length) startAt = h - 1; } catch (e) { }
+themeBtn(); show(startAt); poke();
+</script>
+</body>
+</html>
